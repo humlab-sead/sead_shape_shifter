@@ -57,6 +57,18 @@ export const projectsApi = {
   },
 
   /**
+   * Force reload project from disk, invalidating server-side cache
+   * 
+   * Useful when YAML file has been modified externally (manual edit, git pull, etc.)
+   */
+  refresh: async (name: string): Promise<Project> => {
+    return apiRequest<Project>({
+      method: 'POST',
+      url: `/projects/${name}/refresh`,
+    })
+  },
+
+  /**
    * Create new project
    */
   create: async (data: ProjectCreateRequest): Promise<Project> => {
@@ -96,6 +108,17 @@ export const projectsApi = {
     return apiRequest<void>({
       method: 'DELETE',
       url: `/projects/${name}`,
+    })
+  },
+
+  /**
+   * Copy project to new name
+   */
+  copy: async (sourceName: string, targetName: string): Promise<Project> => {
+    return apiRequest<Project>({
+      method: 'POST',
+      url: `/projects/${sourceName}/copy`,
+      data: { target_name: targetName },
     })
   },
 
@@ -152,9 +175,13 @@ export const projectsApi = {
 
   /**
    * Get data sources connected to a project
+   * Returns a map of data source names to their configurations.
+   * Configurations can be either:
+   * - String references: "@include: filename.yml"
+   * - Inline objects: {driver: "postgresql", options: {...}}
    */
-  getDataSources: async (name: string): Promise<Record<string, string>> => {
-    return apiRequest<Record<string, string>>({
+  getDataSources: async (name: string): Promise<Record<string, string | Record<string, any>>> => {
+    return apiRequest<Record<string, string | Record<string, any>>>({
       method: 'GET',
       url: `/projects/${name}/data-sources`,
     })

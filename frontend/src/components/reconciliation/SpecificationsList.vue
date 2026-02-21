@@ -243,7 +243,8 @@ import { ref, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { useProjectStore } from '@/stores/project'
-import type { SpecificationListItem } from '@/types/reconciliation'
+import { useNotification } from '@/composables/useNotification'
+import type { EntityResolutionListItem } from '@/types/reconciliation'
 import SpecificationEditor from './SpecificationEditor.vue'
 
 interface Props {
@@ -258,13 +259,15 @@ const emit = defineEmits<{
 
 const reconciliationStore = useReconciliationStore()
 const { specifications, loadingSpecs, specsError } = storeToRefs(reconciliationStore)
+
+const { success, error: showError } = useNotification()
 const projectStore = useProjectStore()
 
 // State
 const editorDialog = ref(false)
 const deleteDialog = ref(false)
-const selectedSpec = ref<SpecificationListItem | null>(null)
-const specToDelete = ref<SpecificationListItem | null>(null)
+const selectedSpec = ref<EntityResolutionListItem | null>(null)
+const specToDelete = ref<EntityResolutionListItem | null>(null)
 const isNewSpec = ref(false)
 const deletingSpec = ref(false)
 const entityFieldsCache = ref<Record<string, string[]>>({}) // Cache for entity fields from API
@@ -283,7 +286,7 @@ const headers = [
 ]
 
 // Methods
-function isRemoteTypeValid(item: SpecificationListItem): boolean {
+function isRemoteTypeValid(item: EntityResolutionListItem): boolean {
   // TODO: Validate against available remote types from service
   return item.remote.service_type != null
 }
@@ -294,17 +297,17 @@ function openAddDialog() {
   editorDialog.value = true
 }
 
-function editSpecification(item: SpecificationListItem) {
+function editSpecification(item: EntityResolutionListItem) {
   selectedSpec.value = item
   isNewSpec.value = false
   editorDialog.value = true
 }
 
-function reconcileSpec(item: SpecificationListItem) {
+function reconcileSpec(item: EntityResolutionListItem) {
   emit('reconcile', item.entity_name, item.target_field)
 }
 
-function confirmDelete(item: SpecificationListItem) {
+function confirmDelete(item: EntityResolutionListItem) {
   specToDelete.value = item
   deleteDialog.value = true
 }
@@ -322,8 +325,11 @@ async function performDelete() {
     )
     deleteDialog.value = false
     specToDelete.value = null
-  } catch (error) {
-    console.error('Failed to delete specification:', error)
+    success('Specification deleted successfully')
+  } catch (err: any) {
+    console.error('Failed to delete specification:', err)
+    const message = err.response?.data?.detail || err.message || 'Unknown error'
+    showError(`Failed to delete specification: ${message}`)
   } finally {
     deletingSpec.value = false
   }
@@ -366,7 +372,7 @@ async function getEntityFields(entityName: string): Promise<string[]> {
   }
 }
 
-async function validateSpecification(spec: SpecificationListItem): Promise<ValidationStatus> {
+async function validateSpecification(spec: EntityResolutionListItem): Promise<ValidationStatus> {
   const status: ValidationStatus = {
     hasErrors: false,
     hasWarnings: false,
@@ -419,7 +425,7 @@ async function validateSpecification(spec: SpecificationListItem): Promise<Valid
   return status
 }
 
-function getValidationStatus(spec: SpecificationListItem): ValidationStatus {
+function getValidationStatus(spec: EntityResolutionListItem): ValidationStatus {
   const cacheKey = `${spec.entity_name}.${spec.target_field}`
   
   // Return cached if available

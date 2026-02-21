@@ -1,5 +1,23 @@
 # Shape Shifter - AI Coding Agent Instructions
 
+## Documentation Scope
+
+When referencing project documentation, **ignore all files in `docs/archive/`**. These are historical implementation notes and deprecated documentation. Refer only to current documentation in the main `docs/` directory:
+
+- **CONFIGURATION_GUIDE.md** - Complete YAML configuration reference
+- **ARCHITECTURE.md** - System architecture and component overview
+- **DEVELOPER_GUIDE.md** - Development setup and contribution guidelines
+- **USER_GUIDE.md** - End-user documentation
+- **REQUIREMENTS.md** - Feature specifications
+- **TESTING_GUIDE.md** - Concise functional testing procedures (core workflows only)
+- **AI_VALIDATION_GUIDE.md** - Concise AI-focused validation rules for shapeshifter.yml files
+- **testing/** - Testing resources subfolder:
+  - **ERROR_SCENARIO_TESTING.md** - Error handling and recovery tests
+  - **TEST_RESULTS_TEMPLATE.md** - Templates and quick test checklists
+  - **APPENDIX.md** - Shortcuts, troubleshooting, tools
+  - **NON_FUNCTIONAL_TESTING_GUIDE.md** - Browser compatibility, performance
+  - **ACCESSIBILITY_TESTING_GUIDE.md** - WCAG compliance testing
+
 ## Project Architecture
 
 **Shape Shifter** is a mono-repo with three components:
@@ -146,6 +164,70 @@ from src.configuration.provider import ConfigStore  # Config singleton
 from backend.app.services.validation_service import ValidationService  # Backend
 ```
 
+### Dependency Injection for Circular Imports (Critical Pattern) ⭐
+
+**When services depend on each other, use dependency injection via factory functions instead of lazy imports.**
+
+**Problem - Circular Import:**
+```python
+# ❌ WRONG: Module-level import causes circular dependency
+from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
+
+class ValidationService:
+    def validate_data(self):
+        orchestrator = DataValidationOrchestrator(...)  # Orchestrator also imports ValidationService!
+```
+
+**Solution - Dependency Injection:**
+```python
+# ✅ CORRECT: Inject dependencies via constructor
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
+
+class ValidationService:
+    def __init__(self, orchestrator: "DataValidationOrchestrator" | None = None):
+        """Inject orchestrator to avoid circular import."""
+        self._orchestrator = orchestrator
+    
+    async def validate_data(self, project_name: str, entity_names: list[str]):
+        if self._orchestrator:
+            return await self._orchestrator.validate_all_entities(...)
+        else:
+            # Create orchestrator with dependencies
+            from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
+            orchestrator = DataValidationOrchestrator(fetch_strategy=...)
+            return await orchestrator.validate_all_entities(...)
+```
+
+**Benefits:**
+- **Explicit dependencies**: Constructor signature shows what service needs
+- **Testability**: Easy to inject mocks in tests
+- **No circular imports**: Factory is just a callable, not a module import
+- **Flexibility**: Different contexts can provide different implementations
+- **Backward compatible**: Optional parameter with default factory
+
+**Usage:**
+```python
+# Production (default factory)
+service = ValidationService()
+
+# Testing (inject mock)
+mock_factory = lambda: mock_validator
+service = ValidationService(data_validator_factory=mock_factory)
+```
+
+**When to use:**
+- Services that depend on each other (validation ↔ data validation)
+- Any circular dependency between backend modules
+- When you need different implementations in different contexts
+
+**Never:**
+- Use lazy imports at method level as permanent solution (use DI instead)
+- Import services at module level if they might cause circular dependencies
+- Skip TYPE_CHECKING imports (they prevent circular imports at runtime)
+
 ### Layer Boundary Architecture (Awesome Pattern) ⭐
 
 **Critical architectural principle: Strict separation between API and Core layers.**
@@ -225,6 +307,228 @@ api_project.task_list.mark_completed(entity)  # AttributeError!
 - Assign API `Project` to `ShapeShiftProject` variable - type confusion
 - Put business logic in API models - keep them as DTOs
 - Skip mapper when needing domain logic - always convert properly
+
+### Pure Domain Validators (Awesome Pattern) ⭐
+
+**Critical: Validators are pure domain logic - they receive data, not fetch it.**
+
+**Why awesome:**
+- Validators are testable without mocking infrastructure (just pass DataFrames)
+- Can validate preview samples OR full normalized datasets
+- Reusable across Core, Backend, CLI, scripts without coupling
+- Single Responsibility: only validation logic, no data fetching
+- Backend orchestrator handles infrastructure concerns (data loading, API conversion)
+
+#### Architecture
+
+```
+Domain Layer (src/validators/)      ← Pure validation logic, no dependencies
+      ↓ ValidationIssue (domain)
+Backend Orchestrator (backend/app/validators/data_validation_orchestrator.py)
+      ↓ Fetch data (preview, full, or table_store)
+      ↓ Call domain validators
+      ↓ Return ValidationIssue (domain)
+Validation Service (backend/app/services/validation_service.py)
+      ↓ ValidationMapper.to_api_error()
+Validation Mapper (backend/app/mappers/validation_mapper.py)
+      ↓ Convert ValidationIssue → ValidationError (domain → API)
+API Endpoints (backend/app/api/v1/endpoints/)
+```
+
+#### Domain Validator Pattern
+
+**Pure validators** - no infrastructure dependencies:
+```python
+# src/validators/data_validators.py
+from dataclasses import dataclass
+import pandas as pd
+
+@dataclass
+class ValidationIssue:
+    """Domain representation of a validation issue."""
+    severity: str  # "error", "warning", "info"
+    entity: str | None
+    field: str | None
+    message: str
+    code: str
+    suggestion: str | None = None
+
+class ColumnExistsValidator:
+    """Pure domain validator - receives data, returns issues."""
+    
+    @staticmethod
+    def validate(df: pd.DataFrame, configured_columns: list[str], entity_name: str) -> list[ValidationIssue]:
+        """Check configured columns exist - no external dependencies."""
+        missing = set(configured_columns) - set(df.columns)
+        return [
+            ValidationIssue(
+                severity="error",
+                entity=entity_name,
+                field="columns",
+                message=f"Column '{col}' not found in data",
+                code="COLUMN_NOT_FOUND",
+            )
+            for col in sorted(missing)
+        ]
+```
+
+**Backend orchestrator** - handles infrastructure with dependency injection:
+```python
+# backend/app/validators/data_validation_orchestrator.py
+
+# Strategy pattern for data fetching
+class DataFetchStrategy(ABC):
+    @abstractmethod
+    async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
+        pass
+
+class PreviewDataFetchStrategy(DataFetchStrategy):
+    """Preview sample data (limit 1000 rows)."""
+    def __init__(self, preview_service: ShapeShiftService, limit: int = 1000):
+        self.preview_service = preview_service
+        self.limit = limit
+    
+    async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
+        preview_result = await self.preview_service.preview_entity(...)
+        return pd.DataFrame(preview_result.rows)
+
+class FullDataFetchStrategy(DataFetchStrategy):
+    """Full normalization with per-project caching."""
+    def __init__(self, project_service: ProjectService):
+        self.project_service = project_service
+        self._normalizer_cache: dict[str, ShapeShifter] = {}
+    
+    async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
+        if project_name not in self._normalizer_cache:
+            normalizer = ShapeShifter(core_project)
+            await normalizer.normalize()
+            self._normalizer_cache[project_name] = normalizer
+        return self._normalizer_cache[project_name].table_store[entity_name]
+
+class TableStoreDataFetchStrategy(DataFetchStrategy):
+    """Use pre-existing normalized data."""
+    def __init__(self, table_store: dict[str, pd.DataFrame]):
+        self.table_store = table_store
+    
+    async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
+        return self.table_store.get(entity_name, pd.DataFrame())
+
+class DataValidationOrchestrator:
+    """Orchestrates data fetching and validation with injected strategy."""
+    
+    def __init__(self, fetch_strategy: DataFetchStrategy) -> None:
+        """Inject fetch strategy (preview, full, or table_store)."""
+        self.fetch_strategy = fetch_strategy
+    
+    async def validate_all_entities(
+        self,
+        core_project: ShapeShiftProject,  # ⭐ Receive resolved project
+        project_name: str,
+        entity_names: list[str] | None = None,
+    ) -> list[ValidationIssue]:  # ⭐ Return domain models
+        """Fetch data and call pure validators."""
+        # 1. Get entity configurations from resolved core project
+        resolved_entities = core_project.cfg.get("entities", {})
+        
+        # 2. Fetch data using injected strategy
+        df = await self.fetch_strategy.fetch(project_name, entity_name)
+        
+        # 3. Call pure domain validator
+        issues = ColumnExistsValidator.validate(df, columns, entity_name)
+        
+        # 4. Return domain issues (consumer decides how to transform)
+        return issues
+```
+
+**Usage in ValidationService:**
+```python
+# Load and resolve project (ValidationService responsibility)
+api_project = project_service.load_project(project_name)
+core_project = ProjectMapper.to_core(api_project)
+
+# Create strategy
+if use_full_data:
+    strategy = FullDataFetchStrategy(project_service)
+else:
+    strategy = PreviewDataFetchStrategy(preview_service)
+
+# Inject strategy, pass resolved project
+orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+issues = await orchestrator.validate_all_entities(
+    core_project=core_project,
+    project_name=project_name,
+    entity_names=entity_names,
+)
+
+# Convert domain → API (ValidationService responsibility)
+from backend.app.mappers.validation_mapper import ValidationMapper
+errors = [ValidationMapper.to_api_error(issue) for issue in issues]
+```
+        
+        # 4. Convert domain → API
+        return [self._to_api_error(issue) for issue in issues]
+```
+
+#### Key Principles
+
+**✅ Domain validators:**
+- Static methods receiving DataFrames + config
+- Return `ValidationIssue` (domain model)
+- No async (pure functions)
+- No service dependencies
+- Testable with mock DataFrames
+
+**❌ Never in domain validators:**
+- ShapeShiftService or preview service injection
+- Async data fetching
+- API model imports (ValidationError)
+- Environment variable resolution
+
+**✅ Backend orchestrator:**
+- Inject DataFetchStrategy (DI pattern)
+- Strategy creates appropriate data source (preview, full, or table_store)
+- Return domain ValidationIssues (consumer transforms as needed)
+- Handle exceptions and infrastructure errors
+
+**Usage pattern:**
+```python
+# Create appropriate strategy
+if use_full_data:
+    strategy = FullDataFetchStrategy(project_service)
+else:
+    strategy = PreviewDataFetchStrategy(preview_service)
+
+# Inject strategy into orchestrator
+orchestrator = DataValidationOrchestrator(
+    fetch_strategy=strategy,
+    project_service=project_service,
+)
+```
+
+**Testing pattern:**
+```python
+# Domain validator test - no mocking needed
+def test_column_exists_validator():
+    df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+    issues = ColumnExistsValidator.validate(df, ["a", "b", "missing"], "test")
+    assert len(issues) == 1
+    assert issues[0].code == "COLUMN_NOT_FOUND"
+
+# Orchestrator test - inject mock strategy
+@pytest.mark.asyncio
+async def test_orchestrator_with_table_store():
+    table_store = {"entity": pd.DataFrame({"a": [1, 2]})}
+    strategy = TableStoreDataFetchStrategy(table_store)
+    orchestrator = DataValidationOrchestrator(strategy, mock_project_service)
+    errors = await orchestrator.validate_all_entities("project", ["entity"])
+    # Verify validation and API conversion
+```
+
+**Benefits:**
+- Full dataset validation: Set `use_full_data=True` for post-normalization checks
+- Fast tests: Domain validators are synchronous, pure functions
+- Reusable: Use validators in CLI scripts, ingesters, backend
+- Clear SRP: Validators validate, orchestrators orchestrate
 
 ### Test Patterns
 ```python
@@ -432,6 +736,177 @@ This project uses **semantic-release** configured in `.releaserc.json`:
 - **Use `[skip ci]`** in commit message to skip CI builds when appropriate
 - **Check release impact**: `feat` = minor, `fix`/`refactor`/`style` = patch, breaking = major
 
+### Creating GitHub Issues and Committing Changes - Best Practices
+
+**When a user asks to create an issue and commit changes, follow this streamlined workflow:**
+
+#### Preferred MCP Tools (Use These First)
+
+**Git Operations (GitKraken MCP):**
+1. **Check Status**: `mcp_gitkraken_git_status` - Shows unstaged/staged changes
+2. **View Changes**: `mcp_gitkraken_git_log_or_diff` with `action: "diff"` - Shows detailed diff
+3. **Commit**: `mcp_gitkraken_git_add_or_commit` - Stage files and create commit
+4. **Compose Commits**: `mcp_gitkraken_gitlens_commit_composer` - Organize large changes into well-formed commits
+
+**GitHub Operations (GitHub MCP - Requires GITHUB_TOKEN):**
+1. **Create Issue**: `github-pull-request_issue_fetch` with create operation - Create issues with labels, assignees
+2. **Fetch Issue**: `github-pull-request_issue_fetch` - Get issue details by number
+3. **Search Issues**: `github-pull-request_formSearchQuery` + `github-pull-request_doSearch` - Query issues/PRs
+4. **PR Operations**: `github-pull-request_activePullRequest`, `github-pull-request_openPullRequest` - Manage PRs
+5. **Suggest Fixes**: `github-pull-request_suggest-fix` - AI-powered fix suggestions
+
+**Fallback**: If GitHub MCP tools are unavailable, use GitHub CLI (`gh issue create`) via `run_in_terminal` tool.
+
+#### Complete Workflow
+
+```bash
+# 1. Check status (GitKraken MCP)
+mcp_gitkraken_git_status(directory="/home/roger/source/sead_shape_shifter")
+
+# 2. View diff (GitKraken MCP)
+mcp_gitkraken_git_log_or_diff(
+  directory="/home/roger/source/sead_shape_shifter",
+  action="diff"
+)
+
+# 3. Create GitHub issue (GitHub MCP - preferred)
+github-pull-request_issue_fetch({
+  owner: "humlab-sead",
+  repo: "sead_shape_shifter",
+  title: "fix(frontend): brief description",
+  body: "Detailed description...",
+  labels: ["bug", "frontend"]
+})
+
+# Fallback: Use GitHub CLI if MCP unavailable
+gh issue create \
+  --title "fix(frontend): brief description" \
+  --body "Detailed description..." \
+  --label "bug" \
+  --label "frontend"
+
+# 4. Commit changes (GitKraken MCP)
+mcp_gitkraken_git_add_or_commit(
+  directory="/home/roger/source/sead_shape_shifter",
+  action="add",
+  files=["path/to/file.vue"]
+)
+
+mcp_gitkraken_git_add_or_commit(
+  directory="/home/roger/source/sead_shape_shifter",
+  action="commit",
+  message="fix(frontend): brief description\n\n- Change 1\n- Change 2\n\nCloses #XXX"
+)
+```
+
+#### User Request Patterns to Recognize
+
+When users say these phrases, execute the complete workflow:
+- "Create a GH issue and commit changes"
+- "Create GitHub issue for my changes and commit them"
+- "Commit with issue" / "Issue + commit"
+- "Document and commit my work"
+
+#### What to Include in the Issue Description
+
+**Always structure issue body with**:
+- **Description**: What was changed and why
+- **Changes**: Bullet list of specific modifications
+- **Technical Details**: Root cause or implementation notes
+- **Related Components**: File paths affected
+- **Type**: Bug fix, feature, refactor, etc.
+
+#### Commit Message Format
+
+```
+<type>(<scope>): <description>
+
+- Bullet point describing change 1
+- Bullet point describing change 2
+- Bullet point describing change 3
+
+Additional context explaining the why (optional).
+
+Closes #<issue-number>
+```
+
+**Critical**: Always include `Closes #XXX` or `Fixes #XXX` to auto-link the commit to the issue.
+
+#### Large Change Handling
+
+For complex changes with multiple files, use:
+```bash
+mcp_gitkraken_gitlens_commit_composer(
+  directory="/home/roger/source/sead_shape_shifter",
+  instructions="Break into logical commits: 1) bug fix, 2) refactor, 3) tests"
+)
+```
+
+This organizes changes into well-formed, atomic commits with clear messages.
+
+#### Error Handling
+
+**If GitHub MCP tools are unavailable:**
+1. Check `GITHUB_TOKEN` environment variable: `echo $GITHUB_TOKEN`
+2. Verify mcp.json configuration in `~/.vscode-server/data/User/mcp.json`
+3. Reload VS Code window: `Ctrl+Shift+P` → "Developer: Reload Window"
+4. Fallback to GitHub CLI if needed
+
+**If `gh` CLI is not available (fallback only):**
+1. Check with `which gh` or `gh --version`
+2. Guide user to install: `brew install gh` (macOS) or `apt install gh` (Linux)
+3. Verify authentication: `gh auth status`
+
+#### Example Complete Flow
+
+```typescript
+// User: "Create a GH issue and commit my ForeignKeyEditor changes"
+
+// Step 1: Check what changed (GitKraken MCP)
+mcp_gitkraken_git_status(directory="...")
+mcp_gitkraken_git_log_or_diff(directory="...", action="diff")
+
+// Step 2: Analyze changes (AI determines issue content)
+
+// Step 3: Create issue (GitHub MCP - preferred)
+github-pull-request_issue_fetch({
+  owner: "humlab-sead",
+  repo: "sead_shape_shifter",
+  title: "fix(frontend): normalize v-combobox keys",
+  body: "Detailed description...",
+  labels: ["bug", "frontend"]
+})
+// Returns: Issue #265 created
+
+// Fallback if MCP unavailable:
+run_in_terminal: gh issue create --title "fix(frontend): normalize v-combobox keys" ...
+
+// Step 4: Stage and commit (GitKraken MCP)
+mcp_gitkraken_git_add_or_commit(action="add", files=["frontend/src/..."])
+mcp_gitkraken_git_add_or_commit(
+  action="commit",
+  message="fix(frontend): normalize v-combobox keys\n\n...\n\nCloses #265"
+)
+
+// Step 5: Confirm to user
+"✅ Created issue #265 and committed changes (9e16898)"
+```
+
+#### Quick Reference
+
+| Task | Tool | Priority |
+|------|------|----------|
+| Check status | `mcp_gitkraken_git_status` | ⭐ Use first |
+| View diff | `mcp_gitkraken_git_log_or_diff` | ⭐ Use first |
+| Stage files | `mcp_gitkraken_git_add_or_commit` (action="add") | ⭐ Use first |
+| Commit | `mcp_gitkraken_git_add_or_commit` (action="commit") | ⭐ Use first |
+| Organize commits | `mcp_gitkraken_gitlens_commit_composer` | For complex changes |
+| Create issue | `github-pull-request_issue_fetch` (GitHub MCP) | ⭐ Use first |
+| Fetch issue | `github-pull-request_issue_fetch` (GitHub MCP) | ⭐ Use first |
+| Search issues | `github-pull-request_doSearch` (GitHub MCP) | ⭐ Use first |
+| Create issue (fallback) | `run_in_terminal` with `gh issue create` | If MCP unavailable |
+| Start work from issue | `mcp_gitkraken_gitlens_start_work` | Creates branch + links issue |
+
 ## Common Tasks
 
 ### Adding a Backend Endpoint
@@ -465,6 +940,24 @@ This project uses **semantic-release** configured in `.releaserc.json`:
 4. Ingester will be auto-discovered at application startup from `ingesters/` directory
 5. Add tests in `backend/tests/ingesters/test_<name>.py`
 6. See `ingesters/sead/` for reference implementation and `backend/app/ingesters/README.md` for protocol details
+
+### Validating shapeshifter.yml Projects
+When validating or analyzing shapeshifter.yml project files, refer to [docs/AI_VALIDATION_GUIDE.md](docs/AI_VALIDATION_GUIDE.md) for:
+- **Quick validation checklist** - Systematic checks for structure, identity, FK, dependencies
+- **Common error patterns** - Known issues and how to identify them
+- **Valid configuration examples** - Reference patterns that are intentional, not errors
+- **Entity type requirements** - Required/optional fields per type
+
+**Key principle**: Not all patterns that look unusual are errors. The guide documents valid patterns like:
+- `extra_columns` with FK references (intentional lookup table pattern)
+- Business key joins (FK on non-ID columns)
+- Hierarchical fixed entities
+
+**When to use**:
+- User asks "Can you see anything wrong with this project?"
+- Analyzing validation errors or warnings
+- Assisting with YAML file editing
+- Reviewing entity configurations
 
 ## Frontend Conventions
 
@@ -588,6 +1081,8 @@ See `ingesters/README.md` for detailed guide. Basic steps:
 - [docs/SYSTEM_DOCUMENTATION.md](docs/SYSTEM_DOCUMENTATION.md) - Architecture and component overview
 - [docs/BACKEND_API.md](docs/BACKEND_API.md) - REST API endpoint reference
 - [docs/DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md) - Setup and contribution guidelines
+- [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) - Concise functional testing procedures
+- [docs/testing/](docs/testing/) - Testing resources (error scenarios, templates, non-functional, accessibility)
 
 ## External Dependencies
 - **UCanAccess**: MS Access via JDBC (install: `scripts/install-uncanccess.sh`)

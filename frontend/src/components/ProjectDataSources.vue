@@ -48,10 +48,28 @@
         </template>
 
         <template #append>
-          <v-btn icon="mdi-link-off" variant="text" color="error" size="small" @click="handleDisconnect(source.name)">
-            <v-icon>mdi-link-off</v-icon>
-            <v-tooltip activator="parent" location="top"> Disconnect </v-tooltip>
-          </v-btn>
+          <div class="d-flex gap-1">
+            <v-btn
+              icon="mdi-table-arrow-right"
+              variant="text"
+              color="primary"
+              size="small"
+              @click="handleCreateEntity(source.name)"
+            >
+              <v-icon>mdi-table-arrow-right</v-icon>
+              <v-tooltip activator="parent" location="top"> Create Entity from Table </v-tooltip>
+            </v-btn>
+            <v-btn
+              icon="mdi-link-off"
+              variant="text"
+              color="error"
+              size="small"
+              @click="handleDisconnect(source.name)"
+            >
+              <v-icon>mdi-link-off</v-icon>
+              <v-tooltip activator="parent" location="top"> Disconnect </v-tooltip>
+            </v-btn>
+          </div>
         </template>
 
         <v-list-item-subtitle v-if="source.details" class="mt-1">
@@ -149,6 +167,14 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Create Entity From Table Dialog -->
+    <CreateEntityFromTableDialog
+      v-model="showCreateEntityDialog"
+      :project-name="props.projectName"
+      :data-source="createEntityDataSource"
+      @created="handleEntityCreated"
+    />
   </v-card>
 </template>
 
@@ -156,6 +182,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useProjectStore } from '@/stores/project'
 import { useDataSourceStore } from '@/stores/data-source'
+import CreateEntityFromTableDialog from '@/components/entities/CreateEntityFromTableDialog.vue'
 
 const props = defineProps<{
   projectName: string
@@ -180,6 +207,8 @@ const selectedSourceFile = ref<string | null>(null)
 const connecting = ref(false)
 const disconnecting = ref(false)
 const connectError = ref<string | null>(null)
+const showCreateEntityDialog = ref(false)
+const createEntityDataSource = ref<string>('')
 
 // Computed
 const connectedSources = computed(() => {
@@ -304,6 +333,16 @@ function getDriverIcon(driver: string): string {
     csv: 'mdi-file-delimited-outline',
   }
   return icons[driver?.toLowerCase()] || 'mdi-database'
+}
+
+function handleCreateEntity(sourceName: string) {
+  createEntityDataSource.value = sourceName
+  showCreateEntityDialog.value = true
+}
+
+function handleEntityCreated(entityName: string) {
+  console.log(`Entity '${entityName}' created successfully`)
+  emit('updated')
 }
 
 // Lifecycle

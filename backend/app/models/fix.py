@@ -19,6 +19,7 @@ class FixActionType(str, Enum):
     UPDATE_QUERY = "update_query"
     ADD_ENTITY = "add_entity"
     REMOVE_ENTITY = "remove_entity"
+    UPDATE_VALUES = "update_values"  # For updating fixed entity values (system_id repair)
 
 
 class FixAction(BaseModel):

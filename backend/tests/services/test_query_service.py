@@ -10,9 +10,10 @@ import pandas as pd
 import pytest
 import sqlparse
 
+from backend.app.exceptions import QueryExecutionError, QuerySecurityError
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.models.query import QueryResult, QueryValidation
-from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
+from backend.app.services.query_service import QueryService
 
 # pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
 
@@ -133,7 +134,7 @@ class TestQueryExecution:
         mock_ds_config = DataSourceConfig(
             name="test_db", driver="postgresql", host="localhost", port=5432, database="testdb", username="testuser", **{}
         )
-        mock_ds_service = Mock(get_data_source=Mock(return_value=mock_ds_config))
+        mock_ds_service = Mock(load_data_source=Mock(return_value=mock_ds_config))
         return mock_ds_service
 
     def mock_read_sql(self, test_df: pd.DataFrame, mock_get_loader: Mock) -> AsyncMock:
@@ -209,7 +210,7 @@ class TestQueryExecution:
 
     @pytest.mark.asyncio
     async def test_execute_destructive_query(self, mock_ds_service):
-        """Should reject destructive queries."""
+        """Should reject destructive queries with structured error."""
 
         mock_conn = Mock()
         mock_ds_service.get_connection.return_value = mock_conn
@@ -221,7 +222,12 @@ class TestQueryExecution:
 
             await service.execute_query("test_db", query)
 
-        assert "validation failed" in str(exc_info.value).lower()
+        # Check structured error format
+        error = exc_info.value
+        assert "prohibited operations" in error.message.lower()
+        assert error.recoverable is False  # Security errors are not user-recoverable
+        assert "violations" in error.context
+        assert len(error.tips) > 0
 
     @pytest.mark.asyncio
     async def test_execute_connection_error(self, mock_ds_service):
@@ -316,7 +322,7 @@ class TestQueryService:
     def service(self) -> QueryService:
         """Create QueryService instance."""
         with patch("backend.app.services.query_service.DataSourceService") as mock_ds_service:
-            mock_ds_service.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds_service.return_value.load_data_source = MagicMock(return_value=MagicMock())
             return QueryService(data_source_service=mock_ds_service)
 
     @pytest.fixture
@@ -440,7 +446,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
@@ -462,7 +468,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
             mock_loader.inject_limit = MagicMock(side_effect=lambda q, w: f"{q} LIMIT {w}")
@@ -484,7 +490,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
             mock_loader.inject_limit = MagicMock(side_effect=lambda q, w: q)
@@ -500,10 +506,15 @@ class TestQueryService:
     async def test_execute_query_data_source_not_found(self, service: QueryService):
         """Test execution with non-existent data source."""
         # Patch the service's data_source_service directly
-        service.data_source_service.get_data_source = MagicMock(return_value=None)
+        service.data_source_service.load_data_source = MagicMock(return_value=None)
 
-        with pytest.raises(QueryExecutionError, match="does not exist"):
+        with pytest.raises(QueryExecutionError) as exc_info:
             await service.execute_query(data_source_name="nonexistent", query="SELECT 1")
+
+        error = exc_info.value
+        assert "not found" in error.message.lower()
+        assert error.context.get("data_source") == "nonexistent"
+        assert len(error.tips) > 0
 
     @pytest.mark.asyncio
     async def test_execute_query_timeout(self, service: QueryService):
@@ -516,18 +527,24 @@ class TestQueryService:
 
         slow_loader = AsyncMock()
         slow_loader.read_sql = slow_read_sql
+        slow_loader.inject_limit = MagicMock(side_effect=lambda q, l: q)  # noqa: E741
 
         with (
             patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: slow_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
-            with pytest.raises(QueryExecutionError, match="timed out"):
+            with pytest.raises(QueryExecutionError) as exc_info:
                 await service.execute_query(data_source_name="test_source", query=query, timeout=1)
+
+            error = exc_info.value
+            assert "timed out" in error.message.lower() or "timeout" in error.message.lower()
+            assert error.context.get("data_source") == "test_source"
+            assert len(error.tips) > 0
 
     @pytest.mark.asyncio
     async def test_execute_query_loader_error(self, service: QueryService):
@@ -535,18 +552,24 @@ class TestQueryService:
         query = "SELECT * FROM users"
         error_loader = AsyncMock()
         error_loader.read_sql = AsyncMock(side_effect=RuntimeError("Database error"))
+        error_loader.inject_limit = MagicMock(side_effect=lambda q, l: q)  # noqa: E741
 
         with (
             patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: error_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
-            with pytest.raises(QueryExecutionError, match="Database error"):
+            with pytest.raises(QueryExecutionError) as exc_info:
                 await service.execute_query(data_source_name="test_source", query=query)
+
+            error = exc_info.value
+            assert "database error" in error.message.lower() or "failed" in error.message.lower()
+            assert error.context.get("data_source") == "test_source"
+            assert len(error.tips) > 0
 
     @pytest.mark.asyncio
     async def test_execute_query_empty_result(self, service: QueryService):
@@ -560,7 +583,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: empty_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
@@ -582,7 +605,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: null_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
@@ -602,7 +625,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: ts_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
@@ -624,7 +647,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: large_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
@@ -645,7 +668,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 

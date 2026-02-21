@@ -117,9 +117,12 @@ bin
 deprecated
 output*.xlsx
 **/*.mdb
+**/*.accdb
 backups
 .vite
 coverage
 projects/*.xlsx
 output/*.xlsx
 **/test-results
+sead-tools
+docs/projects

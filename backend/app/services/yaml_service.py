@@ -32,8 +32,6 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
 from ruamel.yaml.scalarstring import SingleQuotedScalarString
 
-from backend.app.core.config import settings
-
 
 class YamlServiceError(Exception):
     """Base exception for YAML service errors."""
@@ -178,19 +176,25 @@ class YamlService:
         2. Business keys: keys
         3. Schema: columns
         4. Data: values
-        5. Relationships: foreign_keys, depends_on
-        6. Operations: drop_duplicates, drop_empty_rows, check_functional_dependency
-        7. Transformations: filters, unnest, append, extra_columns
-        8. All other keys (preserved in alphabetical order)
+        5. Materialization: materialized
+        6. Relationships: foreign_keys, depends_on
+        7. Operations: drop_duplicates, drop_empty_rows, check_functional_dependency
+        8. Transformations: filters, unnest, append, extra_columns
+        9. All other keys (preserved in alphabetical order)
+
+        **Defensive Programming:**
+        Keys not in ENTITY_KEY_ORDER are ALWAYS preserved and appended at the end
+        in alphabetical order. This prevents data loss when new entity configuration
+        keys are added in the future.
 
         Args:
             data: Configuration dictionary (may contain 'entities')
 
         Returns:
-            New dictionary with ordered keys
+            New dictionary with ordered keys (ALL keys preserved)
         """
         # Canonical order for entity configuration keys
-        ENTITY_KEY_ORDER = [
+        ENTITY_KEY_ORDER = [  # pylint: disable=invalid-name
             # Core identity
             "type",
             "source",
@@ -202,6 +206,8 @@ class YamlService:
             "columns",
             # Data
             "values",
+            # Materialization metadata
+            "materialized",
             # Relationships
             "foreign_keys",
             "depends_on",
@@ -220,12 +226,17 @@ class YamlService:
             """
             Reorder dictionary keys according to specified order.
 
+            **Defensive Programming:**
+            ALL keys from the input dictionary are ALWAYS preserved, even if not in key_order.
+            Unknown keys are appended at the end in alphabetical order.
+            This prevents data loss when new entity keys are added in the future.
+
             Args:
                 d: Dictionary to reorder
                 key_order: Preferred key order (None = preserve original order)
 
             Returns:
-                New dictionary with ordered keys
+                New dictionary with ALL input keys preserved and ordered
             """
             if key_order is None:
                 return d
@@ -233,9 +244,12 @@ class YamlService:
             # Start with ordered keys that exist in dict
             ordered = {k: d[k] for k in key_order if k in d}
 
-            # Append remaining keys in alphabetical order
+            # CRITICAL: Preserve ALL remaining keys (defensive programming)
+            # Append keys not in key_order list in alphabetical order
+            # This ensures no data loss when new entity keys are added
             remaining = {k: d[k] for k in sorted(d.keys()) if k not in ordered}
 
+            # Merge: ordered keys first, then remaining keys
             return {**ordered, **remaining}
 
         # If root level has 'entities', order each entity config
@@ -250,18 +264,21 @@ class YamlService:
 
     def _apply_flow_style(self, obj: Any, max_items: int) -> None:
         """
-            Recursively mark short lists to use flow style for compact formatting.
+        Recursively mark short lists to use flow style for compact formatting.
 
-            Lists with ≤ max_items will be formatted as [item1, item2] instead of:
-            - item1
-            - item2
+        Lists with ≤ max_items will be formatted as [item1, item2] instead of:
+        - item1
+        - item2
 
-        Special handling for 'values' key: Always formats as list of rows where
-        each row is a flow-style list on its own line, regardless of max_items.
+        Special handling:
+        - 'values' key: Always formatted as list of rows where each row is a
+          flow-style list on its own line, regardless of max_items.
+        - 'foreign_keys' and 'filters' keys: Always use block style for readability
+          since they contain complex nested structures.
 
-            Args:
-                obj: Object to process (dict, list, or other)
-                max_items: Maximum list length for flow style
+        Args:
+            obj: Object to process (dict, list, or other)
+            max_items: Maximum list length for flow style
         """
 
         def needs_flow_quote(value: str) -> bool:
@@ -299,6 +316,11 @@ class YamlService:
                             else:
                                 flow_seq = row
                             flow_seq.fa.set_flow_style()
+                # Exclude complex nested structures from flow style
+                elif key in ("foreign_keys", "filters"):
+                    # Always use block style for better readability
+                    if isinstance(value, (dict, list)):
+                        self._apply_flow_style(value, max_items)
                 # Regular handling for other keys
                 elif isinstance(value, list) and 0 < len(value) <= max_items:
                     # Convert to CommentedSeq and mark for flow style
@@ -317,10 +339,10 @@ class YamlService:
 
     def create_backup(self, file_path: str | Path) -> Path:
         """
-        Create timestamped backup of file.
+        Create timestamped backup of file in project's backups directory.
 
         Args:
-            file_path: File to backup
+            file_path: File to backup (e.g., /path/to/projects/project_name/shapeshifter.yml)
 
         Returns:
             Path to backup file
@@ -333,8 +355,9 @@ class YamlService:
         if not path.exists():
             raise YamlServiceError(f"Cannot backup non-existent file: {path}")
 
-        # Create backup directory
-        backup_dir = settings.BACKUPS_DIR
+        # Create backup directory in project folder: project_dir/backups/
+        project_dir: Path = path.parent
+        backup_dir: Path = project_dir / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate timestamp with microseconds to avoid collisions
@@ -369,29 +392,29 @@ class YamlService:
         except Exception as e:  # pylint: disable=broad-except
             return False, str(e)
 
-    def list_backups(self, original_name: str | None = None) -> list[Path]:
+    def list_backups(self, *, project_dir: str | Path | None = None) -> list[Path]:
         """
-        List all backup files, optionally filtered by original filename.
+        List all backup files for a project.
 
         Args:
-            original_name: Optional original filename to filter by (e.g., "arbodat.yml")
+            project_dir: Project directory containing backups/ subdirectory
 
         Returns:
             List of backup file paths, sorted by modification time (newest first)
         """
-        backup_dir = settings.BACKUPS_DIR
+        if not project_dir:
+            logger.warning("list_backups called without project_dir, returning empty list")
+            return []
+
+        backup_dir: Path = Path(project_dir) / "backups"
 
         if not backup_dir.exists():
             return []
 
-        pattern = "*.backup.*"
-        if original_name:
-            stem = Path(original_name).stem
-            pattern = f"{stem}.backup.*"
+        pattern: str = "*.backup.*"
+        backups: list[Path] = sorted(backup_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
 
-        backups = sorted(backup_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
-
-        logger.debug(f"Found {len(backups)} backup(s) for pattern '{pattern}'")
+        logger.debug(f"Found {len(backups)} backup(s) for pattern '{pattern}' in {backup_dir}")
         return list(backups)
 
     def restore_backup(self, backup_path: str | Path, target_path: str | Path, create_backup: bool = True) -> Path:

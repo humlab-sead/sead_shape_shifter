@@ -19,9 +19,9 @@ from typing import Callable
 
 import pandas as pd
 
-from importer.metadata import SeadSchema
-from importer.submission import Submission
-from tests.builders import build_column, build_schema, build_table
+from ingesters.sead.metadata import SeadSchema
+from ingesters.sead.submission import Submission
+from ingesters.sead.tests.builders import build_column, build_schema, build_table
 
 # ============================================================================
 # Schema Fixtures
@@ -71,9 +71,7 @@ def TWO_TABLE_SCHEMA() -> SeadSchema:
                 "main_id",
                 columns={
                     "main_id": build_column("tbl_main", "main_id", is_pk=True),
-                    "lookup_id": build_column(
-                        "tbl_main", "lookup_id", is_fk=True, fk_table_name="tbl_lookup", fk_column_name="lookup_id"
-                    ),
+                    "lookup_id": build_column("tbl_main", "lookup_id", is_fk=True, fk_table_name="tbl_lookup", fk_column_name="lookup_id"),
                     "description": build_column("tbl_main", "description", data_type="varchar"),
                 },
             ),
@@ -123,9 +121,7 @@ def COMPLEX_SCHEMA() -> SeadSchema:
                 "sample_id",
                 columns={
                     "sample_id": build_column("tbl_samples", "sample_id", is_pk=True),
-                    "site_id": build_column(
-                        "tbl_samples", "site_id", is_fk=True, fk_table_name="tbl_sites", fk_column_name="site_id"
-                    ),
+                    "site_id": build_column("tbl_samples", "site_id", is_fk=True, fk_table_name="tbl_sites", fk_column_name="site_id"),
                     "sample_name": build_column("tbl_samples", "sample_name", data_type="varchar"),
                 },
             ),
@@ -217,9 +213,7 @@ def EMPTY_SUBMISSION() -> Callable[[], Submission]:
 
 def SIMPLE_DATAFRAME() -> pd.DataFrame:
     """Simple DataFrame with system_id and PK."""
-    return pd.DataFrame(
-        {"system_id": [1, 2, 3], "simple_id": [None, None, None], "name": ["A", "B", "C"], "value": [10, 20, 30]}
-    )
+    return pd.DataFrame({"system_id": [1, 2, 3], "simple_id": [None, None, None], "name": ["A", "B", "C"], "value": [10, 20, 30]})
 
 
 def LOOKUP_DATAFRAME(with_nulls: bool = False) -> pd.DataFrame:

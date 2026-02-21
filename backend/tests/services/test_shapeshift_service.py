@@ -578,6 +578,91 @@ class TestShapeShiftService:
 
             assert result.total_rows_in_preview <= 100
 
+    @pytest.mark.asyncio
+    async def test_preview_entity_with_override_config(self, shapeshift_service: ShapeShiftService, sample_project: ShapeShiftProject):
+        """Test preview with override_config to preview unsaved changes."""
+
+        # Original entity has 3 columns
+        original_entity = sample_project.get_table("users")
+        assert len(original_entity.columns) == 3
+
+        # Override config with modified keys (simulating user changing 'keys' field)
+        override_config = {
+            "name": "users",
+            "type": "sql",
+            "data_source": "test_db",
+            "query": "SELECT * FROM users",
+            "public_id": "user_id",
+            "keys": ["email"],  # Changed from ["username"] to ["email"]
+            "columns": ["user_id", "username", "email"],
+        }
+
+        users_df = pd.DataFrame(
+            {
+                "user_id": [1, 2, 3],
+                "username": ["alice", "bob", "charlie"],
+                "email": ["alice@example.com", "bob@example.com", "charlie@example.com"],
+            }
+        )
+
+        mock_normalizer = MagicMock()
+        mock_normalizer.normalize = AsyncMock()
+        mock_normalizer.table_store = {"users": users_df}
+
+        with (
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
+            patch.object(shapeshift_service.project_cache, "get_project", return_value=sample_project),
+        ):
+            mock_shifter.return_value = mock_normalizer
+
+            # Preview with override config
+            result = await shapeshift_service.preview_entity("test_project", "users", 50, override_config=override_config)
+
+            assert result.entity_name == "users"
+            assert result.total_rows_in_preview == 3
+            assert result.cache_hit is False  # Should not use cache with override
+
+            # Verify the override was used by checking that project was modified
+            # The ShapeShifter should have been called with the modified config
+            mock_shifter.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_preview_entity_override_bypasses_cache(self, shapeshift_service: ShapeShiftService, sample_project: ShapeShiftProject):
+        """Test that override_config bypasses cache."""
+
+        override_config = {
+            "name": "users",
+            "type": "sql",
+            "data_source": "test_db",
+            "query": "SELECT * FROM users WHERE active = true",  # Modified query
+            "public_id": "user_id",
+            "keys": ["username"],
+            "columns": ["user_id", "username", "email"],
+        }
+
+        users_df = pd.DataFrame({"user_id": [1], "username": ["alice"], "email": ["alice@example.com"]})
+
+        mock_normalizer = MagicMock()
+        mock_normalizer.normalize = AsyncMock()
+        mock_normalizer.table_store = {"users": users_df}
+
+        with (
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
+            patch.object(shapeshift_service.project_cache, "get_project", return_value=sample_project),
+        ):
+            mock_shifter.return_value = mock_normalizer
+
+            # First call with override
+            result1 = await shapeshift_service.preview_entity("test_project", "users", 50, override_config=override_config)
+            assert result1.cache_hit is False
+
+            # Second call with same override - should still bypass cache
+            result2 = await shapeshift_service.preview_entity("test_project", "users", 50, override_config=override_config)
+            assert result2.cache_hit is False
+
+            # Both calls should execute ShapeShifter (not cached)
+            assert mock_shifter.call_count == 2
+
 
 class TestShapeShiftProject:
 
@@ -702,8 +787,9 @@ class TestPreviewBuilder:
     def test_build_preview_result(self, sample_dataframe: pd.DataFrame, sample_project: ShapeShiftProject):
         """Test _build_preview_result correctly builds PreviewResult from table_store."""
         entity_cfg: TableConfig = sample_project.get_table("users")
-        table_store: dict[str, pd.DataFrame] = {"users": sample_dataframe, "orders": pd.DataFrame({"order_id": [1, 2], "user_id": [1, 2]})}
-
+        table_store: dict[str, pd.DataFrame] = {
+            "users": sample_dataframe,
+        }
         builder: PreviewResultBuilder = PreviewResultBuilder()
         result: PreviewResult = builder.build(
             entity_name="users", entity_cfg=entity_cfg, table_store=table_store, limit=50, cache_hit=False
@@ -727,6 +813,5 @@ class TestPreviewBuilder:
         assert email_col.is_key is False
         assert email_col.nullable is True
 
-        # Check dependencies
-        assert result.has_dependencies is True
-        assert "orders" in result.dependencies_loaded
+        # Check dependencies - users has no dependencies
+        assert result.has_dependencies is False

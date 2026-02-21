@@ -16,7 +16,7 @@ class DataSourceMapper:
 
     @staticmethod
     def to_core_config(ds_config: api.DataSourceConfig) -> core.DataSourceConfig:
-        """Map API DataSourceConfig to SEAD Shape Shifter Core DataSourceConfig.
+        """Map API DataSourceConfig to Shape Shifter Core DataSourceConfig.
 
         Uses the driver schema to determine which fields are valid
         and how they should be mapped.

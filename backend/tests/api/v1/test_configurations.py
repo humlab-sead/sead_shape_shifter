@@ -302,6 +302,65 @@ class TestConfigurationsValidate:
         assert data["is_valid"] is False
         assert data["error_count"] > 0
 
+    def test_validate_configuration_resolves_include_relative_to_project(self, tmp_path, monkeypatch, reset_services):
+        """Test @include resolves relative to the project YAML file path."""
+
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        valid_entities = {"sample": {"type": "entity", "keys": ["sample_id"], "columns": ["name"], "depends_on": []}}
+
+        payload = {
+            "name": "test_project",
+            "entities": valid_entities,
+            "options": {
+                "data_sources": {
+                    "digidiggie-options": "@include: digidiggie-options.yml",
+                }
+            },
+        }
+
+        client.post("/api/v1/projects", json=payload)
+
+        # Create the included file next to the project YAML.
+        (tmp_path / "digidiggie-options.yml").write_text(
+            "driver: ucanaccess\noptions:\n  filename: ./projects/digidiggie_dev.accdb\n  ucanaccess_dir: lib/ucanaccess\n",
+            encoding="utf-8",
+        )
+
+        response = client.post("/api/v1/projects/test_project/validate")
+        assert response.status_code == 200
+        data = response.json()
+
+        # Ensure validation did not fail due to missing include file.
+        assert not any("configuration file not found" in e["message"].lower() for e in data.get("errors", []))
+
+    def test_validate_configuration_missing_include_returns_error_result(self, tmp_path, monkeypatch, reset_services):
+        """Test missing @include file returns ValidationResult (not HTTP 500)."""
+
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        valid_entities = {"sample": {"type": "entity", "keys": ["sample_id"], "columns": ["name"], "depends_on": []}}
+
+        # Create project (create endpoint does not accept `options`)
+        client.post("/api/v1/projects", json={"name": "test_project", "entities": valid_entities})
+
+        # Update options (PUT endpoint updates options only; entities are ignored but required by schema)
+        client.put(
+            "/api/v1/projects/test_project",
+            json={
+                "entities": {},
+                "options": {"data_sources": {"missing": "@include: definitely-missing.yml"}},
+            },
+        )
+
+        response = client.post("/api/v1/projects/test_project/validate")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["is_valid"] is False
+        assert data["error_count"] > 0
+        assert any("configuration file not found" in e["message"].lower() for e in data.get("errors", []))
+
 
 class TestConfigurationsBackups:
     """Tests for backup operations."""
@@ -310,7 +369,6 @@ class TestConfigurationsBackups:
         """Test listing backups."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        monkeypatch.setattr(settings, "BACKUPS_DIR", tmp_path / "backups")
 
         # Create config
         client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]})
@@ -324,13 +382,12 @@ class TestConfigurationsBackups:
         assert response.status_code == 200
         backups = response.json()
         assert len(backups) >= 1
-        assert "test_project" in backups[0]["file_name"]
+        assert "shapeshifter" in backups[0]["file_name"]
 
     def test_restore_backup(self, reset_services, tmp_path, monkeypatch, sample_config_data):
         """Test restoring from backup."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        monkeypatch.setattr(settings, "BACKUPS_DIR", tmp_path / "backups")
 
         # Create config
         create_response = client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]})

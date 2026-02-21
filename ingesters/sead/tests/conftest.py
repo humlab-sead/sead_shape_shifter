@@ -5,18 +5,18 @@ import pandas as pd
 import pytest
 from dotenv import load_dotenv
 
-from importer.configuration import ConfigStore
-from importer.configuration.interface import ConfigLike
-from importer.metadata import MockSchemaService, SchemaService, SeadSchema
-from importer.submission import Submission
+from ingesters.sead.metadata import MockSchemaService, SchemaService, SeadSchema
+from ingesters.sead.submission import Submission
 
 # Import test builders for easy access in tests
-from tests.builders import build_column, build_schema, build_table
+from ingesters.sead.tests.builders import build_column, build_schema, build_table
+from src.configuration import ConfigStore
+from src.configuration.interface import ConfigLike
 
 # pylint: disable=redefined-outer-name
 
-DOTENV_FILENAME = "tests/test_data/.env"
-CONFIG_FILENAME = "tests/test_data/config.yml"
+DOTENV_FILENAME = "ingesters/sead/tests/test_data/.env"
+CONFIG_FILENAME = "ingesters/sead/tests/test_data/config.yml"
 ENV_PREFIX = "SEAD_IMPORT"
 
 load_dotenv(DOTENV_FILENAME)
@@ -30,9 +30,7 @@ load_dotenv(DOTENV_FILENAME)
 @pytest.fixture(scope="session")
 def cfg() -> ConfigLike:
     """Load test configuration - session scoped for integration tests."""
-    ConfigStore.get_instance().configure_context(
-        source=CONFIG_FILENAME, env_filename=DOTENV_FILENAME, env_prefix=ENV_PREFIX
-    )
+    ConfigStore.get_instance().configure_context(source=CONFIG_FILENAME, env_filename=DOTENV_FILENAME, env_prefix=ENV_PREFIX)
     return ConfigStore.get_instance().config()  # type: ignore[return-value]
 
 
@@ -70,13 +68,9 @@ def full_schema(
 
 
 @pytest.fixture(scope="session")
-def full_submission(
-    full_schema: SeadSchema, cfg: ConfigLike, full_schema_service: SchemaService
-) -> Iterator[Submission]:
+def full_submission(full_schema: SeadSchema, cfg: ConfigLike, full_schema_service: SchemaService) -> Iterator[Submission]:
     """Full submission loaded from Excel - session scoped, use for integration tests only."""
-    yield Submission.load(
-        schema=full_schema, source=cfg.get("test:reduced_excel_filename"), service=full_schema_service
-    )
+    yield Submission.load(schema=full_schema, source=cfg.get("test:reduced_excel_filename"), service=full_schema_service)
 
 
 # ============================================================================

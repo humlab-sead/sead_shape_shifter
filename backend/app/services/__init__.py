@@ -18,29 +18,6 @@ Service Classes:
     - ValidationService: Multi-level configuration validation
     - YamlService: YAML file reading and writing with error handling
 
-Exception Classes:
-    Project Service:
-        - ProjectServiceError: Base exception for configuration operations
-        - ProjectNotFoundError: Project file not found
-        - EntityNotFoundError: Entity not found in configuration
-        - EntityAlreadyExistsError: Entity already exists in configuration
-        - InvalidProjectError: Invalid configuration structure
-
-    Dependency Service:
-        - DependencyServiceError: Base exception for dependency operations
-        - CircularDependencyError: Circular dependency detected
-
-    Query Service:
-        - QueryExecutionError: Query execution failed
-        - QuerySecurityError: Query rejected for security reasons
-
-    Schema Service:
-        - SchemaServiceError: Schema introspection failed
-
-    YAML Service:
-        - YamlServiceError: Base exception for YAML operations
-        - YamlLoadError: Failed to load YAML file
-        - YamlSaveError: Failed to save YAML file
 
 Data Classes:
     - DependencyNode: Represents a node in the dependency graph
@@ -50,54 +27,19 @@ Data Classes:
     - TypeMapping: Type mapping definition
 """
 
-# Auto-fix service
 from backend.app.services.auto_fix_service import AutoFixService
-
-# Data source service
 from backend.app.services.data_source_service import DataSourceService
-
-# Dependency service
-from backend.app.services.dependency_service import (
-    CircularDependencyError,
-    DependencyGraph,
-    DependencyNode,
-    DependencyService,
-    DependencyServiceError,
-    SourceNode,
-)
-
-# Configuration service
-from backend.app.services.project_service import (
-    EntityAlreadyExistsError,
-    EntityNotFoundError,
-    InvalidProjectError,
-    ProjectNotFoundError,
-    ProjectService,
-    ProjectServiceError,
-)
-
-# Query service
-from backend.app.services.query_service import (
-    QueryExecutionError,
-    QuerySecurityError,
-    QueryService,
-)
-
-# Schema service
-from backend.app.services.schema_service import (
-    SchemaCache,
-    SchemaIntrospectionService,
-    SchemaServiceError,
-)
+from backend.app.services.dependency_service import DependencyGraph, DependencyNode, DependencyService, SourceNode
+from backend.app.services.project import ProjectServiceError
+from backend.app.services.project_service import ProjectService
+from backend.app.services.query_service import QueryService
+from backend.app.services.schema_service import SchemaCache, SchemaIntrospectionService
 
 # Preview service
 from backend.app.services.shapeshift_service import ShapeShiftCache, ShapeShiftService
 
 # Suggestion service
 from backend.app.services.suggestion_service import SuggestionService
-
-# Test run service
-from backend.app.services.test_run_service import TestRunService
 
 # Type mapping service
 from backend.app.services.type_mapping_service import TypeMapping, TypeMappingService
@@ -123,33 +65,21 @@ __all__ = [
     "QueryService",
     "SchemaIntrospectionService",
     "SuggestionService",
-    "TestRunService",
     "TypeMappingService",
     "ValidationService",
     "YamlService",
-    # Project exceptions
+    # Generic service exception
     "ProjectServiceError",
-    "ProjectNotFoundError",
-    "EntityNotFoundError",
-    "EntityAlreadyExistsError",
-    "InvalidProjectError",
-    # Dependency exceptions and classes
-    "DependencyServiceError",
-    "CircularDependencyError",
+    # Dependency classes
     "DependencyNode",
     "DependencyGraph",
     "SourceNode",
-    # Query exceptions
-    "QueryExecutionError",
-    "QuerySecurityError",
-    # Schema exceptions and classes
-    "SchemaServiceError",
-    "SchemaCache",
     # YAML exceptions
     "YamlServiceError",
     "YamlLoadError",
     "YamlSaveError",
     # Data classes
+    "SchemaCache",
     "ShapeShiftCache",
     "TypeMapping",
 ]

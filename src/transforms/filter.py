@@ -1,9 +1,10 @@
-from typing import Any
+from typing import Any, ClassVar
 from venv import logger
 
 import pandas as pd
 
 from src.model import TableConfig
+from src.transforms.filter_metadata import FilterFieldMetadata, FilterSchema
 from src.utility import Registry
 
 
@@ -42,6 +43,43 @@ class ExistsInFilter:
 
     key: str = "exists_in"
 
+    schema: ClassVar[FilterSchema] = FilterSchema(
+        key="exists_in",
+        display_name="Exists In",
+        description="Keep rows where column value exists in another entity",
+        fields=[
+            FilterFieldMetadata(
+                name="other_entity",
+                type="entity",
+                required=True,
+                description="Entity to check against",
+                placeholder="Select entity",
+                options_source="entities",
+            ),
+            FilterFieldMetadata(
+                name="column",
+                type="column",
+                required=True,
+                description="Column in current entity",
+                placeholder="column_name",
+            ),
+            FilterFieldMetadata(
+                name="other_column",
+                type="column",
+                required=False,
+                description="Column in other entity (defaults to same column name)",
+                placeholder="column_name",
+            ),
+            FilterFieldMetadata(
+                name="drop_duplicates",
+                type="string",
+                required=False,
+                description="Columns to use for deduplication (comma-separated)",
+                placeholder="column1,column2",
+            ),
+        ],
+    )
+
     def apply(self, df: pd.DataFrame, filter_cfg: dict[str, Any], data_store: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
         if any(k not in filter_cfg for k in ("column", "other_entity")):
@@ -63,5 +101,49 @@ class ExistsInFilter:
         drop_duplicates_cols = filter_cfg.get("drop_duplicates")
         if drop_duplicates_cols:
             filtered_df: pd.DataFrame = filtered_df.drop_duplicates(subset=drop_duplicates_cols)
+
+        return filtered_df
+
+
+@Filters.register(key="query")
+class QueryFilter:
+    """Filter to keep rows using Pandas query method.
+    See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html
+    """
+
+    key: str = "query"
+
+    schema: ClassVar[FilterSchema] = FilterSchema(
+        key="query",
+        display_name="Pandas Query",
+        description="Filter rows using Pandas query syntax",
+        fields=[
+            FilterFieldMetadata(
+                name="query",
+                type="string",
+                required=True,
+                description="Pandas query expression",
+                placeholder="column_name > 100",
+            ),
+        ],
+    )
+
+    def apply(
+        self,
+        df: pd.DataFrame,
+        filter_cfg: dict[str, Any],
+        data_store: dict[str, pd.DataFrame],  # pylint: disable=unused-argument
+    ) -> pd.DataFrame:
+
+        if not filter_cfg.get("query"):
+            logger.warning("no query defined, ignoring filter")
+            return df
+
+        query: str = filter_cfg["query"]
+
+        try:
+            filtered_df: pd.DataFrame = df.query(query)
+        except Exception as e:
+            raise ValueError(f"Invalid query in filter: {query!r}") from e
 
         return filtered_df

@@ -1,9 +1,71 @@
 """Logging configuration for the backend application."""
 
+import linecache
 import sys
+import traceback
 from pathlib import Path
 
 from loguru import logger
+
+
+def format_exception_with_filtered_frames(record: dict) -> str:
+    """Format exception with filtered stack frames (removes framework noise).
+
+    Args:
+        record: Loguru record dict
+
+    Returns:
+        Formatted exception string
+    """
+    if not record.get("exception"):
+        return ""
+
+    exception = record["exception"]
+    if not exception:
+        return ""
+
+    # Paths to filter out from stack traces
+    noisy_paths = [
+        "/site-packages/uvicorn/",
+        "/site-packages/starlette/",
+        "/site-packages/fastapi/",
+        "/multiprocessing/spawn.py",
+        "/multiprocessing/process.py",
+        "/asyncio/",
+        "/site-packages/pydantic/",
+        "/site-packages/pydantic_core/",
+        "/_exception_handler.py",
+    ]
+
+    # Extract traceback
+    exc_type, exc_value, exc_tb = exception.type, exception.value, exception.traceback
+
+    # Filter frames
+    filtered_tb = []
+    while exc_tb:
+        frame_file = exc_tb.tb_frame.f_code.co_filename
+        # Keep frames from /app/ or first/last frames
+        if "/app/" in frame_file or not any(noisy in frame_file for noisy in noisy_paths):
+            filtered_tb.append(exc_tb)
+        exc_tb = exc_tb.tb_next
+
+    # If we filtered everything, keep original
+    if not filtered_tb:
+        return "".join(traceback.format_exception(exc_type, exc_value, exception.traceback))
+
+    # Format filtered traceback
+    lines = ["Traceback (most recent call last):\n"]
+    for tb in filtered_tb:
+        frame = tb.tb_frame
+        lines.append(f'  File "{frame.f_code.co_filename}", line {tb.tb_lineno}, in {frame.f_code.co_name}\n')
+        # Add code line if available
+
+        line = linecache.getline(frame.f_code.co_filename, tb.tb_lineno, frame.f_globals).strip()
+        if line:
+            lines.append(f"    {line}\n")
+
+    lines.append(f"{exc_type.__name__}: {exc_value}\n")
+    return "".join(lines)
 
 
 def configure_logging(
@@ -14,6 +76,7 @@ def configure_logging(
     rotation: str = "10 MB",
     retention: str = "30 days",
     compression: str = "zip",
+    filter_framework_frames: bool = True,  # New parameter
 ) -> None:
     """Configure application logging with loguru.
 
@@ -25,6 +88,7 @@ def configure_logging(
         rotation: When to rotate log files (size or time based)
         retention: How long to keep old log files
         compression: Compression format for rotated logs
+        filter_framework_frames: Filter out FastAPI/Uvicorn frames from tracebacks
     """
     # Remove default handler
     logger.remove()
@@ -40,13 +104,13 @@ def configure_logging(
             format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | "
             "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
             colorize=True,
-            backtrace=True,
+            backtrace=not filter_framework_frames,  # Disable full backtrace if filtering
             diagnose=True,
         )
 
     # File logging with rotation and full exception dumps
     if enable_file_logging:
-        # Main application log
+        # Main application log (always full trace for debugging)
         logger.add(
             log_path / "app.log",
             level=log_level,
@@ -54,7 +118,7 @@ def configure_logging(
             rotation=rotation,
             retention=retention,
             compression=compression,
-            backtrace=True,
+            backtrace=True,  # Always full trace in files
             diagnose=True,
             enqueue=True,  # Thread-safe logging
         )
@@ -72,6 +136,9 @@ def configure_logging(
             enqueue=True,
         )
 
-    logger.info(f"Logging configured: level={log_level}, file_logging={enable_file_logging}, console_logging={enable_console_logging}")
+    logger.info(
+        f"Logging configured: level={log_level}, file_logging={enable_file_logging}, "
+        f"console_logging={enable_console_logging}, filter_frames={filter_framework_frames}"
+    )
     if enable_file_logging:
         logger.info(f"Log directory: {log_path.absolute()}")

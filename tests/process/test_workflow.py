@@ -23,10 +23,10 @@ def initialize_jvm():
 
 def test_validate_project_file():
 
-    config_file: str = "./projects/arbodat-test.yml"
+    config_file: str = "./data/projects/arbodat/arbodat-copy/shapeshifter.yml"
     project: ShapeShiftProject = ShapeShiftProject.from_file(
         config_file,
-        env_prefix="SEAD_NORMALIZER",
+        env_prefix="SHAPE_SHIFTER",
         env_file=".env",
     )
 
@@ -40,15 +40,15 @@ def test_validate_project_file():
 
 def test_access_database_csv_workflow():
 
-    config_file: str = "./projects/arbodat-test.yml"
+    config_file: str = "./data/projects/arbodat/arbodat-copy/shapeshifter.yml"
     config: ShapeShiftProject = ShapeShiftProject.from_file(
         config_file,
-        env_prefix="SEAD_NORMALIZER",
+        env_prefix="SHAPE_SHIFTER",
         env_file=".env",
     )
 
     translate: bool = False
-    target_type: str = "openpyxl"
+    target_type: str = "csv"
 
     output_path: Path = Path("tmp/arbodat-test.xlsx") if target_type in ("xlsx", "openpyxl") else Path("tmp/arbodat-test")
 

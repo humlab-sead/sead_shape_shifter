@@ -1,9 +1,34 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { AxiosError } from 'axios'
 import { api } from '@/api'
 import { useSessionStore } from '@/stores/session'
+import { useEntityStore } from '@/stores/entity'
 import type { Project, ProjectMetadata, ValidationResult } from '@/types'
 import type { ProjectCreateRequest, ProjectUpdateRequest, BackupInfo, MetadataUpdateRequest } from '@/api/projects'
+
+/**
+ * Extract error message from axios error response
+ */
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof AxiosError) {
+    // Try to extract structured error message
+    if (err.response?.data) {
+      const data = err.response.data
+      // Handle structured domain exception responses
+      if (typeof data === 'object' && 'message' in data) {
+        return data.message as string
+      }
+      // Handle plain string responses
+      if (typeof data === 'string') {
+        return data
+      }
+    }
+    // Fallback to axios error message
+    return err.message || fallback
+  }
+  return err instanceof Error ? err.message : fallback
+}
 
 export const useProjectStore = defineStore('project', () => {
   // State
@@ -14,6 +39,16 @@ export const useProjectStore = defineStore('project', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const hasUnsavedChanges = ref(false)
+
+  // Diagnostic logging helper for state sync debugging
+  function logState(action: string, details: Record<string, unknown> = {}) {
+    console.info(`[ProjectStore] ${action}`, {
+      ...details,
+      selectedProject: selectedProject.value?.metadata?.name ?? null,
+      projectCount: projects.value.length,
+      timestamp: new Date().toISOString(),
+    })
+  }
 
   // Getters
   const currentProjectName = computed(() => {
@@ -51,12 +86,23 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function selectProject(name: string) {
+    logState('selectProject:before', { name })
     loading.value = true
     error.value = null
     try {
+      // CRITICAL FIX: Reset entity store when switching projects
+      // to prevent stale entities from previous project (or deleted project
+      // recreated with same name) from appearing.
+      const entityStore = useEntityStore()
+      if (entityStore.currentProjectName !== name) {
+        logState('selectProject:resettingEntityStore', { name, previousProject: entityStore.currentProjectName })
+        entityStore.reset()
+      }
+
       // Activate project in backend (loads into ApplicationState)
       selectedProject.value = await api.projects.activate(name)
       hasUnsavedChanges.value = false
+      logState('selectProject:after', { name })
       return selectedProject.value
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load project'
@@ -66,10 +112,31 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  async function createProject(data: ProjectCreateRequest) {
+  async function refreshProject(name: string) {
     loading.value = true
     error.value = null
     try {
+      // Force reload from disk (invalidates server-side cache)
+      selectedProject.value = await api.projects.refresh(name)
+      hasUnsavedChanges.value = false
+      return selectedProject.value
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to refresh project'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function createProject(data: ProjectCreateRequest) {
+    logState('createProject:before', { name: data.name })
+    loading.value = true
+    error.value = null
+    try {
+      // Defensive: reset entity store to ensure clean state
+      const entityStore = useEntityStore()
+      entityStore.reset()
+
       const project = await api.projects.create(data)
       projects.value.push({
         name: project.metadata?.name ?? data.name,
@@ -81,6 +148,7 @@ export const useProjectStore = defineStore('project', () => {
       })
       selectedProject.value = project
       hasUnsavedChanges.value = false
+      logState('createProject:after', { name: data.name })
       return project
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create project'
@@ -157,17 +225,31 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function deleteProject(name: string) {
+    logState('deleteProject:before', { name })
     loading.value = true
-    error.value = null
+    // Don't clear global error - operation errors should be handled by caller
     try {
+      // CRITICAL FIX: Reset entity store BEFORE API call to prevent
+      // ghost entities when recreating project with same name
+      const entityStore = useEntityStore()
+      entityStore.reset()
+
       await api.projects.delete(name)
       projects.value = projects.value.filter((c) => c.name !== name)
       if (selectedProject.value?.metadata?.name === name) {
         selectedProject.value = null
       }
+
+      // Reset entity store again after delete completes
+      entityStore.reset()
+      logState('deleteProject:after', { name })
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to delete project'
-      throw err
+      // Extract detailed error message and re-throw with better message
+      const errorMessage = extractErrorMessage(err, 'Failed to delete project')
+      const enhancedError = new Error(errorMessage)
+      // Preserve original error for debugging
+      ;(enhancedError as any).originalError = err
+      throw enhancedError
     } finally {
       loading.value = false
     }
@@ -404,6 +486,7 @@ export const useProjectStore = defineStore('project', () => {
     // Actions
     fetchProjects,
     selectProject,
+    refreshProject,
     createProject,
     updateProject,
     updateMetadata,

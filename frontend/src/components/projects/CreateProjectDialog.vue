@@ -10,13 +10,13 @@
         <v-form ref="formRef" v-model="formValid" @submit.prevent="handleSubmit">
           <v-text-field
             v-model="projectName"
-            label="Project Name"
+            label="Project Name or Path"
             :rules="nameRules"
             variant="outlined"
             density="comfortable"
             autofocus
             required
-            hint="Enter a unique name for this project"
+            hint="Enter a name (e.g., 'my-project') or path (e.g., 'arbodat/my-project'). Parent directories will be created automatically."
             persistent-hint
             class="mb-4"
           />
@@ -79,8 +79,9 @@ const dialogModel = computed({
 const nameRules = [
   (v: string) => !!v || 'Project name is required',
   (v: string) => v.length >= 3 || 'Name must be at least 3 characters',
-  (v: string) => v.length <= 50 || 'Name must be less than 50 characters',
-  (v: string) => /^[a-zA-Z0-9_-]+$/.test(v) || 'Name can only contain letters, numbers, hyphens, and underscores',
+  (v: string) => v.length <= 100 || 'Name must be less than 100 characters',
+  (v: string) => /^[a-zåäöA-ZÅÄÖ0-9_\-./]+$/.test(v) || 'Name can only contain letters, numbers, hyphens, underscores, and forward slashes',
+  (v: string) => !v.includes('..') || 'Name cannot contain ".." for security reasons',
   (v: string) => !projects.value.some((c) => c.name === v) || 'A project with this name already exists',
 ]
 

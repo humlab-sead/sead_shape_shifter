@@ -117,6 +117,7 @@ disable = [
     "protected-access",
     "f-string-without-interpolation",
     "unnecessary-ellipsis",
+    "cyclic-import",  # Lazy imports in method bodies are safe (e.g. _invalidate_all_caches)
 ]
 
 [tool.black]
@@ -161,7 +162,7 @@ warn_return_any = false
 # --------------------
 [tool.pytest.ini_options]
 addopts = "-q -ra --strict-markers"
-testpaths = ["tests", "backend/tests"]
+testpaths = ["tests", "backend/tests", "ingesters/sead/tests"]
 python_classes = "Test*"
 python_functions = "test_*"
 asyncio_mode = "auto"

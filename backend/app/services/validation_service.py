@@ -1,59 +1,96 @@
 """Validation service for project validation."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from loguru import logger
 
+from backend.app.core.config import get_settings
 from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.project import Project
-from backend.app.models.validation import ValidationError, ValidationResult
+from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
-from backend.app.validators.data_validators import DataValidationService
+from src.configuration.config import Config
 from src.model import ShapeShiftProject
 from src.specifications import CompositeProjectSpecification, SpecificationIssue
+from src.validators.data_validators import ValidationIssue
+
+if TYPE_CHECKING:
+    from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
 
 
 class ValidationService:
     """Service for validating projects using existing specifications."""
 
-    def __init__(self) -> None:
-        """Initialize validation service."""
-        # Import here to avoid circular dependencies and ensure src is in path
+    def __init__(
+        self,
+        data_orchestrator_factory: Callable[[], "DataValidationOrchestrator"] | None = None,
+    ) -> None:
+        """
+        Initialize validation service.
 
-        # Get the project root (backend parent is project root)
-        # project_root = Path(__file__).parent.parent.parent.parent
+        Args:
+            data_orchestrator_factory: Optional factory function to create DataValidationOrchestrator.
+                                      If None, uses default factory (lazy import to avoid circular dependency).
+        """
+        self._data_orchestrator_factory = data_orchestrator_factory
 
-        # # Add both project root and src to path (for src.* imports within specifications.py)
-        # project_root_str = str(project_root)
-        # src_path = str(project_root / "src")
-
-        # if project_root_str not in sys.path:
-        #     sys.path.insert(0, project_root_str)
-        # if src_path not in sys.path:
-        #     sys.path.insert(0, src_path)
-
-        # Import after path is set
-
-    async def validate_project_data(self, project_name: str, entity_names: list[str] | None = None) -> ValidationResult:
+    async def validate_project_data(
+        self,
+        project_name: str,
+        entity_names: list[str] | None = None,
+        validation_mode: DataValidationMode = DataValidationMode.SAMPLE,
+    ) -> ValidationResult:
         """
         Run data-aware validation on project.
 
         Args:
             project_name: Project name
             entity_names: Optional list of entity names to validate (None = all)
+            validation_mode: Validation mode (SAMPLE for preview data, COMPLETE for full normalization)
 
         Returns:
             ValidationResult with data validation errors and warnings
         """
+        use_full_data = validation_mode == DataValidationMode.COMPLETE
+        logger.debug(f"Running data validation for project: {project_name} (mode={validation_mode.value})")
 
-        logger.debug(f"Running data validation for project: {project_name}")
-
+        # Load and resolve project (convert directives to concrete values)
         project_service: ProjectService = get_project_service()
-        shapeshift_service: ShapeShiftService = ShapeShiftService(project_service)
-        data_validator: DataValidationService = DataValidationService(shapeshift_service)
+        api_project: Project = project_service.load_project(project_name)
+        core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
 
-        errors_list: list[ValidationError] = await data_validator.validate_project(project_name, entity_names)
+        # Use injected factory or default factory
+        if self._data_orchestrator_factory:
+            orchestrator = self._data_orchestrator_factory()
+        else:
+            # Default factory - import here to avoid circular dependency
+            from backend.app.validators.data_validation_orchestrator import (  # pylint: disable=import-outside-toplevel
+                DataValidationOrchestrator,
+                FullDataFetchStrategy,
+                PreviewDataFetchStrategy,
+            )
+
+            shapeshift_service: ShapeShiftService = ShapeShiftService(project_service)
+
+            # Create appropriate strategy based on use_full_data flag
+            if use_full_data:
+                fetch_strategy = FullDataFetchStrategy(project_service)
+            else:
+                fetch_strategy = PreviewDataFetchStrategy(shapeshift_service)
+
+            # Inject strategy into orchestrator
+            orchestrator = DataValidationOrchestrator(fetch_strategy=fetch_strategy)
+
+        # Orchestrator returns domain issues - convert to API errors
+        issues_list: list[ValidationIssue] = await orchestrator.validate_all_entities(
+            core_project=core_project,
+            project_name=project_name,
+            entity_names=entity_names,
+        )
+
+        errors_list: list[ValidationError] = [ValidationMapper.to_api_error(issue) for issue in issues_list]
 
         errors: list[ValidationError] = [e for e in errors_list if e.severity == "error"]
         warnings: list[ValidationError] = [e for e in errors_list if e.severity == "warning"]
@@ -66,23 +103,53 @@ class ValidationService:
             info=info,
             error_count=len(errors),
             warning_count=len(warnings),
+            validation_mode=validation_mode,
         )
 
-        logger.info(f"Data validation completed: {result.error_count} errors, " f"{result.warning_count} warnings")
+        logger.info(f"Data validation completed: {result.error_count} errors, {result.warning_count} warnings")
 
         return result
 
-    def validate_project(self, project_cfg: dict[str, Any]) -> ValidationResult:
+    def validate_project(self, project_cfg: dict[str, Any], *, source_path: str | None = None) -> ValidationResult:
         """
         Validate project using CompositeConfigSpecification.
 
         Args:
-            config_data: Configuration dictionary with entities and options
+            project_cfg: Configuration dictionary with entities and options (will be resolved)
 
         Returns:
             ValidationResult with errors and warnings
         """
         logger.debug("Validating project")
+
+        # Resolve directives before validation (Core layer requirement)
+        # Specifications expect fully resolved config
+
+        try:
+            settings = get_settings()
+
+            project_cfg = Config.resolve_references(
+                project_cfg,
+                source_path=source_path,
+                env_prefix=settings.env_prefix,
+                try_without_prefix=True,
+            )
+        except FileNotFoundError as e:
+            # Missing @include file should be reported as a normal validation error,
+            # not as a 500 internal server error.
+            return ValidationResult(
+                is_valid=False,
+                errors=[
+                    ValidationError(
+                        severity="error",
+                        entity=None,
+                        field=None,
+                        message=str(e),
+                        code="CONFIG_INCLUDE_NOT_FOUND",
+                        suggestion="Ensure the referenced include file exists and the path is relative to the project YAML file.",
+                    )
+                ],
+            )
 
         specification = CompositeProjectSpecification(project_cfg)
         is_valid: bool = specification.is_satisfied_by()
@@ -98,8 +165,8 @@ class ValidationService:
         if is_valid:
             logger.info("Configuration validation passed")
         else:
-            error_count = len(specification.errors)
-            warning_count = len(specification.warnings)
+            error_count: int = len(specification.errors)
+            warning_count: int = len(specification.warnings)
             parts = []
             if error_count > 0:
                 parts.append(f"{error_count} error(s)")
@@ -133,7 +200,7 @@ class ValidationService:
 
         core_project: ShapeShiftProject = ProjectMapper.to_core(project)
 
-        result: ValidationResult = self.validate_project(core_project.cfg)
+        result: ValidationResult = self.validate_project(core_project.cfg, source_path=project.filename)
 
         # Filter to only errors/warnings for this entity
         entity_errors: list[ValidationError] = [e for e in result.errors if e.entity == entity_name or e.entity is None]

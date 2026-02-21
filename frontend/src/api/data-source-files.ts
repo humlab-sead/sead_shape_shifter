@@ -12,11 +12,21 @@ export const dataSourceFilesApi = {
   /**
    * List files available for data sources
    */
-  listFiles: async (extensions?: string[]): Promise<ProjectFileInfo[]> => {
+  listFiles: async (extensions?: string[], projectName?: string): Promise<ProjectFileInfo[]> => {
+    const params = new URLSearchParams()
+    if (extensions && extensions.length > 0) {
+      extensions.forEach((ext) => params.append('ext', ext))
+    }
+    if (projectName) {
+      params.append('project_name', projectName)
+    }
+
+    const query = params.toString()
+    const url = query ? `/data-sources/files?${query}` : '/data-sources/files'
+
     return apiRequest<ProjectFileInfo[]>({
       method: 'GET',
-      url: '/data-sources/files',
-      params: extensions && extensions.length > 0 ? { ext: extensions } : undefined,
+      url,
     })
   },
 

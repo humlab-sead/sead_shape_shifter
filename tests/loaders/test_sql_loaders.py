@@ -499,7 +499,9 @@ class DummySqlLoader(SqlLoader):
         return {}
 
     async def get_table_schema(self, table_name: str, **kwargs):
-        return CoreSchema.TableSchema(table_name=table_name, columns=[], primary_keys=[], indexes=[], row_count=0, foreign_keys=[])
+        return CoreSchema.TableSchema(
+            table_name=table_name, schema_name=None, columns=[], primary_keys=[], indexes=[], row_count=0, foreign_keys=[]
+        )
 
     async def execute_scalar_sql(self, sql: str):
         return 0
@@ -757,6 +759,7 @@ class TestCoreSchemaModels:
 
         schema = CoreSchema.TableSchema(
             table_name="users",
+            schema_name=None,
             columns=columns,
             primary_keys=["id"],
             row_count=42,

@@ -543,39 +543,39 @@ class TestEdgeCases:
 
 
 class TestProjectMapperIntegration:
-    """Integration tests using real configuration files."""
+    """Integration tests using real project files."""
 
-    def test_arbodat_config_round_trip(self):
-        """Test round-trip conversion with real arbodat-database.yml configuration.
+    def test_arbodat_project_round_trip(self):
+        """Test round-trip conversion with real arbodat-database.yml project.
 
         This test verifies that:
         1. A real ShapeShiftProject can be loaded from file
         2. It can be converted to API Project format
         3. The API Project can be converted back to core dict format
-        4. The result matches the original configuration
+        4. The result matches the original project
         """
-        # Load real configuration file
-        config_path = Path(__file__).parent.parent / "test_data" / "projects" / "arbodat-database.yml"
-        assert config_path.exists(), f"Test config file not found: {config_path}"
+        # Load real project file
+        project_path = Path(__file__).parent.parent / "test_data" / "projects" / "arbodat" / "shapeshifter.yml"
+        assert project_path.exists(), f"Test project file not found: {project_path}"
 
         # Load as ShapeShiftProject (core model)
-        original_shape_config = ShapeShiftProject.from_file(str(config_path))
+        original_shape_config = ShapeShiftProject.from_file(str(project_path))
         original_cfg_dict = original_shape_config.cfg
 
         # Get config name from file
-        project_name = config_path.stem
+        project_name = project_path.stem
 
         # Convert to API Project
-        api_config = ProjectMapper.to_api_config(original_cfg_dict, project_name)
+        api_project: Project = ProjectMapper.to_api_config(original_cfg_dict, project_name)
 
         # Verify API config has expected structure
-        assert isinstance(api_config, Project)
-        assert api_config.metadata is not None
+        assert isinstance(api_project, Project)
+        assert api_project.metadata is not None
         # Name comes from metadata section in YAML, not filename
-        assert api_config.metadata.entity_count == len(original_cfg_dict.get("entities", {}))
+        assert api_project.metadata.entity_count == len(original_cfg_dict.get("entities", {}))
 
         # Convert back to core dict
-        restored_cfg_dict = ProjectMapper.to_core_dict(api_config)
+        restored_cfg_dict = ProjectMapper.to_core_dict(api_project)
 
         # Compare entity count
         original_entities = original_cfg_dict.get("entities", {})
@@ -643,15 +643,15 @@ class TestProjectMapperIntegration:
                 diff_report = "\n".join(diffs)
                 pytest.fail(f"Options differ after round-trip:\n{diff_report}")
 
-    def test_arbodat_config_entity_details(self):
+    def test_arbodat_project_entity_details(self):
         """Test detailed entity conversion for complex arbodat entities."""
-        config_path = Path(__file__).parent.parent / "test_data" / "projects" / "arbodat-database.yml"
-        original_shape_config = ShapeShiftProject.from_file(str(config_path))
+        project_path: Path = Path(__file__).parent.parent / "test_data" / "projects" / "arbodat" / "shapeshifter.yml"
+        original_shape_config = ShapeShiftProject.from_file(str(project_path))
         original_cfg_dict = original_shape_config.cfg
 
         # Convert to API and back
-        api_config = ProjectMapper.to_api_config(original_cfg_dict, "arbodat-database")
-        restored_cfg_dict = ProjectMapper.to_core_dict(api_config)
+        api_project: Project = ProjectMapper.to_api_config(original_cfg_dict, "arbodat")
+        restored_cfg_dict = ProjectMapper.to_core_dict(api_project)
 
         # Test specific complex entities
 
@@ -706,30 +706,30 @@ class TestProjectMapperIntegration:
                     assert field in restored_coord
                     assert restored_coord[field] == original_coord[field]
 
-    def test_arbodat_config_metadata_preservation(self):
+    def test_arbodat_project_metadata_preservation(self):
         """Test that metadata fields are correctly set during conversion."""
-        config_path: Path = Path(__file__).parent.parent / "test_data" / "projects" / "arbodat-database.yml"
-        original_shape_config: ShapeShiftProject = ShapeShiftProject.from_file(str(config_path))
+        project_path: Path = Path(__file__).parent.parent / "test_data" / "projects" / "arbodat" / "shapeshifter.yml"
+        original_shape_config: ShapeShiftProject = ShapeShiftProject.from_file(str(project_path))
         original_cfg_dict = original_shape_config.cfg
 
-        project_name = "arbodat-database"
-        api_config: Project = ProjectMapper.to_api_config(original_cfg_dict, project_name)
+        project_name = "arbodat"
+        api_project: Project = ProjectMapper.to_api_config(original_cfg_dict, project_name)
 
         original_metadata = original_cfg_dict["metadata"] if "metadata" in original_cfg_dict else {}
 
         # Check metadata
-        assert api_config.metadata is not None
+        assert api_project.metadata is not None
         # Check that metadata from YAML is preserved
         # Change: name comes from filename parameter
-        assert api_config.metadata.name == project_name
-        assert api_config.metadata.description == original_metadata.get("description")
-        assert api_config.metadata.version == original_metadata.get("version")
+        assert api_project.metadata.name == project_name
+        assert api_project.metadata.description == original_metadata.get("description")
+        assert api_project.metadata.version == original_metadata.get("version")
 
-        assert api_config.metadata.entity_count == len(original_cfg_dict.get("entities", {}))
-        assert api_config.metadata.is_valid is True
+        assert api_project.metadata.entity_count == len(original_cfg_dict.get("entities", {}))
+        assert api_project.metadata.is_valid is True
 
         # Convert back and check metadata fields are in core dict
-        restored_cfg_dict = ProjectMapper.to_core_dict(api_config)
+        restored_cfg_dict = ProjectMapper.to_core_dict(api_project)
 
         assert "metadata" in restored_cfg_dict
 

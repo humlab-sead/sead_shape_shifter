@@ -22,14 +22,14 @@ These are the primary system documentation files:
 
 ### System Requirements & Architecture
 
-- **[UI_REQUIREMENTS.md](UI_REQUIREMENTS.md)** (5,900+ lines)
+- **[REQUIREMENTS.md](REQUIREMENTS.md)** (5,900+ lines)
   - 33 functional requirements (FR-1 to FR-33)
   - 15 non-functional requirements (NFR-1 to NFR-15)
   - User personas and use cases
   - Success criteria and constraints
   - Comprehensive glossary
 
-- **[UI_ARCHITECTURE.md](UI_ARCHITECTURE.md)** (1,000+ lines)
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** (1,000+ lines)
   - System architecture (Vue3 + FastAPI)
   - Backend and frontend architecture details
   - Design patterns and best practices
@@ -81,15 +81,6 @@ These are the primary system documentation files:
 
 ## Supplementary Documentation
 
-### Core Framework Features
-
-- **[METADATA_GUIDE.md](METADATA_GUIDE.md)** 
-  - Project metadata specifications  
-  - Entity metadata management
-  - Version tracking
-  - Validation status
-  - Best practices
-  
 ### Reconciliation Features
 
 - **[RECONCILIATION_SETUP_GUIDE.md](RECONCILIATION_SETUP_GUIDE.md)**
@@ -97,13 +88,6 @@ These are the primary system documentation files:
   - Source configuration
   - Mapping and matching strategies
   - API integration
-
-### Environment
-
-- **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)**
-  - Environment variable configuration
-  - Data source setup
-  - Security best practices
 
 ## Archived Documentation
 
@@ -134,7 +118,7 @@ Previously consolidated source documents are available in the [archive/](archive
 
 **Develop on Shape Shifter:**
 - Start here: [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
-- Architecture overview: [UI_ARCHITECTURE.md](UI_ARCHITECTURE.md)
+- Architecture overview: [ARCHITECTURE.md](ARCHITECTURE.md)
 - Backend integration: [BACKEND_INTEGRATION.md](BACKEND_INTEGRATION.md)
 
 **Test Shape Shifter:**
@@ -142,8 +126,8 @@ Previously consolidated source documents are available in the [archive/](archive
 - Project validation: [CONFIGURATION_GUIDE.md - Project Validation section](CONFIGURATION_GUIDE.md#project-validation)
 
 **Understand Requirements:**
-- Feature requirements: [UI_REQUIREMENTS.md](UI_REQUIREMENTS.md)
-- System architecture: [UI_ARCHITECTURE.md](UI_ARCHITECTURE.md)
+- Feature requirements: [REQUIREMENTS.md](REQUIREMENTS.md)
+- System architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
 
 **Configure Relationships:**
 - Foreign keys & constraints: [CONFIGURATION_GUIDE.md - Foreign Key Constraints section](CONFIGURATION_GUIDE.md#foreign-key-constraints)

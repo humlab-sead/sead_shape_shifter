@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
@@ -15,6 +15,7 @@ from backend.app.core.config import settings
 from backend.app.core.logging_config import configure_logging
 from backend.app.core.state_manager import ApplicationState, init_app_state
 from backend.app.ingesters.registry import Ingesters
+from backend.app.middleware.correlation import CorrelationMiddleware
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 
 
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
         rotation=settings.LOG_ROTATION,
         retention=settings.LOG_RETENTION,
         compression=settings.LOG_COMPRESSION,
+        filter_framework_frames=settings.LOG_FILTER_FRAMEWORK_FRAMES,
     )
 
     logger.info("")
@@ -59,7 +61,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
 
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title=settings.APPLICATION_NAME,
     version=settings.VERSION,
     description="REST API for editing Shape Shifter YAML projects",
     openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
@@ -76,13 +78,30 @@ app = FastAPI(
 # Exception handler for unhandled exceptions
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Catch all unhandled exceptions and log with full traceback."""
+    """
+    Catch all unhandled exceptions and log with full traceback.
+
+    This is a last-resort handler. Most errors should be caught by the
+    @handle_endpoint_errors decorator which provides better context.
+    """
     logger.exception(f"Unhandled exception during {request.method} {request.url.path}: {exc}")
+
+    # Get the exception type name for better error context
+    exc_type: str = type(exc).__name__
+    error_detail: str = str(exc) or "An unexpected error occurred"
+
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error", "error": str(exc)},
+        content={
+            "detail": error_detail,
+            "error_type": exc_type,
+            "message": "An unexpected error occurred. The error has been logged.",
+        },
     )
 
+
+# Correlation ID middleware (outermost — wraps all requests for tracing)
+app.add_middleware(CorrelationMiddleware)
 
 # Configure CORS
 app.add_middleware(
@@ -104,8 +123,18 @@ if frontend_dist.exists() and frontend_dist.is_dir():
     logger.info(f"Serving frontend from: {frontend_dist}")
     # Mount static files (JS, CSS, assets)
     app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="assets")
-    # Serve index.html for all non-API routes (SPA routing)
-    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+
+    # SPA catch-all route - serve index.html for all non-API routes
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve SPA for all routes (except API and static assets)."""
+        # Try to serve the file if it exists
+        file_path = frontend_dist / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        # Otherwise serve index.html for client-side routing
+        return FileResponse(frontend_dist / "index.html")
+
 else:
     logger.info(f"Frontend dist directory not found: {frontend_dist}")
     logger.info("Running in API-only mode. Build frontend with 'cd frontend && pnpm run build'")

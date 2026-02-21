@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
+from backend.app.core.config import Settings, get_settings
 from src.loaders.base_loader import ConnectTestResult
 from src.utility import replace_env_vars
 
@@ -65,8 +66,10 @@ class DataSourceConfig(BaseModel):
         return self.filename or self.file_path
 
     def resolve_config_env_vars(self) -> "DataSourceConfig":
-
-        return DataSourceConfig(**replace_env_vars(self.model_dump(exclude_none=True)))
+        settings: Settings = get_settings()
+        return DataSourceConfig(
+            **replace_env_vars(self.model_dump(exclude_none=True), env_prefix=settings.env_prefix, try_without_prefix=True)
+        )
 
 
 class DataSourceTestResult(BaseModel):
@@ -134,6 +137,7 @@ class TableSchema(BaseModel):
     """Complete schema information for a table."""
 
     table_name: str = Field(..., description="Table name")
+    schema_name: Optional[str] = Field(None, description="Schema name (for databases that support schemas)")
     columns: list[ColumnMetadata] = Field(..., description="Column definitions")
     primary_keys: list[str] = Field(default_factory=list, description="Primary key column names")
     indexes: list[str] = Field(default_factory=list, description="Index names")

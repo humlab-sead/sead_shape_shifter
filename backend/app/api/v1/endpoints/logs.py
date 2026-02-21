@@ -59,7 +59,7 @@ async def get_logs(
 
     except Exception as e:
         logger.error(f"Error reading log file {log_file}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to read log file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to read log file: {str(e)}") from e
 
 
 @router.get("/logs/{log_type}/download")
@@ -87,4 +87,4 @@ async def download_logs(log_type: LogType) -> dict[str, str]:
 
     except Exception as e:
         logger.error(f"Error reading log file for download: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to read log file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to read log file: {str(e)}") from e

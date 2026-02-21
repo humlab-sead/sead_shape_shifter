@@ -51,13 +51,13 @@ from backend.app.models.query import (
 )
 from backend.app.models.reconciliation import (
     AutoReconcileResult,
-    EntityReconciliationSpec,
+    EntityResolutionCatalog,
+    EntityResolutionListItem,
+    EntityResolutionSet,
     ReconciliationCandidate,
-    ReconciliationConfig,
-    ReconciliationMapping,
     ReconciliationRemote,
     ReconciliationSource,
-    SpecificationListItem,
+    ResolvedEntityPair,
 )
 from backend.app.models.shapeshift import (
     ColumnInfo,

@@ -192,11 +192,15 @@ class Config(ConfigLike):
         source_path: str | None = None,
         inplace: bool = False,
         strict: bool = False,
+        try_without_prefix: bool = True,
     ) -> dict[str, Any]:
         """Resolve configuration directives in the provided data dictionary.
 
         Note: This method does NOT mutate the input data parameter.
         It creates a deep copy to ensure the original remains unchanged.
+
+        Environment variables are expected to already be loaded in os.environ.
+        The env_filename parameter is kept for backward compatibility but not used.
         """
         if not inplace:
             data = copy.deepcopy(data)
@@ -214,14 +218,14 @@ class Config(ConfigLike):
             data = env2dict(env_prefix, data)
 
         # Do a recursive replace of values with pattern "${ENV_NAME}" with value of environment
-        data = replace_env_vars(data)  # type: ignore
+        data = replace_env_vars(data, env_prefix=env_prefix, try_without_prefix=try_without_prefix)  # type: ignore
         data = replace_references(data)  # type: ignore
 
         if strict:
-            unresolved = Config.find_unresolved_directives(data)
+            unresolved: list[str] = Config.find_unresolved_directives(data)
             if unresolved:
-                paths = ", ".join(unresolved[:5])
-                extra = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
+                paths: str = ", ".join(unresolved[:5])
+                extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
                 raise ValueError(f"Unresolved configuration directives at: {paths}{extra}")
 
         return data
@@ -340,6 +344,49 @@ class BaseResolver:
             return self.resolve_directive(directive_argument, base_path)
         return value
 
+    def _resolve_path(self, path: str, base_path: Path | None = None, raise_if_missing: bool = False) -> str:
+        """Resolve a file path with environment variable expansion and relative path support.
+
+        Supports partial replacement in paths (e.g., ${DATA_DIR}/subfolder/file.xlsx).
+
+        Args:
+            path: Path string potentially containing ${VAR} references
+            base_path: Base directory for resolving relative paths
+            raise_if_missing: If True, raise ValueError for unresolved env vars
+
+        Returns:
+            Resolved absolute path string
+
+        Raises:
+            ValueError: If raise_if_missing=True and env var cannot be resolved
+        """
+        if not path:
+            return path
+
+        # Step 1: Expand environment variables
+        resolved_path: str = replace_env_vars(
+            path,
+            raise_if_unresolved=raise_if_missing,
+            env_prefix=self.env_prefix,  # type: ignore
+            try_without_prefix=True,
+        )
+        if path != resolved_path:
+            # If the path was changed by env var replacement = treat it as an absolute path
+            # (env vars are typically used for absolute paths), otherwise resolve relative to base_path
+            resolved_path = str(Path(resolved_path).absolute())
+
+        # Step 2: Handle absolute vs relative paths
+        path_obj = Path(resolved_path)
+
+        if path_obj.is_absolute():
+            return str(path_obj)
+
+        # Step 3: Resolve relative paths
+        if base_path is not None:
+            return str(base_path / resolved_path)
+
+        return resolved_path
+
     @abstractmethod
     def resolve_directive(self, directive_argument: str, base_path: Path | None) -> dict[str, Any]:
         pass
@@ -365,11 +412,25 @@ class SubConfigResolver(BaseResolver):
         super().__init__(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path)
 
     def resolve_directive(self, directive_argument: str, base_path: Path | None) -> dict[str, Any]:
-        filename: str = directive_argument
-        if not Path(filename).is_absolute() and base_path is not None:
-            filename = str(base_path / filename)
+        """Resolve @include: directive with environment variable expansion.
+
+        Supports:
+        - Environment variables: @include: ${GLOBAL_DATA_SOURCE_DIR}/sead-options.yml
+        - Relative paths: @include: ./reconciliation.yml
+        - Absolute paths: @include: /abs/path/config.yml
+
+        Args:
+            directive_argument: Path after @include: prefix
+            base_path: Directory of current file for resolving relative paths
+
+        Returns:
+            Loaded configuration dict
+        """
+        # Resolve environment variables and paths
+        filename: str = self._resolve_path(directive_argument, base_path=base_path, raise_if_missing=False)
+
         loaded_data: dict[str, Any] = (
-            ConfigFactory().load(source=filename, context=self.context, env_filename=self.env_filename, env_prefix=None).data
+            ConfigFactory().load(source=filename, context=self.context, env_filename=self.env_filename, env_prefix=self.env_prefix).data
         )
         return self._resolve(loaded_data, Path(filename).parent)
 
@@ -384,6 +445,19 @@ class LoadResolver(BaseResolver):
         super().__init__(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path)
 
     def resolve_directive(self, directive_argument: str, base_path: Path | None) -> Any:
+        """Resolve @load: directive with environment variable expansion.
+
+        Supports loading CSV/TSV data from files with env var paths:
+        - @load: ${DATA_DIR}/lookup.csv
+        - @load: ./data/local.csv
+
+        Args:
+            directive_argument: Either a file path or a dotted config path to load options
+            base_path: Directory of current file for resolving relative paths
+
+        Returns:
+            Loaded data as list of dicts, or directive_argument if load fails
+        """
 
         filename: str
         sep: str
@@ -404,8 +478,8 @@ class LoadResolver(BaseResolver):
         else:
             filename, sep = directive_argument, ","
 
-        if not Path(filename).is_absolute() and base_path is not None:
-            filename = str(base_path / filename)
+        # Resolve environment variables and relative paths
+        filename = self._resolve_path(filename, base_path=base_path, raise_if_missing=False)
 
         if not is_path_to_existing_file(filename):
             logger.warning(f"ignoring load directive for path '{directive_argument}' since file '{filename}' does not exist")

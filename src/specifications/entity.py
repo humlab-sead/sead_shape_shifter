@@ -49,10 +49,6 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
 
         return not self.has_errors()
 
-    def get_entity(self, entity_name: str) -> TableConfig:
-        """Get the TableConfig for the specified entity."""
-        return TableConfig(entity_name=entity_name, entities_cfg=self.project_cfg.get("entities", {}))
-
 
 @ENTITY_TYPE_SPECIFICATION.register(key="entity")
 class DataEntityFieldsSpecification(EntityFieldsBaseSpecification):
@@ -82,16 +78,20 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         if table.type != "fixed":
             self.add_error(f"Entity '{entity_name}' is not of type 'fixed'", entity=entity_name, field="type")
 
-        # Check for public_id or surrogate_id (backward compatibility)
+        # Validate required identity fields
         entity_cfg = self.get_entity_cfg(entity_name)
-        has_id = entity_cfg.get("public_id") or entity_cfg.get("surrogate_id")
-        if not has_id:
+        
+        # Check for public_id (required for fixed entities)
+        public_id = entity_cfg.get("public_id") or entity_cfg.get("surrogate_id")
+        if not public_id:
             self.add_error(f"Entity '{entity_name}': Field 'public_id' is required but missing.", entity=entity_name, field="public_id")
+            return not self.has_errors()  # Can't proceed without public_id
+        
+        # Note: system_id is always "system_id" (standardized name, auto-generated)
 
         self.check_fields(entity_name, ["values"], "exists/E,not_empty/W")
         self.check_fields(entity_name, ["type"], "has_value/E", expected_value="fixed")
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
-
         self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
 
         columns: str | list[Any] = table.safe_columns
@@ -100,10 +100,42 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         if not all(isinstance(row, list) for row in values):
             self.add_error(f"Fixed data entity '{entity_name}' must have values as a list of lists", entity=entity_name, field="values")
 
-        if not all(len(row) == len(columns) for row in values):
+        # Check for empty columns with non-empty values (mixed format error)
+        if not columns and values:
             self.add_error(
-                f"Fixed data entity '{entity_name}' has mismatched number of columns and values", entity=entity_name, field="values"
+                f"Fixed data entity '{entity_name}' has values but no columns defined. "
+                f"Either specify column names in 'columns' field or use dict-style values.",
+                entity=entity_name,
+                field="columns",
             )
+            return not self.has_errors()  # Cannot proceed with further validation
+
+        # Validate values array length
+        # Two valid formats:
+        # 1. Old format: values match columns exactly (backward compatibility)
+        # 2. New format: values include identity columns (system_id, public_id)
+        #    Using set union elegantly deduplicates if identity columns are mistakenly in columns
+        if values:
+            expected_with_identity: int = len(set(columns) | {public_id, "system_id"})
+            expected_without_identity: int = len(columns)
+            values_length: int = len(values[0]) if values else 0
+            
+            # Check all rows have consistent length
+            if not all(len(row) == values_length for row in values):
+                self.add_error(
+                    f"Fixed data entity '{entity_name}' has inconsistent row lengths in values",
+                    entity=entity_name,
+                    field="values",
+                )
+            # Accept either old format (data only) or new format (with identity columns)
+            elif values_length not in (expected_without_identity, expected_with_identity):
+                self.add_error(
+                    f"Fixed data entity '{entity_name}' has mismatched number of columns and values "
+                    f"(got {values_length} values per row, expected {expected_without_identity} for data-only "
+                    f"or {expected_with_identity} with identity columns)",
+                    entity=entity_name,
+                    field="values",
+                )
 
         return not self.has_errors()
 
@@ -116,6 +148,92 @@ class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
         """Check that fields are for the SQL entity."""
         super().is_satisfied_by(entity_name=entity_name, **kwargs)
         self.check_fields(entity_name, ["data_source", "query"], "not_empty_string/E")
+        return not self.has_errors()
+
+
+@ENTITY_SPECIFICATION.register(key="fixed_entity_system_id")
+class FixedEntitySystemIdSpecification(ProjectSpecification):
+    """Validates system_id integrity for fixed entities.
+
+    Ensures that fixed entities have valid, stable system_id values:
+    - All system_id values must be present (no nulls)
+    - All system_id values must be unique
+    - All system_id values must be positive integers
+
+    This is critical for FK relationship stability when rows are added/deleted/reordered.
+    """
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that system_id values are valid for fixed entity."""
+        self.clear()
+
+        table: TableConfig = self.get_entity(entity_name)
+
+        # Only validate fixed entities
+        if table.type != "fixed":
+            return True
+
+        columns: list[str] = table.safe_columns
+        values: list[list[Any]] = table.safe_values
+
+        # Check if system_id column exists
+        if "system_id" not in columns:
+            # system_id is optional, but if missing it will be auto-generated
+            return True
+
+        system_id_index = columns.index("system_id")
+        system_id_values = [row[system_id_index] for row in values]
+
+        # Validate: No null/None values
+        null_count = sum(1 for val in system_id_values if val is None or (isinstance(val, float) and val != val))
+        if null_count > 0:
+            self.add_error(
+                f"Entity '{entity_name}': system_id column has {null_count} null value(s). All system_id values must be present.",
+                entity=entity_name,
+                field="values",
+                code="SYSTEM_ID_NULL_VALUES",
+            )
+
+        # Filter out nulls for uniqueness/type checks
+        non_null_values = [val for val in system_id_values if val is not None and not (isinstance(val, float) and val != val)]
+
+        if non_null_values:
+            # Validate: All values are positive integers
+            for i, val in enumerate(non_null_values):
+                try:
+                    int_val = int(val)
+                    if int_val <= 0:
+                        self.add_error(
+                            f"Entity '{entity_name}': system_id value '{val}' at row {i} must be a positive integer.",
+                            entity=entity_name,
+                            field="values",
+                            code="SYSTEM_ID_INVALID_VALUE",
+                        )
+                except (ValueError, TypeError):
+                    self.add_error(
+                        f"Entity '{entity_name}': system_id value '{val}' at row {i} is not a valid integer.",
+                        entity=entity_name,
+                        field="values",
+                        code="SYSTEM_ID_INVALID_TYPE",
+                    )
+
+            # Validate: All values are unique
+            seen = set()
+            duplicates = set()
+            for val in non_null_values:
+                if val in seen:
+                    duplicates.add(val)
+                seen.add(val)
+
+            if duplicates:
+                dup_list = ", ".join(str(d) for d in sorted(duplicates))
+                self.add_error(
+                    f"Entity '{entity_name}': system_id has duplicate values: {dup_list}. All system_id values must be unique.",
+                    entity=entity_name,
+                    field="values",
+                    code="SYSTEM_ID_DUPLICATE_VALUES",
+                )
+
         return not self.has_errors()
 
 
@@ -136,8 +254,8 @@ class EntityFieldsSpecification(ProjectSpecification):
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that entity's fields are valid (based on entity type)."""
         self.clear()
-        entity_type: str = self.get_entity_cfg(entity_name).get("type", "entity")
-        specification: ProjectSpecification = self.get_specification(entity_type=entity_type)
+        entity: TableConfig = self.get_entity(entity_name)
+        specification: ProjectSpecification = self.get_specification(entity_type=str(entity.type))
         specification.is_satisfied_by(entity_name=entity_name)
         self.merge(specification)
         return not self.has_errors()
@@ -421,6 +539,23 @@ class DependsOnSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="depends_on_resolved")
+class DependsOnResolvedSpecification(ProjectSpecification):
+    """Validates that all dependent entities exist in the project."""
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that depends_on references are valid."""
+        self.clear()
+
+        entity: TableConfig = self.get_entity(entity_name)
+
+        for dep in entity.depends_on:
+            if not self.entity_exists(dep):
+                self.add_error(f"Entity '{entity_name}': depends on non-existent entity '{dep}'", entity=entity_name, depends_on=dep)
+
+        return not self.has_errors()
+
+
 @ENTITY_SPECIFICATION.register(key="entity_references_exist")
 class EntityReferencesExistSpecification(ProjectSpecification):
     """Validates that all referenced entities exist in the configuration.
@@ -485,15 +620,14 @@ class MaterializationSpecification(ProjectSpecification):
                 field="type",
             )
 
-        # Must have values or data_file
+        # Must have values (inline or @file: directive)
         has_values = bool(entity_cfg.get("values"))
-        has_data_file = bool(materialized_cfg.get("data_file"))
 
-        if not has_values and not has_data_file:
+        if not has_values:
             self.add_error(
-                "Materialized entity must have either 'values' or 'materialized.data_file'",
+                "Materialized entity must have 'values' field (inline data or @file: directive)",
                 entity=entity_name,
-                field="materialized",
+                field="values",
             )
 
         # Must have source_state (snapshot of original config)
@@ -505,13 +639,140 @@ class MaterializationSpecification(ProjectSpecification):
             )
 
         # Validate required metadata fields
-        for field in ["materialized_at", "materialized_by"]:
-            if not materialized_cfg.get(field):
-                self.add_warning(
-                    f"Materialized entity should have '{field}' metadata",
+        if not materialized_cfg.get("materialized_at"):
+            self.add_warning(
+                "Materialized entity should have 'materialized_at' metadata",
+                entity=entity_name,
+                field="materialized.materialized_at",
+            )
+
+        return not self.has_errors()
+
+
+@ENTITY_SPECIFICATION.register(key="unnest_columns")
+class UnnestColumnsSpecification(ProjectSpecification):
+    """Validates that unnest configuration references existing columns.
+
+    Unnest happens after FK linking, so id_vars can reference:
+    - Static columns (columns, keys)
+    - Extra columns (extra_columns)
+    - FK-added columns (remote entity's public_id + FK extra_columns)
+    """
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that unnest configuration is valid."""
+        self.clear()
+
+        entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
+        if not entity_cfg:
+            return True
+
+        unnest_cfg: dict[str, Any] | None = entity_cfg.get("unnest")
+        if not unnest_cfg:
+            # No unnest configuration
+            return True
+
+        # Get id_vars (columns to keep) and value_vars (columns to melt)
+        id_vars: list[str] | None = unnest_cfg.get("id_vars")
+        value_vars: list[str] | None = unnest_cfg.get("value_vars")
+
+        # Get all columns available when unnest runs (after FK linking)
+        all_columns: set[str] = self.get_entity_columns(entity_name, exclude_types={"unnest"})
+
+        # Check that id_vars exist
+        if id_vars and isinstance(id_vars, list):
+            missing_id_vars: set[str] = set(id_vars) - all_columns
+            if missing_id_vars:
+                self.add_error(
+                    f"Unnest configuration references missing id_vars columns: {missing_id_vars}. "
+                    f"These columns must be in 'columns', 'keys', 'extra_columns', or added by foreign keys.",
                     entity=entity_name,
-                    field=f"materialized.{field}",
+                    field="unnest.id_vars",
                 )
+
+        # Check that value_vars exist
+        if value_vars and isinstance(value_vars, list):
+            missing_value_vars: set[str] = set(value_vars) - all_columns
+            if missing_value_vars:
+                self.add_error(
+                    f"Unnest configuration references missing value_vars columns: {missing_value_vars}. "
+                    f"These columns must be in 'columns', 'keys', 'extra_columns', or added by foreign keys.",
+                    entity=entity_name,
+                    field="unnest.value_vars",
+                )
+
+        return not self.has_errors()
+
+
+@ENTITY_SPECIFICATION.register(key="foreign_key_columns")
+class ForeignKeyColumnsSpecification(ProjectSpecification):
+    """Validates that foreign key local_keys exist in entity columns.
+
+    FK linking happens after load, so local_keys can reference:
+    - Static columns (columns, keys)
+    - Extra columns (extra_columns)
+    - Columns added by previous FKs in the chain (public_id + extra_columns)
+
+    FKs are processed sequentially, so each FK can reference columns added
+    by any FK that appears before it in the foreign_keys list.
+    """
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that foreign key configurations reference valid columns."""
+        self.clear()
+
+        entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
+        if not entity_cfg:
+            return True
+
+        foreign_keys: list[dict[str, Any]] | None = entity_cfg.get("foreign_keys")
+        if not foreign_keys:
+            # No foreign keys
+            return True
+
+        # Start with columns available before any FK linking
+        # (columns, keys, extra_columns, system_id, public_id, unnest result columns)
+        available_columns: set[str] = self.get_entity_columns(entity_name, exclude_types={"foreign_keys"})
+
+        # Check each foreign key sequentially, accumulating columns as we go
+        for idx, fk_cfg in enumerate(foreign_keys):
+            local_keys: list[str] | str | None = fk_cfg.get("local_keys")
+            remote_entity: str | None = fk_cfg.get("entity")
+
+            if not local_keys:
+                self.add_error(
+                    "Foreign key configuration is missing 'local_keys'",
+                    entity=entity_name,
+                    field=f"foreign_keys[{idx}].local_keys",
+                )
+                continue
+
+            # Check that local_keys exist in columns available at this FK's processing time
+            missing_local_keys: set[str] = set(local_keys) - available_columns
+            if missing_local_keys:
+                self.add_error(
+                    f"Foreign key to '{remote_entity}' references missing local_keys: {missing_local_keys}. "
+                    f"These columns must be in 'columns', 'keys', 'extra_columns', or added by prior foreign keys.",
+                    entity=entity_name,
+                    field=f"foreign_keys[{idx}].local_keys",
+                )
+
+            # After validating this FK, add columns it will contribute for subsequent FKs
+            # 1. Add the remote entity's public_id (FK column)
+            if remote_entity:
+                remote_entity_cfg: dict[str, Any] = self.get_entity_cfg(remote_entity) or {}
+                remote_public_id: str | None = remote_entity_cfg.get("public_id")
+                if remote_public_id:
+                    available_columns.add(remote_public_id)
+
+            # 2. Add any extra_columns from this FK
+            extra_columns: dict[str, Any] | list[str] | str | None = fk_cfg.get("extra_columns")
+            if isinstance(extra_columns, dict):
+                available_columns.update(extra_columns.keys())
+            elif isinstance(extra_columns, list):
+                available_columns.update(extra_columns)
+            elif isinstance(extra_columns, str):
+                available_columns.add(extra_columns)
 
         return not self.has_errors()
 

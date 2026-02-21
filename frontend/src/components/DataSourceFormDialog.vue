@@ -27,7 +27,7 @@
           <!-- Driver Type -->
           <v-select
             v-model="form.driver"
-            :items="availableDrivers"
+            :items="availableDriversFiltered"
             label="Type *"
             :rules="[rules.required]"
             item-title="title"
@@ -89,9 +89,9 @@
                     :rules="field.required ? [rules.required] : []"
                     @focus="fetchProjectFiles"
                   >
-                    <template #item="{ props: itemProps, item }">
-                      <v-list-item v-bind="itemProps">
-                        <v-list-item-title>{{ item.title }}</v-list-item-title>
+                    <template #item="{ props, item }">
+                      <v-list-item v-bind="props">
+                        <v-list-item-title>{{ item.raw.title }}</v-list-item-title>
                         <v-list-item-subtitle class="text-caption">{{ item.raw.subtitle }}</v-list-item-subtitle>
                       </v-list-item>
                     </template>
@@ -205,6 +205,7 @@ const {
   getSchema,
   getDefaultFormValues,
   getCanonicalDriver,
+  getExtensionsForDriver,
   loading: schemaLoading,
   loadSchemas,
 } = useDriverSchema()
@@ -236,6 +237,11 @@ const fileUploadInProgress = ref(false)
 const isEditing = computed(() => !!props.dataSource)
 const currentSchema = computed(() => (form.value.driver ? getSchema(form.value.driver) : null))
 const hasFileField = computed(() => currentSchema.value?.fields.some((field) => field.type === 'file_path') ?? false)
+const availableDriversFiltered = computed(() => {
+  // Hide file-based data sources (xlsx, openpyxl, csv) since users can specify them in Entity editor
+  const fileBasedDrivers = ['xlsx', 'openpyxl', 'csv']
+  return availableDrivers.value.filter((driver) => !fileBasedDrivers.includes(driver.value))
+})
 const projectFileItems = computed(() =>
   projectFiles.value.map((file) => ({
     title: file.name,
@@ -244,7 +250,7 @@ const projectFileItems = computed(() =>
   }))
 )
 const fileAccept = computed(() => {
-  const extensions = getExtensionsForDriver(form.value.driver || currentSchema.value?.driver)
+  const extensions = getExtensionsForDriver(form.value.driver)
   return extensions ? extensions.map((ext) => `.${ext}`).join(',') : undefined
 })
 
@@ -265,20 +271,6 @@ const rules = {
   },
 }
 
-const driverExtensionMap: Record<string, string[]> = {
-  csv: ['csv', 'tsv'],
-  tsv: ['csv', 'tsv'],
-  access: ['mdb', 'accdb'],
-  ucanaccess: ['mdb', 'accdb'],
-  xlsx: ['xlsx', 'xls'],
-  openpyxl: ['xlsx', 'xls'],
-}
-
-function getExtensionsForDriver(driver?: string | null): string[] | undefined {
-  if (!driver) return undefined
-  return driverExtensionMap[driver] || undefined
-}
-
 function formatProjectFileSubtitle(file: ProjectFileInfo): string {
   const kb = Math.max(1, Math.round(file.size_bytes / 1024))
   return `${kb} KB${file.modified_at ? ` • ${file.modified_at}` : ''}`
@@ -294,7 +286,8 @@ async function fetchProjectFiles() {
   projectFilesError.value = null
 
   try {
-    const extensions = getExtensionsForDriver(form.value.driver || currentSchema.value?.driver)
+    const fileField = currentSchema.value?.fields.find((field) => field.type === 'file_path')
+    const extensions = fileField?.extensions?.length ? fileField.extensions : getExtensionsForDriver(form.value.driver)
     projectFiles.value = await dataSourceFilesApi.listFiles(extensions)
   } catch (e) {
     projectFilesError.value = e instanceof Error ? e.message : 'Failed to load data source files'

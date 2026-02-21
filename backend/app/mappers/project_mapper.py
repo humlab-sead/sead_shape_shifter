@@ -26,6 +26,9 @@ from typing import Any
 
 from loguru import logger
 
+from backend.app.core.config import settings
+from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityConfigMapperFactory
+from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models import (
     Entity,
     Project,
@@ -76,6 +79,14 @@ class ProjectMapper:
         for entity_name, entity_dict in cfg_dict.get("entities", {}).items():
             entities[entity_name] = ProjectMapper._dict_to_api_entity(entity_name, entity_dict)
 
+        # Apply type-specific transformations (Core → API) using strategy pattern
+        # File-based entities: decompose absolute paths to (filename, location)
+        # Other entities: no-op transformation
+        mapper_factory = EntityConfigMapperFactory(settings)
+        for entity_dict in entities.values():
+            mapper: EntityConfigMapper = mapper_factory.get_mapper_for_entity(entity_dict)
+            entity_dict.update(mapper.to_api(entity_dict, name))
+
         # Map options (preserve as-is)
         options = cfg_dict.get("options", {})
 
@@ -123,6 +134,22 @@ class ProjectMapper:
         for entity_name, api_entity in api_config.entities.items():
             cfg_dict["entities"][entity_name] = ProjectMapper._api_entity_to_dict(api_entity)
 
+        # Defensive: verify entity count survived serialization
+        input_count = len(api_config.entities)
+        output_count = len(cfg_dict["entities"])
+        if output_count != input_count:
+            corr = get_correlation_id()
+            input_names = sorted(api_config.entities.keys())
+            output_names = sorted(cfg_dict["entities"].keys())
+            logger.error(
+                "[{}] ProjectMapper.to_core_dict ENTITY COUNT MISMATCH: input={}" + " input_names={} output={} output_names={}",
+                corr,
+                input_count,
+                input_names,
+                output_count,
+                output_names,
+            )
+
         unresolved: list[str] = Config.find_unresolved_directives(cfg_dict)
         if unresolved:
             extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
@@ -135,15 +162,31 @@ class ProjectMapper:
         """Convert API Project to core ShapeShiftProject.
 
         Conditionally resolves @include: and @value: directives only if needed.
+        Resolves file paths based on location field at the API → Core boundary using strategy pattern.
         """
         cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_config=api_config)
 
-        # Create project
+        # Apply type-specific transformations (API → Core) using strategy pattern
+        # File-based entities: resolve (filename, location) to absolute paths
+        # Other entities: no-op transformation
+        project_name = api_config.metadata.name if api_config.metadata else api_config.filename
+        mapper_factory = EntityConfigMapperFactory(settings)
+
+        entities = cfg_dict.get("entities", {})
+        for entity_dict in entities.values():
+            mapper = mapper_factory.get_mapper_for_entity(entity_dict)
+            entity_dict.update(mapper.to_core(entity_dict, project_name))  # type: ignore
+
         project = ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
 
         # Only resolve if there are unresolved directives
         if not project.is_resolved():
-            project = project.resolve(filename=api_config.filename)
+            # Pass env_prefix and env_file from settings for proper env var resolution
+            project = project.resolve(
+                filename=api_config.filename,
+                env_prefix=settings.env_prefix,
+                env_filename=settings.env_file,
+            )
 
         return project
 
@@ -192,7 +235,10 @@ class ProjectMapper:
         """
         Convert API Entity to core entity dict.
 
-        Uses Pydantic model_dump() to eliminate hardcoded field lists.
+        Uses Pydantic model_dump(mode="json") to automatically serialize ALL fields,
+        including nested Pydantic models, recursively. This eliminates brittleness -
+        adding new nested models to Entity won't require manual handling here.
+
         The Entity model schema is the single source of truth.
         """
         # If already a dict, deep convert ruamel types and remove 'name' (API-only field)
@@ -202,26 +248,16 @@ class ProjectMapper:
             entity_dict.pop("name", None)
             return entity_dict
 
-        # Use Pydantic's model_dump to automatically serialize all fields
+        # Use mode="json" to recursively serialize ALL nested Pydantic models to dicts
+        # This is NOT brittle - new nested models are automatically handled!
+        #
+        # mode="json": Recursively converts everything to JSON-compatible types
+        # (dict, list, str, int, float, bool, None). Perfect for YAML serialization.
+        #
         # exclude_none: Don't include fields that are None
         # exclude_unset: Don't include fields that weren't explicitly set
         # exclude={'name'}: name is API metadata, not part of core entity structure
-        entity_dict = api_entity.model_dump(exclude_none=True, exclude_unset=True, exclude={"name"}, mode="python")
-
-        # Special handling for nested Pydantic models - serialize them explicitly
-        # This ensures proper dict format instead of model instances
-
-        if api_entity.foreign_keys:
-            entity_dict["foreign_keys"] = [fk.model_dump(exclude_none=True, exclude_unset=True) for fk in api_entity.foreign_keys]
-
-        if api_entity.filters:
-            entity_dict["filters"] = [filter_cfg.model_dump(exclude_none=True, exclude_unset=True) for filter_cfg in api_entity.filters]
-
-        if api_entity.unnest:
-            entity_dict["unnest"] = api_entity.unnest.model_dump(exclude_none=True, exclude_unset=True)
-
-        if api_entity.append:
-            entity_dict["append"] = [append_cfg.model_dump(exclude_none=True, exclude_unset=True) for append_cfg in api_entity.append]
+        entity_dict = api_entity.model_dump(exclude_none=True, exclude_unset=True, exclude={"name"}, mode="json")
 
         # Handle check_column_names default: only include if explicitly False
         # (Pydantic includes default=True values, we want sparse YAML)

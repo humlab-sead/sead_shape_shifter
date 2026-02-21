@@ -45,15 +45,6 @@
               </v-list-item>
             </template>
           </v-select>
-
-          <v-text-field
-            v-model="userEmail"
-            label="Your Email (optional)"
-            variant="outlined"
-            density="comfortable"
-            hint="Used to track who materialized this entity"
-            persistent-hint
-          />
         </div>
 
       </v-card-text>
@@ -100,7 +91,6 @@ const loading = ref(false)
 const validationResult = ref<CanMaterializeResponse | null>(null)
 const canMaterialize = ref(false)
 const storageFormat = ref<'parquet' | 'csv' | 'inline'>('parquet')
-const userEmail = ref('')
 
 const storageFormats = [
   {
@@ -162,7 +152,6 @@ async function materialize() {
   try {
     const result = await materializationApi.materialize(props.projectName, props.entityName, {
       storage_format: storageFormat.value,
-      user_email: userEmail.value || null,
     })
     
     const rowCount = result.rows_materialized?.toLocaleString() || 'unknown'

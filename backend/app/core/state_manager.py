@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 from loguru import logger
 
+from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.project import Project, ProjectMetadata
 
 
@@ -251,13 +252,23 @@ class ApplicationStateManager:
 
     def get(self, name: str) -> Project | None:
         """Load active project from ApplicationState if available."""
+        corr = get_correlation_id()
         with contextlib.suppress(RuntimeError):
             if not get_app_state():
                 return None
             project: Project | None = get_app_state().get_project(name)
             if project:
-                logger.debug(f"Loading active project '{name}' from ApplicationState")
+                entity_count = len(project.entities or {})
+                entity_names = sorted((project.entities or {}).keys())
+                logger.info(
+                    "[{}] state.get: project='{}' HIT entities={} names={}",
+                    corr,
+                    name,
+                    entity_count,
+                    entity_names,
+                )
                 return project
+            logger.debug("[{}] state.get: project='{}' MISS", corr, name)
         return None
 
     def get_active(self) -> Project | None:
@@ -270,6 +281,7 @@ class ApplicationStateManager:
 
     def update(self, project: Project) -> None:
         """Update project if it's already known, otherwise ignore."""
+        corr = get_correlation_id()
         with contextlib.suppress(RuntimeError):
 
             if not project.metadata:
@@ -279,13 +291,29 @@ class ApplicationStateManager:
                 return
 
             app_state: ApplicationState = get_app_state()
+            name = project.metadata.name
 
             # Only update if the project is already in memory
-            if project.metadata.name in app_state._active_projects:
-                app_state._active_projects[project.metadata.name] = project
-                app_state.increment_version(project.metadata.name)
-                app_state.mark_saved(project.metadata.name)
-                logger.debug(f"Updated version tracking for '{project.metadata.name}'")
+            if name in app_state._active_projects:
+                entity_count: int = len(project.entities or {})
+                entity_names: list[str] = sorted((project.entities or {}).keys())
+                app_state._active_projects[name] = project
+                new_version: int = app_state.increment_version(name)
+                app_state.mark_saved(name)
+                logger.info(
+                    "[{}] state.update: project='{}' version={} entities={} names={}",
+                    corr,
+                    name,
+                    new_version,
+                    entity_count,
+                    entity_names,
+                )
+            else:
+                logger.warning(
+                    "[{}] state.update: project='{}' NOT in active_projects, skipping cache update",
+                    corr,
+                    name,
+                )
 
     def update_version(self, name: str) -> None:
         """Update version tracking for a project (for cache invalidation)."""
@@ -298,11 +326,47 @@ class ApplicationStateManager:
         name = name or (project.metadata.name if project.metadata else None)
         if not name:
             raise ValueError("Project name is required to activate project.")
+        corr = get_correlation_id()
+        entity_count = len(project.entities or {})
+        entity_names = sorted((project.entities or {}).keys())
         with contextlib.suppress(RuntimeError):
             app_state: ApplicationState = get_app_state()
             app_state.set_active_project(project)
             app_state.mark_saved(name)  # Freshly loaded is not dirty
-            logger.info(f"Activated project '{name}' for editing")
+            logger.info(
+                "[{}] state.activate: project='{}' entities={} names={}",
+                corr,
+                name,
+                entity_count,
+                entity_names,
+            )
+
+    def invalidate(self, name: str) -> None:
+        """
+        Invalidate (clear) a project from cache.
+
+        Forces the next load_project() call to reload from disk.
+        Useful when the YAML file has been modified externally.
+
+        Args:
+            name: Project name to invalidate
+        """
+        corr = get_correlation_id()
+        with contextlib.suppress(RuntimeError):
+            app_state: ApplicationState = get_app_state()
+            removed_project = app_state._active_projects.pop(name, None)
+            old_version = app_state._project_versions.pop(name, None)
+            app_state._project_dirty.pop(name, None)
+
+            old_entities = sorted((removed_project.entities or {}).keys()) if removed_project else []
+            logger.info(
+                "[{}] state.invalidate: project='{}' was_cached={} old_version={} old_entities={}",
+                corr,
+                name,
+                removed_project is not None,
+                old_version,
+                old_entities,
+            )
 
     def get_active_metadata(self) -> ProjectMetadata:
         with contextlib.suppress(RuntimeError):
@@ -315,6 +379,23 @@ class ApplicationStateManager:
         return ProjectMetadata(
             name="", description="", created_at=0, modified_at=0, entity_count=0, version=None, file_path=None, is_valid=True
         )
+
+    def mark_active(self, name: str) -> None:
+        """Set the active project name without overwriting cached project data.
+
+        Unlike activate(), this does NOT replace _active_projects[name].
+        Use when the project is already cached and we just need to mark it
+        as the current editing target (e.g., project selection).
+        """
+        corr = get_correlation_id()
+        with contextlib.suppress(RuntimeError):
+            app_state: ApplicationState = get_app_state()
+            app_state._active_project_name = name
+            logger.info(
+                "[{}] state.mark_active: project='{}'",
+                corr,
+                name,
+            )
 
     @staticmethod
     def is_dirty(name: str) -> bool:

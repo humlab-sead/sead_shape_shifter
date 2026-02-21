@@ -34,7 +34,7 @@ def resolve_config(project: ShapeShiftProject | str, env_file: str | None = None
         if not Path(env_file).exists():
             raise FileNotFoundError(f"Environment file not found: {env_file}")
 
-        project = ShapeShiftProject.from_file(project, env_file=env_file, env_prefix="SEAD_NORMALIZER")
+        project = ShapeShiftProject.from_file(project, env_file=env_file, env_prefix="SHAPE_SHIFTER")
 
     if not isinstance(project, ShapeShiftProject):
         raise ValueError("Invalid project configuration")
@@ -83,7 +83,7 @@ def validate_project(project: str | ShapeShiftProject) -> bool:
         if not Path(project).exists():
             raise FileNotFoundError(f"Project file not found: {project}")
 
-        project = ShapeShiftProject.from_file(project, env_prefix="SEAD_NORMALIZER", env_file=".env")
+        project = ShapeShiftProject.from_file(project, env_prefix="SHAPE_SHIFTER", env_file=".env")
 
     specification = CompositeProjectSpecification(project.cfg)
     is_satisfied: bool = specification.is_satisfied_by()

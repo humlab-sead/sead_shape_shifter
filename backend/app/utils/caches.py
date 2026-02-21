@@ -7,11 +7,10 @@ from loguru import logger
 
 from backend.app.core.state_manager import get_app_state
 from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
 from src.model import ShapeShiftProject, TableConfig
-
-logger.disable(__name__)  # Disables all logging for this module
 
 
 @dataclass
@@ -238,6 +237,29 @@ class ShapeShiftCache:
                 del self._metadata[key]
         logger.debug(f"Invalidated {len(keys_to_remove)} cache entries for {project_name}:{entity_name or 'all'}")
 
+    def invalidate_project(self, project_name: str) -> None:
+        """Remove ALL cached entries for a project.
+
+        Called on project deletion to prevent ghost data when a new
+        project is created with the same name.
+        """
+        corr = get_correlation_id()
+        keys_to_remove = []
+        for key, metadata in list(self._metadata.items()):
+            if metadata.project_name == project_name:
+                keys_to_remove.append(key)
+
+        for key in keys_to_remove:
+            self._dataframes.pop(key, None)
+            self._metadata.pop(key, None)
+
+        logger.info(
+            "[{}] ShapeShiftCache.invalidate_project: '{}' removed {} entries",
+            corr,
+            project_name,
+            len(keys_to_remove),
+        )
+
 
 class ShapeShiftProjectCache:
     """Cache for ShapeShiftProject instances with version tracking."""
@@ -299,3 +321,22 @@ class ShapeShiftProjectCache:
         self._versions[project_name] = 0
 
         return shapeshift
+
+    def invalidate_project(self, project_name: str) -> None:
+        """Remove cached project and its version tracking.
+
+        Called on project deletion to prevent ghost data when a new
+        project is created with the same name.
+        """
+        corr = get_correlation_id()
+        had_cache = project_name in self._cache
+        had_version = project_name in self._versions
+        self._cache.pop(project_name, None)
+        self._versions.pop(project_name, None)
+        logger.info(
+            "[{}] ShapeShiftProjectCache.invalidate_project: '{}' had_cache={} had_version={}",
+            corr,
+            project_name,
+            had_cache,
+            had_version,
+        )

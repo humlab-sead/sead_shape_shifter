@@ -1,6 +1,7 @@
 """Tests for YAML service."""
 
 import time
+from pathlib import Path
 
 import pytest
 
@@ -22,7 +23,7 @@ def yaml_service():
 @pytest.fixture
 def temp_yaml_file(tmp_path):
     """Create a temporary YAML file."""
-    file_path = tmp_path / "test.yml"
+    file_path = tmp_path / "shapeshifter.yml"
     content = """
 # Test configuration
 entities:
@@ -106,7 +107,7 @@ class TestYamlServiceSave:
         assert file_path.exists()
         assert file_path.parent.exists()
 
-    def test_save_with_backup(self, yaml_service, temp_yaml_file):
+    def test_save_with_backup(self, yaml_service: YamlService, temp_yaml_file):
         """Test saving creates backup of existing file."""
         _ = temp_yaml_file.read_text()
         new_data = {"modified": True}
@@ -118,7 +119,7 @@ class TestYamlServiceSave:
         assert loaded == new_data
 
         # Check backup exists
-        backups = yaml_service.list_backups("test.yml")
+        backups = yaml_service.list_backups(project_dir=temp_yaml_file.parent)
         assert len(backups) > 0
 
     def test_load_save_roundtrip(self, yaml_service, temp_yaml_file):
@@ -152,12 +153,12 @@ class TestYamlServiceBackup:
         assert "backup" in backup_path.name
         assert backup_path.suffix == temp_yaml_file.suffix
 
-    def test_backup_nonexistent_file_raises_error(self, yaml_service, tmp_path):
+    def test_backup_nonexistent_file_raises_error(self, yaml_service: YamlService, tmp_path: Path):
         """Test backing up non-existent file raises error."""
         with pytest.raises(YamlServiceError, match="non-existent"):
             yaml_service.create_backup(tmp_path / "nonexistent.yml")
 
-    def test_list_backups(self, yaml_service, temp_yaml_file):
+    def test_list_backups(self, yaml_service: YamlService, temp_yaml_file: Path):
         """Test listing backups."""
 
         # Create multiple backups with time separation to avoid same timestamp
@@ -165,15 +166,16 @@ class TestYamlServiceBackup:
         time.sleep(1.1)  # Ensure different second in timestamp
         yaml_service.create_backup(temp_yaml_file)
 
-        backups = yaml_service.list_backups("test.yml")
+        backups = yaml_service.list_backups(project_dir=temp_yaml_file.parent)
         assert len(backups) >= 2
 
-    def test_list_backups_empty(self, yaml_service):
+    def test_list_backups_empty(self, yaml_service: YamlService):
         """Test listing backups when none exist."""
-        backups = yaml_service.list_backups("nonexistent.yml")
+        backups = yaml_service.list_backups(project_dir=Path("/nonexistent"))
+
         assert backups == []
 
-    def test_restore_backup(self, yaml_service, temp_yaml_file, tmp_path):
+    def test_restore_backup(self, yaml_service: YamlService, temp_yaml_file: Path, tmp_path: Path):
         """Test restoring backup."""
         # Load and create backup
         original_content = yaml_service.load(temp_yaml_file)
@@ -197,6 +199,140 @@ class TestYamlServiceBackup:
         # Check restoration
         restored_data = yaml_service.load(restored_path)
         assert restored_data == original_content
+
+
+class TestYamlServiceEntityKeyOrdering:
+    """Tests for entity key ordering (defensive programming)."""
+
+    def test_order_entity_keys_preserves_all_keys(self, yaml_service, tmp_path):
+        """
+        Test that _order_entity_keys preserves ALL keys, including unknown ones.
+
+        This is critical defensive programming - adding new entity configuration
+        keys in the future should never result in data loss.
+        """
+        # Create entity with mix of known and unknown keys
+        data = {
+            "entities": {
+                "test_entity": {
+                    # Known keys (should be ordered)
+                    "type": "entity",
+                    "source": "table",
+                    "system_id": "system_id",
+                    "public_id": "test_id",
+                    "keys": ["id"],
+                    "columns": ["name", "value"],
+                    "values": [[1, "a"], [2, "b"]],
+                    "materialized": {"enabled": True},
+                    "foreign_keys": [{"entity": "other"}],
+                    "filters": [{"type": "exists_in"}],
+                    # Unknown keys (should be preserved at end, alphabetically)
+                    "z_future_key": "should be preserved",
+                    "a_new_feature": "also preserved",
+                    "experimental_config": {"nested": "data"},
+                }
+            }
+        }
+
+        # Save and reload to trigger key ordering
+        file_path = tmp_path / "test_ordering.yml"
+        yaml_service.save(data, file_path, create_backup=False)
+        reloaded = yaml_service.load(file_path)
+
+        entity = reloaded["entities"]["test_entity"]
+
+        # CRITICAL: ALL keys must be preserved (defensive programming)
+        assert "type" in entity
+        assert "source" in entity
+        assert "system_id" in entity
+        assert "public_id" in entity
+        assert "keys" in entity
+        assert "columns" in entity
+        assert "values" in entity
+        assert "materialized" in entity
+        assert "foreign_keys" in entity
+        assert "filters" in entity
+        # Unknown keys MUST be preserved
+        assert "z_future_key" in entity
+        assert "a_new_feature" in entity
+        assert "experimental_config" in entity
+
+        # Verify values are correct
+        assert entity["z_future_key"] == "should be preserved"
+        assert entity["a_new_feature"] == "also preserved"
+        assert entity["experimental_config"] == {"nested": "data"}
+
+        # Verify key count - no data loss
+        assert len(entity) == 13
+
+    def test_order_entity_keys_correct_order(self, yaml_service, tmp_path):
+        """Test that known keys appear in correct canonical order."""
+        data = {
+            "entities": {
+                "test_entity": {
+                    # Add keys in random order
+                    "filters": [],
+                    "type": "entity",
+                    "values": [[1, 2]],
+                    "keys": ["id"],
+                    "system_id": "system_id",
+                    "foreign_keys": [],
+                    "columns": ["a", "b"],
+                    "source": "table",
+                    "public_id": "test_id",
+                    "materialized": {"enabled": True},
+                }
+            }
+        }
+
+        # Save and reload
+        file_path = tmp_path / "test_order.yml"
+        yaml_service.save(data, file_path, create_backup=False)
+
+        # Read raw YAML to check actual ordering
+        content = file_path.read_text()
+
+        # Known keys should appear in canonical order
+        # Find indices of each key in the file content
+        type_idx = content.index("type:")
+        source_idx = content.index("source:")
+        system_id_idx = content.index("system_id:")
+        public_id_idx = content.index("public_id:")
+        keys_idx = content.index("keys:")
+        columns_idx = content.index("columns:")
+        values_idx = content.index("values:")
+        materialized_idx = content.index("materialized:")
+        foreign_keys_idx = content.index("foreign_keys:")
+
+        # Verify ordering: type < source < system_id < public_id < keys < columns < values < materialized < foreign_keys
+        assert type_idx < source_idx < system_id_idx < public_id_idx
+        assert public_id_idx < keys_idx < columns_idx < values_idx
+        assert values_idx < materialized_idx < foreign_keys_idx
+
+    def test_order_entity_keys_unknown_alphabetical(self, yaml_service, tmp_path):
+        """Test that unknown keys are appended alphabetically."""
+        data = {
+            "entities": {
+                "test_entity": {
+                    "type": "entity",
+                    # Unknown keys in non-alphabetical order
+                    "zebra": "z",
+                    "alpha": "a",
+                    "beta": "b",
+                }
+            }
+        }
+
+        file_path = tmp_path / "test_alpha.yml"
+        yaml_service.save(data, file_path, create_backup=False)
+        content = file_path.read_text()
+
+        # Unknown keys should be alphabetically ordered
+        alpha_idx = content.index("alpha:")
+        beta_idx = content.index("beta:")
+        zebra_idx = content.index("zebra:")
+
+        assert alpha_idx < beta_idx < zebra_idx
 
 
 class TestYamlServiceValidation:

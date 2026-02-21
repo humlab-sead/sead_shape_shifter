@@ -1,6 +1,0 @@
-system_id,contact_type_id,arbodat_code,contact_type_name,description
-1,,ArchBear,Archaeologist,Name of scientist responsible for processing the archaeological material
-2,,BotBear,Botanist,Name of scientist responsible for the botanical determination (possibly several persons)
-3,,Aut,Author(s) ,Publication/manuscript/short report
-4,,BotBest,Bot. Determination,"Name(s) of person(s) responsible for charcoal or seed/fruit determination, etc"
-5,,ArchAusg,Site Director/Institution,Name of site director and/or institution

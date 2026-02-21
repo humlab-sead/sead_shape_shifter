@@ -185,6 +185,22 @@ export function useDriverSchema() {
   }
 
   /**
+   * Get file extensions supported by a driver
+   * Returns extensions from schema's file_path field, or undefined if not applicable
+   */
+  function getExtensionsForDriver(driver: string): string[] | undefined {
+    const canonicalDriver = getCanonicalDriver(driver)
+    const schema = getSchema(canonicalDriver)
+
+    if (!schema) return undefined
+
+    // Find file_path field with extensions
+    const fileField = schema.fields.find((f) => f.type === 'file_path' && f.extensions && f.extensions.length > 0)
+
+    return fileField?.extensions
+  }
+
+  /**
    * Get drivers by category
    */
   function getDriversByCategory(category: 'database' | 'file') {
@@ -213,6 +229,7 @@ export function useDriverSchema() {
     validateField,
     availableDrivers,
     getCanonicalDriver,
+    getExtensionsForDriver,
     getDriversByCategory,
   }
 }

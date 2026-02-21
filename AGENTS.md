@@ -21,6 +21,100 @@
 - Decorate async tests with `@pytest.mark.asyncio` (Core) and use FastAPI `TestClient` for backend routes.
 - Import backend usages of Core with absolute paths only (e.g., `from src.model import ShapeShiftProject`).
 
+### Dependency Injection for Circular Imports ⭐
+
+**Use dependency injection via factory functions to avoid circular imports between services.**
+
+**Problem:**
+```python
+# ❌ WRONG: Module-level import causes circular dependency
+from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
+
+class ValidationService:
+    async def validate_data(self):
+        orchestrator = DataValidationOrchestrator(...)  # Circular!
+```
+
+**Solution:**
+```python
+# ✅ CORRECT: Inject dependencies via constructor
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
+
+class ValidationService:
+    def __init__(self, orchestrator: "DataValidationOrchestrator" | None = None):
+        self._orchestrator = orchestrator
+    
+    async def validate_data(self, ...):
+        if self._orchestrator:
+            return await self._orchestrator.validate_all_entities(...)
+        else:
+            from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
+            orchestrator = DataValidationOrchestrator(fetch_strategy=...)
+            return await orchestrator.validate_all_entities(...)
+```
+
+**Benefits:** Explicit dependencies, easy testing with mocks, no circular imports, flexible implementations.
+
+**When to use:** Services depending on each other, any circular dependency between backend modules.
+
+### Pure Domain Validators (Awesome Rule) ⭐
+
+**Critical: Validators receive data, not fetch it. Domain logic in Core, orchestration in Backend.**
+
+**Correct pattern:**
+```python
+# src/validators/data_validators.py - Pure domain logic
+class ColumnExistsValidator:
+    @staticmethod
+    def validate(df: pd.DataFrame, configured_columns: list[str], entity_name: str) -> list[ValidationIssue]:
+        """Pure function - receives data, returns issues."""
+        missing = set(configured_columns) - set(df.columns)
+        return [ValidationIssue(...) for col in missing]
+
+# backend/app/validators/data_validation_orchestrator.py - Infrastructure with DI
+class DataValidationOrchestrator:
+    def __init__(self, fetch_strategy: DataFetchStrategy):
+        """Inject fetch strategy (preview, full, or table_store)."""
+        self.fetch_strategy = fetch_strategy
+    
+    async def validate_all_entities(self, core_project: ShapeShiftProject, project_name: str) -> list[ValidationIssue]:
+        """Fetch data using injected strategy, call validators, return domain issues."""
+        # Get entity configurations from resolved core project
+        resolved_entities = core_project.cfg.get("entities", {})
+        
+        # Fetch data using injected strategy
+        df = await self.fetch_strategy.fetch(project_name, entity_name)
+        
+        # Call pure domain validator
+        issues = ColumnExistsValidator.validate(df, columns, entity_name)
+        
+        # Return domain issues (consumer decides how to transform)
+        return issues
+
+# Three strategy implementations (preview, full, table_store)
+# Load and resolve project (ValidationService responsibility)
+api_project = project_service.load_project(project_name)
+core_project = ProjectMapper.to_core(api_project)
+
+if use_full_data:
+    strategy = FullDataFetchStrategy(project_service)
+else:
+    strategy = PreviewDataFetchStrategy(preview_service)
+
+orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+issues = await orchestrator.validate_all_entities(core_project, project_name)
+
+# Convert domain → API (ValidationService responsibility)
+errors = [ValidationMapper.to_api_error(issue) for issue in issues]
+```
+
+**Benefits:** Testable without mocks (pure DataFrames), supports full dataset validation, reusable in CLI/scripts, clear separation of concerns, strategy pattern enables extensibility, orchestrator can be used outside API context.
+
+**Never:** Put data fetching in validators, import infrastructure in domain layer, skip orchestrator pattern, hard-code data fetch logic (use strategy).
+
 ### Layer Boundary Architecture (Awesome Rule) ⭐
 
 **Critical: Services must convert between API and Core layers using ProjectMapper.**
@@ -293,6 +387,8 @@ Then use with `--config ingest_config.json`. CLI options override config file va
 - Touch backend behavior via `backend/app/main.py` and `backend/app/services/validation_service.py`.
 - Manage frontend state under `frontend/src/stores/` and related composables.
 - Consult docs: `docs/CONFIGURATION_GUIDE.md`, `docs/SYSTEM_DOCUMENTATION.md`, `docs/BACKEND_API.md`, `docs/DEVELOPMENT_GUIDE.md` before major changes.
+- For testing: `docs/TESTING_GUIDE.md` (concise functional testing), `docs/testing/` subfolder (error scenarios, templates, non-functional, accessibility).
+- **For YAML validation**: `docs/AI_VALIDATION_GUIDE.md` (concise AI-focused validation rules, common patterns, error detection).
 
 ## External Dependencies
 - Install UCanAccess via `scripts/install-uncanccess.sh` when Access support is required.

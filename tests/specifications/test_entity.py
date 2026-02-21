@@ -11,6 +11,7 @@ from src.specifications.entity import (
     EntityReferencesExistSpecification,
     EntitySpecification,
     FixedEntityFieldsSpecification,
+    FixedEntitySystemIdSpecification,
     ForeignKeySpecification,
     PublicIdSpecification,
     SqlEntityFieldsSpecification,
@@ -26,7 +27,7 @@ class TestEntityFieldsBaseSpecification:
         """Sample project configuration."""
         return {
             "entities": {
-                "valid_entity": {"columns": ["id", "col1", "col2"], "keys": ["id"]},  # id added to columns
+                "valid_entity": {"type": "entity", "columns": ["id", "col1", "col2"], "keys": ["id"]},  # id added to columns
                 "missing_columns": {"keys": ["id"]},
                 "non_list_columns": {"columns": "not_a_list", "keys": ["id"]},
             }
@@ -101,6 +102,13 @@ class TestFixedEntityFieldsSpecification:
                     "keys": ["id"],
                 },
                 "empty_fixed": {"type": "fixed", "columns": [], "keys": [], "public_id": "entity_id", "values": []},
+                "empty_columns_with_values": {
+                    "type": "fixed",
+                    "columns": [],
+                    "keys": [],
+                    "public_id": "entity_id",
+                    "values": [[1, None]],
+                },
             }
         }
 
@@ -167,6 +175,22 @@ class TestFixedEntityFieldsSpecification:
         assert result is True, spec.get_report()
         assert len(spec.errors) == 0, spec.get_report()
 
+    def test_empty_columns_with_values_fails(self, project_cfg):
+        """Test validation fails when columns is empty but values are provided.
+        
+        This prevents the error: "0 columns passed, passed data had 2 columns"
+        that occurs when trying to create a DataFrame with data but no column names.
+        
+        Regression test for issue #266.
+        """
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="empty_columns_with_values")
+
+        assert result is False, spec.get_report()
+        assert len(spec.errors) > 0, spec.get_report()
+        assert any("no columns defined" in str(e).lower() for e in spec.errors), spec.get_report()
+
 
 class TestSqlEntityFieldsSpecification:
     """Tests for SqlEntityFieldsSpecification."""
@@ -176,8 +200,14 @@ class TestSqlEntityFieldsSpecification:
         """Sample project configuration."""
         return {
             "entities": {
-                "valid_sql": {"columns": ["id", "col1"], "keys": ["id"], "data_source": "db1", "query": "SELECT * FROM table"},
-                "missing_query": {"columns": ["id", "col1"], "keys": ["id"], "data_source": "db1"},
+                "valid_sql": {
+                    "type": "sql",
+                    "columns": ["id", "col1"],
+                    "keys": ["id"],
+                    "data_source": "db1",
+                    "query": "SELECT * FROM table",
+                },
+                "missing_query": {"type": "sql", "columns": ["id", "col1"], "keys": ["id"], "data_source": "db1"},
             }
         }
 
@@ -198,6 +228,221 @@ class TestSqlEntityFieldsSpecification:
 
         assert result is False
         assert len(spec.errors) > 0
+
+
+class TestFixedEntitySystemIdSpecification:
+    """Tests for FixedEntitySystemIdSpecification."""
+
+    def test_valid_system_id_values(self):
+        """Test validation passes for valid system_id values."""
+        project_cfg = {
+            "entities": {
+                "sample_type": {
+                    "type": "fixed",
+                    "columns": ["system_id", "sample_type_id", "type_name"],
+                    "public_id": "sample_type_id",
+                    "values": [
+                        [1, 1, "Soil"],
+                        [2, 2, "Wood"],
+                        [3, 3, "Sediment"],
+                    ],
+                }
+            }
+        }
+        spec = FixedEntitySystemIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample_type")
+
+        assert result is True
+        assert len(spec.errors) == 0
+
+    def test_non_sequential_system_id_is_valid(self):
+        """Test that non-sequential system_id values are valid."""
+        project_cfg = {
+            "entities": {
+                "location": {
+                    "type": "fixed",
+                    "columns": ["system_id", "location_id", "name"],
+                    "public_id": "location_id",
+                    "values": [
+                        [1, 162, "Norway"],
+                        [5, 205, "Sweden"],  # Gap in system_id is OK
+                        [8, 207, "Finland"],
+                    ],
+                }
+            }
+        }
+        spec = FixedEntitySystemIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="location")
+
+        assert result is True
+        assert len(spec.errors) == 0
+
+    def test_missing_system_id_column_is_valid(self):
+        """Test that missing system_id column doesn't cause errors (will be auto-generated)."""
+        project_cfg = {
+            "entities": {
+                "sample_type": {
+                    "type": "fixed",
+                    "columns": ["sample_type_id", "type_name"],
+                    "public_id": "sample_type_id",
+                    "values": [
+                        [1, "Soil"],
+                        [2, "Wood"],
+                    ],
+                }
+            }
+        }
+        spec = FixedEntitySystemIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample_type")
+
+        assert result is True
+        assert len(spec.errors) == 0
+
+    def test_null_system_id_values_fail(self):
+        """Test that null system_id values cause validation error."""
+        project_cfg = {
+            "entities": {
+                "sample_type": {
+                    "type": "fixed",
+                    "columns": ["system_id", "sample_type_id", "type_name"],
+                    "public_id": "sample_type_id",
+                    "values": [
+                        [1, 1, "Soil"],
+                        [None, 2, "Wood"],  # Null system_id
+                        [3, 3, "Sediment"],
+                    ],
+                }
+            }
+        }
+        spec = FixedEntitySystemIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample_type")
+
+        assert result is False
+        assert len(spec.errors) == 1
+        assert "null" in spec.errors[0].message.lower()
+        assert spec.errors[0].kwargs.get("code") == "SYSTEM_ID_NULL_VALUES"
+
+    def test_duplicate_system_id_values_fail(self):
+        """Test that duplicate system_id values cause validation error."""
+        project_cfg = {
+            "entities": {
+                "sample_type": {
+                    "type": "fixed",
+                    "columns": ["system_id", "sample_type_id", "type_name"],
+                    "public_id": "sample_type_id",
+                    "values": [
+                        [1, 1, "Soil"],
+                        [2, 2, "Wood"],
+                        [1, 3, "Sediment"],  # Duplicate system_id=1
+                    ],
+                }
+            }
+        }
+        spec = FixedEntitySystemIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample_type")
+
+        assert result is False
+        assert len(spec.errors) == 1
+        assert "duplicate" in spec.errors[0].message.lower()
+        assert spec.errors[0].kwargs.get("code") == "SYSTEM_ID_DUPLICATE_VALUES"
+
+    def test_invalid_system_id_type_fails(self):
+        """Test that non-integer system_id values cause validation error."""
+        project_cfg = {
+            "entities": {
+                "sample_type": {
+                    "type": "fixed",
+                    "columns": ["system_id", "sample_type_id", "type_name"],
+                    "public_id": "sample_type_id",
+                    "values": [
+                        [1, 1, "Soil"],
+                        ["not_an_int", 2, "Wood"],  # Invalid type
+                        [3, 3, "Sediment"],
+                    ],
+                }
+            }
+        }
+        spec = FixedEntitySystemIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample_type")
+
+        assert result is False
+        assert len(spec.errors) >= 1
+        assert any("not a valid integer" in err.message.lower() for err in spec.errors)
+        assert any(err.kwargs.get("code") == "SYSTEM_ID_INVALID_TYPE" for err in spec.errors)
+
+    def test_negative_system_id_fails(self):
+        """Test that negative or zero system_id values cause validation error."""
+        project_cfg = {
+            "entities": {
+                "sample_type": {
+                    "type": "fixed",
+                    "columns": ["system_id", "sample_type_id", "type_name"],
+                    "public_id": "sample_type_id",
+                    "values": [
+                        [1, 1, "Soil"],
+                        [0, 2, "Wood"],  # Zero is invalid
+                        [-1, 3, "Sediment"],  # Negative is invalid
+                    ],
+                }
+            }
+        }
+        spec = FixedEntitySystemIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample_type")
+
+        assert result is False
+        assert len(spec.errors) >= 2
+        assert any("positive integer" in err.message.lower() for err in spec.errors)
+        assert any(err.kwargs.get("code") == "SYSTEM_ID_INVALID_VALUE" for err in spec.errors)
+
+    def test_multiple_errors_reported(self):
+        """Test that multiple system_id errors are reported."""
+        project_cfg = {
+            "entities": {
+                "sample_type": {
+                    "type": "fixed",
+                    "columns": ["system_id", "sample_type_id", "type_name"],
+                    "public_id": "sample_type_id",
+                    "values": [
+                        [None, 1, "Soil"],  # Null
+                        [2, 2, "Wood"],
+                        [2, 3, "Sediment"],  # Duplicate
+                    ],
+                }
+            }
+        }
+        spec = FixedEntitySystemIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample_type")
+
+        assert result is False
+        assert len(spec.errors) == 2  # Null error + duplicate error
+
+    def test_non_fixed_entity_skips_validation(self):
+        """Test that non-fixed entities are not validated."""
+        project_cfg = {
+            "entities": {
+                "sql_entity": {
+                    "type": "sql",
+                    "columns": ["system_id", "col1"],
+                    "query": "SELECT *",
+                    "data_source": "db1",
+                }
+            }
+        }
+        spec = FixedEntitySystemIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sql_entity")
+
+        # Should pass - SQL entities are not validated by this spec
+        assert result is True
+        assert len(spec.errors) == 0
 
 
 class TestEntityFieldsSpecification:

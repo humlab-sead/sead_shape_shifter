@@ -4,9 +4,9 @@ from os.path import isfile
 import pandas as pd
 import pytest
 
-from importer.configuration.config import Config
-from importer.metadata import SchemaService, SeadSchema
-from importer.utility import create_db_uri
+from ingesters.sead.metadata import SchemaService, SeadSchema
+from ingesters.sead.utility import create_db_uri
+from src.configuration.config import Config
 
 # @pytest.mark.skip(reason="sandbox test")
 # def test_download_sead_comments():
@@ -37,20 +37,18 @@ from importer.utility import create_db_uri
 #             f.write(md_str)
 
 
-@pytest.mark.skipif(isfile("tests/test_data/sead_columns.json"), reason="Used for generating test data only")
+@pytest.mark.skipif(isfile("ingesters/sead/tests/test_data/sead_columns.json"), reason="Used for generating test data only")
 def test_load_metadata_from_postgres(cfg: Config):
     """Use this test to store SEAD metadata in json files for regression testing"""
     service: SchemaService = SchemaService(create_db_uri(**cfg.get("options:database")))
     schema: SeadSchema = service.load()
     test_tables: list[str] = cfg.get("test:tables")
-    with open("tests/test_data/sead_tables.json", "w", encoding="utf-8") as outfile:
+    with open("ingesters/sead/tests/test_data/sead_tables.json", "w", encoding="utf-8") as outfile:
         data: list[dict] = schema.source_tables[schema.source_tables.table_name.isin(test_tables)].to_dict("records")
         json.dump(data, outfile, indent=4)
 
-    with open("tests/test_data/sead_columns.json", "w", encoding="utf-8") as outfile:
-        data: list[dict] = schema.source_columns.fillna(0)[schema.source_columns.table_name.isin(test_tables)].to_dict(
-            "records"
-        )
+    with open("ingesters/sead/tests/test_data/sead_columns.json", "w", encoding="utf-8") as outfile:
+        data: list[dict] = schema.source_columns.fillna(0)[schema.source_columns.table_name.isin(test_tables)].to_dict("records")
         json.dump(data, outfile, indent=4)
 
     assert isinstance(schema, SeadSchema)

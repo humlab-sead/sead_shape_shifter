@@ -137,6 +137,510 @@ def test_get_subset_applies_scalar_replacements_with_forward_fill() -> None:
     assert result["status"].tolist() == ["keep", "keep", "keep"]
 
 
+def test_get_subset_applies_advanced_replacements_regex_rule() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "coord_sys": ["DHDN Zone 3", "dhdn   zone 3", "EPSG:4326"]})
+    table_cfg = build_table_config(
+        columns=["id", "coord_sys"],
+        replacements={
+            "coord_sys": [
+                {
+                    "match": "regex",
+                    "from": r"^dhdn\s+zone\s+3$",
+                    "to": "EPSG:31467",
+                    "flags": ["ignorecase"],
+                    "normalize": ["collapse_ws", "lower"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["coord_sys"].tolist() == ["EPSG:31467", "EPSG:31467", "EPSG:4326"]
+
+
+def test_get_subset_applies_advanced_replacements_not_regex_rule() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3, 4], "coord_sys": ["EPSG:4326", "epsg:3857", "DHDN Zone 3", None]})
+    table_cfg = build_table_config(
+        columns=["id", "coord_sys"],
+        replacements={
+            "coord_sys": [
+                {
+                    "match": "not_regex",
+                    "from": r"^epsg:\d+$",
+                    "to": "OTHER",
+                    "flags": ["ignorecase"],
+                    "normalize": ["strip", "lower"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # Only values NOT matching the regex are replaced; NA stays NA.
+    assert result["coord_sys"].tolist() == ["EPSG:4326", "epsg:3857", "OTHER", None]
+
+
+def test_get_subset_applies_advanced_replacements_map_with_normalize() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "status": [" Yes ", "NO", "maybe"]})
+    table_cfg = build_table_config(
+        columns=["id", "status"],
+        replacements={
+            "status": [
+                {
+                    "map": {"yes": "Y", "no": "N"},
+                    "normalize": ["strip", "lower"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["status"].tolist() == ["Y", "N", "maybe"]
+
+
+def test_get_subset_advanced_replacements_diagnostics_do_not_change_output() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "status": [" Yes ", "NO", "maybe"]})
+    table_cfg = build_table_config(
+        columns=["id", "status"],
+        replacements={
+            "status": [
+                {
+                    "map": {"yes": "Y", "no": "N"},
+                    "normalize": ["strip", "lower"],
+                    "report_replaced": True,
+                    "report_unmatched": True,
+                    "report_top": 5,
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["status"].tolist() == ["Y", "N", "maybe"]
+
+
+def test_get_subset_applies_advanced_replacements_blank_out_fill_none() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "status": ["keep", "drop", "keep"]})
+    table_cfg = build_table_config(
+        columns=["id", "status"],
+        replacements={
+            "status": [
+                {
+                    "blank_out": ["drop"],
+                    "fill": "none",
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["status"].tolist() == ["keep", pd.NA, "keep"]
+
+
+def test_get_subset_applies_advanced_replacements_blank_out_fill_constant() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "status": ["keep", "drop", None]})
+    table_cfg = build_table_config(
+        columns=["id", "status"],
+        replacements={
+            "status": [
+                {
+                    "blank_out": ["drop"],
+                    "fill": {"constant": "UNKNOWN"},
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["status"].tolist() == ["keep", "UNKNOWN", "UNKNOWN"]
+
+
+def test_get_subset_applies_advanced_replacements_contains_rule() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "note": ["has FOO", "no match", "foo inside"]})
+    table_cfg = build_table_config(
+        columns=["id", "note"],
+        replacements={
+            "note": [
+                {
+                    "match": "contains",
+                    "from": "foo",
+                    "to": "HAS_FOO",
+                    "flags": ["ignorecase"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["note"].tolist() == ["HAS_FOO", "no match", "HAS_FOO"]
+
+
+def test_get_subset_applies_transform_rule_normalize_all_values() -> None:
+    """Test transform rule that applies normalize operations to all values (no match filter)."""
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "name": ["  Alice  ", "BOB", " charlie "]})
+    table_cfg = build_table_config(
+        columns=["id", "name"],
+        replacements={
+            "name": [
+                {
+                    "normalize": ["strip", "lower"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # All values normalized without any filtering
+    assert result["name"].tolist() == ["alice", "bob", "charlie"]
+
+
+def test_get_subset_applies_transform_rule_coerce_all_values() -> None:
+    """Test transform rule that coerces all values (no match filter)."""
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "value": ["42", "100", "999"]})
+    table_cfg = build_table_config(
+        columns=["id", "value"],
+        replacements={
+            "value": [
+                {
+                    "coerce": "int",
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # All values coerced to int
+    assert result["value"].dtype == "Int64"
+    assert result["value"].tolist() == [42, 100, 999]
+
+
+def test_get_subset_applies_transform_rule_normalize_and_coerce() -> None:
+    """Test transform rule that applies both normalize and coerce to all values."""
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "amount": ["  3.14  ", "2.71", " 1.41 "]})
+    table_cfg = build_table_config(
+        columns=["id", "amount"],
+        replacements={
+            "amount": [
+                {
+                    "normalize": ["strip"],
+                    "coerce": "float",
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # All values normalized and coerced
+    assert result["amount"].tolist() == [3.14, 2.71, 1.41]
+
+
+def test_get_subset_applies_advanced_replacements_startswith_rule() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "code": ["ABC123", "abC999", "XABC"]})
+    table_cfg = build_table_config(
+        columns=["id", "code"],
+        replacements={
+            "code": [
+                {
+                    "match": "startswith",
+                    "from": "abc",
+                    "to": "STARTS_ABC",
+                    "flags": ["ignorecase"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["code"].tolist() == ["STARTS_ABC", "STARTS_ABC", "XABC"]
+
+
+def test_get_subset_applies_advanced_replacements_not_startswith_rule() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3, 4], "code": ["ABC123", "abC999", "XABC", None]})
+    table_cfg = build_table_config(
+        columns=["id", "code"],
+        replacements={
+            "code": [
+                {
+                    "match": "not_startswith",
+                    "from": "abc",
+                    "to": "OTHER",
+                    "flags": ["ignorecase"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # Only values NOT starting with abc are replaced; NA stays NA.
+    assert result["code"].tolist() == ["ABC123", "abC999", "OTHER", None]
+
+
+def test_get_subset_applies_advanced_replacements_endswith_rule() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "filename": ["file.TXT", "report.txt", "doc.pdf"]})
+    table_cfg = build_table_config(
+        columns=["id", "filename"],
+        replacements={
+            "filename": [
+                {
+                    "match": "endswith",
+                    "from": ".txt",
+                    "to": "TEXT_FILE",
+                    "flags": ["ignorecase"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["filename"].tolist() == ["TEXT_FILE", "TEXT_FILE", "doc.pdf"]
+
+
+def test_get_subset_applies_advanced_replacements_not_endswith_rule() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3, 4], "filename": ["file.TXT", "report.txt", "doc.pdf", None]})
+    table_cfg = build_table_config(
+        columns=["id", "filename"],
+        replacements={
+            "filename": [
+                {
+                    "match": "not_endswith",
+                    "from": ".txt",
+                    "to": "OTHER",
+                    "flags": ["ignorecase"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # Only values NOT ending with .txt are replaced; NA stays NA.
+    assert result["filename"].tolist() == ["file.TXT", "report.txt", "OTHER", None]
+
+
+def test_get_subset_applies_advanced_replacements_in_rule_ignorecase() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3, 4], "status": ["A", "b", "C", None]})
+    table_cfg = build_table_config(
+        columns=["id", "status"],
+        replacements={
+            "status": [
+                {
+                    "match": "in",
+                    "from": ["a", "b"],
+                    "to": "X",
+                    "flags": ["ignorecase"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["status"].tolist() == ["X", "X", "C", None]
+
+
+def test_get_subset_applies_advanced_replacements_not_in_rule_ignorecase() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3, 4], "status": ["A", "b", "C", None]})
+    table_cfg = build_table_config(
+        columns=["id", "status"],
+        replacements={
+            "status": [
+                {
+                    "match": "not_in",
+                    "from": ["a", "b"],
+                    "to": "OTHER",
+                    "flags": ["ignorecase"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # Only values NOT in {a,b} are replaced; NA stays NA.
+    assert result["status"].tolist() == ["A", "b", "OTHER", None]
+
+
+def test_get_subset_applies_advanced_replacements_not_contains_does_not_touch_na() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "note": ["has foo", "bar", None]})
+    table_cfg = build_table_config(
+        columns=["id", "note"],
+        replacements={
+            "note": [
+                {
+                    "match": "not_contains",
+                    "from": "foo",
+                    "to": "NO_FOO",
+                    "flags": ["ignorecase"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["note"].tolist() == ["has foo", "NO_FOO", None]
+
+
+def test_get_subset_applies_advanced_replacements_equals_with_coerce_int() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3, 4], "val": ["1", "2", "x", None]})
+    table_cfg = build_table_config(
+        columns=["id", "val"],
+        replacements={
+            "val": [
+                {
+                    "match": "equals",
+                    "from": 2,
+                    "to": "TWO",
+                    "coerce": "int",
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["val"].tolist() == ["1", "TWO", "x", None]
+
+
+def test_get_subset_applies_advanced_replacements_not_equals_with_normalize() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "status": [" A ", "b", None]})
+    table_cfg = build_table_config(
+        columns=["id", "status"],
+        replacements={
+            "status": [
+                {
+                    "match": "not_equals",
+                    "from": "a",
+                    "to": "OTHER",
+                    "normalize": ["strip", "lower"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # Only values not equal to "a" (after normalization) are replaced; NA stays NA.
+    assert result["status"].tolist() == [" A ", "OTHER", None]
+
+
+def test_get_subset_applies_advanced_replacements_not_equals_with_coerce_int() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3, 4], "val": ["1", "2", "x", None]})
+    table_cfg = build_table_config(
+        columns=["id", "val"],
+        replacements={
+            "val": [
+                {
+                    "match": "not_equals",
+                    "from": 2,
+                    "to": "OTHER",
+                    "coerce": "int",
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # With coerce=int, only coercible non-2 values are replaced; non-coercible values remain unchanged.
+    assert result["val"].tolist() == ["OTHER", "2", "x", None]
+
+
+def test_get_subset_applies_advanced_replacements_map_with_coerce_int() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "val": ["1", "2", "x"]})
+    table_cfg = build_table_config(
+        columns=["id", "val"],
+        replacements={
+            "val": [
+                {
+                    "map": {1: "ONE"},
+                    "coerce": "int",
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["val"].tolist() == ["ONE", "2", "x"]
+
+
+def test_get_subset_applies_advanced_replacements_regex_sub_rule() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2], "coord_sys": ["DHDN Zone 3", "DHDN Zone 12"]})
+    table_cfg = build_table_config(
+        columns=["id", "coord_sys"],
+        replacements={
+            "coord_sys": [
+                {
+                    "match": "regex_sub",
+                    "from": r"\bZone\s+(\d+)\b",
+                    "to": r"Z\1",
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["coord_sys"].tolist() == ["DHDN Z3", "DHDN Z12"]
+
+
+def test_get_subset_applies_advanced_replacements_regex_sub_to_null_sets_na() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "val": ["keep", "drop-me", "also keep"]})
+    table_cfg = build_table_config(
+        columns=["id", "val"],
+        replacements={
+            "val": [
+                {
+                    "match": "regex_sub",
+                    "from": r"drop",
+                    "to": None,
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["val"].tolist() == ["keep", pd.NA, "also keep"]
+
+
 # ========== Additional coverage: null source, get_subset_columns logic, etc. ==========
 
 

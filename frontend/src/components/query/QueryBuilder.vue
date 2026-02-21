@@ -24,8 +24,8 @@
       <v-select
         v-model="selectedTable"
         :items="tables"
-        item-title="table_name"
-        item-value="table_name"
+        item-title="name"
+        item-value="name"
         label="Select Table"
         prepend-icon="mdi-table"
         density="comfortable"
@@ -34,8 +34,8 @@
         :loading="loadingTables"
         @update:model-value="onTableChange"
       >
-        <template #item="{ props: itemProps, item }">
-          <v-list-item v-bind="itemProps">
+        <template #item="{ props, item }">
+          <v-list-item v-bind="props">
             <template #prepend>
               <v-icon>mdi-table</v-icon>
             </template>

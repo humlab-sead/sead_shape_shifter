@@ -58,8 +58,6 @@ class TestMaterializationConfig:
                         "enabled": True,
                         "source_state": {"type": "sql", "query": "SELECT * FROM sites"},
                         "materialized_at": "2026-01-29T12:00:00Z",
-                        "materialized_by": "test@example.com",
-                        "data_file": "materialized/site.parquet",
                     },
                 },
             },
@@ -71,5 +69,3 @@ class TestMaterializationConfig:
         assert mat_config.enabled is True
         assert mat_config.source_state == {"type": "sql", "query": "SELECT * FROM sites"}
         assert mat_config.materialized_at == "2026-01-29T12:00:00Z"
-        assert mat_config.materialized_by == "test@example.com"
-        assert mat_config.data_file == "materialized/site.parquet"

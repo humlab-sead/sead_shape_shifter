@@ -2,9 +2,9 @@
 
 import pandas as pd
 
-from importer.metadata import Column, SeadSchema
-from importer.submission import Submission
-from tests.fixtures import (
+from ingesters.sead.metadata import Column, SeadSchema
+from ingesters.sead.submission import Submission
+from ingesters.sead.tests.fixtures import (
     COMPLEX_SCHEMA,
     EMPTY_SUBMISSION,
     FK_DATAFRAME,

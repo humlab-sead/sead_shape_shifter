@@ -32,19 +32,6 @@
           </div>
 
           <div class="d-flex gap-2">
-            <v-btn variant="outlined" prepend-icon="mdi-play-circle-outline" color="success" @click="handleTestRun">
-              Test Run
-              <v-tooltip activator="parent">Preview transformation results for selected entities</v-tooltip>
-            </v-btn>
-            <v-btn
-              variant="outlined"
-              prepend-icon="mdi-check-circle-outline" color="success"
-              :loading="validationLoading"
-              @click="handleValidate"
-            >
-              Validate
-              <v-tooltip activator="parent">Run validation checks on the entire project</v-tooltip>
-            </v-btn>
             <v-btn variant="outlined" prepend-icon="mdi-play-circle" color="success" @click="showExecuteDialog = true">
               Execute
               <v-tooltip activator="parent">Execute the full workflow and export data</v-tooltip>
@@ -52,6 +39,10 @@
             <v-btn variant="outlined" prepend-icon="mdi-history" color="success" @click="showBackupsDialog = true">
               Backups
               <v-tooltip activator="parent">View and restore previous versions of this project</v-tooltip>
+            </v-btn>
+            <v-btn variant="outlined" prepend-icon="mdi-refresh" @click="handleRefresh">
+              Refresh
+              <v-tooltip activator="parent">Reload project from disk (force refresh cache)</v-tooltip>
             </v-btn>
             <v-btn variant="outlined" color="success" prepend-icon="mdi-content-save" :disabled="!hasUnsavedChanges" @click="handleSave">
               Save Changes
@@ -232,7 +223,7 @@
                       </div>
                       
                       <!-- Node/Edge Counts -->
-                      <div class="d-flex gap-1">
+                      <div class="d-flex gap-1 mb-2">
                         <v-chip size="x-small" variant="flat" color="primary">
                           <v-icon icon="mdi-cube-outline" size="x-small" class="mr-1" />
                           {{ depStatistics.nodeCount }}
@@ -241,6 +232,14 @@
                           <v-icon icon="mdi-arrow-right" size="x-small" class="mr-1" />
                           {{ depStatistics.edgeCount }}
                         </v-chip>
+                      </div>
+                      
+                      <!-- Visual Indicators Legend -->
+                      <div class="text-caption text-medium-emphasis">
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 12px; height: 12px; border: 2px double #4CAF50; border-radius: 50%;" />
+                          <span style="font-size: 10px;">Materialized</span>
+                        </div>
                       </div>
                     </v-card-text>
                   </v-card>
@@ -323,6 +322,7 @@
               :y="contextMenuY"
               :entity-name="contextMenuEntity"
               :task-status="taskStatusStore.getEntityStatus(contextMenuEntity || '')"
+              @edit="handleContextMenuEdit"
               @preview="handleContextMenuPreview"
               @duplicate="handleContextMenuDuplicate"
               @delete="handleContextMenuDelete"
@@ -579,7 +579,12 @@
       v-if="entityStore.overlayEntityName"
       v-model="entityStore.showEditorOverlay"
       :project-name="projectName"
-      :entity="entityStore.entities.find((e) => e.name === entityStore.overlayEntityName) || null"
+      :entity="
+        entityStore.entities.find((e) => e.name === entityStore.overlayEntityName) || {
+          name: entityStore.overlayEntityName,
+          entity_data: {},
+        }
+      "
       :initial-tab="entityStore.overlayInitialTab"
       mode="edit"
       @saved="handleOverlayEntitySaved"
@@ -609,6 +614,7 @@ import { useProjects, useEntities, useValidation, useDependencies, useCytoscape 
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
 import { useEntityStore } from '@/stores/entity'
+import { useProjectStore } from '@/stores'
 import { useTaskStatusStore } from '@/stores/taskStatus'
 import type { CustomGraphLayout } from '@/types'
 import type { TaskFilter } from '@/components/dependencies/TaskFilterDropdown.vue'
@@ -649,7 +655,7 @@ const {
   markAsChanged,
 } = useProjects({ autoFetch: false })
 
-const { entityCount, entities } = useEntities({
+const { entityCount, entities, fetch: fetchEntities } = useEntities({
   projectName: projectName.value,
   autoFetch: true,
 })
@@ -720,7 +726,8 @@ const savingLayout = ref(false)
 const displayOptions = ref<GraphDisplayOptions>({
   nodeLabels: true,
   edgeLabels: true,
-  sourceNodes: false,
+  showSources: false,
+  showSourceEntities: false,
 })
 const highlightCycles = ref(true)
 const showDetailsDrawer = ref(false)
@@ -804,6 +811,7 @@ const isSelectedNodeDataSource = computed(() => {
 
 // Cytoscape integration
 const entityStore = useEntityStore()
+const projectStore = useProjectStore()
 const taskStatusStore = useTaskStatusStore()
 
 // Task completion stats
@@ -844,7 +852,8 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
   showNodeLabels: computed(() => displayOptions.value.nodeLabels),
   showEdgeLabels: computed(() => displayOptions.value.edgeLabels),
   highlightCycles,
-  showSourceNodes: computed(() => displayOptions.value.sourceNodes),
+  showSources: computed(() => displayOptions.value.showSources),
+  showSourceEntities: computed(() => displayOptions.value.showSourceEntities),
   cycles,
   isDark,
   onNodeClick: async (nodeId: string) => {
@@ -951,10 +960,6 @@ async function handleClearCustomLayout() {
 }
 
 // Methods
-function handleTestRun() {
-  window.location.href = `/test-run/${projectName.value}`
-}
-
 async function handleValidate() {
   try {
     await validate(projectName.value)
@@ -967,10 +972,11 @@ async function handleValidate() {
   }
 }
 
-async function handleDataValidate(project?: any) {
+async function handleDataValidate(config?: any) {
   try {
-    const entityNames = project?.entities
-    await validateData(projectName.value, entityNames)
+    const entityNames = config?.entities
+    const validationMode = config?.validationMode || 'sample'
+    await validateData(projectName.value, entityNames, validationMode)
     // Refresh task status after validation
     await taskStatusStore.refresh()
     successMessage.value = 'Data validation completed'
@@ -1071,7 +1077,29 @@ async function handleSave() {
 async function handleRefresh() {
   clearError()
   if (projectName.value) {
-    await select(projectName.value)
+    try {
+      await projectStore.refreshProject(projectName.value)
+      // Also refresh entity list to sync with updated project
+      await fetchEntities()
+
+      // Keep dependency graph in sync with refreshed project.
+      // If the graph tab is visible, re-render after data refresh.
+      try {
+        await fetchDependencies(projectName.value)
+        if (activeTab.value === 'dependencies') {
+          await nextTick()
+          renderGraph()
+        }
+      } catch (depErr) {
+        console.warn('Project refreshed but failed to refresh dependencies:', depErr)
+      }
+
+      successMessage.value = 'Project refreshed from disk'
+      showSuccessSnackbar.value = true
+    } catch (err: any) {
+      // Error will be shown from projectStore.error
+      console.error('Failed to refresh project:', err)
+    }
   }
 }
 
@@ -1105,10 +1133,15 @@ function handleOverlayClose(isOpen: boolean) {
 }
 
 // Context menu handlers
+function handleContextMenuEdit(entityName: string) {
+  console.debug('[ProjectDetailView] Context menu edit for entity:', entityName)
+  entityStore.openEditorOverlay(entityName, 'form')
+}
+
 async function handleContextMenuPreview(entityName: string) {
   console.debug('[ProjectDetailView] Preview entity:', entityName)
-  // Navigate to test run with this entity selected
-  window.location.href = `/test-run/${projectName.value}?entity=${entityName}`
+  // Open entity editor to preview data
+  entityStore.openEditorOverlay(entityName, 'form')
 }
 
 async function handleContextMenuDuplicate(entityName: string) {
@@ -1654,6 +1687,28 @@ watch(activeTab, async (newTab) => {
     router.replace({ query: { ...route.query, tab: newTab } })
   }
 })
+
+// Watch for project changes to reload YAML when project is externally refreshed
+// This keeps YAML in sync when entities are created/updated/deleted
+watch(
+  () => projectStore.selectedProject,
+  async (newProject, oldProject) => {
+    // Only reload if:
+    // 1. On YAML tab
+    // 2. No local unsaved changes
+    // 3. Project actually changed (not just initial load)
+    if (
+      activeTab.value === 'yaml' &&
+      !yamlHasChanges.value &&
+      oldProject !== null &&
+      newProject !== null &&
+      newProject !== oldProject
+    ) {
+      await handleLoadYaml()
+    }
+  },
+  { deep: false } // Shallow watch - we only care if the project object reference changes
+)
 
 // Watch for entity query parameter (from dependency graph deep links)
 watch(

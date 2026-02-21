@@ -24,6 +24,7 @@ class FieldMetadata:
         max_value: Maximum value for integer fields
         placeholder: Example value to show in UI
         aliases: Alternative names for the field
+        extensions: Supported file extensions for file_path fields (e.g., ['csv', 'tsv'])
     """
 
     name: str
@@ -35,6 +36,7 @@ class FieldMetadata:
     max_value: int | None = None
     placeholder: str = ""
     aliases: list[str] | None = None
+    extensions: list[str] | None = None
 
 
 @dataclass

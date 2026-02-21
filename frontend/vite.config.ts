@@ -19,6 +19,21 @@ export default defineConfig({
       dts: 'src/components.d.ts',
     }),
   ],
+  worker: {
+    format: 'es',
+  },
+  optimizeDeps: {
+    exclude: ['monaco-editor', 'monaco-yaml'],
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          monaco: ['monaco-editor'],
+        },
+      },
+    },
+  },
   css: {
     preprocessorOptions: {
       scss: {

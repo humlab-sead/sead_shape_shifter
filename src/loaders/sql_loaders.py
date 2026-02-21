@@ -3,7 +3,7 @@ import os
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar, Generator, Optional
+from typing import Any, ClassVar, Generator, Optional
 
 import jaydebeapi
 import jpype
@@ -12,14 +12,12 @@ from loguru import logger
 from sqlalchemy import create_engine
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
+from src.model import DataSourceConfig, TableConfig
 from src.transforms.utility import add_system_id
 from src.utility import create_db_uri as create_pg_uri
 from src.utility import dotget
 
 from .base_loader import ConnectTestResult, DataLoader, DataLoaders, LoaderType
-
-if TYPE_CHECKING:
-    from src.model import DataSourceConfig, TableConfig
 
 
 def init_jvm_for_ucanaccess(ucanaccess_dir: str = "lib/ucanaccess") -> None:
@@ -94,6 +92,7 @@ class CoreSchema:
     @dataclass
     class TableSchema:
         table_name: str
+        schema_name: Optional[str]
         columns: list["CoreSchema.ColumnMetadata"]
         primary_keys: list[str]
         indexes: list[str]
@@ -126,11 +125,49 @@ class SqlLoader(DataLoader):
     def options(self) -> dict[str, Any]:
         return self.data_source.options if self.data_source else {}
 
+    def _validate_columns(self, table_cfg: TableConfig, data: pd.DataFrame, auto_detect_columns: bool) -> None:
+
+        if table_cfg.unnest:
+            logger.warning(f"[{table_cfg.entity_name}] NOT IMPLEMENTED VALIDATION: Unnesting of SQL data, skipping column validation.")
+            return
+
+        if auto_detect_columns:
+
+            if table_cfg.columns:
+                logger.warning("Auto-detect columns is enabled, but found configured columns. Overriding configured columns.")
+
+            missing_keys: list[str] = [k for k in table_cfg.keys if k not in data.columns]
+
+            if missing_keys:
+                raise ValueError(f"Auto-detect columns is enabled, but key column(s) {missing_keys} are missing in the data.")
+
+            return
+
+        if not table_cfg.columns:
+            raise ValueError(f"[{table_cfg.entity_name}] No columns specified in configuration, and auto-detect is disabled.")
+
+        if len(table_cfg.columns) != len(data.columns):
+            raise ValueError(
+                f"[{table_cfg.entity_name}] Configured columns length ({len(table_cfg.columns)}) does not match "
+                f"query result columns length ({len(data.columns)})."
+            )
+
+        if len(set(table_cfg.columns)) != len(table_cfg.columns):
+            raise ValueError(f"[{table_cfg.entity_name}] Configured columns contain duplicates, which is not allowed.")
+
+        missing_keys: list[str] = [k for k in table_cfg.keys if k not in table_cfg.columns]
+        if missing_keys:
+            raise ValueError(
+                f"Key column(s) {missing_keys} must be included in the specified columns for entity '{table_cfg.entity_name}'."
+            )
+
+        # Note: In manual mode we rename by position (data.columns = table_cfg.columns).
+        # We only need to ensure counts match (validated above) and that required key columns
+        # are included in the configured names.
+
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         """Load SQL data entity based on configuration.
-        Note: All columns in "keys" and "columns" must be present in the query result!
-              The "columns" can include identity columns like "system_id" and "public_id" and these are
-              ignored unless they exist in read data.
+        Note: Columns are auto-detected from the query result if not specified in configuration.
               The returned column order will be as defined in columns.
         """
 
@@ -139,29 +176,17 @@ class SqlLoader(DataLoader):
 
         data: pd.DataFrame = await self.read_sql(sql=table_cfg.query)  # type: ignore[arg-type]
 
-        # auto_detect_columns will populate columns from SQL result if not defined
-        if not table_cfg.keys_and_columns and table_cfg.auto_detect_columns:
+        auto_detect_columns: bool = True
+        if table_cfg.auto_detect_columns is not None:
+            auto_detect_columns = bool(table_cfg.auto_detect_columns)
+
+        self._validate_columns(table_cfg, data, auto_detect_columns)
+
+        if auto_detect_columns:
             table_cfg.columns = list(data.columns)
-
-        # expected columns are the configured keys/columns excluding any unnest or identity columns
-        computed_columns: set[str] = table_cfg.unnest_columns | (set(table_cfg.identity_columns) - set(data.columns))
-        expected_columns: list[str] = [col for col in table_cfg.keys_and_columns if col not in computed_columns]
-
-        # If public_id is in data we need to include it in expected columns
-        if table_cfg.public_id and table_cfg.public_id in data.columns:
-            expected_columns.append(table_cfg.public_id)
-
-        if table_cfg.check_column_names:
-            # Expected columns are the configured keys/columns excluding any computed columns,
-            if set(data.columns) != set(expected_columns):
-                raise ValueError(f"Data for entity '{entity_name}' has different columns compared to configuration")
         else:
-            if len(data.columns.tolist()) != len(expected_columns):
-                raise ValueError(f"Data for entity '{entity_name}' has different number of columns compared to configuration")
-            # Use user-defined columnn names instead of SQL result column names
-            data.columns = expected_columns
+            data.columns = table_cfg.columns
 
-        # Add system_id if configured (always "system_id" column name)
         if table_cfg.system_id and table_cfg.system_id not in data.columns:
             data = add_system_id(data, table_cfg.system_id)
 
@@ -170,14 +195,21 @@ class SqlLoader(DataLoader):
     def qualify_name(self, *, schema: str | None, table: str) -> str:
         """Return fully qualified table name."""
         if schema:
-            return f'"{schema}"."{table}"'
-        return f'"{table}"'
+            return f"{self.quote_name(schema)}.{self.quote_name(table)}"
+        return self.quote_name(table)
+
+    def quote_name(self, name: str) -> str:
+        """Return quoted identifier."""
+        return f'"{name}"'
 
     async def load_table(
         self, *, table_name: str, limit: int | None = None, offset: int | None = None, **kwargs  # pylint: disable=unused-argument
     ) -> pd.DataFrame:
         """Load entire table as DataFrame."""
-        sql: str = f"select * from {table_name} {f'limit {limit}' if limit else ''} {f'offset {offset}' if offset else ''} ;"
+        qualified_table_name: str = self.qualify_name(schema=kwargs.get("schema"), table=table_name)
+        limit_clause: str = f"LIMIT {limit}" if limit else ""
+        offset_clause: str = f"OFFSET {offset}" if offset else ""
+        sql: str = f"select * from {qualified_table_name} {limit_clause} {offset_clause} ;"
         data: pd.DataFrame = await self.read_sql(sql=sql)
         return data
 
@@ -215,7 +247,11 @@ class SqlLoader(DataLoader):
     async def get_table_row_count(self, table_name: str, schema: Optional[str] = None) -> Optional[int]:
         """Get approximate row count for a table."""
         try:
-            qualified_table: str = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
+            if schema:
+                # For databases that support schemas, qualify the table name
+                qualified_table: str = f"{self.quote_name(schema)}.{self.quote_name(table_name)}"
+            else:
+                qualified_table: str = self.quote_name(table_name)
             query: str = f"SELECT COUNT(*) as count FROM {qualified_table}"
             return await self.execute_scalar_sql(query)
         except Exception as e:  # pylint: disable=broad-except
@@ -231,7 +267,6 @@ class SqlLoader(DataLoader):
         Returns:
             Test result
         """
-        from src.model import TableConfig  # Avoid circular import;  pylint: disable=import-outside-toplevel
 
         start_time: float = time.time()
         result: ConnectTestResult = ConnectTestResult.create_empty()
@@ -307,6 +342,7 @@ class SqliteLoader(SqlLoader):
                 description="Path to .db or .sqlite file",
                 placeholder="./data/database.db",
                 aliases=["file", "filepath", "path"],
+                extensions=["db", "sqlite", "sqlite3"],
             ),
         ],
     )
@@ -367,6 +403,7 @@ class SqliteLoader(SqlLoader):
 
         return CoreSchema.TableSchema(
             table_name=table_name,
+            schema_name=None,
             columns=columns,
             primary_keys=primary_keys,
             row_count=row_count,
@@ -587,6 +624,7 @@ class PostgresSqlLoader(SqlLoader):
 
         return CoreSchema.TableSchema(
             table_name=table_name,
+            schema_name=schema,
             columns=columns,
             primary_keys=primary_keys,
             foreign_keys=foreign_keys,
@@ -614,6 +652,7 @@ class UCanAccessSqlLoader(SqlLoader):
                 description="Path to .mdb or .accdb file",
                 placeholder="./projects/database.mdb",
                 aliases=["file", "filepath", "path"],
+                extensions=["mdb", "accdb"],
             ),
             FieldMetadata(
                 name="ucanaccess_dir",
@@ -685,12 +724,15 @@ class UCanAccessSqlLoader(SqlLoader):
         **kwargs,  # pylint: disable=unused-argument
     ) -> pd.DataFrame:
         """Load entire table as DataFrame."""
-        sql: str = f"select {f'top {limit}' if limit else ''} * from {table_name};"
+        sql: str = f"select {f'top {limit}' if limit else ''} * from {self.quote_name(table_name)};"
         data: pd.DataFrame = await self.read_sql(sql=sql)
         return data
 
     def qualify_name(self, *, schema: str | None, table: str) -> str:  # pylint: disable=unused-argument
         return f"[{table}]"
+
+    def quote_name(self, name: str) -> str:
+        return f"[{name}]"
 
     @contextmanager
     def _cursor(self, conn: jaydebeapi.Connection) -> Generator[Any, Any, None]:
@@ -773,6 +815,7 @@ class UCanAccessSqlLoader(SqlLoader):
             row_count: int | None = await self.get_table_row_count(table_name, None)
             return CoreSchema.TableSchema(
                 table_name=table_name,
+                schema_name=None,
                 columns=columns,
                 primary_keys=primary_keys,
                 row_count=row_count,
@@ -840,4 +883,4 @@ class UCanAccessSqlLoader(SqlLoader):
 
     def get_test_query(self, table_name: str, limit: int) -> str:
         """Get a test query for the data source, if applicable."""
-        return f"SELECT TOP {limit} * FROM {table_name};"
+        return f"SELECT TOP {limit} * FROM {self.quote_name(table_name)};"

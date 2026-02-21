@@ -6,13 +6,9 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
+from backend.app import models as dto
 from backend.app.core.config import settings
 from backend.app.main import app
-from backend.app.models import (
-    EntityReconciliationSpec,
-    ReconciliationConfig,
-    ReconciliationMapping,
-)
 from backend.app.models.reconciliation import ReconciliationRemote
 from backend.app.services import project_service, validation_service, yaml_service
 
@@ -39,6 +35,9 @@ def reset_services():
 @pytest.fixture
 def sample_project(tmp_path):
     """Create sample project configuration."""
+    project_dir = tmp_path / "test_project"
+    project_dir.mkdir(exist_ok=True)
+
     project_data = {
         "metadata": {
             "type": "shapeshifter-project",
@@ -62,7 +61,7 @@ def sample_project(tmp_path):
         },
     }
 
-    project_file = tmp_path / "test_project.yml"
+    project_file = project_dir / "shapeshifter.yml"
     with open(project_file, "w", encoding="utf-8") as f:
         yaml.dump(project_data, f)
 
@@ -72,12 +71,15 @@ def sample_project(tmp_path):
 @pytest.fixture
 def sample_recon_config(tmp_path):
     """Create sample reconciliation configuration."""
-    config = ReconciliationConfig(
+    project_dir = tmp_path / "test_project"
+    project_dir.mkdir(exist_ok=True)
+
+    config = dto.EntityResolutionCatalog(
         version="2.0",
         service_url="http://localhost:8000",
         entities={
             "site": {
-                "site_code": EntityReconciliationSpec(
+                "site_code": dto.EntityResolutionSet(
                     source=None,
                     property_mappings={"latitude": "latitude", "longitude": "longitude"},
                     remote=ReconciliationRemote(service_type="site"),
@@ -85,22 +87,22 @@ def sample_recon_config(tmp_path):
                     review_threshold=0.70,
                     mapping=[],
                 ),
-                "site_name": EntityReconciliationSpec(
+                "site_name": dto.EntityResolutionSet(
                     source="another_entity",
                     property_mappings={},
                     remote=ReconciliationRemote(service_type="taxon"),
                     auto_accept_threshold=0.85,
                     review_threshold=0.60,
                     mapping=[
-                        ReconciliationMapping(source_value="test1", sead_id=1, confidence=0.98, notes="Auto-matched", **{}),
-                        ReconciliationMapping(source_value="test2", sead_id=2, confidence=0.85, notes="Auto-matched", **{}),
+                        dto.ResolvedEntityPair(source_value="test1", target_id=1, confidence=0.98, notes="Auto-matched", **{}),
+                        dto.ResolvedEntityPair(source_value="test2", target_id=2, confidence=0.85, notes="Auto-matched", **{}),
                     ],
                 ),
             }
         },
     )
 
-    config_file = tmp_path / "test_project-reconciliation.yml"
+    config_file = project_dir / "test_project-reconciliation.yml"
     with open(config_file, "w", encoding="utf-8") as f:
         yaml.dump(config.model_dump(exclude_none=True), f)
 
@@ -114,7 +116,7 @@ class TestListSpecifications:
         """Test listing specifications successfully."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.get("/api/v1/projects/test_project/reconciliation/specifications")
+        response = client.get("/api/v1/projects/test_project/reconciliation/mapping-registry")
 
         assert response.status_code == 200
         specs = response.json()
@@ -136,13 +138,13 @@ class TestListSpecifications:
         """Test listing when no specifications exist."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create empty recon config
-        config = ReconciliationConfig(version="2.0", service_url="http://localhost:8000", entities={})
-        config_file = tmp_path / "test_project-reconciliation.yml"
+        # Create empty recon config in nested project structure
+        config = dto.EntityResolutionCatalog(version="2.0", service_url="http://localhost:8000", entities={})
+        config_file = tmp_path / "test_project" / "test_project-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)
 
-        response = client.get("/api/v1/projects/test_project/reconciliation/specifications")
+        response = client.get("/api/v1/projects/test_project/reconciliation/mapping-registry")
 
         assert response.status_code == 200
         assert response.json() == []
@@ -151,7 +153,7 @@ class TestListSpecifications:
         """Test listing when no reconciliation config exists."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.get("/api/v1/projects/test_project/reconciliation/specifications")
+        response = client.get("/api/v1/projects/test_project/reconciliation/mapping-registry")
 
         # Service auto-creates empty config when none exists
         assert response.status_code == 200
@@ -161,7 +163,7 @@ class TestListSpecifications:
 class TestCreateSpecification:
     """Tests for POST /api/v1/reconcile/specifications endpoint."""
 
-    @patch("backend.app.services.reconciliation_service.ProjectMapper")
+    @patch("backend.app.services.reconciliation.service.ProjectMapper")
     def test_create_specification_success(self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
         """Test creating new specification."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -184,14 +186,14 @@ class TestCreateSpecification:
             },
         }
 
-        response = client.post("/api/v1/projects/test_project/reconciliation/specifications", json=payload)
+        response = client.post("/api/v1/projects/test_project/reconciliation/mapping-registry", json=payload)
 
         assert response.status_code == 201
         config = response.json()
         assert "sample" in config["entities"]
         assert "sample_type" in config["entities"]["sample"]
 
-    @patch("backend.app.services.reconciliation_service.ProjectMapper")
+    @patch("backend.app.services.reconciliation.service.ProjectMapper")
     def test_create_specification_duplicate(self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
         """Test creating duplicate specification fails."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -213,12 +215,12 @@ class TestCreateSpecification:
             },
         }
 
-        response = client.post("/api/v1/projects/test_project/reconciliation/specifications", json=payload)
+        response = client.post("/api/v1/projects/test_project/reconciliation/mapping-registry", json=payload)
 
         assert response.status_code == 400
         assert "already exists" in response.json()["detail"]
 
-    @patch("backend.app.services.reconciliation_service.ProjectMapper")
+    @patch("backend.app.services.reconciliation.service.ProjectMapper")
     def test_create_specification_invalid_entity(
         self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config
     ):
@@ -242,7 +244,7 @@ class TestCreateSpecification:
             },
         }
 
-        response = client.post("/api/v1/projects/test_project/reconciliation/specifications", json=payload)
+        response = client.post("/api/v1/projects/test_project/reconciliation/mapping-registry", json=payload)
 
         assert response.status_code == 400
         assert "does not exist" in response.json()["detail"]
@@ -263,7 +265,7 @@ class TestUpdateSpecification:
             "review_threshold": 0.60,
         }
 
-        response = client.put("/api/v1/projects/test_project/reconciliation/specifications/site/site_code", json=payload)
+        response = client.put("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_code", json=payload)
 
         assert response.status_code == 200
         config = response.json()
@@ -285,7 +287,7 @@ class TestUpdateSpecification:
             "review_threshold": 0.75,
         }
 
-        response = client.put("/api/v1/projects/test_project/reconciliation/specifications/site/site_name", json=payload)
+        response = client.put("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_name", json=payload)
 
         assert response.status_code == 200
         spec = response.json()["entities"]["site"]["site_name"]
@@ -304,7 +306,7 @@ class TestUpdateSpecification:
             "review_threshold": 0.70,
         }
 
-        response = client.put("/api/v1/projects/test_project/reconciliation/specifications/site/nonexistent", json=payload)
+        response = client.put("/api/v1/projects/test_project/reconciliation/mapping-registry/site/nonexistent", json=payload)
 
         assert response.status_code == 404
 
@@ -316,7 +318,7 @@ class TestDeleteSpecification:
         """Test deleting specification without mappings."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.delete("/api/v1/projects/test_project/reconciliation/specifications/site/site_code")
+        response = client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_code")
 
         assert response.status_code == 200
         config = response.json()
@@ -328,16 +330,17 @@ class TestDeleteSpecification:
         """Test deleting specification with mappings fails without force."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.delete("/api/v1/projects/test_project/reconciliation/specifications/site/site_name")
+        response = client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_name")
 
         assert response.status_code == 400
-        assert "2 existing mappings" in response.json()["detail"]
+        assert "Cannot delete existing mapping" in response.json()["detail"]
+        assert "from catalog" in response.json()["detail"]
 
     def test_delete_specification_with_mappings_force(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
         """Test force deleting specification with mappings succeeds."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.delete("/api/v1/projects/test_project/reconciliation/specifications/site/site_name?force=true")
+        response = client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_name?force=true")
 
         assert response.status_code == 200
         config = response.json()
@@ -347,7 +350,7 @@ class TestDeleteSpecification:
         """Test deleting non-existent specification fails."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.delete("/api/v1/projects/test_project/reconciliation/specifications/site/nonexistent")
+        response = client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/nonexistent")
 
         assert response.status_code == 404
 
@@ -355,7 +358,7 @@ class TestDeleteSpecification:
 class TestGetAvailableFields:
     """Tests for GET /api/v1/reconcile/available-fields/{entity_name} endpoint."""
 
-    @patch("backend.app.services.reconciliation_service.ShapeShiftService")
+    @patch("backend.app.services.reconciliation.service.ShapeShiftService")
     async def test_get_available_fields_success(
         self, mock_shapeshift, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config
     ):
@@ -389,7 +392,7 @@ class TestGetMappingCount:
         """Test getting mapping count."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.get("/api/v1/projects/test_project/reconciliation/specifications/site/site_name/mapping-count")
+        response = client.get("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_name/mapping-count")
 
         assert response.status_code == 200
         result = response.json()
@@ -399,7 +402,7 @@ class TestGetMappingCount:
         """Test getting mapping count when no mappings exist."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.get("/api/v1/projects/test_project/reconciliation/specifications/site/site_code/mapping-count")
+        response = client.get("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_code/mapping-count")
 
         assert response.status_code == 200
         result = response.json()
@@ -409,6 +412,6 @@ class TestGetMappingCount:
         """Test getting mapping count for non-existent specification."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.get("/api/v1/projects/test_project/reconciliation/specifications/site/nonexistent/mapping-count")
+        response = client.get("/api/v1/projects/test_project/reconciliation/mapping-registry/site/nonexistent/mapping-count")
 
         assert response.status_code == 404

@@ -21,31 +21,21 @@ export const useEntityStore = defineStore('entity', () => {
   // Cross-store access
   const projectStore = useProjectStore()
 
-  function syncProjectEntity(projectName: string, entity: EntityResponse) {
-    if (projectStore.selectedProject?.metadata?.name !== projectName) return
-
-    const nextEntities: Record<string, Record<string, unknown>> = {
-      ...(projectStore.selectedProject.entities || {}),
-      [entity.name]: entity.entity_data,
-    }
-
-    projectStore.selectedProject = {
-      ...projectStore.selectedProject,
-      entities: nextEntities,
-    }
+  // Diagnostic logging helper for state sync debugging
+  function logState(action: string, details: Record<string, unknown> = {}) {
+    console.info(`[EntityStore] ${action}`, {
+      ...details,
+      currentProject: currentProjectName.value,
+      entityCount: entities.value.length,
+      entityNames: entities.value.map(e => e.name),
+      timestamp: new Date().toISOString(),
+    })
   }
 
-  function removeProjectEntity(projectName: string, entityName: string) {
-    if (projectStore.selectedProject?.metadata?.name !== projectName) return
-
-    const currentEntities = projectStore.selectedProject.entities || {}
-    if (!(entityName in currentEntities)) return
-
-    const { [entityName]: _removed, ...rest } = currentEntities
-
-    projectStore.selectedProject = {
-      ...projectStore.selectedProject,
-      entities: rest,
+  // Refresh project from disk to ensure in-memory state matches saved state
+  async function refreshProjectState(projectName: string) {
+    if (projectStore.selectedProject?.metadata?.name === projectName) {
+      await projectStore.refreshProject(projectName)
     }
   }
 
@@ -92,11 +82,13 @@ export const useEntityStore = defineStore('entity', () => {
 
   // Actions
   async function fetchEntities(projectName: string) {
+    logState('fetchEntities:before', { projectName })
     loading.value = true
     error.value = null
     currentProjectName.value = projectName
     try {
       entities.value = await api.entities.list(projectName)
+      logState('fetchEntities:after', { projectName })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch entities'
       throw err
@@ -121,6 +113,7 @@ export const useEntityStore = defineStore('entity', () => {
   }
 
   async function createEntity(projectName: string, data: EntityCreateRequest) {
+    logState('createEntity:before', { projectName, entityName: data.name })
     loading.value = true
     error.value = null
     try {
@@ -128,7 +121,9 @@ export const useEntityStore = defineStore('entity', () => {
       entities.value.push(entity)
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
-      syncProjectEntity(projectName, entity)
+      
+      logState('createEntity:after', { projectName, entityName: data.name })
+      
       return entity
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create entity'
@@ -152,7 +147,11 @@ export const useEntityStore = defineStore('entity', () => {
 
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
-      syncProjectEntity(projectName, entity)
+      
+      // Note: Backend already persists entity to disk.
+      // Don't call refreshProjectState() here as it causes component recreation
+      // which resets dialog state (closes the entity editor).
+      
       return entity
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update entity'
@@ -163,6 +162,7 @@ export const useEntityStore = defineStore('entity', () => {
   }
 
   async function deleteEntity(projectName: string, entityName: string) {
+    logState('deleteEntity:before', { projectName, entityName })
     loading.value = true
     error.value = null
     try {
@@ -171,7 +171,7 @@ export const useEntityStore = defineStore('entity', () => {
       if (selectedEntity.value?.name === entityName) {
         selectedEntity.value = null
       }
-      removeProjectEntity(projectName, entityName)
+      logState('deleteEntity:after', { projectName, entityName })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete entity'
       throw err
@@ -189,6 +189,7 @@ export const useEntityStore = defineStore('entity', () => {
   }
 
   function reset() {
+    logState('reset:before')
     entities.value = []
     selectedEntity.value = null
     currentProjectName.value = null
@@ -197,6 +198,7 @@ export const useEntityStore = defineStore('entity', () => {
     hasUnsavedChanges.value = false
     showEditorOverlay.value = false
     overlayEntityName.value = null
+    logState('reset:after')
   }
   
   // Overlay management

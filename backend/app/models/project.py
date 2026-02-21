@@ -1,7 +1,7 @@
 """Pydantic models for project."""
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_serializer
 
@@ -20,6 +20,7 @@ class ProjectFileInfo(BaseModel):
 
     name: str = Field(..., description="Filename")
     path: str = Field(..., description="Path relative to server root")
+    location: Literal["global", "local"] = Field(..., description="File location: 'global' (shared) or 'local' (project-specific)")
     size_bytes: int = Field(..., description="File size in bytes")
     modified_at: float = Field(..., description="Last modified timestamp (Unix timestamp)")
 
@@ -102,3 +103,8 @@ class Project(BaseModel):
     def unresolved_directives(self) -> list[str]:
         """Check if the project has any unresolved references."""
         return Config.find_unresolved_directives(self.entities) + Config.find_unresolved_directives(self.options)
+
+    @property
+    def data_sources(self) -> dict[str, Any]:
+        """Get data source configurations from options."""
+        return self.options.get("data_sources", {}) or {}
