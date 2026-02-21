@@ -130,3 +130,20 @@ watch(
   { deep: true }
 )
 </script>
+
+<style scoped>
+/* Component-specific dense input styling */
+:deep(.v-field__input) {
+  min-height: max(40px, 1.5rem + var(--v-field-input-padding-top) + var(--v-field-input-padding-bottom)) !important;
+}
+
+:deep(.v-field__field) {
+  --v-field-padding-top: 8px;
+  --v-field-padding-bottom: 8px;
+}
+
+/* Reduce spacing between fields */
+:deep(.v-input) {
+  margin-bottom: 12px;
+}
+</style>
