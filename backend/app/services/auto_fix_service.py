@@ -469,9 +469,7 @@ class AutoFixService:
                 val = row[system_id_index]
                 if val is not None:
                     try:
-                        id_num = int(val)
-                        if id_num > max_id:
-                            max_id = id_num
+                        max_id = max(max_id, int(val))
                     except (ValueError, TypeError):
                         pass
 
@@ -500,8 +498,7 @@ class AutoFixService:
                     try:
                         id_num = int(val)
                         seen_ids.add(id_num)
-                        if id_num > max_id:
-                            max_id = id_num
+                        max_id = max(max_id, id_num)
                     except (ValueError, TypeError):
                         pass
 
