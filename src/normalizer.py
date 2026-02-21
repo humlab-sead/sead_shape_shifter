@@ -185,15 +185,12 @@ class ShapeShifter:
 
             self.retry_linking()
 
+            # Verify extra_columns were evaluated for this entity
+            if table_cfg.extra_columns:
+                self.extra_col_evaluator.verify_extra_columns(self.table_store[entity], table_cfg.extra_columns, entity)
+
         if self.linker.deferred_tracker.deferred:
             logger.warning(f"Entities with unresolved deferred links after normalization: {self.linker.deferred_tracker.deferred}")
-
-        # Verify all extra_columns were evaluated (per-entity warnings)
-        for entity_name in self.project.table_names:
-            table_cfg = self.project.get_table(entity_name)
-            if table_cfg.extra_columns:
-                df = self.table_store[entity_name]
-                self.extra_col_evaluator.verify_extra_columns(df, table_cfg.extra_columns, entity_name)
 
         # Add identity columns to all entities after normalization
         # This ensures materialized entities get proper identity columns
