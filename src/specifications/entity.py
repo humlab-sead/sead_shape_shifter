@@ -186,8 +186,10 @@ class FixedEntitySystemIdSpecification(ProjectSpecification):
 
         # Validate: No null/None values
         null_count = sum(
-            1 for val in system_id_values if val is None or (isinstance(val, float) and val != val)
-        )  # pylint: disable=comparison-with-itself
+            1
+            for val in system_id_values
+            if val is None or (isinstance(val, float) and val != val)  # pylint: disable=comparison-with-itself
+        )
         if null_count > 0:
             self.add_error(
                 f"Entity '{entity_name}': system_id column has {null_count} null value(s). All system_id values must be present.",
@@ -198,8 +200,10 @@ class FixedEntitySystemIdSpecification(ProjectSpecification):
 
         # Filter out nulls for uniqueness/type checks
         non_null_values = [
-            val for val in system_id_values if val is not None and not (isinstance(val, float) and val != val)
-        ]  # pylint: disable=comparison-with-itself
+            val
+            for val in system_id_values
+            if val is not None and not (isinstance(val, float) and val != val)  # pylint: disable=comparison-with-itself
+        ]
 
         if non_null_values:
             # Validate: All values are positive integers
