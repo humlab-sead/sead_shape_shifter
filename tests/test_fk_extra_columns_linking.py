@@ -13,6 +13,8 @@ import pytest
 from src.model import ShapeShiftProject
 from src.transforms.link import ForeignKeyLinker
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def sample_project_config():
