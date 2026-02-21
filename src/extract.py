@@ -41,14 +41,8 @@ class SubsetService:
         *,
         drop_empty: None | bool | list[str] | dict[str, Any] = None,
         raise_if_missing: bool = True,
-        deferred_output: dict[str, dict[str, Any]] | None = None,
     ) -> pd.DataFrame:
-        """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
-
-        Args:
-            deferred_output: Optional dict to receive deferred extra_columns when defer_missing=True.
-                When provided, deferred extra_columns are stored here by entity_name.
-        """
+        """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling."""
         if source is None:
             raise ValueError("Source DataFrame must be provided")
 
