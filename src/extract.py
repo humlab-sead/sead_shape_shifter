@@ -136,9 +136,7 @@ class SubsetService:
         columns = unique(columns)
         extra_columns = extra_columns or {}
 
-        # For backward compatibility: still use old split method to determine helper columns
-        # But we'll use the new evaluator for actual evaluation
-        extra_source_columns, extra_constant_columns = self._split_extra_columns(source, extra_columns, case_sensitive=False)
+        extra_source_columns, _ = self.extra_col_evaluator.split_extra_columns(source, extra_columns, case_sensitive=False)
 
         # Columns we need to read from source to build the result
         required_source_cols: set[str] = set(columns) | set(extra_source_columns.values())
@@ -187,26 +185,6 @@ class SubsetService:
             result = apply_replacements(result, replacements=replacements, entity_name=entity_name)
 
         return result
-
-    def _split_extra_columns(
-        self, source: pd.DataFrame, extra_columns: dict[str, Any], case_sensitive: bool = False
-    ) -> tuple[dict[str, str], dict[str, Any]]:
-        """Split extra columns into those that copy existing source columns and those that are constants."""
-        source_columns: dict[str, str]
-        if not case_sensitive:
-            # Convert column names to strings to handle NaN/float columns from Excel
-            source_columns_lower: dict[str, str] = {str(col).lower(): col for col in source.columns if isinstance(col, str)}
-            source_columns = {
-                k: source_columns_lower[v.lower()]
-                for k, v in extra_columns.items()
-                if isinstance(v, str) and v.lower() in source_columns_lower
-            }
-        else:
-            source_columns = {k: v for k, v in extra_columns.items() if isinstance(v, str) and v in source.columns}
-
-        constant_columns: dict[str, Any] = {new_name: value for new_name, value in extra_columns.items() if new_name not in source_columns}
-
-        return source_columns, constant_columns
 
     def _check_if_missing_requested_columns(
         self, source: pd.DataFrame, entity_name: str, raise_if_missing: bool, all_requested_columns: set[str]

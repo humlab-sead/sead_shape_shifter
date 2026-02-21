@@ -316,3 +316,24 @@ class ExtraColumnEvaluator:
             return False
 
         return True
+
+    @staticmethod
+    def split_extra_columns(
+        source: pd.DataFrame, extra_columns: dict[str, Any], case_sensitive: bool = False
+    ) -> tuple[dict[str, str], dict[str, Any]]:
+        """Split extra columns into those that copy existing source columns and those that are constants."""
+        source_columns: dict[str, str]
+        if not case_sensitive:
+            # Convert column names to strings to handle NaN/float columns from Excel
+            source_columns_lower: dict[str, str] = {str(col).lower(): col for col in source.columns if isinstance(col, str)}
+            source_columns = {
+                k: source_columns_lower[v.lower()]
+                for k, v in extra_columns.items()
+                if isinstance(v, str) and v.lower() in source_columns_lower
+            }
+        else:
+            source_columns = {k: v for k, v in extra_columns.items() if isinstance(v, str) and v in source.columns}
+
+        constant_columns: dict[str, Any] = {new_name: value for new_name, value in extra_columns.items() if new_name not in source_columns}
+
+        return source_columns, constant_columns
