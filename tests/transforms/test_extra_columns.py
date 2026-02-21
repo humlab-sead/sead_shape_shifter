@@ -537,3 +537,49 @@ class TestIdempotentEvaluation:
         # existing should be skipped, new should be added
         assert result["existing"].iloc[0] == "old"  # Not overwritten
         assert result["new"].iloc[0] == "added"
+
+
+class TestVerifyExtraColumns:
+    """Test verify_extra_columns method for validation."""
+
+    def test_verify_all_evaluated(self):
+        """Test verify returns True when all columns are evaluated."""
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"a": [1, 2], "from_a": ["1", "2"]})
+        extra_columns = {"from_a": "{a}"}
+        
+        result = evaluator.verify_extra_columns(df, extra_columns, "test")
+        
+        assert result is True
+
+    def test_verify_missing_columns(self):
+        """Test verify returns False and logs warning when columns are missing."""
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"a": [1, 2]})
+        extra_columns = {"from_a": "{a}", "from_b": "{b}"}
+        
+        # Should return False when columns are missing (warning is logged to stderr)
+        result = evaluator.verify_extra_columns(df, extra_columns, "test")
+        
+        assert result is False
+
+    def test_verify_no_extra_columns(self):
+        """Test verify returns True when no extra_columns configured."""
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"a": [1, 2]})
+        extra_columns = {}
+        
+        result = evaluator.verify_extra_columns(df, extra_columns, "test")
+        
+        assert result is True
+
+    def test_verify_partial_missing(self):
+        """Test verify detects partially missing columns."""
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"a": [1, 2], "from_a": ["1", "2"]})
+        extra_columns = {"from_a": "{a}", "from_b": "{b}", "from_c": "{c}"}
+        
+        # Should return False when some columns are missing
+        result = evaluator.verify_extra_columns(df, extra_columns, "test")
+        
+        assert result is False

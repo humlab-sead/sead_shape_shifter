@@ -301,3 +301,29 @@ class ExtraColumnEvaluator:
             logger.info(f"{entity_name}[extra_columns]: {', '.join(msg_parts)}")
         
         return result, deferred
+
+    def verify_extra_columns(self, df: pd.DataFrame, extra_columns: dict[str, Any], entity_name: str) -> bool:
+        """Verify all configured extra_columns have been evaluated.
+        
+        Logs a warning if any configured extra_columns are not in the DataFrame.
+        
+        Args:
+            df: DataFrame to check
+            extra_columns: Configured extra_columns dict
+            entity_name: Name of entity (for logging)
+            
+        Returns:
+            True if all extra_columns evaluated, False otherwise
+        """
+        if not extra_columns:
+            return True
+        
+        missing_columns = [col for col in extra_columns.keys() if col not in df.columns]
+        
+        if missing_columns:
+            logger.warning(
+                f"{entity_name}[extra_columns]: Unresolved columns after normalization: {missing_columns}"
+            )
+            return False
+        
+        return True

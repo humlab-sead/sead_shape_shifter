@@ -188,15 +188,12 @@ class ShapeShifter:
         if self.linker.deferred_tracker.deferred:
             logger.warning(f"Entities with unresolved deferred links after normalization: {self.linker.deferred_tracker.deferred}")
 
-        # Check for unresolved extra_columns (those not yet in DataFrame)
-        unresolved_entities = [
-            entity_name for entity_name in self.project.table_names
-            if self._get_unevaluated_extra_columns(entity_name)
-        ]
-        if unresolved_entities:
-            logger.warning(
-                f"Entities with unresolved extra_columns after normalization: {unresolved_entities}"
-            )
+        # Verify all extra_columns were evaluated (per-entity warnings)
+        for entity_name in self.project.table_names:
+            table_cfg = self.project.get_table(entity_name)
+            if table_cfg.extra_columns:
+                df = self.table_store[entity_name]
+                self.extra_col_evaluator.verify_extra_columns(df, table_cfg.extra_columns, entity_name)
 
         # Add identity columns to all entities after normalization
         # This ensures materialized entities get proper identity columns
@@ -223,33 +220,6 @@ class ShapeShifter:
         if has_duplicate_keys:
             # raise ValueError(f"{entity}[keys]: Duplicate keys found for keys {table_cfg.keys}.")
             logger.error(f"{entity}[keys]: DUPLICATE KEYS FOUND FOR KEYS {table_cfg.keys}.")
-
-    def _get_unevaluated_extra_columns(self, entity_name: str) -> dict[str, Any]:
-        """Get extra_columns that haven't been evaluated yet (not in DataFrame).
-        
-        Deferred/unevaluated columns are simply those configured in extra_columns
-        that don't yet exist in the entity's DataFrame.
-        
-        Args:
-            entity_name: Name of entity to check
-            
-        Returns:
-            Dict of {col: expr} for columns not yet in DataFrame
-        """
-        table_cfg: TableConfig = self.project.get_table(entity_name)
-        if not table_cfg.extra_columns:
-            return {}
-        
-        df: pd.DataFrame | None = self.table_store.get(entity_name)
-        if df is None:
-            return table_cfg.extra_columns  # Entity not processed yet, all are unevaluated
-        
-        # Unevaluated = configured but not in DataFrame
-        return {
-            col: expr 
-            for col, expr in table_cfg.extra_columns.items() 
-            if col not in df.columns
-        }
 
     def _evaluate_deferred_extra_columns(self, entity_name: str) -> None:
         """Re-evaluate deferred extra_columns for an entity after FK linking or unnesting.
