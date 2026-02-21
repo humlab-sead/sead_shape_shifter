@@ -113,7 +113,6 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
                     "tips": [
                         "Check server logs for details",
                         "Verify your request parameters are valid",
-                        "Try again in a few moments",
                     ],
                     "recoverable": False,
                     "context": {},
