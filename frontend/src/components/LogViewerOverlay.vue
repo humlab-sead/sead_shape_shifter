@@ -393,9 +393,9 @@ function stopResize() {
   document.removeEventListener('mouseup', stopResize)
 }
 
-// Load logs when dialog opens
+// Load logs when dialog opens (always refresh to show latest logs)
 watch(isOpen, (newValue) => {
-  if (newValue && logLines.value.length === 0) {
+  if (newValue) {
     refreshLogs()
   }
   if (!newValue) {
