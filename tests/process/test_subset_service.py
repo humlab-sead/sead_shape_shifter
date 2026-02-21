@@ -7,7 +7,7 @@ import pytest
 
 from src.extract import SubsetService
 from src.model import TableConfig
-from transforms.extra_columns import ExtraColumnEvaluator
+from src.transforms.extra_columns import ExtraColumnEvaluator
 
 ENTITY_NAME = "test_entity"
 
