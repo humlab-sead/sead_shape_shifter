@@ -7,7 +7,7 @@ from loguru import logger
 
 from backend.app.models.fix import FixResult, FixSuggestion
 from backend.app.models.project import Project
-from backend.app.models.validation import ValidationError, ValidationResult
+from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
 from backend.app.services.auto_fix_service import AutoFixService
 from backend.app.services.dependency_service import DependencyGraph, DependencyService, get_dependency_service
 from backend.app.services.project_service import ProjectService, get_project_service
@@ -19,7 +19,11 @@ router = APIRouter()
 
 @router.post("/projects/{name}/validate/data", response_model=ValidationResult)
 @handle_endpoint_errors
-async def validate_project_data(name: str, entity_names: list[str] | None = None) -> ValidationResult:
+async def validate_project_data(
+    name: str,
+    entity_names: list[str] | None = None,
+    validation_mode: DataValidationMode = DataValidationMode.SAMPLE,
+) -> ValidationResult:
     """
     Run data-aware validation on project.
 
@@ -32,15 +36,23 @@ async def validate_project_data(name: str, entity_names: list[str] | None = None
     Args:
         name: Project name
         entity_names: Optional list of entity names to validate (None = all entities)
+        validation_mode: Validation mode:
+            - SAMPLE: Fast validation using preview samples (up to 1000 rows per entity)
+            - COMPLETE: Full validation using complete normalized dataset (slower but comprehensive)
 
     Returns:
         Validation result with data-specific errors and warnings
     """
     validation_service = get_validation_service()
-    result = await validation_service.validate_project_data(name, entity_names)
+    result = await validation_service.validate_project_data(
+        name,
+        entity_names,
+        validation_mode=validation_mode,
+    )
 
     logger.info(
-        f"Data validation for '{name}' completed: " f"valid={result.is_valid}, errors={result.error_count}, warnings={result.warning_count}"
+        f"Data validation for '{name}' completed (mode={validation_mode.value}): "
+        f"valid={result.is_valid}, errors={result.error_count}, warnings={result.warning_count}"
     )
     return result
 

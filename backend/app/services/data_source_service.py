@@ -129,16 +129,21 @@ class DataSourceService:
 
         return result
 
-    def get_data_source(self, filename: str | Path) -> DataSourceConfig | None:
-        """Get a specific data source by filename.
+    def load_data_source(self, source: str | Path | dict[str, Any]) -> DataSourceConfig | None:
+        """Load a specific data source by filename.
+           If it's a dict, then assume it's already the config.
+           If it's a string, treat it as a filename and load from file.
 
         Args:
-            filename: Data source filename (with or without .yml extension)
+            source: Data source filename (with or without .yml extension) or dict
 
         Returns:
             Data source or None if not found
         """
-        file_path: Path = self._resolve_data_source_path(filename)
+        if isinstance(source, dict):
+            return DataSourceConfig(name=source.get("name", "inline"), **source)
+
+        file_path: Path = self._resolve_data_source_path(source)
         if not file_path.exists():
             return None
         try:
@@ -149,7 +154,7 @@ class DataSourceService:
             data["filename"] = file_path.name
             return DataSourceConfig(name=file_path.stem, **data)
         except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"Failed to get data source {filename}: {e}")
+            logger.error(f"Failed to load data source {source}: {e}")
             return None
 
     def create_data_source(self, filename: str | Path, config: DataSourceConfig) -> DataSourceConfig:
@@ -261,7 +266,7 @@ class DataSourceService:
         Returns:
             Current status
         """
-        config: DataSourceConfig | None = self.get_data_source(filename)
+        config: DataSourceConfig | None = self.load_data_source(filename)
         if not config:
             raise ValueError(f"Data source file '{filename}' not found")
 

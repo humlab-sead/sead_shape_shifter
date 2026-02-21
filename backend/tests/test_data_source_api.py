@@ -85,7 +85,7 @@ class TestGetDataSource:
 
     def test_get_data_source_success(self, client, mock_service):
         """Should return specific data source."""
-        mock_service.get_data_source.return_value = DataSourceConfig(
+        mock_service.load_data_source.return_value = DataSourceConfig(
             name="sead",
             driver="postgresql",
             host="localhost",
@@ -105,7 +105,7 @@ class TestGetDataSource:
 
     def test_get_data_source_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
-        mock_service.get_data_source.return_value = None
+        mock_service.load_data_source.return_value = None
 
         response = client.get("/api/v1/data-sources/nonexistent.yml")
 
@@ -118,7 +118,7 @@ class TestCreateDataSource:
 
     def test_create_data_source_success(self, client, mock_service):
         """Should create new data source."""
-        mock_service.get_data_source.return_value = None  # Doesn't exist yet
+        mock_service.load_data_source.return_value = None  # Doesn't exist yet
 
         # Mock the created config that will be returned
         created_config = DataSourceConfig(
@@ -153,7 +153,7 @@ class TestCreateDataSource:
     def test_create_data_source_already_exists(self, client, mock_service):
         """Should return 400 when data source already exists."""
         # Mock that file already exists
-        mock_service.get_data_source.return_value = DataSourceConfig(
+        mock_service.load_data_source.return_value = DataSourceConfig(
             name="existing",
             driver="postgresql",
             host="localhost",
@@ -200,7 +200,7 @@ class TestUpdateDataSource:
     def test_update_data_source_success(self, client, mock_service):
         """Should update existing data source."""
         # Mock getting the existing data source
-        mock_service.get_data_source.return_value = DataSourceConfig(
+        mock_service.load_data_source.return_value = DataSourceConfig(
             name="sead",
             driver="postgresql",
             host="localhost",
@@ -243,7 +243,7 @@ class TestUpdateDataSource:
 
     def test_update_data_source_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
-        mock_service.get_data_source.return_value = None
+        mock_service.load_data_source.return_value = None
 
         payload = {
             "name": "nonexistent",
@@ -260,7 +260,7 @@ class TestUpdateDataSource:
 
     def test_update_data_source_invalid_config(self, client, mock_service):
         """Should return 400 when update fails due to invalid configuration."""
-        mock_service.get_data_source.return_value = DataSourceConfig(
+        mock_service.load_data_source.return_value = DataSourceConfig(
             name="sead",
             driver="postgresql",
             host="localhost",
@@ -293,7 +293,7 @@ class TestDeleteDataSource:
     def test_delete_data_source_success(self, client, mock_service):
         """Should delete data source."""
 
-        mock_service.get_data_source.return_value = DataSourceConfig(name="unused", driver="csv", filename="unused-datasource.yml", **{})
+        mock_service.load_data_source.return_value = DataSourceConfig(name="unused", driver="csv", filename="unused-datasource.yml", **{})
         mock_service.delete_data_source.return_value = None
 
         response = client.delete("/api/v1/data-sources/unused-datasource.yml")
@@ -307,7 +307,7 @@ class TestDeleteDataSource:
 
     def test_delete_data_source_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
-        mock_service.get_data_source.return_value = None
+        mock_service.load_data_source.return_value = None
 
         response = client.delete("/api/v1/data-sources/nonexistent.yml")
 
@@ -315,7 +315,7 @@ class TestDeleteDataSource:
 
     def test_delete_data_source_service_error(self, client, mock_service):
         """Should return 500 when service fails to delete."""
-        mock_service.get_data_source.return_value = DataSourceConfig(
+        mock_service.load_data_source.return_value = DataSourceConfig(
             name="error_case",
             driver="postgresql",
             host="localhost",
@@ -338,7 +338,7 @@ class TestTestConnection:
 
     def test_test_connection_success(self, client, mock_service):
         """Should test connection successfully."""
-        mock_service.get_data_source.return_value = DataSourceConfig(
+        mock_service.load_data_source.return_value = DataSourceConfig(
             name="sead",
             driver="postgresql",
             host="localhost",
@@ -369,7 +369,7 @@ class TestTestConnection:
 
     def test_test_connection_failure(self, client, mock_service):
         """Should return connection test failure."""
-        mock_service.get_data_source.return_value = DataSourceConfig(
+        mock_service.load_data_source.return_value = DataSourceConfig(
             name="bad_db",
             driver="postgresql",
             host="invalid-host",
@@ -400,7 +400,7 @@ class TestTestConnection:
 
     def test_test_connection_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
-        mock_service.get_data_source.return_value = None
+        mock_service.load_data_source.return_value = None
 
         response = client.post("/api/v1/data-sources/nonexistent.yml/test")
 
@@ -412,7 +412,7 @@ class TestGetStatus:
 
     def test_get_status_success(self, client, mock_service):
         """Should return data source status."""
-        mock_service.get_data_source.return_value = DataSourceConfig(
+        mock_service.load_data_source.return_value = DataSourceConfig(
             name="sead",
             driver="postgresql",
             host="localhost",
@@ -439,7 +439,7 @@ class TestGetStatus:
 
     def test_get_status_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
-        mock_service.get_data_source.return_value = None
+        mock_service.load_data_source.return_value = None
 
         response = client.get("/api/v1/data-sources/nonexistent.yml/status")
 

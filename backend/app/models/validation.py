@@ -14,6 +14,13 @@ class ValidationCategory(str, Enum):
     PERFORMANCE = "performance"  # Performance-related warnings
 
 
+class DataValidationMode(str, Enum):
+    """Mode for data validation."""
+
+    SAMPLE = "sample"  # Fast validation using preview samples (limit 1000 rows)
+    COMPLETE = "complete"  # Full validation using complete normalized dataset
+
+
 class ValidationPriority(str, Enum):
     """Priority level for validation checks."""
 
@@ -46,6 +53,7 @@ class ValidationResult(BaseModel):
     info: list[ValidationError] = Field(default_factory=list, description="Informational messages")
     error_count: int = Field(default=0, description="Number of errors")
     warning_count: int = Field(default=0, description="Number of warnings")
+    validation_mode: DataValidationMode | None = Field(default=None, description="Data validation mode used")
 
     @model_validator(mode="after")
     def calculate_counts(self) -> "ValidationResult":

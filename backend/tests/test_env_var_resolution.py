@@ -178,11 +178,11 @@ class TestEnvironmentVariableResolution:
                 username="produser",
                 port=5432,
             )
-            with patch.object(service, "get_data_source", return_value=ds_cfg) as _:
+            with patch.object(service, "load_data_source", return_value=ds_cfg) as _:
 
                 # Mock config to return data source with env vars
 
-                ds_cfg2: DataSourceConfig | None = service.get_data_source("dummy_file.yml")
+                ds_cfg2: DataSourceConfig | None = service.load_data_source("dummy_file.yml")
 
                 assert ds_cfg2 is not None
                 assert ds_cfg2.name == "prod_db"

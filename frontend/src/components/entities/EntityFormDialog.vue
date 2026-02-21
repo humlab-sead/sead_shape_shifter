@@ -1,5 +1,11 @@
 <template>
-  <v-dialog v-model="dialogModel" :max-width="viewMode !== 'form' ? '95vw' : '900'" :height="viewMode !== 'form' ? '90vh' : '800'" persistent scrollable>
+  <v-dialog
+    v-model="dialogModel"
+    :max-width="viewMode !== 'form' ? '95vw' : '900'"
+    :height="viewMode !== 'form' ? '90vh' : '800'"
+    persistent
+    scrollable
+  >
     <v-card style="height: 100%">
       <v-toolbar color="primary" density="compact">
         <v-toolbar-title>
@@ -32,6 +38,7 @@
         <v-tab value="unnest" :disabled="mode === 'create'">Unnest</v-tab>
         <v-tab value="append" :disabled="mode === 'create'">Append</v-tab>
         <v-tab value="extra_columns" :disabled="mode === 'create'">Extra Columns</v-tab>
+        <v-tab value="replacements" :disabled="mode === 'create'">Replace</v-tab>
         <v-tab value="yaml" :disabled="mode === 'create'">
           <v-icon icon="mdi-code-braces" class="mr-1" size="small" />
           YAML
@@ -39,18 +46,27 @@
       </v-tabs>
 
       <v-card-text class="pa-0 dialog-content" :class="{ 'split-container': viewMode !== 'form' }">
+        <!-- Loading overlay while fetching entity data -->
+        <v-overlay v-model="loading" contained persistent class="align-center justify-center">
+          <v-progress-circular indeterminate size="64" color="primary" />
+          <div class="mt-4 text-h6">Loading entity data...</div>
+        </v-overlay>
+
         <div :class="viewMode !== 'form' ? 'split-layout' : ''" :data-view-mode="viewMode">
           <!-- Left: Entity Form -->
-          <div v-show="viewMode === 'form' || viewMode === 'both'" :class="viewMode === 'both' ? 'form-panel' : 'pt-6 px-4 form-content'">
+          <div
+            v-show="viewMode === 'form' || viewMode === 'both'"
+            :class="viewMode === 'both' ? 'form-panel' : 'pt-6 px-4 form-content'"
+          >
             <v-window v-model="activeTab">
               <v-window-item value="basic">
                 <v-defaults-provider
                   :defaults="{
-                    VTextField:   { density: 'compact', variant: 'outlined',  },
-                    VSelect:      { density: 'compact', variant: 'outlined',  },
-                    VAutocomplete:{ density: 'compact', variant: 'outlined',  },
-                    VCombobox:    { density: 'compact', variant: 'outlined',  },
-                    VCheckbox:    { density: 'compact', hideDetails: true },
+                    VTextField: { density: 'compact', variant: 'outlined' },
+                    VSelect: { density: 'compact', variant: 'outlined' },
+                    VAutocomplete: { density: 'compact', variant: 'outlined' },
+                    VCombobox: { density: 'compact', variant: 'outlined' },
+                    VCheckbox: { density: 'compact', hideDetails: true },
                   }"
                 >
                   <v-form ref="formRef" v-model="formValid" class="compact-form">
@@ -142,12 +158,28 @@
                           <v-autocomplete
                             v-model="formData.options.filename"
                             :items="availableProjectFiles"
+                            item-title="name"
+                            item-value="name"
                             label="File *"
                             :rules="requiredRule"
                             variant="outlined"
                             clearable
                             :loading="filesLoading"
-                          />
+                          >
+                            <template v-slot:item="{ props, item }">
+                              <v-list-item v-bind="props">
+                                <template v-slot:append>
+                                  <v-chip
+                                    :color="item.raw.location === 'global' ? 'primary' : 'secondary'"
+                                    size="x-small"
+                                    variant="flat"
+                                  >
+                                    {{ item.raw.location === 'global' ? 'Global' : 'Project' }}
+                                  </v-chip>
+                                </template>
+                              </v-list-item>
+                            </template>
+                          </v-autocomplete>
                         </v-col>
 
                         <!-- CSV Delimiter -->
@@ -165,7 +197,10 @@
                       <!-- Excel Options (sheet name and range) -->
                       <v-row no-gutters v-if="isExcelType" class="mt-2">
                         <!-- Sheet Name -->
-                        <v-col :cols="formData.type === 'openpyxl' ? 6 : 12" :class="formData.type === 'openpyxl' ? 'pr-2' : ''">
+                        <v-col
+                          :cols="formData.type === 'openpyxl' ? 6 : 12"
+                          :class="formData.type === 'openpyxl' ? 'pr-2' : ''"
+                        >
                           <v-autocomplete
                             v-model="formData.options.sheet_name"
                             :items="sheetOptions"
@@ -253,9 +288,9 @@
                                 </div>
                               </v-tooltip>
                             </template>
-                            <template #message>
+                            <!-- <template #message>
                               <span class="text-caption">Target PK name + FK column name pattern</span>
-                            </template>
+                            </template> -->
                           </v-text-field>
                         </v-col>
 
@@ -263,6 +298,7 @@
                           <!-- Keys (business keys) -->
                           <v-combobox
                             v-model="formData.keys"
+                            :items="availableColumns"
                             label="Business Keys *"
                             variant="outlined"
                             multiple
@@ -289,18 +325,28 @@
                         chips
                         closable-chips
                         persistent-placeholder
+                        :rules="formData.type === 'fixed' ? columnsRules : []"
                       >
                         <template #message>
-                          <span class="text-caption">Column names to extract or create</span>
+                          <span class="text-caption" v-if="formData.type === 'fixed'">
+                            Additional columns beyond system_id/public_id (which are auto-added to saved config)
+                          </span>
+                          <span class="text-caption" v-else-if="formData.type === 'entity'">
+                            Select from source columns or add new names (type to filter suggestions)
+                          </span>
+                          <span class="text-caption" v-else-if="isExcelType">
+                            Select from sheet columns (auto-detected from file)
+                          </span>
+                          <span class="text-caption" v-else>Column names to extract or create</span>
                         </template>
                       </v-combobox>
                     </div>
                     <!-- Fixed Values Grid (only for fixed type) -->
                     <div class="form-row" v-if="formData.type === 'fixed'">
                       <FixedValuesGrid
-                        v-if="allColumns.length > 0"
+                        v-if="fixedValuesColumns.length > 0"
                         v-model="formData.values"
-                        :columns="allColumns"
+                        :columns="fixedValuesColumns"
                         :public-id="formData.public_id"
                         height="400px"
                       />
@@ -334,14 +380,23 @@
                         <!-- Drop Duplicates -->
                         <v-col cols="6" class="pr-2">
                           <v-row no-gutters class="mb-2">
-                            <v-col cols="12">
+                            <v-col cols="4">
                               <v-checkbox
                                 v-model="formData.drop_duplicates.enabled"
                                 label="Drop Duplicates"
                                 hide-details
                               />
                             </v-col>
+                            <v-col cols="8" class="pl-1">
+                              <v-checkbox
+                                v-model="formData.check_functional_dependency"
+                                label="Check Functional Dependency"
+                                hide-details
+                                :disabled="!formData.drop_duplicates.enabled"
+                              />
+                            </v-col>
                           </v-row>
+
                           <v-combobox
                             v-model="formData.drop_duplicates.columns"
                             label="Deduplication Columns"
@@ -361,19 +416,11 @@
                         <!-- Drop Empty Rows -->
                         <v-col cols="6" class="pl-2">
                           <v-row no-gutters class="mb-2">
-                            <v-col cols="5" class="pr-1">
+                            <v-col cols="12" class="pr-1">
                               <v-checkbox
                                 v-model="formData.drop_empty_rows.enabled"
                                 label="Drop Empty Rows"
                                 hide-details
-                              />
-                            </v-col>
-                            <v-col cols="7" class="pl-1">
-                              <v-checkbox
-                                v-model="formData.check_functional_dependency"
-                                label="Check Functional Dependency"
-                                hide-details
-                                :disabled="!formData.drop_empty_rows.enabled"
                               />
                             </v-col>
                           </v-row>
@@ -441,10 +488,7 @@
               </v-window-item>
 
               <v-window-item value="unnest">
-                <unnest-editor
-                  v-model="formData.advanced.unnest"
-                  :available-columns="availableColumnsForUnnest"
-                />
+                <unnest-editor v-model="formData.advanced.unnest" :available-columns="availableColumnsForUnnest" />
               </v-window-item>
 
               <v-window-item value="append">
@@ -453,6 +497,10 @@
 
               <v-window-item value="extra_columns">
                 <extra-columns-editor v-model="formData.advanced.extra_columns" />
+              </v-window-item>
+
+              <v-window-item value="replacements">
+                <replacements-editor v-model="formData.advanced.replacements" :available-columns="formData.columns" />
               </v-window-item>
 
               <v-window-item value="yaml">
@@ -536,7 +584,21 @@
                 class="ma-2"
                 @click:close="previewError = null"
               >
-                {{ previewError }}
+                <div v-if="typeof previewError === 'string'">{{ previewError }}</div>
+                <div v-else-if="previewError?.detail?.message">
+                  <div class="font-weight-bold mb-1">{{ previewError.detail.error_type || 'Error' }}</div>
+                  <div class="text-caption" style="white-space: pre-wrap">{{ previewError.detail.message }}</div>
+                  <div v-if="previewError.detail.tips?.length" class="mt-2">
+                    <div class="text-caption font-weight-bold">Suggestions:</div>
+                    <ul class="text-caption mt-1">
+                      <li v-for="(tip, idx) in previewError.detail.tips" :key="idx">{{ tip }}</li>
+                    </ul>
+                  </div>
+                </div>
+                <div v-else-if="previewError?.message">
+                  {{ previewError.message }}
+                </div>
+                <div v-else>{{ previewError }}</div>
               </v-alert>
 
               <v-alert v-if="!canPreview" type="info" density="compact" class="ma-2">
@@ -604,10 +666,27 @@
           </v-btn>
         </template>
 
+        <!-- Save success indicator -->
+        <v-fade-transition>
+          <v-chip v-if="showSaveSuccess" color="success" size="small" prepend-icon="mdi-check-circle" class="ml-2">
+            Saved successfully
+          </v-chip>
+        </v-fade-transition>
+
         <v-spacer />
         <v-btn variant="text" @click="handleCancel" :disabled="loading"> Cancel </v-btn>
         <v-btn color="primary" variant="flat" :loading="loading" :disabled="!formValid" @click="handleSubmit">
-          {{ mode === 'create' ? 'Create' : 'Save' }}
+          <v-icon start>mdi-content-save</v-icon>
+          Save
+        </v-btn>
+        <v-btn
+          color="primary"
+          variant="outlined"
+          :loading="loading"
+          :disabled="!formValid"
+          @click="handleSubmitAndClose"
+        >
+          Save & Close
         </v-btn>
       </v-card-actions>
 
@@ -634,7 +713,7 @@
  *
  * Supports dual-mode editing: visual form and raw YAML
  * Includes live preview panel for saved entities
- * 
+ *
  * STATE MANAGEMENT STRATEGY:
  * - On dialog open, ALWAYS fetches fresh entity data from API (edit mode)
  * - This ensures we display the latest data from the YAML file (source of truth)
@@ -643,6 +722,7 @@
  */
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useEntities, useSuggestions, useEntityPreview, useSettings } from '@/composables'
+import { useNotification } from '@/composables/useNotification'
 import { useProjectStore, useEntityStore } from '@/stores'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
@@ -656,6 +736,7 @@ import FiltersEditor from './FiltersEditor.vue'
 import UnnestEditor from './UnnestEditor.vue'
 import AppendEditor from './AppendEditor.vue'
 import ExtraColumnsEditor from './ExtraColumnsEditor.vue'
+import ReplacementsEditor from './ReplacementsEditor.vue'
 import SuggestionsPanel from './SuggestionsPanel.vue'
 // import EntityPreviewPanel from './EntityPreviewPanel.vue'
 import YamlEditor from '../common/YamlEditor.vue'
@@ -663,7 +744,7 @@ import SqlEditor from '../common/SqlEditor.vue'
 import MaterializeDialog from './MaterializeDialog.vue'
 import UnmaterializeDialog from './UnmaterializeDialog.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
 
 // Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
@@ -679,8 +760,21 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
-  (e: 'saved'): void
+  (e: 'saved', entityName: string): void
 }
+
+// Error type that can be a string, an API error response, or null
+type PreviewError =
+  | string
+  | {
+      detail?: {
+        message: string
+        error_type?: string
+        tips?: string[]
+      }
+      message?: string
+    }
+  | null
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
@@ -694,6 +788,8 @@ const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions(
 
 const appSettings = useSettings()
 const fkSuggestionsEnabled = computed(() => appSettings.enableFkSuggestions.value)
+
+const { error: showError } = useNotification()
 
 const projectStore = useProjectStore()
 
@@ -725,13 +821,15 @@ const previewLimitOptions = [
   { title: 'All rows', value: null },
 ]
 
-const previewError = ref<string | null>(null)
+const previewError = ref<PreviewError>(null)
 
 // Form state
 const formRef = ref()
 const formValid = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const showSaveSuccess = ref(false)
+let saveSuccessTimeout: ReturnType<typeof setTimeout> | null = null
 const suggestions = ref<any>(null)
 const showSuggestions = ref(false)
 const yamlContent = ref('')
@@ -748,9 +846,9 @@ const currentEntity = ref<EntityResponse | null>(null)
 interface FormData {
   name: string
   type: string
-  system_id: string  // Always "system_id"
-  public_id: string  // Target system PK name and FK column pattern
-  surrogate_id: string  // Deprecated - for backward compatibility
+  system_id: string // Always "system_id"
+  public_id: string // Target system PK name and FK column pattern
+  surrogate_id: string // Deprecated - for backward compatibility
   keys: string[]
   columns: string[]
   values: any[][] // For fixed type entities
@@ -780,15 +878,16 @@ interface FormData {
     unnest?: any | null
     append?: any[]
     extra_columns?: Record<string, string | null>
+    replacements?: Record<string, any>
   }
 }
 
 const formData = ref<FormData>({
   name: '',
   type: 'entity',
-  system_id: 'system_id',  // Always "system_id"
-  public_id: '',  // Required field
-  surrogate_id: '',  // Deprecated - kept for backward compat
+  system_id: 'system_id', // Always "system_id"
+  public_id: '', // Required field
+  surrogate_id: '', // Deprecated - kept for backward compat
   keys: [],
   columns: [],
   values: [],
@@ -818,6 +917,7 @@ const formData = ref<FormData>({
     unnest: null,
     append: [],
     extra_columns: undefined,
+    replacements: undefined,
   },
 })
 
@@ -851,7 +951,15 @@ watch(
 )
 
 // File handling state
-const availableProjectFiles = ref<string[]>([])
+interface FileInfo {
+  name: string
+  path: string
+  location: 'global' | 'local'
+  size_bytes: number
+  modified_at: string | number
+}
+
+const availableProjectFiles = ref<FileInfo[]>([])
 const filesLoading = ref(false)
 const sheetOptions = ref<string[]>([])
 const sheetOptionsLoading = ref(false)
@@ -867,12 +975,28 @@ const delimiterOptions = [
   { title: 'Space', value: ' ' },
 ]
 
-// Computed property for all columns (keys + columns) for fixed values grid
-// Note: system_id and public_id are handled separately as special columns
-const allColumns = computed(() => {
-  const keys = formData.value.keys || []
-  const columns = formData.value.columns || []
-  return [...keys, ...columns]
+// Important: `values` is a positional 2D array, so the grid column order must match the three-tier identity model.
+// Fixed values grid must include: system_id, public_id (if defined), keys, and columns
+const fixedValuesColumns = computed(() => {
+  const result: string[] = []
+
+  // Always include system_id first (required for three-tier identity)
+  result.push('system_id')
+
+  // Include public_id if defined (required for entities with FK children or mappings)
+  if (formData.value.public_id && formData.value.public_id.trim().length > 0) {
+    result.push(formData.value.public_id)
+  }
+
+  // Include keys (business keys)
+  const keys = (formData.value.keys || []).filter((k: string) => typeof k === 'string' && k.trim().length > 0)
+  result.push(...keys)
+
+  // Include columns (data columns)
+  const columns = (formData.value.columns || []).filter((c: string) => typeof c === 'string' && c.trim().length > 0)
+  result.push(...columns)
+
+  return result
 })
 
 // Can preview only in edit mode
@@ -921,17 +1045,153 @@ function toggleSplitView() {
   } else {
     viewMode.value = 'form'
   }
-  
+
   if (viewMode.value !== 'form' && canPreview.value) {
     refreshPreview()
   }
+}
+
+function buildEntityConfigFromFormData(): Record<string, unknown> {
+  /**
+   * Convert form data to entity config format.
+   * Shared by both handleSubmit and refreshPreview to ensure consistency.
+   */
+  const entityData: Record<string, unknown> = {
+    type: formData.value.type,
+    keys: formData.value.keys,
+    // For fixed entities, explicitly include system_id and public_id in columns list
+    // This ensures the columns match the fixedValuesColumns order used by the grid
+    columns: formData.value.type === 'fixed' ? fixedValuesColumns.value : formData.value.columns,
+  }
+
+  // Always include public_id (even if null) to prevent field from being omitted
+  entityData.public_id = formData.value.public_id || null
+
+  if (formData.value.surrogate_id) {
+    entityData.surrogate_id = formData.value.surrogate_id
+  }
+
+  // Always include values field for fixed type (required by backend validation)
+  if (formData.value.type === 'fixed') {
+    entityData.values = formData.value.values || []
+  }
+
+  if (formData.value.source) {
+    entityData.source = formData.value.source
+  }
+
+  if (formData.value.type === 'sql') {
+    entityData.data_source = formData.value.data_source
+    entityData.query = formData.value.query
+  }
+
+  // Include file options for CSV and Excel types
+  if (isFileType.value && formData.value.options.filename) {
+    const options: Record<string, unknown> = {
+      filename: formData.value.options.filename,
+    }
+
+    // Add location field to indicate where file is stored
+    const selectedFile = availableProjectFiles.value.find((f) => f.name === formData.value.options.filename)
+    if (selectedFile) {
+      options.location = selectedFile.location
+    } else {
+      // Default to global for backwards compatibility
+      options.location = 'global'
+    }
+
+    if (formData.value.type === 'csv') {
+      if (formData.value.options.sep) {
+        options.sep = formData.value.options.sep
+      }
+      if (formData.value.options.encoding) {
+        options.encoding = formData.value.options.encoding
+      }
+    } else if (isExcelType.value) {
+      if (formData.value.options.sheet_name) {
+        options.sheet_name = formData.value.options.sheet_name
+      }
+      if (formData.value.options.range) {
+        options.range = formData.value.options.range
+      }
+    }
+
+    entityData.options = options
+  }
+
+  // Include foreign keys if any
+  if (formData.value.foreign_keys.length > 0) {
+    // Transform foreign keys: extract just column values from column picker objects
+    entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => ({
+      entity: fk.entity,
+      local_keys: Array.isArray(fk.local_keys)
+        ? fk.local_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
+        : [],
+      remote_keys: Array.isArray(fk.remote_keys)
+        ? fk.remote_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
+        : [],
+    }))
+  }
+
+  // Include depends_on if specified
+  if (formData.value.depends_on.length > 0) {
+    entityData.depends_on = formData.value.depends_on
+  }
+
+  // Include drop_duplicates if enabled
+  if (formData.value.drop_duplicates.enabled) {
+    if (formData.value.drop_duplicates.columns.length > 0) {
+      entityData.drop_duplicates = formData.value.drop_duplicates.columns
+    } else {
+      entityData.drop_duplicates = true
+    }
+  }
+
+  // Include drop_empty_rows if enabled
+  if (formData.value.drop_empty_rows.enabled) {
+    if (formData.value.drop_empty_rows.columns.length > 0) {
+      entityData.drop_empty_rows = formData.value.drop_empty_rows.columns
+    } else {
+      entityData.drop_empty_rows = true
+    }
+  }
+
+  // Include check_functional_dependency if enabled
+  if (formData.value.check_functional_dependency) {
+    entityData.check_functional_dependency = true
+  }
+
+  // Include advanced configuration
+  if (formData.value.advanced.filters?.length) {
+    entityData.filters = formData.value.advanced.filters
+  }
+  if (formData.value.advanced.unnest) {
+    entityData.unnest = formData.value.advanced.unnest
+  }
+  if (formData.value.advanced.append?.length) {
+    entityData.append = formData.value.advanced.append
+  }
+  if (formData.value.advanced.extra_columns) {
+    entityData.extra_columns = formData.value.advanced.extra_columns
+  }
+
+  if (formData.value.advanced.replacements) {
+    entityData.replacements = formData.value.advanced.replacements
+  }
+
+  return entityData
 }
 
 async function refreshPreview() {
   if (!canPreview.value) return
 
   previewError.value = null
-  await previewEntity(props.projectName, formData.value.name, previewLimit.value)
+
+  // Convert form data to entity config format (same as handleSubmit)
+  const entityConfig = buildEntityConfigFromFormData()
+
+  // Pass converted entity config to preview unsaved changes
+  await previewEntity(props.projectName, formData.value.name, previewLimit.value, entityConfig)
 
   if (livePreviewError.value) {
     previewError.value = livePreviewError.value
@@ -956,14 +1216,24 @@ async function fetchProjectFiles() {
   filesLoading.value = true
   try {
     const extensions = getFileExtensions()
-    // Use existing data source files endpoint
-    const response = await fetch(`/api/v1/data-sources/files?extensions=${extensions.join(',')}`)
-    if (response.ok) {
-      const files = await response.json()
-      availableProjectFiles.value = files.map((f: any) => f.path)
+    // Build query params - backend expects 'ext' parameter for each extension
+    const queryParams = extensions.map((ext) => `ext=${ext}`).join('&')
+
+    // Include project-specific files if we have a current project
+    let url = `/api/v1/data-sources/files?${queryParams}`
+    if (projectStore.currentProjectName) {
+      url += `&project_name=${encodeURIComponent(projectStore.currentProjectName)}`
     }
-  } catch (error) {
-    console.error('Failed to fetch project files:', error)
+
+    const response = await fetch(url)
+    if (response.ok) {
+      const files: FileInfo[] = await response.json()
+      availableProjectFiles.value = files
+    }
+  } catch (err: any) {
+    console.error('Failed to fetch project files:', err)
+    const message = err.message || 'Unknown error'
+    showError(`Failed to load available files: ${message}`)
   } finally {
     filesLoading.value = false
   }
@@ -981,7 +1251,11 @@ async function fetchSheetOptions() {
   }
 
   try {
-    const meta = await api.excelMetadata.fetch(filename)
+    // Find the file to get its location
+    const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
+    const location = fileInfo?.location || 'global'
+
+    const meta = await api.excelMetadata.fetch(filename, location)
     sheetOptions.value = meta.sheets || []
 
     if (!formData.value.options.sheet_name && sheetOptions.value.length > 0) {
@@ -991,8 +1265,10 @@ async function fetchSheetOptions() {
     if (formData.value.options.sheet_name) {
       await fetchColumns()
     }
-  } catch (error) {
-    console.error('Failed to fetch sheet names', error)
+  } catch (err: any) {
+    console.error('Failed to fetch sheet names', err)
+    const message = err.response?.data?.detail || err.message || 'Unknown error'
+    showError(`Failed to load Excel metadata: ${message}`)
   } finally {
     sheetOptionsLoading.value = false
   }
@@ -1005,19 +1281,26 @@ async function fetchColumns() {
 
   const filename = formData.value.options.filename
   const sheet = formData.value.options.sheet_name
+  const range = formData.value.options.range
   if (!isExcelType.value || !filename || !sheet) {
     columnsLoading.value = false
     return
   }
 
   try {
-    const meta = await api.excelMetadata.fetch(filename, sheet)
+    // Find the file to get its location
+    const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
+    const location = fileInfo?.location || 'global'
+
+    const meta = await api.excelMetadata.fetch(filename, location, sheet, range)
     columnsOptions.value = meta.columns || []
     if (columnsOptions.value.length > 0) {
       formData.value.columns = [...columnsOptions.value]
     }
-  } catch (error) {
-    console.error('Failed to fetch columns', error)
+  } catch (err: any) {
+    console.error('Failed to fetch columns', err)
+    const message = err.response?.data?.detail || err.message || 'Unknown error'
+    showError(`Failed to load Excel columns: ${message}`)
   } finally {
     columnsLoading.value = false
   }
@@ -1055,7 +1338,7 @@ function hydrateColumnsFromSource() {
     source: formData.value.source,
     colsFromSource,
     existing,
-    columnsOptions: columnsOptions.value
+    columnsOptions: columnsOptions.value,
   })
 }
 
@@ -1071,7 +1354,9 @@ watch(
   formData,
   () => {
     if (autoRefreshEnabled.value && viewMode.value !== 'form' && canPreview.value) {
-      debouncedPreviewEntity(props.projectName, formData.value.name, 100)
+      // Convert form data to entity config before previewing
+      const entityConfig = buildEntityConfigFromFormData()
+      debouncedPreviewEntity(props.projectName, formData.value.name, 100, entityConfig)
     }
   },
   { deep: true }
@@ -1144,48 +1429,104 @@ watch(
   }
 )
 
-// Watch for entity type changes to fetch appropriate files
-watch(() => formData.value.type, async (newType, oldType) => {
-  // Clear data source and query when switching away from SQL
-  if (newType !== 'sql') {
-    formData.value.data_source = ''
-    formData.value.query = ''
-  }
-  
-  // Clear source when switching away from entity
-  if (newType !== 'entity') {
-    formData.value.source = null
-  }
+// Watch for formData changes to trigger validation (handles FK editor changes)
+watch(
+  formData,
+  () => {
+    // Trigger form validation when any formData changes
+    // This ensures the save button is enabled when FKs or other non-form fields change
+    nextTick(async () => {
+      const result = await formRef.value?.validate()
+      // Explicitly update formValid to enable save button for changes outside v-form
+      if (result?.valid) {
+        formValid.value = true
+      }
+    })
+  },
+  { deep: true }
+)
 
-  // Clear or initialize options based on type
-  if (!isFileType.value) {
-    formData.value.options = {
-      filename: '',
-      sep: ',',
-      encoding: 'utf-8',
-      sheet_name: '',
-      range: '',
+// Watch for entity type changes to fetch appropriate files
+watch(
+  () => formData.value.type,
+  async (newType, oldType) => {
+    // Clear data source and query when switching away from SQL
+    if (newType !== 'sql') {
+      formData.value.data_source = ''
+      formData.value.query = ''
+    }
+
+    // Clear source when switching away from entity
+    if (newType !== 'entity') {
+      formData.value.source = null
+    }
+
+    // Clear or initialize options based on type
+    if (!isFileType.value) {
+      formData.value.options = {
+        filename: '',
+        sep: ',',
+        encoding: 'utf-8',
+        sheet_name: '',
+        range: '',
+      }
+    }
+
+    // Fetch files when switching to a file type
+    const wasFileType = oldType && ['csv', 'xlsx', 'openpyxl'].includes(oldType)
+    if (isFileType.value && !wasFileType) {
+      await fetchProjectFiles()
+    }
+
+    // Hydrate columns from source entity when switching to entity type
+    if (newType === 'entity') {
+      hydrateColumnsFromSource()
+    }
+
+    if (isExcelType.value && formData.value.options.filename) {
+      await fetchSheetOptions()
+    } else {
+      sheetOptions.value = []
+      columnsOptions.value = []
     }
   }
+)
 
-  // Fetch files when switching to a file type
-  const wasFileType = oldType && ['csv', 'xlsx', 'openpyxl'].includes(oldType)
-  if (isFileType.value && !wasFileType) {
-    await fetchProjectFiles()
-  }
+// Watch columns to automatically remove forbidden values for fixed entities
+watch(
+  () => formData.value.columns,
+  (newColumns) => {
+    if (formData.value.type === 'fixed' && Array.isArray(newColumns)) {
+      const publicId = formData.value.public_id
+      const forbidden = new Set(['system_id'])
+      if (publicId) forbidden.add(publicId)
 
-  // Hydrate columns from source entity when switching to entity type
-  if (newType === 'entity') {
-    hydrateColumnsFromSource()
-  }
+      const filtered = newColumns.filter((col) => !forbidden.has(col))
+      if (filtered.length !== newColumns.length) {
+        // Auto-remove forbidden columns
+        formData.value.columns = filtered
+      }
+    }
+  },
+  { deep: true }
+)
 
-  if (isExcelType.value && formData.value.options.filename) {
-    await fetchSheetOptions()
-  } else {
-    sheetOptions.value = []
-    columnsOptions.value = []
+// Watch public_id changes to remove it from columns if it was added
+watch(
+  () => formData.value.public_id,
+  (newPublicId, oldPublicId) => {
+    if (formData.value.type === 'fixed' && Array.isArray(formData.value.columns)) {
+      // Remove old public_id if it was in columns (shouldn't be, but defensive)
+      if (oldPublicId) {
+        formData.value.columns = formData.value.columns.filter((col) => col !== oldPublicId)
+      }
+      // Remove new public_id if somehow added to columns
+      if (newPublicId) {
+        formData.value.columns = formData.value.columns.filter((col) => col !== newPublicId)
+      }
+    }
   }
-})
+)
 
 // Keyboard shortcut for split view toggle (Ctrl+Shift+P)
 function handleKeyPress(e: KeyboardEvent) {
@@ -1197,15 +1538,15 @@ function handleKeyPress(e: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeyPress)
-  
+
   // Fetch project files if editing a file type entity
   if (props.mode === 'edit' && isFileType.value) {
     fetchProjectFiles()
   }
 
-   if (isExcelType.value && formData.value.options.filename) {
-     fetchSheetOptions()
-   }
+  if (isExcelType.value && formData.value.options.filename) {
+    fetchSheetOptions()
+  }
 })
 
 onUnmounted(() => {
@@ -1299,116 +1640,57 @@ const publicIdRules = [
   (v: string) => /^[a-z][a-z0-9_]*_id$/.test(v) || 'Public ID must be lowercase snake_case ending with _id',
 ]
 
+// Validation for columns field (for fixed entities)
+const columnsRules = computed(() => [
+  (v: string[] | null) => {
+    // Only validate for fixed entities
+    if (formData.value.type !== 'fixed') return true
+    if (!v || !Array.isArray(v)) return true
+
+    // Check for "system_id" literal
+    if (v.includes('system_id')) {
+      return 'Cannot include "system_id" - it is automatically managed'
+    }
+
+    // Check for public_id value
+    const publicId = formData.value.public_id
+    if (publicId && v.includes(publicId)) {
+      return `Cannot include "${publicId}" (Public ID) - it is automatically managed`
+    }
+
+    return true
+  },
+])
+
 // YAML Editor Functions
 function formDataToYaml(): string {
-  const entityData: Record<string, any> = {
+  // Reuse the shared conversion logic
+  const entityData = buildEntityConfigFromFormData()
+
+  // Add fields that are needed for YAML display but not API calls
+  const yamlData: Record<string, any> = {
     name: formData.value.name,
-    type: formData.value.type,
+    ...entityData,
   }
 
-  // Always include system_id (standardized to "system_id")
-  entityData.system_id = 'system_id'
+  // Always show system_id in YAML for user visibility (even though it's implicit in backend)
+  yamlData.system_id = 'system_id'
 
-  // Include public_id (required for target system PK and FK naming)
-  if (formData.value.public_id) {
-    entityData.public_id = formData.value.public_id
+  // Move name to the top for better YAML readability
+  const orderedData: Record<string, any> = {
+    name: yamlData.name,
+    type: yamlData.type,
+    system_id: yamlData.system_id,
   }
 
-  // Legacy: Only include surrogate_id if migrating from old config
-  if (formData.value.surrogate_id && !formData.value.public_id) {
-    entityData.surrogate_id = formData.value.surrogate_id
-  }
-
-  // Always include keys (even if empty array) for consistency with project YAML
-  entityData.keys = formData.value.keys
-
-  // Always include columns (even if empty array) for consistency with project YAML
-  // Note: columns should contain ALL columns including identity columns (system_id, public_id)
-  entityData.columns = formData.value.columns
-
-  if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
-    entityData.values = formData.value.values
-  }
-
-  if (formData.value.source) {
-    entityData.source = formData.value.source
-  }
-
-  if (formData.value.type === 'sql') {
-    if (formData.value.data_source) {
-      entityData.data_source = formData.value.data_source
+  // Copy remaining fields
+  Object.keys(yamlData).forEach((key) => {
+    if (key !== 'name' && key !== 'type' && key !== 'system_id') {
+      orderedData[key] = yamlData[key]
     }
-    if (formData.value.query) {
-      entityData.query = formData.value.query
-    }
-  }
+  })
 
-  // Add file options for CSV and Excel types
-  if (isFileType.value && formData.value.options.filename) {
-    entityData.options = {} as Record<string, any>
-    
-    if (formData.value.type === 'csv') {
-      entityData.options.filename = formData.value.options.filename
-      entityData.options.sep = formData.value.options.sep
-      if (formData.value.options.encoding && formData.value.options.encoding !== 'utf-8') {
-        entityData.options.encoding = formData.value.options.encoding
-      }
-    } else if (formData.value.type === 'xlsx' || formData.value.type === 'openpyxl') {
-      entityData.options.filename = formData.value.options.filename
-      if (formData.value.options.sheet_name) {
-        entityData.options.sheet_name = formData.value.options.sheet_name
-      }
-      if (formData.value.type === 'openpyxl' && formData.value.options.range) {
-        entityData.options.range = formData.value.options.range
-      }
-    }
-  }
-
-  if (formData.value.foreign_keys.length > 0) {
-    entityData.foreign_keys = formData.value.foreign_keys
-  }
-
-  if (formData.value.advanced.filters?.length) {
-    entityData.filters = formData.value.advanced.filters
-  }
-
-  if (formData.value.advanced.unnest) {
-    entityData.unnest = formData.value.advanced.unnest
-  }
-
-  if (formData.value.advanced.append?.length) {
-    entityData.append = formData.value.advanced.append
-  }
-
-  if (formData.value.advanced.extra_columns) {
-    entityData.extra_columns = formData.value.advanced.extra_columns
-  }
-
-  if (formData.value.depends_on.length > 0) {
-    entityData.depends_on = formData.value.depends_on
-  }
-
-  if (formData.value.drop_duplicates.enabled) {
-    if (formData.value.drop_duplicates.columns.length > 0) {
-      entityData.drop_duplicates = formData.value.drop_duplicates.columns
-    } else {
-      entityData.drop_duplicates = true
-    }
-  }
-
-  if (formData.value.drop_empty_rows.enabled) {
-    if (formData.value.drop_empty_rows.columns.length > 0) {
-      entityData.drop_empty_rows = formData.value.drop_empty_rows.columns
-    } else {
-      entityData.drop_empty_rows = true
-    }
-  }
-
-  if (formData.value.check_functional_dependency) {
-    entityData.check_functional_dependency = true
-  }
-
-  return yaml.dump(entityData, { indent: 2, lineWidth: -1 })
+  return yaml.dump(orderedData, { indent: 2, lineWidth: -1 })
 }
 
 function yamlToFormData(yamlString: string): boolean {
@@ -1430,9 +1712,9 @@ function yamlToFormData(yamlString: string): boolean {
     formData.value = {
       name: data.name || formData.value.name,
       type: data.type || 'entity',
-      system_id: 'system_id',  // Always standardized
-      public_id: data.public_id || data.surrogate_id || '',  // Migrate surrogate_id → public_id
-      surrogate_id: data.surrogate_id || '',  // Keep for backward compat
+      system_id: 'system_id', // Always standardized
+      public_id: data.public_id || data.surrogate_id || '', // Migrate surrogate_id → public_id
+      surrogate_id: data.surrogate_id || '', // Keep for backward compat
       keys: Array.isArray(data.keys) ? data.keys : [],
       columns: Array.isArray(data.columns) ? data.columns : [],
       values: Array.isArray(data.values) ? data.values : [],
@@ -1456,6 +1738,7 @@ function yamlToFormData(yamlString: string): boolean {
         unnest: data.unnest || null,
         append: Array.isArray(data.append) ? data.append : [],
         extra_columns: data.extra_columns || undefined,
+        replacements: data.replacements || undefined,
       },
     }
 
@@ -1474,16 +1757,25 @@ function handleYamlValidation(isValid: boolean, error?: string) {
   }
 }
 
-function handleYamlChange(value: string) {
+async function handleYamlChange(value: string) {
   // Auto-sync YAML to form data when valid
   if (yamlValid.value) {
-    yamlToFormData(value)
+    const success = yamlToFormData(value)
+    if (success) {
+      // Explicitly trigger validation after YAML changes
+      // This ensures Save button is enabled when editing via YAML tab
+      await nextTick()
+      const result = await formRef.value?.validate()
+      if (result?.valid) {
+        formValid.value = true
+      }
+    }
   }
 }
 
 // Methods
 async function handleSubmit() {
-  if (!formValid.value) return
+  if (!formValid.value || loading.value) return // Prevent double-submission
 
   const { valid } = await formRef.value.validate()
   if (!valid) return
@@ -1492,101 +1784,51 @@ async function handleSubmit() {
   error.value = null
 
   try {
-    const entityData: Record<string, unknown> = {
-      type: formData.value.type,
-      keys: formData.value.keys,
-      // Always include columns so new entities default to an empty list instead of omitting the field
-      columns: formData.value.columns,
-    }
+    // Use shared function to build entity config
+    const entityData = buildEntityConfigFromFormData()
 
-    if (formData.value.surrogate_id) {
-      entityData.surrogate_id = formData.value.surrogate_id
-    }
+    if (props.mode === 'create') {
+      await create({
+        name: formData.value.name,
+        entity_data: entityData,
+      })
+      emit('saved', formData.value.name)
+      // Keep dialog open after creating (user can choose "Save & Close" if they want to close)
+      // Show success indicator
+      showSaveSuccess.value = true
+      if (saveSuccessTimeout) clearTimeout(saveSuccessTimeout)
+      saveSuccessTimeout = setTimeout(() => {
+        showSaveSuccess.value = false
+      }, 3000)
+    } else {
+      await update(formData.value.name, {
+        entity_data: entityData,
+      })
+      // Keep dialog open after saving in edit mode
+      emit('saved', formData.value.name)
 
-    if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
-      entityData.values = formData.value.values
+      // Show success indicator
+      showSaveSuccess.value = true
+      if (saveSuccessTimeout) clearTimeout(saveSuccessTimeout)
+      saveSuccessTimeout = setTimeout(() => {
+        showSaveSuccess.value = false
+      }, 3000)
     }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to save entity'
+  } finally {
+    loading.value = false
+  }
+}
 
-    if (formData.value.source) {
-      entityData.source = formData.value.source
-    }
+async function handleSubmitAndClose() {
+  if (loading.value) return // Prevent double-submission
 
-    if (formData.value.type === 'sql') {
-      entityData.data_source = formData.value.data_source
-      entityData.query = formData.value.query
-    }
+  loading.value = true
+  error.value = null
 
-    // Include file options for CSV and Excel types
-    if (isFileType.value && formData.value.options.filename) {
-      const options: Record<string, unknown> = {
-        filename: formData.value.options.filename,
-      }
-
-      if (formData.value.type === 'csv') {
-        if (formData.value.options.sep) {
-          options.sep = formData.value.options.sep
-        }
-        if (formData.value.options.encoding) {
-          options.encoding = formData.value.options.encoding
-        }
-      } else if (isExcelType.value) {
-        if (formData.value.options.sheet_name) {
-          options.sheet_name = formData.value.options.sheet_name
-        }
-        if (formData.value.options.range) {
-          options.range = formData.value.options.range
-        }
-      }
-
-      entityData.options = options
-    }
-
-    // Include foreign keys if any
-    if (formData.value.foreign_keys.length > 0) {
-      entityData.foreign_keys = formData.value.foreign_keys
-    }
-
-    // Include depends_on if specified
-    if (formData.value.depends_on.length > 0) {
-      entityData.depends_on = formData.value.depends_on
-    }
-
-    // Include drop_duplicates if enabled
-    if (formData.value.drop_duplicates.enabled) {
-      if (formData.value.drop_duplicates.columns.length > 0) {
-        entityData.drop_duplicates = formData.value.drop_duplicates.columns
-      } else {
-        entityData.drop_duplicates = true
-      }
-    }
-
-    // Include drop_empty_rows if enabled
-    if (formData.value.drop_empty_rows.enabled) {
-      if (formData.value.drop_empty_rows.columns.length > 0) {
-        entityData.drop_empty_rows = formData.value.drop_empty_rows.columns
-      } else {
-        entityData.drop_empty_rows = true
-      }
-    }
-
-    // Include check_functional_dependency if enabled
-    if (formData.value.check_functional_dependency) {
-      entityData.check_functional_dependency = true
-    }
-
-    // Include advanced configuration
-    if (formData.value.advanced.filters?.length) {
-      entityData.filters = formData.value.advanced.filters
-    }
-    if (formData.value.advanced.unnest) {
-      entityData.unnest = formData.value.advanced.unnest
-    }
-    if (formData.value.advanced.append?.length) {
-      entityData.append = formData.value.advanced.append
-    }
-    if (formData.value.advanced.extra_columns) {
-      entityData.extra_columns = formData.value.advanced.extra_columns
-    }
+  try {
+    const entityData = buildEntityConfigFromFormData()
 
     if (props.mode === 'create') {
       await create({
@@ -1599,7 +1841,7 @@ async function handleSubmit() {
       })
     }
 
-    emit('saved')
+    emit('saved', formData.value.name)
     handleClose()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to save entity'
@@ -1614,6 +1856,11 @@ function handleCancel() {
 
 function handleClose() {
   error.value = null
+  showSaveSuccess.value = false
+  if (saveSuccessTimeout) {
+    clearTimeout(saveSuccessTimeout)
+    saveSuccessTimeout = null
+  }
   formRef.value?.reset()
   dialogModel.value = false
 }
@@ -1621,44 +1868,58 @@ function handleClose() {
 function handleMaterialized() {
   // Entity was materialized - reload to get updated state
   showMaterializeDialog.value = false
-  
+
   // Reload entity to update currentEntity with materialized flag
   if (props.entity?.name) {
     loading.value = true
-    api.entities.get(props.projectName, props.entity.name)
-      .then(freshEntity => {
+    api.entities
+      .get(props.projectName, props.entity.name)
+      .then((freshEntity) => {
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
         yamlContent.value = formDataToYaml()
       })
-      .catch(err => console.error('Failed to reload after materialization:', err))
-      .finally(() => loading.value = false)
+      .catch((err) => {
+        console.error('Failed to reload after materialization:', err)
+        const message = err.response?.data?.detail || err.message || 'Unknown error'
+        showError(`Failed to reload entity after materialization: ${message}`)
+      })
+      .finally(() => (loading.value = false))
   }
-  
+
   // Notify parent to refresh entity list
-  emit('saved')
+  if (props.entity?.name) {
+    emit('saved', props.entity.name)
+  }
 }
 
 function handleUnmaterialized(unmaterializedEntities: string[]) {
   // Entities were unmaterialized - reload to get updated state
   showUnmaterializeDialog.value = false
-  
+
   // Reload entity to update currentEntity (remove materialized flag)
   if (props.entity?.name) {
     loading.value = true
-    api.entities.get(props.projectName, props.entity.name)
-      .then(freshEntity => {
+    api.entities
+      .get(props.projectName, props.entity.name)
+      .then((freshEntity) => {
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
         yamlContent.value = formDataToYaml()
       })
-      .catch(err => console.error('Failed to reload after unmaterialization:', err))
-      .finally(() => loading.value = false)
+      .catch((err) => {
+        console.error('Failed to reload after unmaterialization:', err)
+        const message = err.response?.data?.detail || err.message || 'Unknown error'
+        showError(`Failed to reload entity after unmaterialization: ${message}`)
+      })
+      .finally(() => (loading.value = false))
   }
-  
+
   // Notify parent to refresh entity list
-  emit('saved')
-  
+  if (props.entity?.name) {
+    emit('saved', props.entity.name)
+  }
+
   // Log unmaterialized entities
   if (unmaterializedEntities.length > 1) {
     console.log(`Unmaterialized ${unmaterializedEntities.length} entities:`, unmaterializedEntities)
@@ -1669,14 +1930,22 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   const dropDuplicates = entity.entity_data.drop_duplicates
   const dropEmptyRows = entity.entity_data.drop_empty_rows
 
+  // For fixed entities, strip system_id and public_id from columns
+  // since they're auto-managed and will be auto-added on save
+  let columns = (entity.entity_data.columns as string[]) || []
+  if (entity.entity_data.type === 'fixed') {
+    const publicId = (entity.entity_data.public_id as string) || ''
+    columns = columns.filter(col => col !== 'system_id' && col !== publicId)
+  }
+
   return {
     name: entity.name,
     type: (entity.entity_data.type as string) || 'entity',
-    system_id: 'system_id',  // Always standardized
-    public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '',  // Migrate
-    surrogate_id: (entity.entity_data.surrogate_id as string) || '',  // Backward compat
+    system_id: 'system_id', // Always standardized
+    public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '', // Migrate
+    surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
     keys: (entity.entity_data.keys as string[]) || [],
-    columns: (entity.entity_data.columns as string[]) || [],
+    columns: columns,
     values: (entity.entity_data.values as any[][]) || [],
     source: (entity.entity_data.source as string) || null,
     data_source: (entity.entity_data.data_source as string) || '',
@@ -1712,9 +1981,9 @@ function buildDefaultFormData(): FormData {
   return {
     name: '',
     type: 'entity',
-    system_id: 'system_id',  // Always standardized
+    system_id: 'system_id', // Always standardized
     public_id: '',
-    surrogate_id: '',  // Backward compat
+    surrogate_id: '', // Backward compat
     keys: [],
     columns: [],
     values: [],
@@ -1751,11 +2020,21 @@ function buildDefaultFormData(): FormData {
 // Note: Entity loading now handled in modelValue watcher below
 // This ensures we always fetch fresh data from the API when opening the dialog
 
-// Reset form and fetch fresh entity data when dialog opens
+// Reset form and fetch fresh entity data when dialog opens or entity changes
 watch(
-  () => props.modelValue,
-  async (isOpen) => {
-    if (isOpen) {
+  [() => props.modelValue, () => props.entity?.name, () => props.mode],
+  async ([isOpen, entityName, mode]) => {
+    // Trigger reset when dialog opens in either mode:
+    // - Create mode: always reset (no entity name required)
+    // - Edit mode: reset when entity name is available
+    if (isOpen && (mode === 'create' || entityName)) {
+      console.log('[EntityFormDialog] Dialog opening/entity changed, props:', {
+        mode: mode,
+        entityName: entityName,
+        hasEntity: !!props.entity,
+        projectName: props.projectName,
+      })
+
       // Reset UI state
       error.value = null
       formRef.value?.resetValidation()
@@ -1764,53 +2043,53 @@ watch(
       yamlError.value = null
       clearPreview()
       previewError.value = null
-      viewMode.value = 'form'
+      viewMode.value = 'form' // Always reset to form view
 
-      // Load entity data - ALWAYS fetch fresh from API for edit mode
-      if (props.mode === 'edit' && props.entity?.name) {
-        loading.value = true
-        try {
-          // Fetch fresh entity data from API (source of truth)
-          const freshEntity = await api.entities.get(props.projectName, props.entity.name)
-          currentEntity.value = freshEntity  // Store complete entity for materialized checks
-          console.log('[EntityFormDialog] Loaded entity:', {
-            name: freshEntity.name,
-            hasMaterialized: !!freshEntity.materialized,
-            materializedEnabled: freshEntity.materialized?.enabled,
-            type: freshEntity.entity_data?.type
-          })
-          formData.value = buildFormDataFromEntity(freshEntity)
+      // Load entity data for edit mode
+      if (mode === 'edit' && entityName) {
+        // Use entity from props (already fresh from reactive store)
+        // Only fetch from API if props.entity is missing (defensive coding)
+        if (props.entity) {
+          console.log('[EntityFormDialog] Using entity from props (reactive store):', entityName)
+          currentEntity.value = props.entity
+          formData.value = buildFormDataFromEntity(props.entity)
           yamlContent.value = formDataToYaml()
-          
+
           // Hydrate columns for entity type after form data is loaded
           if (formData.value.type === 'entity') {
             hydrateColumnsFromSource()
           }
-        } catch (err) {
-          error.value = err instanceof Error ? err.message : 'Failed to load entity data'
-          console.error('Failed to fetch fresh entity data:', err)
-          // Fallback to prop data if API fails
-          if (props.entity) {
-            currentEntity.value = props.entity
-            formData.value = buildFormDataFromEntity(props.entity)
+        } else {
+          // Fallback: fetch from API if entity not provided (shouldn't happen in normal flow)
+          loading.value = true
+          console.warn('[EntityFormDialog] Entity not in props, fetching from API:', entityName)
+          try {
+            const freshEntity = await api.entities.get(props.projectName, entityName)
+            console.log('[EntityFormDialog] API response received for:', freshEntity.name)
+            currentEntity.value = freshEntity
+            formData.value = buildFormDataFromEntity(freshEntity)
             yamlContent.value = formDataToYaml()
-            
+
             // Hydrate columns for entity type after form data is loaded
             if (formData.value.type === 'entity') {
               hydrateColumnsFromSource()
             }
+          } catch (err) {
+            error.value = err instanceof Error ? err.message : 'Failed to load entity data'
+            console.error('Failed to fetch entity data:', err)
+          } finally {
+            loading.value = false
           }
-        } finally {
-          loading.value = false
         }
-      } else if (props.mode === 'create') {
+      } else if (mode === 'create') {
         // Create mode: use default form data
         currentEntity.value = null
         formData.value = buildDefaultFormData()
         yamlContent.value = ''
       }
     }
-  }
+  },
+  { immediate: true }
 )
 
 // Sync form to YAML when switching to YAML tab
@@ -1952,11 +2231,11 @@ function handleRejectDependency(dep: DependencySuggestion) {
 }
 
 /* When in preview-only mode, hide form panel and make preview 100% */
-.split-layout[data-view-mode="preview"] .form-panel {
+.split-layout[data-view-mode='preview'] .form-panel {
   display: none;
 }
 
-.split-layout[data-view-mode="preview"] .preview-panel {
+.split-layout[data-view-mode='preview'] .preview-panel {
   flex: 1 1 100%;
 }
 

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
+import { getErrorMessage } from '@/utils/errors'
 import type { ValidationResult, ValidationError, DependencyGraph, CircularDependencyCheck } from '@/types'
 
 export const useValidationStore = defineStore('validation', () => {
@@ -125,7 +126,7 @@ export const useValidationStore = defineStore('validation', () => {
       dependencyGraph.value = await api.validation.getDependencies(projectName)
       return dependencyGraph.value
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch dependencies'
+      error.value = getErrorMessage(err)
       throw err
     } finally {
       loading.value = false
@@ -139,7 +140,7 @@ export const useValidationStore = defineStore('validation', () => {
       circularDependencyCheck.value = await api.validation.checkCircularDependencies(projectName)
       return circularDependencyCheck.value
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to check circular dependencies'
+      error.value = getErrorMessage(err)
       throw err
     } finally {
       loading.value = false

@@ -221,11 +221,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ReconciliationPreviewRow, EntityReconciliationSpec } from '@/types'
+import type { ReconciliationPreviewRow, EntityResolutionSet } from '@/types'
 
 interface Props {
   previewData: ReconciliationPreviewRow[]
-  entitySpec: EntityReconciliationSpec | null
+  entitySpec: EntityResolutionSet | null
 }
 
 const props = defineProps<Props>()
@@ -293,7 +293,7 @@ const avgConfidence = computed(() => {
 
 const completionRate = computed(() => {
   if (totalQueries.value === 0) return 0
-  const completed = props.previewData.filter(row => row.sead_id != null || row.will_not_match).length
+  const completed = props.previewData.filter(row => row.target_id != null || row.will_not_match).length
   return Math.round((completed / totalQueries.value) * 100)
 })
 

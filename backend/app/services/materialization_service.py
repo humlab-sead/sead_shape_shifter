@@ -33,7 +33,6 @@ class MaterializationService:
         self,
         project_name: str,
         entity_name: str,
-        user_email: str | None = None,
         storage_format: Literal["csv", "parquet", "inline"] = "parquet",
     ) -> MaterializationResult:
         """
@@ -79,7 +78,7 @@ class MaterializationService:
             df: DataFrame = shapeshifter.table_store[entity_name]
 
             # Determine storage strategy
-            data_file: str = ""
+            data_file: str | None = None
             values_inline: list[list[Any]] | None = None
 
             if storage_format == "inline" or len(df) < STORE_INLINE_THRESHOLD:
@@ -109,7 +108,7 @@ class MaterializationService:
 
                 try:
                     if storage_format == "parquet":
-                        data_file: str = f"materialized/{entity_name}.parquet"
+                        data_file = f"materialized/{entity_name}.parquet"
                         full_path: Path = data_dir / f"{entity_name}.parquet"
                         df.to_parquet(full_path, index=False)
                         logger.info(f"Saved {len(df)} rows to {full_path}")
@@ -141,18 +140,19 @@ class MaterializationService:
                     saved_state[k] = v
 
             # Build new config (all values are POPO from YamlService.load())
+            # Build materialized metadata dict
+            materialized_meta: dict[str, Any] = {
+                "enabled": True,
+                "source_state": saved_state,
+                "materialized_at": datetime.now().isoformat(),
+            }
+
             new_config = {
                 "type": "fixed",
                 "public_id": table.public_id,
                 "keys": list(table.keys),
                 "columns": list(df.columns),
-                "materialized": {
-                    "enabled": True,
-                    "source_state": saved_state,
-                    "materialized_at": datetime.now().isoformat(),
-                    "materialized_by": user_email,
-                    "data_file": data_file,
-                },
+                "materialized": materialized_meta,
             }
 
             if values_inline:
@@ -253,7 +253,7 @@ class MaterializationService:
             return UnmaterializationResult(success=True, entity_name=entity_name, unmaterialized_entities=unmaterialized_entities)
 
         except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"Failed to unmaterialize entity '{entity_name}': {e}")
+            logger.exception(f"Failed to unmaterialize entity '{entity_name}': {e}")
             return UnmaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
 
     def _find_materialized_dependents(self, core_project, table):

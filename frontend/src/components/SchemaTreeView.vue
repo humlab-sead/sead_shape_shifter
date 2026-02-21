@@ -40,20 +40,6 @@
         </template>
       </v-text-field>
 
-      <!-- Search -->
-      <v-text-field
-        v-model="searchQuery"
-        label="Search tables"
-        density="compact"
-        variant="outlined"
-        clearable
-        class="mb-2"
-      >
-        <template #prepend-inner>
-          <v-icon icon="mdi-magnify" size="small" />
-        </template>
-      </v-text-field>
-
       <!-- Error Display -->
       <v-alert
         v-if="error"
@@ -67,54 +53,53 @@
         {{ error }}
       </v-alert>
 
-      <!-- Loading State -->
-      <div v-if="loading" class="text-center py-4">
-        <v-progress-circular indeterminate color="primary" />
-        <p class="text-caption mt-2">Loading tables...</p>
-      </div>
+      <!-- Table Selector (Combobox) -->
+      <v-select
+        v-model="selectedTableName"
+        :items="tables"
+        item-title="name"
+        item-value="name"
+        label="Select table"
+        density="compact"
+        variant="outlined"
+        :loading="loading"
+        :disabled="!selectedDataSourceName || loading"
+        :no-data-text="!selectedDataSourceName ? 'Select a data source first' : 'No tables found'"
+        class="mb-2"
+      >
+        <template #prepend-inner>
+          <v-icon :icon="getTableIcon()" size="small" />
+        </template>
 
-      <!-- Empty State -->
-      <v-alert v-else-if="!selectedDataSourceName" type="info" variant="tonal" density="compact">
-        Select a data source to browse tables
-      </v-alert>
-
-      <v-alert v-else-if="filteredTables.length === 0 && !loading" type="info" variant="tonal" density="compact">
-        No tables found
-      </v-alert>
-
-      <!-- Tables List -->
-      <v-list v-else density="compact" class="pa-0">
-        <v-list-item
-          v-for="table in filteredTables"
-          :key="table.name"
-          :active="selectedTable?.name === table.name"
-          :title="table.name"
-          :subtitle="formatTableSubtitle(table)"
-          @click="selectTable(table)"
-        >
-          <template #prepend>
-            <v-icon :icon="getTableIcon()" size="small" />
-          </template>
-
-          <template #append>
-            <v-chip v-if="table.row_count !== null && table.row_count !== undefined" size="x-small" variant="tonal">
-              {{ formatRowCount(table.row_count) }}
-            </v-chip>
-          </template>
-        </v-list-item>
-      </v-list>
+        <template #item="{ props: itemProps, item }">
+          <v-list-item v-bind="itemProps" :title="item.raw.name" :subtitle="formatTableSubtitle(item.raw)">
+            <template #append>
+              <v-chip
+                v-if="item.raw.row_count !== null && item.raw.row_count !== undefined"
+                size="x-small"
+                variant="tonal"
+              >
+                {{ formatRowCount(item.raw.row_count) }}
+              </v-chip>
+            </template>
+          </v-list-item>
+        </template>
+      </v-select>
+      
+      <!-- Slot for additional content (e.g., column details) -->
+      <slot name="details" />
     </v-card-text>
 
-    <v-card-actions v-if="filteredTables.length > 0">
+    <v-card-actions v-if="tables.length > 0">
       <v-chip size="small" variant="text">
-        {{ filteredTables.length }} table{{ filteredTables.length !== 1 ? 's' : '' }}
+        {{ tables.length }} table{{ tables.length !== 1 ? 's' : '' }}
       </v-chip>
     </v-card-actions>
   </v-card>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
 import type { TableMetadata } from '@/types/schema'
 import { getTableIcon, formatRowCount } from '@/types/schema'
@@ -139,8 +124,7 @@ const dataSourceStore = useDataSourceStore()
 // State
 const selectedDataSourceName = ref<string | null>(null)
 const schemaFilter = ref<string>('public')
-const searchQuery = ref('')
-const selectedTable = ref<TableMetadata | null>(null)
+const selectedTableName = ref<string | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -163,14 +147,9 @@ const tables = computed(() => {
   return dataSourceStore.getTablesForDataSource(selectedDataSourceName.value, schema)
 })
 
-const filteredTables = computed(() => {
-  if (!searchQuery.value) return tables.value
-
-  const query = searchQuery.value.toLowerCase()
-  return tables.value.filter(
-    (table) =>
-      table.name.toLowerCase().includes(query) || (table.comment && table.comment.toLowerCase().includes(query))
-  )
+const selectedTable = computed(() => {
+  if (!selectedTableName.value) return null
+  return tables.value.find((t) => t.name === selectedTableName.value) || null
 })
 
 // Methods
@@ -202,12 +181,6 @@ function refreshTables() {
   }
 }
 
-function selectTable(table: TableMetadata) {
-  selectedTable.value = table
-  const schema = isPostgreSQL.value ? schemaFilter.value : undefined
-  emit('table-selected', table, selectedDataSourceName.value!, schema)
-}
-
 function formatTableSubtitle(table: TableMetadata): string {
   const parts: string[] = []
 
@@ -219,7 +192,8 @@ function formatTableSubtitle(table: TableMetadata): string {
     parts.push(table.comment)
   }
 
-  return parts.join(' • ')
+  const subtitle = parts.join(' • ')
+  return subtitle.length > 49 ? subtitle.substring(0, 46) + '...' : subtitle
 }
 
 function clearError() {
@@ -228,7 +202,7 @@ function clearError() {
 
 // Watchers
 watch(selectedDataSourceName, () => {
-  selectedTable.value = null
+  selectedTableName.value = null
   if (selectedDataSourceName.value && props.autoLoad) {
     loadTables()
   }
@@ -240,10 +214,33 @@ watch(schemaFilter, () => {
   }
 })
 
-// Initialize
-if (props.autoLoad && databaseSources.value.length > 0) {
-  selectedDataSourceName.value = databaseSources.value[0]?.name ?? null
-}
+watch(selectedTableName, () => {
+  if (selectedTableName.value && selectedDataSourceName.value) {
+    // Wait a tick to ensure computed selectedTable is updated
+    nextTick(() => {
+      if (selectedTable.value) {
+        const schema = isPostgreSQL.value ? schemaFilter.value : undefined
+        emit('table-selected', selectedTable.value, selectedDataSourceName.value!, schema)
+      }
+    })
+  }
+})
+
+// Initialize - Fetch data sources on mount if autoLoad is true
+onMounted(async () => {
+  if (props.autoLoad && databaseSources.value.length === 0) {
+    try {
+      await dataSourceStore.fetchDataSources()
+      if (databaseSources.value.length > 0) {
+        selectedDataSourceName.value = databaseSources.value[0]?.name ?? null
+      }
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to load data sources'
+    }
+  } else if (props.autoLoad && databaseSources.value.length > 0 && !selectedDataSourceName.value) {
+    selectedDataSourceName.value = databaseSources.value[0]?.name ?? null
+  }
+})
 </script>
 
 <style scoped>

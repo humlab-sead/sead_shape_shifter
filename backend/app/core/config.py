@@ -9,6 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Import version from package
 from backend.app import __version__
 
+# pylint: disable=invalid-name
+
 
 class Settings(BaseSettings):
     """Application settings."""
@@ -20,8 +22,8 @@ class Settings(BaseSettings):
         extra="ignore",
         env_prefix="SHAPE_SHIFTER_",
     )
-    PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
-    PROJECT_NAME: str = "Shape Shifter Project Editor"
+    APPLICATION_ROOT: Path = Path(__file__).parent.parent.parent
+    APPLICATION_NAME: str = "Shape Shifter Project Editor"
     VERSION: str = __version__
     ENVIRONMENT: Literal["development", "production", "test"] = "development"
     API_V1_PREFIX: str = "/api/v1"
@@ -44,9 +46,12 @@ class Settings(BaseSettings):
 
     # File paths
     PROJECTS_DIR: Path = Path("./projects")
-    BACKUPS_DIR: Path = Path("./backups")
     LOGS_DIR: Path = Path("./logs")
     LOG_DIR: Path = LOGS_DIR  # Alias for backward compatibility
+
+    # Shared data paths for project portability (converted to absolute in model_post_init)
+    GLOBAL_DATA_DIR: Path = Path("./shared/shared-data")
+    GLOBAL_DATA_SOURCE_DIR: Path = Path("./shared/data-sources")
 
     # Logging configuration
     LOG_LEVEL: str = "INFO"
@@ -55,6 +60,7 @@ class Settings(BaseSettings):
     LOG_ROTATION: str = "10 MB"
     LOG_RETENTION: str = "30 days"
     LOG_COMPRESSION: str = "zip"
+    LOG_FILTER_FRAMEWORK_FRAMES: bool = True  # Filter FastAPI/Uvicorn frames from console logs
 
     # Services
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
@@ -66,12 +72,19 @@ class Settings(BaseSettings):
     INGESTER_PATHS: list[str] = ["ingesters"]
     ENABLED_INGESTERS: list[str] | None = None  # None = all discovered ingesters
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def model_post_init(self, __context) -> None:  # pylint: disable=arguments-differ
+        """Convert paths to absolute and ensure directories exist."""
+        # Convert to absolute paths (required for @load: directive resolution)
+        self.PROJECTS_DIR = self.PROJECTS_DIR.absolute()
+        self.LOGS_DIR = self.LOGS_DIR.absolute()
+        self.GLOBAL_DATA_DIR = self.GLOBAL_DATA_DIR.absolute()
+        self.GLOBAL_DATA_SOURCE_DIR = self.GLOBAL_DATA_SOURCE_DIR.absolute()
+
         # Ensure directories exist
-        self.PROJECTS_DIR.mkdir(exist_ok=True)
-        self.BACKUPS_DIR.mkdir(exist_ok=True)
-        self.LOGS_DIR.mkdir(exist_ok=True)
+        self.PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
+        self.LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        self.GLOBAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        self.GLOBAL_DATA_SOURCE_DIR.mkdir(parents=True, exist_ok=True)
 
     @property
     def env_prefix(self) -> str:
@@ -84,14 +97,24 @@ class Settings(BaseSettings):
         return str(self.model_config.get("env_file", ""))
 
     @property
-    def projects_dir(self) -> Path:
-        """Get configurations directory path."""
+    def projects_root(self) -> Path:
+        """Get projects root directory path."""
         return self.PROJECTS_DIR
 
     @property
-    def project_root(self) -> Path:
-        """Get project root directory path."""
-        return self.PROJECT_ROOT
+    def application_root(self) -> Path:
+        """Get application root directory path."""
+        return self.APPLICATION_ROOT
+
+    @property
+    def global_data_dir(self) -> Path:
+        """Get global data directory path."""
+        return self.GLOBAL_DATA_DIR
+
+    @property
+    def global_data_source_dir(self) -> Path:
+        """Get global data source directory path."""
+        return self.GLOBAL_DATA_SOURCE_DIR
 
     @property
     def env_opts(self) -> dict[str, str]:
@@ -102,6 +125,14 @@ class Settings(BaseSettings):
     def reconciliation_service_url(self) -> str:
         """Get reconciliation service URL."""
         return self.RECONCILIATION_SERVICE_URL
+
+    def enable_fk_suggestions(self) -> None:
+        """Check if foreign key suggestions are enabled."""
+        self.ENABLE_FK_SUGGESTIONS = True
+
+    def disable_fk_suggestions(self) -> None:
+        """Disable foreign key suggestions."""
+        self.ENABLE_FK_SUGGESTIONS = False
 
 
 @lru_cache

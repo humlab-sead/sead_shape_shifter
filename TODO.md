@@ -1,16 +1,28 @@
 
-# Finally cleanup step
+### Resources
+
+**GitHub Copilot Chat - Prompt Engineering:**
+- [Asking GitHub Copilot Questions in Your IDE](https://docs.github.com/en/copilot/using-github-copilot/asking-github-copilot-questions-in-your-ide) - Official guide on asking questions in VS Code
+- [Prompt Engineering for GitHub Copilot](https://docs.github.com/en/copilot/using-github-copilot/prompt-engineering-for-github-copilot) - Best practices for writing effective prompts
+- [VS Code Copilot Chat Documentation](https://code.visualstudio.com/docs/copilot/copilot-chat) - Guide covering slash commands (`/explain`, `/fix`, `/tests`) and context participants (`#file`, `#selection`, `@workspace`)
+- [How to write better prompts for GitHub Copilot - The GitHub Blog](https://github.blog/developer-skills/github/how-to-write-better-prompts-for-github-copilot/?ref_product=copilot&ref_type=engagement&ref_style=text)
+
+**Quick Tips:**
+
+- Use `/help` in Copilot Chat to see all available commands
+- Reference files with `#file:path/to/file.ts`
+- Use `@workspace` to search across the entire workspace
+- Structure prompts: [Context] + [Specific Task] + [Constraints/Format]
+
+---
 
 ### Bugs
 
- - [] FIXME: Right preview pane doesn't clear values between entities
- - [] FIXME: Update documentation, archive non-relevent documents
+FIXME: Projects are sometimes stored with resolved values.
+FIXME: #219 Inline data source configurations raised an error.
 
 ### Tech debts:
 
- - [] FIXME: #169 Initialize Playwright setup (UX E2E tests)
- - [] FIXME: #171 Increade manual testing guide feature coverage
- - [] FIXME: #188 Syncing issue between entity state (changes not shown when entity re-opened)
 
 ### New features
 
@@ -30,14 +42,12 @@
  - [] TODO: NOT WORTH THE EFFORT! Improve user experience (Add new edge/relationship in dependency graph)
  - [] TODO: Improve in-system help (full User Guide, more context sensitive help)
  - [] TODO: Improve UX suggestions when editing entity (awareness of availiable tables, columns etc)
- - [] TODO: Improve Reconcile user experience
  - [] TODO: Auto-save feature in YAML editing mode (trigger after 2 seconds of inactivity)
- - [] TODO: #189 Simplify server side caching (remove!) of parsed YAML projects
+ - [] TODO: Consider limiting "@value:" directive usage to only refer to non-directive keys.
+ - [] TODO: Consnider moving specifications/base/get_entity_columns it to TableConfig
+            Note that columns avaliable at a specifik FK's linking includes result columns from previous linked FKs.
 
-
-APPENDIX
-
-# TODO: #108 Tiny DSL Expression Support in extra_columns DETAILS
+### TODO: #108 Tiny DSL Expression Support in extra_columns DETAILS
 
 The "extra_colums" key in an entity's specification provides a way of adding new columns to the resulting DataFrame. The extra_columns value is a dict, where each key is the name of the new column, and the value is the initial value of the new column. The value can be a constant, or anoother column in the source or DataFrame.
 
@@ -46,7 +56,7 @@ It would be useful to support simple expressions in the key's value, e.g. create
 Please suggest a YAML-notation for the expression in the extra-columns section for this feature, and how it could be implemented.. Try to make this feature simple but useful.
 
 
-## Feature Idea
+Feature Idea
 
 Add expressions under extra_columns using a tiny DSL in YAML, e.g.
 ```yml
@@ -56,13 +66,13 @@ extra_columns:
 ```
 where {row.X} refers to source/df fields and helpers (like concat or slicing) map to Pandas-friendly Python.
 
-## Implementation path:
+Implementation path:
  - Interpret the string by formatting it inside a sandboxed helper that injects the current pandas.Series (row) or even the whole DataFrame.
  - For column-wise expressions, leverage df.eval/df.assign after prepping a safe namespace with allowed functions (concat, upper, etc.).
  - For more complex transformations, allow users to specify "lambda df: df['a'] + df['b']" (evaluated via eval with a restricted globals containing only helpers and pd).
 - Keep simple by defaulting to expressions evaluated per-row via df.eval or df.assign, with ability to refer to any existing column.
 
-## Next steps:
+Next steps:
 
 1. Decide whether expressions should be evaluated row-by-row (via df.assign(extra=...)) or on the whole DataFrame.
 2. Implement parsing/evaluation in the pipeline step where extra_columns currently get applied (likely near the Filter/Link stage).
@@ -89,296 +99,243 @@ Backend implementation: parse the string when it’s added to the DataFrame. If 
 
 Keep helper mappings simple so non-technical users can combine columns with string functions; expose more via extending the compiler (e.g., additional helpers for dates or math).
 
----
 
-# AI Assessment of TODO Items (Generated 2026-01-16)
-
----
-
-## 🔥 HIGH PRIORITY - Quick Wins
-
-### #124 Reconciliation editor extra_columns complaint - **Easy Fix**
+### TODO: #124 Reconciliation editor extra_columns complaint - **Easy Fix**
 - The reconciliation editor validation is likely too strict
 - Simple fix: Update schema/validation to allow `extra_columns` property
-- **Effort: 1-2 hours** | **Value: High** (removes user friction)
-
-### Right preview pane doesn't clear values - **Simple Bug**
-- Likely missing reactive reset in EntityPreviewPanel.vue
-- Pattern: Add `watch(() => props.entityName, () => clearState())`
-- **Effort: 30 minutes** | **Value: Medium** (polish)
-
 ---
 
-## 💡 MEDIUM PRIORITY - Moderate Value
-
-### #116 Intermittent navigation error - **Needs Investigation**
-- Could be race condition in router or store
-- **Effort: 2-4 hours** | **Value: High IF frequent** (stability)
-- Check browser console logs and navigation guards
-
-### Edit data source in dual-mode editor (Form/YAML) - **Good UX Pattern**
-- Already have this pattern for entities
-- Reuse EntityFormDialog.vue architecture
-- **Effort: 4-6 hours** | **Value: Medium** (consistency)
-
-### Generate default reconciliation YAML from manifest - **Smart Feature**
+### TODO: Generate default reconciliation YAML from manifest - **Smart Feature**
 - Calls `/reconcile` endpoint and scaffolds YAML
-- **Effort: 6-8 hours** | **Value: High** (user productivity)
 - Reconciliation system already exists with full implementation
 
-### #68 Add "finally" cleanup step - **Pipeline Feature**
+### TODO: #68 Add "finally" cleanup step - **Pipeline Feature**
 - Drops intermediate tables/columns after processing
-- **Effort: 8-12 hours** | **Value: Medium** (clean output)
 - Fits naturally after Store phase
 
----
-
-## 🎯 WORTH CONSIDERING - Strategic Features
-
-### #108 Tiny DSL for extra_columns - **HIGH VALUE but Complex**
+### TODO: #108 Tiny DSL for extra_columns - **HIGH VALUE but Complex**
 - Detailed spec already exists in TODO.md
 - Two-tier approach is smart: `=concat(...)` for users, `expr:...` for power users
-- **Effort: 2-3 weeks** | **Value: Very High** (major feature)
-- **Recommendation: Phase 1 = Just `expr:` support (1 week), Phase 2 = DSL compiler (2 weeks)**
 
-### #66 Transformations section (toWGS84, etc.) - **Data Quality Feature**
+### TODO: #66 Transformations section (toWGS84, etc.) - **Data Quality Feature**
 - Coordinate transformations, case normalization, etc.
-- **Effort: 2-3 weeks** | **Value: High for geo data**
 - Consider using existing libraries (pyproj for coords)
 
-### #69 Add "parent" property to entities - **Hierarchical Data**
-- Useful for nested structures (site → feature → sample)
-- **Effort: 1-2 weeks** | **Value: Medium** (depends on use cases)
+### TODO: #67 String concatenation in extra_columns - **Subset of #108**
 
-### #67 String concatenation in extra_columns - **Subset of #108**
-- **Recommendation: Skip if doing #108 DSL, otherwise quick win**
-- **Effort: 2-3 days** | **Value: Medium**
-
-### Duplicate existing configuration - **User Convenience**
-- Copy project with new name
-- **Effort: 2-3 hours** | **Value: Medium**
-
-### Add optional types for entity fields - **Type Safety**
+### TODO: Add optional types for entity fields - **Type Safety**
 - Schema validation + conversions in extra_columns
-- **Effort: 1-2 weeks** | **Value: Medium** (better error messages)
 
----
-
-## ⚠️ LOW PRIORITY / DEFER
-
-### Update documentation - **Continuous Task**
-- Current docs are comprehensive (CONFIGURATION_GUIDE.md is 2,500+ lines!)
-- Archive old docs as you find them
-- **Recommendation: Do incrementally, not as big task**
-
-### Improve multiuser support - **Complex Feature**
+### TODO: Improve multiuser support - **Complex Feature**
 - Requires conflict resolution, locking, real-time sync
-- **Effort: 4-6 weeks** | **Value: Low** (unless multiple concurrent users)
-- **Recommendation: Defer unless actual need arises**
 
-### Add more reconciliation entity types - **Domain-Specific**
+### TODO: Add more reconciliation entity types - **Domain-Specific**
 - Geonames, RAÄ, etc.
-- **Effort: Varies** | **Value: Depends on user base**
-- **Recommendation: Add on demand, not preemptively**
 
-### Improve UX suggestions when editing entity - **Context-Aware Editor**
+### TODO: Improve UX suggestions when editing entity - **Context-Aware Editor**
 - Show available tables/columns from data source
-- **Effort: 2-3 weeks** | **Value: High for new users**
 - Could integrate with existing YAML intelligence
-
-### Improve in-system help - **User Guide Integration**
-- Context-sensitive help tooltips
-- **Effort: 2-4 weeks** | **Value: Medium**
-- **Recommendation: You have good tooltips already; defer full guide**
-
-### Improve Reconcile UX - **Vague Item**
-- **Recommendation: Clarify specific pain points before tackling**
-
----
-
-## ❌ NOT WORTH IT
-
-### Improve UX for adding edges in dependency graph - **Marked as "NOT WORTH THE EFFORT"**
-- Agreed - dependency graph is visualization, not primary editor
-- YAML or form editing is sufficient
-
----
-
-## Recommended Priority Order
-
-### Phase 1: Quick Wins (1-2 days total)
-1. ✅ Check off #166 YAML intelligence (DONE)
-2. ✅ Check off "Review test coverage" (91% is excellent)
-3. Fix #124 reconciliation editor extra_columns
-4. Fix right preview pane clearing bug
-5. Fix active route highlighting
-
-### Phase 2: High-Value Features (2-3 weeks)
-1. #108 DSL for extra_columns (Phase 1: `expr:` support only)
-2. Generate default reconciliation YAML
-3. Edit data source in dual-mode
-
-### Phase 3: Strategic Additions (4-6 weeks)
-1. #108 DSL (Phase 2: user-friendly compiler)
-2. #68 Finally cleanup step
-3. #66 Transformations section
-4. Improve UX suggestions (context-aware editing)
-
-### Deferred
-- Multiuser support (until proven need)
-- Additional reconciliation types (on demand)
-- Full in-system help (incremental improvement better)
-
----
-
-## New Tech Debt Identified
-
-1. **Frontend type safety** - Some `any` types in stores could be stricter
-2. **Error boundaries** - Add Vue error boundaries for production robustness
-3. **API retry logic** - Add exponential backoff for transient failures
-4. **Stale data indicator** - Show when cached data might be stale
-
-None of these are critical given your 91% test coverage.
-
----
-
-**Bottom line:** Focus on Phase 1 (bugs), then tackle #108 DSL in two phases. The extra_columns DSL is your highest-value unimplemented feature based on the detailed spec you've already written.
-
-# TODO: #174 Upload Excel files to data source directory
 
 Add capability to upload Excel files (.xls, .xlsx) to the data source files directory defined by SHAPE_SHIFTER_DATA_SOURCE_FILES_DIR in the .env file. The uploaded Excel files should be accessible for use in entity configurations within the Shape Shifter application.
 
-
-
-TODO: #181 Drop duplicates of "site" entity fails FD validation
-
-| Fustel            | EVNr       | FustelTyp | KoordSys                            | rWert    | hWert     | üNN   | site_name         | national_site_identifier | coordinate_system                   | latitude_dd | longitude_dd | altitude |
-|-------------------|------------|-----------|-------------------------------------|----------|-----------|-------|-------------------|--------------------------|-------------------------------------|-------------|--------------|----------|
-| Bkaker            | 274939     | Siedl     | Geografische Länge/Breite (dezimal) | 23.2     | 61.2      |       | Bkaker            | 274939                   | Geografische Länge/Breite (dezimal) | 23.2        | 61.2         |          |
-| Blaker kirkegård  | 224073     | Siedl     |                                     | 628472.0 | 6653720.0 | 143.0 | Blaker kirkegård  | 224073                   |                                     | 628472.0    | 6653720.0    | 143.0    |
-| Blaker kirkegård  | 224073     | Siedl     | Geografische Länge/Breite (dezimal) |          |           |       | Blaker kirkegård  | 224073                   | Geografische Länge/Breite (dezimal) |             |              |          |
-| Blaker kirkegård  | 224073     | Siedl     | Geografische Länge/Breite (dezimal) | 628472.0 | 6653720.0 | 143.0 | Blaker kirkegård  | 224073                   | Geografische Länge/Breite (dezimal) | 628472.0    | 6653720.0    | 143.0    |
-| Göteborg 342      | L1960:2928 | Stadt     |                                     |          |           |       | Göteborg 342      | L1960:2928               |                                     |             |              |          |
-| Kville 1502       |            | Rin       |                                     |          |           |       | Kville 1502       |                          |                                     |             |              |          |
-| Sandarna Gbg 15:1 | L1969:1130 | FustelSo  |                                     |          |           |       | Sandarna Gbg 15:1 | L1969:1130               |                                     |             |              |          |
-| Sandarna Gbg 15:1 | L1969:1130 | unbek     |                                     |          |           |       | Sandarna Gbg 15:1 | L1969:1130               |                                     |             |              |          |
-
-
-determinent_columns:  ["Fustel", "EVNr"]
-
-# TODO: Keep log of deferred links during normalization (performance optimization)
-Add capability to keep track of entities with deferred foreign key links during the normalization process. This will allow the system to retry linking only those entities that have unresolved foreign key references after each entity is processed, rather than attempting to relink all entities with deferred links. This optimization aims to reduce the time complexity from O(n^2) to a more efficient approach, improving overall performance during the normalization phase.
-
-# TODO: Local vs remote identity fields
-
-This system shapeshifts incoming data to a form that conforms to a target's system requirements.
-Some entity instances (e.g. lookups etc) of the incoming data already exists in the target system, and
-we need to reconcile these entities by assigning the target system's identity to these instances.
-
-An example:
-Income data has a site "Xyz" which exists in SEAD with identity 99. The user must be able to assign
-target system's identity 99 to this incoming site "Xyz".
-
-We do have the reconciliation workflow in a later step where we can search for identities in the
-remote system. But user's need to be able to assign values to "fixed value" entities already 
-in the entity editor.
-
-## Current System Model
-
-All foreign keys in the system refer to local identities within the shape shifting project.
-Normally, this is a sequence number starting from 1.
-
-Currently, this local id is assumed to be given the same name as the target system's identity.
-For instance, entity "site" corresponds to SEAD table "tbl_sites" that has PK "site_id", and
-entity "site" is then given the surrogate id "site_id".
-
-A later step in the workflow copies this local surrogate id column to a "system_id" column, and
-clears all values in the surrogate id column. This cleared column is then assumed to be the
-public id (i.e. SEAD PK). Later on, if a row has a value in this column, that is an indication
-that the row is an existing entity, and row with local "system_id" maps to this remote/public id.
-
-For "tbl_sites" we can have "system_id" 2 maps to "sead_id" 6745.
-
-This mapping/linking which is implemented in the reconciliation workflow is a fundamental feature
-of this system.
-
-## Proposed Enhancement: Three Explicit Identity Types
-
-Make the three types of identities explicit and separate:
-
-1. **Local Identity** (`system_id`): Project-scoped, auto-populated sequence
-   - **Always named "system_id"** (standardized column name)
-   - Auto-assigned starting from 1
-   - Project-local scope (each project has its own sequence)
-   - Used for internal foreign key relationships
-   - For fixed-value entities: read-only, auto-renumbered on row add/delete
-   - Config field can be omitted (defaults to "system_id")
-
-2. **Source Business Keys** (`keys`): Natural/business keys from source data
-   - Example: `keys: ["bygd", "raa_nummer"]` for Swedish archaeological sites
-   - Uniquely identify entities within the source domain
-   - Used for duplicate detection and source data reconciliation
-   - Can span multiple columns
-   - **Uses existing `keys` field** (already in the model)
-
-3. **Target System Identity** (`public_id`): Remote system's primary key name
-   - **Required field** - specifies FK column name (e.g., `public_id: site_id`)
-   - Defines what FK columns are named in child tables
-   - When child joins parent, FK column = parent's public_id, values = parent's system_id
-   - Maps to target system's PK name (e.g., SEAD's tbl_sites.site_id)
-   - Can be assigned values directly in entity editor for fixed-value entities
-
-
-TODO: #191 Materialized of entities
-
-Please assess how an entity materialization feature could be defined and implemented. 
-
-An materialized entity should be "frozen" to the output of a full normalization workflow, and hence in all respect act as a fixed valued entity.
-
-For an entity to be materialized the following must be true:
-1. It cannot be a fixed valued entity (obvisously)
-2. It must be fully validated
-3. It cannot be dependent on another "dynamic" non-materialized entity (sql, entity based, file based). This is a constraint. But in the future we might allow cascading materialization.
-4.  The entity's columns should be the same as the materialized dataframes columns
-
-I don't think 3. is a big constraint, since we most often want's to materialize and reconcile lookups and metadata.
-
-We need to be able to un-freeze the entity i.e. make it "dynamic" again. This means that when we materialize an entity we need to store overridden key/values so that they can be restored.
-
-Un-freezing an entity should unfreeze all other entities that depends on this entity. User must be informed of consequence of materialization and un-freezing, especially of they have manually  entered values in the public id values which will be lost.
-
-It might be a good idea to disable editing of frozen entities for all columns except the public id.
-
-The data should  be store outside of the project file. On the other hand it is nice with a contained package. Feel free to suggest alternatives. Storing it outside the project probably limit's what could be edited without a construct for updating the data. An option is perhaps to store materialized data in a single file. On the other hand it might be good to be able to edit materialized data.
-
-A tentative YAML syntax:
-
-```
-entities:
-  site:
-    public_id: site_id
-    type: fixed
-    materialized: true
-    saved_state:
-      type: sql
-      columns: [.... old columns ... ]
-      unnest:
-        ....
-      foreign_keys:
-        ...
-      ... more?
-
-    values: 
-       filename: path-to-file-relative-project-with-deterministict-name
-       public_id: system-id to SEAD id mapping for edited vales
-    xyz: rest the same ?
-
-[] TODO: #192 Consider adding column-name and improving append
-
-I'm still considering if we need a version of append that ignores the appended column names, i.e. it would basically as if the added table has it's columns renamed to the "paren t" table's columns. An vertical column-index based concatenation, ignoring column names, What do you think?
-
-[] TODO: #195 Add "columns" picklist for type "entity" in entity editor
-[] TODO: Introduce entity type "file" for entities based on files,
+### TODO: Introduce entity type "file" for entities based on files,
 Type of files could be csv, excel, json, xml etc, and specified in e.g a "file_type" field.
 This would give a more plugin friendly way of adding file based entities.
 
+### TODO: #202 Improve FK editing user experience
+
+We can improve the user experience when editing FKs. Currently, thw system offers no assistance when entering local and remote FK. 
+
+I think the system could offer picklists of available local and remote columns. This picklist should include all columns from each entity that is a candidate for the FK relationship, i.e. all columns in columns, keys nd extra_columns, any columns that are generated during normalization (e.g. result of unnesting unnested columns (value id, value vars, id_vars), FK-columns and FK's extra columns etc), system_id, public_id.
+The candidate columns can be computed without doing the full normalization, by analyzing the entity definitions and their relationships.
+
+A special case is if the user wants to use a "@value"-directive to point to e.g. another YAML-key in the project. To keep it aimple "@value: entities.**local/remote-entity-name**.keys" could be added to the picklist.
+One could also for flexibility allow the user to enter arbitrary YAML-path i.e. a åath that doesn't exist in the picklist.
+If a "@value" is used, that can be the only value, and should be a string (not a list). This will be resolved at runtime to the actual column(s).
+
+The "
+### TODO: #213 Copy SQL feature from Schema Explorer.
+Add a convenience function for copying an SQL select statement to the clipboard for selected entity in schema explorer. This is useful when a user want to create an SQL select in the entity editor based on a table in the specified data source. This could also possibly be extended to a "picker" in the entity editor that allows users to select a table from the data source and automatically generate a select statement for that table.
+
+### TODO: Add a "Test Query" button in the entity editor.
+Should open a modal with a Monaco Editor for SQL editing, allowing users to test SQL queries against the data source directly from the entity editor. This would provide a more integrated experience for users working with SQL entities.
+
+### TODO: Save custom graph layout in separate file
+
+
+### TODO: #221 System fails to find ingesters folder
+The system currently fails to find the ingesters folder when running in Docker. Cause: the ingesters folder is not copied to the Docker image, we need to copy the ingesters folder to the Docker image in the Dockerfile, and set environment variables accordingly.
+Wouldn't the simple solution be to only have resolved path in core layer? I code think a rule if "location" in "options", "filename" = strip_filenames_path(filename). Or is that do hacky? I could think adding a  simple mechanism for adding type specific mappings. 
+
+### FIXME:
+
+
+We need to review how **"filename"** entity's "options" dict id handled. This value holds the filename of of the source file for file based entities (csv, xlsx).
+Currently, this file can be in two places: in a **global store** or **locally** in the project's folder.
+- The location to the global store is defined in GLOBAL_DATA_DIR, which is a path relative to the **application root**.
+- The project's local folder is the project root folder + project's path given by it's name (nested folders separated by ":")
+Note that the "filename" and "location" information is used by the file based data loaders.
+
+Initially, we encoded the local/public location by prepending "${GLOBAL_DATA_DIR}/" to the value in "filename".
+The filename was the supposed to be resolved in the I/O-layer (read/write). This didn't work well, so it was changed to
+a more straightforward approach by adding a "location" key next to "filename" indicating storage location
+and that can take values "local" or "global". The problem is that the codebase now contains hacks in
+several places which mixes the two approaches. We don't need to store "${GLOBAL_DATA_DIR}/" anymore but
+that happens still in e.g. _resolve_file_paths_in_entity in backend/app/api/v1/endpoints/entities.py.
+The resolve logic also exists in several places. I'm also unsure if the location property 
+survives the mapping "API => core => API"
+
+Please review this and propose a more robust handling.  We could e.g. consider centralizing the logic to the file based loader class
+but somehow still various parts of the system need's a resolved filename.
+
+FIXME: Review hos "system_id" should be handled for fixed value entities. Currently, it is created by the server, and the client only display a sequence 1 to number of rows. This is very brittle. System_id is used as target columns for FKs, and if the system_id changes, the FK relationships will break. We need a more robust handling of system_id for fixed value entities. Instead the system_id should be a "concrete" value in the client, the get's auto-populated when the user adds a new row in the fixed value entity editor. The system_id should be unique and stable, and should not change when the entity is edited. The system_id must survice rows being added, removed and re-ordered. When a new row is added, the system_id can be generated by taking the max system_id in the existing rows and adding 1. When a row is removed, the system_id of the remaining rows should not change. When rows are re-ordered, the system_id should not change. This way, the FK relationships will not break when the entity is edited.
+
+
+TODO: New SEAD dispatcher
+
+You and I will design a new dispatcher that creates SQL DML code instead of writing data to files on disk.
+I need your opinion on how to design a dispatcher that creates SQL DML code instead of writing data to files on disk. My vision is that this system not only is used for reconciliation of data to existing entities in the remote system (e.g. SEAD), but also using using n API published by the SEAD system can allocate primary keys for new entities, and resolve FKs now referring to systems ids to  allocated SEAD of. SEAD uses "Sqitch" as the database change control system, so ultimatly the dispatch should create a SQL DML ready to be commited into SEAD.
+
+The current workflow is this:
+
+  Data provider's data                --> Shape Shifter [ USER ]              --> Project YAML
+  Data provider's data + Project YAML --> Shape Shifter [ NORMALIZER ]        --> Normalized DataFrames 
+  Normalized DataFrames               --> Shape Shifter [ DISPATCHER ]        --> SEAD-conforming Data (csv or Excel)
+  SEAD-conforming Data                --> Shape Shifter [ INGESTER ]          --> SEAD Clearinghouse Submission
+  SEAD Clearinghouse Submission       --> SEAD Transport System               --> SEAD Change Request (SQL DML scripts)
+  SEAD SEAD Change Request            --> SEAD Change Control System (Sqitch) --> SEAD database
+  
+Ideally, the same Project YAML can be used for future ingestions, but each new dataset will require some manual, computer-assisted work for e.g. a reconciliation step to match the new data to existing SEAD entities, or for specifying mandatory data that is missing in the incoming data.
+
+Currently, there is no capability to allocate new SEAD ids for new entities. This is done by the SEAD Transport systen that receives the SEAD-conforming data from the dispatcher, and creates a change request with SQL DML scripts that includes allocation of new SEAD ids. This is a bottleneck in the workflow, and it would be great if the dispatcher could handle this instead, by calling an API published by the SEAD system that can allocate new SEAD ids for new entities, and resolve FKs now referring to systems ids to allocated SEAD ids. This would allow for a more streamlined workflow.
+
+The first problem we need to resolve is designing a robust and safe system for allocating new identities in SEAD. This is a critical part of the workflow, and we need to ensure that it is done in a way that does not cause conflicts or inconsistencies in the SEAD database.
+
+SEAD identities are currently generated by the PostgreSQL database using sequences. All primary keys in SEAD are integers, and they are generated by sequences that are defined in the database. This is a crucial detail that we need to take into account when designing the identity allocation system.
+
+The integer system ids have historically been a big problem, since relying on them being stable across different runs of the system is very brittle. The system ids are used as target columns for FKs, and if the system ids change, the FK relationships will break. This is a problem that we need to solve in a robust way. We don't have a safe wway today to keep system ids stable across different runs of the system. We need to design a system that can allocate new SEAD ids for new entities in a way that is robust and does not cause conflicts or inconsistencies in the SEAD database. Possibly we must remove the reliance on sequence-generated integer system ids, and instead use a more robust and stable identifier system, such as UUIDs. This would allow us to allocate new SEAD ids for new entities in a way that is robust and does not cause conflicts or inconsistencies in the SEAD database.
+
+Phase 1 for us is to design a system for allocating new SEAD ids for new entities. These SQL DDL/DML scripts is used today to allocate and store SEAD ids, pertaining the mappings between system ids and SEAD ids. 
+
+```sql
+
+
+    create table if not exists sead_utility.system_id_allocations (
+        uuid UUID not null default uuid_generate_v4() primary key,
+        table_name text not null,
+        column_name text not null,
+        submission_identifier text not null,
+        change_request_identifier text not null,
+        external_system_id text null,
+        external_data JSON null,
+        alloc_system_id int not null
+    );
+
+    call sead_utility.drop_udf('sead_utility', 'get_next_system_id');
+    -- select sead_utility.get_next_system_id('tbl_sites', 'site_id') 
+    create or replace function sead_utility.get_next_system_id(p_table_name text, p_column_name text) 
+    /*
+    * Get the next SEAD system id for table "p_table_name" and column "p_column_name".
+    * The system id is allocated from the sead_utility.system_id_allocations table.
+    * If no system id has been allocated for the table and column, the function will return the maximum value of the column in the table.
+    */
+        returns integer as $udf$
+        declare
+            v_next_id integer;
+            v_query text;
+        begin
+            v_query := format('select max(%s) from %s', quote_ident(p_column_name), quote_ident(p_table_name));
+            -- raise notice '%', v_query;
+            execute v_query into v_next_id;
+
+            select max(system_id) into v_next_id
+            from (
+                select coalesce(max(alloc_system_id), 0) as system_id
+                from sead_utility.system_id_allocations
+                where table_name = p_table_name
+                and column_name = p_column_name
+                union all
+                values (v_next_id)
+            );
+            return v_next_id + 1;
+        end;
+        $udf$ language plpgsql;
+
+	call sead_utility.drop_udf('sead_utility', 'allocate_system_id');
+	
+    create or replace function sead_utility.allocate_system_id(
+        p_submission_identifier text,
+        p_change_request_identifier text,
+        p_table_name text,
+        p_column_name text,
+        p_system_id text = NULL,
+        p_data jsonb = NULL
+    ) returns integer as $udf$
+        declare 
+            v_next_id int;
+        begin
+
+            v_next_id = sead_utility.get_next_system_id(p_table_name, p_column_name);
+            insert into sead_utility.system_id_allocations (
+                table_name,
+                column_name,
+                submission_identifier,
+                change_request_identifier,
+                external_system_id,
+                external_data,
+                alloc_system_id
+            ) values (
+                p_table_name,
+                p_column_name,
+                p_submission_identifier,
+                p_change_request_identifier,
+                p_system_id,
+                p_data,
+                v_next_id
+            );
+            return v_next_id;
+        end;
+        $udf$ language plpgsql;
+
+    create or replace function sead_utility.release_allocated_ids(
+        p_submission_identifier text,
+        p_change_request_identifier text=null,
+        p_table_name text=null,
+        p_column_name text=null
+    ) 
+        returns void as $udf$
+        begin
+            delete from sead_utility.system_id_allocations
+            where submission_identifier = p_submission_identifier   
+              and (p_change_request_identifier is null or change_request_identifier = p_change_request_identifier)
+              and (p_table_name is null or table_name = p_table_name)
+              and (p_column_name is null or column_name = p_column_name)
+            ;
+        end;
+        $udf$ language plpgsql;
+
+    create or replace function sead_utility.get_allocated_id(
+        p_submission_identifier text,
+        p_change_request_identifier text,
+        p_table_name text,
+        p_column_name text,
+        p_system_id text = NULL
+    ) 
+        returns integer as $udf$
+        declare
+            v_alloc_system_id integer;
+        begin
+
+            select max(alloc_system_id::int)
+                into v_alloc_system_id
+                    from sead_utility.system_id_allocations
+                    where submission_identifier = p_submission_identifier
+                    and change_request_identifier = p_change_request_identifier
+                    and table_name = p_table_name
+                    and column_name = p_column_name
+                    and external_system_id = p_system_id
+            ;
+            return v_alloc_system_id;
+        end;
+        $udf$ language plpgsql;
+```

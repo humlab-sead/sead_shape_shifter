@@ -23,13 +23,26 @@ export const schemaApi = {
   /**
    * List all tables in a data source
    *
-   * @param dataSourceName - Name of the data source
+   * @param dataSourceNameOrConfig - Name of the data source or resolved config dict
    * @param params - Optional query parameters (schema filter for PostgreSQL)
    * @returns Promise with array of table metadata
    */
-  async listTables(dataSourceName: string, params?: ListTablesParams): Promise<TableMetadata[]> {
+  async listTables(
+    dataSourceNameOrConfig: string | Record<string, any>,
+    params?: ListTablesParams
+  ): Promise<TableMetadata[]> {
+    // If config is a dict, use POST endpoint with config in body
+    if (typeof dataSourceNameOrConfig === 'object') {
+      const response = await apiClient.post<TableMetadata[]>(
+        '/data-sources/tables',
+        { config: dataSourceNameOrConfig },
+        { params }
+      )
+      return response.data
+    }
+    // Otherwise use GET endpoint with name
     const response = await apiClient.get<TableMetadata[]>(
-      `/data-sources/${encodeURIComponent(dataSourceName)}/tables`,
+      `/data-sources/${encodeURIComponent(dataSourceNameOrConfig)}/tables`,
       { params }
     )
     return response.data
@@ -38,14 +51,31 @@ export const schemaApi = {
   /**
    * Get detailed schema for a specific table
    *
-   * @param dataSourceName - Name of the data source
+   * @param dataSourceNameOrConfig - Name of the data source or resolved config dict
    * @param tableName - Name of the table
    * @param params - Optional query parameters (schema filter for PostgreSQL)
    * @returns Promise with table schema details
    */
-  async getTableSchema(dataSourceName: string, tableName: string, params?: GetTableSchemaParams): Promise<TableSchema> {
+  async getTableSchema(
+    dataSourceNameOrConfig: string | Record<string, any>,
+    tableName: string,
+    params?: GetTableSchemaParams
+  ): Promise<TableSchema> {
+    // If config is a dict, use POST endpoint with config in body
+    if (typeof dataSourceNameOrConfig === 'object') {
+      const response = await apiClient.post<TableSchema>(
+        '/data-sources/tables/schema',
+        {
+          config: dataSourceNameOrConfig,
+          table_name: tableName,
+        },
+        { params }
+      )
+      return response.data
+    }
+    // Otherwise use GET endpoint with name
     const response = await apiClient.get<TableSchema>(
-      `/data-sources/${encodeURIComponent(dataSourceName)}/tables/${encodeURIComponent(tableName)}/schema`,
+      `/data-sources/${encodeURIComponent(dataSourceNameOrConfig)}/tables/${encodeURIComponent(tableName)}/schema`,
       { params }
     )
     return response.data

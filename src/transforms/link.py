@@ -3,7 +3,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
+from src.model import ForeignKeyConfig, ForeignKeyMergeSetup, ShapeShiftProject, TableConfig
 from src.process_state import DeferredLinkingTracker
 from src.specifications import ForeignKeyDataSpecification
 from src.specifications.constraints import ForeignKeyConstraintValidator
@@ -44,17 +44,21 @@ class ForeignKeyLinker:
         # Store validator to collect issues later
         self.validators.append(validator)
 
-        remote_extra_cols: list[str] = fk.get_valid_remote_columns(remote_df)
         remote_cfg: TableConfig = self.project.get_table(entity_name=fk.remote_entity)
 
-        # We need to rename remote system id to remote public id for the merge
-        # The local FK will be named after the remote public id, but contains the remote system ids
+        link_setup: ForeignKeyMergeSetup = fk.generate_link_setup(remote_df.columns.tolist(), remote_cfg)
 
-        renames: dict[str, str] = {remote_cfg.system_id: remote_cfg.public_id} | fk.resolved_extra_columns()
-
-        remote_df = remote_df[[remote_cfg.system_id] + remote_extra_cols].rename(columns=renames)
+        # Build column list: system_id + remote_columns (avoid duplicates)
+        cols_to_select: list[str] = [remote_cfg.system_id]
+        cols_to_select.extend([col for col in link_setup.remote_columns if col != remote_cfg.system_id])
+        
+        remote_df = remote_df[cols_to_select].rename(columns=link_setup.rename_map)
 
         opts: dict[str, Any] = self._resolve_link_opts(fk, validator)
+
+        # Map remote_keys through rename_map since columns were renamed
+        if "right_on" in opts:
+            opts["right_on"] = [link_setup.rename_map.get(key, key) for key in opts["right_on"]]
 
         linked_df: pd.DataFrame = local_df.merge(remote_df, **opts)
 
@@ -62,6 +66,11 @@ class ForeignKeyLinker:
 
         if fk.extra_columns and fk.drop_remote_id:
             linked_df = linked_df.drop(columns=[remote_cfg.public_id], errors="ignore")
+
+        logger.debug(
+            f"{fk.local_entity}[linking]: Linked '{fk.remote_entity}' using keys {fk.local_keys}"
+            f" -> {fk.remote_keys} with method '{opts['how']}'"
+        )
 
         return linked_df
 
@@ -84,12 +93,13 @@ class ForeignKeyLinker:
 
             satisfied: bool | None = specification.is_satisfied_by(fk_cfg=fk)
 
-            if not satisfied:
-                logger.error(f"{entity_name}[linking]: {specification.get_report()}")
-                continue
-
+            # Check if FK should be deferred before treating as error
             if specification.deferred:
                 deferred = True
+                continue
+
+            if not satisfied:
+                logger.error(f"{entity_name}[linking]: {specification.get_report()}")
                 continue
 
             if specification.is_already_linked(fk_cfg=fk):
@@ -97,7 +107,9 @@ class ForeignKeyLinker:
 
             local_df = self.link_foreign_key(local_df, fk, self.table_store[fk.remote_entity])
 
-        self.table_store[entity_name] = local_df
+            # Update table_store immediately after each FK link so subsequent FKs can
+            # see columns added via extra_columns from previous FKs
+            self.table_store[entity_name] = local_df
 
         self.deferred_tracker.track(entity_name=entity_name, deferred=deferred)
 

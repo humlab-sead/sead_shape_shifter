@@ -1,286 +1,167 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ShapeShifter Project Configuration",
-  "description": "Schema for Shape Shifter project configuration files",
-  "type": "object",
-  "required": ["metadata", "entities"],
-  "properties": {
-    "metadata": {
-      "type": "object",
-      "required": ["name", "type", "version"],
-      "description": "Project metadata",
+  "$defs": {
+    "ProjectMetadata": {
+      "description": "Metadata about a project.",
       "properties": {
         "name": {
-          "type": "string",
-          "description": "Unique project identifier"
+          "description": "Project name",
+          "title": "Name",
+          "type": "string"
         },
         "type": {
-          "enum": ["shapeshifter-project"],
-          "description": "Project type identifier"
-        },
-        "version": {
-          "type": "string",
-          "pattern": "^\\d+\\.\\d+\\.\\d+$",
-          "description": "Semantic version (e.g., 1.0.0)"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "shapeshifter-project",
+          "description": "Project type identifier",
+          "title": "Type"
         },
         "description": {
-          "type": "string",
-          "description": "Project description"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Project description",
+          "title": "Description"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Project version",
+          "title": "Version"
+        },
+        "file_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "File path if loaded from file",
+          "title": "File Path"
+        },
+        "entity_count": {
+          "description": "Number of entities",
+          "title": "Entity Count",
+          "type": "integer"
+        },
+        "created_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Creation timestamp (Unix timestamp)",
+          "title": "Created At"
+        },
+        "modified_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Last modification timestamp (Unix timestamp)",
+          "title": "Modified At"
+        },
+        "is_valid": {
+          "default": true,
+          "description": "Whether project is valid",
+          "title": "Is Valid",
+          "type": "boolean"
         },
         "default_entity": {
-          "type": "string",
-          "description": "Default entity to load"
-        }
-      }
-    },
-    "entities": {
-      "type": "object",
-      "description": "Entity definitions map",
-      "patternProperties": {
-        "^[a-zA-Z_][a-zA-Z0-9_]*$": {
-          "type": "object",
-          "description": "Entity definition",
-          "properties": {
-            "type": {
-              "enum": ["sql", "fixed", "entity", "csv", "xlsx", "openpyxl"],
-              "description": "Entity source type: sql (database query) or fixed (hardcoded values)"
+          "anyOf": [
+            {
+              "type": "string"
             },
-            "data_source": {
-              "type": "string",
-              "description": "Reference to data source in options.data_sources"
-            },
-            "source": {
-              "oneOf": [
-                { "type": "string" },
-                { "type": "object" },
-                { "type": "null" }
-              ],
-              "description": "Source entity or data source reference"
-            },
-            "surrogate_id": {
-              "type": "string",
-              "description": "Surrogate key column name (must end with _id)"
-            },
-            "surrogate_name": {
-              "type": "string",
-              "description": "Surrogate name column"
-            },
-            "keys": {
-              "oneOf": [
-                {
-                  "type": "array",
-                  "items": { "type": "string" }
-                },
-                { "type": "string" }
-              ],
-              "description": "Natural key columns"
-            },
-            "columns": {
-              "oneOf": [
-                {
-                  "type": "array",
-                  "items": { "type": "string" }
-                },
-                { "type": "string" }
-              ],
-              "description": "Columns to select"
-            },
-            "query": {
-              "type": "string",
-              "description": "SQL query to execute (for sql type)"
-            },
-            "values": {
-              "type": "array",
-              "description": "Fixed values (for fixed type)",
-              "items": {
-                "type": "array"
-              }
-            },
-            "depends_on": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "List of entity names this entity depends on"
-            },
-            "foreign_keys": {
-              "type": "array",
-              "description": "Foreign key relationships",
-              "items": {
-                "type": "object",
-                "required": ["entity"],
-                "properties": {
-                  "entity": {
-                    "type": "string",
-                    "description": "Referenced entity name"
-                  },
-                  "local_keys": {
-                    "oneOf": [
-                      {
-                        "type": "array",
-                        "items": { "type": "string" }
-                      },
-                      { "type": "string" }
-                    ],
-                    "description": "Local key columns"
-                  },
-                  "remote_keys": {
-                    "oneOf": [
-                      {
-                        "type": "array",
-                        "items": { "type": "string" }
-                      },
-                      { "type": "string" }
-                    ],
-                    "description": "Remote key columns"
-                  },
-                  "how": {
-                    "enum": ["left", "inner", "outer"],
-                    "description": "Join type"
-                  },
-                  "constraints": {
-                    "type": "object",
-                    "description": "Foreign key constraints",
-                    "properties": {
-                      "cardinality": {
-                        "enum": ["many-to-one", "one-to-many", "one-to-one", "many-to-many"],
-                        "description": "Relationship cardinality"
-                      },
-                      "allow_unmatched_left": {
-                        "type": "boolean",
-                        "description": "Allow unmatched left-side records"
-                      },
-                      "allow_null_keys": {
-                        "type": "boolean",
-                        "description": "Allow NULL in key columns"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "filters": {
-              "type": "object",
-              "description": "Post-load filters",
-              "properties": {
-                "exists_in": {
-                  "type": "object",
-                  "description": "Filter records that exist in another entity",
-                  "properties": {
-                    "entity": { "type": "string" },
-                    "keys": {
-                      "oneOf": [
-                        { "type": "array" },
-                        { "type": "string" }
-                      ]
-                    }
-                  }
-                }
-              }
-            },
-            "unnest": {
-              "type": "object",
-              "description": "Unnest configuration for wide-to-long transformation",
-              "properties": {
-                "value_column": { "type": "string" },
-                "category_column": { "type": "string" },
-                "columns": {
-                  "type": "array",
-                  "items": { "type": "string" }
-                }
-              }
-            },
-            "append": {
-              "type": "array",
-              "description": "Entities to append (union)",
-              "items": { "type": "string" }
-            },
-            "extra_columns": {
-              "type": "object",
-              "description": "Additional columns to compute",
-              "additionalProperties": { "type": "string" }
-            },
-            "drop_duplicates": {
-              "type": "object",
-              "description": "Drop duplicate rows",
-              "properties": {
-                "enabled": { "type": "boolean" },
-                "columns": {
-                  "type": "array",
-                  "items": { "type": "string" }
-                }
-              }
-            },
-            "drop_empty_rows": {
-              "type": "object",
-              "description": "Drop rows with empty values in specified columns",
-              "properties": {
-                "enabled": { "type": "boolean" },
-                "columns": {
-                  "type": "array",
-                  "items": { "type": "string" }
-                }
-              }
-            },
-            "check_functional_dependency": {
-              "type": "boolean",
-              "description": "Validate functional dependencies"
-            },
-            "replacements": {
-              "type": "object",
-              "description": "Value replacements",
-              "additionalProperties": {
-                "type": "object"
-              }
+            {
+              "type": "null"
             }
-          }
+          ],
+          "default": null,
+          "description": "Default source entity name",
+          "title": "Default Entity"
         }
-      }
+      },
+      "required": [
+        "name",
+        "entity_count"
+      ],
+      "title": "ProjectMetadata",
+      "type": "object"
+    }
+  },
+  "description": "Schema for Shape Shifter project configuration files",
+  "properties": {
+    "entities": {
+      "additionalProperties": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "description": "Map of entity name to entity (raw dicts)",
+      "title": "Entities",
+      "type": "object"
     },
     "options": {
-      "type": "object",
+      "additionalProperties": true,
       "description": "Global options",
-      "properties": {
-        "data_sources": {
-          "type": "object",
-          "description": "Data source configurations",
-          "additionalProperties": {
-            "oneOf": [
-              { "type": "string" },
-              { "type": "object" }
-            ]
-          }
-        },
-        "output": {
-          "type": "object",
-          "description": "Output configuration",
-          "properties": {
-            "folder": { "type": "string" },
-            "format": {
-              "enum": ["csv", "xlsx", "parquet"]
-            }
-          }
-        }
-      }
+      "title": "Options",
+      "type": "object"
     },
     "task_list": {
-      "type": "object",
-      "description": "Task management for entities",
-      "properties": {
-        "required_entities": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Entities that must be completed"
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
         },
-        "completed": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Entities marked as completed"
-        },
-        "ignored": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Entities to ignore"
+        {
+          "type": "null"
         }
-      }
+      ],
+      "default": null,
+      "description": "Task list for entity progress tracking",
+      "title": "Task List"
+    },
+    "metadata": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProjectMetadata"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Project metadata"
     }
-  }
+  },
+  "title": "ShapeShifter Project Configuration",
+  "type": "object",
+  "$schema": "http://json-schema.org/draft-07/schema#"
 }

@@ -63,7 +63,6 @@ async def materialize_entity(project_name: str, entity_name: str, request: Mater
     result: MaterializationResult = await materialization_service.materialize_entity(
         project_name=project_name,
         entity_name=entity_name,
-        user_email=request.user_email,
         storage_format=request.storage_format,
     )
 

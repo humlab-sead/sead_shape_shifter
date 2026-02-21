@@ -8,6 +8,7 @@ from urllib.parse import quote
 from loguru import logger
 
 from backend.app.core.state_manager import ApplicationStateManager
+from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.execute import DispatcherMetadata, ExecuteRequest, ExecuteResult
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
@@ -71,18 +72,11 @@ class ExecuteService:
         target_type: str = "unknown"
 
         try:
-            # Load API project for metadata
+            # Load API project
             project: Project = self.project_service.load_project(project_name)
 
-            # Load core project using ShapeShiftProject.from_file() to properly resolve @include directives
-            if not project.filename:
-                raise ValueError(f"Project '{project_name}' has no filename")
-
-            core_project: ShapeShiftProject = ShapeShiftProject.from_file(
-                filename=project.filename,
-                env_file=".env",  # Config provider handles env file loading
-                env_prefix="SEAD_NORMALIZER",
-            )
+            # Convert to core project using mapper (resolves file paths based on location field)
+            core_project: ShapeShiftProject = ProjectMapper.to_core(project)
 
             dispatcher_meta: DispatcherMetadata = next(d for d in self.get_dispatchers() if d.key == request.dispatcher_key)
             target_type = dispatcher_meta.target_type

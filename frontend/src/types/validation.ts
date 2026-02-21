@@ -5,6 +5,7 @@
 export type ValidationSeverity = 'error' | 'warning' | 'info'
 export type ValidationCategory = 'structural' | 'data' | 'performance'
 export type ValidationPriority = 'low' | 'medium' | 'high' | 'critical'
+export type DataValidationMode = 'sample' | 'complete'
 
 export interface ValidationError {
   severity: ValidationSeverity
@@ -25,6 +26,7 @@ export interface ValidationResult {
   info: ValidationError[]
   error_count: number
   warning_count: number
+  validation_mode?: DataValidationMode | null
 }
 
 // Helper functions

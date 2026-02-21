@@ -1,6 +1,7 @@
 import importlib
 import os
 import pkgutil
+import re
 import sys
 import unicodedata
 from pathlib import Path
@@ -9,6 +10,128 @@ from typing import Any, Callable, Generic, Literal, Self, TypeVar
 import pandas as pd
 import yaml
 from loguru import logger
+
+
+def sanitize_column_name(col: Any, index: int, max_length: int = 48) -> str:
+    """Convert column name to YAML-friendly format.
+
+    Rules:
+    - Convert to lowercase
+    - Replace spaces with underscores
+    - Replace special characters with meaningful names (±, σ, δ, etc.)
+    - Remove punctuation (., , ; : etc.)
+    - Handle parentheses by replacing with underscores
+    - Avoid consecutive underscores
+    - Handle None/NaN as "unnamed_N"
+    - Skip Excel formulas (starting with "=")
+    - Truncate very long names to max_length
+    - Final safety: only keep a-z, 0-9, underscore
+
+    Args:
+        col: Column name (can be str, None, or any type)
+        index: Column index for fallback naming
+        max_length: Maximum length for column names (default: 48)
+
+    Returns:
+        Sanitized column name
+    """
+    # Handle None, NaN, or empty strings
+    if col is None or (isinstance(col, float) and pd.isna(col)) or str(col).strip() == "":
+        return f"unnamed_{index}"
+
+    # Convert to string and trim whitespace
+    name: str = str(col).strip()
+
+    # Skip Excel formulas (starting with "=") or very long strings (likely formulas)
+    # Use a generous threshold - anything over 200 chars is probably a formula
+    if name.startswith("=") or len(name) > 200:
+        return f"unnamed_{index}"
+
+    # Special character replacements (order matters - do specific ones first)
+    replacements: dict[str, str] = {
+        "±": "plus_minus",
+        "δ": "delta",
+        "σ": "sigma",
+        "μ": "mu",
+        "α": "alpha",
+        "β": "beta",
+        "γ": "gamma",
+        "Δ": "delta",
+        "Σ": "sigma",
+        "π": "pi",
+        "°": "degree",
+        "º": "degree",
+        "%": "percent",
+        "#": "num",
+        "&": "and",
+        "@": "at",
+        "$": "dollar",
+        "€": "euro",
+        "£": "pound",
+    }
+
+    for char, replacement in replacements.items():
+        name = name.replace(char, f"_{replacement}_")
+
+    # Replace parentheses and brackets with underscores
+    name = re.sub(r"[\(\)\[\]\{\}]", "_", name)
+
+    # Remove punctuation (., , ; : ! ? ' " etc.)
+    name = re.sub(r"[.,;:!?'\"\\\|\-/]", "", name)
+
+    # Replace any remaining whitespace with underscores
+    name = re.sub(r"\s+", "_", name)
+
+    # Convert to lowercase
+    name = name.lower()
+
+    # Final safety: remove any remaining non-safe characters
+    # Only keep: a-z, 0-9, underscore
+    name = re.sub(r"[^a-z0-9_]", "", name)
+
+    # Remove consecutive underscores and trim
+    name = re.sub(r"_+", "_", name)
+    name = name.strip("_")
+
+    # Truncate to maximum length if needed
+    if len(name) > max_length:
+        name = name[:max_length].rstrip("_")
+
+    # If name is empty after sanitization, use index
+    if not name:
+        name = f"unnamed_{index}"
+
+    # Ensure it doesn't start with a number (YAML key requirement)
+    if name[0].isdigit():
+        name = f"col_{name}"
+
+    return name
+
+
+def sanitize_columns(columns: list[Any]) -> list[str]:
+    """Sanitize a list of column names, ensuring uniqueness.
+
+    Args:
+        columns: List of column names (can contain None, duplicates, etc.)
+
+    Returns:
+        List of sanitized, unique column names
+    """
+    sanitized: list[str] = [sanitize_column_name(col, i) for i, col in enumerate(columns)]
+
+    # Handle duplicates by adding suffixes
+    seen: dict[str, int] = {}
+    result = []
+
+    for col in sanitized:
+        if col in seen:
+            seen[col] += 1
+            result.append(f"{col}_{seen[col]}")
+        else:
+            seen[col] = 0
+            result.append(col)
+
+    return result
 
 
 def rename_last_occurence(data: pd.DataFrame, rename_map: dict[str, str]) -> list[str]:
@@ -288,15 +411,112 @@ def _ensure_key_property(cls):
 R = TypeVar("R", dict[str, Any], list[Any], str)
 
 
-def replace_env_vars(data: R) -> R:
-    """Replaces recursively values in `data` that match `${ENV_VAR}` with os.getenv("ENV_VAR", "")"""
+def _resolve_env_var(env_var_name: str, env_prefix: str, try_without_prefix: bool) -> str:
+    """Resolve a single environment variable with optional prefix fallback.
+
+    Args:
+        env_var_name: The environment variable name (without ${})
+        env_prefix: Optional prefix to try
+        try_without_prefix: If True, try both with and without prefix
+
+    Returns:
+        Resolved value or empty string if not found
+    """
+    env_prefix = (env_prefix or "").rstrip("_")
+
+    # If prefix is set but try_without_prefix is False, ONLY accept prefixed version
+    if env_prefix and not try_without_prefix:
+        # If var doesn't have prefix, add it
+        if not env_var_name.startswith(f"{env_prefix}_"):
+            prefixed_name: str = f"{env_prefix}_{env_var_name}"
+            return os.getenv(prefixed_name, "")
+        # If var already has prefix, use as-is
+        return os.getenv(env_var_name, "")
+
+    # Try exact name first (when no prefix or try_without_prefix is True)
+    value: str | None = os.getenv(env_var_name)
+    if value is not None:
+        return value
+
+    # If prefix is set and try_without_prefix is enabled, try with/without prefix
+    if env_prefix and try_without_prefix:
+        # If var doesn't have prefix, try with prefix
+        if not env_var_name.startswith(f"{env_prefix}_"):
+            prefixed_name = f"{env_prefix}_{env_var_name}"
+            value = os.getenv(prefixed_name)
+            if value is not None:
+                return value
+        # If var has prefix, try without prefix
+        else:
+            unprefixed_name = env_var_name[len(env_prefix) + 1 :]
+            value = os.getenv(unprefixed_name)
+            if value is not None:
+                return value
+
+    return ""
+
+
+def replace_env_vars(
+    data: R,
+    env_prefix: str = "",
+    try_without_prefix: bool = True,
+    raise_if_unresolved: bool = False,
+) -> R:
+    """Recursively replaces environment variables in data.
+
+    Replaces all occurrences of ${ENV_VAR} with os.getenv("ENV_VAR", "").
+    Works on strings, lists, and dicts recursively.
+
+    Args:
+        data: Data structure to process (dict, list, or str)
+        env_prefix: Optional prefix for environment variables
+        try_without_prefix: If True, try both with and without prefix
+        raise_if_unresolved: If True, raise ValueError if any ${...} patterns remain unresolved
+
+    Returns:
+        Data with environment variables replaced
+
+    Raises:
+        ValueError: If raise_if_unresolved=True and unresolved variables remain
+
+    Examples:
+        >>> os.environ['MY_VAR'] = 'value'
+        >>> replace_env_vars("path/to/${MY_VAR}/file")
+        'path/to/value/file'
+        >>> replace_env_vars("${MY_VAR}", env_prefix="APP")  # tries APP_MY_VAR too
+        'value'
+        >>> replace_env_vars("${MISSING}", raise_if_unresolved=True)
+        ValueError: Unresolved environment variables: ${MISSING}
+    """
     if isinstance(data, dict):
-        return {k: replace_env_vars(v) for k, v in data.items()}  # type: ignore[return-value]
+        result = {k: replace_env_vars(v, env_prefix, try_without_prefix, raise_if_unresolved) for k, v in data.items()}
+        return result  # type: ignore[return-value]
     if isinstance(data, list):
-        return [replace_env_vars(i) for i in data]  # type: ignore[return-value]
-    if isinstance(data, str) and data.startswith("${") and data.endswith("}"):
-        env_var: str = data[2:-1]
-        return os.getenv(env_var, "")  # type: ignore[return-value]
+        result = [replace_env_vars(i, env_prefix, try_without_prefix, raise_if_unresolved) for i in data]
+        return result  # type: ignore[return-value]
+    if isinstance(data, str):
+        # Find all ${...} patterns and replace them
+        def replacer(match):
+            env_var_name = match.group(1)
+            resolved_value = _resolve_env_var(env_var_name, env_prefix, try_without_prefix)
+
+            # If raise_if_unresolved is True and we got empty string, leave the pattern unreplaced
+            # so we can detect it later
+            if raise_if_unresolved and resolved_value == "":
+                return match.group(0)  # Return the original ${VAR} pattern
+
+            return resolved_value
+
+        result = re.sub(r"\$\{([^}]+)\}", replacer, data)
+
+        # Check for unresolved variables if requested
+        if raise_if_unresolved:
+            unresolved = re.findall(r"\$\{([^}]+)\}", result)
+            if unresolved:
+                unresolved_vars = ", ".join(f"${{{var}}}" for var in unresolved)
+                raise ValueError(f"Unresolved environment variables: {unresolved_vars}")
+
+        return result  # type: ignore[return-value]
     return data
 
 

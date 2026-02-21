@@ -163,6 +163,7 @@ COPY --from=python-builder /usr/local/bin /usr/local/bin
 COPY --from=source-resolver /source/src ./src/
 COPY --from=source-resolver /source/backend ./backend/
 COPY --from=source-resolver /source/scripts ./scripts/
+COPY --from=source-resolver /source/ingesters ./ingesters/
 
 # Copy lib directory from build context (not in git, must be provided separately)
 COPY lib/ ./lib/
@@ -191,4 +192,9 @@ EXPOSE 8012
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8012/api/v1/health').read()"
 
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8012", "--workers", "4"]
+# IMPORTANT: Must use --workers 1 because ApplicationState (in-memory project
+# cache) is per-process. Multiple workers each get independent caches, causing
+# entity CRUD in one worker to be invisible to others — leading to silent data
+# loss when a stale worker handles the next request.
+# To use multiple workers, implement shared state (e.g., Redis) first.
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8012", "--workers", "1"]

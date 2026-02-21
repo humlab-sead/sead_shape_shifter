@@ -7,6 +7,10 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from backend.app.models.project import Project
+from backend.app.services.entity_generator_service import (
+    EntityGeneratorService,
+    get_entity_generator_service,
+)
 from backend.app.services.project_service import (
     ProjectService,
     get_project_service,
@@ -38,6 +42,17 @@ class EntityResponse(BaseModel):
     name: str = Field(..., description="Entity name")
     entity_data: dict[str, Any] = Field(..., description="Entity configuration data")
     materialized: dict[str, Any] | None = Field(default=None, description="Materialization metadata (if entity is materialized)")
+
+
+class GenerateFromTableRequest(BaseModel):
+    """Request to generate entity from database table."""
+
+    data_source: str = Field(..., description="Name of the data source")
+    table_name: str = Field(..., description="Name of the table in the database")
+    entity_name: str | None = Field(None, description="Entity name (defaults to table_name if not provided)")
+    schema_name: str | None = Field(
+        None, alias="schema", description="Optional schema name (if database supports schemas, e.g. PostgreSQL)"
+    )
 
 
 # Endpoints
@@ -143,3 +158,40 @@ async def delete_entity(project_name: str, entity_name: str) -> None:
     project_service: ProjectService = get_project_service()
     project_service.delete_entity_by_name(project_name, entity_name)
     logger.info(f"Deleted entity '{entity_name}' from '{project_name}'")
+
+
+@router.post(
+    "/projects/{project_name}/entities/generate-from-table",
+    response_model=EntityResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+@handle_endpoint_errors
+async def generate_entity_from_table(project_name: str, request: GenerateFromTableRequest) -> EntityResponse:
+    """
+    Generate a new entity configuration from a database table.
+
+    Automatically extracts table schema, primary keys, and generates entity configuration.
+
+    Args:
+        project_name: Project name
+        request: Entity generation request
+
+    Returns:
+        Created entity with generated configuration
+
+    Raises:
+        ResourceNotFoundError: If project or data source not found
+        ResourceConflictError: If entity name already exists
+    """
+    generator_service: EntityGeneratorService = get_entity_generator_service()
+    entity_config = await generator_service.generate_from_table(
+        project_name=project_name,
+        data_source_key=request.data_source,
+        table_name=request.table_name,
+        entity_name=request.entity_name,
+        schema=request.schema_name,
+    )
+
+    entity_name = request.entity_name or request.table_name
+    logger.info(f"Generated entity '{entity_name}' from table '{request.table_name}' in '{project_name}'")
+    return EntityResponse(name=entity_name, entity_data=entity_config)

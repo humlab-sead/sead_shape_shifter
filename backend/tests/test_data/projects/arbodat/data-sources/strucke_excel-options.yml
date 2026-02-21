@@ -1,0 +1,3 @@
+driver: xlsx
+options:
+  filename: ${GLOBAL_DATA_DIR}/strucke_allaC14_230316_v4_clean.xlsx

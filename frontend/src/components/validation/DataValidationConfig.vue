@@ -30,6 +30,33 @@
             </v-combobox>
           </div>
 
+          <!-- Validation Mode -->
+          <div class="mb-4">
+            <v-label class="text-body-2 font-weight-medium mb-2"> Validation Mode </v-label>
+            <v-radio-group v-model="validationMode" hide-details>
+              <v-radio value="sample" color="info">
+                <template #label>
+                  <div>
+                    <div class="font-weight-medium">Sample Data (Fast)</div>
+                    <div class="text-caption text-grey">
+                      Validate using preview samples (up to 1000 rows per entity). Quick validation for development.
+                    </div>
+                  </div>
+                </template>
+              </v-radio>
+              <v-radio value="complete" color="info">
+                <template #label>
+                  <div>
+                    <div class="font-weight-medium">Complete Data (Comprehensive)</div>
+                    <div class="text-caption text-grey">
+                      Validate using full normalized dataset. Slower but catches all issues. Recommended before deployment.
+                    </div>
+                  </div>
+                </template>
+              </v-radio>
+            </v-radio-group>
+          </div>
+
           <!-- Sample Size -->
           <div class="mb-4">
             <v-label class="text-body-2 font-weight-medium mb-2"> Sample Size </v-label>
@@ -140,6 +167,7 @@ interface ValidationConfig {
   entities?: string[]
   sampleSize?: number
   validators?: string[]
+  validationMode?: 'sample' | 'complete'
 }
 
 interface Emits {
@@ -157,17 +185,21 @@ const emit = defineEmits<Emits>()
 const panel = ref<string | undefined>('config')
 const selectedEntities = ref<string[]>([])
 const sampleSize = ref(1000)
+const validationMode = ref<'sample' | 'complete'>('sample')
 const enabledValidators = ref(['column_exists', 'natural_key_uniqueness', 'non_empty_result'])
 
 // Methods
 function handleReset() {
   selectedEntities.value = []
   sampleSize.value = 1000
+  validationMode.value = 'sample'
   enabledValidators.value = ['column_exists', 'natural_key_uniqueness', 'non_empty_result']
 }
 
 function handleRun() {
-  const config: ValidationConfig = {}
+  const config: ValidationConfig = {
+    validationMode: validationMode.value,
+  }
 
   if (selectedEntities.value.length > 0) {
     config.entities = selectedEntities.value

@@ -12,7 +12,7 @@
               :loading="loading"
               @click="emit('validate')"
             >
-              Structural
+              Run YAML Validation
             </v-btn>
           </template>
         </v-tooltip>
@@ -26,7 +26,33 @@
               :loading="dataValidationLoading"
               @click="emit('validate-data')"
             >
-              Data
+              Run Data Validation
+            </v-btn>
+          </template>
+        </v-tooltip>
+        <v-tooltip text="Configure data validation options" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              size="small"
+              prepend-icon="mdi-cog"
+              color="info"
+              @click="showDataConfig = !showDataConfig"
+            >
+              Options
+            </v-btn>
+          </template>
+        </v-tooltip>
+        <v-tooltip text="Copy validation results to clipboard" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              size="small"
+              prepend-icon="mdi-content-copy"
+              :disabled="!validationResult || (errorCount === 0 && warningCount === 0)"
+              @click="copyToClipboard"
+            >
+              Copy
             </v-btn>
           </template>
         </v-tooltip>
@@ -48,14 +74,6 @@
         <v-icon icon="mdi-help-circle-outline" size="64" color="grey" />
         <p class="text-h6 mt-4 mb-2">Not Validated</p>
         <p class="text-grey mb-4">Run validation to check for project errors and warnings</p>
-        <div class="d-flex gap-2 justify-center">
-          <v-btn color="primary" prepend-icon="mdi-check-circle-outline" :loading="loading" @click="emit('validate')">
-            Structural Validation
-          </v-btn>
-          <v-btn color="info" variant="outlined" prepend-icon="mdi-cog" @click="showDataConfig = !showDataConfig">
-            Configure Data Validation
-          </v-btn>
-        </div>
       </div>
 
       <!-- Loading State -->
@@ -207,6 +225,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useNotification } from '@/composables/useNotification'
 import type { ValidationResult, ValidationError } from '@/types'
 import ValidationMessageList from './ValidationMessageList.vue'
 import ValidationSuggestion from './ValidationSuggestion.vue'
@@ -241,6 +260,8 @@ const emit = defineEmits<Emits>()
 const activeTab = ref('all')
 const showDataConfig = ref(false)
 const showSuggestions = ref(true)
+
+const { success, error } = useNotification()
 
 // Computed
 const errorCount = computed(() => props.validationResult?.error_count ?? 0)
@@ -310,5 +331,45 @@ function handleApplyFix(issue: ValidationError) {
 
 function handleApplyAll() {
   emit('apply-all-fixes')
+}
+
+async function copyToClipboard() {
+  if (!props.validationResult || allMessages.value.length === 0) {
+    return
+  }
+
+  try {
+    // Create tabular format with headers
+    const headers = ['Severity', 'Entity', 'Field', 'Category', 'Priority', 'Code', 'Message', 'Suggestion']
+    const separator = '\t'
+    const headerRow = headers.join(separator)
+
+    // Format each message as a row
+    const rows = allMessages.value.map((msg) => {
+      return [
+        msg.severity || '',
+        msg.entity || '',
+        msg.field || '',
+        msg.category || '',
+        msg.priority || '',
+        msg.code || '',
+        msg.message || '',
+        msg.suggestion || '',
+      ].join(separator)
+    })
+
+    // Combine header and rows
+    const tsvContent = [headerRow, ...rows].join('\n')
+
+    // Copy to clipboard
+    await navigator.clipboard.writeText(tsvContent)
+
+    success(
+      `Copied ${allMessages.value.length} validation ${allMessages.value.length === 1 ? 'issue' : 'issues'} to clipboard`
+    )
+  } catch (err) {
+    console.error('Failed to copy to clipboard:', err)
+    error('Failed to copy to clipboard')
+  }
 }
 </script>

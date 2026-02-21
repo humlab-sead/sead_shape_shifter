@@ -345,7 +345,7 @@ class ForeignKeyConstraintValidator:
 
         # Calculate expected column increase
         # Start with surrogate ID (1) + extra columns from remote
-        remote_extra_cols: Any | list[str] = self.fk.get_valid_remote_columns(remote_df)
+        remote_extra_cols: Any | list[str] = self.fk.get_valid_remote_columns(remote_df.columns.tolist())
         expected_new_columns: int = 1 + len(remote_extra_cols)
 
         # Add merge indicator if present

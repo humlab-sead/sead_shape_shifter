@@ -7,7 +7,6 @@ import io
 import os
 import pkgutil
 import re
-import sys
 import zlib
 from datetime import datetime
 from os.path import abspath, basename, dirname, join, splitext
@@ -20,7 +19,6 @@ from loguru import logger
 from sqlalchemy import Engine, create_engine
 
 # Import centralized logging setup from src.utility
-from src.utility import setup_logging
 
 if TYPE_CHECKING:
     from .submission import Submission
@@ -163,19 +161,19 @@ def env2dict(prefix: str, data: dict[str, str] | None = None, lower_key: bool = 
     return data
 
 
-R = TypeVar("R", dict[str, Any], list[Any], str)
+# R = TypeVar("R", dict[str, Any], list[Any], str)
 
 
-def replace_env_vars(data: R) -> R:
-    """Replaces recursively values in `data` that match `${ENV_VAR}` with os.getenv("ENV_VAR", "")"""
-    if isinstance(data, dict):
-        return {k: replace_env_vars(v) for k, v in data.items()}  # type: ignore[return-value]
-    if isinstance(data, list):
-        return [replace_env_vars(i) for i in data]  # type: ignore[return-value]
-    if isinstance(data, str) and data.startswith("${") and data.endswith("}"):
-        env_var: str = data[2:-1]
-        return os.getenv(env_var, "")  # type: ignore[return-value]
-    return data
+# def replace_env_vars(data: R) -> R:
+#     """Replaces recursively values in `data` that match `${ENV_VAR}` with os.getenv("ENV_VAR", "")"""
+#     if isinstance(data, dict):
+#         return {k: replace_env_vars(v) for k, v in data.items()}  # type: ignore[return-value]
+#     if isinstance(data, list):
+#         return [replace_env_vars(i) for i in data]  # type: ignore[return-value]
+#     if isinstance(data, str) and data.startswith("${") and data.endswith("}"):
+#         env_var: str = data[2:-1]
+#         return os.getenv(env_var, "")  # type: ignore[return-value]
+#     return data
 
 
 def log_decorator(enter_message: str | None = "Entering", exit_message: str | None = "Exiting", level: int | str = "INFO"):

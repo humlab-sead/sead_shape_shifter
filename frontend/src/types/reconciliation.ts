@@ -13,9 +13,9 @@ export interface ReconciliationRemote {
   columns?: string[] // Additional columns for display/matching
 }
 
-export interface ReconciliationMapping {
+export interface ResolvedEntityPair {
   source_value: any // Single value instead of array
-  sead_id: number
+  target_id: number
   confidence?: number
   notes?: string
   created_at?: string
@@ -23,19 +23,19 @@ export interface ReconciliationMapping {
   will_not_match?: boolean
 }
 
-export interface EntityReconciliationSpec {
+export interface EntityResolutionSet {
   source?: string | ReconciliationSource | null // Entity name, custom query, or null for default
   property_mappings: Record<string, string> // property_id -> source_column
   remote: ReconciliationRemote
   auto_accept_threshold: number
   review_threshold: number
-  mapping: ReconciliationMapping[]
+  mapping: ResolvedEntityPair[]
 }
 
-export interface ReconciliationConfig {
+export interface EntityResolutionCatalog {
   version: string // Format version (e.g., "2.0")
   service_url: string
-  entities: Record<string, Record<string, EntityReconciliationSpec>> // entity_name -> target_field -> spec
+  entities: Record<string, Record<string, EntityResolutionSet>> // entity_name -> target_field -> spec
 }
 
 export interface ReconciliationCandidate {
@@ -57,7 +57,7 @@ export interface AutoReconcileResult {
 
 export interface ReconciliationPreviewRow {
   [key: string]: any // Dynamic keys and columns
-  sead_id?: number | null
+  target_id?: number | null
   confidence?: number | null
   notes?: string
   candidates?: ReconciliationCandidate[]
@@ -67,7 +67,7 @@ export interface ReconciliationPreviewRow {
 
 // Specification management types
 
-export interface SpecificationListItem {
+export interface EntityResolutionListItem {
   entity_name: string
   target_field: string
   source?: string | ReconciliationSource | null
@@ -79,13 +79,13 @@ export interface SpecificationListItem {
   property_mapping_count: number
 }
 
-export interface SpecificationCreateRequest {
+export interface EntityResolutionCatalogCreateRequest {
   entity_name: string
   target_field: string
-  spec: EntityReconciliationSpec
+  spec: EntityResolutionSet
 }
 
-export interface SpecificationUpdateRequest {
+export interface EntityResolutionCatalogUpdateRequest {
   source?: string | ReconciliationSource | null
   property_mappings: Record<string, string>
   remote: ReconciliationRemote

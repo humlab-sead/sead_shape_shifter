@@ -42,7 +42,7 @@ install-api:
 
 .PHONY: test
 test:
-	@uv run pytest tests backend/tests -v
+	@uv run pytest tests backend/tests ingesters/sead/tests -v
 
 .PHONY: profile
 profile:
@@ -64,20 +64,20 @@ publish:
 
 .PHONY: black
 black:
-	@uv run black src tests backend/app backend/tests
+	@uv run black src tests backend/app backend/tests ingesters
 
 .PHONY: pylint
 pylint:
-	@uv run pylint src tests backend/app backend/tests
+	@uv run pylint src tests backend/app backend/tests ingesters
 
 .PHONY: ruff
 ruff:
-	@uv run ruff check --fix --output-format concise src tests backend
+	@uv run ruff check --fix --output-format concise src tests backend ingesters
 
 .PHONY: tidy
 tidy:
-	@uv run isort src tests backend/app backend/tests
-	@uv run black src tests backend/app backend/tests
+	@uv run isort src tests backend/app backend/tests ingesters
+	@uv run black src tests backend/app backend/tests ingesters
 
 .PHONY: lint
 lint: tidy ruff pylint
@@ -85,6 +85,20 @@ lint: tidy ruff pylint
 .PHONY: check-imports
 check-imports:
 	@python scripts/check_imports.py
+
+################################################################################
+# JSON Schema generation (for frontend Monaco editor autocomplete)
+################################################################################
+
+.PHONY: generate-schemas
+generate-schemas:
+	@echo "Generating JSON schemas from Pydantic models..."
+	@PYTHONPATH=.:backend uv run python scripts/generate_schemas.py
+
+.PHONY: check-schemas
+check-schemas:
+	@echo "Checking if JSON schemas are in sync with Pydantic models..."
+	@PYTHONPATH=.:backend uv run python scripts/generate_schemas.py --check
 
 ################################################################################
 # Backend & frontend recipes
@@ -264,14 +278,14 @@ fix-imports:
 	@python scripts/fix_imports.py
 
 isort:
-	@uv run isort src tests backend/app backend/tests
+	@uv run isort src tests backend/app backend/tests ingesters
 
 requirements.txt: pyproject.toml
 	@uv export -o requirements.txt
 
 .PHONY: test-coverage
 test-coverage:
-	@uv run pytest tests backend/tests --cov=src --cov=backend/app --cov-report=html --cov-report=term
+	@uv run pytest tests backend/tests ingesters/sead/tests --cov=src --cov=backend/app --cov-report=html --cov-report=term
 
 .PHONY: dead-code
 dead-code:

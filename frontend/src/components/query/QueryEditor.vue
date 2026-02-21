@@ -22,26 +22,17 @@
       />
 
       <!-- SQL Editor -->
-      <div class="sql-editor-container">
-        <v-textarea
-          v-model="query"
-          label="SQL Query"
-          placeholder="SELECT * FROM table_name WHERE ..."
-          rows="10"
-          variant="outlined"
-          :disabled="executing"
-          @keydown.ctrl.enter.prevent="executeQuery"
-          @keydown.meta.enter.prevent="executeQuery"
-          class="sql-editor"
-          auto-grow
-        >
-          <template #prepend-inner>
-            <v-icon size="small" color="grey">mdi-code-tags</v-icon>
-          </template>
-        </v-textarea>
-
+      <div class="sql-editor-container mb-4">
+        <div class="text-caption text-grey mb-2">SQL Query</div>
+        <vue-monaco-editor
+          v-model:value="query"
+          language="sql"
+          :options="editorOptions"
+          height="300px"
+          @mount="handleEditorMount"
+        />
         <!-- Line numbers hint -->
-        <div class="text-caption text-grey mt-n2 mb-2">Press Ctrl+Enter (⌘+Enter on Mac) to execute query</div>
+        <div class="text-caption text-grey mt-2">Press Ctrl+Enter (⌘+Enter on Mac) to execute query</div>
       </div>
 
       <!-- Validation Messages -->
@@ -142,18 +133,28 @@
       </v-row>
 
       <!-- Error Display -->
-      <v-alert v-if="error" type="error" variant="tonal" closable @click:close="error = null" class="mt-4">
-        {{ error }}
-      </v-alert>
+      <!-- @ts-ignore -->
+      <ErrorAlert
+        v-if="error"
+        v-bind="errorProps"
+        closable
+        show-context
+        @close="clearError"
+        class="mt-4"
+      />
     </v-card-text>
   </v-card>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { useDataSourceStore } from '@/stores/data-source'
 import { queryApi } from '@/api/query'
+import { useErrorHandler } from '@/composables'
+import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import type { QueryResult, QueryValidation } from '@/types/query'
+import type * as monacoType from 'monaco-editor'
 
 const props = defineProps<{
   initialQuery?: string
@@ -167,6 +168,11 @@ const emit = defineEmits<{
 
 const dataSourceStore = useDataSourceStore()
 
+// Error handling
+const { error, errorProps, handleError, clearError } = useErrorHandler({
+  showContext: true,
+})
+
 // State
 const query = ref(props.initialQuery || '')
 const selectedDataSource = ref(props.initialDataSource || '')
@@ -174,17 +180,45 @@ const validation = ref<QueryValidation | null>(null)
 const lastResult = ref<QueryResult | null>(null)
 const executing = ref(false)
 const validating = ref(false)
-const error = ref<string | null>(null)
 
 // Computed
 const dataSourceNames = computed(() => dataSourceStore.dataSources.map((ds) => ds.name))
+
+// Monaco editor configuration
+const editorOptions = computed(() => ({
+  automaticLayout: true,
+  minimap: { enabled: false },
+  scrollBeyondLastLine: false,
+  fontSize: 14,
+  lineNumbers: 'on' as const,
+  roundedSelection: false,
+  readOnly: false,
+  theme: 'vs-dark',
+  wordWrap: 'on' as const,
+  folding: true,
+  tabSize: 2,
+  insertSpaces: true,
+  scrollbar: {
+    vertical: 'auto' as const,
+    horizontal: 'auto' as const,
+  },
+  suggestOnTriggerCharacters: true,
+  quickSuggestions: true,
+}))
+
+function handleEditorMount(editorInstance: monacoType.editor.IStandaloneCodeEditor, monacoRef: typeof monacoType) {
+  // Add keyboard shortcut for executing query (Ctrl+Enter or Cmd+Enter)
+  editorInstance.addCommand(monacoRef.KeyMod.CtrlCmd | monacoRef.KeyCode.Enter, () => {
+    executeQuery()
+  })
+}
 
 // Methods
 async function executeQuery() {
   if (!selectedDataSource.value || !query.value) return
 
   executing.value = true
-  error.value = null
+  clearError()
   lastResult.value = null
 
   try {
@@ -200,9 +234,8 @@ async function executeQuery() {
     // Auto-validate on successful execution
     await validateQueryOnly()
   } catch (err: any) {
-    const errorMessage = err.response?.data?.detail || err.message || 'Query execution failed'
-    error.value = errorMessage
-    emit('error', errorMessage)
+    handleError(err)
+    emit('error', err.response?.data?.message || err.message || 'Query execution failed')
   } finally {
     executing.value = false
   }
@@ -212,12 +245,12 @@ async function validateQueryOnly() {
   if (!selectedDataSource.value || !query.value) return
 
   validating.value = true
-  error.value = null
+  clearError()
 
   try {
     validation.value = await queryApi.validateQuery(selectedDataSource.value, { query: query.value })
   } catch (err: any) {
-    error.value = err.response?.data?.detail || err.message || 'Query validation failed'
+    handleError(err)
   } finally {
     validating.value = false
   }
@@ -228,7 +261,7 @@ function clearQuery() {
   query.value = ''
   validation.value = null
   lastResult.value = null
-  error.value = null
+  clearError()
 }
 
 // Load data sources on mount
@@ -250,12 +283,9 @@ onMounted(async () => {
 <style scoped>
 .sql-editor-container {
   position: relative;
-}
-
-.sql-editor :deep(textarea) {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 14px;
-  line-height: 1.5;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .query-plan {

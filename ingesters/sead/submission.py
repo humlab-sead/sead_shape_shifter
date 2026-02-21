@@ -73,7 +73,7 @@ class Submission:
         if pk_name is None:
             return set()
 
-        """Find all tables that reference the given table, and have the PK column i the referencing table's data"""
+        # Find all tables that reference the given table, and have the PK column i the referencing table's data
         fk_tables: list[str] = [
             fk_table
             for fk_table in schema.get_tablenames_referencing(table_name)

@@ -9,7 +9,6 @@ class MaterializeRequest(BaseModel):
     """Request model for materializing an entity."""
 
     storage_format: Literal["csv", "parquet", "inline"] = Field(default="parquet", description="Storage format for materialized data")
-    user_email: str | None = Field(default=None, description="Email of user performing materialization")
 
 
 class MaterializationResult(BaseModel):

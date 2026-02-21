@@ -11,7 +11,7 @@ DEPLOY_SOURCE_DIR ?= /home/roger/source/sead_shape_shifter/docker
 
 # Repository and build settings
 GIT_REPO ?= https://github.com/humlab-sead/sead_shape_shifter.git
-GIT_REF ?= main
+GIT_REF ?= dev
 BACKEND_PORT ?= 8012
 
 # User ID settings for container (defaults to sead user)
@@ -51,7 +51,7 @@ deploy-shell:
 #
 # Build modes (all use build.sh script):
 #   - docker-build          : Build from local context (default, for development)
-#   - docker-build-github   : Build from GitHub main (CI/CD, with cache invalidation)
+#   - docker-build-github   : Build from GitHub $(GIT_REF) (CI/CD, with cache invalidation)
 #   - docker-build-tag TAG=v1.0.0 : Build from specific tag/branch (production)
 ################################################################################
 
@@ -64,27 +64,11 @@ docker-build: guard-user guard-docker-files-exists docker-build-github
 .PHONY: docker-build-github
 docker-build-github: guard-user guard-docker-files-exists
 	@pushd $(DEPLOY_DIR) \
-		&& ./build.sh --git-ref main --user-uid $(USER_UID) --user-gid $(USER_GID) --git-repo $(GIT_REPO) \
+		&& ./build.sh --git-ref $(GIT_REF) --user-uid $(USER_UID) --user-gid $(USER_GID) --git-repo $(GIT_REPO) \
 		&& popd
 
 .PHONY: build-and-deploy
 build-and-deploy: docker-build docker-restart
-
-################################################################################
-# Build from specific GitHub tag/branch (no cache bust needed for tags)
-# NOTE: Run from project root directory
-################################################################################
-
-.PHONY: docker-build-tag
-docker-build-tag: guard-user guard-cwd guard-docker-files-exists
-	@if [ -z "$(TAG)" ]; then \
-		echo "❌ Error: TAG variable required. Usage: make docker-build-tag TAG=v1.2.0"; \
-		exit 1; \
-	fi
-	@./build.sh --git-ref $(TAG) \
-		--user-uid $(USER_UID) \
-		--user-gid $(USER_GID) \
-		--git-repo $(GIT_REPO)
 
 ################################################################################
 # Docker runtime targets

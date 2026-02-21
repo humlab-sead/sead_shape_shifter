@@ -14,7 +14,7 @@ from .metadata import SchemaService, SeadSchema, Table
 from .utility import Registry, pascal_to_snake_case, snake_to_pascal_case
 
 if TYPE_CHECKING:
-    from backend.app.ingesters.sead.submission import Submission
+    from ingesters.sead.submission import Submission
 
 
 class PolicyRegistry(Registry[type["PolicyBase"]]):

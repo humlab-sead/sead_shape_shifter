@@ -1,7 +1,0 @@
-system_id,site_type_id,site_type_group_id,description,site_type,Fundstellentyp_Beschreibung,FustelTyp,OFustelTyp
-1,,1,channel/waterway,Rin,channel/waterway,Rin,See
-2,,2,open settlement,Siedl,open settlement,Siedl,Siedl
-3,,2,urban,Stadt,urban,Stadt,Siedl
-4,,3,unknown type of  site,unbek,unknown type of  site,unbek,unbek
-5,,4,other anthropogenic  deposit,FustelSo,other anthropogenic  deposit,FustelSo,FuTySo
-6,,2,tell,Tell,tell,Tell,Siedl

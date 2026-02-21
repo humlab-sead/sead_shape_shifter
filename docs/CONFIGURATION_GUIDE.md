@@ -54,21 +54,95 @@ options:           # Global options (optional)
 
 ## Metadata Section
 
-```yaml
-metadata:                             # metadata definitions (required)
-  type: 'shapeshifter-project'        # Project file tag (required)
-  name:                               # identifier (pending removal)
-  description:                        # description
-  default_entity:                     # project's default entity for `data` entities
+The metadata section identifies the file as a Shape Shifter project and provides descriptive information about the configuration.
 
+### Structure
+
+```yaml
+metadata:                             # Metadata definitions (required)
+  type: 'shapeshifter-project'        # Project file tag (required)
+  name: string                        # Human-readable project name (optional)
+  description: string                 # Detailed project description (optional)
+  version: string                     # Semantic version (e.g., "1.0.0") (optional)
+  default_entity: string              # Default entity for `data` entities (optional)
 ```
 
-**Validation Rules**:
+### Fields
+
+#### Required
+- **type**: Must be `"shapeshifter-project"` to identify the file as a Shape Shifter configuration
+
+#### Optional
+- **name**: A human-readable name for the project (if omitted, derived from filename)
+- **description**: Detailed description of what this configuration does (supports multi-line strings using `|`)
+- **version**: Semantic version string (e.g., "1.0.0", "2.1.3") for tracking configuration changes
+- **default_entity**: Reference to an existing entity used as the default source for `data` type entities
+
+### Examples
+
+**Minimal Metadata:**
+```yaml
+metadata:
+  type: 'shapeshifter-project'
+```
+
+**Full Metadata:**
+```yaml
+metadata:
+  type: 'shapeshifter-project'
+  name: "Archaeological Site Data Import"
+  description: |
+    Imports archaeological site data from multiple sources including
+    field surveys, laboratory analyses, and historical records.
+    Transforms data to match SEAD Clearinghouse schema.
+  version: "2.1.0"
+  default_entity: sample_data
+```
+
+### Validation Rules
+
 - **metadata section**: Required (error if missing)
 - **metadata.type**: Required, must be `"shapeshifter-project"` (error if missing or incorrect)
 - **metadata.name**: Optional string
 - **metadata.description**: Optional string  
+- **metadata.version**: Optional string (recommended to follow semantic versioning)
 - **metadata.default_entity**: Optional, must reference existing entity if provided
+
+### API Integration
+
+When loaded via the API, metadata is accessible through the `Project.metadata` property:
+
+```python
+from backend.app.mappers.project_mapper import ProjectMapper
+
+# Load configuration
+cfg_dict = load_yaml("my_config.yml")
+api_config = ProjectMapper.to_api_config(cfg_dict, "my-config")
+
+# Access metadata
+print(api_config.metadata.name)         # "Archaeological Site Data Import"
+print(api_config.metadata.description)  # "Imports archaeological site data..."
+print(api_config.metadata.version)      # "2.1.0"
+```
+
+### Core Model Integration
+
+In the core `ShapeShiftProject`, metadata is accessible via the `metadata` property:
+
+```python
+from src.model import ShapeShiftProject
+
+project = ShapeShiftProject.from_file("my_config.yml")
+
+# Access metadata
+print(project.metadata.name)         # "Archaeological Site Data Import"
+print(project.metadata.description)  # "Imports archaeological site data..."
+print(project.metadata.version)      # "2.1.0"
+```
+
+### Backward Compatibility
+
+The metadata section's optional fields maintain backward compatibility. Projects with minimal metadata (only `type` specified) continue to work, with the project name derived from the filename.
 
 ## Entity Section
 
@@ -98,7 +172,7 @@ entities:
     filters: [...]                          # Post-load data filters
     
     # Value Transformations
-    replacements: {string: {any: any}}      # Value replacement mappings
+    replacements: {string: any}             # Value replacement rules (mapping/legacy/rule-list)
     
     # Relationships
     foreign_keys: [...]                     # Foreign key definitions
@@ -144,6 +218,13 @@ This architecture separates concerns between:
   - Column name is always "system_id" during processing
   - Renamed to `public_id` value during export/dispatch
   - Read-only in UI (cannot be edited)
+  - **Fixed Entity Preservation**: For `type: fixed` entities, existing `system_id` values in the `values` array are **preserved** across edits. Only null values are filled with sequential IDs starting from max(existing) + 1. This ensures FK relationship stability when rows are added, deleted, or reordered.
+- **Fixed Entity System ID Requirements**:
+  - Must be positive integers (error if ≤ 0)
+  - Must be unique (error if duplicates)
+  - No null values allowed (error if null)
+  - Validation: `FixedEntitySystemIdSpecification`
+  - Auto-fix available: Backend provides automatic repair strategies
 - **Example**: Not configured directly - automatically managed
 
 #### `public_id`
@@ -719,7 +800,7 @@ entities:
   - Validate column existence before runtime
 
 #### `replacements`
-- **Type**: `dict[string, dict[any, any]]`
+- **Type**: `dict[string, any]`
 - **Required**: No
 - **Description**: Defines value replacement mappings for specified columns. Each key is a column name, and each value is a dictionary mapping old values to new values. This is useful for normalizing data values, converting codes to standardized formats, or correcting inconsistent data.
 - **Use Cases**:
@@ -727,7 +808,18 @@ entities:
   - Standardizing status codes or category names
   - Mapping legacy identifiers to new ones
   - Correcting typos or inconsistent values in source data
-- **Note**: Replacements are applied after column extraction but before other operations. Values not in the mapping remain unchanged.
+- **Application Order**: Replacements are applied after column extraction and after duplicate/empty-row handling in the subsetting step.
+- **Supported Forms**:
+  - **Mapping**: `{old: new, ...}` (fast exact match)
+  - **Legacy blank-out + forward fill**: scalar/list/set/tuple → treat as values to blank out, then forward-fill
+  - **Advanced ordered rules**: `list[dict]` (regex, normalization, explicit fill policies)
+- **Advanced rule operators** (via `match:`):
+  - Positive: `equals`, `contains`, `startswith`, `endswith`, `in`, `regex`, `regex_sub`
+  - Negated (optional): `not_equals`, `not_contains`, `not_startswith`, `not_endswith`, `not_in`, `not_regex`
+- **Type coercion** (optional): `coerce: string|int|float`
+  - Most useful for `equals`, `in`, and `map` when source columns are strings like `"1"` but config uses numeric keys.
+  - If `normalize:` is provided, matching is performed in normalized string space (numeric `coerce` is ignored).
+- **Note**: Values not matched by any replacement remain unchanged.
 - **Example**:
   ```yaml
   site:
@@ -748,6 +840,65 @@ entities:
       type:
         "A": "Type_A"
         "B": "Type_B"
+
+  # Legacy blank-out + forward-fill (useful for "pad"-style inputs)
+  sample:
+    replacements:
+      status: ["drop", "deleted"]
+
+  # Advanced ordered rules
+  site:
+    replacements:
+      coordinate_system:
+        - match: regex
+          from: "^dhdn\\s+zone\\s+3$"
+          to: "EPSG:31467"
+          flags: [ignorecase]
+          normalize: [collapse_ws, lower]
+          report_replaced: true
+          report_unmatched: true
+          report_top: 10
+        - map:
+            "RGF93 Lambert 93": "EPSG:2154"
+          normalize: [strip]
+        - match: regex_sub
+          from: "\\bZone\\s+(\\d+)\\b"
+          to: "Z\\1"
+        # If `to` is null, matching cells are set to NA
+        - match: regex_sub
+          from: "^N/A$"
+          to: null
+      status:
+        - blank_out: ["drop"]
+          fill: none          # forward | backward | none | {constant: "UNKNOWN"}
+          report_replaced: true
+
+  # Replace whole cell if it contains a substring
+  sample:
+    replacements:
+      note:
+        - match: contains
+          from: "foo"
+          to: "HAS_FOO"
+          flags: [ignorecase]
+
+  # Starts/ends-with operators
+  sample:
+    replacements:
+      filename:
+        - match: endswith
+          from: ".txt"
+          to: "TEXT_FILE"
+          flags: [ignorecase]
+
+  # Set-membership ("in") with optional coercion
+  sample:
+    replacements:
+      status_code:
+        - match: in
+          from: [1, 2, 3]
+          to: "KNOWN"
+          coerce: int
   
   # Replacements can reference external project files
   site:
@@ -756,8 +907,10 @@ entities:
   ```
 - **Validation Rules**:
   - **Type**: Must be `dict` if provided
-  - **Structure**: Keys must be column names (strings), values must be dicts
-  - **Mapping**: Each replacement dict maps old values to new values
+  - **Structure**: Keys must be column names (strings)
+  - **Mapping form**: column value must be a dict mapping old values to new values
+  - **Legacy blank-out form**: column value can be a scalar or sequence of values to blank out (then forward-fill)
+  - **Rule list form**: column value can be a list of dict rules (ordered)
   - **Column Existence**: Column names should exist in entity (suggested validation)
 - **Common Issues**:
   - Replacement column doesn't exist in entity
@@ -767,6 +920,7 @@ entities:
   - Warn if replacement column doesn't exist
   - Validate replacement values match column data types
   - Check for unmapped values (suggested warning)
+  - Use `report_unmatched: true` for rule-list replacements to log common unmatched values
 - **See**: Filters section below for detailed filter documentation
 
 ---
@@ -3161,6 +3315,23 @@ This section provides a comprehensive overview of all validation rules implement
     - Must reference existing entity (error)
     - `columns` should exist (warning)
 
+#### FixedEntitySystemIdSpecification
+- **Purpose**: Validates `system_id` integrity for fixed entities
+- **Rules**:
+  - Applies only to `type: fixed` entities
+  - If `system_id` column exists in `values`:
+    - **No null values**: All `system_id` values must be present (error code: `SYSTEM_ID_NULL_VALUES`)
+    - **Positive integers only**: All values must be positive integers > 0 (error code: `SYSTEM_ID_INVALID_VALUE` or `SYSTEM_ID_INVALID_TYPE`)
+    - **Uniqueness**: All `system_id` values must be unique (error code: `SYSTEM_ID_DUPLICATE_VALUES`)
+- **Error Codes**:
+  - `SYSTEM_ID_NULL_VALUES`: system_id column contains null/NaN values
+  - `SYSTEM_ID_INVALID_VALUE`: system_id value is ≤ 0
+  - `SYSTEM_ID_INVALID_TYPE`: system_id value is not a valid integer
+  - `SYSTEM_ID_DUPLICATE_VALUES`: system_id column contains duplicate values
+- **Auto-Fix Available**: The backend provides automatic repair strategies for all system_id errors (see Auto-Fix section)
+- **Purpose**: Critical for FK relationship stability - prevents broken relationships when rows are added, deleted, or reordered
+- **Note**: If `system_id` column is not present in values, it will be auto-generated during loading (not an error)
+
 #### DependsOnSpecification
 - **Purpose**: Validates dependency declarations
 - **Rules**:
@@ -3250,6 +3421,62 @@ This section provides a comprehensive overview of all validation rules implement
 - **Requires**: `categories` kwarg as list
 - **Implementation**: value in categories
 - **Fails with**: Error if value not in categories
+
+### Auto-Fix Strategies
+
+The backend provides automatic repair strategies for common configuration issues, particularly for fixed entity `system_id` problems:
+
+#### System ID Auto-Fix Strategies
+
+**Purpose**: Automatically repair `system_id` integrity issues in fixed entities to maintain FK relationship stability.
+
+**Available Strategies**:
+
+1. **SystemIdNullValuesAutoFixStrategy**
+   - **Triggered by**: `SYSTEM_ID_NULL_VALUES` error code
+   - **Action**: `UPDATE_VALUES` - Fills null system_id values with sequential integers starting from max(existing) + 1
+   - **Confirmation**: Required (user must approve changes)
+   - **Warning**: May affect dependent entities if used in foreign key relationships
+   - **Example**: `[1, 2, null, null]` → `[1, 2, 3, 4]`
+
+2. **SystemIdDuplicateValuesAutoFixStrategy**
+   - **Triggered by**: `SYSTEM_ID_DUPLICATE_VALUES` error code
+   - **Action**: `UPDATE_VALUES` - Preserves first occurrence of each duplicate, reassigns remaining duplicates with unique sequential values
+   - **Confirmation**: Required
+   - **Warning**: May affect dependent entities if used in foreign key relationships
+   - **Example**: `[1, 2, 2, 3, 2]` → `[1, 2, 4, 3, 5]` (first 2 preserved, others reassigned)
+
+3. **SystemIdInvalidValueAutoFixStrategy**
+   - **Triggered by**: `SYSTEM_ID_INVALID_VALUE` or `SYSTEM_ID_INVALID_TYPE` error codes
+   - **Action**: `UPDATE_VALUES` - Replaces invalid values (non-integers, zero, negatives) with valid positive integers
+   - **Confirmation**: Required
+   - **Warning**: May affect dependent entities if used in foreign key relationships
+   - **Strategy**: Preserves valid values, replaces invalid ones with sequential IDs starting from max(valid) + 1
+   - **Example**: `[1, "abc", -5, 2, 0]` → `[1, 3, 4, 2, 5]` (valid 1,2 preserved, others fixed)
+
+**Usage Flow**:
+1. Validation detects system_id integrity issue (FixedEntitySystemIdSpecification)
+2. Backend identifies applicable auto-fix strategy
+3. Auto-fix service generates `FixSuggestion` with:
+   - Clear description of the problem
+   - Proposed changes (before/after preview)
+   - Warning about potential FK impacts
+   - Confirmation requirement
+4. User reviews and approves fix
+5. Backend applies fix via `UPDATE_VALUES` action
+6. Configuration is backed up before modification
+7. Validation is re-run to confirm fix was successful
+
+**API Integration**:
+- Auto-fix suggestions available via `/api/v1/auto-fix/suggestions` endpoint
+- Apply fixes via `/api/v1/auto-fix/apply` endpoint
+- All fixes support rollback via backup mechanism
+
+**Safety Features**:
+- **Requires confirmation**: All system_id fixes require explicit user approval
+- **Backup before modification**: Original configuration is backed up
+- **Clear warnings**: Users are warned about potential FK relationship impacts
+- **Audit trail**: All fixes are logged with timestamps and details
 
 ### Suggested Additional Validations
 
@@ -3352,3 +3579,265 @@ TranslationConfig:
   filename: string
   delimiter?: string
 ```
+# Environment Variable Resolution in Data Sources
+
+## Overview
+
+The Shape Shifter data source system now supports automatic resolution of environment variables when testing connections. This allows you to store sensitive configuration (like database credentials) in environment variables rather than hardcoding them.
+
+## How It Works
+
+### In Project Files (Core System)
+
+When loading configurations through the core system (e.g., `arbodat-database.yml`), environment variables are automatically resolved by the `src.configuration` framework.
+
+Example from `sead-options.yml`:
+```yaml
+driver: postgres
+options:
+  host: ${SEAD_HOST}
+  port: ${SEAD_PORT}
+  dbname: ${SEAD_DBNAME}
+  username: ${SEAD_USER}
+```
+
+### In API/Backend (Data Source Testing)
+
+When testing data source connections via the API, the `DataSourceService` now automatically resolves environment variables before attempting the connection.
+
+**Before Resolution:**
+```json
+{
+  "name": "sead",
+  "driver": "postgresql",
+  "options": {
+    "host": "${SEAD_HOST}",
+    "port": "${SEAD_PORT}",
+    "database": "${SEAD_DBNAME}",
+    "username": "${SEAD_USER}"
+  }
+}
+```
+
+**After Resolution (automatic):**
+```json
+{
+  "name": "sead",
+  "driver": "postgresql",
+  "options": {
+    "host": "localhost",
+    "port": "5432",
+    "database": "sead_production",
+    "username": "sead_user"
+  }
+}
+```
+
+## Password Management with .pgpass
+
+For PostgreSQL connections, the recommended approach is to use `.pgpass` file for password management rather than storing passwords in configuration or environment variables.
+
+### Setting up .pgpass
+
+1. Create `~/.pgpass` file:
+   ```bash
+   touch ~/.pgpass
+   chmod 600 ~/.pgpass
+   ```
+
+2. Add connection credentials (one per line):
+   ```
+   hostname:port:database:username:password
+   ```
+
+   Example:
+   ```
+   localhost:5432:sead_production:sead_user:mypassword123
+   localhost:5432:*:postgres:adminpassword
+   ```
+
+3. PostgreSQL will automatically use `.pgpass` when no password is provided in the connection
+
+### Benefits
+
+- **Security**: Passwords never appear in project files or environment variables
+- **Convenience**: No need to pass passwords in connection strings
+- **Standard**: `.pgpass` is the PostgreSQL-recommended approach
+- **Multi-environment**: Different passwords for different databases in one file
+
+## API Usage
+
+### Testing Connection with Environment Variables
+
+When creating or testing a data source via the API, you can use environment variable references:
+
+```typescript
+// Frontend API call
+const dataSource = {
+  name: 'production_db',
+  driver: 'postgresql',
+  options: {
+    host: '${DB_HOST}',
+    port: '${DB_PORT}',
+    database: '${DB_NAME}',
+    username: '${DB_USER}'
+    // No password - will use .pgpass
+  }
+};
+
+// Test connection
+const result = await api.testConnection(dataSource);
+// Environment variables are resolved automatically before testing
+```
+
+### Setting Environment Variables
+
+**In shell:**
+```bash
+export SEAD_HOST=localhost
+export SEAD_PORT=5432
+export SEAD_DBNAME=sead_production
+export SEAD_USER=sead_user
+```
+
+**In .env file (development):**
+```env
+SEAD_HOST=localhost
+SEAD_PORT=5432
+SEAD_DBNAME=sead_production
+SEAD_USER=sead_user
+```
+
+**In systemd service (production):**
+```ini
+[Service]
+Environment="SEAD_HOST=prod-db.example.com"
+Environment="SEAD_PORT=5432"
+Environment="SEAD_DBNAME=sead_production"
+Environment="SEAD_USER=sead_user"
+```
+
+## Implementation Details
+
+### Architecture: Layer-Based Resolution
+
+The system follows a **clean separation of concerns** where environment variable resolution happens **exclusively in the mapper layer** when converting between API and Core entities.
+
+#### Layer Responsibilities
+
+| Layer | Responsibility | Environment Variables |
+|-------|---------------|----------------------|
+| **API Models** (`backend/app/models/`) | Data transfer, validation | Raw, unresolved (`${VAR}`) |
+| **Services** (`backend/app/services/`) | Business logic | Works with raw API entities |
+| **Mapper** (`backend/app/mappers/`) | Translation + **Resolution** | **Resolves here** |
+| **Core** (`src/`) | Processing, execution | Always resolved |
+
+#### Why This Approach?
+
+1. **Single Responsibility**: The `DataSourceMapper.to_core_config()` method is the **only** place that resolves environment variables
+2. **Clear Boundaries**: API layer = raw config, Core layer = resolved config
+3. **No Redundancy**: Services never need to remember to call `resolve_config_env_vars()`
+4. **Type Safety**: Core entities are guaranteed to be fully resolved
+5. **Easier Testing**: Mock the mapper for tests that need unresolved configs
+
+### Mapper Layer
+
+The `DataSourceMapper` class handles the boundary between API and Core layers:
+
+```python
+from backend.app.mappers.data_source_mapper import DataSourceMapper
+from backend.app.models.data_source import DataSourceConfig as ApiConfig
+from src.model import DataSourceConfig as CoreConfig
+
+class DataSourceMapper:
+    @staticmethod
+    def to_core_config(api_config: ApiConfig) -> CoreConfig:
+        """Map API config to Core config.
+        
+        IMPORTANT: This method resolves environment variables during mapping.
+        API entities remain "raw" with ${ENV_VAR} syntax, but core entities
+        are always fully resolved and ready for use.
+        """
+        # Resolution happens here at the API/Core boundary
+        api_config = api_config.resolve_config_env_vars()
+        
+        # Map to core format with resolved values
+        return CoreConfig(
+            name=api_config.name,
+            cfg={
+                "driver": api_config.driver,
+                "options": {...}  # Fully resolved
+            }
+        )
+```
+
+### Service Layer
+
+Services work with **raw API entities** and rely on the mapper for resolution:
+
+```python
+# SchemaIntrospectionService example
+class SchemaIntrospectionService:
+    async def get_tables(self, data_source_name: str) -> list[TableMetadata]:
+        # Get raw API config (with ${ENV_VARS})
+        api_config = self.data_source_service.get_data_source(data_source_name)
+        
+        # Mapper handles resolution when creating core config
+        core_config = DataSourceMapper.to_core_config(api_config)
+        
+        # Core loader receives fully resolved config
+        loader = DataLoaders.get(core_config.driver)(core_config)
+        return await loader.get_tables()
+```
+
+**Important:** Environment variables are **preserved in API entities** and only resolved when mapping to Core:
+
+- `list_data_sources()` - Returns API configs **with unresolved env vars** (e.g., `${SEAD_HOST}`) for UI display/editing
+- `get_data_source(name)` - Returns API config **with unresolved env vars** for editing
+- `test_connection(config)` - Mapper resolves env vars **when creating core config** for testing
+- `get_tables(name)` - Mapper resolves env vars **when creating loader** for introspection
+
+This approach allows users to:
+1. **See and edit** the environment variable references in the UI (e.g., `${SEAD_HOST}`)
+2. **Test connections** with actual resolved values from the environment
+3. **Keep configuration portable** across environments
+
+### Resolution Rules
+
+1. Environment variable syntax: `${VAR_NAME}`
+2. If variable exists: Replaces with actual value
+3. If variable doesn't exist: Replaces with empty string
+4. Nested dictionaries: Resolved recursively (e.g., in `options`)
+5. Non-string values: Passed through unchanged
+
+### Example Code
+
+```python
+from backend.app.services.data_source_service import DataSourceService
+from backend.app.models.data_source import DataSourceConfig
+from backend.app.mappers.data_source_mapper import DataSourceMapper
+
+# Create API config with env var references (stays raw)
+api_config = DataSourceConfig(
+    name="my_db",
+    driver="postgresql",
+    options={
+        "host": "${DB_HOST}",
+        "port": "${DB_PORT}",
+        "database": "${DB_NAME}",
+        "username": "${DB_USER}",
+    }
+)
+
+# API config remains raw throughout the service layer
+service = DataSourceService(config_store)
+
+# Mapper resolves env vars when converting to core config
+core_config = DataSourceMapper.to_core_config(api_config)
+# Now core_config has resolved values: host="localhost", etc.
+
+# Test connection using core config
+result = await service.test_connection(api_config)
+# Internally, test_connection uses mapper to get resolved core config
+```
+

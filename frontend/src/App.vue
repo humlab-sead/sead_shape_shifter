@@ -190,6 +190,12 @@
             </v-list-item>
             <v-list-item>
               <template #prepend>
+                <v-chip size="small">Ctrl+Shift+L</v-chip>
+              </template>
+              <v-list-item-title>Toggle Log Viewer</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <template #prepend>
                 <v-chip size="small">Esc</v-chip>
               </template>
               <v-list-item-title>Close Dialog</v-list-item-title>
@@ -209,6 +215,27 @@
         <v-btn variant="text" @click="snackbar.show = false">Close</v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Log Viewer Overlay -->
+    <log-viewer-overlay v-model="showLogViewer" />
+
+    <!-- Floating Action Button for Log Viewer (hidden on Settings page) -->
+    <v-btn
+      v-if="route.name !== 'settings'"
+      icon="mdi-console-line"
+      color="primary"
+      size="large"
+      position="fixed"
+      location="bottom end"
+      class="ma-4"
+      @click="showLogViewer = !showLogViewer"
+    >
+      <v-icon>mdi-console-line</v-icon>
+      <v-tooltip activator="parent" location="left">
+        <div>View Logs</div>
+        <div class="text-caption">Ctrl+Shift+L</div>
+      </v-tooltip>
+    </v-btn>
   </v-app>
 </template>
 
@@ -218,13 +245,16 @@ import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
 import { useSettings } from '@/composables/useSettings'
 import { useNotification } from '@/composables/useNotification'
+import { useProjectStore } from '@/stores'
 import ContextHelp from '@/components/ContextHelp.vue'
+import LogViewerOverlay from '@/components/LogViewerOverlay.vue'
 
 const router = useRouter()
 const route = useRoute()
 const theme = useTheme()
 const settings = useSettings()
-const { snackbar } = useNotification()
+const { snackbar, success, error } = useNotification()
+const projectStore = useProjectStore()
 
 const drawer = ref(true)
 const rail = ref(false)
@@ -233,6 +263,7 @@ const isResizing = ref(false)
 const showCommandPalette = ref(false)
 const showHelpDialog = ref(false)
 const commandSearch = ref('')
+const showLogViewer = ref(false)
 
 const currentProject = computed(() => route.params.name as string | undefined)
 interface Breadcrumb {
@@ -289,6 +320,13 @@ const commands = ref<Command[]>([
     shortcut: 'Ctrl+Shift+C',
     action: () => router.push('/projects'),
   },
+  {
+    id: 'open-logs',
+    title: 'Open Log Viewer',
+    icon: 'mdi-console-line',
+    shortcut: 'Ctrl+Shift+L',
+    action: () => { showLogViewer.value = true },
+  },
 ])
 
 const filteredCommands = computed(() => {
@@ -307,8 +345,20 @@ function handleNewProject() {
   router.push('/projects')
 }
 
-function handleRefresh() {
-  window.location.reload()
+async function handleRefresh() {
+  // If we're viewing a specific project, refresh it from disk
+  if (currentProject.value) {
+    try {
+      await projectStore.refreshProject(currentProject.value)
+      success(`Project '${currentProject.value}' refreshed from disk`)
+    } catch (err: any) {
+      const message = err.response?.data?.detail || err.message || 'Unknown error'
+      error(`Failed to refresh project: ${message}`)
+    }
+  } else {
+    // Otherwise, reload the entire page
+    window.location.reload()
+  }
 }
 
 // Sidebar resize functionality
@@ -352,6 +402,11 @@ function handleKeydown(event: KeyboardEvent) {
   if (event.ctrlKey && event.shiftKey && event.key === 'C') {
     event.preventDefault()
     router.push('/projects')
+  }
+
+  if (event.ctrlKey && event.shiftKey && event.key === 'L') {
+    event.preventDefault()
+    showLogViewer.value = !showLogViewer.value
   }
 
   if (event.key === 'Escape') {

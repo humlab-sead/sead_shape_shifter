@@ -30,6 +30,7 @@ export interface DependencyNode {
   depends_on: string[]
   depth: number
   type?: 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
+  materialized?: boolean
 }
 
 export interface DependencyEdge {
@@ -39,6 +40,8 @@ export interface DependencyEdge {
   remote_keys?: string[]
   type?: 'dependency' | 'foreign_key' | 'provides'
   label?: string
+  frozen?: boolean  // True for edges from materialized entities showing historical dependencies
+  via_source_entity?: boolean  // True for edges that go through source entities (table/sheet), false for direct source->entity
 }
 
 export interface DependencyGraph {
@@ -54,7 +57,7 @@ export interface DependencyGraph {
 export interface SourceNode {
   name: string
   source_type: string
-  type: 'datasource' | 'table' | 'file'
+  type: 'datasource' | 'table' | 'file' | 'sheet'
   metadata?: Record<string, any>
 }
 

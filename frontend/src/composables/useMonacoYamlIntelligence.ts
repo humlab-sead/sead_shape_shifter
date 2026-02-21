@@ -9,6 +9,9 @@ export interface YamlIntelligenceOptions {
   context?: ValidationContext
 }
 
+// Track if YAML has been configured globally
+let yamlConfigured = false
+
 /**
  * Setup YAML intelligence features for Monaco editor
  * @param monacoInstance - Monaco editor instance
@@ -18,20 +21,32 @@ export function setupYamlIntelligence(
   monacoInstance: typeof monaco,
   options: YamlIntelligenceOptions
 ) {
+  // Only configure monaco-yaml once globally to avoid worker conflicts
+  if (yamlConfigured) {
+    return
+  }
+
   const schema = options.mode === 'project' ? projectSchema : entitySchema
 
-  configureMonacoYaml(monacoInstance, {
-    enableSchemaRequest: false,
-    hover: true,
-    completion: true,
-    validate: true,
-    format: true,
-    schemas: [
-      {
-        uri: `http://shapeshifter/${options.mode}-schema.json`,
-        fileMatch: ['*.yml', '*.yaml'],
-        schema: schema as any
-      }
-    ]
-  })
+  try {
+    configureMonacoYaml(monacoInstance, {
+      enableSchemaRequest: false,
+      hover: false, // Disable hover - causes "doHover" errors
+      completion: true,
+      validate: false, // Disable - we use custom validation
+      format: true,
+      schemas: [
+        {
+          uri: `http://shapeshifter/${options.mode}-schema.json`,
+          fileMatch: ['*.yml', '*.yaml'],
+          schema: schema as any
+        }
+      ]
+    })
+    
+    yamlConfigured = true
+  } catch (error) {
+    console.warn('Failed to configure Monaco YAML:', error)
+    // Continue without YAML language services - basic editing will still work
+  }
 }

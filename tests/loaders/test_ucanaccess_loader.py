@@ -8,8 +8,8 @@ from src.loaders.sql_loaders import UCanAccessSqlLoader, init_jvm_for_ucanaccess
 from src.model import DataSourceConfig
 
 UCANACCESS_HOME = os.path.abspath("lib/ucanaccess")
-ARBODAT_DATA_MDB = os.path.abspath("./projects/ArchBotDaten.mdb")
-ARBODAT_LOOKUP_MDB = os.path.abspath("./projects/ArchBotStrukDat.mdb")
+ARBODAT_DATA_MDB = os.path.abspath("./data/shared/shared-data/ArchBotDaten.mdb")
+ARBODAT_LOOKUP_MDB = os.path.abspath("./data/shared/shared-data/ArchBotStrukDat.mdb")
 
 DATA_SOURCE_CONFIG = DataSourceConfig(
     cfg={

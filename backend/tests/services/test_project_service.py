@@ -1,5 +1,6 @@
 """Tests for ProjectService."""
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -8,17 +9,14 @@ import pytest
 import yaml
 
 from backend.app.core.config import settings
+from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.services.project_service import (
-    EntityAlreadyExistsError,
-    EntityNotFoundError,
-    InvalidProjectError,
-    ProjectConflictError,
-    ProjectNotFoundError,
     ProjectService,
     get_project_service,
 )
+from backend.app.utils.exceptions import BadRequestError
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -91,7 +89,10 @@ class TestProjectService:
     @pytest.fixture
     def sample_config_file(self, tmp_path):
         """Create a sample configuration file with multiple entities."""
-        config_path = tmp_path / "test_project.yml"
+        # New structure: project_name/shapeshifter.yml
+        project_dir = tmp_path / "test_project"
+        project_dir.mkdir()
+        config_path = project_dir / "shapeshifter.yml"
         content = """
 metadata:
   type: shapeshifter-project
@@ -125,8 +126,11 @@ options:
 
     def test_list_configurations_with_files(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test listing existing configurations."""
-        (temp_config_dir / "config1.yml").write_text(yaml.dump(sample_yaml_dict))
-        (temp_config_dir / "config2.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        (temp_config_dir / "config1").mkdir()
+        (temp_config_dir / "config1" / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
+        (temp_config_dir / "config2").mkdir()
+        (temp_config_dir / "config2" / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
 
         configs = service.list_projects()
         assert len(configs) == 2
@@ -134,7 +138,10 @@ options:
 
     def test_list_configurations_sets_metadata(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test list sets correct metadata."""
-        file_path = temp_config_dir / "myconfig.yml"
+        # New structure: project_name/shapeshifter.yml
+        project_dir = temp_config_dir / "myconfig"
+        project_dir.mkdir()
+        file_path = project_dir / "shapeshifter.yml"
         file_path.write_text(yaml.dump(sample_yaml_dict))
 
         configs = service.list_projects()
@@ -146,7 +153,10 @@ options:
 
     def test_list_configurations_skips_non_yml(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test list ignores non-YAML files."""
-        (temp_config_dir / "valid.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        valid_dir = temp_config_dir / "valid"
+        valid_dir.mkdir()
+        (valid_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
         (temp_config_dir / "readme.txt").write_text("not yaml")
 
         configs = service.list_projects()
@@ -154,7 +164,10 @@ options:
 
     def test_list_configurations_validates_files(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test list sets is_valid based on validation."""
-        (temp_config_dir / "valid.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        valid_dir = temp_config_dir / "valid"
+        valid_dir.mkdir()
+        (valid_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
 
         configs = service.list_projects()
         assert len(configs) == 1
@@ -165,7 +178,10 @@ options:
 
     def test_load_configuration_success(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test loading existing configuration."""
-        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
 
         with patch.object(service, "state") as mock_state:
             mock_state.get.return_value = None
@@ -178,12 +194,15 @@ options:
         """Test loading non-existent configuration raises error."""
         with patch.object(service, "state") as mock_state:
             mock_state.get.return_value = None
-            with pytest.raises(ProjectNotFoundError, match="not found"):
+            with pytest.raises(ResourceNotFoundError, match="not found"):
                 service.load_project("nonexistent")
 
     def test_load_configuration_with_yml_extension(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
-        """Test loading with .yml extension."""
-        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+        """Test loading with .yml extension - should still work for backward compatibility."""
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
         service.projects_dir = temp_config_dir
         config = service.load_project("test.yml")
         assert config.metadata
@@ -191,15 +210,21 @@ options:
 
     def test_load_configuration_invalid_yaml(self, service: ProjectService, temp_config_dir: Path):
         """Test loading invalid YAML raises error."""
-        (temp_config_dir / "invalid.yml").write_text("{ invalid yaml")
+        # New structure: project_name/shapeshifter.yml
+        invalid_dir = temp_config_dir / "invalid"
+        invalid_dir.mkdir()
+        (invalid_dir / "shapeshifter.yml").write_text("{ invalid yaml")
         with patch.object(service, "state") as mock_state:
             mock_state.get.return_value = None
-            with pytest.raises(InvalidProjectError):
+            with pytest.raises(ConfigurationError):
                 service.load_project("invalid")
 
     def test_load_configuration_sets_metadata(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test load sets file metadata."""
-        file_path = temp_config_dir / "test.yml"
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        file_path = test_dir / "shapeshifter.yml"
         file_path.write_text(yaml.dump(sample_yaml_dict))
         with patch.object(service, "state") as mock_state:
             mock_state.get.return_value = None
@@ -213,7 +238,7 @@ options:
         """Test loading valid configuration with multiple entities."""
         config = simple_service.load_project("test_project")
 
-        assert config.metadata.name == "test_project"
+        assert config.metadata.name == "test_project"  # type: ignore
         assert len(config.entities) == 2
         assert "sample" in config.entities
         assert "site" in config.entities
@@ -227,7 +252,8 @@ options:
 
         assert result.metadata
         assert result.metadata.name == "test"
-        file_path = service.projects_dir / "test.yml"
+        # New structure: project_name/shapeshifter.yml
+        file_path = service.projects_dir / "test" / "shapeshifter.yml"
         assert file_path.exists()
 
     def test_save_configuration_updates_metadata(self, service: ProjectService, sample_config: Project):
@@ -244,7 +270,7 @@ options:
         """Test save without metadata raises error."""
         config = Project(entities={}, options={})
 
-        with pytest.raises(InvalidProjectError, match="must have metadata"):
+        with pytest.raises(ConfigurationError, match="must have metadata"):
             service.save_project(config, create_backup=False)
 
     def test_save_configuration_without_name(self, service: ProjectService):
@@ -264,13 +290,15 @@ options:
             ),
         )
 
-        with pytest.raises(InvalidProjectError, match="must have metadata"):
+        with pytest.raises(ConfigurationError, match="must have metadata"):
             service.save_project(config, create_backup=False)
 
     def test_save_configuration_creates_backup(self, service: ProjectService, temp_config_dir: Path, sample_config: Project):
         """Test save with backup option."""
-        # Create existing file
-        file_path = temp_config_dir / "test.yml"
+        # Create existing file in new structure
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        file_path = test_dir / "shapeshifter.yml"
         file_path.write_text("old content")
 
         with patch("backend.app.services.YamlService") as mock_yaml:
@@ -305,7 +333,8 @@ options:
 
         assert config.metadata
         assert config.metadata.name == "newconfig"
-        assert (service.projects_dir / "newconfig.yml").exists()
+        # New structure: project_name/shapeshifter.yml
+        assert (service.projects_dir / "newconfig" / "shapeshifter.yml").exists()
 
     def test_create_configuration_with_entities(self, service: ProjectService):
         """Test creating configuration with initial entities."""
@@ -318,9 +347,12 @@ options:
 
     def test_create_configuration_already_exists(self, service: ProjectService, temp_config_dir: Path):
         """Test creating configuration that already exists raises error."""
-        (temp_config_dir / "existing.yml").touch()
+        # New structure: project_name/shapeshifter.yml
+        existing_dir = temp_config_dir / "existing"
+        existing_dir.mkdir()
+        (existing_dir / "shapeshifter.yml").touch()
 
-        with pytest.raises(ProjectConflictError, match="already exists"):
+        with pytest.raises(ResourceConflictError, match="already exists"):
             service.create_project("existing")
 
     def test_create_configuration_sets_metadata(self, service: ProjectService):
@@ -350,9 +382,9 @@ options:
         for name in test_names:
             config = service.create_project(name)
 
-            # Verify filename is correct (not truncated)
-            expected_file = service.projects_dir / f"{name}.yml"
-            assert expected_file.exists(), f"File for '{name}' was truncated to {list(service.projects_dir.glob('*.yml'))}"
+            # Verify filename is correct (not truncated) - new structure
+            expected_file = service.projects_dir / name / "shapeshifter.yml"
+            assert expected_file.exists(), f"File for '{name}' was not created at {expected_file}"
 
             # Verify metadata.name matches
             assert config.metadata
@@ -372,26 +404,33 @@ options:
 
     def test_delete_configuration_success(self, service: ProjectService, temp_config_dir: Path):
         """Test deleting existing configuration."""
-        file_path = temp_config_dir / "test.yml"
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        file_path = test_dir / "shapeshifter.yml"
         file_path.touch()
 
         service.delete_project("test")
-        assert not file_path.exists()
+        assert not test_dir.exists()  # Whole directory should be deleted
 
     def test_delete_configuration_not_found(self, service: ProjectService):
         """Test deleting non-existent configuration raises error."""
-        with pytest.raises(ProjectNotFoundError, match="not found"):
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             service.delete_project("nonexistent")
 
     def test_delete_configuration_creates_backup(self, service: ProjectService, temp_config_dir: Path):
         """Test delete creates backup before removing file."""
-        file_path = temp_config_dir / "test.yml"
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        file_path = test_dir / "shapeshifter.yml"
         file_path.write_text("content")
 
         with patch("backend.app.services.project_service.YamlService") as mock_yaml:
             mock_backup = MagicMock()
             mock_yaml.return_value.create_backup = mock_backup
             service.yaml_service = mock_yaml.return_value
+            service.operations.yaml_service = mock_yaml.return_value  # Update operations component too
 
             service.delete_project("test")
 
@@ -411,7 +450,7 @@ options:
         """Test adding duplicate entity raises error."""
         entity = Entity(source="table", name="sample", type="entity")
 
-        with pytest.raises(EntityAlreadyExistsError, match="already exists"):
+        with pytest.raises(ResourceConflictError, match="already exists"):
             service.add_entity(sample_config, "sample", entity)
 
     def test_add_entity_serializes_model(self, service: ProjectService, sample_config: Project):
@@ -435,7 +474,7 @@ options:
         """Test updating non-existent entity raises error."""
         entity = Entity(source="table", name="new", type="entity", columns=[])
 
-        with pytest.raises(EntityNotFoundError, match="not found"):
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             service.update_entity(sample_config, "nonexistent", entity)
 
     # Delete entity tests
@@ -448,7 +487,7 @@ options:
 
     def test_delete_entity_not_found(self, service: ProjectService, sample_config: Project):
         """Test deleting non-existent entity raises error."""
-        with pytest.raises(EntityNotFoundError, match="not found"):
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             service.delete_entity(sample_config, "nonexistent")
 
     # Get entity tests
@@ -462,14 +501,17 @@ options:
 
     def test_get_entity_not_found(self, service: ProjectService, sample_config: Project):
         """Test getting non-existent entity raises error."""
-        with pytest.raises(EntityNotFoundError, match="not found"):
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             service.get_entity(sample_config, "nonexistent")
 
     # Entity operations by name tests
 
     def test_add_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test adding entity by configuration name."""
-        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
 
         entity_data = {"source": "new_table", "columns": ["id"]}
         mock_state = MagicMock()
@@ -483,18 +525,24 @@ options:
 
     def test_add_entity_by_name_already_exists(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test adding duplicate entity by name raises error."""
-        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
 
         mock_state = MagicMock()
         mock_state.get.return_value = None
         service.state = mock_state
 
-        with pytest.raises(EntityAlreadyExistsError):
+        with pytest.raises(ResourceConflictError):
             service.add_entity_by_name("test", "sample", {"source": "table"})
 
     def test_update_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test updating entity by configuration name."""
-        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
 
         mock_state = MagicMock()
         mock_state.get.return_value = None
@@ -508,14 +556,20 @@ options:
 
     def test_update_entity_by_name_not_found(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test updating non-existent entity by name raises error."""
-        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
 
-        with pytest.raises(EntityNotFoundError):
+        with pytest.raises(ResourceNotFoundError):
             service.update_entity_by_name("test", "nonexistent", {"source": "table"})
 
     def test_delete_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test deleting entity by configuration name."""
-        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
 
         mock_state = MagicMock()
         mock_state.get.return_value = None
@@ -528,14 +582,20 @@ options:
 
     def test_delete_entity_by_name_not_found(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test deleting non-existent entity by name raises error."""
-        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
 
-        with pytest.raises(EntityNotFoundError):
+        with pytest.raises(ResourceNotFoundError):
             service.delete_entity_by_name("test", "nonexistent")
 
     def test_get_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test getting entity by configuration name."""
-        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
 
         mock_state = MagicMock()
         mock_state.get.return_value = None
@@ -546,26 +606,53 @@ options:
 
     def test_get_entity_by_name_not_found(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test getting non-existent entity by name raises error."""
-        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
 
-        with pytest.raises(EntityNotFoundError):
+        with pytest.raises(ResourceNotFoundError):
             service.get_entity_by_name("test", "nonexistent")
 
     # Activate configuration tests
 
     def test_activate_project(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test activating configuration."""
-        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+        # New structure: project_name/shapeshifter.yml
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
 
         mock_state = MagicMock()
-        mock_state.get.return_value = None
+        mock_state.get.return_value = None  # Cache miss - will load from disk
         service.state = mock_state
 
         config = service.activate_project("test")
 
+        # load_project calls state.activate (cache miss => disk load)
         mock_state.activate.assert_called_once()
+        # activate_project calls state.mark_active (set active name only)
+        mock_state.mark_active.assert_called_once_with("test")
         assert config.metadata
         assert config.metadata.name.startswith("test")
+
+    def test_activate_project_from_cache(self, service: ProjectService, sample_config: Project):
+        """Test activating project that's already in cache."""
+        mock_state = MagicMock()
+        # Simulate cache hit - project already loaded
+        cached_project = deepcopy(sample_config)
+        cached_project.metadata.name = "test_cached"  # type: ignore
+        mock_state.get.return_value = cached_project
+        service.state = mock_state
+
+        config = service.activate_project("test_cached")
+
+        # Cache hit: load_project returns early without calling state.activate
+        mock_state.activate.assert_not_called()
+        # activate_project calls mark_active to set the active project name
+        mock_state.mark_active.assert_called_once_with("test_cached")
+        assert config.metadata
+        assert config.metadata.name == "test_cached"
 
     def test_activate_project_not_found(self, service: ProjectService):
         """Test activating non-existent configuration raises error."""
@@ -573,7 +660,7 @@ options:
         mock_state.get.return_value = None
         service.state = mock_state
 
-        with pytest.raises(ProjectNotFoundError):
+        with pytest.raises(ResourceNotFoundError):
             service.activate_project("nonexistent")
 
     # Version check tests
@@ -612,7 +699,7 @@ options:
         )
         service.state = mock_state
 
-        with pytest.raises(ProjectConflictError, match="modified by another user"):
+        with pytest.raises(ResourceConflictError, match="modified by another user"):
             service.save_with_version_check(sample_config, "1.0.0")
 
     # Roundtrip tests
@@ -652,3 +739,275 @@ options:
             service2 = get_project_service()
 
             assert service1 is service2
+
+
+class TestProjectServiceUncoveredMethods:
+    """Test previously uncovered methods in ProjectService."""
+
+    @pytest.fixture
+    def temp_config_dir(self, tmp_path: Path) -> Path:
+        """Create temporary configurations directory."""
+        config_dir = tmp_path / "configurations"
+        config_dir.mkdir()
+        return config_dir
+
+    @pytest.fixture
+    def service(self, temp_config_dir: Path) -> ProjectService:
+        """Create service instance with temporary directory."""
+        mock_state = MagicMock()
+        mock_state.update = MagicMock()
+        mock_state.get = MagicMock(return_value=None)
+        return ProjectService(projects_dir=temp_config_dir, state=mock_state)
+
+    @pytest.fixture
+    def sample_project_with_files(self, temp_config_dir: Path) -> Path:
+        """Create a sample project with additional files."""
+        project_dir = temp_config_dir / "test_project"
+        project_dir.mkdir()
+
+        # Create shapeshifter.yml
+        config_content = """
+metadata:
+  type: shapeshifter-project
+  name: test_project
+  description: Test project
+  version: 1.0.0
+
+entities:
+  sample:
+    type: entity
+    keys: [id]
+    columns: [name, value]
+
+options: {}
+"""
+        (project_dir / "shapeshifter.yml").write_text(config_content)
+
+        # Add extra files
+        (project_dir / "reconciliation.yml").write_text("reconciliation: config")
+        (project_dir / "translations.tsv").write_text("col1\\tcol2\\n")
+        backups_dir = project_dir / "backups"
+        backups_dir.mkdir()
+        (backups_dir / "old.backup.yml").write_text("old backup")
+
+        return project_dir
+
+    # copy_project tests
+
+    def test_copy_project_success(self, service: ProjectService, sample_project_with_files: Path):
+        """Test copying project and all its files."""
+        result = service.copy_project("test_project", "copied_project")
+
+        assert result.metadata
+        assert result.metadata.name == "copied_project"
+
+        # Verify directory was copied
+        target_dir = service.projects_dir / "copied_project"
+        assert target_dir.exists()
+        assert (target_dir / "shapeshifter.yml").exists()
+        assert (target_dir / "reconciliation.yml").exists()
+        assert (target_dir / "translations.tsv").exists()
+        assert (target_dir / "backups" / "old.backup.yml").exists()
+
+        # Verify metadata was updated
+        with open(target_dir / "shapeshifter.yml", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+            assert config["metadata"]["name"] == "copied_project"
+
+    def test_copy_project_source_not_found(self, service: ProjectService):
+        """Test copying non-existent project raises error."""
+        with pytest.raises(ResourceNotFoundError, match="not found"):
+            service.copy_project("nonexistent", "target")
+
+    def test_copy_project_target_exists(self, service: ProjectService, sample_project_with_files: Path):
+        """Test copying to existing project raises conflict."""
+        # Create target
+        target_dir = service.projects_dir / "existing"
+        target_dir.mkdir()
+        (target_dir / "shapeshifter.yml").touch()
+
+        with pytest.raises(ResourceConflictError, match="already exists"):
+            service.copy_project("test_project", "existing")
+
+    def test_copy_project_nested_paths(self, service: ProjectService, sample_project_with_files: Path):
+        """Test copying project with nested path names."""
+        # Create nested source
+        nested_dir = service.projects_dir / "category" / "source_project"
+        nested_dir.mkdir(parents=True)
+        (nested_dir / "shapeshifter.yml").write_text(
+            """
+metadata:
+  type: shapeshifter-project
+  name: category/source_project
+  version: 1.0.0
+entities: {}
+options: {}
+"""
+        )
+
+        result = service.copy_project("category/source_project", "category/target_project")
+
+        assert result.metadata
+        assert result.metadata.name == "category/target_project"
+        assert (service.projects_dir / "category" / "target_project" / "shapeshifter.yml").exists()
+
+    # update_metadata tests
+
+    def test_update_metadata_description(self, service: ProjectService, sample_project_with_files: Path):
+        """Test updating project description."""
+        result = service.update_metadata("test_project", description="New description")
+
+        assert result.metadata
+        assert result.metadata.description == "New description"
+        assert result.metadata.name == "test_project"  # Name stays the same
+
+    def test_update_metadata_version(self, service: ProjectService, sample_project_with_files: Path):
+        """Test updating project version."""
+        result = service.update_metadata("test_project", version="2.0.0")
+
+        assert result.metadata
+        assert result.metadata.version == "2.0.0"
+
+    def test_update_metadata_default_entity(self, service: ProjectService, sample_project_with_files: Path):
+        """Test updating default entity."""
+        result = service.update_metadata("test_project", default_entity="sample")
+
+        assert result.metadata
+        assert result.metadata.default_entity == "sample"
+
+    def test_update_metadata_new_name_ignored(self, service: ProjectService, sample_project_with_files: Path):
+        """Test that new_name parameter is ignored (use rename instead)."""
+        result = service.update_metadata("test_project", new_name="different_name", description="Test")
+
+        # Name should NOT change (filename is source of truth)
+        assert result.metadata
+        assert result.metadata.name == "test_project"
+        assert result.metadata.description == "Test"
+
+    def test_update_metadata_project_not_found(self, service: ProjectService):
+        """Test updating metadata for non-existent project."""
+        with pytest.raises(ResourceNotFoundError):
+            service.update_metadata("nonexistent", description="Test")
+
+    # _validate_project_name tests
+
+    def test_validate_project_name_valid_simple(self, service: ProjectService):
+        """Test validating valid simple project name."""
+        result = service._validate_project_name("my_project")
+        assert result == "my_project"
+
+    def test_validate_project_name_valid_nested(self, service: ProjectService):
+        """Test validating valid nested project name with colon separator."""
+        result = service._validate_project_name("category:sub:project")
+        assert result == "category:sub:project"
+
+    def test_validate_project_name_empty(self, service: ProjectService):
+        """Test empty project name raises error."""
+        with pytest.raises(BadRequestError, match="cannot be empty"):
+            service._validate_project_name("")
+
+    def test_validate_project_name_whitespace_only(self, service: ProjectService):
+        """Test whitespace-only project name raises error."""
+        with pytest.raises(BadRequestError, match="cannot be empty"):
+            service._validate_project_name("   ")
+
+    def test_validate_project_name_directory_traversal(self, service: ProjectService):
+        """Test directory traversal attempts are blocked."""
+        with pytest.raises(BadRequestError, match="traversal not allowed"):
+            service._validate_project_name("../escape")
+
+        with pytest.raises(BadRequestError, match="traversal not allowed"):
+            service._validate_project_name("category/../escape")
+
+    def test_validate_project_name_absolute_path(self, service: ProjectService):
+        """Test absolute paths with slash are rejected."""
+        with pytest.raises(BadRequestError, match="use ':' for nested projects"):
+            service._validate_project_name("/absolute/path")
+
+    def test_validate_project_name_strips_whitespace(self, service: ProjectService):
+        """Test that leading/trailing whitespace is stripped."""
+        result = service._validate_project_name("  my_project  ")
+        assert result == "my_project"
+
+    # _ensure_project_exists tests
+
+    def test_ensure_project_exists_valid(self, service: ProjectService, sample_project_with_files: Path):
+        """Test ensuring existing project returns path."""
+        result = service._ensure_project_exists("test_project")
+
+        expected = service.projects_dir / "test_project" / "shapeshifter.yml"
+        assert result == expected
+        assert result.exists()
+
+    def test_ensure_project_exists_not_found(self, service: ProjectService):
+        """Test ensuring non-existent project raises error."""
+        with pytest.raises(ResourceNotFoundError, match="not found"):
+            service._ensure_project_exists("nonexistent")
+
+    def test_ensure_project_exists_nested(self, service: ProjectService):
+        """Test ensuring nested project exists."""
+        # Create nested project
+        nested_dir = service.projects_dir / "cat1" / "cat2" / "project"
+        nested_dir.mkdir(parents=True)
+        (nested_dir / "shapeshifter.yml").touch()
+
+        result = service._ensure_project_exists("cat1:cat2:project")
+
+        expected = service.projects_dir / "cat1" / "cat2" / "project" / "shapeshifter.yml"
+        assert result == expected
+
+    # File management tests
+
+    def test_list_project_files_empty_project(self, service: ProjectService):
+        """Test listing files in project with no data files."""
+        project_dir = service.projects_dir / "empty_project"
+        project_dir.mkdir()
+        (project_dir / "shapeshifter.yml").touch()
+
+        files = service.list_project_files("empty_project")
+
+        # Should be empty (shapeshifter.yml not included in project files list)
+        assert files == []
+
+    def test_list_project_files_with_extensions(self, service: ProjectService, sample_project_with_files: Path, temp_config_dir: Path):
+        """Test listing files with specific extensions."""
+        # Add some data files to project directory
+        (sample_project_with_files / "data.xlsx").touch()
+        (sample_project_with_files / "data.csv").touch()
+        (sample_project_with_files / "notes.txt").touch()
+
+        files = service.list_project_files("test_project", extensions=[".xlsx", ".csv"])
+
+        # Should return only files matching the extensions
+        assert len(files) == 2
+        file_names = {f.name for f in files}
+        assert file_names == {"data.xlsx", "data.csv"}
+
+    def test_get_project_upload_dir(self, service: ProjectService, sample_project_with_files: Path):
+        """Test getting project upload directory."""
+        result = service._get_project_upload_dir("test_project")
+
+        # The upload dir is the project subdirectory
+        expected = service.projects_dir / "test_project"
+        assert result == expected
+
+    def test_sanitize_filename_valid(self, service: ProjectService):
+        """Test sanitizing valid filename."""
+        result = service._sanitize_filename("my_file.xlsx")
+        assert result == "my_file.xlsx"
+
+    def test_sanitize_filename_removes_path_separators(self, service: ProjectService):
+        """Test that path separators are removed from filenames."""
+        result = service._sanitize_filename("../escape/file.xlsx")
+        # Should remove path components, keeping only filename
+        assert "../" not in result
+        assert "/" not in result or result.count("/") == 0
+
+    def test_to_public_path(self, service: ProjectService, sample_project_with_files: Path):
+        """Test converting absolute path to public/relative path."""
+        abs_path = sample_project_with_files / "data.xlsx"
+        result = service._to_public_path(abs_path)
+
+        # Should return path relative to projects_dir
+        assert "test_project" in result
+        assert "data.xlsx" in result

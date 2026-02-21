@@ -26,7 +26,7 @@ export interface PreviewResult {
 
 export function useEntityPreview() {
   const loading = ref(false)
-  const error = ref<string | null>(null)
+  const error = ref<string | any | null>(null)
   const previewData = ref<PreviewResult | null>(null)
   const lastRefresh = ref<Date | null>(null)
 
@@ -40,7 +40,8 @@ export function useEntityPreview() {
   async function previewEntity(
     projectName: string,
     entityName: string,
-    limit: number | null = 50
+    limit: number | null = 50,
+    entityConfig?: Record<string, any>
   ): Promise<PreviewResult | null> {
     if (!projectName || !entityName) {
       error.value = 'Project and entity name are required'
@@ -57,9 +58,12 @@ export function useEntityPreview() {
         params.limit = limit
       }
 
+      // Build request body - include entity_config if provided
+      const body = entityConfig ? { entity_config: entityConfig } : {}
+
       const response = await axios.post<PreviewResult>(
         `/api/v1/projects/${projectName}/entities/${entityName}/preview`,
-        {},
+        body,
         { params }
       )
 
@@ -67,8 +71,15 @@ export function useEntityPreview() {
       lastRefresh.value = new Date()
       return response.data
     } catch (err: any) {
-      const message = err.response?.data?.detail || err.message || 'Failed to load preview'
-      error.value = message
+      // Extract and format error message properly
+      if (err.response?.data) {
+        // Backend returns structured error with detail.message
+        error.value = err.response.data
+      } else if (err.message) {
+        error.value = err.message
+      } else {
+        error.value = 'Failed to load preview'
+      }
       console.error('Preview error:', err)
       return null
     } finally {
@@ -79,9 +90,12 @@ export function useEntityPreview() {
   /**
    * Debounced preview entity - waits 1000ms after last call
    */
-  const debouncedPreviewEntity = useDebounceFn((projectName: string, entityName: string, limit?: number | null) => {
-    return previewEntity(projectName, entityName, limit)
-  }, 1000)
+  const debouncedPreviewEntity = useDebounceFn(
+    (projectName: string, entityName: string, limit?: number | null, entityConfig?: Record<string, any>) => {
+      return previewEntity(projectName, entityName, limit, entityConfig)
+    },
+    1000
+  )
 
   /**
    * Get entity sample (larger dataset)
@@ -109,8 +123,14 @@ export function useEntityPreview() {
       previewData.value = response.data
       return response.data
     } catch (err: any) {
-      const message = err.response?.data?.detail || err.message || 'Failed to load sample'
-      error.value = message
+      // Extract and format error message properly
+      if (err.response?.data) {
+        error.value = err.response.data
+      } else if (err.message) {
+        error.value = err.message
+      } else {
+        error.value = 'Failed to load sample'
+      }
       console.error('Sample error:', err)
       return null
     } finally {

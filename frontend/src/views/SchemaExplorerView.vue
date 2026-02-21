@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid class="pa-4">
+  <v-container fluid class="pa-4 schema-explorer-container">
     <div class="d-flex align-center mb-4">
       <v-icon icon="mdi-database-search" size="large" class="mr-3" />
       <h1 class="text-h4">Schema Explorer</h1>
@@ -10,51 +10,32 @@
     </div>
 
     <v-row>
-      <!-- Left Panel: Table Tree -->
+      <!-- Left Panel: Table Selector with Embedded Details -->
       <v-col cols="12" md="3">
-        <SchemaTreeView :auto-load="true" @table-selected="onTableSelected" />
+        <SchemaTreeView :auto-load="true" @table-selected="onTableSelected">
+          <template #details>
+            <TableDetailsPanel
+              ref="detailsPanel"
+              :data-source="selectedDataSource ?? undefined"
+              :table-name="selectedTable ?? undefined"
+              :schema="selectedSchema"
+              :auto-load="true"
+              embedded
+            />
+          </template>
+        </SchemaTreeView>
       </v-col>
 
-      <!-- Middle Panel: Table Details -->
-      <v-col cols="12" md="4">
-        <TableDetailsPanel
-          ref="detailsPanel"
-          :data-source="selectedDataSource ?? undefined"
-          :table-name="selectedTable ?? undefined"
-          :schema="selectedSchema"
-          :auto-load="false"
-        />
-      </v-col>
-
-      <!-- Right Panel: Data Preview -->
-      <v-col cols="12" md="5">
+      <!-- Right Panel: Data Preview (Expanded) -->
+      <v-col cols="12" md="9">
         <DataPreviewTable
           ref="previewTable"
           :data-source="selectedDataSource ?? undefined"
           :table-name="selectedTable ?? undefined"
           :schema="selectedSchema"
-          :auto-load="false"
+          :auto-load="true"
           :default-limit="50"
         />
-      </v-col>
-    </v-row>
-
-    <!-- Info Bar -->
-    <v-row v-if="selectedTable">
-      <v-col>
-        <v-card variant="outlined">
-          <v-card-text class="d-flex align-center">
-            <v-icon icon="mdi-information-outline" class="mr-2" />
-            <span class="text-body-2">
-              Selected:
-              <strong>{{ selectedDataSource }}</strong>
-              <span v-if="selectedSchema && selectedSchema !== 'public'"> / {{ selectedSchema }} </span>
-              / {{ selectedTable }}
-            </span>
-            <v-spacer />
-            <v-btn size="small" variant="text" @click="clearSelection"> Clear Selection </v-btn>
-          </v-card-text>
-        </v-card>
       </v-col>
     </v-row>
 
@@ -90,7 +71,7 @@
           <div class="mb-4">
             <p class="font-weight-medium mb-1">2. Browse Tables</p>
             <p class="text-body-2 text-grey-darken-1">
-              Tables will load automatically. Use the search box to filter tables by name. For PostgreSQL, you can
+              Tables will load automatically. Select a table from the dropdown to view its details. For PostgreSQL, you can
               specify a schema (defaults to 'public').
             </p>
           </div>
@@ -98,7 +79,7 @@
           <div class="mb-4">
             <p class="font-weight-medium mb-1">3. View Table Details</p>
             <p class="text-body-2 text-grey-darken-1">
-              Click a table to view its schema in the middle panel. You'll see:
+              Select a table to automatically view its column details below the table selector and preview data in the right panel. You'll see:
             </p>
             <ul class="text-body-2 text-grey-darken-1 ml-4">
               <li>Column names and data types</li>
@@ -113,16 +94,15 @@
           <div class="mb-4">
             <p class="font-weight-medium mb-1">4. Preview Data</p>
             <p class="text-body-2 text-grey-darken-1">
-              The right panel shows sample rows from the selected table. Use pagination controls to navigate through the
-              data. You can adjust rows per page (10, 25, 50, or 100).
+              The right panel automatically shows sample rows from the selected table. Use pagination controls to navigate through the
+              data. You can adjust rows per page (10, 25, 50, or 100). Data preview clears when switching tables.
             </p>
           </div>
 
           <div class="mb-4">
             <p class="font-weight-medium mb-1">5. Refresh Data</p>
             <p class="text-body-2 text-grey-darken-1">
-              Use the refresh button in each panel to reload data. "Refresh All" button clears cache and reloads
-              everything.
+              Use the refresh button in each panel to reload data manually. The "Refresh All" button at the top clears the cache and reloads everything.
             </p>
           </div>
 
@@ -185,10 +165,7 @@ function onTableSelected(table: TableMetadata, dataSource: string, schema?: stri
   selectedDataSource.value = dataSource
   selectedTable.value = table.name
   selectedSchema.value = schema
-
-  // Load details and preview
-  detailsPanel.value?.loadSchema()
-  previewTable.value?.loadPreview()
+  // Schema and preview will automatically load via watchers since auto-load="true"
 }
 
 async function refreshAll() {
@@ -209,20 +186,27 @@ async function refreshAll() {
     refreshing.value = false
   }
 }
-
-function clearSelection() {
-  selectedDataSource.value = null
-  selectedTable.value = null
-  selectedSchema.value = undefined
-}
 </script>
 
 <style scoped>
-.v-container {
+.schema-explorer-container {
   max-width: 100%;
+  height: calc(100vh - 100px); /* Subtract app bar height + margin */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .v-row {
-  min-height: 500px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.v-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 </style>

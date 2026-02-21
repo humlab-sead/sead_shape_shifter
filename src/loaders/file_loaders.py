@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import pandas as pd
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
+from src.utility import sanitize_columns
 
 from .base_loader import ConnectTestResult, DataLoader, DataLoaders, LoaderType
 
@@ -63,6 +64,7 @@ class CsvLoader(FileLoader):
                 description="Path to .csv file",
                 placeholder="./data/file.csv",
                 aliases=["file", "filepath", "path"],
+                extensions=["csv", "tsv"],
             ),
             FieldMetadata(
                 name="encoding", type="string", required=False, default="utf-8", description="File encoding", placeholder="utf-8"
@@ -87,6 +89,11 @@ class CsvLoader(FileLoader):
         except KeyError as exc:
             raise ValueError("Missing 'filename' in options for CSV loader") from exc
         df: pd.DataFrame = pd.read_csv(filename, **clean_opts)
+
+        if opts.get("sanitize_header", True):
+            # Sanitize column names to be YAML-friendly
+            df.columns = sanitize_columns(list(df.columns))
+
         return df
 
     async def test_connection(self) -> ConnectTestResult:

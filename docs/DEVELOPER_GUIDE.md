@@ -36,7 +36,7 @@ This guide is for developers who are:
 
 ### Related Documentation
 
-- [UI Architecture](UI_ARCHITECTURE.md) - Detailed architecture
+- [Architecture](ARCHITECTURE.md) - Detailed architecture
 - [User Guide](USER_GUIDE.md) - End-user documentation
 - [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures
@@ -449,8 +449,7 @@ backend/
 │   │       ├── endpoints/
 │   │       │   ├── configurations.py
 │   │       │   ├── validation.py
-│   │       │   ├── auto_fix.py
-│   │       │   └── test_runs.py
+│   │       │   └── auto_fix.py
 │   │       └── router.py
 │   ├── core/
 │   │   ├── config.py          # Settings
@@ -459,13 +458,11 @@ backend/
 │   ├── models/
 │   │   ├── configuration.py
 │   │   ├── validation.py
-│   │   ├── auto_fix.py
-│   │   └── test_run.py
+│   │   └── auto_fix.py
 │   ├── services/
 │   │   ├── yaml_service.py
 │   │   ├── validation_service.py
-│   │   ├── auto_fix_service.py
-│   │   └── test_runner.py
+│   │   └── auto_fix_service.py
 │   └── main.py
 └── tests/
     ├── unit/
@@ -1399,11 +1396,6 @@ GET    /api/v1/validate/{name}/results  # Get cached
 POST   /api/v1/auto-fix/preview         # Preview
 POST   /api/v1/auto-fix/apply           # Apply
 POST   /api/v1/auto-fix/rollback        # Rollback
-
-# Test Execution
-POST   /api/v1/test-runs                # Start
-GET    /api/v1/test-runs/{id}           # Status
-GET    /api/v1/test-runs/{id}/results   # Results
 ```
 
 ### Adding New Endpoints
@@ -1954,7 +1946,7 @@ For complete details, see the **Conventional Commit Messages** section in [TODO.
 
 ## Related Documentation
 
-- [UI Architecture](UI_ARCHITECTURE.md) - Detailed architecture
+- [Architecture](ARCHITECTURE.md) - Detailed architecture
 - [User Guide](USER_GUIDE.md) - End-user documentation
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures
 - [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax

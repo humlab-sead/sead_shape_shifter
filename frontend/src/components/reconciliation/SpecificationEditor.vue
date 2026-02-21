@@ -318,9 +318,10 @@
 import { ref, watch, onMounted } from 'vue'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { useProjectStore } from '@/stores/project'
+import { useNotification } from '@/composables/useNotification'
 import type {
-  SpecificationListItem,
-  EntityReconciliationSpec,
+  EntityResolutionListItem,
+  EntityResolutionSet,
   ReconciliationSource,
 } from '@/types/reconciliation'
 import * as yaml from 'js-yaml'
@@ -329,7 +330,7 @@ import YamlEditor from '../common/YamlEditor.vue'
 interface Props {
   modelValue: boolean
   projectName: string
-  specification?: SpecificationListItem | null
+  specification?: EntityResolutionListItem | null
   isNew: boolean
 }
 
@@ -340,6 +341,8 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+const { success, error: showError } = useNotification()
 
 const reconciliationStore = useReconciliationStore()
 const projectStore = useProjectStore()
@@ -372,7 +375,7 @@ const sqlQuery = ref('')
 const formData = ref<{
   entity_name: string
   target_field: string
-  spec: EntityReconciliationSpec
+  spec: EntityResolutionSet
 }>({
   entity_name: '',
   target_field: '',
@@ -573,8 +576,11 @@ async function save() {
 
     emit('saved')
     resetForm()
-  } catch (error) {
-    console.error('Failed to save specification:', error)
+    success('Specification saved successfully')
+  } catch (err: any) {
+    console.error('Failed to save specification:', err)
+    const message = err.response?.data?.detail || err.message || 'Unknown error'
+    showError(`Failed to save specification: ${message}`)
   } finally {
     saving.value = false
   }

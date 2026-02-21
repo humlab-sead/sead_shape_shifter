@@ -1,41 +1,50 @@
 <template>
   <div class="pa-4">
-    <v-list>
-      <v-list-item v-for="(item, index) in extraColumns" :key="index" class="px-0 mb-2">
-        <v-card variant="outlined">
-          <v-card-text>
-            <v-row dense>
-              <v-col cols="12" md="5">
-                <v-text-field
-                  v-model="item.column"
-                  label="New Column Name"
-                  variant="outlined"
-                  density="compact"
-                  placeholder="e.g., new_column"
-                />
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="item.source"
-                  label="Source Column (or leave empty for null)"
-                  variant="outlined"
-                  density="compact"
-                  placeholder="e.g., existing_column"
-                  clearable
-                />
-              </v-col>
-              <v-col cols="12" md="1" class="d-flex align-center">
-                <v-btn
-                  icon="mdi-delete"
-                  variant="text"
-                  size="small"
-                  color="error"
-                  @click="handleRemoveExtraColumn(index)"
-                />
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
+    <!-- Header Row -->
+    <v-row dense class="mb-2">
+      <v-col cols="12" md="5">
+        <div class="text-caption text-medium-emphasis font-weight-medium">New Column Name</div>
+      </v-col>
+      <v-col cols="12" md="6">
+        <div class="text-caption text-medium-emphasis font-weight-medium">Source Column or Constant Value(or leave empty for null)</div>
+      </v-col>
+      <v-col cols="12" md="1">
+        <div class="text-caption text-medium-emphasis font-weight-medium"></div>
+      </v-col>
+    </v-row>
+
+    <v-list density="compact" class="py-0">
+      <v-list-item v-for="(item, index) in extraColumns" :key="index" class="px-0 py-1">
+        <v-row dense>
+          <v-col cols="12" md="5">
+            <v-text-field
+              v-model="item.column"
+              variant="outlined"
+              density="compact"
+              placeholder="e.g., new_column"
+              hide-details
+            />
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model="item.source"
+              variant="outlined"
+              density="compact"
+              placeholder="e.g., existing_column"
+              clearable
+              hide-details
+            />
+          </v-col>
+          <v-col cols="12" md="1" class="d-flex align-center">
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              size="small"
+              color="error"
+              @click="handleRemoveExtraColumn(index)"
+            />
+          </v-col>
+        </v-row>
       </v-list-item>
     </v-list>
 
@@ -63,6 +72,16 @@ const emit = defineEmits<{
   'update:modelValue': [value: Record<string, string | null> | undefined]
 }>()
 
+function toModelValue(value: ExtraColumnConfig[]): Record<string, string | null> | undefined {
+  const entries = value
+    .map((item) => ({ column: item.column?.trim() || '', source: item.source ?? null }))
+    .filter((item) => item.column.length > 0)
+    .map((item) => [item.column, item.source] as const)
+
+  if (entries.length === 0) return undefined
+  return Object.fromEntries(entries)
+}
+
 // Convert extra_columns from object to array for editing
 const extraColumns = ref<ExtraColumnConfig[]>(
   props.modelValue
@@ -87,13 +106,7 @@ function handleRemoveExtraColumn(index: number) {
 watch(
   extraColumns,
   (newValue) => {
-    // Convert extra_columns array back to object
-    const extraColumnsObj =
-      newValue.length > 0
-        ? Object.fromEntries(newValue.filter((item) => item.column).map((item) => [item.column, item.source || null]))
-        : undefined
-
-    emit('update:modelValue', extraColumnsObj)
+    emit('update:modelValue', toModelValue(newValue))
   },
   { deep: true }
 )
@@ -101,12 +114,18 @@ watch(
 watch(
   () => props.modelValue,
   (newValue) => {
-    if (newValue) {
-      extraColumns.value = Object.entries(newValue).map(([column, source]) => ({
-        column,
-        source: source || null,
-      }))
+    // Avoid overwriting local edits if this prop update matches what we'd emit ourselves.
+    const currentAsModel = toModelValue(extraColumns.value)
+    if (JSON.stringify(newValue) === JSON.stringify(currentAsModel)) {
+      return
     }
+
+    extraColumns.value = newValue
+      ? Object.entries(newValue).map(([column, source]) => ({
+          column,
+          source: source || null,
+        }))
+      : []
   },
   { deep: true }
 )

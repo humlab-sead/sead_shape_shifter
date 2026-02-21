@@ -16,8 +16,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
-from backend.app.models.reconciliation import AutoReconcileResult, EntityReconciliationSpec, ReconciliationConfig
-from backend.app.services.reconciliation_service import ReconciliationService
+from backend.app.models.reconciliation import AutoReconcileResult, EntityMapping, EntityMappingRegistry
+from backend.app.services.reconciliation import ReconciliationService
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 
 
@@ -59,12 +59,12 @@ async def run_reconciliation(
 
         # Load reconciliation config
         logger.info(f"Loading reconciliation config for project: {project_name}")
-        recon_config: ReconciliationConfig = service.load_reconciliation_config(project_name)
+        recon_config: EntityMappingRegistry = service.load_reconciliation_config(project_name)
 
         if entity_name not in recon_config.entities:
             raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
 
-        entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
+        entity_spec: EntityMapping = recon_config.entities[entity_name]
 
         if threshold != entity_spec.auto_accept_threshold:
             entity_spec.auto_accept_threshold = threshold
@@ -189,6 +189,7 @@ def main(
         service_url = settings.RECONCILIATION_SERVICE_URL
 
     logger.info(f"Auto-reconcile CLI started")
+    logger.info(f"Service URL: {service_url}")
     logger.info(f"Project: {project_name}")
     logger.info(f"Entity: {entity_name}")
 

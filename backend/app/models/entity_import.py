@@ -31,6 +31,6 @@ class EntityImportResult(BaseModel):
     data_source: str = Field(..., description="Data source name")
     query: str = Field(..., description="Generated SQL query")
     columns: list[str] = Field(..., description="Column names")
-    surrogate_id_suggestion: Optional[KeySuggestion] = Field(None, description="Suggested surrogate ID column")
+    public_id_suggestion: Optional[KeySuggestion] = Field(None, description="Suggested public ID column")
     natural_key_suggestions: list[KeySuggestion] = Field(default_factory=list, description="Suggested natural key columns")
     column_types: dict[str, str] = Field(default_factory=dict, description="Column names to data types")

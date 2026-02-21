@@ -2,6 +2,7 @@
 
 import contextlib
 import time
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -9,6 +10,7 @@ from loguru import logger
 from backend.app.core.config import Settings, settings
 from backend.app.core.state_manager import ApplicationState, get_app_state
 from backend.app.core.utility import friendly_dtype
+from backend.app.mappers.entity_config_mapper import EntityConfigMapperFactory
 from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.caches import ShapeShiftCache, ShapeShiftProjectCache
@@ -27,17 +29,40 @@ class ShapeShiftService:
         self.settings: Settings = settings
         # Optional warm table_store populated by batch preview to short-circuit later preview calls
         self._warm_table_store: dict[str, pd.DataFrame] | None = None
+        # Initialize entity config mapper factory for type-specific transformations
+        self._mapper_factory = EntityConfigMapperFactory(self.settings)
 
-    async def preview_entity(self, project_name: str, entity_name: str, limit: int | None = 50) -> PreviewResult:
+    def _resolve_entity_config(self, entity_config: dict[str, Any], project_name: str) -> None:
+        """Apply type-specific transformations to entity config using strategy pattern.
+
+        For file-based entities: resolves (filename, location) to absolute path.
+        For other entities: no-op (returns config unchanged).
+
+        This is needed when override_config bypasses ProjectMapper.to_core().
+
+        Args:
+            entity_config: Entity configuration dictionary (modified in-place)
+            project_name: Project name for resolving local paths
+        """
+        # Get appropriate mapper based on entity type
+        mapper = self._mapper_factory.get_mapper_for_entity(entity_config)
+        # Apply transformation (API → Core: resolve paths)
+        entity_config.update(mapper.to_core(entity_config, project_name))
+
+    async def preview_entity(
+        self, project_name: str, entity_name: str, limit: int | None = 50, override_config: dict[str, Any] | None = None
+    ) -> PreviewResult:
         """
         Preview entity data with all transformations applied.
 
         Uses cached DataFrames to reuse dependencies and target entity from previous runs.
+        Supports previewing unsaved entity configurations via override_config.
 
         Args:
             project_name: Name of the project file
             entity_name: Name of the entity to preview
             limit: Maximum number of rows to return (default 50). Use None for all rows.
+            override_config: Optional entity configuration dict to preview (bypasses cache)
 
         Returns:
             PreviewResult with data and metadata
@@ -51,27 +76,47 @@ class ShapeShiftService:
         project: ShapeShiftProject = await self.project_cache.get_project(project_name)
         project_version: int = self.get_project_version(project_name)
 
+        # If override_config provided, temporarily replace entity config
+        using_override: bool = override_config is not None
+        if using_override:
+            # Apply type-specific transformation to override_config
+            # (override bypasses ProjectMapper.to_core(), so we must transform here)
+            self._resolve_entity_config(override_config, project_name)
+
+            # Clone project and replace entity config
+            project = project.clone()
+            project.cfg["entities"][entity_name] = override_config
+            # Clear cached tables property to force rebuild with new config
+            if "tables" in project.__dict__:
+                del project.__dict__["tables"]
+            logger.debug(f"Preview using override config for entity '{entity_name}'")
+
         if entity_name not in project.tables:
             raise ValueError(f"Entity '{entity_name}' not found in project")
 
         entity_cfg: TableConfig = project.tables[entity_name]
 
-        # Fast path: if warm table_store from batch run exists, reuse it directly
-        if self._warm_table_store and entity_name in self._warm_table_store:
+        # Fast path: if warm table_store from batch run exists, reuse it directly (but not when using override)
+        if not using_override and self._warm_table_store and entity_name in self._warm_table_store:
             table_store = {entity_name: self._warm_table_store[entity_name]}
             validation_issues: list[dict] = []
             cached_hit = True
         else:
-            cached_data: ShapeShiftCache.CacheCheckResult = self.cache.fetch_cached_entity_data(
-                project_name, entity_name, project_version, entity_cfg, project
-            )
+            # Skip cache lookup when using override config
+            if using_override:
+                cached_data = ShapeShiftCache.CacheCheckResult(found=False, data=None, dependencies={})
+                cached_hit = False
+            else:
+                cached_data: ShapeShiftCache.CacheCheckResult = self.cache.fetch_cached_entity_data(
+                    project_name, entity_name, project_version, entity_cfg, project
+                )
+                cached_hit = cached_data.data is not None
 
             table_store: dict[str, pd.DataFrame]
             validation_issues: list[dict] = []
 
             if cached_data.data is not None:
                 table_store = {entity_name: cached_data.data} | cached_data.dependencies
-                cached_hit = True
             else:
                 resolved_cfg: ShapeShiftProject = project.clone().resolve(filename=project.filename, strict=True, **self.settings.env_opts)
                 table_store, validation_issues = await self.shapeshift(
@@ -80,9 +125,10 @@ class ShapeShiftService:
                     initial_table_store=cached_data.dependencies,
                 )
 
-                entities: dict[str, TableConfig] = {name: project.get_table(name) for name in table_store.keys()}
-                self.cache.set_table_store(project_name, table_store, entity_name, project_version, entities)
-                cached_hit = False
+                # Only cache if not using override config
+                if not using_override:
+                    entities: dict[str, TableConfig] = {name: project.get_table(name) for name in table_store.keys()}
+                    self.cache.set_table_store(project_name, table_store, entity_name, project_version, entities)
 
         result: PreviewResult = PreviewResultBuilder().build(
             entity_name=entity_name,

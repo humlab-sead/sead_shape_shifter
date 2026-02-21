@@ -35,7 +35,7 @@ def test_list_data_sources_preserves_env_vars(settings: Settings):
 
         service = DataSourceService(cfg_folder)
 
-        ds: DataSourceConfig | None = service.get_data_source(cfg_path)
+        ds: DataSourceConfig | None = service.load_data_source(cfg_path)
 
         assert ds is not None
 

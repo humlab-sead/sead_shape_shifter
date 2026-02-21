@@ -54,7 +54,7 @@ export interface IndexMetadata {
  */
 export interface TableSchema {
   table_name: string
-  schema?: string | null
+  schema_name?: string | null
   columns: ColumnMetadata[]
   primary_keys: string[]
   foreign_keys?: ForeignKeyMetadata[]

@@ -70,8 +70,8 @@ class TestMaterializationSpecification:
         errors = [err.message for err in spec.errors]
         assert any("must have type='fixed'" in err for err in errors)
 
-    def test_materialized_entity_must_have_values_or_data_file(self):
-        """Materialized entity must have either values or data_file."""
+    def test_materialized_entity_must_have_values(self):
+        """Materialized entity must have values field."""
         project_cfg = {
             "entities": {
                 "site": {
@@ -91,7 +91,7 @@ class TestMaterializationSpecification:
         assert result is False
         assert spec.has_errors()
         errors = [err.message for err in spec.errors]
-        assert any("must have either 'values' or 'materialized.data_file'" in err for err in errors)
+        assert any("must have 'values' field" in err for err in errors)
 
     def test_materialized_entity_with_values_passes(self):
         """Materialized entity with inline values passes."""
@@ -114,8 +114,8 @@ class TestMaterializationSpecification:
         assert result is True
         assert not spec.has_errors()
 
-    def test_materialized_entity_with_data_file_passes(self):
-        """Materialized entity with data_file passes."""
+    def test_materialized_entity_with_file_directive_passes(self):
+        """Materialized entity with @file: directive passes."""
         project_cfg = {
             "entities": {
                 "site": {
@@ -127,7 +127,6 @@ class TestMaterializationSpecification:
                     "materialized": {
                         "enabled": True,
                         "source_state": {"type": "sql", "query": "SELECT * FROM sites"},
-                        "data_file": "materialized/site.parquet",
                     },
                 }
             }
@@ -178,7 +177,7 @@ class TestMaterializationSpecification:
                     "materialized": {
                         "enabled": True,
                         "source_state": {"type": "sql"},
-                        # Missing materialized_at and materialized_by
+                        # Missing materialized_at
                     },
                 }
             }
@@ -193,7 +192,6 @@ class TestMaterializationSpecification:
         assert spec.has_warnings()
         warnings = [warn.message for warn in spec.warnings]
         assert any("should have 'materialized_at'" in warn for warn in warnings)
-        assert any("should have 'materialized_by'" in warn for warn in warnings)
 
     def test_fully_configured_materialized_entity_passes(self):
         """Fully configured materialized entity passes without warnings."""
@@ -209,8 +207,6 @@ class TestMaterializationSpecification:
                         "enabled": True,
                         "source_state": {"type": "sql", "query": "SELECT * FROM sites"},
                         "materialized_at": "2026-01-29T12:00:00Z",
-                        "materialized_by": "test@example.com",
-                        "data_file": "materialized/site.parquet",
                     },
                 }
             }

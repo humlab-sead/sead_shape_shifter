@@ -5,17 +5,15 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Body, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.models.validation import ValidationResult
-from backend.app.services.project_service import (
-    ProjectService,
-    get_project_service,
-)
+from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from backend.app.services.yaml_service import YamlService, get_yaml_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
@@ -107,6 +105,27 @@ async def get_project(name: str) -> Project:
     return project
 
 
+@router.post("/projects/{name}/refresh", response_model=Project)
+@handle_endpoint_errors
+async def refresh_project(name: str) -> Project:
+    """
+    Force reload a project from disk, invalidating the server-side cache.
+
+    Useful when the YAML file has been modified externally (manual edit, git pull, etc.)
+    and you need to reload the changes without restarting the server.
+
+    Args:
+        name: Project name (without .yml extension)
+
+    Returns:
+        Reloaded project with fresh data from disk
+    """
+    project_service: ProjectService = get_project_service()
+    project: Project = project_service.load_project(name, force_reload=True)
+    logger.info(f"Force reloaded project '{name}' from disk")
+    return project
+
+
 @router.post("/projects", response_model=Project, status_code=status.HTTP_201_CREATED)
 @handle_endpoint_errors
 async def create_project(request: ProjectCreateRequest) -> Project:
@@ -142,7 +161,11 @@ async def update_project(name: str, request: ProjectUpdateRequest) -> Project:
         Updated project with new metadata
     """
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.load_project(name)
+    # CRITICAL: Force reload from disk to get the latest entities.
+    # The cache may be stale (e.g., entity CRUD updates disk but cache
+    # holds an older version). Without force_reload, saving would
+    # overwrite disk entities with the stale cache version.
+    project: Project = project_service.load_project(name, force_reload=True)
     project.options = request.options
 
     logger.debug(f"Updating project '{name}': preserving {len(project.entities)} entities from disk, " f"updating options only")
@@ -198,6 +221,33 @@ async def delete_project(name: str) -> None:
     logger.info(f"Deleted project '{name}'")
 
 
+@router.post("/projects/{name}/copy", response_model=Project, status_code=status.HTTP_201_CREATED)
+@handle_endpoint_errors
+async def copy_project(name: str, target_name: str = Body(..., embed=True)) -> Project:
+    """
+    Copy project and its associated files to a new name.
+
+    Copies:
+    - Project YAML file with updated metadata
+    - Materialized files directory (if exists)
+    - Reconciliation file (if exists)
+
+    Args:
+        name: Source project name
+        target_name: Target project name (with or without .yml extension)
+
+    Returns:
+        Newly created project
+
+    Raises:
+        HTTPException: If source not found or target already exists
+    """
+    project_service: ProjectService = get_project_service()
+    new_project: Project = project_service.copy_project(name, target_name)
+    logger.info(f"Copied project '{name}' to '{target_name}'")
+    return new_project
+
+
 @router.post("/projects/{name}/validate", response_model=ValidationResult)
 @handle_endpoint_errors
 async def validate_project(name: str) -> ValidationResult:
@@ -225,7 +275,10 @@ async def validate_project(name: str) -> ValidationResult:
         "entities": project.entities,
         "options": project.options,
     }
-    result: ValidationResult = validation_service.validate_project(config_data)
+    source_path: str = (
+        project.metadata.file_path if project.metadata and project.metadata.file_path else str(settings.PROJECTS_DIR / f"{name}.yml")
+    )
+    result: ValidationResult = validation_service.validate_project(config_data, source_path=source_path)
     logger.info(f"Validated project '{name}': {'valid' if result.is_valid else 'invalid'}")
     return result
 
@@ -245,7 +298,8 @@ async def list_backups(name: str) -> list[BackupInfo]:
         List of backup file information
     """
     yaml_service: YamlService = get_yaml_service()
-    backups: list[Path] = yaml_service.list_backups(f"{name}.yml")
+    project_dir = settings.PROJECTS_DIR / name
+    backups: list[Path] = yaml_service.list_backups(project_dir=project_dir)
     backup_infos: list[BackupInfo] = [
         BackupInfo(
             file_name=backup.name,
@@ -342,19 +396,22 @@ class DataSourceConnectionRequest(BaseModel):
     source_filename: str = Field(..., description="Filename of the data source file (e.g., 'sead-options.yml')")
 
 
-@router.get("/projects/{name}/data-sources", response_model=dict[str, str])
+@router.get("/projects/{name}/data-sources", response_model=dict[str, str | dict[str, Any]])
 @handle_endpoint_errors
-async def get_project_data_sources(name: str) -> dict[str, str]:
+async def get_project_data_sources(name: str) -> dict[str, str | dict[str, Any]]:
     """
     Get all data sources connected to a project.
 
-    Returns a dict mapping data source names to their filenames (or inline project).
+    Returns a dict mapping data source names to their configurations.
+    Configurations can be either:
+    - String references: "@include: filename.yml"
+    - Inline objects: {"driver": "postgresql", "options": {...}}
 
     Args:
         name: Project name
 
     Returns:
-        Dict of source_name -> "@include: filename.yml" or inline project
+        Dict of source_name -> "@include: filename.yml" or inline configuration object
     """
     project: Project = get_project_service().load_project(name)
     data_sources = project.options.get("data_sources", {})
@@ -441,13 +498,16 @@ async def get_project_raw_yaml(name: str) -> dict[str, str]:
     Returns:
         Dictionary containing yaml_content
     """
+
     project_service: ProjectService = get_project_service()
 
     project_service.load_project(name)
 
-    project_path = settings.PROJECTS_DIR / f"{name}.yml"
+    # Convert API name to filesystem path (: -> /)
+    path_name = ProjectNameMapper.to_path(name)
+    project_path = settings.PROJECTS_DIR / path_name / "shapeshifter.yml"
     if not project_path.exists():
-        raise NotFoundError(f"Project file not found: {name}.yml")
+        raise NotFoundError(f"Project file not found: {project_path}")
 
     yaml_content = project_path.read_text(encoding="utf-8")
 
@@ -490,10 +550,11 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
     if not isinstance(parsed_yaml, dict):
         raise BadRequestError("YAML must be a dictionary")
 
-    # Write to file
-    project_path = settings.PROJECTS_DIR / f"{name}.yml"
+    # Write to file (convert API name to filesystem path: : -> /)
+    path_name = ProjectNameMapper.to_path(name)
+    project_path = settings.PROJECTS_DIR / path_name / "shapeshifter.yml"
     if not project_path.exists():
-        raise NotFoundError(f"Project file not found: {name}.yml")
+        raise NotFoundError(f"Project file not found: {project_path}")
 
     # Create backup before update
     yaml_service.create_backup(project_path)
@@ -501,8 +562,9 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
     # Write new content
     project_path.write_text(request.yaml_content, encoding="utf-8")
 
-    # Load and return updated project (always reads from disk)
-    updated_project = project_service.load_project(name)
+    # Load and return updated project.
+    # IMPORTANT: Force reload so ApplicationState cache cannot return stale data.
+    updated_project = project_service.load_project(name, force_reload=True)
 
     logger.info(f"Updated project '{name}' from raw YAML")
 
@@ -561,11 +623,11 @@ async def get_custom_layout(name: str) -> CustomLayoutResponse:
     # Get layout from project options
     layout_data = project.options.get("layout", {}).get("custom", {})
 
-    # Convert to response model
+    # Convert to response model (skip only the _metadata key, not entities starting with _)
     layout_positions = {
         entity_name: LayoutPositionResponse(x=pos["x"], y=pos["y"])
         for entity_name, pos in layout_data.items()
-        if not entity_name.startswith("_")  # Skip metadata
+        if entity_name != "_metadata"  # Skip only the metadata key
     }
 
     logger.info(f"Retrieved custom layout for project '{name}': {len(layout_positions)} entities")

@@ -234,7 +234,7 @@ class SeadIngester:
                 message=f"Successfully ingested submission '{self.config.submission_name}'",
                 submission_id=submission_id,
                 tables_processed=tables_processed,
-                records_inserted=0,  # TODO: Track this in ImportService
+                records_inserted=0,
                 error_details=None,
             )
 

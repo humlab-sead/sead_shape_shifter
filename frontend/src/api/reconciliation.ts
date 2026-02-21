@@ -3,10 +3,10 @@
  */
 
 import type {
-  ReconciliationConfig,
-  SpecificationListItem,
-  SpecificationCreateRequest,
-  SpecificationUpdateRequest,
+  EntityResolutionCatalog,
+  EntityResolutionListItem,
+  EntityResolutionCatalogCreateRequest,
+  EntityResolutionCatalogUpdateRequest,
 } from '@/types/reconciliation'
 import { apiRequest } from './client'
 
@@ -17,10 +17,10 @@ export const reconciliationSpecApi = {
   /**
    * List all reconciliation specifications for a project
    */
-  listSpecifications: async (projectName: string): Promise<SpecificationListItem[]> => {
-    return apiRequest<SpecificationListItem[]>({
+  listSpecifications: async (projectName: string): Promise<EntityResolutionListItem[]> => {
+    return apiRequest<EntityResolutionListItem[]>({
       method: 'GET',
-      url: `/projects/${projectName}/reconciliation/specifications`,
+      url: `/projects/${projectName}/reconciliation/mapping-registry`,
     })
   },
 
@@ -29,11 +29,11 @@ export const reconciliationSpecApi = {
    */
   createSpecification: async (
     projectName: string,
-    request: SpecificationCreateRequest
-  ): Promise<ReconciliationConfig> => {
-    return apiRequest<ReconciliationConfig>({
+    request: EntityResolutionCatalogCreateRequest
+  ): Promise<EntityResolutionCatalog> => {
+    return apiRequest<EntityResolutionCatalog>({
       method: 'POST',
-      url: `/projects/${projectName}/reconciliation/specifications`,
+      url: `/projects/${projectName}/reconciliation/mapping-registry`,
       data: request,
     })
   },
@@ -45,11 +45,11 @@ export const reconciliationSpecApi = {
     projectName: string,
     entityName: string,
     targetField: string,
-    request: SpecificationUpdateRequest
-  ): Promise<ReconciliationConfig> => {
-    return apiRequest<ReconciliationConfig>({
+    request: EntityResolutionCatalogUpdateRequest
+  ): Promise<EntityResolutionCatalog> => {
+    return apiRequest<EntityResolutionCatalog>({
       method: 'PUT',
-      url: `/projects/${projectName}/reconciliation/specifications/${entityName}/${targetField}`,
+      url: `/projects/${projectName}/reconciliation/mapping-registry/${entityName}/${targetField}`,
       data: request,
     })
   },
@@ -62,10 +62,10 @@ export const reconciliationSpecApi = {
     entityName: string,
     targetField: string,
     force: boolean = false
-  ): Promise<ReconciliationConfig> => {
-    return apiRequest<ReconciliationConfig>({
+  ): Promise<EntityResolutionCatalog> => {
+    return apiRequest<EntityResolutionCatalog>({
       method: 'DELETE',
-      url: `/projects/${projectName}/reconciliation/specifications/${entityName}/${targetField}`,
+      url: `/projects/${projectName}/reconciliation/mapping-registry/${entityName}/${targetField}`,
       params: { force },
     })
   },
@@ -90,7 +90,7 @@ export const reconciliationSpecApi = {
   ): Promise<number> => {
     const response = await apiRequest<{ count: number }>({
       method: 'GET',
-      url: `/projects/${projectName}/reconciliation/specifications/${entityName}/${targetField}/mapping-count`,
+      url: `/projects/${projectName}/reconciliation/mapping-registry/${entityName}/${targetField}/mapping-count`,
     })
     return response.count
   },

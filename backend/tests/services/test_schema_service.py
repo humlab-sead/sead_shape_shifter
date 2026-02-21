@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from backend.app.core.config import Settings
+from backend.app.exceptions import SchemaIntrospectionError
 from backend.app.models.data_source import (
     ColumnMetadata,
     DataSourceConfig,
@@ -19,7 +20,6 @@ from backend.app.models.data_source import (
 from backend.app.services.schema_service import (
     SchemaCache,
     SchemaIntrospectionService,
-    SchemaServiceError,
 )
 from src.loaders.sql_loaders import CoreSchema
 
@@ -102,18 +102,23 @@ class TestSchemaIntrospectionService:
     @pytest.mark.asyncio
     async def test_get_tables_not_found(self, service: SchemaIntrospectionService):
         """Should raise error when data source not found."""
-        service.data_source_service.get_data_source = Mock(return_value=None)
+        service.data_source_service.load_data_source = Mock(return_value=None)
 
-        with pytest.raises(SchemaServiceError, match="not found"):
+        with pytest.raises(SchemaIntrospectionError) as exc_info:
             await service.get_tables("nonexistent")
+
+        error = exc_info.value
+        assert "not found" in error.message.lower()
+        assert error.context.get("data_source") == "nonexistent"
+        assert len(error.tips) > 0
 
     @pytest.mark.asyncio
     async def test_get_tables_unsupported_driver(self, service):
         """Should raise error for unsupported driver."""
         csv_config = DataSourceConfig(name="test_csv", driver="csv", filename="test.csv", **{})
-        service.data_source_service.get_data_source = Mock(return_value=csv_config)
+        service.data_source_service.load_data_source = Mock(return_value=csv_config)
 
-        with pytest.raises(SchemaServiceError, match="not supported"):
+        with pytest.raises(SchemaIntrospectionError, match="not supported"):
             await service.get_tables("test_csv")
 
     def mock_read_sql(self, test_df: pd.DataFrame, mock_get_loader: Mock) -> AsyncMock:
@@ -138,7 +143,7 @@ class TestSchemaIntrospectionService:
             }
         )
 
-        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
+        service.data_source_service.load_data_source = Mock(return_value=postgres_config)
 
         # Mock the loader with both read_sql and get_table_row_count methods
         mock_loader_instance = Mock()
@@ -161,7 +166,7 @@ class TestSchemaIntrospectionService:
     @pytest.mark.asyncio
     async def test_preview_table_data_limit_constraint(self, service: SchemaIntrospectionService, postgres_config: DataSourceConfig):
         """Should enforce maximum limit of 100 rows."""
-        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
+        service.data_source_service.load_data_source = Mock(return_value=postgres_config)
 
         mock_loader_instance = Mock(load_table=AsyncMock(return_value=pd.DataFrame()), get_table_row_count=AsyncMock(return_value=100))
         mock_loader_class = Mock(return_value=mock_loader_instance)
@@ -177,7 +182,7 @@ class TestSchemaIntrospectionService:
     async def test_cache_hit(self, service, postgres_config):
         """Should return cached results on subsequent calls."""
 
-        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
+        service.data_source_service.load_data_source = Mock(return_value=postgres_config)
 
         # Mock core tables response
         core_tables = {
@@ -233,6 +238,7 @@ class TestSchemaIntrospectionService:
         """Schema retrieval caches result and reuses mapped object."""
         core_schema = CoreSchema.TableSchema(
             table_name="users",
+            schema_name="public",
             columns=[
                 CoreSchema.ColumnMetadata(
                     name="id", data_type="INTEGER", nullable=False, default=None, is_primary_key=True, max_length=None
@@ -247,13 +253,14 @@ class TestSchemaIntrospectionService:
         loader = AsyncMock(get_table_schema=AsyncMock(return_value=core_schema))
         mapped_schema = TableSchema(
             table_name="users",
+            schema_name="public",
             columns=[ColumnMetadata(name="id", data_type="INTEGER", nullable=False, default=None, is_primary_key=True, max_length=None)],
             primary_keys=["id"],
             indexes=[],
             row_count=10,
         )
 
-        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
+        service.data_source_service.load_data_source = Mock(return_value=postgres_config)
 
         with (
             patch.object(service, "create_loader_for_data_source", return_value=loader) as mock_create_loader,
@@ -273,7 +280,7 @@ class TestSchemaIntrospectionService:
     ):
         """Non-SqlLoader implementations are rejected with a clear error."""
         with patch("backend.app.services.schema_service.DataLoaders.get", return_value=lambda data_source: object()):
-            with pytest.raises(SchemaServiceError, match="not supported"):
+            with pytest.raises(SchemaIntrospectionError, match="not supported"):
                 service.create_loader_for_data_source(postgres_config)
 
 
@@ -319,6 +326,7 @@ class TestSchemaEndpoints:
 
         schema = TableSchema(
             table_name="users",
+            schema_name="public",
             columns=columns,
             primary_keys=["id"],
             indexes=["idx_name"],

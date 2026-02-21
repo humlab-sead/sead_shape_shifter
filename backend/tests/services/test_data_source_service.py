@@ -209,21 +209,21 @@ class TestDataSourceService:
         """Test getting existing data source."""
         (temp_sources_dir / "test.yml").write_text(yaml.dump(sample_yaml_data))
 
-        config = service.get_data_source("test")
+        config = service.load_data_source("test")
         assert config is not None
         assert config.name == "test"
         assert config.database == "testdb"
 
     def test_get_data_source_not_found(self, service: DataSourceService):
         """Test getting non-existent data source returns None."""
-        config = service.get_data_source("nonexistent")
+        config = service.load_data_source("nonexistent")
         assert config is None
 
     def test_get_data_source_with_yml_extension(self, service: DataSourceService, temp_sources_dir: Path, sample_yaml_data: dict):
         """Test getting data source with .yml extension."""
         (temp_sources_dir / "test.yml").write_text(yaml.dump(sample_yaml_data))
 
-        config = service.get_data_source("test.yml")
+        config = service.load_data_source("test.yml")
         assert config is not None
         assert config.name == "test"
 
@@ -282,7 +282,7 @@ class TestDataSourceService:
         result = service.update_data_source("test", sample_config)
 
         assert result.database == "updated_db"
-        config = service.get_data_source("test")
+        config = service.load_data_source("test")
 
         assert config is not None
         assert config.database == "updated_db"
