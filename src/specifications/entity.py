@@ -417,6 +417,45 @@ class PublicIdSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="extra_columns_conflicts")
+class ExtraColumnsConflictsSpecification(ProjectSpecification):
+    """Validates that extra_columns don't conflict with existing columns.
+
+    Checks that extra_column names don't conflict with:
+    - Columns from "columns" field
+    - Business keys from "keys" field
+    - Public ID from "public_id" field
+    - System column "system_id"
+    - Unnest columns (value_name, var_name)
+    """
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that extra_columns don't conflict with existing columns."""
+        self.clear()
+
+        entities_cfg: dict[str, Any] = self.project_cfg.get("entities", {})
+        table_cfg = TableConfig(entities_cfg=entities_cfg, entity_name=entity_name)
+
+        if not table_cfg.extra_columns:
+            return True
+
+        existing_columns: set[str] = set(
+            table_cfg.get_columns(include_keys=True, include_fks=False, include_extra=False, include_unnest=True)
+        )
+
+        conflicts: set[str] = set(table_cfg.extra_columns.keys()) & existing_columns
+
+        if conflicts:
+            for conflict in sorted(conflicts):
+                self.add_warning(
+                    f"Column '{conflict}' already exists in entity '{entity_name}'. " f"The extra_columns value will be skipped.",
+                    entity=entity_name,
+                    field="extra_columns",
+                )
+
+        return not self.has_errors()
+
+
 @ENTITY_SPECIFICATION.register(key="append")
 class AppendSpecification(ProjectSpecification):
     """Validates append configuration settings."""
