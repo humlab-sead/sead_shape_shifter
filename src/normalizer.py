@@ -240,7 +240,7 @@ class ShapeShifter:
         if not table_cfg.extra_columns:
             return {}
         
-        df: pd.DataFrame = self.table_store.get(entity_name)
+        df: pd.DataFrame | None = self.table_store.get(entity_name)
         if df is None:
             return table_cfg.extra_columns  # Entity not processed yet, all are unevaluated
         
@@ -257,22 +257,21 @@ class ShapeShifter:
         This handles interpolated strings that reference columns added by FK linking
         (e.g., extra_columns from remote FK tables) or by unnesting operations.
         
-        Deferred columns are computed on-demand as extra_columns not yet in the DataFrame.
+        The evaluator is idempotent - it skips columns already in the DataFrame.
         
         Args:
             entity_name: Name of entity to process deferred columns for
         """
-        unevaluated: dict[str, Any] = self._get_unevaluated_extra_columns(entity_name)
-        if not unevaluated:
-            return  # All extra_columns already evaluated
+        table_cfg: TableConfig = self.project.get_table(entity_name)
+        if not table_cfg.extra_columns:
+            return  # No extra_columns configured
         
         df: pd.DataFrame = self.table_store[entity_name]
         
-        # Try evaluating unevaluated columns with defer_missing=True
-        # (some columns might still be missing if dependencies not yet available)
+        # Pass ALL extra_columns - evaluator will skip existing ones (idempotent)
         result, still_deferred = self.extra_col_evaluator.evaluate_extra_columns(
             df=df,
-            extra_columns=unevaluated,
+            extra_columns=table_cfg.extra_columns,  # Full dict, not filtered
             entity_name=entity_name,
             defer_missing=True  # Allow re-deferral if columns still missing
         )
