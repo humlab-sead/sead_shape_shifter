@@ -150,7 +150,7 @@ watch(
 <style scoped>
 /* Component-specific dense input styling */
 :deep(.v-field__input) {
-  min-height: max(40px, 1.5rem + var(--v-field-input-padding-top) + var(--v-field-input-padding-bottom)) !important;
+  min-height: max(20px, 1.rem + var(--v-field-input-padding-top) + var(--v-field-input-padding-bottom)) !important;
 }
 
 :deep(.v-field__field) {
