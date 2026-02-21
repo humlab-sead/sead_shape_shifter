@@ -16,7 +16,7 @@ from src.utility import unique
 
 class SubsetService:
     """Class for extracting subsets from DataFrames with various options."""
-    
+
     def __init__(self):
         """Initialize SubsetService with ExtraColumnEvaluator."""
         self.extra_col_evaluator = ExtraColumnEvaluator()
@@ -44,7 +44,7 @@ class SubsetService:
         deferred_output: dict[str, dict[str, Any]] | None = None,
     ) -> pd.DataFrame:
         """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
-        
+
         Args:
             deferred_output: Optional dict to receive deferred extra_columns when defer_missing=True.
                 When provided, deferred extra_columns are stored here by entity_name.
@@ -155,14 +155,12 @@ class SubsetService:
                 df=result,
                 extra_columns=extra_columns,
                 entity_name=entity_name,
-                defer_missing=True  # Allow deferring columns that reference missing columns
+                defer_missing=True,  # Allow deferring columns that reference missing columns
             )
-            
+
             # Log deferred columns (they'll be re-evaluated later by normalizer)
             if deferred:
-                logger.debug(
-                    f"{entity_name}[extract]: Deferred extra_columns evaluation for: {list(deferred.keys())}"
-                )
+                logger.debug(f"{entity_name}[extract]: Deferred extra_columns evaluation for: {list(deferred.keys())}")
 
         # Drop helper source columns that weren't explicitly requested
         helper_cols: set[str] = set(extra_source_columns.values()) - set(columns)

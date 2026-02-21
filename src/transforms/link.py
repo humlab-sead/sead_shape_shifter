@@ -51,7 +51,7 @@ class ForeignKeyLinker:
         # Build column list: system_id + remote_columns (avoid duplicates)
         cols_to_select: list[str] = [remote_cfg.system_id]
         cols_to_select.extend([col for col in link_setup.remote_columns if col != remote_cfg.system_id])
-        
+
         remote_df = remote_df[cols_to_select].rename(columns=link_setup.rename_map)
 
         opts: dict[str, Any] = self._resolve_link_opts(fk, validator)
