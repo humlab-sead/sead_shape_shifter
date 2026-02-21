@@ -81,24 +81,24 @@ class ExcelDispatcher(Dispatcher):
     @staticmethod
     def _sanitize_timezones(df: pd.DataFrame) -> pd.DataFrame:
         """Remove timezone information from datetime columns for Excel compatibility.
-        
+
         Excel/openpyxl doesn't support timezone-aware datetimes. This converts
         all timezone-aware datetime columns to timezone-naive by removing tzinfo.
-        
+
         Args:
             df: DataFrame potentially containing timezone-aware datetimes
-            
+
         Returns:
             DataFrame with timezone information removed from datetime columns
         """
         df = df.copy()  # Don't mutate original
-        
+
         for col in df.columns:
             # Check if column is timezone-aware datetime
             if isinstance(df[col].dtype, pd.DatetimeTZDtype):
                 # Remove timezone by converting to naive datetime
                 df[col] = df[col].dt.tz_localize(None)
-        
+
         return df
 
 
@@ -127,10 +127,10 @@ class OpenpyxlExcelDispatcher(Dispatcher):
 
         for entity_name in sorted_entities:
             table: pd.DataFrame = data[entity_name]
-            
+
             # Sanitize timezone-aware datetimes for Excel compatibility
             table = self._sanitize_timezones(table)
-            
+
             sheet_name: str = self._safe_sheet_name(entity_name, existing=wb.sheetnames if not first_entity else [])
             ws = wb.active if first_entity else wb.create_sheet(title=sheet_name)
 
@@ -153,24 +153,24 @@ class OpenpyxlExcelDispatcher(Dispatcher):
     @staticmethod
     def _sanitize_timezones(df: pd.DataFrame) -> pd.DataFrame:
         """Remove timezone information from datetime columns for Excel compatibility.
-        
+
         Excel/openpyxl doesn't support timezone-aware datetimes. This converts
         all timezone-aware datetime columns to timezone-naive by removing tzinfo.
-        
+
         Args:
             df: DataFrame potentially containing timezone-aware datetimes
-            
+
         Returns:
             DataFrame with timezone information removed from datetime columns
         """
         df = df.copy()  # Don't mutate original
-        
+
         for col in df.columns:
             # Check if column is timezone-aware datetime
             if isinstance(df[col].dtype, pd.DatetimeTZDtype):
                 # Remove timezone by converting to naive datetime
                 df[col] = df[col].dt.tz_localize(None)
-        
+
         return df
 
     @staticmethod

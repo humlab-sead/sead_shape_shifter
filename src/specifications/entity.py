@@ -80,13 +80,13 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
         # Validate required identity fields
         entity_cfg = self.get_entity_cfg(entity_name)
-        
+
         # Check for public_id (required for fixed entities)
         public_id = entity_cfg.get("public_id") or entity_cfg.get("surrogate_id")
         if not public_id:
             self.add_error(f"Entity '{entity_name}': Field 'public_id' is required but missing.", entity=entity_name, field="public_id")
             return not self.has_errors()  # Can't proceed without public_id
-        
+
         # Note: system_id is always "system_id" (standardized name, auto-generated)
 
         self.check_fields(entity_name, ["values"], "exists/E,not_empty/W")
@@ -119,7 +119,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
             expected_with_identity: int = len(set(columns) | {public_id, "system_id"})
             expected_without_identity: int = len(columns)
             values_length: int = len(values[0]) if values else 0
-            
+
             # Check all rows have consistent length
             if not all(len(row) == values_length for row in values):
                 self.add_error(

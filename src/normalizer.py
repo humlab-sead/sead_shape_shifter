@@ -153,7 +153,7 @@ class ShapeShifter:
             self.table_store[entity] = data
 
             self.linker.link_entity(entity_name=entity)
-            
+
             # Re-evaluate deferred extra_columns after FK linking (in case they reference FK-added columns)
             self._evaluate_deferred_extra_columns(entity)
 
@@ -223,42 +223,37 @@ class ShapeShifter:
 
     def _evaluate_deferred_extra_columns(self, entity_name: str) -> None:
         """Re-evaluate deferred extra_columns for an entity after FK linking or unnesting.
-        
+
         This handles interpolated strings that reference columns added by FK linking
         (e.g., extra_columns from remote FK tables) or by unnesting operations.
-        
+
         The evaluator is idempotent - it skips columns already in the DataFrame.
-        
+
         Args:
             entity_name: Name of entity to process deferred columns for
         """
         table_cfg: TableConfig = self.project.get_table(entity_name)
         if not table_cfg.extra_columns:
             return  # No extra_columns configured
-        
+
         df: pd.DataFrame = self.table_store[entity_name]
-        
+
         # Pass ALL extra_columns - evaluator will skip existing ones (idempotent)
         result, still_deferred = self.extra_col_evaluator.evaluate_extra_columns(
             df=df,
             extra_columns=table_cfg.extra_columns,  # Full dict, not filtered
             entity_name=entity_name,
-            defer_missing=True  # Allow re-deferral if columns still missing
+            defer_missing=True,  # Allow re-deferral if columns still missing
         )
-        
+
         # Update table store with newly evaluated columns
         self.table_store[entity_name] = result
-        
+
         # Log status
         if still_deferred:
-            logger.debug(
-                f"{entity_name}[deferred]: Still waiting for columns: "
-                f"{list(still_deferred.keys())}"
-            )
+            logger.debug(f"{entity_name}[deferred]: Still waiting for columns: " f"{list(still_deferred.keys())}")
         else:
-            logger.debug(
-                f"{entity_name}[deferred]: Successfully evaluated all deferred extra_columns"
-            )
+            logger.debug(f"{entity_name}[deferred]: Successfully evaluated all deferred extra_columns")
 
     def retry_linking(self) -> None:
         """Retry linking only for entities currently in deferred set."""

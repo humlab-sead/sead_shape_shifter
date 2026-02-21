@@ -177,10 +177,10 @@ class TestFixedEntityFieldsSpecification:
 
     def test_empty_columns_with_values_fails(self, project_cfg):
         """Test validation fails when columns is empty but values are provided.
-        
+
         This prevents the error: "0 columns passed, passed data had 2 columns"
         that occurs when trying to create a DataFrame with data but no column names.
-        
+
         Regression test for issue #266.
         """
         spec = FixedEntityFieldsSpecification(project_cfg)
