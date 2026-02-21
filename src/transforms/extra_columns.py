@@ -231,8 +231,16 @@ class ExtraColumnEvaluator:
         result = df.copy()
         deferred: dict[str, Any] = {}
         added_count = 0
+        skipped_count = 0
         
         for new_col, value in extra_columns.items():
+            
+            # Skip if column already exists in DataFrame (idempotent evaluation)
+            # This allows passing the full extra_columns dict multiple times
+            if new_col in result.columns:
+                skipped_count += 1
+                logger.debug(f"{entity_name}[extra_columns]: Skipping '{new_col}' (already exists)")
+                continue
             
             # Case 1: Non-string constant
             if not isinstance(value, str):
@@ -282,10 +290,14 @@ class ExtraColumnEvaluator:
             added_count += 1
             logger.debug(f"{entity_name}[extra_columns]: Added constant '{new_col}' = '{value}'")
         
-        if added_count > 0 or deferred:
-            logger.info(
-                f"{entity_name}[extra_columns]: Added {added_count} column(s)"
-                + (f", deferred {len(deferred)}" if deferred else "")
-            )
+        if added_count > 0 or deferred or skipped_count > 0:
+            msg_parts = []
+            if added_count > 0:
+                msg_parts.append(f"Added {added_count} column(s)")
+            if deferred:
+                msg_parts.append(f"deferred {len(deferred)}")
+            if skipped_count > 0:
+                msg_parts.append(f"skipped {skipped_count} (already exist)")
+            logger.info(f"{entity_name}[extra_columns]: {', '.join(msg_parts)}")
         
         return result, deferred

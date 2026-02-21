@@ -454,3 +454,86 @@ class TestEdgeCases:
         result, deferred = evaluator.evaluate_extra_columns(df, {"b": "{a}"}, "test")
         
         assert result["b"].iloc[0] == "1"
+
+
+class TestIdempotentEvaluation:
+    """Test idempotent evaluation (skipping already-evaluated columns)."""
+    
+    def test_skips_existing_columns(self):
+        """Evaluator skips columns that already exist in DataFrame."""
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"a": [1, 2], "status": ["active", "inactive"]})
+        
+        # Try to add a column that already exists
+        result, deferred = evaluator.evaluate_extra_columns(
+            df, {"status": "pending"}, "test"
+        )
+        
+        # Should skip the existing column (not overwrite)
+        assert result["status"].tolist() == ["active", "inactive"]
+        assert len(deferred) == 0
+    
+    def test_multiple_calls_idempotent(self):
+        """Calling evaluate_extra_columns multiple times is idempotent."""
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"a": [1, 2]})
+        extra_columns = {"const": 99, "copy": "a", "interp": "{a}"}
+        
+        # First call - should add all columns
+        result1, deferred1 = evaluator.evaluate_extra_columns(df, extra_columns, "test")
+        assert "const" in result1.columns
+        assert "copy" in result1.columns
+        assert "interp" in result1.columns
+        assert len(deferred1) == 0
+        
+        # Second call with same extra_columns - should skip all (idempotent)
+        result2, deferred2 = evaluator.evaluate_extra_columns(result1, extra_columns, "test")
+        assert result2.equals(result1)  # No changes
+        assert len(deferred2) == 0
+    
+    def test_partial_evaluation_then_completion(self):
+        """After partial evaluation, can complete with same extra_columns dict."""
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"a": [1, 2]})
+        extra_columns = {
+            "const": 99,
+            "from_a": "{a}",
+            "from_both": "{a}-{missing_col}"  # Will defer (missing_col not available)
+        }
+        
+        # First call - 2 succeed, 1 deferred
+        result1, deferred1 = evaluator.evaluate_extra_columns(
+            df, extra_columns, "test", defer_missing=True
+        )
+        assert "const" in result1.columns
+        assert "from_a" in result1.columns
+        assert "from_both" not in result1.columns
+        assert "from_both" in deferred1
+        
+        # Add the missing column
+        result1["missing_col"] = [10, 20]
+        
+        # Second call with FULL extra_columns dict (not just deferred)
+        # Should skip existing, evaluate deferred
+        result2, deferred2 = evaluator.evaluate_extra_columns(
+            result1, extra_columns, "test", defer_missing=True
+        )
+        assert "const" in result2.columns  # Skipped (already exists)
+        assert "from_a" in result2.columns  # Skipped (already exists)
+        assert "from_both" in result2.columns  # Newly evaluated!
+        assert result2["from_both"].tolist() == ["1-10", "2-20"]
+        assert len(deferred2) == 0
+    
+    def test_skip_count_logged(self):
+        """Skipped columns are counted and logged."""
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"a": [1], "existing": ["old"]})
+        
+        # Try to add "existing" (should skip) and "new" (should add)
+        result, deferred = evaluator.evaluate_extra_columns(
+            df, {"existing": "new_value", "new": "added"}, "test"
+        )
+        
+        # existing should be skipped, new should be added
+        assert result["existing"].iloc[0] == "old"  # Not overwritten
+        assert result["new"].iloc[0] == "added"
