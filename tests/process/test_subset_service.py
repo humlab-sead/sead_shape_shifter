@@ -7,6 +7,7 @@ import pytest
 
 from src.extract import SubsetService
 from src.model import TableConfig
+from transforms.extra_columns import ExtraColumnEvaluator
 
 ENTITY_NAME = "test_entity"
 
@@ -695,7 +696,7 @@ def test_get_subset_ignores_replacements_for_missing_columns() -> None:
     df = pd.DataFrame({"id": [1, 2]})
     table_cfg = build_table_config(columns=["id"], replacements={"missing_col": {1: 100}})
 
-    result = service.get_subset(source=df, table_cfg=table_cfg)
+    result: pd.DataFrame = service.get_subset(source=df, table_cfg=table_cfg)
 
     assert list(result.columns) == ["id"]
     assert result["id"].tolist() == [1, 2]
@@ -705,9 +706,9 @@ def test_get_subset_preserves_column_order() -> None:
     """Test that column order is preserved according to table_cfg columns."""
     service = SubsetService()
     df = pd.DataFrame({"c": [3], "b": [2], "a": [1]})
-    table_cfg = build_table_config(columns=["a", "b", "c"])
+    table_cfg: TableConfig = build_table_config(columns=["a", "b", "c"])
 
-    result = service.get_subset(source=df, table_cfg=table_cfg)
+    result: pd.DataFrame = service.get_subset(source=df, table_cfg=table_cfg)
 
     assert list(result.columns) == ["a", "b", "c"]
 
@@ -726,11 +727,10 @@ def test_get_subset_appends_extra_columns_at_end() -> None:
 
 def test_split_extra_columns_case_sensitive() -> None:
     """Test _split_extra_columns with case_sensitive=True."""
-    service = SubsetService()
     df = pd.DataFrame({"ID": [1, 2], "Value": ["x", "y"]})
-    extra_cols = {"copy_id": "ID", "constant_col": "static_value"}
+    extra_cols: dict[str, str] = {"copy_id": "ID", "constant_col": "static_value"}
 
-    source_cols, constant_cols = service._split_extra_columns(df, extra_cols, case_sensitive=True)
+    source_cols, constant_cols = ExtraColumnEvaluator.split_extra_columns(df, extra_cols, case_sensitive=True)
 
     assert source_cols == {"copy_id": "ID"}
     assert constant_cols == {"constant_col": "static_value"}
@@ -738,11 +738,10 @@ def test_split_extra_columns_case_sensitive() -> None:
 
 def test_split_extra_columns_case_insensitive() -> None:
     """Test _split_extra_columns with case_sensitive=False (default)."""
-    service = SubsetService()
     df = pd.DataFrame({"ID": [1, 2], "Value": ["x", "y"]})
-    extra_cols = {"copy_id": "id", "copy_value": "value", "const": "not_in_df"}
+    extra_cols: dict[str, str] = {"copy_id": "id", "copy_value": "value", "const": "not_in_df"}
 
-    source_cols, constant_cols = service._split_extra_columns(df, extra_cols, case_sensitive=False)
+    source_cols, constant_cols = ExtraColumnEvaluator.split_extra_columns(df, extra_cols, case_sensitive=False)
 
     assert source_cols == {"copy_id": "ID", "copy_value": "Value"}
     assert constant_cols == {"const": "not_in_df"}
