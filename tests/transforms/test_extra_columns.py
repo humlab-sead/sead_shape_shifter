@@ -279,7 +279,7 @@ class TestExtraColumnsEvaluation:
         """None extra_columns returns unchanged DataFrame."""
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1]})
-        result, deferred = evaluator.evaluate_extra_columns(df, None, "test")
+        result, deferred = evaluator.evaluate_extra_columns(df, None, "test")  # type: ignore
 
         assert result.equals(df)
         assert len(deferred) == 0
