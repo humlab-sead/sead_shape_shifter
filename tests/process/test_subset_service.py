@@ -850,3 +850,179 @@ def test_get_subset_with_drop_duplicates_dict_and_fd_settings() -> None:
     # Verify that the FD settings are accessible
     assert table_cfg.check_functional_dependency is False
     assert table_cfg.strict_functional_dependency is False
+
+
+# ============================================================================
+# Interpolated String Tests (New Feature)
+# ============================================================================
+
+
+def test_get_subset_interpolated_string_simple() -> None:
+    """Test simple interpolated string in extra_columns."""
+    service = SubsetService()
+    df = pd.DataFrame({"first": ["John", "Jane"], "last": ["Doe", "Smith"]})
+    table_cfg = build_table_config(
+        columns=["first", "last"],
+        extra_columns={"fullname": "{first} {last}"}
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert "fullname" in result.columns
+    assert result["fullname"].tolist() == ["John Doe", "Jane Smith"]
+
+
+def test_get_subset_interpolated_string_with_literals() -> None:
+    """Test interpolated string mixed with literal text."""
+    service = SubsetService()
+    df = pd.DataFrame({"username": ["jdoe"], "domain": ["example.com"]})
+    table_cfg = build_table_config(
+        columns=["username"],
+        extra_columns={"email": "{username}@example.com"}
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["email"].iloc[0] == "jdoe@example.com"
+
+
+def test_get_subset_interpolated_string_with_nulls() -> None:
+    """Test interpolated string handles null values gracefully."""
+    service = SubsetService()
+    df = pd.DataFrame({"first": ["John", None], "last": [None, "Smith"]})
+    table_cfg = build_table_config(
+        columns=["first", "last"],
+        extra_columns={"fullname": "{first} {last}"}
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["fullname"].tolist() == ["John ", " Smith"]
+
+
+def test_get_subset_interpolated_string_with_numbers() -> None:
+    """Test interpolated string converts numbers to strings."""
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2], "code": ["A", "B"]})
+    table_cfg = build_table_config(
+        columns=["id", "code"],
+        extra_columns={"label": "Item {id}-{code}"}
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["label"].tolist() == ["Item 1-A", "Item 2-B"]
+
+
+def test_get_subset_interpolated_string_with_escaping() -> None:
+    """Test interpolated string handles escaped braces."""
+    service = SubsetService()
+    df = pd.DataFrame({"value": ["test"]})
+    table_cfg = build_table_config(
+        columns=["value"],
+        extra_columns={"json": '{{\"key\": \"{value}\"}}'}
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["json"].iloc[0] == '{"key": "test"}'
+
+
+def test_get_subset_mixed_extra_columns() -> None:
+    """Test mixing constants, copies, and interpolations."""
+    service = SubsetService()
+    df = pd.DataFrame({"a": [1], "b": [2]})
+    table_cfg = build_table_config(
+        columns=["a"],
+        extra_columns={
+            "const": 99,
+            "copy": "b",
+            "interp": "{a}-{b}"
+        }
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["const"].iloc[0] == 99
+    assert result["copy"].iloc[0] == 2
+    assert result["interp"].iloc[0] == "1-2"
+
+
+def test_get_subset_interpolation_missing_column_raises() -> None:
+    """Test that interpolation with missing column raises error."""
+    service = SubsetService()
+    df = pd.DataFrame({"a": [1]})
+    table_cfg = build_table_config(
+        columns=["a"],
+        extra_columns={"bad": "{missing}"}
+    )
+
+    with pytest.raises(ValueError, match="columns not found"):
+        service.get_subset(source=df, table_cfg=table_cfg)
+
+
+def test_get_subset_deferred_output_captures_missing() -> None:
+    """Test deferred_output parameter captures columns referencing missing columns."""
+    service = SubsetService()
+    df = pd.DataFrame({"first": ["John"], "last": ["Doe"]})
+    table_cfg = build_table_config(
+        columns=["first", "last"],
+        extra_columns={
+            "full_name": "{first} {last}",  # Can evaluate immediately
+            "profile": "{first} - {missing_col}",  # Missing column - should defer
+        }
+    )
+
+    deferred: dict[str, dict[str, Any]] = {}
+    result = service.get_subset(source=df, table_cfg=table_cfg, deferred_output=deferred)
+
+    # full_name should be evaluated
+    assert "full_name" in result.columns
+    assert result["full_name"].iloc[0] == "John Doe"
+
+    # profile should be deferred (missing column)
+    assert "profile" not in result.columns
+    assert "test_entity" in deferred  # ENTITY_NAME = "test_entity"
+    assert "profile" in deferred["test_entity"]
+    assert deferred["test_entity"]["profile"] == "{first} - {missing_col}"
+
+
+def test_get_subset_deferred_output_all_succeed() -> None:
+    """Test deferred_output when all columns can be evaluated."""
+    service = SubsetService()
+    df = pd.DataFrame({"first": ["John"], "last": ["Doe"]})
+    table_cfg = build_table_config(
+        columns=["first", "last"],
+        extra_columns={
+            "full_name": "{first} {last}",
+            "greeting": "Hello {first}",
+        }
+    )
+
+    deferred: dict[str, dict[str, Any]] = {}
+    result = service.get_subset(source=df, table_cfg=table_cfg, deferred_output=deferred)
+
+    # Both columns should be evaluated
+    assert "full_name" in result.columns
+    assert "greeting" in result.columns
+    assert result["full_name"].iloc[0] == "John Doe"
+    assert result["greeting"].iloc[0] == "Hello John"
+
+    # Nothing should be deferred
+    assert len(deferred) == 0
+
+
+def test_get_subset_no_deferred_output_raises_on_missing() -> None:
+    """Test that missing columns raise error when deferred_output not provided."""
+    service = SubsetService()
+    df = pd.DataFrame({"first": ["John"]})
+    table_cfg = build_table_config(
+        columns=["first"],
+        extra_columns={
+            "profile": "{first} - {missing_col}",  # Missing column
+        }
+    )
+
+    # Without deferred_output, should raise ValueError
+    with pytest.raises(ValueError, match="columns not found"):
+        service.get_subset(source=df, table_cfg=table_cfg)
