@@ -7,6 +7,7 @@ from loguru import logger
 
 from src.model import TableConfig
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
+from src.transforms.extra_columns import ExtraColumnEvaluator
 from src.transforms.replace import apply_replacements
 from src.utility import unique
 
@@ -15,6 +16,10 @@ from src.utility import unique
 
 class SubsetService:
     """Class for extracting subsets from DataFrames with various options."""
+    
+    def __init__(self):
+        """Initialize SubsetService with ExtraColumnEvaluator."""
+        self.extra_col_evaluator = ExtraColumnEvaluator()
 
     def get_subset_columns(self, table_cfg: TableConfig) -> list[str]:
         """Get the list of columns to extract from the table configuration.
@@ -36,8 +41,14 @@ class SubsetService:
         *,
         drop_empty: None | bool | list[str] | dict[str, Any] = None,
         raise_if_missing: bool = True,
+        deferred_output: dict[str, dict[str, Any]] | None = None,
     ) -> pd.DataFrame:
-        """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling."""
+        """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
+        
+        Args:
+            deferred_output: Optional dict to receive deferred extra_columns when defer_missing=True.
+                When provided, deferred extra_columns are stored here by entity_name.
+        """
         if source is None:
             raise ValueError("Source DataFrame must be provided")
 
@@ -61,6 +72,7 @@ class SubsetService:
             replacements=replacements,
             raise_if_missing=raise_if_missing,
             drop_empty=drop_empty,
+            deferred_output=deferred_output,
         )
 
     def get_subset2(
@@ -76,6 +88,7 @@ class SubsetService:
         replacements: dict[str, Any] | None = None,
         raise_if_missing: bool = True,
         drop_empty: bool | list[str] | dict[str, Any] = False,
+        deferred_output: dict[str, dict[str, Any]] | None = None,
     ) -> pd.DataFrame:
         """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
         Args:
@@ -102,6 +115,10 @@ class SubsetService:
                 - If list[str]: drop rows where all specified columns are empty
                 - If dict[str, Any]: drop rows where specified columns contain the given values
                   (keys are column names, values are lists of values to treat as empty)
+            deferred_output: Optional dict to receive deferred extra_columns.
+                When provided and extra_columns contain interpolations that reference missing columns,
+                those deferred columns are stored here (by entity_name) instead of raising an error.
+                Useful for multi-stage evaluation (e.g., columns added by FK linking).
 
         Returns:
             pd.DataFrame: Resulting DataFrame with requested columns and modifications.
@@ -125,6 +142,8 @@ class SubsetService:
         columns = unique(columns)
         extra_columns = extra_columns or {}
 
+        # For backward compatibility: still use old split method to determine helper columns
+        # But we'll use the new evaluator for actual evaluation
         extra_source_columns, extra_constant_columns = self._split_extra_columns(source, extra_columns, case_sensitive=False)
 
         # Columns we need to read from source to build the result
@@ -136,13 +155,31 @@ class SubsetService:
         columns_to_extract: list[str] = [c for c in source.columns if c in required_source_cols]
         result: pd.DataFrame = source.loc[:, columns_to_extract].copy()
 
-        # Add extra columns that are copies of existing columns
-        for col_name, existing_col_name in extra_source_columns.items():
-            result[col_name] = result[existing_col_name]
-
-        # Add constant columns
-        for col_name, value in extra_constant_columns.items():
-            result[col_name] = value
+        # Use ExtraColumnEvaluator to add extra columns (supports constants, copies, and interpolations)
+        if extra_columns:
+            # If deferred_output is provided, allow deferring columns that reference missing columns
+            defer_missing: bool = deferred_output is not None
+            
+            result, deferred = self.extra_col_evaluator.evaluate_extra_columns(
+                df=result,
+                extra_columns=extra_columns,
+                entity_name=entity_name,
+                defer_missing=defer_missing
+            )
+            
+            # Handle deferred columns based on whether deferred_output is provided
+            if deferred:
+                if deferred_output is not None:
+                    # Store deferred columns for later evaluation (typically after FK linking)
+                    deferred_output[entity_name] = deferred
+                    logger.debug(
+                        f"{entity_name}[extract]: Deferred extra_columns evaluation for: {list(deferred.keys())}"
+                    )
+                else:
+                    # No deferred_output provided, but we have deferred columns (shouldn't happen with defer_missing=False)
+                    logger.warning(
+                        f"{entity_name}[extract]: Unexpected deferred extra_columns: {list(deferred.keys())}"
+                    )
 
         # Drop helper source columns that weren't explicitly requested
         helper_cols: set[str] = set(extra_source_columns.values()) - set(columns)
