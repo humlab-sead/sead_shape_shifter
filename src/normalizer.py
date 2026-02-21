@@ -50,7 +50,6 @@ class ShapeShifter:
         self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
         self.extra_col_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
-        self.deferred_extra_columns: dict[str, dict[str, Any]] = {}  # entity_name -> {col: expr}
 
     def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
         """Resolve the DataLoader, if any, for the given TableConfig."""
@@ -90,7 +89,6 @@ class ShapeShifter:
                 table_cfg=sub_table_cfg,
                 drop_empty=False,
                 raise_if_missing=False,
-                deferred_output=self.deferred_extra_columns,  # Capture deferred extra_columns
             )
             # Apply column renaming for append items (align_by_position or column_mapping)
             # Pass parent's columns for align_by_position
@@ -190,6 +188,16 @@ class ShapeShifter:
         if self.linker.deferred_tracker.deferred:
             logger.warning(f"Entities with unresolved deferred links after normalization: {self.linker.deferred_tracker.deferred}")
 
+        # Check for unresolved extra_columns (those not yet in DataFrame)
+        unresolved_entities = [
+            entity_name for entity_name in self.project.table_names
+            if self._get_unevaluated_extra_columns(entity_name)
+        ]
+        if unresolved_entities:
+            logger.warning(
+                f"Entities with unresolved extra_columns after normalization: {unresolved_entities}"
+            )
+
         # Add identity columns to all entities after normalization
         # This ensures materialized entities get proper identity columns
         self.add_system_id_columns()
@@ -216,29 +224,55 @@ class ShapeShifter:
             # raise ValueError(f"{entity}[keys]: Duplicate keys found for keys {table_cfg.keys}.")
             logger.error(f"{entity}[keys]: DUPLICATE KEYS FOUND FOR KEYS {table_cfg.keys}.")
 
+    def _get_unevaluated_extra_columns(self, entity_name: str) -> dict[str, Any]:
+        """Get extra_columns that haven't been evaluated yet (not in DataFrame).
+        
+        Deferred/unevaluated columns are simply those configured in extra_columns
+        that don't yet exist in the entity's DataFrame.
+        
+        Args:
+            entity_name: Name of entity to check
+            
+        Returns:
+            Dict of {col: expr} for columns not yet in DataFrame
+        """
+        table_cfg: TableConfig = self.project.get_table(entity_name)
+        if not table_cfg.extra_columns:
+            return {}
+        
+        df: pd.DataFrame = self.table_store.get(entity_name)
+        if df is None:
+            return table_cfg.extra_columns  # Entity not processed yet, all are unevaluated
+        
+        # Unevaluated = configured but not in DataFrame
+        return {
+            col: expr 
+            for col, expr in table_cfg.extra_columns.items() 
+            if col not in df.columns
+        }
+
     def _evaluate_deferred_extra_columns(self, entity_name: str) -> None:
         """Re-evaluate deferred extra_columns for an entity after FK linking or unnesting.
         
         This handles interpolated strings that reference columns added by FK linking
         (e.g., extra_columns from remote FK tables) or by unnesting operations.
         
+        Deferred columns are computed on-demand as extra_columns not yet in the DataFrame.
+        
         Args:
             entity_name: Name of entity to process deferred columns for
         """
-        if entity_name not in self.deferred_extra_columns:
-            return  # No deferred columns for this entity
-        
-        deferred_specs: dict[str, Any] = self.deferred_extra_columns[entity_name]
-        if not deferred_specs:
-            return  # Empty dict, nothing to do
+        unevaluated: dict[str, Any] = self._get_unevaluated_extra_columns(entity_name)
+        if not unevaluated:
+            return  # All extra_columns already evaluated
         
         df: pd.DataFrame = self.table_store[entity_name]
         
-        # Try evaluating with defer_missing=True to handle partially resolved columns
-        # (some columns might still be missing if FK hasn't been linked yet)
+        # Try evaluating unevaluated columns with defer_missing=True
+        # (some columns might still be missing if dependencies not yet available)
         result, still_deferred = self.extra_col_evaluator.evaluate_extra_columns(
             df=df,
-            extra_columns=deferred_specs,
+            extra_columns=unevaluated,
             entity_name=entity_name,
             defer_missing=True  # Allow re-deferral if columns still missing
         )
@@ -246,16 +280,13 @@ class ShapeShifter:
         # Update table store with newly evaluated columns
         self.table_store[entity_name] = result
         
-        # Update deferred dict (remove successfully evaluated, keep still-deferred)
+        # Log status
         if still_deferred:
-            self.deferred_extra_columns[entity_name] = still_deferred
             logger.debug(
                 f"{entity_name}[deferred]: Still waiting for columns: "
                 f"{list(still_deferred.keys())}"
             )
         else:
-            # All deferred columns resolved!
-            del self.deferred_extra_columns[entity_name]
             logger.debug(
                 f"{entity_name}[deferred]: Successfully evaluated all deferred extra_columns"
             )
