@@ -203,6 +203,9 @@ class ShapeShiftService:
         """
         try:
             target_entities: set[str] = {entity_name}
+            
+            logger.info(f"ShapeShift preview for entity: {entity_name}")
+            logger.debug(f"Initial table_store contains: {list(initial_table_store.keys())}")
 
             shapeshifter: ShapeShifter = ShapeShifter(
                 project=project,
@@ -210,6 +213,10 @@ class ShapeShiftService:
                 default_entity=project.metadata.default_entity,
                 target_entities=target_entities,
             )
+            
+            # Log which entities will be processed
+            required_entities = project.get_required_entities(entity_name)
+            logger.info(f"Required entities for '{entity_name}': {sorted(required_entities)}")
 
             (await shapeshifter.normalize())
             shapeshifter.add_system_id_columns()
@@ -225,6 +232,16 @@ class ShapeShiftService:
 
         except Exception as e:
             logger.exception(f"ShapeShift failed for {entity_name}: {e}", exc_info=True)
+            
+            # Provide more detailed error for KeyErrors (often FK dependency issues)
+            if isinstance(e, KeyError):
+                missing_entity = str(e).strip("'\"")
+                raise RuntimeError(
+                    f"ShapeShift failed for '{entity_name}': Missing dependency '{missing_entity}'. "
+                    f"This entity may have a foreign key referencing '{missing_entity}', but '{missing_entity}' "
+                    f"was not processed. Check your entity configuration for unexpected foreign key references."
+                ) from e
+            
             raise RuntimeError(f"ShapeShift failed for {entity_name}: {str(e)}") from e
 
     def _collect_validation_issues(self, shapeshifter: ShapeShifter) -> list[dict]:
