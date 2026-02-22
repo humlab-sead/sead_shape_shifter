@@ -26,7 +26,7 @@
         "titleBar.inactiveForeground": "#e7e7e799",
         "editor.background": "#000000",
         "sideBar.background": "#000000",
-        "panel.background": "#000000",
+        "panel.background": "#000000"
     },
     "yaml.keyOrdering": false,
     "yaml.format.enable": true,
