@@ -161,5 +161,7 @@
         "chat.tools.terminal.autoApprove": {
             "git add": true,
             "git commit": true
-        }
+        },
+        "sqlfluff.dialect": "postgres",
+        "sqlfluff.codeActions.excludeRules.global": false
 }
