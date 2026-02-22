@@ -23,23 +23,34 @@ This directory contains comprehensive design documentation for the new SEAD SQL 
    - **Dependencies:** Requires PostgreSQL 12+, uuid-ossp extension
    - **Use this for:** Database deployment, API development, SQL generation
 
-3. **[SEAD_IDENTITY_NFR.md](./SEAD_IDENTITY_NFR.md)** 📊 **Non-Functional Requirements**
+3. **[Aggregate Model Documentation](../aggregate_model/)** 🏗️ **Aggregate Metadata Model** → **See docs/aggregate_model/**
+   - **Scope:** Generic database model for entity hierarchies (domain-agnostic)
+   - **Purpose:** Track aggregate roots, dependencies, and relationships for identity system
+   - **Key Innovation:** Metadata-driven validation, topological sorting, and allocation optimization
+   - **Content:** Entity registry, dependency graph, PostgreSQL functions, validation logic
+   - **Documents:**
+     - [AGGREGATE_MODEL_DESIGN.md](../aggregate_model/AGGREGATE_MODEL_DESIGN.md) - Generic model design
+     - [SEAD_AGGREGATE_MODEL.md](../aggregate_model/SEAD_AGGREGATE_MODEL.md) - SEAD-specific implementation
+     - [README.md](../aggregate_model/README.md) - Navigation guide
+   - **Use this for:** Entity hierarchy management, submission validation, allocation ordering
+
+4. **[SEAD_IDENTITY_NFR.md](./SEAD_IDENTITY_NFR.md)** 📊 **Non-Functional Requirements**
    - **Scope:** Performance, security, reliability, testing
    - **Purpose:** Operational requirements and success criteria
    - **Content:** Latency targets (< 10ms P95), security (OAuth 2.0), monitoring (Prometheus), load tests
    - **Use this for:** DevOps setup, performance tuning, incident response
 
-4. **[SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md)** ⭐ **Main Ingester Design**
+5. **[SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md)** ⭐ **Main Ingester Design**
    - **Scope:** Shape Shifter SEAD Ingester Component
    - **Purpose:** Generate Sqitch-ready SQL DML from normalized DataFrames
    - **Key Innovation:** Direct DataFrame → SQL transformation with automated ID allocation
-   - **Dependencies:** Requires SEAD Identity System API (documents #1-3)
+   - **Dependencies:** Requires SEAD Identity System API (documents #1-4)
    - **Isolation Principle:** ALL SEAD-specific logic resides in this ingester
 
-5. **[NEW_INGESTER.md](./NEW_INGESTER.md)** 📝 **Original Notes**
+6. **[NEW_INGESTER.md](./NEW_INGESTER.md)** 📝 **Original Notes**
    - **Scope:** Reference document (original design notes)
    - **Purpose:** Historical context and initial problem statement
-   - **Status:** Superseded by documents #1-4 (kept for reference)
+   - **Status:** Superseded by documents #1-5 (kept for reference)
 
 ---
 
@@ -61,13 +72,22 @@ This directory contains comprehensive design documentation for the new SEAD SQL 
    - Understand REST API specification (6 endpoints)
    - **Implementation:** Deploy SEAD Identity API first (Phase 1-2)
 
-3. **Non-Functional Requirements** ([SEAD_IDENTITY_NFR.md](./SEAD_IDENTITY_NFR.md))
+3. **Aggregate Model** ([docs/aggregate_model/](../aggregate_model/)) *Optional*
+   - Understand entity hierarchy metadata model (domain-agnostic)
+   - Review aggregate registry, dependency tracking, validation functions
+   - Study topological sorting and allocation ordering
+   - **Documents:**  
+     - [AGGREGATE_MODEL_DESIGN.md](../aggregate_model/AGGREGATE_MODEL_DESIGN.md) - Generic design
+     - [SEAD_AGGREGATE_MODEL.md](../aggregate_model/SEAD_AGGREGATE_MODEL.md) - SEAD implementation
+   - **Implementation:** Deploy after identity system for enhanced validation (Phase 2-3)
+
+4. **Non-Functional Requirements** ([SEAD_IDENTITY_NFR.md](./SEAD_IDENTITY_NFR.md))
    - Review performance targets (< 10ms P95, 10k req/s throughput)
    - Study security requirements (OAuth 2.0, API keys, audit trail)
    - Understand monitoring and alerting setup (Prometheus, Grafana)
    - **Implementation:** Configure DevOps infrastructure (Phase 1)
 
-4. **Ingester Design** ([SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md))
+5. **Ingester Design** ([SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md))
    - Review component architecture (6 components)
    - Study integration with Shape Shifter's three-tier identity system
    - Understand SQL generation workflow (topological sorting)
@@ -87,6 +107,14 @@ This directory contains comprehensive design documentation for the new SEAD SQL 
   - SQL functions: PL/pgSQL implementations, error handling
   - API specification: REST endpoints, request/response formats
   - Migration strategy: 5-phase rollout plan
+
+- **Aggregate Model** ([docs/aggregate_model/](../aggregate_model/)) **(Technical - Optional Enhancement)**
+  - Metadata model: Entity types registry, aggregate definitions, dependencies
+  - Validation logic: Submission validation, missing parent detection
+  - Query patterns: Hierarchy views, dependency graphs, topological sorting
+  - Integration: API enhancements for validation and allocation ordering
+  - Benefits: Self-documenting system, early validation, optimized batch allocation
+  - **Documents:** [AGGREGATE_MODEL_DESIGN.md](../aggregate_model/AGGREGATE_MODEL_DESIGN.md) (generic), [SEAD_AGGREGATE_MODEL.md](../aggregate_model/SEAD_AGGREGATE_MODEL.md) (SEAD-specific)
 
 - **SEAD_IDENTITY_NFR.md** (Operational)
   - Performance: Latency targets, throughput benchmarks, scalability
