@@ -2,169 +2,173 @@
 -- PostgreSQL database dump
 --
 
-CREATE TABLE public.tbl_abundances (
-    abundance_id bigint NOT NULL,
-    taxon_id integer NOT NULL,
-    analysis_entity_id bigint NOT NULL,
+create table tbl_abundances (
+    abundance_id bigint not null,
+    taxon_id integer not null,
+    analysis_entity_id bigint not null,
     abundance_element_id integer,
-    abundance integer DEFAULT 0 NOT NULL
+    abundance integer default 0 not null
 );
 
 
-CREATE TABLE public.tbl_abundance_elements (
-    abundance_element_id integer NOT NUL,
+create table tbl_abundance_elements (
+    abundance_element_id integer not null,
     record_type_id integer,
-    element_name character varying(100) NOT NULL,
+    element_name character varying(100) not null,
     element_description text
 );
 
 
-CREATE TABLE public.tbl_abundance_ident_levels (
-    abundance_ident_level_id integer NOT NULL,
-    abundance_id bigint NOT NULL,
-    identification_level_id integer NOT NULL
+create table tbl_abundance_ident_levels (
+    abundance_ident_level_id integer not null,
+    abundance_id bigint not null,
+    identification_level_id integer not null
 );
 
 
-CREATE TABLE public.tbl_abundance_modifications (
-    abundance_modification_id integer NOT NULL,
-    abundance_id integer NOT NULL,
-    modification_type_id integer NOT NULL
+create table tbl_abundance_modifications (
+    abundance_modification_id integer not null,
+    abundance_id integer not null,
+    modification_type_id integer not null
 );
 
 
-CREATE TABLE public.tbl_activity_types (
-    activity_type_id integer NOT NULL,
-    activity_type character varying(50) DEFAULT NULL::character varying,
+create table tbl_activity_types (
+    activity_type_id integer not null,
+    activity_type character varying(50) default null::character varying,
     description text
 );
 
 
-CREATE TABLE public.tbl_age_types (
-    age_type_id integer NOT NULL,
-    age_type character varying(150) NOT NULL,
+create table tbl_age_types (
+    age_type_id integer not null,
+    age_type character varying(150) not null,
     description text
 );
 
 
-CREATE TABLE public.tbl_aggregate_datasets (
-    aggregate_dataset_id integer NOT NULL,
-    aggregate_order_type_id integer NOT NULL,
+create table tbl_aggregate_datasets (
+    aggregate_dataset_id integer not null,
+    aggregate_order_type_id integer not null,
     biblio_id integer,
     aggregate_dataset_name character varying(255),
     description text,
-    aggregate_dataset_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    aggregate_dataset_uuid uuid default public.uuid_generate_v4() not null
 );
 
-CREATE TABLE public.tbl_aggregate_order_types (
-    aggregate_order_type_id integer NOT NULL,
-    aggregate_order_type character varying(60) NOT NULL,
+create table tbl_aggregate_order_types (
+    aggregate_order_type_id integer not null,
+    aggregate_order_type character varying(60) not null,
     description text
 );
 
 
-CREATE TABLE public.tbl_aggregate_samples (
-    aggregate_sample_id integer NOT NULL,
-    aggregate_dataset_id integer NOT NULL,
-    analysis_entity_id bigint NOT NULL,
+create table tbl_aggregate_samples (
+    aggregate_sample_id integer not null,
+    aggregate_dataset_id integer not null,
+    analysis_entity_id bigint not null,
     aggregate_sample_name character varying(50)
 );
 
 
-CREATE TABLE public.tbl_aggregate_sample_ages (
-    aggregate_sample_age_id integer NOT NULL,
-    aggregate_dataset_id integer NOT NULL,
-    analysis_entity_age_id integer NOT NULL
+create table tbl_aggregate_sample_ages (
+    aggregate_sample_age_id integer not null,
+    aggregate_dataset_id integer not null,
+    analysis_entity_age_id integer not null
 );
 
-CREATE TABLE public.tbl_alt_ref_types (
-    alt_ref_type_id integer NOT NULL,
-    alt_ref_type character varying(50) NOT NULL,
+create table tbl_alt_ref_types (
+    alt_ref_type_id integer not null,
+    alt_ref_type character varying(50) not null,
     description text
 );
 
 
-CREATE TABLE public.tbl_analysis_boolean_values (
-    analysis_boolean_value_id integer NOT NULL,
-    analysis_value_id bigint NOT NULL,
+create table tbl_analysis_boolean_values (
+    analysis_boolean_value_id integer not null,
+    analysis_value_id bigint not null,
     qualifier text,
     value boolean
 );
 
 
-CREATE TABLE public.tbl_analysis_categorical_values (
-    analysis_categorical_value_id bigint NOT NULL,
-    analysis_value_id bigint NOT NULL,
-    value_type_item_id integer NOT NULL,
-    value numeric(20,10) DEFAULT NULL::numeric,
+create table tbl_analysis_categorical_values (
+    analysis_categorical_value_id bigint not null,
+    analysis_value_id bigint not null,
+    value_type_item_id integer not null,
+    value numeric(20, 10) default null::numeric,
     is_variant boolean
 );
 
 
-CREATE TABLE public.tbl_analysis_dating_ranges (
-    analysis_dating_range_id bigint NOT NULL,
-    analysis_value_id bigint NOT NULL,
+create table tbl_analysis_dating_ranges (
+    analysis_dating_range_id bigint not null,
+    analysis_value_id bigint not null,
     low_value integer,
     high_value integer,
     low_is_uncertain boolean,
     high_is_uncertain boolean,
     low_qualifier text,
     high_qualifier text,
-    age_type_id integer DEFAULT 1 NOT NULL,
+    age_type_id integer default 1 not null,
     season_id integer,
     dating_uncertainty_id integer,
     is_variant boolean
 );
 
 
-CREATE TABLE public.tbl_analysis_entities (
-    analysis_entity_id bigint NOT NULL,
+create table tbl_analysis_entities (
+    analysis_entity_id bigint not null,
     physical_sample_id integer,
     dataset_id integer
 );
 
 
-CREATE TABLE public.tbl_analysis_entity_ages (
-    analysis_entity_age_id integer NOT NULL,
-    age numeric(20,5),
-    age_older numeric(20,5),
-    age_younger numeric(20,5),
+create table tbl_analysis_entity_ages (
+    analysis_entity_age_id integer not null,
+    age numeric(20, 5),
+    age_older numeric(20, 5),
+    age_younger numeric(20, 5),
     analysis_entity_id bigint,
     chronology_id integer,
     dating_specifier text,
-    age_range int4range GENERATED ALWAYS AS (
-CASE
-    WHEN ((age_younger IS NULL) AND (age_older IS NULL)) THEN NULL::int4range
-    ELSE int4range(COALESCE((age_younger)::integer, (age_older)::integer), (COALESCE((age_older)::integer, (age_younger)::integer) + 1))
-END) STORED
+    age_range int4range generated always as (
+        case
+            when ((age_younger is null) and (age_older is null)) then null::int4range
+            else int4range(coalesce(
+                (age_younger)::integer, (age_older)::integer
+            ),
+            (coalesce((age_older)::integer, (age_younger)::integer) + 1))
+        end
+    ) stored
 );
 
 
-CREATE TABLE public.tbl_analysis_entity_dimensions (
-    analysis_entity_dimension_id integer NOT NULL,
-    analysis_entity_id bigint NOT NULL,
-    dimension_id integer NOT NULL,
-    dimension_value numeric NOT NULL
+create table tbl_analysis_entity_dimensions (
+    analysis_entity_dimension_id integer not null,
+    analysis_entity_id bigint not null,
+    dimension_id integer not null,
+    dimension_value numeric not null
 );
 
 
-CREATE TABLE public.tbl_analysis_entity_prep_methods (
-    analysis_entity_prep_method_id integer NOT NULL,
-    analysis_entity_id bigint NOT NULL,
-    method_id integer NOT NULL
+create table tbl_analysis_entity_prep_methods (
+    analysis_entity_prep_method_id integer not null,
+    analysis_entity_id bigint not null,
+    method_id integer not null
 );
 
 
-CREATE TABLE public.tbl_analysis_identifiers (
-    analysis_identifier_id bigint NOT NULL,
-    analysis_value_id bigint NOT NULL,
-    value text NOT NULL
+create table tbl_analysis_identifiers (
+    analysis_identifier_id bigint not null,
+    analysis_value_id bigint not null,
+    value text not null
 );
 
 
-CREATE TABLE public.tbl_analysis_integer_ranges (
-    analysis_integer_range_id bigint NOT NULL,
-    analysis_value_id bigint NOT NULL,
+create table tbl_analysis_integer_ranges (
+    analysis_integer_range_id bigint not null,
+    analysis_value_id bigint not null,
     low_value integer,
     high_value integer,
     low_is_uncertain boolean,
@@ -175,26 +179,26 @@ CREATE TABLE public.tbl_analysis_integer_ranges (
 );
 
 
-CREATE TABLE public.tbl_analysis_integer_values (
-    analysis_integer_value_id bigint NOT NULL,
-    analysis_value_id bigint NOT NULL,
+create table tbl_analysis_integer_values (
+    analysis_integer_value_id bigint not null,
+    analysis_value_id bigint not null,
     qualifier text,
     value integer,
     is_variant boolean
 );
 
 
-CREATE TABLE public.tbl_analysis_notes (
-    analysis_note_id bigint NOT NULL,
-    analysis_value_id bigint NOT NULL,
-    value text NOT NULL
+create table tbl_analysis_notes (
+    analysis_note_id bigint not null,
+    analysis_value_id bigint not null,
+    value text not null
 );
 
 
-CREATE TABLE public.tbl_analysis_numerical_ranges (
-    analysis_numerical_range_id bigint NOT NULL,
-    analysis_value_id bigint NOT NULL,
-    value numrange NOT NULL,
+create table tbl_analysis_numerical_ranges (
+    analysis_numerical_range_id bigint not null,
+    analysis_value_id bigint not null,
+    value numrange not null,
     low_is_uncertain boolean,
     high_is_uncertain boolean,
     low_qualifier text,
@@ -203,27 +207,27 @@ CREATE TABLE public.tbl_analysis_numerical_ranges (
 );
 
 
-CREATE TABLE public.tbl_analysis_numerical_values (
-    analysis_numerical_value_id bigint NOT NULL,
-    analysis_value_id bigint NOT NULL,
+create table tbl_analysis_numerical_values (
+    analysis_numerical_value_id bigint not null,
+    analysis_value_id bigint not null,
     qualifier text,
-    value numeric(20,10),
+    value numeric(20, 10),
     is_variant boolean
 );
 
 
-CREATE TABLE public.tbl_analysis_taxon_counts (
-    analysis_taxon_count_id integer NOT NULL,
-    analysis_value_id bigint NOT NULL,
-    taxon_id integer NOT NULL,
-    value numeric(20,10) NOT NULL
+create table tbl_analysis_taxon_counts (
+    analysis_taxon_count_id integer not null,
+    analysis_value_id bigint not null,
+    taxon_id integer not null,
+    value numeric(20, 10) not null
 );
 
 
-CREATE TABLE public.tbl_analysis_values (
-    analysis_value_id bigint NOT NULL,
-    value_class_id integer NOT NULL,
-    analysis_entity_id bigint NOT NULL,
+create table tbl_analysis_values (
+    analysis_value_id bigint not null,
+    value_class_id integer not null,
+    analysis_entity_id bigint not null,
     analysis_value text,
     boolean_value boolean,
     is_boolean boolean,
@@ -235,53 +239,53 @@ CREATE TABLE public.tbl_analysis_values (
 );
 
 
-CREATE TABLE public.tbl_analysis_value_dimensions (
-    analysis_value_dimension_id integer NOT NULL,
-    analysis_value_id bigint NOT NULL,
-    dimension_id integer NOT NULL,
-    value numeric(20,10) NOT NULL
+create table tbl_analysis_value_dimensions (
+    analysis_value_dimension_id integer not null,
+    analysis_value_id bigint not null,
+    dimension_id integer not null,
+    value numeric(20, 10) not null
 );
 
 
-CREATE TABLE public.tbl_biblio (
-    biblio_id integer NOT NULL,
-    bugs_reference character varying(60) DEFAULT NULL::character varying,
-    doi character varying(255) DEFAULT NULL::character varying,
-    isbn character varying(128) DEFAULT NULL::character varying,
+create table tbl_biblio (
+    biblio_id integer not null,
+    bugs_reference character varying(60) default null::character varying,
+    doi character varying(255) default null::character varying,
+    isbn character varying(128) default null::character varying,
     notes text,
     title character varying,
-    year character varying(255) DEFAULT NULL::character varying,
+    year character varying(255) default null::character varying,
     authors character varying,
-    full_reference text DEFAULT ''::text NOT NULL,
+    full_reference text default ''::text not null,
     url character varying,
-    biblio_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    biblio_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_ceramics (
-    ceramics_id integer NOT NULL,
-    analysis_entity_id integer NOT NULL,
-    measurement_value character varying NOT NULL,
-    ceramics_lookup_id integer NOT NULL
+create table tbl_ceramics (
+    ceramics_id integer not null,
+    analysis_entity_id integer not null,
+    measurement_value character varying not null,
+    ceramics_lookup_id integer not null
 );
 
 
-CREATE TABLE public.tbl_ceramics_lookup (
-    ceramics_lookup_id integer NOT NULL,
-    method_id integer NOT NULL,
+create table tbl_ceramics_lookup (
+    ceramics_lookup_id integer not null,
+    method_id integer not null,
     description text,
-    name character varying NOT NULL
+    name character varying not null
 );
 
 
-CREATE TABLE public.tbl_ceramics_measurements (
-    ceramics_measurement_id integer NOT NULL,
+create table tbl_ceramics_measurements (
+    ceramics_measurement_id integer not null,
     method_id integer
 );
 
 
-CREATE TABLE public.tbl_chronologies (
-    chronology_id integer NOT NULL,
+create table tbl_chronologies (
+    chronology_id integer not null,
     age_model text,
     relative_age_type_id integer,
     chronology_name text,
@@ -291,16 +295,16 @@ CREATE TABLE public.tbl_chronologies (
 );
 
 
-CREATE TABLE public.tbl_colours (
-    colour_id integer NOT NULL,
-    colour_name character varying(30) NOT NULL,
-    method_id integer NOT NULL,
+create table tbl_colours (
+    colour_id integer not null,
+    colour_name character varying(30) not null,
+    method_id integer not null,
     rgb integer
 );
 
 
-CREATE TABLE public.tbl_contacts (
-    contact_id integer NOT NULL,
+create table tbl_contacts (
+    contact_id integer not null,
     address_1 character varying(255),
     address_2 character varying(255),
     location_id integer,
@@ -312,104 +316,104 @@ CREATE TABLE public.tbl_contacts (
 );
 
 
-CREATE TABLE public.tbl_contact_types (
-    contact_type_id integer NOT NULL,
-    contact_type_name character varying(150) NOT NULL,
+create table tbl_contact_types (
+    contact_type_id integer not null,
+    contact_type_name character varying(150) not null,
     description text
 );
 
 
-CREATE TABLE public.tbl_coordinate_method_dimensions (
-    coordinate_method_dimension_id integer NOT NULL,
-    dimension_id integer NOT NULL,
-    method_id integer NOT NULL,
-    limit_upper numeric(18,10),
-    limit_lower numeric(18,10)
+create table tbl_coordinate_method_dimensions (
+    coordinate_method_dimension_id integer not null,
+    dimension_id integer not null,
+    method_id integer not null,
+    limit_upper numeric(18, 10),
+    limit_lower numeric(18, 10)
 );
 
 
-CREATE TABLE public.tbl_data_types (
-    data_type_id integer NOT NULL,
-    data_type_group_id integer NOT NULL,
-    data_type_name character varying(25) DEFAULT NULL::character varying,
+create table tbl_data_types (
+    data_type_id integer not null,
+    data_type_group_id integer not null,
+    data_type_name character varying(25) default null::character varying,
     definition text
 );
 
 
-CREATE TABLE public.tbl_data_type_groups (
-    data_type_group_id integer NOT NULL,
+create table tbl_data_type_groups (
+    data_type_group_id integer not null,
     data_type_group_name character varying(25),
     description text
 );
 
 
-CREATE TABLE public.tbl_datasets (
-    dataset_id integer NOT NULL,
+create table tbl_datasets (
+    dataset_id integer not null,
     master_set_id integer,
-    data_type_id integer NOT NULL,
+    data_type_id integer not null,
     method_id integer,
     biblio_id integer,
     updated_dataset_id integer,
     project_id integer,
-    dataset_name character varying(50) NOT NULL,
-    dataset_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    dataset_name character varying(50) not null,
+    dataset_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_dataset_contacts (
-    dataset_contact_id integer NOT NULL,
-    contact_id integer NOT NULL,
-    contact_type_id integer NOT NULL,
-    dataset_id integer NOT NULL
+create table tbl_dataset_contacts (
+    dataset_contact_id integer not null,
+    contact_id integer not null,
+    contact_type_id integer not null,
+    dataset_id integer not null
 );
 
 
-CREATE TABLE public.tbl_dataset_masters (
-    master_set_id integer NOT NULL,
+create table tbl_dataset_masters (
+    master_set_id integer not null,
     contact_id integer,
     biblio_id integer,
     master_name character varying(100),
     master_notes text,
     url text,
-    master_set_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    master_set_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_dataset_methods (
-    dataset_method_id integer NOT NULL,
-    dataset_id integer NOT NULL,
-    method_id integer NOT NULL
+create table tbl_dataset_methods (
+    dataset_method_id integer not null,
+    dataset_id integer not null,
+    method_id integer not null
 );
 
-CREATE TABLE public.tbl_dataset_submissions (
-    dataset_submission_id integer NOT NULL,
-    dataset_id integer NOT NULL,
-    submission_type_id integer NOT NULL,
-    contact_id integer NOT NULL,
+create table tbl_dataset_submissions (
+    dataset_submission_id integer not null,
+    dataset_id integer not null,
+    submission_type_id integer not null,
+    contact_id integer not null,
     date_submitted text,
     notes text
 );
 
 
-CREATE TABLE public.tbl_dataset_submission_types (
-    submission_type_id integer NOT NULL,
-    submission_type character varying(60) NOT NULL,
+create table tbl_dataset_submission_types (
+    submission_type_id integer not null,
+    submission_type character varying(60) not null,
     description text
 );
 
 
-CREATE TABLE public.tbl_dating_labs (
-    dating_lab_id integer NOT NULL,
+create table tbl_dating_labs (
+    dating_lab_id integer not null,
     contact_id integer,
-    international_lab_id character varying(10) NOT NULL,
-    lab_name character varying(100) DEFAULT NULL::character varying,
+    international_lab_id character varying(10) not null,
+    lab_name character varying(100) default null::character varying,
     country_id integer
 );
 
 
-CREATE TABLE public.tbl_dating_material (
-    dating_material_id integer NOT NULL,
-    geochron_id integer NOT NULL,
+create table tbl_dating_material (
+    dating_material_id integer not null,
+    geochron_id integer not null,
     taxon_id integer,
     material_dated character varying,
     description text,
@@ -417,183 +421,184 @@ CREATE TABLE public.tbl_dating_material (
 );
 
 
-CREATE TABLE public.tbl_dating_uncertainty (
-    dating_uncertainty_id integer NOT NULL,
+create table tbl_dating_uncertainty (
+    dating_uncertainty_id integer not null,
     description text,
     uncertainty character varying
 );
 
 
-CREATE TABLE public.tbl_dendro (
-    dendro_id integer NOT NULL,
-    analysis_entity_id integer NOT NULL,
-    measurement_value character varying NOT NULL,
-    dendro_lookup_id integer NOT NULL
+create table tbl_dendro (
+    dendro_id integer not null,
+    analysis_entity_id integer not null,
+    measurement_value character varying not null,
+    dendro_lookup_id integer not null
 );
 
-CREATE TABLE public.tbl_dendro_dates (
-    dendro_date_id integer NOT NULL,
+create table tbl_dendro_dates (
+    dendro_date_id integer not null,
     season_id integer,
     dating_uncertainty_id integer,
-    dendro_lookup_id integer NOT NULL,
-    age_type_id integer NOT NULL,
-    analysis_entity_id integer NOT NULL,
+    dendro_lookup_id integer not null,
+    age_type_id integer not null,
+    analysis_entity_id integer not null,
     age_older integer,
     age_younger integer,
-    age_range int4range GENERATED ALWAYS AS (
-CASE
-    WHEN ((age_younger IS NULL) AND (age_older IS NULL)) THEN NULL::int4range
-    ELSE int4range(COALESCE(age_older, age_younger), (COALESCE(age_younger, age_older) + 1))
-END) STORED
+    age_range int4range generated always as (
+        case
+            when ((age_younger is null) and (age_older is null)) then null::int4range
+            else int4range(coalesce(age_older, age_younger), (coalesce(age_younger, age_older) + 1))
+        end
+    ) stored
 );
 
 
-CREATE TABLE public.tbl_dendro_date_notes (
-    dendro_date_note_id integer NOT NULL,
-    dendro_date_id integer NOT NULL,
+create table tbl_dendro_date_notes (
+    dendro_date_note_id integer not null,
+    dendro_date_id integer not null,
     note text
 );
 
-CREATE TABLE public.tbl_dendro_lookup (
-    dendro_lookup_id integer NOT NULL,
+create table tbl_dendro_lookup (
+    dendro_lookup_id integer not null,
     method_id integer,
-    name character varying NOT NULL,
+    name character varying not null,
     description text
 );
 
 
-CREATE TABLE public.tbl_dimensions (
-    dimension_id integer NOT NULL,
+create table tbl_dimensions (
+    dimension_id integer not null,
     dimension_abbrev character varying(40),
     dimension_description text,
-    dimension_name character varying(50) NOT NULL,
+    dimension_name character varying(50) not null,
     unit_id integer,
     method_group_id integer
 );
 
 
-CREATE TABLE public.tbl_ecocodes (
-    ecocode_id integer NOT NULL,
-    ecocode_definition_id integer DEFAULT 0,
-    taxon_id integer DEFAULT 0
+create table tbl_ecocodes (
+    ecocode_id integer not null,
+    ecocode_definition_id integer default 0,
+    taxon_id integer default 0
 );
 
 
-CREATE TABLE public.tbl_ecocode_definitions (
-    ecocode_definition_id integer NOT NULL,
-    abbreviation character varying(10) DEFAULT NULL::character varying,
+create table tbl_ecocode_definitions (
+    ecocode_definition_id integer not null,
+    abbreviation character varying(10) default null::character varying,
     definition text,
-    ecocode_group_id integer DEFAULT 0,
-    name character varying(150) DEFAULT NULL::character varying,
+    ecocode_group_id integer default 0,
+    name character varying(150) default null::character varying,
     notes text,
-    sort_order smallint DEFAULT 0
+    sort_order smallint default 0
 );
 
 
-CREATE TABLE public.tbl_ecocode_groups (
-    ecocode_group_id integer NOT NULL,
-    definition text DEFAULT NULL::character varying,
-    ecocode_system_id integer DEFAULT 0,
-    name character varying(200) DEFAULT NULL::character varying,
+create table tbl_ecocode_groups (
+    ecocode_group_id integer not null,
+    definition text default null::character varying,
+    ecocode_system_id integer default 0,
+    name character varying(200) default null::character varying,
     abbreviation character varying(255)
 );
 
 
-CREATE TABLE public.tbl_ecocode_systems (
-    ecocode_system_id integer NOT NULL,
+create table tbl_ecocode_systems (
+    ecocode_system_id integer not null,
     biblio_id integer,
-    definition text DEFAULT NULL::character varying,
-    name character varying(50) DEFAULT NULL::character varying,
+    definition text default null::character varying,
+    name character varying(50) default null::character varying,
     notes text,
-    ecocode_system_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    ecocode_system_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_features (
-    feature_id integer NOT NULL,
-    feature_type_id integer NOT NULL,
+create table tbl_features (
+    feature_id integer not null,
+    feature_type_id integer not null,
     feature_name character varying,
     feature_description text
 );
 
 
-CREATE TABLE public.tbl_feature_types (
-    feature_type_id integer NOT NULL,
+create table tbl_feature_types (
+    feature_type_id integer not null,
     feature_type_name character varying(128),
     feature_type_description text
 );
 
 
-CREATE TABLE public.tbl_geochron_refs (
-    geochron_ref_id integer NOT NULL,
-    geochron_id integer NOT NULL,
-    biblio_id integer NOT NULL
+create table tbl_geochron_refs (
+    geochron_ref_id integer not null,
+    geochron_id integer not null,
+    biblio_id integer not null
 );
 
 
-CREATE TABLE public.tbl_geochronology (
-    geochron_id integer NOT NULL,
-    analysis_entity_id bigint NOT NULL,
+create table tbl_geochronology (
+    geochron_id integer not null,
+    analysis_entity_id bigint not null,
     dating_lab_id integer,
     lab_number character varying(40),
-    age numeric(20,5),
-    error_older numeric(20,5),
-    error_younger numeric(20,5),
-    delta_13c numeric(10,5),
+    age numeric(20, 5),
+    error_older numeric(20, 5),
+    error_younger numeric(20, 5),
+    delta_13c numeric(10, 5),
     notes text,
     dating_uncertainty_id integer,
-    geochron_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    geochron_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_horizons (
-    horizon_id integer NOT NULL,
+create table tbl_horizons (
+    horizon_id integer not null,
     description text,
-    horizon_name character varying(15) NOT NULL,
-    method_id integer NOT NULL
+    horizon_name character varying(15) not null,
+    method_id integer not null
 );
 
 
-CREATE TABLE public.tbl_identification_levels (
-    identification_level_id integer NOT NULL,
-    identification_level_abbrev character varying(50) DEFAULT NULL::character varying,
-    identification_level_name character varying(50) DEFAULT NULL::character varying,
+create table tbl_identification_levels (
+    identification_level_id integer not null,
+    identification_level_abbrev character varying(50) default null::character varying,
+    identification_level_name character varying(50) default null::character varying,
     notes text
 );
 
 
-CREATE TABLE public.tbl_image_types (
-    image_type_id integer NOT NULL,
+create table tbl_image_types (
+    image_type_id integer not null,
     description text,
-    image_type character varying(40) NOT NULL
+    image_type character varying(40) not null
 );
 
 
-CREATE TABLE public.tbl_imported_taxa_replacements (
-    imported_taxa_replacement_id integer NOT NULL,
-    imported_name_replaced character varying(100) NOT NULL,
-    taxon_id integer NOT NULL
+create table tbl_imported_taxa_replacements (
+    imported_taxa_replacement_id integer not null,
+    imported_name_replaced character varying(100) not null,
+    taxon_id integer not null
 );
 
-CREATE TABLE public.tbl_isotopes (
-    isotope_id integer NOT NULL,
-    analysis_entity_id integer NOT NULL,
-    isotope_measurement_id integer NOT NULL,
+create table tbl_isotopes (
+    isotope_id integer not null,
+    analysis_entity_id integer not null,
+    isotope_measurement_id integer not null,
     isotope_standard_id integer,
     measurement_value text,
-    unit_id integer NOT NULL,
-    isotope_value_specifier_id integer NOT NULL
+    unit_id integer not null,
+    isotope_value_specifier_id integer not null
 );
 
-CREATE TABLE public.tbl_isotope_measurements (
-    isotope_measurement_id integer NOT NULL,
+create table tbl_isotope_measurements (
+    isotope_measurement_id integer not null,
     isotope_standard_id integer,
     method_id integer,
     isotope_type_id integer
 );
 
-CREATE TABLE public.tbl_isotope_standards (
-    isotope_standard_id integer NOT NULL,
+create table tbl_isotope_standards (
+    isotope_standard_id integer not null,
     isotope_ration character varying,
     international_scale character varying,
     accepted_ratio_xe6 character varying,
@@ -602,8 +607,8 @@ CREATE TABLE public.tbl_isotope_standards (
 );
 
 
-CREATE TABLE public.tbl_isotope_types (
-    isotope_type_id integer NOT NULL,
+create table tbl_isotope_types (
+    isotope_type_id integer not null,
     designation character varying,
     abbreviation character varying,
     atomic_number numeric,
@@ -612,137 +617,137 @@ CREATE TABLE public.tbl_isotope_types (
 );
 
 
-CREATE TABLE public.tbl_isotope_value_specifiers (
-    isotope_value_specifier_id integer NOT NULL,
-    name character varying NOT NULL,
-    description text NOT NULL
+create table tbl_isotope_value_specifiers (
+    isotope_value_specifier_id integer not null,
+    name character varying not null,
+    description text not null
 );
 
-CREATE TABLE public.tbl_languages (
-    language_id integer NOT NULL,
-    language_name_english character varying(100) DEFAULT NULL::character varying,
-    language_name_native character varying(100) DEFAULT NULL::character varying
+create table tbl_languages (
+    language_id integer not null,
+    language_name_english character varying(100) default null::character varying,
+    language_name_native character varying(100) default null::character varying
 );
 
 
-CREATE TABLE public.tbl_lithology (
-    lithology_id integer NOT NULL,
-    depth_bottom numeric(20,5),
-    depth_top numeric(20,5) NOT NULL,
-    description text NOT NULL,
+create table tbl_lithology (
+    lithology_id integer not null,
+    depth_bottom numeric(20, 5),
+    depth_top numeric(20, 5) not null,
+    description text not null,
     lower_boundary character varying(255),
-    sample_group_id integer NOT NULL
+    sample_group_id integer not null
 );
 
 
-CREATE TABLE public.tbl_locations (
-    location_id integer NOT NULL,
-    location_name character varying(255) NOT NULL,
-    location_type_id integer NOT NULL,
-    default_lat_dd numeric(18,10),
-    default_long_dd numeric(18,10)
+create table tbl_locations (
+    location_id integer not null,
+    location_name character varying(255) not null,
+    location_type_id integer not null,
+    default_lat_dd numeric(18, 10),
+    default_long_dd numeric(18, 10)
 );
 
 
-CREATE TABLE public.tbl_location_types (
-    location_type_id integer NOT NULL,
+create table tbl_location_types (
+    location_type_id integer not null,
     description text,
     location_type character varying(40)
 );
 
 
-CREATE TABLE public.tbl_mcr_names (
-    taxon_id integer NOT NULL,
-    comparison_notes character varying(255) DEFAULT NULL::character varying,
-    mcr_name_trim character varying(80) DEFAULT NULL::character varying,
-    mcr_number smallint DEFAULT 0,
-    mcr_species_name character varying(200) DEFAULT NULL::character varying
+create table tbl_mcr_names (
+    taxon_id integer not null,
+    comparison_notes character varying(255) default null::character varying,
+    mcr_name_trim character varying(80) default null::character varying,
+    mcr_number smallint default 0,
+    mcr_species_name character varying(200) default null::character varying
 );
 
 
-CREATE TABLE public.tbl_mcr_summary_data (
-    mcr_summary_data_id integer NOT NULL,
-    cog_mid_tmax smallint DEFAULT 0,
-    cog_mid_trange smallint DEFAULT 0,
-    taxon_id integer NOT NULL,
-    tmax_hi smallint DEFAULT 0,
-    tmax_lo smallint DEFAULT 0,
-    tmin_hi smallint DEFAULT 0,
-    tmin_lo smallint DEFAULT 0,
-    trange_hi smallint DEFAULT 0,
-    trange_lo smallint DEFAULT 0
+create table tbl_mcr_summary_data (
+    mcr_summary_data_id integer not null,
+    cog_mid_tmax smallint default 0,
+    cog_mid_trange smallint default 0,
+    taxon_id integer not null,
+    tmax_hi smallint default 0,
+    tmax_lo smallint default 0,
+    tmin_hi smallint default 0,
+    tmin_lo smallint default 0,
+    trange_hi smallint default 0,
+    trange_lo smallint default 0
 );
 
 
-CREATE TABLE public.tbl_mcrdata_birmbeetledat (
-    mcrdata_birmbeetledat_id integer NOT NULL,
+create table tbl_mcrdata_birmbeetledat (
+    mcrdata_birmbeetledat_id integer not null,
     mcr_data text,
-    mcr_row smallint NOT NULL,
-    taxon_id integer NOT NULL
+    mcr_row smallint not null,
+    taxon_id integer not null
 );
 
 
-CREATE TABLE public.tbl_measured_values (
-    measured_value_id bigint NOT NULL,
-    analysis_entity_id bigint NOT NULL,
-    measured_value numeric(20,10) NOT NULL
+create table tbl_measured_values (
+    measured_value_id bigint not null,
+    analysis_entity_id bigint not null,
+    measured_value numeric(20, 10) not null
 );
 
 
-CREATE TABLE public.tbl_measured_value_dimensions (
-    measured_value_dimension_id integer NOT NULL,
-    dimension_id integer NOT NULL,
-    dimension_value numeric(18,10) NOT NULL,
-    measured_value_id bigint NOT NULL
+create table tbl_measured_value_dimensions (
+    measured_value_dimension_id integer not null,
+    dimension_id integer not null,
+    dimension_value numeric(18, 10) not null,
+    measured_value_id bigint not null
 );
 
 
-CREATE TABLE public.tbl_methods (
-    method_id integer NOT NULL,
+create table tbl_methods (
+    method_id integer not null,
     biblio_id integer,
-    description text NOT NULL,
+    description text not null,
     method_abbrev_or_alt_name character varying(50),
-    method_group_id integer NOT NULL,
-    method_name character varying(50) NOT NULL,
+    method_group_id integer not null,
+    method_name character varying(50) not null,
     record_type_id integer,
     unit_id integer,
-    method_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    method_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_method_groups (
-    method_group_id integer NOT NULL,
-    description text NOT NULL,
-    group_name character varying(100) NOT NULL
+create table tbl_method_groups (
+    method_group_id integer not null,
+    description text not null,
+    group_name character varying(100) not null
 );
 
 
-CREATE TABLE public.tbl_modification_types (
-    modification_type_id integer NOT NULL,
+create table tbl_modification_types (
+    modification_type_id integer not null,
     modification_type_name character varying(128),
     modification_type_description text
 );
 
 
-CREATE TABLE public.tbl_physical_samples (
-    physical_sample_id integer NOT NULL,
-    sample_group_id integer DEFAULT 0 NOT NULL,
+create table tbl_physical_samples (
+    physical_sample_id integer not null,
+    sample_group_id integer default 0 not null,
     alt_ref_type_id integer,
-    sample_type_id integer NOT NULL,
-    sample_name character varying(50) NOT NULL,
+    sample_type_id integer not null,
+    sample_name character varying(50) not null,
     date_sampled character varying
 );
 
 
-CREATE TABLE public.tbl_physical_sample_features (
-    physical_sample_feature_id integer NOT NULL,
-    feature_id integer NOT NULL,
-    physical_sample_id integer NOT NULL
+create table tbl_physical_sample_features (
+    physical_sample_feature_id integer not null,
+    feature_id integer not null,
+    physical_sample_id integer not null
 );
 
 
-CREATE TABLE public.tbl_projects (
-    project_id integer NOT NULL,
+create table tbl_projects (
+    project_id integer not null,
     project_type_id integer,
     project_stage_id integer,
     project_name character varying(150),
@@ -751,358 +756,358 @@ CREATE TABLE public.tbl_projects (
 );
 
 
-CREATE TABLE public.tbl_project_stages (
-    project_stage_id integer NOT NULL,
+create table tbl_project_stages (
+    project_stage_id integer not null,
     stage_name character varying,
     description text
 );
 
 
-CREATE TABLE public.tbl_project_types (
-    project_type_id integer NOT NULL,
+create table tbl_project_types (
+    project_type_id integer not null,
     project_type_name character varying,
     description text
 );
 
 
-CREATE TABLE public.tbl_rdb (
-    rdb_id integer NOT NULL,
-    location_id integer NOT NULL,
+create table tbl_rdb (
+    rdb_id integer not null,
+    location_id integer not null,
     rdb_code_id integer,
-    taxon_id integer NOT NULL
+    taxon_id integer not null
 );
 
 
-CREATE TABLE public.tbl_rdb_codes (
-    rdb_code_id integer NOT NULL,
-    rdb_category character varying(4) DEFAULT NULL::character varying,
-    rdb_definition character varying(200) DEFAULT NULL::character varying,
-    rdb_system_id integer DEFAULT 0
+create table tbl_rdb_codes (
+    rdb_code_id integer not null,
+    rdb_category character varying(4) default null::character varying,
+    rdb_definition character varying(200) default null::character varying,
+    rdb_system_id integer default 0
 );
 
 
-CREATE TABLE public.tbl_rdb_systems (
-    rdb_system_id integer NOT NULL,
-    biblio_id integer NOT NULL,
-    location_id integer NOT NULL,
+create table tbl_rdb_systems (
+    rdb_system_id integer not null,
+    biblio_id integer not null,
+    location_id integer not null,
     rdb_first_published smallint,
-    rdb_system character varying(10) DEFAULT NULL::character varying,
+    rdb_system character varying(10) default null::character varying,
     rdb_system_date integer,
-    rdb_version character varying(10) DEFAULT NULL::character varying,
-    rdb_system_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    rdb_version character varying(10) default null::character varying,
+    rdb_system_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_record_types (
-    record_type_id integer NOT NULL,
-    record_type_name character varying(50) DEFAULT NULL::character varying,
+create table tbl_record_types (
+    record_type_id integer not null,
+    record_type_name character varying(50) default null::character varying,
     record_type_description text
 );
 
 
-CREATE TABLE public.tbl_relative_ages (
-    relative_age_id integer NOT NULL,
+create table tbl_relative_ages (
+    relative_age_id integer not null,
     relative_age_type_id integer,
     relative_age_name character varying(50),
     description text,
-    c14_age_older numeric(20,5),
-    c14_age_younger numeric(20,5),
-    cal_age_older numeric(20,5),
-    cal_age_younger numeric(20,5),
+    c14_age_older numeric(20, 5),
+    c14_age_younger numeric(20, 5),
+    cal_age_older numeric(20, 5),
+    cal_age_younger numeric(20, 5),
     notes text,
     location_id integer,
     abbreviation character varying,
-    relative_age_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    relative_age_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_relative_age_refs (
-    relative_age_ref_id integer NOT NULL,
-    biblio_id integer NOT NULL,
-    relative_age_id integer NOT NULL
+create table tbl_relative_age_refs (
+    relative_age_ref_id integer not null,
+    biblio_id integer not null,
+    relative_age_id integer not null
 );
 
 
-CREATE TABLE public.tbl_relative_age_types (
-    relative_age_type_id integer NOT NULL,
+create table tbl_relative_age_types (
+    relative_age_type_id integer not null,
     age_type character varying,
     description text
 );
 
 
-CREATE TABLE public.tbl_relative_dates (
-    relative_date_id integer NOT NULL,
+create table tbl_relative_dates (
+    relative_date_id integer not null,
     relative_age_id integer,
     method_id integer,
     notes text,
     dating_uncertainty_id integer,
-    analysis_entity_id integer NOT NULL
+    analysis_entity_id integer not null
 );
 
 
-CREATE TABLE public.tbl_sample_alt_refs (
-    sample_alt_ref_id integer NOT NULL,
-    alt_ref character varying(80) NOT NULL,
-    alt_ref_type_id integer NOT NULL,
-    physical_sample_id integer NOT NULL
+create table tbl_sample_alt_refs (
+    sample_alt_ref_id integer not null,
+    alt_ref character varying(80) not null,
+    alt_ref_type_id integer not null,
+    physical_sample_id integer not null
 );
 
 
-CREATE TABLE public.tbl_sample_colours (
-    sample_colour_id integer NOT NULL,
-    colour_id integer NOT NULL,
-    physical_sample_id integer NOT NULL
+create table tbl_sample_colours (
+    sample_colour_id integer not null,
+    colour_id integer not null,
+    physical_sample_id integer not null
 );
 
 
-CREATE TABLE public.tbl_sample_coordinates (
-    sample_coordinate_id integer NOT NULL,
-    physical_sample_id integer NOT NULL,
-    coordinate_method_dimension_id integer NOT NULL,
-    measurement numeric(20,10) NOT NULL,
-    accuracy numeric(20,10)
+create table tbl_sample_coordinates (
+    sample_coordinate_id integer not null,
+    physical_sample_id integer not null,
+    coordinate_method_dimension_id integer not null,
+    measurement numeric(20, 10) not null,
+    accuracy numeric(20, 10)
 );
 
 
-CREATE TABLE public.tbl_sample_descriptions (
-    sample_description_id integer NOT NULL,
-    sample_description_type_id integer NOT NULL,
-    physical_sample_id integer NOT NULL,
+create table tbl_sample_descriptions (
+    sample_description_id integer not null,
+    sample_description_type_id integer not null,
+    physical_sample_id integer not null,
     description character varying
 );
 
 
-CREATE TABLE public.tbl_sample_description_sample_group_contexts (
-    sample_description_sample_group_context_id integer NOT NULL,
+create table tbl_sample_description_sample_group_contexts (
+    sample_description_sample_group_context_id integer not null,
     sampling_context_id integer,
     sample_description_type_id integer
 );
 
 
-CREATE TABLE public.tbl_sample_description_types (
-    sample_description_type_id integer NOT NULL,
+create table tbl_sample_description_types (
+    sample_description_type_id integer not null,
     type_name character varying(255),
     type_description text
 );
 
 
-CREATE TABLE public.tbl_sample_dimensions (
-    sample_dimension_id integer NOT NULL,
-    physical_sample_id integer NOT NULL,
-    dimension_id integer NOT NULL,
-    method_id integer NOT NULL,
-    dimension_value numeric(20,10) NOT NULL,
+create table tbl_sample_dimensions (
+    sample_dimension_id integer not null,
+    physical_sample_id integer not null,
+    dimension_id integer not null,
+    method_id integer not null,
+    dimension_value numeric(20, 10) not null,
     qualifier_id integer
 );
 
 
-CREATE TABLE public.tbl_sample_groups (
-    sample_group_id integer NOT NULL,
-    site_id integer DEFAULT 0,
+create table tbl_sample_groups (
+    sample_group_id integer not null,
+    site_id integer default 0,
     sampling_context_id integer,
-    method_id integer NOT NULL,
-    sample_group_name character varying(100) DEFAULT NULL::character varying,
+    method_id integer not null,
+    sample_group_name character varying(100) default null::character varying,
     sample_group_description text,
-    sample_group_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    sample_group_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_sample_group_coordinates (
-    sample_group_position_id integer NOT NULL,
-    coordinate_method_dimension_id integer NOT NULL,
-    sample_group_position numeric(20,10),
+create table tbl_sample_group_coordinates (
+    sample_group_position_id integer not null,
+    coordinate_method_dimension_id integer not null,
+    sample_group_position numeric(20, 10),
     position_accuracy character varying(128),
-    sample_group_id integer NOT NULL
+    sample_group_id integer not null
 );
 
 
-CREATE TABLE public.tbl_sample_group_descriptions (
-    sample_group_description_id integer NOT NULL,
+create table tbl_sample_group_descriptions (
+    sample_group_description_id integer not null,
     group_description character varying,
-    sample_group_description_type_id integer NOT NULL,
+    sample_group_description_type_id integer not null,
     sample_group_id integer
 );
 
 
-CREATE TABLE public.tbl_sample_group_description_types (
-    sample_group_description_type_id integer NOT NULL,
+create table tbl_sample_group_description_types (
+    sample_group_description_type_id integer not null,
     type_name character varying(255),
     type_description character varying
 );
 
 
-CREATE TABLE public.tbl_sample_group_description_type_sampling_contexts (
-    sample_group_description_type_sampling_context_id integer NOT NULL,
-    sampling_context_id integer NOT NULL,
-    sample_group_description_type_id integer NOT NULL
+create table tbl_sample_group_description_type_sampling_contexts (
+    sample_group_description_type_sampling_context_id integer not null,
+    sampling_context_id integer not null,
+    sample_group_description_type_id integer not null
 );
 
 
-CREATE TABLE public.tbl_sample_group_dimensions (
-    sample_group_dimension_id integer NOT NULL,
-    dimension_id integer NOT NULL,
-    dimension_value numeric(20,5) NOT NULL,
-    sample_group_id integer NOT NULL,
+create table tbl_sample_group_dimensions (
+    sample_group_dimension_id integer not null,
+    dimension_id integer not null,
+    dimension_value numeric(20, 5) not null,
+    sample_group_id integer not null,
     qualifier_id integer
 );
 
 
-CREATE TABLE public.tbl_sample_group_images (
-    sample_group_image_id integer NOT NULL,
+create table tbl_sample_group_images (
+    sample_group_image_id integer not null,
     description text,
-    image_location text NOT NULL,
+    image_location text not null,
     image_name character varying(80),
-    image_type_id integer NOT NULL,
-    sample_group_id integer NOT NULL
+    image_type_id integer not null,
+    sample_group_id integer not null
 );
 
 
-CREATE TABLE public.tbl_sample_group_notes (
-    sample_group_note_id integer NOT NULL,
-    sample_group_id integer NOT NULL,
+create table tbl_sample_group_notes (
+    sample_group_note_id integer not null,
+    sample_group_id integer not null,
     note character varying
 );
 
 
-CREATE TABLE public.tbl_sample_group_references (
-    sample_group_reference_id integer NOT NULL,
-    biblio_id integer NOT NULL,
-    sample_group_id integer DEFAULT 0
+create table tbl_sample_group_references (
+    sample_group_reference_id integer not null,
+    biblio_id integer not null,
+    sample_group_id integer default 0
 );
 
 
-CREATE TABLE public.tbl_sample_group_sampling_contexts (
-    sampling_context_id integer NOT NULL,
-    sampling_context character varying(80) NOT NULL,
+create table tbl_sample_group_sampling_contexts (
+    sampling_context_id integer not null,
+    sampling_context character varying(80) not null,
     description text,
-    sort_order smallint DEFAULT 0 NOT NULL
+    sort_order smallint default 0 not null
 );
 
 
-CREATE TABLE public.tbl_sample_horizons (
-    sample_horizon_id integer NOT NULL,
-    horizon_id integer NOT NULL,
-    physical_sample_id integer NOT NULL
+create table tbl_sample_horizons (
+    sample_horizon_id integer not null,
+    horizon_id integer not null,
+    physical_sample_id integer not null
 );
 
 
-CREATE TABLE public.tbl_sample_images (
-    sample_image_id integer NOT NULL,
+create table tbl_sample_images (
+    sample_image_id integer not null,
     description text,
-    image_location text NOT NULL,
+    image_location text not null,
     image_name character varying(80),
-    image_type_id integer NOT NULL,
-    physical_sample_id integer NOT NULL
+    image_type_id integer not null,
+    physical_sample_id integer not null
 );
 
 
-CREATE TABLE public.tbl_sample_locations (
-    sample_location_id integer NOT NULL,
-    sample_location_type_id integer NOT NULL,
-    physical_sample_id integer NOT NULL,
+create table tbl_sample_locations (
+    sample_location_id integer not null,
+    sample_location_type_id integer not null,
+    physical_sample_id integer not null,
     location character varying(255)
 );
 
 
-CREATE TABLE public.tbl_sample_location_types (
-    sample_location_type_id integer NOT NULL,
+create table tbl_sample_location_types (
+    sample_location_type_id integer not null,
     location_type character varying(255),
     location_type_description text
 );
 
 
-CREATE TABLE public.tbl_sample_location_type_sampling_contexts (
-    sample_location_type_sampling_context_id integer NOT NULL,
-    sampling_context_id integer NOT NULL,
-    sample_location_type_id integer NOT NULL
+create table tbl_sample_location_type_sampling_contexts (
+    sample_location_type_sampling_context_id integer not null,
+    sampling_context_id integer not null,
+    sample_location_type_id integer not null
 );
 
 
-CREATE TABLE public.tbl_sample_notes (
-    sample_note_id integer NOT NULL,
-    physical_sample_id integer NOT NULL,
+create table tbl_sample_notes (
+    sample_note_id integer not null,
+    physical_sample_id integer not null,
     note_type character varying,
-    note text NOT NULL
+    note text not null
 );
 
 
-CREATE TABLE public.tbl_sample_types (
-    sample_type_id integer NOT NULL,
-    type_name character varying(40) NOT NULL,
+create table tbl_sample_types (
+    sample_type_id integer not null,
+    type_name character varying(40) not null,
     description text
 );
 
 
-CREATE TABLE public.tbl_seasons (
-    season_id integer NOT NULL,
-    season_name character varying(20) DEFAULT NULL::character varying,
-    season_type character varying(30) DEFAULT NULL::character varying,
+create table tbl_seasons (
+    season_id integer not null,
+    season_name character varying(20) default null::character varying,
+    season_type character varying(30) default null::character varying,
     season_type_id integer,
-    sort_order smallint DEFAULT 0
+    sort_order smallint default 0
 );
 
 
-CREATE TABLE public.tbl_season_types (
-    season_type_id integer NOT NULL,
+create table tbl_season_types (
+    season_type_id integer not null,
     description text,
     season_type character varying(30)
 );
 
 
-CREATE TABLE public.tbl_sites (
-    site_id integer NOT NULL,
-    altitude numeric(18,10),
-    latitude_dd numeric(18,10),
-    longitude_dd numeric(18,10),
+create table tbl_sites (
+    site_id integer not null,
+    altitude numeric(18, 10),
+    latitude_dd numeric(18, 10),
+    longitude_dd numeric(18, 10),
     national_site_identifier character varying(255),
-    site_description text DEFAULT NULL::character varying,
-    site_name character varying(60) DEFAULT NULL::character varying,
+    site_description text default null::character varying,
+    site_name character varying(60) default null::character varying,
     site_preservation_status_id integer,
     site_location_accuracy character varying,
-    site_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    site_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_site_images (
-    site_image_id integer NOT NULL,
+create table tbl_site_images (
+    site_image_id integer not null,
     contact_id integer,
     credit character varying(100),
     date_taken date,
     description text,
-    image_location text NOT NULL,
+    image_location text not null,
     image_name character varying(80),
-    image_type_id integer NOT NULL,
-    site_id integer NOT NULL
+    image_type_id integer not null,
+    site_id integer not null
 );
 
 
-CREATE TABLE public.tbl_site_locations (
-    site_location_id integer NOT NULL,
-    location_id integer NOT NULL,
-    site_id integer NOT NULL
+create table tbl_site_locations (
+    site_location_id integer not null,
+    location_id integer not null,
+    site_id integer not null
 );
 
 
-CREATE TABLE public.tbl_site_natgridrefs (
-    site_natgridref_id integer NOT NULL,
-    site_id integer NOT NULL,
-    method_id integer NOT NULL,
-    natgridref character varying NOT NULL
+create table tbl_site_natgridrefs (
+    site_natgridref_id integer not null,
+    site_id integer not null,
+    method_id integer not null,
+    natgridref character varying not null
 );
 
 
-CREATE TABLE public.tbl_site_other_records (
-    site_other_records_id integer NOT NULL,
+create table tbl_site_other_records (
+    site_other_records_id integer not null,
     site_id integer,
     biblio_id integer,
     record_type_id integer,
     description text,
-    site_other_records_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    site_other_records_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_site_preservation_status (
-    site_preservation_status_id integer NOT NULL,
+create table tbl_site_preservation_status (
+    site_preservation_status_id integer not null,
     site_id integer,
     preservation_status_or_threat character varying,
     description text,
@@ -1112,340 +1117,335 @@ CREATE TABLE public.tbl_site_preservation_status (
 );
 
 
-CREATE TABLE public.tbl_site_references (
-    site_reference_id integer NOT NULL,
-    site_id integer DEFAULT 0,
-    biblio_id integer NOT NULL
+create table tbl_site_references (
+    site_reference_id integer not null,
+    site_id integer default 0,
+    biblio_id integer not null
 );
 
 
-CREATE TABLE public.tbl_species_associations (
-    species_association_id integer NOT NULL,
-    associated_taxon_id integer NOT NULL,
+create table tbl_species_associations (
+    species_association_id integer not null,
+    associated_taxon_id integer not null,
     biblio_id integer,
-    taxon_id integer NOT NULL,
+    taxon_id integer not null,
     association_type_id integer,
     referencing_type text,
-    species_association_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    species_association_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_species_association_types (
-    association_type_id integer NOT NULL,
+create table tbl_species_association_types (
+    association_type_id integer not null,
     association_type_name character varying(255),
     association_description text
 );
 
 
-CREATE TABLE public.tbl_taxa_common_names (
-    taxon_common_name_id integer NOT NULL,
-    common_name character varying(255) DEFAULT NULL::character varying,
-    language_id integer DEFAULT 0,
-    taxon_id integer DEFAULT 0
+create table tbl_taxa_common_names (
+    taxon_common_name_id integer not null,
+    common_name character varying(255) default null::character varying,
+    language_id integer default 0,
+    taxon_id integer default 0
 );
 
 
-CREATE TABLE public.tbl_taxa_images (
-    taxa_images_id integer NOT NULL,
+create table tbl_taxa_images (
+    taxa_images_id integer not null,
     image_name character varying,
     description text,
     image_location text,
     image_type_id integer,
-    taxon_id integer NOT NULL
+    taxon_id integer not null
 );
 
 
-CREATE TABLE public.tbl_taxa_measured_attributes (
-    measured_attribute_id integer NOT NULL,
-    attribute_measure character varying(255) DEFAULT NULL::character varying,
-    attribute_type character varying(255) DEFAULT NULL::character varying,
-    attribute_units character varying(10) DEFAULT NULL::character varying,
-    data numeric(18,10) DEFAULT 0,
-    taxon_id integer NOT NULL
+create table tbl_taxa_measured_attributes (
+    measured_attribute_id integer not null,
+    attribute_measure character varying(255) default null::character varying,
+    attribute_type character varying(255) default null::character varying,
+    attribute_units character varying(10) default null::character varying,
+    data numeric(18, 10) default 0,
+    taxon_id integer not null
 );
 
 
-CREATE TABLE public.tbl_taxa_reference_specimens (
-    taxa_reference_specimen_id integer NOT NULL,
-    taxon_id integer NOT NULL,
-    contact_id integer NOT NULL,
+create table tbl_taxa_reference_specimens (
+    taxa_reference_specimen_id integer not null,
+    taxon_id integer not null,
+    contact_id integer not null,
     notes text
 );
 
 
-CREATE TABLE public.tbl_taxa_seasonality (
-    seasonality_id integer NOT NULL,
-    activity_type_id integer NOT NULL,
-    season_id integer DEFAULT 0,
-    taxon_id integer NOT NULL,
-    location_id integer NOT NULL
+create table tbl_taxa_seasonality (
+    seasonality_id integer not null,
+    activity_type_id integer not null,
+    season_id integer default 0,
+    taxon_id integer not null,
+    location_id integer not null
 );
 
 
-CREATE TABLE public.tbl_taxa_synonyms (
-    synonym_id integer NOT NULL,
-    biblio_id integer NOT NULL,
+create table tbl_taxa_synonyms (
+    synonym_id integer not null,
+    biblio_id integer not null,
     family_id integer,
     genus_id integer,
-    notes text DEFAULT NULL::character varying,
+    notes text default null::character varying,
     taxon_id integer,
     author_id integer,
     synonym character varying(255),
     reference_type character varying,
-    synonym_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    synonym_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_taxa_tree_authors (
-    author_id integer NOT NULL,
-    author_name character varying(100) DEFAULT NULL::character varying
+create table tbl_taxa_tree_authors (
+    author_id integer not null,
+    author_name character varying(100) default null::character varying
 );
 
 
-CREATE TABLE public.tbl_taxa_tree_families (
-    family_id integer NOT NULL,
-    family_name character varying(100) DEFAULT NULL::character varying,
-    order_id integer NOT NULL
+create table tbl_taxa_tree_families (
+    family_id integer not null,
+    family_name character varying(100) default null::character varying,
+    order_id integer not null
 );
 
 
-CREATE TABLE public.tbl_taxa_tree_genera (
-    genus_id integer NOT NULL,
+create table tbl_taxa_tree_genera (
+    genus_id integer not null,
     family_id integer,
-    genus_name character varying(100) DEFAULT NULL::character varying
+    genus_name character varying(100) default null::character varying
 );
 
 
-CREATE TABLE public.tbl_taxa_tree_master (
-    taxon_id integer NOT NULL,
+create table tbl_taxa_tree_master (
+    taxon_id integer not null,
     author_id integer,
     genus_id integer,
-    species character varying(255) DEFAULT NULL::character varying
+    species character varying(255) default null::character varying
 );
 
 
-CREATE TABLE public.tbl_taxa_tree_orders (
-    order_id integer NOT NULL,
-    order_name character varying(50) DEFAULT NULL::character varying,
+create table tbl_taxa_tree_orders (
+    order_id integer not null,
+    order_name character varying(50) default null::character varying,
     record_type_id integer,
     sort_order integer
 );
 
 
-CREATE TABLE public.tbl_taxonomic_order (
-    taxonomic_order_id integer NOT NULL,
-    taxon_id integer DEFAULT 0,
-    taxonomic_code numeric(18,10) DEFAULT 0,
-    taxonomic_order_system_id integer DEFAULT 0
+create table tbl_taxonomic_order (
+    taxonomic_order_id integer not null,
+    taxon_id integer default 0,
+    taxonomic_code numeric(18, 10) default 0,
+    taxonomic_order_system_id integer default 0
 );
 
 
-CREATE TABLE public.tbl_taxonomic_order_biblio (
-    taxonomic_order_biblio_id integer NOT NULL,
-    biblio_id integer DEFAULT 0,
-    taxonomic_order_system_id integer DEFAULT 0
+create table tbl_taxonomic_order_biblio (
+    taxonomic_order_biblio_id integer not null,
+    biblio_id integer default 0,
+    taxonomic_order_system_id integer default 0
 );
 
 
-CREATE TABLE public.tbl_taxonomic_order_systems (
-    taxonomic_order_system_id integer NOT NULL,
+create table tbl_taxonomic_order_systems (
+    taxonomic_order_system_id integer not null,
     system_description text,
-    system_name character varying(50) DEFAULT NULL::character varying,
-    taxonomic_order_system_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    system_name character varying(50) default null::character varying,
+    taxonomic_order_system_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_taxonomy_notes (
-    taxonomy_notes_id integer NOT NULL,
-    biblio_id integer NOT NULL,
-    taxon_id integer NOT NULL,
+create table tbl_taxonomy_notes (
+    taxonomy_notes_id integer not null,
+    biblio_id integer not null,
+    taxon_id integer not null,
     taxonomy_notes text,
-    taxonomy_notes_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    taxonomy_notes_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_temperatures (
-    record_id integer NOT NULL,
-    years_bp integer NOT NULL,
+create table tbl_temperatures (
+    record_id integer not null,
+    years_bp integer not null,
     d180_gisp2 numeric
 );
 
 
-CREATE TABLE public.tbl_tephras (
-    tephra_id integer NOT NULL,
-    c14_age numeric(20,5),
-    c14_age_older numeric(20,5),
-    c14_age_younger numeric(20,5),
-    cal_age numeric(20,5),
-    cal_age_older numeric(20,5),
-    cal_age_younger numeric(20,5),
+create table tbl_tephras (
+    tephra_id integer not null,
+    c14_age numeric(20, 5),
+    c14_age_older numeric(20, 5),
+    c14_age_younger numeric(20, 5),
+    cal_age numeric(20, 5),
+    cal_age_older numeric(20, 5),
+    cal_age_younger numeric(20, 5),
     notes text,
     tephra_name character varying(80),
-    tephra_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    tephra_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_tephra_dates (
-    tephra_date_id integer NOT NULL,
-    analysis_entity_id bigint NOT NULL,
+create table tbl_tephra_dates (
+    tephra_date_id integer not null,
+    analysis_entity_id bigint not null,
     notes text,
-    tephra_id integer NOT NULL,
+    tephra_id integer not null,
     dating_uncertainty_id integer
 );
 
 
-CREATE TABLE public.tbl_tephra_refs (
-    tephra_ref_id integer NOT NULL,
-    biblio_id integer NOT NULL,
-    tephra_id integer NOT NULL
+create table tbl_tephra_refs (
+    tephra_ref_id integer not null,
+    biblio_id integer not null,
+    tephra_id integer not null
 );
 
 
-CREATE TABLE public.tbl_text_biology (
-    biology_id integer NOT NULL,
-    biblio_id integer NOT NULL,
+create table tbl_text_biology (
+    biology_id integer not null,
+    biblio_id integer not null,
     biology_text text,
-    taxon_id integer NOT NULL,
-    biology_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    taxon_id integer not null,
+    biology_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_text_distribution (
-    distribution_id integer NOT NULL,
-    biblio_id integer NOT NULL,
+create table tbl_text_distribution (
+    distribution_id integer not null,
+    biblio_id integer not null,
     distribution_text text,
-    taxon_id integer NOT NULL,
-    distribution_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    taxon_id integer not null,
+    distribution_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_text_identification_keys (
-    key_id integer NOT NULL,
-    biblio_id integer NOT NULL,
+create table tbl_text_identification_keys (
+    key_id integer not null,
+    biblio_id integer not null,
     key_text text,
-    taxon_id integer NOT NULL,
-    key_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    taxon_id integer not null,
+    key_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_units (
-    unit_id integer NOT NULL,
+create table tbl_units (
+    unit_id integer not null,
     description text,
     unit_abbrev character varying(15),
-    unit_name character varying(50) NOT NULL
+    unit_name character varying(50) not null
 );
 
 
-CREATE TABLE public.tbl_updates_log (
-    updates_log_id integer NOT NULL,
-    table_name character varying(150) NOT NULL,
-    last_updated date NOT NULL
+create table tbl_updates_log (
+    updates_log_id integer not null,
+    table_name character varying(150) not null,
+    last_updated date not null
 );
 
-CREATE TABLE public.tbl_value_classes (
-    value_class_id integer NOT NULL,
-    value_type_id integer NOT NULL,
-    method_id integer NOT NULL,
+create table tbl_value_classes (
+    value_class_id integer not null,
+    value_type_id integer not null,
+    method_id integer not null,
     parent_id integer,
-    name character varying(80) NOT NULL,
-    description text NOT NULL,
-    value_class_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    name character varying(80) not null,
+    description text not null,
+    value_class_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_value_qualifiers (
-    qualifier_id integer NOT NULL,
-    symbol text NOT NULL,
-    description text NOT NULL,
-    qualifier_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+create table tbl_value_qualifiers (
+    qualifier_id integer not null,
+    symbol text not null,
+    description text not null,
+    qualifier_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_value_qualifier_symbols (
-    qualifier_symbol_id integer NOT NULL,
-    symbol text NOT NULL,
-    cardinal_qualifier_id integer NOT NULL,
-    qualifier_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+create table tbl_value_qualifier_symbols (
+    qualifier_symbol_id integer not null,
+    symbol text not null,
+    cardinal_qualifier_id integer not null,
+    qualifier_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_value_types (
-    value_type_id integer NOT NULL,
+create table tbl_value_types (
+    value_type_id integer not null,
     unit_id integer,
     data_type_id integer,
-    name text NOT NULL,
-    base_type text NOT NULL,
-    "precision" integer,
-    description text NOT NULL,
-    value_type_uuid uuid DEFAULT public.uuid_generate_v4() NOT NULL
+    name text not null,
+    base_type text not null,
+    precision integer,
+    description text not null,
+    value_type_uuid uuid default public.uuid_generate_v4() not null
 );
 
 
-CREATE TABLE public.tbl_value_type_items (
-    value_type_item_id integer NOT NULL,
-    value_type_id integer NOT NULL,
-    name character varying(80) DEFAULT NULL::character varying,
+create table tbl_value_type_items (
+    value_type_item_id integer not null,
+    value_type_id integer not null,
+    name character varying(80) default null::character varying,
     description text
 );
 
 
-CREATE TABLE public.tbl_years_types (
-    years_type_id integer NOT NULL,
-    name character varying NOT NULL,
+create table tbl_years_types (
+    years_type_id integer not null,
+    name character varying not null,
     description text
 );
 
 
-CREATE TABLE public.tbl_abundance_properties (
-    abundance_property_id integer NOT NULL,
-    abundance_id integer NOT NULL,
-    property_type_id integer NOT NULL,
-    property_value text NOT NULL
+create table tbl_abundance_properties (
+    abundance_property_id integer not null,
+    abundance_id integer not null,
+    property_type_id integer not null,
+    property_value text not null
 );
 
-CREATE TABLE public.tbl_property_types (
-    uuid uuid DEFAULT gen_random_uuid() NOT NULL,
-    property_type_id integer NOT NULL,
-    property_type_name text NOT NULL,
-    description text NOT NULL,
+create table tbl_property_types (
+    uuid uuid default gen_random_uuid() not null,
+    property_type_id integer not null,
+    property_type_name text not null,
+    description text not null,
     value_type_id integer,
     value_class_id integer
 );
 
-CREATE TABLE public.tbl_site_properties (
-    site_property_id integer NOT NULL,
-    site_id integer NOT NULL,
-    property_type_id integer NOT NULL,
-    property_value text NOT NULL
+create table tbl_site_properties (
+    site_property_id integer not null,
+    site_id integer not null,
+    property_type_id integer not null,
+    property_value text not null
 );
 
-CREATE TABLE public.tbl_site_site_types (
-    site_site_type_id integer NOT NULL,
-    site_id integer NOT NULL,
-    site_type_id integer NOT NULL,
-    is_primary_type boolean DEFAULT false NOT NULL,
+create table tbl_site_site_types (
+    site_site_type_id integer not null,
+    site_id integer not null,
+    site_type_id integer not null,
+    is_primary_type boolean default false not null,
     confidence_code smallint,
     notes text
 );
 
-CREATE TABLE public.tbl_site_type_groups (
-    site_type_group_id integer NOT NULL,
-    site_type_group_abbrev character varying(40) NOT NULL,
-    site_type_group character varying(255) NOT NULL,
-    description text DEFAULT ''::text NOT NULL,
+create table tbl_site_type_groups (
+    site_type_group_id integer not null,
+    site_type_group_abbrev character varying(40) not null,
+    site_type_group character varying(255) not null,
+    description text default ''::text not null,
     origin_code character varying(40),
-    origin_description text DEFAULT ''::text NOT NULL
+    origin_description text default ''::text not null
 );
 
-CREATE TABLE public.tbl_site_types (
-    site_type_id integer NOT NULL,
-    site_type_group_id integer NOT NULL,
-    site_type_abbrev character varying(40) NOT NULL,
-    site_type character varying(256) NOT NULL,
-    description text DEFAULT ''::text NOT NULL
+create table tbl_site_types (
+    site_type_id integer not null,
+    site_type_group_id integer not null,
+    site_type_abbrev character varying(40) not null,
+    site_type character varying(256) not null,
+    description text default ''::text not null
 );
-
-CREATE TABLE public.v_sql (
-    "?column?" text COLLATE pg_catalog."C"
-);
-
