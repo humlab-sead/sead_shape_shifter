@@ -2058,10 +2058,3 @@ ALTER TABLE ONLY public.tbl_value_types
 ALTER TABLE ONLY public.tbl_value_types
     ADD CONSTRAINT tbl_value_types_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES public.tbl_units(unit_id);
 
-
---
--- PostgreSQL database dump complete
---
-
-\unrestrict MhDjbXsxEVNxhI2OFdMGiXBEv3SllbmXSIagzraGnJIMcgqtKItyYuF3oVChIrN
-
