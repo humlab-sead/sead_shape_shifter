@@ -11,7 +11,7 @@ templater = jinja
 # See https://docs.sqlfluff.com/en/stable/configuration.html#enabling-and-disabling-rules
 # AM04 (ambiguous.column_count) and ST06 (structure.column_order) are
 # two of the more controversial rules included to illustrate usage.
-exclude_rules = ambiguous.column_count, structure.column_order
+exclude_rules = ambiguous.column_count, structure.column_order, references.keywords
 
 # The standard max_line_length is 80 in line with the convention of
 # other tools and several style guides. Many projects however prefer
@@ -31,10 +31,10 @@ large_file_skip_byte_limit = 1000000
 [sqlfluff:templater:dbt]
 project_dir = ./
 
-[sqlfluff:indentation]
-# While implicit indents are not enabled by default. Many of the
-# SQLFluff maintainers do use them in their projects.
-allow_implicit_indents = True
+; [sqlfluff:indentation]
+; # While implicit indents are not enabled by default. Many of the
+; # SQLFluff maintainers do use them in their projects.
+; allow_implicit_indents = True
 
 # The default configuration for aliasing rules is "consistent"
 # which will auto-detect the setting from the rest of the file. This
