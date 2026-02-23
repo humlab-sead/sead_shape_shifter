@@ -13,7 +13,7 @@ The backend API uses centralized logging configuration initialized at applicatio
 from backend.app.core.logging_config import configure_logging
 
 configure_logging(
-    log_dir=settings.LOGS_DIR,
+    log_dir=settings.LOG_DIR,
     log_level=settings.LOG_LEVEL,
     enable_file_logging=settings.LOG_FILE_ENABLED,
     enable_console_logging=settings.LOG_CONSOLE_ENABLED,
