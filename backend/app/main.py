@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
     """Application lifespan events."""
     # Configure logging first
     configure_logging(
-        log_dir=settings.LOGS_DIR,
+        log_dir=settings.LOG_DIR,
         log_level=settings.LOG_LEVEL,
         enable_file_logging=settings.LOG_FILE_ENABLED,
         enable_console_logging=settings.LOG_CONSOLE_ENABLED,
