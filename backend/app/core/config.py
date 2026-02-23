@@ -46,8 +46,7 @@ class Settings(BaseSettings):
 
     # File paths
     PROJECTS_DIR: Path = Path("./projects")
-    LOGS_DIR: Path = Path("./logs")
-    LOG_DIR: Path = LOGS_DIR  # Alias for backward compatibility
+    LOG_DIR: Path = Path("./logs")
 
     # Shared data paths for project portability (converted to absolute in model_post_init)
     GLOBAL_DATA_DIR: Path = Path("./shared/shared-data")
@@ -76,13 +75,13 @@ class Settings(BaseSettings):
         """Convert paths to absolute and ensure directories exist."""
         # Convert to absolute paths (required for @load: directive resolution)
         self.PROJECTS_DIR = self.PROJECTS_DIR.absolute()
-        self.LOGS_DIR = self.LOGS_DIR.absolute()
+        self.LOG_DIR = self.LOG_DIR.absolute()
         self.GLOBAL_DATA_DIR = self.GLOBAL_DATA_DIR.absolute()
         self.GLOBAL_DATA_SOURCE_DIR = self.GLOBAL_DATA_SOURCE_DIR.absolute()
 
         # Ensure directories exist
         self.PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
-        self.LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        self.LOG_DIR.mkdir(parents=True, exist_ok=True)
         self.GLOBAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.GLOBAL_DATA_SOURCE_DIR.mkdir(parents=True, exist_ok=True)
 
