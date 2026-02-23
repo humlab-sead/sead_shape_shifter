@@ -25,6 +25,7 @@ export interface Project {
 export interface ProjectFileInfo {
   name: string
   path: string
+  location: 'global' | 'local'
   size_bytes: number
   modified_at?: string | null
 }

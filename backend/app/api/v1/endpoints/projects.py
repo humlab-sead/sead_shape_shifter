@@ -5,13 +5,13 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body, status
+from fastapi import APIRouter, Body, File, UploadFile, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
-from backend.app.models.project import Project, ProjectMetadata
+from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
 from backend.app.models.validation import ValidationResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.validation_service import ValidationService, get_validation_service
@@ -727,3 +727,49 @@ async def clear_custom_layout(name: str) -> dict[str, str]:
 
     logger.info(f"No custom layout found for project '{name}'")
     return {"project_name": name, "message": "No custom layout to clear"}
+
+
+# File Management Endpoints
+
+
+@router.post(
+    "/projects/{name}/files",
+    response_model=ProjectFileInfo,
+    summary="Upload a file to project directory",
+)
+@handle_endpoint_errors
+async def upload_project_file(
+    name: str,
+    file: UploadFile = File(...),
+) -> ProjectFileInfo:
+    """Upload data file (Excel, CSV) to project's directory.
+    
+    Files are stored directly in the project folder alongside shapeshifter.yml,
+    making them immediately available for entity configuration with location='local'.
+    """
+    project_service: ProjectService = get_project_service()
+    return project_service.save_project_file(
+        project_name=name,
+        upload=file,
+        allowed_extensions={".xlsx", ".xls", ".csv"},
+    )
+
+
+@router.get(
+    "/projects/{name}/files",
+    response_model=list[ProjectFileInfo],
+    summary="List project's data files",
+)
+@handle_endpoint_errors
+async def list_project_files(
+    name: str,
+) -> list[ProjectFileInfo]:
+    """List data files in project directory.
+    
+    Returns all Excel and CSV files stored in the project's directory.
+    """
+    project_service: ProjectService = get_project_service()
+    return project_service.list_project_files(
+        project_name=name,
+        extensions=[".xlsx", ".xls", ".csv"],
+    )
