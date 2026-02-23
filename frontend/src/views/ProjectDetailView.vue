@@ -112,6 +112,10 @@
             <v-icon icon="mdi-information-outline" class="mr-2" />
             Metadata
           </v-tab>
+          <v-tab value="files">
+            <v-icon icon="mdi-file-upload-outline" class="mr-2" />
+            Files
+          </v-tab>
           <v-tab value="yaml">
             <v-icon icon="mdi-code-braces" class="mr-2" />
             YAML
@@ -435,6 +439,11 @@
             <metadata-editor :project-name="projectName" />
           </v-window-item>
 
+          <!-- Files Tab -->
+          <v-window-item value="files">
+            <project-file-upload-card :project-name="projectName" />
+          </v-window-item>
+
           <!-- Dispatch Tab -->
           <v-window-item value="dispatch">
             <v-card variant="outlined">
@@ -635,6 +644,7 @@ import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
 import ExecuteDialog from '@/components/execute/ExecuteDialog.vue'
 import IngesterForm from '@/components/ingester/IngesterForm.vue'
+import ProjectFileUploadCard from '@/components/projects/ProjectFileUploadCard.vue'
 
 const route = useRoute()
 const router = useRouter()

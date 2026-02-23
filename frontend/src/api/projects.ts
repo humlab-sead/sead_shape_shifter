@@ -3,7 +3,7 @@
  */
 
 import type { CustomGraphLayout, Project, ProjectFileInfo, ProjectMetadata, ValidationResult } from '@/types'
-import { apiRequest } from './client'
+import { apiClient, apiRequest } from './client'
 
 export interface ProjectCreateRequest {
   name: string
@@ -229,12 +229,13 @@ export const projectsApi = {
     const formData = new FormData()
     formData.append('file', file)
 
-    return apiRequest<ProjectFileInfo>({
-      method: 'POST',
-      url: `/projects/${name}/files`,
-      data: formData,
-      // Let axios set Content-Type header automatically for FormData
+    // Use apiClient directly instead of apiRequest to ensure proper FormData handling
+    const response = await apiClient.post<ProjectFileInfo>(`/projects/${name}/files`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     })
+    return response.data
   },
 
   getRawYaml: async (name: string): Promise<{ yaml_content: string }> => {
