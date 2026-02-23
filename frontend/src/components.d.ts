@@ -45,6 +45,7 @@ declare module 'vue' {
     PreviewFixesModal: typeof import('./components/validation/PreviewFixesModal.vue')['default']
     PreviewMatchedDataDialog: typeof import('./components/reconciliation/PreviewMatchedDataDialog.vue')['default']
     ProjectDataSources: typeof import('./components/ProjectDataSources.vue')['default']
+    ProjectFileUploadCard: typeof import('./components/projects/ProjectFileUploadCard.vue')['default']
     QueryBuilder: typeof import('./components/query/QueryBuilder.vue')['default']
     QueryCondition: typeof import('./components/query/QueryCondition.vue')['default']
     QueryEditor: typeof import('./components/query/QueryEditor.vue')['default']
