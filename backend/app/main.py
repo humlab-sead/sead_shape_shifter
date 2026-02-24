@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
+from starlette.formparsers import MultiPartParser
 
 from backend.app.api.v1.api import api_router
 from backend.app.core.config import settings
@@ -69,6 +70,10 @@ app = FastAPI(
     redoc_url=f"{settings.API_V1_PREFIX}/redoc",
     lifespan=lifespan,
 )
+
+# Increase multipart form data size limit for file uploads (default is 1MB)
+# Set to 100MB to match our application's file upload limits
+MultiPartParser.max_file_size = 100 * 1024 * 1024  # type: ignore[attr-defined]
 
 # logger.debug("Configuring FastAPI application")
 # logger.debug(f"Allowed CORS origins: {settings.ALLOWED_ORIGINS}")
