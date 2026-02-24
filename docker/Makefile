@@ -110,6 +110,7 @@ docker-restart:
 		&& docker compose up -d \
 		&& popd
 	@echo "✓ Application restarted at http://localhost:$(BACKEND_PORT)"
+	@docker logs shape-shifter --tail 20
 
 # .PHONY: docker-rebuild
 # docker-rebuild: guard-dockerfisudole-exists
