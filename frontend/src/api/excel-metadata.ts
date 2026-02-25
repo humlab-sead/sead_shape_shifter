@@ -2,7 +2,13 @@ import type { ExcelMetadata } from '@/types'
 import { apiRequest } from './client'
 
 export const excelMetadataApi = {
-  fetch: async (file: string, location: string = 'global', sheetName?: string, range?: string): Promise<ExcelMetadata> => {
+  fetch: async (
+    file: string,
+    location: string = 'global',
+    sheetName?: string,
+    range?: string,
+    projectName?: string
+  ): Promise<ExcelMetadata> => {
     return apiRequest<ExcelMetadata>({
       method: 'GET',
       url: '/data-sources/excel/metadata',
@@ -11,6 +17,7 @@ export const excelMetadataApi = {
         location,
         sheet_name: sheetName,
         range: range,
+        project_name: projectName,
       },
     })
   },
