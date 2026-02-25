@@ -74,9 +74,9 @@ app = FastAPI(
 # Increase multipart form data size limit for file uploads (default is 1MB)
 # Set to 100MB to match our application's file upload limits
 # Handle both old (max_file_size) and new (max_part_size) Starlette attribute names
-if hasattr(MultiPartParser, 'max_file_size'):
+if hasattr(MultiPartParser, "max_file_size"):
     MultiPartParser.max_file_size = 100 * 1024 * 1024  # type: ignore[attr-defined]
-if hasattr(MultiPartParser, 'max_part_size'):
+if hasattr(MultiPartParser, "max_part_size"):
     MultiPartParser.max_part_size = 100 * 1024 * 1024  # type: ignore[attr-defined]
 
 # logger.debug("Configuring FastAPI application")
