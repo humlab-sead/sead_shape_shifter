@@ -743,7 +743,7 @@ async def upload_project_file(
     file: UploadFile = File(...),
 ) -> ProjectFileInfo:
     """Upload data file (Excel, CSV) to project's directory.
-    
+
     Files are stored directly in the project folder alongside shapeshifter.yml,
     making them immediately available for entity configuration with location='local'.
     """
@@ -765,7 +765,7 @@ async def list_project_files(
     name: str,
 ) -> list[ProjectFileInfo]:
     """List data files in project directory.
-    
+
     Returns all Excel and CSV files stored in the project's directory.
     """
     project_service: ProjectService = get_project_service()
