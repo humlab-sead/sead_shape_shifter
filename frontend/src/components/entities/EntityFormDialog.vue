@@ -1255,7 +1255,13 @@ async function fetchSheetOptions() {
     const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
     const location = fileInfo?.location || 'global'
 
-    const meta = await api.excelMetadata.fetch(filename, location)
+    const meta = await api.excelMetadata.fetch(
+      filename,
+      location,
+      undefined,
+      undefined,
+      location === 'local' ? props.projectName : undefined
+    )
     sheetOptions.value = meta.sheets || []
 
     if (!formData.value.options.sheet_name && sheetOptions.value.length > 0) {
@@ -1292,7 +1298,13 @@ async function fetchColumns() {
     const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
     const location = fileInfo?.location || 'global'
 
-    const meta = await api.excelMetadata.fetch(filename, location, sheet, range)
+    const meta = await api.excelMetadata.fetch(
+      filename,
+      location,
+      sheet,
+      range,
+      location === 'local' ? props.projectName : undefined
+    )
     columnsOptions.value = meta.columns || []
     if (columnsOptions.value.length > 0) {
       formData.value.columns = [...columnsOptions.value]

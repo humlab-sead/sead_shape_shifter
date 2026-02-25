@@ -162,11 +162,16 @@ async def get_excel_metadata(
     range: str | None = Query(  # pylint: disable=redefined-builtin
         default=None, description="Optional cell range (e.g., A1:H30) to limit columns"
     ),
+    project_name: str | None = Query(
+        default=None, description="Project name (required when location='local' and file is in project directory)"
+    ),
 ) -> ExcelMetadataResponse:
     """Return available sheets and columns for a given Excel file."""
 
     project_service: ProjectService = get_project_service()
-    sheets, columns = project_service.get_excel_metadata(file_path=file, location=location, sheet_name=sheet_name, cell_range=range)
+    sheets, columns = project_service.get_excel_metadata(
+        file_path=file, location=location, sheet_name=sheet_name, cell_range=range, project_name=project_name
+    )
     return ExcelMetadataResponse(sheets=sheets, columns=columns)
 
 
