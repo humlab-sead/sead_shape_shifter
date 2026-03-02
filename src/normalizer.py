@@ -25,11 +25,6 @@ from src.transforms.translate import translate
 from src.transforms.unnest import unnest
 from src.transforms.utility import add_system_id  # Renamed from add_surrogate_id
 
-# Debug flag to control verbose normalization logging
-# Set to True to see detailed "Normalizing entity..." logs for each entity
-# When False, only INFO level logs for overall progress are shown
-_ENABLE_NORMALIZATION_DEBUG = True
-
 
 class ShapeShifter:
 
@@ -121,9 +116,6 @@ class ShapeShifter:
                 raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
 
             table_cfg: TableConfig = self.project.get_table(entity)
-
-            if _ENABLE_NORMALIZATION_DEBUG:
-                logger.debug(f"{entity}[normalizing]: Normalizing entity...")
 
             if not isinstance(table_cfg.columns, list):
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': must be a list")
