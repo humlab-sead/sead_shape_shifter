@@ -1145,6 +1145,10 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
     } else {
       entityData.drop_duplicates = true
     }
+
+    // Backend defaults missing check_functional_dependency to true.
+    // Persist explicit value so unchecked state is respected.
+    entityData.check_functional_dependency = formData.value.check_functional_dependency
   }
 
   // Include drop_empty_rows if enabled
@@ -1154,11 +1158,6 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
     } else {
       entityData.drop_empty_rows = true
     }
-  }
-
-  // Include check_functional_dependency if enabled
-  if (formData.value.check_functional_dependency) {
-    entityData.check_functional_dependency = true
   }
 
   // Include advanced configuration
@@ -1721,6 +1720,17 @@ function yamlToFormData(yamlString: string): boolean {
       columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
     }
 
+    const nestedCheckFunctionalDependency =
+      dropDuplicates && typeof dropDuplicates === 'object' && !Array.isArray(dropDuplicates)
+        ? (dropDuplicates as Record<string, any>).check_functional_dependency
+        : undefined
+    const effectiveCheckFunctionalDependency =
+      typeof data.check_functional_dependency === 'boolean'
+        ? data.check_functional_dependency
+        : typeof nestedCheckFunctionalDependency === 'boolean'
+          ? nestedCheckFunctionalDependency
+          : dropDuplicates !== undefined && dropDuplicates !== null
+
     formData.value = {
       name: data.name || formData.value.name,
       type: data.type || 'entity',
@@ -1744,7 +1754,7 @@ function yamlToFormData(yamlString: string): boolean {
       depends_on: Array.isArray(data.depends_on) ? data.depends_on : [],
       drop_duplicates: dropDuplicatesData,
       drop_empty_rows: dropEmptyRowsData,
-      check_functional_dependency: data.check_functional_dependency || false,
+      check_functional_dependency: effectiveCheckFunctionalDependency,
       advanced: {
         filters: Array.isArray(data.filters) ? data.filters : [],
         unnest: data.unnest || null,
@@ -1941,6 +1951,16 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
 function buildFormDataFromEntity(entity: EntityResponse): FormData {
   const dropDuplicates = entity.entity_data.drop_duplicates
   const dropEmptyRows = entity.entity_data.drop_empty_rows
+  const nestedCheckFunctionalDependency =
+    dropDuplicates && typeof dropDuplicates === 'object' && !Array.isArray(dropDuplicates)
+      ? (dropDuplicates as Record<string, any>).check_functional_dependency
+      : undefined
+  const effectiveCheckFunctionalDependency =
+    typeof entity.entity_data.check_functional_dependency === 'boolean'
+      ? entity.entity_data.check_functional_dependency
+      : typeof nestedCheckFunctionalDependency === 'boolean'
+        ? nestedCheckFunctionalDependency
+        : dropDuplicates !== undefined && dropDuplicates !== null
 
   // For fixed entities, strip system_id and public_id from columns
   // since they're auto-managed and will be auto-added on save
@@ -1979,7 +1999,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
       columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
     },
-    check_functional_dependency: (entity.entity_data.check_functional_dependency as boolean) || false,
+    check_functional_dependency: effectiveCheckFunctionalDependency,
     advanced: {
       filters: (entity.entity_data.filters as any[]) || [],
       unnest: entity.entity_data.unnest || null,
