@@ -3,6 +3,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from src.exceptions import FunctionalDependencyError
 from src.specifications.base import Specification
 
 
@@ -50,7 +51,11 @@ class FunctionalDependencySpecification(Specification):
         if bad_keys:
             msg: str = f"inconsistent non-subset values for keys: {bad_keys}"
             if raise_error:
-                raise ValueError(f"[fd_check]: {msg}")
+                raise FunctionalDependencyError(
+                    f"[fd_check]: {msg}",
+                    determinant_columns=determinant_columns,
+                    details={"bad_keys": bad_keys},
+                )
             logger.warning(f"[fd_check]: {msg}")
 
         return len(bad_keys) == 0
@@ -98,7 +103,12 @@ class FunctionalDependencySpecification(Specification):
         self.add_error(msg, entity=kwargs.get("entity_name"))
 
         if strict:
-            raise ValueError(f"[fd_check]: {msg}")
+            raise FunctionalDependencyError(
+                f"[fd_check]: {msg}",
+                entity_name=kwargs.get("entity_name"),
+                determinant_columns=determinant_columns,
+                details={"bad_keys": bad.index.tolist(), "max_bad_keys": max_bad_keys},
+            )
 
         logger.error(f"[fd_check]: {msg}")
 
