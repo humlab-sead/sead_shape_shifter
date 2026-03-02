@@ -117,7 +117,6 @@ class ShapeShifter:
 
             table_cfg: TableConfig = self.project.get_table(entity)
 
-
             if not all(isinstance(col, str) for col in table_cfg.columns):
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': all columns must be strings")
 
