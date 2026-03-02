@@ -14,6 +14,7 @@ from backend.app.mappers.entity_config_mapper import EntityConfigMapperFactory
 from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.caches import ShapeShiftCache, ShapeShiftProjectCache
+from src.exceptions import FunctionalDependencyError
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.specifications.constraints import ValidationIssue
@@ -180,6 +181,9 @@ class ShapeShiftService:
 
             return shapeshifter.table_store, validation_issues
 
+        except FunctionalDependencyError:
+            raise
+
         except Exception as e:
             logger.exception(f"ShapeShift batch failed for {len(entity_names)} entities: {e}", exc_info=True)
             raise RuntimeError(f"ShapeShift batch failed: {str(e)}") from e
@@ -229,6 +233,9 @@ class ShapeShiftService:
             validation_issues = self._collect_validation_issues(shapeshifter)
 
             return shapeshifter.table_store, validation_issues
+
+        except FunctionalDependencyError:
+            raise
 
         except Exception as e:
             logger.exception(f"ShapeShift failed for {entity_name}: {e}", exc_info=True)
