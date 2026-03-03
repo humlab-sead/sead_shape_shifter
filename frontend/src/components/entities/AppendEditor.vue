@@ -269,7 +269,7 @@ function updateColumnMapping(item: AppendConfigInternal, sourceCol: string, targ
 /**
  * Convert internal format back to API format
  */
-function normalizeForAPI(): (AppendConfigInternal | null)[] {
+function normalizeForAPI(): AppendConfigInternal[] {
   return append.value.map((item) => {
     const normalized: Record<string, any> = {}
 
