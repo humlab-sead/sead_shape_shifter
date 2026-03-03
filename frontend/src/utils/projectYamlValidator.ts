@@ -28,7 +28,7 @@ interface DocIndex {
  */
 export function validateProjectYaml(
   text: string,
-  model: monaco.editor.ITextModel,
+  _model: monaco.editor.ITextModel,
   context?: ValidationContext
 ): monaco.editor.IMarkerData[] {
   const markers: monaco.editor.IMarkerData[] = []
@@ -210,7 +210,7 @@ function validateTaskListReferences(
 function validateValueExpressions(
   data: any,
   index: DocIndex,
-  doc: YAML.Document
+  _doc: YAML.Document
 ): monaco.editor.IMarkerData[] {
   const markers: monaco.editor.IMarkerData[] = []
 
@@ -221,7 +221,7 @@ function validateValueExpressions(
   let match
   while ((match = valueExprPattern.exec(text)) !== null) {
     const entityName = match[1]
-    if (!index.entityNames.includes(entityName)) {
+    if (!index.entityNames.includes(entityName || '')) {
       // Note: Position mapping from JSON string is approximate
       // In a production implementation, walk the YAML AST to find exact positions
       markers.push({
