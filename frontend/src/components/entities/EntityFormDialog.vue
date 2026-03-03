@@ -992,8 +992,14 @@ const fixedValuesColumns = computed(() => {
   const keys = (formData.value.keys || []).filter((k: string) => typeof k === 'string' && k.trim().length > 0)
   result.push(...keys)
 
-  // Include columns (data columns)
-  const columns = (formData.value.columns || []).filter((c: string) => typeof c === 'string' && c.trim().length > 0)
+  // Include columns (data columns), but exclude system_id and public_id to avoid duplicates
+  const columns = (formData.value.columns || []).filter((c: string) => {
+    if (typeof c !== 'string' || c.trim().length === 0) return false
+    // Exclude system_id and public_id to avoid duplicates
+    if (c === 'system_id') return false
+    if (formData.value.public_id && c === formData.value.public_id) return false
+    return true
+  })
   result.push(...columns)
 
   return result
