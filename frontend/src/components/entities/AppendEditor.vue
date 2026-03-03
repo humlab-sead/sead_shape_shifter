@@ -51,7 +51,7 @@
             </template>
 
             <!-- Entity Source Type -->
-            <template v-else-if="item.source">
+            <template v-else-if="item.type === 'entity'">
               <div class="mb-3">
                 <v-select
                   v-model="item.source"
@@ -288,7 +288,7 @@ function normalizeForAPI(): AppendConfigInternal[] {
       normalized.type = 'sql'
       if (item.data_source) normalized.data_source = item.data_source
       if (item.query) normalized.query = item.query
-    } else if (item.source) {
+    } else if (item.type === 'entity') {
       normalized.source = item.source
       if (item.showColumnsOverride && item.columnsText) {
         try {
