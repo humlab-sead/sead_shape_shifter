@@ -26,6 +26,7 @@ Exception Hierarchy:
         └── ResourceConflictError   - Name collision, already exists
 """
 
+import math
 from typing import Any, ClassVar
 
 from backend.app.error_tips import get_tips
@@ -78,14 +79,72 @@ class DomainException(Exception):
 
     def to_dict(self) -> dict[str, Any]:
         """Convert exception to structured dictionary for API responses."""
+        context = self._to_json_safe(self.context)
+        if isinstance(context, dict) and "details" in context:
+            context["details"] = self._truncate_value(context["details"])
+
         return {
             "error_type": self.__class__.__name__,
             "error_code": self.code,
             "message": self.message,
             "tips": self.tips,
             "recoverable": self.recoverable,
-            "context": self.context,
+            "context": context,
         }
+
+    @staticmethod
+    def _to_json_safe(value: Any) -> Any:
+        """Convert values to JSON-safe primitives (handles NaN/inf and non-serializable objects)."""
+        if value is None or isinstance(value, (str, int, bool)):
+            return value
+
+        if isinstance(value, float):
+            return value if math.isfinite(value) else None
+
+        if isinstance(value, dict):
+            return {str(k): DomainException._to_json_safe(v) for k, v in value.items()}
+
+        if isinstance(value, (list, tuple, set)):
+            return [DomainException._to_json_safe(v) for v in value]
+
+        item_fn = getattr(value, "item", None)
+        if callable(item_fn):
+            try:
+                return DomainException._to_json_safe(item_fn())
+            except Exception:  # pylint: disable=broad-except
+                pass
+
+        return str(value)
+
+    @staticmethod
+    def _truncate_value(value: Any, *, max_items: int = 25, max_depth: int = 3, max_string: int = 500, depth: int = 0) -> Any:
+        """Truncate large nested values for safe, concise API error payloads."""
+        if depth >= max_depth:
+            return "..."
+
+        if isinstance(value, str):
+            return value if len(value) <= max_string else value[: max_string - 3] + "..."
+
+        if isinstance(value, list):
+            truncated = [
+                DomainException._truncate_value(item, max_items=max_items, max_depth=max_depth, max_string=max_string, depth=depth + 1)
+                for item in value[:max_items]
+            ]
+            if len(value) > max_items:
+                truncated.append(f"... ({len(value) - max_items} more items)")
+            return truncated
+
+        if isinstance(value, dict):
+            items = list(value.items())
+            truncated_dict: dict[str, Any] = {
+                str(k): DomainException._truncate_value(v, max_items=max_items, max_depth=max_depth, max_string=max_string, depth=depth + 1)
+                for k, v in items[:max_items]
+            }
+            if len(items) > max_items:
+                truncated_dict["__truncated__"] = f"{len(items) - max_items} more keys"
+            return truncated_dict
+
+        return value
 
 
 # ============================================================================
