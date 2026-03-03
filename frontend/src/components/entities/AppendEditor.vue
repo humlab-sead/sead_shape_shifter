@@ -134,7 +134,20 @@
       </v-list-item>
     </v-list>
 
-    <v-btn variant="outlined" prepend-icon="mdi-plus" size="small" block @click="handleAddAppend">
+    <v-alert type="info" variant="tonal" density="compact" class="mt-3 text-caption">
+      <strong>Append</strong> adds rows from multiple sources to this entity.
+      <ul class="mt-2">
+        <li><strong>Fixed Values:</strong> Manually specify rows as arrays</li>
+        <li><strong>SQL Query:</strong> Execute query against a data source</li>
+        <li><strong>From Entity:</strong> Append rows from another entity with optional column mapping</li>
+      </ul>
+      <div class="mt-2">
+        For <strong>From Entity</strong>, use <em>column mapping</em> to rename source columns or
+        <em>align by position</em> to match columns by order instead of name.
+      </div>
+    </v-alert>
+
+    <v-btn variant="outlined" prepend-icon="mdi-plus" size="small" block class="mt-3" @click="handleAddAppend">
       Add Append
     </v-btn>
   </div>

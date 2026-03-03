@@ -48,6 +48,18 @@
           <v-divider />
 
           <v-card-text>
+            <v-alert type="info" variant="tonal" density="compact" class="mb-3 text-caption">
+              <strong>Replacements</strong> transform values in selected columns using ordered rules.
+              <ul class="mt-2">
+                <li><strong>Match operations:</strong> equals, contains, startswith, endswith, regex, in (list)</li>
+                <li><strong>Transform operations:</strong> regex_sub (regex substitution), map (lookup), transform (function)</li>
+                <li><strong>Special:</strong> blank_out (set to null/empty)</li>
+              </ul>
+              <div class="mt-2">
+                Rules execute <strong>top to bottom</strong>. Use drag handles to reorder.
+              </div>
+            </v-alert>
+
             <v-alert v-if="!selectedColumn" type="info" variant="tonal" density="compact">
               Select a column to edit replacements.
             </v-alert>
