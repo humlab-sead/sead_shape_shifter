@@ -500,7 +500,7 @@
               </v-window-item>
 
               <v-window-item value="replacements">
-                <replacements-editor v-model="formData.advanced.replacements" :available-columns="formData.columns" />
+                <replacements-editor v-model="formData.advanced.replacements" :available-columns="availableColumnsForReplacements" />
               </v-window-item>
 
               <v-window-item value="yaml">
@@ -1609,6 +1609,13 @@ const availableColumnsForUnnest = computed(() => {
   const options = columnsOptions.value.length > 0 ? columnsOptions.value : columns
   const extraColumnNames = Object.keys(formData.value.advanced.extra_columns || {})
   const combined = Array.from(new Set([...keys, ...options, ...extraColumnNames]))
+  return combined.filter((c) => c && c !== 'system_id')
+})
+
+const availableColumnsForReplacements = computed(() => {
+  const columns = formData.value.columns || []
+  const extraColumnNames = Object.keys(formData.value.advanced.extra_columns || {})
+  const combined = Array.from(new Set([...columns, ...extraColumnNames]))
   return combined.filter((c) => c && c !== 'system_id')
 })
 
