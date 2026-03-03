@@ -130,13 +130,7 @@ class ShapeShifter:
             # Apply post-concatenation deduplication if append_mode is "distinct"
             # if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
             if table_cfg.drop_duplicates and not delay_drop_duplicates:
-                data = drop_duplicate_rows(
-                    data=data,
-                    columns=table_cfg.drop_duplicates if table_cfg.drop_duplicates else True,
-                    entity_name=entity,
-                    fd_check=table_cfg.check_functional_dependency,
-                    strict_fd_check=table_cfg.strict_functional_dependency,
-                )
+                data = self.drop_duplicates(entity, table_cfg, data)
                 # logger.info(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
 
             self.table_store[entity] = data
@@ -153,13 +147,7 @@ class ShapeShifter:
                 self._evaluate_deferred_extra_columns(entity)
 
             if delay_drop_duplicates and table_cfg.drop_duplicates:
-                self.table_store[entity] = drop_duplicate_rows(
-                    data=self.table_store[entity],
-                    columns=table_cfg.drop_duplicates,
-                    entity_name=entity,
-                    fd_check=table_cfg.check_functional_dependency,
-                    strict_fd_check=table_cfg.strict_functional_dependency,
-                )
+                self.table_store[entity] = self.drop_duplicates(entity, table_cfg, self.table_store[entity])
 
             self._check_duplicate_keys(entity, table_cfg)
 
@@ -188,6 +176,15 @@ class ShapeShifter:
         self.move_keys_to_front()
 
         return self
+
+    def drop_duplicates(self, entity_name: str, table_cfg: TableConfig, data: pd.DataFrame) -> pd.DataFrame:
+        return drop_duplicate_rows(
+            data=data,
+            columns=table_cfg.drop_duplicates if table_cfg.drop_duplicates else True,
+            entity_name=entity_name,
+            fd_check=table_cfg.check_functional_dependency,
+            strict_fd_check=table_cfg.strict_functional_dependency,
+        )
 
     def _check_duplicate_keys(self, entity: str, table_cfg: TableConfig) -> None:
         """Check for duplicate keys in the processed table and log an error if found."""
