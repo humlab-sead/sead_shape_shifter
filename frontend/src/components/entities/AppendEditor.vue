@@ -186,6 +186,7 @@ const emit = defineEmits<{
 }>()
 
 const append = ref<AppendConfigInternal[]>([])
+const lastEmittedValue = ref<string>('[]')
 
 const appendTypes = [
   { title: 'Fixed Values', value: 'fixed' },
@@ -306,24 +307,25 @@ function normalizeForAPI(): (AppendConfigInternal | null)[] {
   }).filter((item): item is AppendConfigInternal => item !== null)
 }
 
-let isUpdatingFromProp = false
-
 watch(
   append,
   () => {
-    if (isUpdatingFromProp) return // Prevent circular updates
     const normalized = normalizeForAPI()
-    emit('update:modelValue', normalized.length > 0 ? normalized : undefined)
+    const emitValue = normalized.length > 0 ? normalized : undefined
+    lastEmittedValue.value = JSON.stringify(emitValue)
+    emit('update:modelValue', emitValue)
   },
   { deep: true }
 )
 
 watch(
   () => props.modelValue,
-  () => {
-    isUpdatingFromProp = true
-    initializeAppendItems()
-    isUpdatingFromProp = false
+  (newValue) => {
+    const incomingValue = JSON.stringify(newValue)
+    // Only reinitialize if this is NOT the value we just emitted
+    if (incomingValue !== lastEmittedValue.value) {
+      initializeAppendItems()
+    }
   },
   { deep: true }
 )
