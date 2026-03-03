@@ -306,9 +306,12 @@ function normalizeForAPI(): (AppendConfigInternal | null)[] {
   }).filter((item): item is AppendConfigInternal => item !== null)
 }
 
+let isUpdatingFromProp = false
+
 watch(
   append,
   () => {
+    if (isUpdatingFromProp) return // Prevent circular updates
     const normalized = normalizeForAPI()
     emit('update:modelValue', normalized.length > 0 ? normalized : undefined)
   },
@@ -318,7 +321,9 @@ watch(
 watch(
   () => props.modelValue,
   () => {
+    isUpdatingFromProp = true
     initializeAppendItems()
+    isUpdatingFromProp = false
   },
   { deep: true }
 )
