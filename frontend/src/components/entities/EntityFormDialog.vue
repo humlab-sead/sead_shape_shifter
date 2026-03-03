@@ -492,7 +492,7 @@
               </v-window-item>
 
               <v-window-item value="append">
-                <append-editor v-model="formData.advanced.append" />
+                <append-editor v-model="formData.advanced.append" :available-entities="availableSourceEntities" />
               </v-window-item>
 
               <v-window-item value="extra_columns">
