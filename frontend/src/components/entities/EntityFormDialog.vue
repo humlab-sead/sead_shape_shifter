@@ -1607,7 +1607,8 @@ const availableColumnsForUnnest = computed(() => {
   const keys = formData.value.keys || []
   const columns = formData.value.columns || []
   const options = columnsOptions.value.length > 0 ? columnsOptions.value : columns
-  const combined = Array.from(new Set([...keys, ...options]))
+  const extraColumnNames = Object.keys(formData.value.advanced.extra_columns || {})
+  const combined = Array.from(new Set([...keys, ...options, ...extraColumnNames]))
   return combined.filter((c) => c && c !== 'system_id')
 })
 
