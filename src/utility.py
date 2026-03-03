@@ -85,6 +85,14 @@ def sanitize_column_name(col: Any, index: int, max_length: int = 48) -> str:
     # Convert to lowercase
     name = name.lower()
 
+    # Unaccent accented characters by decomposing and removing diacritical marks
+    # NFD (Canonical Decomposition) separates base characters from accents
+    # Then we filter out combining characters (diacritical marks)
+    name = "".join(
+        char for char in unicodedata.normalize("NFD", name)
+        if unicodedata.category(char) != "Mn"  # Mn = Mark, Nonspacing
+    )
+
     # Final safety: remove any remaining non-safe characters
     # Only keep: a-z, 0-9, underscore
     name = re.sub(r"[^a-z0-9_]", "", name)
