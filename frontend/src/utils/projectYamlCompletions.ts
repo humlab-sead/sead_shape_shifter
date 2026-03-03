@@ -108,7 +108,8 @@ function createEntitySuggestions(
     kind: monaco.languages.CompletionItemKind.Reference,
     insertText: name,
     documentation: `Entity: ${name}`,
-    sortText: `0_${name}` // Prioritize entity suggestions
+    sortText: `0_${name}`, // Prioritize entity suggestions
+    range: undefined as any // Monaco will fill in range from context
   }))
 }
 
@@ -124,7 +125,8 @@ function createDataSourceSuggestions(
     kind: monaco.languages.CompletionItemKind.Reference,
     insertText: name,
     documentation: `Data source: ${name}`,
-    sortText: `0_${name}` // Prioritize data source suggestions
+    sortText: `0_${name}`, // Prioritize data source suggestions
+    range: undefined as any // Monaco will fill in range from context
   }))
 }
 
@@ -138,21 +140,24 @@ function createJoinTypeSuggestions(monaco: typeof monaco): monaco.languages.Comp
       kind: monaco.languages.CompletionItemKind.Enum,
       insertText: 'left',
       documentation: 'Left join: keep all records from local entity',
-      sortText: '0_left'
+      sortText: '0_left',
+      range: undefined as any
     },
     {
       label: 'inner',
       kind: monaco.languages.CompletionItemKind.Enum,
       insertText: 'inner',
       documentation: 'Inner join: keep only matching records',
-      sortText: '0_inner'
+      sortText: '0_inner',
+      range: undefined as any
     },
     {
       label: 'outer',
       kind: monaco.languages.CompletionItemKind.Enum,
       insertText: 'outer',
       documentation: 'Outer join: keep all records from both entities',
-      sortText: '0_outer'
+      sortText: '0_outer',
+      range: undefined as any
     }
   ]
 }
@@ -167,28 +172,32 @@ function createCardinalitySuggestions(monaco: typeof monaco): monaco.languages.C
       kind: monaco.languages.CompletionItemKind.Enum,
       insertText: 'many-to-one',
       documentation: 'Many local records map to one remote record',
-      sortText: '0_many-to-one'
+      sortText: '0_many-to-one',
+      range: undefined as any
     },
     {
       label: 'one-to-many',
       kind: monaco.languages.CompletionItemKind.Enum,
       insertText: 'one-to-many',
       documentation: 'One local record maps to many remote records',
-      sortText: '0_one-to-many'
+      sortText: '0_one-to-many',
+      range: undefined as any
     },
     {
       label: 'one-to-one',
       kind: monaco.languages.CompletionItemKind.Enum,
       insertText: 'one-to-one',
       documentation: 'One local record maps to one remote record',
-      sortText: '0_one-to-one'
+      sortText: '0_one-to-one',
+      range: undefined as any
     },
     {
       label: 'many-to-many',
       kind: monaco.languages.CompletionItemKind.Enum,
       insertText: 'many-to-many',
       documentation: 'Many-to-many relationship',
-      sortText: '0_many-to-many'
+      sortText: '0_many-to-many',
+      range: undefined as any
     }
   ]
 }
@@ -203,14 +212,16 @@ function createEntityTypeSuggestions(monaco: typeof monaco): monaco.languages.Co
       kind: monaco.languages.CompletionItemKind.Enum,
       insertText: 'sql',
       documentation: 'SQL query entity: load data by executing SQL query',
-      sortText: '0_sql'
+      sortText: '0_sql',
+      range: undefined as any
     },
     {
       label: 'fixed',
       kind: monaco.languages.CompletionItemKind.Enum,
       insertText: 'fixed',
       documentation: 'Fixed values entity: hardcoded data defined in values array',
-      sortText: '0_fixed'
+      sortText: '0_fixed',
+      range: undefined as any
     }
   ]
 }
