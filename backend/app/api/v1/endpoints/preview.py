@@ -18,6 +18,20 @@ from src.exceptions import FunctionalDependencyError
 router = APIRouter()
 
 
+def _find_fd_error(error: BaseException) -> FunctionalDependencyError | None:
+    """Find wrapped FunctionalDependencyError in exception cause/context chain."""
+    seen: set[int] = set()
+    current: BaseException | None = error
+
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, FunctionalDependencyError):
+            return current
+        current = current.__cause__ or current.__context__
+
+    return None
+
+
 def _raise_fd_validation_error(error: FunctionalDependencyError, entity_name: str) -> NoReturn:
     """Raise a structured ValidationError for typed FD failures."""
     tips: list[str] = [
@@ -105,6 +119,11 @@ async def preview_entity(
         return result
     except FunctionalDependencyError as e:
         _raise_fd_validation_error(e, entity_name)
+    except RuntimeError as e:
+        fd_error = _find_fd_error(e)
+        if fd_error is not None:
+            _raise_fd_validation_error(fd_error, entity_name)
+        raise
     except ValueError as e:
         logger.warning(f"Preview request failed: {e}")
         raise NotFoundError(str(e)) from e
@@ -141,6 +160,11 @@ async def get_entity_sample(
         return result
     except FunctionalDependencyError as e:
         _raise_fd_validation_error(e, entity_name)
+    except RuntimeError as e:
+        fd_error = _find_fd_error(e)
+        if fd_error is not None:
+            _raise_fd_validation_error(fd_error, entity_name)
+        raise
     except ValueError as e:
         logger.warning(f"Sample request failed: {e}")
         raise NotFoundError(str(e)) from e
