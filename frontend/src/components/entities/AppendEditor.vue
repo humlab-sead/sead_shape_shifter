@@ -18,7 +18,7 @@
             </div>
 
             <!-- Fixed Values Type -->
-            <template v-if="item.appendType === 'fixed'">
+            <template v-if="item.type === 'fixed' && !item.source">
               <v-textarea
                 v-model="item.valuesText"
                 label="Values (JSON Array)"
@@ -30,7 +30,7 @@
             </template>
 
             <!-- SQL Query Type -->
-            <template v-else-if="item.appendType === 'sql'">
+            <template v-else-if="item.type === 'sql'">
               <v-text-field
                 v-model="item.data_source"
                 label="Data Source"
@@ -51,7 +51,7 @@
             </template>
 
             <!-- Entity Source Type -->
-            <template v-else-if="item.appendType === 'entity'">
+            <template v-else-if="item.source">
               <div class="mb-3">
                 <v-select
                   v-model="item.source"
@@ -273,8 +273,8 @@ function normalizeForAPI(): (AppendConfigInternal | null)[] {
   return append.value.map((item) => {
     const normalized: Record<string, any> = {}
 
-    // Always set append type
-    if (item.appendType === 'fixed') {
+    // Determine current type based on item state
+    if (item.type === 'fixed' && !item.source) {
       normalized.type = 'fixed'
       if (item.valuesText) {
         try {
@@ -284,11 +284,11 @@ function normalizeForAPI(): (AppendConfigInternal | null)[] {
           normalized.values = []
         }
       }
-    } else if (item.appendType === 'sql') {
+    } else if (item.type === 'sql') {
       normalized.type = 'sql'
       if (item.data_source) normalized.data_source = item.data_source
       if (item.query) normalized.query = item.query
-    } else if (item.appendType === 'entity') {
+    } else if (item.source) {
       normalized.source = item.source
       if (item.showColumnsOverride && item.columnsText) {
         try {
