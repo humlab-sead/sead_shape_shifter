@@ -34,7 +34,6 @@ class FunctionalDependencySpecification(Specification):
         **kwargs,
     ) -> bool:
         """
-        NOTE: ChatGPT-5.2 optimized version of functional dependency check.
         Check functional dependency: for each unique combination of determinant_columns,
         all other columns must be consistent.
 
