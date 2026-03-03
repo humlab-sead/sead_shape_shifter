@@ -203,3 +203,4 @@ Add support for interpolated string syntax (e.g., `"{first_name} {last_name}"`) 
 **Implementation plan**: See [`docs/features/INTERPOLATED_EXTRA_COLUMNS_IMPLEMENTATION_PLAN.md`](docs/features/INTERPOLATED_EXTRA_COLUMNS_IMPLEMENTATION_PLAN.md)
 **Estimated effort**: 4-6 days
 
+### TODO s
