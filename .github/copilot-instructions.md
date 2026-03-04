@@ -815,6 +815,41 @@ When users say these phrases, execute the complete workflow:
 2. **Concise Issue Description** - Use bullet points, skip verbose markdown
 3. **Direct Commit** - No final log verification (commit hash is enough)
 
+#### Fast Path (Default for "create issue + commit")
+
+Use this as the default behavior unless the user asks for deep analysis or multiple commits.
+
+1. **Status only**: check changed files once; avoid full diff unless unclear.
+2. **Scope strictly**: stage only files relevant to the requested fix (never `git add .`).
+3. **Create concise issue**: 3 short sections (`Problem`, `Solution`, `Files`).
+4. **Single atomic commit**: one Conventional Commit message with `Closes #<issue>`.
+5. **Skip extra verification**: do not run `git log`/extra status loops after successful commit.
+
+Speed guardrails:
+- If unrelated files are modified, leave them unstaged and explicitly mention that in the handoff.
+- Prefer one commit unless the user explicitly asks to split commits.
+- If context is clear from current edits, do not re-read large files or run broad repo scans.
+
+#### GH CLI Body Safety (Important)
+
+When using `gh issue create` in shell commands, avoid unescaped backticks in `--body` strings because they can trigger command substitution.
+
+Preferred pattern:
+```bash
+gh issue create --title "fix(scope): brief title" --body-file - <<'EOF'
+## Problem
+- Brief issue
+
+## Solution
+- Brief fix
+
+## Files
+- path/to/file.py
+EOF
+```
+
+Alternative: if using `--body`, do not include backticks in the text.
+
 **Example Quick Workflow:**
 ```bash
 # 1. Check status (understand what's changed)
