@@ -110,8 +110,25 @@ class MaterializationService:
                     if storage_format == "parquet":
                         data_file = f"materialized/{entity_name}.parquet"
                         full_path: Path = data_dir / f"{entity_name}.parquet"
-                        df.to_parquet(full_path, index=False)
-                        logger.info(f"Saved {len(df)} rows to {full_path}")
+                        try:
+                            df.to_parquet(full_path, index=False)
+                            logger.info(f"Saved {len(df)} rows to {full_path}")
+                        except Exception as e:  # pylint: disable=broad-except
+                            error_message = str(e)
+                            parquet_engine_missing = "Unable to find a usable engine" in error_message or "pyarrow" in error_message
+                            parquet_engine_missing = parquet_engine_missing or "fastparquet" in error_message
+
+                            if not parquet_engine_missing:
+                                raise
+
+                            logger.warning(
+                                f"Parquet engine unavailable while materializing '{entity_name}', falling back to CSV: {error_message}"
+                            )
+                            storage_format = "csv"
+                            data_file = f"materialized/{entity_name}.csv"
+                            full_path = data_dir / f"{entity_name}.csv"
+                            df.to_csv(full_path, index=False)
+                            logger.info(f"Saved {len(df)} rows to {full_path}")
                     else:  # csv
                         data_file = f"materialized/{entity_name}.csv"
                         full_path = data_dir / f"{entity_name}.csv"
