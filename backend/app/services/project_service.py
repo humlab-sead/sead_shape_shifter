@@ -21,6 +21,7 @@ from backend.app.services.project.project_operations import ProjectOperations
 from backend.app.services.project.project_utils import ProjectUtils
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
 from src.configuration.config import LoadResolver
+from src.model import TableConfig
 
 
 class ProjectYamlSpecification:
@@ -852,17 +853,19 @@ class ProjectService:
             if not isinstance(raw, list) or not raw or not isinstance(raw[0], dict):
                 return entity_cfg
 
-            public_id: str = entity_cfg.get("public_id") or ""
-            keys: list[str] = list(entity_cfg.get("keys") or [])
-            data_cols: list[str] = list(entity_cfg.get("columns") or [])
+            columns: list[str] = self._get_column_order(entity_cfg)
 
-            col_order: list[str] = (
-                ["system_id"] + ([public_id] if public_id else []) + keys + [c for c in data_cols if c not in ("system_id", public_id)]
-            )
-            return {**entity_cfg, "values": [[row.get(col) for col in col_order] for row in raw]}
+            return {**entity_cfg, "values": [[row.get(col) for col in columns] for row in raw]}
         except Exception as e:  # pylint: disable=broad-except
             logger.warning(f"Failed to resolve @load: directive in entity values: {e}")
             return entity_cfg
+
+    def _get_column_order(self, entity_cfg: dict[str, Any]) -> list[str]:
+        """Delegate column ordering to Core layer (uses three-tier identity system)."""
+        temp_entity_name: str = entity_cfg.get("name", "temp")
+        table_config = TableConfig(entities_cfg={temp_entity_name: entity_cfg}, entity_name=temp_entity_name)
+        col_order: list[str] = table_config.values_column_order
+        return col_order
 
 
 # Singleton instance
