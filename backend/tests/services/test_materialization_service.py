@@ -1,6 +1,5 @@
 """Tests for materialization service."""
 
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pandas as pd
@@ -8,12 +7,10 @@ import pytest
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
+from backend.app.services.entity_values_service import EntityValuesService
 from backend.app.services.materialization_service import (
-    CSVMaterializationStorage,
     MaterializationError,
     MaterializationService,
-    MaterializationStorage,
-    ParquetMaterializationStorage,
 )
 from backend.app.services.project_service import ProjectService
 from src.model import MaterializationConfig, ShapeShiftProject, TableConfig
@@ -207,14 +204,13 @@ class TestMaterializeEntity:
         large_df = pd.concat([sample_dataframe] * 10, ignore_index=True)
         mock_shapeshifter.table_store = {"location": large_df}
 
-        mock_storage = MagicMock(spec=ParquetMaterializationStorage)
-        mock_storage.store.return_value = True
-        mock_storage.get_relative_filename.return_value = Path("test-project/materialized/location.parquet")
+        mock_entity_values_service = MagicMock(spec=EntityValuesService)
+        mock_entity_values_service.update_values.return_value = "test-project/materialized/location.parquet"
 
         with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             with patch("backend.app.services.materialization_service.CanMaterializeSpecification", return_value=mock_spec):
                 with patch("backend.app.services.materialization_service.ShapeShifter", return_value=mock_shapeshifter):
-                    with patch.object(MaterializationStorage, "create", return_value=mock_storage):
+                    with patch.object(materialization_service, "entity_values_service", mock_entity_values_service):
                         result = await materialization_service.materialize_entity("test-project", "location", "parquet")
 
                         assert result.success
@@ -222,7 +218,7 @@ class TestMaterializeEntity:
                         assert result.rows_materialized == 30
                         assert result.storage_format == "parquet"
                         assert result.storage_file == "test-project/materialized/location.parquet"
-                        mock_storage.store.assert_called_once()
+                        mock_entity_values_service.update_values.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_materialize_csv_storage(
@@ -239,19 +235,18 @@ class TestMaterializeEntity:
         large_df = pd.concat([sample_dataframe] * 10, ignore_index=True)
         mock_shapeshifter.table_store = {"location": large_df}
 
-        mock_storage = MagicMock(spec=CSVMaterializationStorage)
-        mock_storage.store.return_value = True
-        mock_storage.get_relative_filename.return_value = Path("test-project/materialized/location.csv")
+        mock_entity_values_service = MagicMock(spec=EntityValuesService)
+        mock_entity_values_service.update_values.return_value = "test-project/materialized/location.csv"
 
         with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             with patch("backend.app.services.materialization_service.CanMaterializeSpecification", return_value=mock_spec):
                 with patch("backend.app.services.materialization_service.ShapeShifter", return_value=mock_shapeshifter):
-                    with patch.object(MaterializationStorage, "create", return_value=mock_storage):
+                    with patch.object(materialization_service, "entity_values_service", mock_entity_values_service):
                         result = await materialization_service.materialize_entity("test-project", "location", "csv")
 
                         assert result.success
                         assert result.storage_format == "csv"
-                        mock_storage.store.assert_called_once()
+                        mock_entity_values_service.update_values.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_materialize_entity_not_in_results(
@@ -288,17 +283,17 @@ class TestMaterializeEntity:
         large_df = pd.concat([sample_dataframe] * 10, ignore_index=True)
         mock_shapeshifter.table_store = {"location": large_df}
 
-        mock_storage = MagicMock(spec=ParquetMaterializationStorage)
-        mock_storage.store.return_value = False  # Storage failure
+        mock_entity_values_service = MagicMock(spec=EntityValuesService)
+        mock_entity_values_service.update_values.side_effect = Exception("Storage failure")
 
         with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             with patch("backend.app.services.materialization_service.CanMaterializeSpecification", return_value=mock_spec):
                 with patch("backend.app.services.materialization_service.ShapeShifter", return_value=mock_shapeshifter):
-                    with patch.object(MaterializationStorage, "create", return_value=mock_storage):
+                    with patch.object(materialization_service, "entity_values_service", mock_entity_values_service):
                         result = await materialization_service.materialize_entity("test-project", "location", "parquet")
 
                         assert not result.success
-                        assert "Failed to store data" in result.errors[0]
+                        assert "Storage failure" in result.errors[0]
 
 
 class TestUnmaterializeEntity:
@@ -517,117 +512,3 @@ class TestStoreProject:
             materialization_service._store_project(mock_api_project)
 
         assert "Failed to save project configuration" in str(exc_info.value)
-
-
-class TestMaterializationStorage:
-    """Tests for MaterializationStorage classes."""
-
-    @patch("backend.app.services.materialization_service.Settings")
-    @patch("backend.app.services.materialization_service.ProjectNameMapper")
-    def test_csv_storage_initialization(self, mock_name_mapper, mock_settings, tmp_path):
-        """Test CSV storage initialization."""
-        mock_settings.return_value.PROJECTS_DIR = tmp_path
-        mock_name_mapper.to_path.return_value = "test-project"
-
-        storage = CSVMaterializationStorage("test-project")
-
-        assert storage.project_name == "test-project"
-        assert storage.extension == "csv"
-        assert storage.data_dir.exists()
-
-    @patch("backend.app.services.materialization_service.Settings")
-    @patch("backend.app.services.materialization_service.ProjectNameMapper")
-    def test_parquet_storage_initialization(self, mock_name_mapper, mock_settings, tmp_path):
-        """Test Parquet storage initialization."""
-        mock_settings.return_value.PROJECTS_DIR = tmp_path
-        mock_name_mapper.to_path.return_value = "test-project"
-
-        storage = ParquetMaterializationStorage("test-project")
-
-        assert storage.project_name == "test-project"
-        assert storage.extension == "parquet"
-        assert storage.data_dir.exists()
-
-    @patch("backend.app.services.materialization_service.Settings")
-    @patch("backend.app.services.materialization_service.ProjectNameMapper")
-    def test_storage_get_filename(self, mock_name_mapper, mock_settings, tmp_path):
-        """Test filename generation."""
-        mock_settings.return_value.PROJECTS_DIR = tmp_path
-        mock_name_mapper.to_path.return_value = "test-project"
-
-        csv_storage = CSVMaterializationStorage("test-project")
-        parquet_storage = ParquetMaterializationStorage("test-project")
-
-        assert csv_storage.get_filename("location") == "location.csv"
-        assert parquet_storage.get_filename("location") == "location.parquet"
-
-    @patch("backend.app.services.materialization_service.Settings")
-    @patch("backend.app.services.materialization_service.ProjectNameMapper")
-    def test_storage_get_relative_filename(self, mock_name_mapper, mock_settings, tmp_path):
-        """Test relative filename generation."""
-        mock_settings.return_value.PROJECTS_DIR = tmp_path
-        mock_name_mapper.to_path.return_value = "test-project"
-
-        storage = CSVMaterializationStorage("test-project")
-        relative = storage.get_relative_filename("location")
-
-        assert str(relative) == "test-project/materialized/location.csv"
-
-    @patch("backend.app.services.materialization_service.Settings")
-    @patch("backend.app.services.materialization_service.ProjectNameMapper")
-    def test_csv_storage_store_success(self, mock_name_mapper, mock_settings, tmp_path, sample_dataframe):
-        """Test CSV storage stores data correctly."""
-        mock_settings.return_value.PROJECTS_DIR = tmp_path
-        mock_name_mapper.to_path.return_value = "test-project"
-
-        storage = CSVMaterializationStorage("test-project")
-        success = storage.store("location", sample_dataframe)
-
-        assert success
-        csv_file = storage.get_absolute_file_path("location")
-        assert csv_file.exists()
-
-        # Verify data
-        loaded_df = pd.read_csv(csv_file)
-        assert len(loaded_df) == 3
-        assert list(loaded_df.columns) == ["location_id", "location_name", "country_code"]
-
-    @patch("backend.app.services.materialization_service.Settings")
-    @patch("backend.app.services.materialization_service.ProjectNameMapper")
-    def test_parquet_storage_store_success(self, mock_name_mapper, mock_settings, tmp_path, sample_dataframe):
-        """Test Parquet storage stores data correctly."""
-        mock_settings.return_value.PROJECTS_DIR = tmp_path
-        mock_name_mapper.to_path.return_value = "test-project"
-
-        storage = ParquetMaterializationStorage("test-project")
-        success = storage.store("location", sample_dataframe)
-
-        assert success
-        parquet_file = storage.get_absolute_file_path("location")
-        assert parquet_file.exists()
-
-        # Verify data
-        loaded_df = pd.read_parquet(parquet_file)
-        assert len(loaded_df) == 3
-        assert list(loaded_df.columns) == ["location_id", "location_name", "country_code"]
-
-    def test_storage_factory_parquet(self):
-        """Test factory creates Parquet storage."""
-        with patch("backend.app.services.materialization_service.Settings"):
-            with patch("backend.app.services.materialization_service.ProjectNameMapper"):
-                storage = MaterializationStorage.create("test-project", "parquet")
-                assert isinstance(storage, ParquetMaterializationStorage)
-
-    def test_storage_factory_csv(self):
-        """Test factory creates CSV storage."""
-        with patch("backend.app.services.materialization_service.Settings"):
-            with patch("backend.app.services.materialization_service.ProjectNameMapper"):
-                storage = MaterializationStorage.create("test-project", "csv")
-                assert isinstance(storage, CSVMaterializationStorage)
-
-    def test_storage_factory_default_csv(self):
-        """Test factory defaults to CSV for unknown formats."""
-        with patch("backend.app.services.materialization_service.Settings"):
-            with patch("backend.app.services.materialization_service.ProjectNameMapper"):
-                storage = MaterializationStorage.create("test-project", "unknown")
-                assert isinstance(storage, CSVMaterializationStorage)

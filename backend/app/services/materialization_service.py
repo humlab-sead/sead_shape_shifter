@@ -1,8 +1,6 @@
 """Service for entity materialization operations."""
 
-import abc
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Literal
 
 import pandas as pd
@@ -16,10 +14,13 @@ from backend.app.models.materialization import (
     UnmaterializationResult,
 )
 from backend.app.models.project import Project
+from backend.app.services.entity_values_service import EntityValuesService
 from backend.app.services.project_service import ProjectService
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.specifications.materialize import CanMaterializeSpecification
+
+# pylint: disable=redefined-builtin
 
 
 class MaterializationError(Exception):
@@ -32,6 +33,13 @@ class MaterializationService:
     def __init__(self, project_service: ProjectService):
         """Initialize service with project service dependency."""
         self.project_service: ProjectService = project_service
+        self.entity_values_service: EntityValuesService = EntityValuesService(project_service)
+
+    def _get_materialized_file_path(self, project_name: str, entity_name: str, format: str) -> str:
+        """Get relative path for materialized file."""
+        extension = "parquet" if format == "parquet" else "csv"
+        project_path = ProjectNameMapper.to_path(project_name)
+        return f"{project_path}/materialized/{entity_name}.{extension}"
 
     async def materialize_entity(
         self,
@@ -86,15 +94,28 @@ class MaterializationService:
                 actual_format = "inline"
                 logger.info(f"Auto-storing {len(df)} rows inline in YAML (below threshold)")
             else:
-                storage: MaterializationStorage = MaterializationStorage.create(project_name, storage_format)
-                if not storage.store(entity_name, df):
-                    raise MaterializationError(f"Failed to store data for entity '{entity_name}'")
-                data_file = str(storage.get_relative_filename(entity_name))
+                # Construct file path and update entity config with @load: directive
+                data_file = self._get_materialized_file_path(project_name, entity_name, storage_format)
                 values_inline = f"@load:{data_file}"
+
+                # Update entity config with @load: directive first
+                api_project.entities[entity_name] = self._create_materialized_entity(table_cfg, df, values_inline)
+                self._store_project(api_project)
+
+                # Now write the actual data file using EntityValuesService
+                self.entity_values_service.update_values(
+                    project_name=project_name,
+                    entity_name=entity_name,
+                    columns=df.columns.tolist(),
+                    values=df.values.tolist(),
+                    format_type=storage_format,
+                )
 
             api_project.entities[entity_name] = self._create_materialized_entity(table_cfg, df, values_inline)
 
-            self._store_project(api_project)
+            # Save project config (only if not already saved above for external storage)
+            if storage_format == "inline" or len(df) < store_inline_threshold:
+                self._store_project(api_project)
 
             logger.info(f"Successfully materialized entity '{entity_name}' with {len(df)} rows")
 
@@ -114,9 +135,7 @@ class MaterializationService:
             logger.exception(f"Failed to materialize entity '{entity_name}': {e}")
             return MaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
 
-    def _create_materialized_entity(
-        self, table: TableConfig, df: pd.DataFrame, values_inline: list[list[Any]] | str
-    ) -> dict[str, Any]:
+    def _create_materialized_entity(self, table: TableConfig, df: pd.DataFrame, values_inline: list[list[Any]] | str) -> dict[str, Any]:
         """Create the new entity config dict for the materialized entity, including saved state for unmaterialization."""
         saved_state: dict[str, Any] = {}
         for k, v in table.entity_cfg.items():
@@ -125,7 +144,7 @@ class MaterializationService:
                 if v is None or v == "" or (isinstance(v, str) and not v.strip()):
                     continue
                 saved_state[k] = v
-        
+
         if not saved_state:
             logger.warning(f"Entity '{table.entity_name}' has no config to save - unmaterialization may not be possible")
 
@@ -221,74 +240,4 @@ class MaterializationService:
         try:
             self.project_service.save_project(api_project)
         except Exception as e:  # pylint: disable=broad-except
-            raise MaterializationError(f"Failed to save project configuration: {e}")
-
-
-class MaterializationStorage(abc.ABC):
-    """Class responsible for storing materialized data to disk."""
-
-    extension: str = "foo"
-
-    def __init__(self, project_name: str):
-        self.project_name: str = project_name
-        self.folder: Path = Settings().PROJECTS_DIR
-        self.relative_path: Path = Path(ProjectNameMapper.to_path(project_name)) / "materialized"
-        self.data_dir: Path = self.folder / self.relative_path
-        try:
-            self.data_dir.mkdir(parents=True, exist_ok=True)
-        except OSError as e:
-            logger.error(f"Failed to create materialized directory: {e}")
-            raise
-
-    def get_filename(self, entity_name: str) -> str:
-        return f"{entity_name}.{self.extension}"
-
-    def get_relative_filename(self, entity_name: str) -> Path:
-        return self.relative_path / self.get_filename(entity_name)
-
-    def get_absolute_file_path(self, entity_name: str) -> Path:
-        return self.data_dir / self.get_filename(entity_name)
-
-    def store(self, entity_name: str, df: pd.DataFrame, **opts) -> bool:
-        """Store DataFrame to disk and return success status."""
-        filename: Path = self.get_absolute_file_path(entity_name)
-        try:
-            self._store(df, filename, **opts)
-            logger.info(f"Saved {len(df)} rows to {filename}")
-            return True
-        except OSError as e:
-            logger.error(f"Failed to write data file: {e}")
-            raise
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"Unexpected error saving data: {e}")
-            raise
-
-    @abc.abstractmethod
-    def _store(self, df: pd.DataFrame, filename: Path, **opts) -> None:
-        """Store the DataFrame to the given filename with specified options."""
-
-    @staticmethod
-    def create(project_name: str, storage_format: str) -> "MaterializationStorage":
-        """Factory method to create appropriate storage implementation."""
-        if storage_format == "parquet":
-            return ParquetMaterializationStorage(project_name)
-        else:
-            return CSVMaterializationStorage(project_name)
-
-
-class CSVMaterializationStorage(MaterializationStorage):
-    """Saves materalization data to CSV."""
-
-    extension: str = "csv"
-
-    def _store(self, df: pd.DataFrame, filename: Path, **opts) -> None:
-        df.to_csv(filename, index=False, **opts)
-
-
-class ParquetMaterializationStorage(MaterializationStorage):
-    """Saves materialization data to Parquet format."""
-
-    extension: str = "parquet"
-
-    def _store(self, df: pd.DataFrame, filename: Path, **opts) -> None:
-        df.to_parquet(filename, index=False, **opts)
+            raise MaterializationError(f"Failed to save project configuration: {e}") from e

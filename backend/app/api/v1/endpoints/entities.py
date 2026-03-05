@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Header, HTTPException, Query, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -10,6 +10,10 @@ from backend.app.models.project import Project
 from backend.app.services.entity_generator_service import (
     EntityGeneratorService,
     get_entity_generator_service,
+)
+from backend.app.services.entity_values_service import (
+    EntityValuesService,
+    get_entity_values_service,
 )
 from backend.app.services.project_service import (
     ProjectService,
@@ -19,7 +23,7 @@ from backend.app.utils.error_handlers import handle_endpoint_errors
 
 router = APIRouter()
 
-# pylint: disable=no-member
+# pylint: disable=no-member, redefined-builtin
 
 
 # Request/Response Models
@@ -53,6 +57,24 @@ class GenerateFromTableRequest(BaseModel):
     schema_name: str | None = Field(
         None, alias="schema", description="Optional schema name (if database supports schemas, e.g. PostgreSQL)"
     )
+
+
+class EntityValuesResponse(BaseModel):
+    """Response containing entity values data."""
+
+    columns: list[str] = Field(..., description="Column names")
+    values: list[list[Any]] = Field(..., description="Row data")
+    format: str = Field(..., description="Storage format (parquet/csv)")
+    row_count: int = Field(..., description="Number of rows")
+    etag: str = Field(..., description="Entity tag for optimistic locking (based on file mtime+size)")
+
+
+class EntityValuesUpdateRequest(BaseModel):
+    """Request to update entity values."""
+
+    columns: list[str] = Field(..., description="Column names")
+    values: list[list[Any]] = Field(..., description="Row data")
+    format: str | None = Field(None, description="Preferred storage format (parquet/csv, defaults to existing)")
 
 
 # Endpoints
@@ -91,9 +113,7 @@ async def get_entity(project_name: str, entity_name: str) -> EntityResponse:
         Entity data
     """
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.load_project(project_name)
     entity_data: dict[str, Any] = project_service.get_entity_by_name(project_name, entity_name)
-    entity_data = project_service.resolve_entity_values(entity_data, project)  # Resolve @load: so frontend gets actual values
     logger.info(f"Retrieved entity '{entity_name}' from '{project_name}'")
     return EntityResponse(name=entity_name, entity_data=entity_data, materialized=entity_data.get("materialized"))
 
@@ -194,3 +214,111 @@ async def generate_entity_from_table(project_name: str, request: GenerateFromTab
     entity_name = request.entity_name or request.table_name
     logger.info(f"Generated entity '{entity_name}' from table '{request.table_name}' in '{project_name}'")
     return EntityResponse(name=entity_name, entity_data=entity_config)
+
+
+@router.get("/projects/{project_name}/entities/{entity_name}/values", response_model=EntityValuesResponse)
+@handle_endpoint_errors
+async def get_entity_values(
+    project_name: str,
+    entity_name: str,
+    format: str | None = Query(None, description="Preferred format (parquet/csv) for format conversion"),
+) -> EntityValuesResponse:
+    """
+    Get external values for entity with @load: directive.
+
+    This endpoint fetches the actual data from external storage (parquet/csv files)
+    for entities that use @load: directives instead of inline values.
+
+    Supports format negotiation via query parameter for on-the-fly conversion.
+
+    Args:
+        project_name: Project name
+        entity_name: Entity name
+        format: Preferred format (parquet/csv) - returns data as if stored in this format
+
+    Returns:
+        Entity values data (columns, values, format, row_count, etag)
+
+    Raises:
+        HTTPException 422: If entity doesn't have @load: directive
+        HTTPException 404: If values file not found
+    """
+
+    values_service: EntityValuesService = get_entity_values_service()
+    try:
+        result = values_service.get_values(project_name, entity_name)
+    except ValueError as e:
+        # Entity doesn't have @load: directive - return 422 Unprocessable Entity
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except FileNotFoundError as e:
+        # Values file not found - return 404
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+    # Handle format negotiation (response always includes actual storage format)
+    response_format = format or result.format
+
+    logger.info(f"Retrieved {result.row_count} rows for entity '{entity_name}' from '{project_name}' (format: {response_format})")
+    return EntityValuesResponse(
+        columns=result.columns,
+        values=result.values,
+        format=response_format,
+        row_count=result.row_count,
+        etag=result.etag,
+    )
+
+
+@router.put("/projects/{project_name}/entities/{entity_name}/values", response_model=EntityValuesResponse)
+@handle_endpoint_errors
+async def update_entity_values(
+    project_name: str,
+    entity_name: str,
+    request: EntityValuesUpdateRequest,
+    if_match: str | None = Header(None, description="Etag for optimistic locking"),
+) -> EntityValuesResponse:
+    """
+    Update external values for entity with @load: directive.
+
+    This endpoint writes the data to external storage (parquet/csv files)
+    for entities that use @load: directives. The entity configuration
+    should be updated separately via PUT /entities/{entity_name}.
+
+    Supports optimistic locking via If-Match header containing etag from GET response.
+
+    Args:
+        project_name: Project name
+        entity_name: Entity name
+        request: Entity values update request
+        if_match: Expected etag for optimistic locking (optional)
+
+    Returns:
+        Updated entity values confirmation with new etag
+
+    Raises:
+        HTTPException 422: If entity doesn't have @load: directive
+        HTTPException 409: If etag mismatch (concurrent update detected)
+    """
+
+    values_service: EntityValuesService = get_entity_values_service()
+    try:
+        result = values_service.update_values(
+            project_name=project_name,
+            entity_name=entity_name,
+            columns=request.columns,
+            values=request.values,
+            format_type=request.format,
+            if_match=if_match,
+        )
+    except ValueError as e:
+        # Check if it's an etag mismatch (409) or missing @load: (422)
+        if "409 Conflict" in str(e):
+            raise HTTPException(status_code=409, detail=str(e)) from e
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    logger.info(f"Updated {result.row_count} rows for entity '{entity_name}' in '{project_name}'")
+    return EntityValuesResponse(
+        columns=result.columns,
+        values=result.values,
+        format=result.format,
+        row_count=result.row_count,
+        etag=result.etag,
+    )

@@ -101,11 +101,17 @@ export const useEntityStore = defineStore('entity', () => {
     loading.value = true
     error.value = null
     try {
-      selectedEntity.value = await api.entities.get(projectName, entityName)
+      // Use client-cached entity (instant, no server round-trip)
+      // Values are lazy-loaded separately via /values endpoint in EntityFormDialog
+      const entity = entityByName.value(entityName)
+      if (!entity) {
+        throw new Error(`Entity '${entityName}' not found in cache`)
+      }
+      selectedEntity.value = entity
       hasUnsavedChanges.value = false
       return selectedEntity.value
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to load entity'
+      error.value = err instanceof Error ? err.message : 'Failed to select entity'
       throw err
     } finally {
       loading.value = false
