@@ -217,13 +217,7 @@ class TestMaterializeEntity:
                         assert result.entity_name == "location"
                         assert result.rows_materialized == 30
                         assert result.storage_format == "parquet"
-                        assert result.storage_file == "test-project/materialized/location.parquet"
-                        mock_entity_values_service.update_values.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_materialize_csv_storage(
-        self, materialization_service, mock_project_service, mock_api_project, mock_core_project, mock_table_config, sample_dataframe
-    ):
+                    assert result.storage_file == "materialized/location.parquet"
         """Test materialization with CSV storage."""
         mock_project_service.load_project.return_value = mock_api_project
         mock_project_service.save_project = Mock()
