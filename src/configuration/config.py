@@ -319,7 +319,11 @@ class BaseResolver:
     directive: str = ""
 
     def __init__(
-        self, context: str | None = None, env_filename: str | None = None, env_prefix: str | None = None, source_path: str | None = None
+        self,
+        context: str | None = None,
+        env_filename: str | None = None,
+        env_prefix: str | None = None,
+        source_path: str | None = None,
     ) -> None:
         self.context: str | None = context
         self.env_filename: str | None = env_filename
@@ -445,14 +449,14 @@ class LoadResolver(BaseResolver):
         super().__init__(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path)
 
     def resolve_directive(self, directive_argument: str, base_path: Path | None) -> Any:
-        """Resolve @load: directive with environment variable expansion.
+        """Resolve "@load: argument" directive with environment variable expansion.
 
         Supports loading CSV/TSV data from files with env var paths:
         - @load: ${DATA_DIR}/lookup.csv
         - @load: ./data/local.csv
 
         Args:
-            directive_argument: Either a file path or a dotted config path to load options
+            directive_argument: Either 1) a file path or 2) a dotted config path to load options
             base_path: Directory of current file for resolving relative paths
 
         Returns:
@@ -481,14 +485,26 @@ class LoadResolver(BaseResolver):
         # Resolve environment variables and relative paths
         filename = self._resolve_path(filename, base_path=base_path, raise_if_missing=False)
 
+        return self.load_file(filename, sep) or directive_argument
+
+    def load_file(self, filename: str, sep: str) -> list[dict[Any, Any]] | None:
+        """Load CSV/TSV file into a list of dictionaries."""
+        loaded_data: list[dict[Any, Any]] | None = None
         if not is_path_to_existing_file(filename):
-            logger.warning(f"ignoring load directive for path '{directive_argument}' since file '{filename}' does not exist")
-            return directive_argument
+            logger.warning(f"file '{filename}' referenced in load directive does not exist")
+            return None
 
         try:
-            loaded_data: list[dict[Any, Any]] = pd.read_csv(filename, sep=sep, dtype=str).to_dict(orient="records")
+            if filename.lower().endswith(".parquet"):
+                loaded_data = pd.read_parquet(filename).to_dict(orient="records")
+            else:
+                loaded_data = pd.read_csv(filename, sep=sep, dtype=str).to_dict(orient="records")
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.warning(f"ignoring load directive for path '{directive_argument}' since file '{filename}' could not be parsed: {e}")
-            return directive_argument
+            logger.warning(f"file '{filename}' referenced in load directive could not be parsed: {e}")
+            return None
 
         return loaded_data
+
+    def is_load_directive(self, value: Any) -> bool:
+        """Check if the value is a load directive string."""
+        return isinstance(value, str) and value.startswith(self.directive)
