@@ -1,14 +1,12 @@
 """Tests for materialization service."""
 
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pandas as pd
 import pytest
 
 from backend.app.mappers.project_mapper import ProjectMapper
-from backend.app.models.materialization import MaterializationResult, UnmaterializationResult
 from backend.app.models.project import Project
 from backend.app.services.materialization_service import (
     CSVMaterializationStorage,
@@ -393,7 +391,7 @@ class TestUnmaterializeEntity:
         def get_table_side_effect(name):
             if name == "location":
                 return mock_materialized_table_config
-            elif name == "site":
+            if name == "site":
                 return dependent_table
             return None
 
