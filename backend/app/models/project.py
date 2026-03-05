@@ -1,6 +1,7 @@
 """Pydantic models for project."""
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_serializer
@@ -91,6 +92,13 @@ class Project(BaseModel):
     def filename(self) -> str | None:
         """Get project filename from metadata."""
         return self.metadata.file_path if self.metadata else None  # pylint: disable=no-member
+
+    @property
+    def folder(self) -> Path:
+        """Get project folder from metadata."""
+        if self.metadata and self.metadata.file_path:  # pylint: disable=no-member
+            return Path(self.metadata.file_path).parent  # pylint: disable=no-member
+        return Path(".")
 
     def has_table(self, entity_name: str) -> bool:
         """Check if entity exists in project."""
