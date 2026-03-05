@@ -20,6 +20,7 @@ from backend.app.services.project.file_manager import FileManager
 from backend.app.services.project.project_operations import ProjectOperations
 from backend.app.services.project.project_utils import ProjectUtils
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
+from src.configuration.config import LoadResolver
 
 
 class ProjectYamlSpecification:
@@ -816,6 +817,52 @@ class ProjectService:
             File information for the saved file
         """
         return self.files.save_data_source_file(upload, allowed_extensions=allowed_extensions, max_size_mb=max_size_mb)
+
+    def resolve_entity_values(self, entity_cfg: dict[str, Any], project: Project) -> dict[str, Any]:
+        """Resolve an @load: directive in the 'values' field of an entity config dict.
+
+        Returns a shallow copy of entity_cfg with 'values' replaced by a list[list]
+        (system_id → public_id → keys → data columns order) when the directive can be
+        resolved, or the original dict unchanged when values is not an @load: string
+        or when the file cannot be read.
+
+        Args:
+            entity_cfg: Entity configuration dict (may contain an @load: string in 'values').
+            project: Project containing the entity (used for resolving relative paths).
+
+        Returns:
+            Entity dict with 'values' resolved to list[list], or original dict unchanged.
+        """
+        directive: str = "@load"
+
+        values: Any = entity_cfg.get("values")
+        resolver: LoadResolver = LoadResolver(source_path=project.filename)
+
+        if not resolver.is_load_directive(values):
+            return entity_cfg
+
+        if project.filename is None:
+            logger.warning("Cannot resolve @load: directive because project filename is missing")
+            return entity_cfg
+
+        try:
+            directive_argument: str = values[len(directive) :].lstrip(":").strip()
+            raw: Any = resolver.resolve_directive(directive_argument, base_path=Path(project.filename).parent)
+
+            if not isinstance(raw, list) or not raw or not isinstance(raw[0], dict):
+                return entity_cfg
+
+            public_id: str = entity_cfg.get("public_id") or ""
+            keys: list[str] = list(entity_cfg.get("keys") or [])
+            data_cols: list[str] = list(entity_cfg.get("columns") or [])
+
+            col_order: list[str] = (
+                ["system_id"] + ([public_id] if public_id else []) + keys + [c for c in data_cols if c not in ("system_id", public_id)]
+            )
+            return {**entity_cfg, "values": [[row.get(col) for col in col_order] for row in raw]}
+        except Exception as e:  # pylint: disable=broad-except
+            logger.warning(f"Failed to resolve @load: directive in entity values: {e}")
+            return entity_cfg
 
 
 # Singleton instance

@@ -175,7 +175,7 @@ class MaterializationService:
             if values_inline:
                 new_config["values"] = values_inline
             elif data_file:
-                new_config["values"] = f"@file:{data_file}"
+                new_config["values"] = f"@load:{data_file}"
 
             # Update project (entities are stored as raw dicts)
             api_project.entities[entity_name] = new_config
