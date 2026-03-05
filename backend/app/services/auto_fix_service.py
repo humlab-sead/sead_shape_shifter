@@ -12,6 +12,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.core.config import settings
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.fix import FixAction, FixActionType, FixResult, FixSuggestion
 from backend.app.models.project import Project
 from backend.app.models.validation import ValidationError
@@ -326,7 +327,7 @@ class AutoFixService:
         """Create backup of project before applying fixes."""
 
         # New structure: projects_dir/project_name/shapeshifter.yml
-        project_dir = settings.PROJECTS_DIR / project_name
+        project_dir = settings.PROJECTS_DIR / ProjectNameMapper.to_path(project_name)
         project_path = project_dir / "shapeshifter.yml"
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -343,7 +344,7 @@ class AutoFixService:
         """Rollback project to backup."""
 
         # New structure: projects_dir/project_name/shapeshifter.yml
-        project_dir = settings.PROJECTS_DIR / project_name
+        project_dir = settings.PROJECTS_DIR / ProjectNameMapper.to_path(project_name)
         project_path = project_dir / "shapeshifter.yml"
 
         shutil.copy2(backup_path, project_path)

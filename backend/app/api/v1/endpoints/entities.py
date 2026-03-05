@@ -16,8 +16,6 @@ from backend.app.services.project_service import (
     get_project_service,
 )
 from backend.app.utils.error_handlers import handle_endpoint_errors
-from src.configuration.config import LoadResolver
-
 
 router = APIRouter()
 
