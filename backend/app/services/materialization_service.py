@@ -9,6 +9,7 @@ from pandas import DataFrame
 
 from backend.app.core.config import Settings
 from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.materialization import (
     MaterializationResult,
     UnmaterializationResult,
@@ -95,7 +96,7 @@ class MaterializationService:
             else:
                 # External file storage
                 folder: Path = Settings().PROJECTS_DIR
-                data_dir: Path = Path(folder) / f"projects/{project_name}/materialized"
+                data_dir: Path = folder / ProjectNameMapper.to_path(project_name) / "materialized"
 
                 try:
                     data_dir.mkdir(parents=True, exist_ok=True)
