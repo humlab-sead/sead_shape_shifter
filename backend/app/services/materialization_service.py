@@ -8,7 +8,6 @@ from loguru import logger
 
 from backend.app.core.config import Settings
 from backend.app.mappers.project_mapper import ProjectMapper
-from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.materialization import (
     MaterializationResult,
     UnmaterializationResult,
@@ -36,10 +35,9 @@ class MaterializationService:
         self.entity_values_service: EntityValuesService = EntityValuesService(project_service)
 
     def _get_materialized_file_path(self, project_name: str, entity_name: str, format: str) -> str:
-        """Get relative path for materialized file."""
+        """Get relative path for materialized file (relative to project folder)."""
         extension = "parquet" if format == "parquet" else "csv"
-        project_path = ProjectNameMapper.to_path(project_name)
-        return f"{project_path}/materialized/{entity_name}.{extension}"
+        return f"materialized/{entity_name}.{extension}"
 
     async def materialize_entity(
         self,
