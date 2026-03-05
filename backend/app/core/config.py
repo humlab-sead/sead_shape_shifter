@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     # Ingester configuration
     INGESTER_PATHS: list[str] = ["ingesters"]
     ENABLED_INGESTERS: list[str] | None = None  # None = all discovered ingesters
+    MATERIALIZATION_INLINE_THRESHOLD: int = 20  # Rows below which data is stored inline in YAML
 
     def model_post_init(self, __context) -> None:  # pylint: disable=arguments-differ
         """Convert paths to absolute and ensure directories exist."""
