@@ -1,5 +1,6 @@
 """Tests for entity API endpoints."""
 
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -250,3 +251,325 @@ class TestEntitiesDelete:
         # Try to delete non-existent entity
         response = client.delete("/api/v1/projects/test_project/entities/nonexistent")
         assert response.status_code == 404
+
+
+class TestEntityValues:
+    """Tests for entity external values endpoints."""
+
+    def test_get_entity_values_parquet(self, tmp_path, monkeypatch, reset_services):
+        """Test getting entity values from parquet file."""
+
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        # Create project folder structure
+        project_folder = tmp_path / "test_project"
+        project_folder.mkdir()
+        materialized_folder = project_folder / "materialized"
+        materialized_folder.mkdir()
+
+        # Create parquet file with test data
+        df = pd.DataFrame({"id": [1, 2, 3], "name": ["A", "B", "C"], "value": [10, 20, 30]})
+        parquet_file = materialized_folder / "test_entity.parquet"
+        df.to_parquet(parquet_file, index=False)
+
+        # Create project with entity that has @load: directive
+        entity_data = {
+            "type": "fixed",
+            "columns": ["id", "name", "value"],
+            "values": "@load:materialized/test_entity.parquet",
+            "public_id": "id",
+            "keys": ["id"],
+        }
+        client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        # Get entity values
+        response = client.get("/api/v1/projects/test_project/entities/test_entity/values")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["columns"] == ["id", "name", "value"]
+        assert data["row_count"] == 3
+        assert data["format"] == "parquet"
+        assert data["values"] == [[1, "A", 10], [2, "B", 20], [3, "C", 30]]
+
+    def test_get_entity_values_csv(self, tmp_path, monkeypatch, reset_services):
+        """Test getting entity values from CSV file."""
+
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        # Create project folder structure
+        project_folder = tmp_path / "test_project"
+        project_folder.mkdir()
+        materialized_folder = project_folder / "materialized"
+        materialized_folder.mkdir()
+
+        # Create CSV file with test data
+        df = pd.DataFrame({"id": [1, 2], "name": ["X", "Y"]})
+        csv_file = materialized_folder / "test_entity.csv"
+        df.to_csv(csv_file, index=False)
+
+        # Create project with entity that has @load: directive
+        entity_data = {
+            "type": "fixed",
+            "columns": ["id", "name"],
+            "values": "@load:materialized/test_entity.csv",
+            "public_id": "id",
+            "keys": ["id"],
+        }
+        client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        # Get entity values
+        response = client.get("/api/v1/projects/test_project/entities/test_entity/values")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["columns"] == ["id", "name"]
+        assert data["row_count"] == 2
+        assert data["format"] == "csv"
+
+    def test_get_entity_values_no_load_directive(self, tmp_path, monkeypatch, reset_services):
+        """Test error when entity has no @load: directive."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        # Create project with entity that has inline values
+        entity_data = {"type": "fixed", "columns": ["id", "name"], "values": [[1, "A"], [2, "B"]], "public_id": "id", "keys": ["id"]}
+        client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        # Try to get entity values
+        response = client.get("/api/v1/projects/test_project/entities/test_entity/values")
+        assert response.status_code == 422
+        assert "does not have @load: directive" in response.json()["detail"]
+
+    def test_update_entity_values(self, tmp_path, monkeypatch, reset_services):
+        """Test updating entity values."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        # Create project folder structure
+        project_folder = tmp_path / "test_project"
+        project_folder.mkdir()
+        materialized_folder = project_folder / "materialized"
+        materialized_folder.mkdir()
+
+        # Create project with entity that has @load: directive
+        entity_data = {
+            "type": "fixed",
+            "columns": ["id", "name"],
+            "values": "@load:materialized/test_entity.parquet",
+            "public_id": "id",
+            "keys": ["id"],
+        }
+        client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        # Update entity values
+        update_data = {"columns": ["id", "name", "value"], "values": [[1, "A", 100], [2, "B", 200], [3, "C", 300]]}
+        response = client.put("/api/v1/projects/test_project/entities/test_entity/values", json=update_data)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["columns"] == ["id", "name", "value"]
+        assert data["row_count"] == 3
+        assert data["format"] == "parquet"
+
+        # Verify file was created
+        parquet_file = materialized_folder / "test_entity.parquet"
+        assert parquet_file.exists()
+
+        # Verify we can read it back
+
+        df = pd.read_parquet(parquet_file)
+        assert df.columns.tolist() == ["id", "name", "value"]
+        assert len(df) == 3
+
+    def test_update_entity_values_no_load_directive(self, tmp_path, monkeypatch, reset_services):
+        """Test error when trying to update entity without @load: directive."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        # Create project with entity that has inline values
+        entity_data = {"type": "fixed", "columns": ["id", "name"], "values": [[1, "A"]], "public_id": "id", "keys": ["id"]}
+        client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        # Try to update entity values
+        update_data = {"columns": ["id", "name"], "values": [[1, "X"], [2, "Y"]]}
+        response = client.put("/api/v1/projects/test_project/entities/test_entity/values", json=update_data)
+        assert response.status_code == 422
+        assert "does not have @load: directive" in response.json()["detail"]
+
+    def test_get_entity_values_returns_etag(self, tmp_path, monkeypatch, reset_services):
+        """Test GET returns etag for optimistic locking."""
+
+        # Setup temp data directory
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        # Create project with external values
+        project_dir = tmp_path / "test_project"
+        project_dir.mkdir()
+        values_dir = project_dir / "materialized"
+        values_dir.mkdir()
+
+        # Create parquet file
+        df = pd.DataFrame({"col1": [1, 2]})
+        values_file = values_dir / "test.parquet"
+        df.to_parquet(values_file, index=False)
+
+        # Create project
+        entity_data = {
+            "type": "fixed",
+            "columns": ["col1"],
+            "values": "@load:materialized/test.parquet",
+            "public_id": "col1",
+            "keys": ["col1"],
+        }
+        client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        # Get values
+        response = client.get("/api/v1/projects/test_project/entities/test_entity/values")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert "etag" in data
+        assert isinstance(data["etag"], str)
+        assert len(data["etag"]) == 32  # MD5 hex
+
+    def test_update_entity_values_with_matching_etag(self, tmp_path, monkeypatch, reset_services):
+        """Test PUT succeeds with matching If-Match etag."""
+
+        # Setup temp data directory
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        # Create project with external values
+        project_dir = tmp_path / "test_project"
+        project_dir.mkdir()
+        values_dir = project_dir / "materialized"
+        values_dir.mkdir()
+
+        # Create parquet file
+        df = pd.DataFrame({"col1": [1, 2]})
+        values_file = values_dir / "test.parquet"
+        df.to_parquet(values_file, index=False)
+
+        # Create project
+        entity_data = {
+            "type": "fixed",
+            "columns": ["col1"],
+            "values": "@load:materialized/test.parquet",
+            "public_id": "col1",
+            "keys": ["col1"],
+        }
+        client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        # Get current etag
+        get_response = client.get("/api/v1/projects/test_project/entities/test_entity/values")
+        current_etag = get_response.json()["etag"]
+
+        # Update with matching etag
+        update_data = {"columns": ["col1"], "values": [[10], [20]]}
+        response = client.put(
+            "/api/v1/projects/test_project/entities/test_entity/values", json=update_data, headers={"If-Match": current_etag}
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["row_count"] == 2
+        assert data["etag"] != current_etag  # New etag after update
+
+    def test_update_entity_values_with_mismatched_etag(self, tmp_path, monkeypatch, reset_services):
+        """Test PUT fails with 409 when If-Match etag doesn't match."""
+
+        # Setup temp data directory
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        # Create project with external values
+        project_dir = tmp_path / "test_project"
+        project_dir.mkdir()
+        values_dir = project_dir / "materialized"
+        values_dir.mkdir()
+
+        # Create parquet file
+        df = pd.DataFrame({"col1": [1, 2]})
+        values_file = values_dir / "test.parquet"
+        df.to_parquet(values_file, index=False)
+
+        # Create project
+        entity_data = {
+            "type": "fixed",
+            "columns": ["col1"],
+            "values": "@load:materialized/test.parquet",
+            "public_id": "col1",
+            "keys": ["col1"],
+        }
+        client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        # Update with wrong etag
+        update_data = {"columns": ["col1"], "values": [[10], [20]]}
+        response = client.put(
+            "/api/v1/projects/test_project/entities/test_entity/values",
+            json=update_data,
+            headers={"If-Match": "wrong_etag_12345678901234567890"},
+        )
+        assert response.status_code == 409
+        assert "409 Conflict" in response.json()["detail"]
+
+    def test_get_entity_values_with_format_negotiation(self, tmp_path, monkeypatch, reset_services):
+        """Test GET with format query parameter (format negotiation)."""
+
+        # Setup temp data directory
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        # Create project with external values
+        project_dir = tmp_path / "test_project"
+        project_dir.mkdir()
+        values_dir = project_dir / "materialized"
+        values_dir.mkdir()
+
+        # Create parquet file
+        df = pd.DataFrame({"col1": [1, 2]})
+        values_file = values_dir / "test.parquet"
+        df.to_parquet(values_file, index=False)
+
+        # Create project
+        entity_data = {
+            "type": "fixed",
+            "columns": ["col1"],
+            "values": "@load:materialized/test.parquet",
+            "public_id": "col1",
+            "keys": ["col1"],
+        }
+        client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        # Get values without format param (should return parquet)
+        response = client.get("/api/v1/projects/test_project/entities/test_entity/values")
+        assert response.status_code == 200
+        assert response.json()["format"] == "parquet"
+
+        # Get values with format=csv (should return csv in format field)
+        response = client.get("/api/v1/projects/test_project/entities/test_entity/values?format=csv")
+        assert response.status_code == 200
+        assert response.json()["format"] == "csv"
+        assert response.json()["columns"] == ["col1"]  # Data unchanged

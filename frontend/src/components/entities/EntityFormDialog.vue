@@ -12,6 +12,19 @@
           <v-icon :icon="mode === 'create' ? 'mdi-plus-circle' : 'mdi-pencil'" class="mr-2" />
           {{ mode === 'create' ? 'Create Entity' : `Edit ${entity?.name}` }}
         </v-toolbar-title>
+        
+        <!-- External Storage Badge -->
+        <v-chip
+          v-if="hasExternalValues && mode === 'edit'"
+          color="white"
+          variant="outlined"
+          size="small"
+          prepend-icon="mdi-database-outline"
+          class="ml-2"
+        >
+          External Storage
+        </v-chip>
+        
         <v-spacer />
 
         <!-- Three-state view toggle -->
@@ -343,8 +356,54 @@
                     </div>
                     <!-- Fixed Values Grid (only for fixed type) -->
                     <div class="form-row" v-if="formData.type === 'fixed'">
+                      <!-- External Values Status Badge -->
+                      <div v-if="hasExternalValues" class="mb-2 d-flex align-center">
+                        <v-chip color="primary" size="small" prepend-icon="mdi-database-outline" variant="tonal">
+                          External Data Storage
+                          <v-tooltip activator="parent" location="bottom">
+                            <div class="text-body-2">
+                              <strong>Values stored in separate file</strong>
+                              <div class="mt-1">
+                                • Data loaded from external storage on open<br />
+                                • Changes saved back to file on save<br />
+                                • Reduces project file size for large datasets
+                              </div>
+                            </div>
+                          </v-tooltip>
+                        </v-chip>
+                        <span class="text-caption text-medium-emphasis ml-2">
+                          Values loaded from file (editable)
+                        </span>
+                      </div>
+
+                      <!-- Loading Indicator for External Values -->
+                      <v-alert v-if="loadingExternalValues" type="info" variant="tonal" density="compact" class="mb-2">
+                        <div class="d-flex align-center">
+                          <v-progress-circular indeterminate size="20" width="2" class="mr-2" />
+                          <span>Loading external values...</span>
+                        </div>
+                      </v-alert>
+
+                      <!-- Error Loading External Values -->
+                      <v-alert v-else-if="externalValuesError" type="error" variant="tonal" density="compact" class="mb-2">
+                        <v-alert-title>Failed to Load External Values</v-alert-title>
+                        <div class="d-flex align-center justify-space-between">
+                          <span>{{ externalValuesError }}</span>
+                          <v-btn
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            prepend-icon="mdi-refresh"
+                            @click="currentEntity && loadExternalValuesIfNeeded(currentEntity)"
+                          >
+                            Retry
+                          </v-btn>
+                        </div>
+                      </v-alert>
+
+                      <!-- Fixed Values Grid -->
                       <FixedValuesGrid
-                        v-if="fixedValuesColumns.length > 0"
+                        v-else-if="fixedValuesColumns.length > 0"
                         v-model="formData.values"
                         :columns="fixedValuesColumns"
                         :public-id="formData.public_id"
@@ -670,6 +729,9 @@
         <v-fade-transition>
           <v-chip v-if="showSaveSuccess" color="success" size="small" prepend-icon="mdi-check-circle" class="ml-2">
             Saved successfully
+            <v-tooltip v-if="hasExternalValues" activator="parent" location="bottom">
+              Configuration and external values saved
+            </v-tooltip>
           </v-chip>
         </v-fade-transition>
 
@@ -842,6 +904,12 @@ const showUnmaterializeDialog = ref(false)
 
 // Store complete entity data (including materialized metadata) for UI checks
 const currentEntity = ref<EntityResponse | null>(null)
+
+// External values state (for @load: directives)
+const loadingExternalValues = ref(false)
+const hasExternalValues = ref(false)
+const externalValuesError = ref<string | null>(null)
+const externalValuesEtag = ref<string | null>(null)
 
 interface FormData {
   name: string
@@ -1840,6 +1908,35 @@ async function handleSubmit() {
       await update(formData.value.name, {
         entity_data: entityData,
       })
+      
+      // Save external values if entity has @load: directive
+      if (hasExternalValues.value) {
+        try {
+          const response = await api.entities.updateValues(
+            props.projectName,
+            formData.value.name,
+            {
+              columns: formData.value.columns,
+              values: formData.value.values,
+            },
+            externalValuesEtag.value || undefined // Optimistic locking
+          )
+          // Update etag after successful save
+          externalValuesEtag.value = response.etag
+          console.log('[EntityFormDialog] Saved external values')
+        } catch (err: any) {
+          console.error('Failed to save external values:', err)
+          // Check for conflict (409)
+          if (err.response?.status === 409) {
+            error.value = 'External values were modified by another user. Please reload the entity and try again.'
+          } else {
+            error.value = 'Entity config saved, but failed to save external values: ' + (err instanceof Error ? err.message : 'Unknown error')
+          }
+          loading.value = false
+          return
+        }
+      }
+      
       // Keep dialog open after saving in edit mode
       emit('saved', formData.value.name)
 
@@ -1875,6 +1972,34 @@ async function handleSubmitAndClose() {
       await update(formData.value.name, {
         entity_data: entityData,
       })
+      
+      // Save external values if entity has @load: directive
+      if (hasExternalValues.value) {
+        try {
+          const response = await api.entities.updateValues(
+            props.projectName,
+            formData.value.name,
+            {
+              columns: formData.value.columns,
+              values: formData.value.values,
+            },
+            externalValuesEtag.value || undefined // Optimistic locking
+          )
+          // Update etag after successful save
+          externalValuesEtag.value = response.etag
+          console.log('[EntityFormDialog] Saved external values (close)')
+        } catch (err: any) {
+          console.error('Failed to save external values:', err)
+          // Check for conflict (409)
+          if (err.response?.status === 409) {
+            error.value = 'External values were modified by another user. Please reload the entity and try again.'
+          } else {
+            error.value = 'Entity config saved, but failed to save external values: ' + (err instanceof Error ? err.message : 'Unknown error')
+          }
+          loading.value = false
+          return
+        }
+      }
     }
 
     emit('saved', formData.value.name)
@@ -1984,6 +2109,10 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     columns = columns.filter(col => col !== 'system_id' && col !== publicId)
   }
 
+  // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
+  const rawValues = entity.entity_data.values
+  const valuesArray = Array.isArray(rawValues) ? rawValues : []
+
   return {
     name: entity.name,
     type: (entity.entity_data.type as string) || 'entity',
@@ -1992,7 +2121,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
     keys: (entity.entity_data.keys as string[]) || [],
     columns: columns,
-    values: (entity.entity_data.values as any[][]) || [],
+    values: valuesArray,
     source: (entity.entity_data.source as string) || null,
     data_source: (entity.entity_data.data_source as string) || '',
     query: (entity.entity_data.query as string) || '',
@@ -2020,6 +2149,48 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       append: (entity.entity_data.append as any[]) || [],
       extra_columns: (entity.entity_data.extra_columns as Record<string, string | null>) || undefined,
     },
+  }
+}
+
+/**
+ * Load external values for entity with @load: directive
+ */
+async function loadExternalValuesIfNeeded(entity: EntityResponse) {
+  const rawValues = entity.entity_data.values
+  
+  // Check if entity has @load: directive
+  if (typeof rawValues === 'string' && rawValues.startsWith('@load:')) {
+    hasExternalValues.value = true
+    loadingExternalValues.value = true
+    externalValuesError.value = null
+    
+    try {
+      console.log(`[EntityFormDialog] Loading external values for ${entity.name}: ${rawValues}`)
+      const response = await api.entities.getValues(props.projectName, entity.name)
+      
+      // Populate form data with fetched values
+      formData.value.values = response.values
+      formData.value.columns = response.columns
+      
+      // Store etag for optimistic locking
+      externalValuesEtag.value = response.etag
+      
+      console.log(`[EntityFormDialog] Loaded ${response.row_count} rows from external storage (${response.format}, etag: ${response.etag.substring(0, 8)}...)`)
+    } catch (err) {
+      externalValuesError.value = err instanceof Error ? err.message : 'Failed to load external values'
+      console.error('Failed to load external values:', err)
+      
+      // Reset to empty on error
+      formData.value.values = []
+      externalValuesEtag.value = null
+    } finally {
+      loadingExternalValues.value = false
+    }
+  } else {
+    // Inline values or empty
+    hasExternalValues.value = false
+    externalValuesError.value = null
+    externalValuesEtag.value = null
   }
 }
 
@@ -2101,6 +2272,9 @@ watch(
           formData.value = buildFormDataFromEntity(props.entity)
           yamlContent.value = formDataToYaml()
 
+          // Load external values if entity has @load: directive
+          await loadExternalValuesIfNeeded(props.entity)
+
           // Hydrate columns for entity type after form data is loaded
           if (formData.value.type === 'entity') {
             hydrateColumnsFromSource()
@@ -2115,6 +2289,9 @@ watch(
             currentEntity.value = freshEntity
             formData.value = buildFormDataFromEntity(freshEntity)
             yamlContent.value = formDataToYaml()
+
+            // Load external values if entity has @load: directive
+            await loadExternalValuesIfNeeded(freshEntity)
 
             // Hydrate columns for entity type after form data is loaded
             if (formData.value.type === 'entity') {
