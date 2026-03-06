@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
+  getExternalValuesUpdateColumns,
 } from '../entityFormMaterialization'
 
 describe('entityFormMaterialization', () => {
@@ -67,5 +68,21 @@ describe('entityFormMaterialization', () => {
 
     expect(savePayload.values).toBe('@load:materialized/feature_type.parquet')
     expect(savePayload.materialized).toEqual(materializedConfig)
+  })
+
+  it('uses fixed values columns for external fixed-entity updates', () => {
+    const result = getExternalValuesUpdateColumns(
+      'fixed',
+      ['description', 'feature_type_name', 'Befundtyp', 'Beschreibung'],
+      ['system_id', 'feature_type_id', 'description', 'feature_type_name', 'Befundtyp', 'Beschreibung']
+    )
+
+    expect(result).toEqual(['system_id', 'feature_type_id', 'description', 'feature_type_name', 'Befundtyp', 'Beschreibung'])
+  })
+
+  it('uses form columns for non-fixed external updates', () => {
+    const result = getExternalValuesUpdateColumns('sql', ['a', 'b'], ['system_id', 'x_id', 'a', 'b'])
+
+    expect(result).toEqual(['a', 'b'])
   })
 })
