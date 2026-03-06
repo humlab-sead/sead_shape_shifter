@@ -36,3 +36,15 @@ export function applyMaterializationRoundTripToFixedEntity(
     entityData.materialized = materializedConfig
   }
 }
+
+/**
+ * Select columns for external values update requests.
+ * Fixed entities must use the full positional grid columns.
+ */
+export function getExternalValuesUpdateColumns(
+  entityType: string,
+  formColumns: string[],
+  fixedValuesColumns: string[]
+): string[] {
+  return entityType === 'fixed' ? fixedValuesColumns : formColumns
+}

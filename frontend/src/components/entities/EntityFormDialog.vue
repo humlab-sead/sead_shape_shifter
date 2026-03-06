@@ -811,6 +811,7 @@ import { api } from '@/api'
 import {
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
+  getExternalValuesUpdateColumns,
 } from './entityFormMaterialization'
 
 // Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
@@ -1933,7 +1934,7 @@ async function handleSubmit() {
             props.projectName,
             formData.value.name,
             {
-              columns: formData.value.columns,
+              columns: getExternalValuesUpdateColumns(formData.value.type, formData.value.columns, fixedValuesColumns.value),
               values: formData.value.values,
             },
             externalValuesEtag.value || undefined // Optimistic locking
@@ -1997,7 +1998,7 @@ async function handleSubmitAndClose() {
             props.projectName,
             formData.value.name,
             {
-              columns: formData.value.columns,
+              columns: getExternalValuesUpdateColumns(formData.value.type, formData.value.columns, fixedValuesColumns.value),
               values: formData.value.values,
             },
             externalValuesEtag.value || undefined // Optimistic locking
@@ -2190,7 +2191,12 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
       
       // Populate form data with fetched values
       formData.value.values = response.values
-      formData.value.columns = response.columns
+      if (formData.value.type === 'fixed') {
+        const publicId = formData.value.public_id
+        formData.value.columns = response.columns.filter((col) => col !== 'system_id' && col !== publicId)
+      } else {
+        formData.value.columns = response.columns
+      }
       
       // Store etag for optimistic locking
       externalValuesEtag.value = response.etag
