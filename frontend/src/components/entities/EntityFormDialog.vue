@@ -534,11 +534,12 @@
 
               <v-window-item value="relationships">
                 <foreign-key-editor
-                  v-model="formData.foreign_keys"
+                  :model-value="formData.foreign_keys"
                   :available-entities="availableSourceEntities"
                   :project-name="projectName"
                   :entity-name="formData.name"
                   :is-entity-saved="mode === 'edit'"
+                  @update:model-value="handleForeignKeysUpdate"
                 />
               </v-window-item>
 
@@ -1893,6 +1894,16 @@ async function handleYamlChange(value: string) {
       }
     }
   }
+}
+
+async function handleForeignKeysUpdate(value: any[]) {
+  formData.value.foreign_keys = value
+
+  // Relationships tab lives outside v-form fields; force a validity refresh
+  // so Save/Save & Close become enabled after FK-only edits.
+  await nextTick()
+  const result = await formRef.value?.validate()
+  formValid.value = !!result?.valid
 }
 
 // Methods
