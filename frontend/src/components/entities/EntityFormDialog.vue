@@ -1211,16 +1211,36 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
 
   // Include foreign keys if any
   if (formData.value.foreign_keys.length > 0) {
-    // Transform foreign keys: extract just column values from column picker objects
-    entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => ({
-      entity: fk.entity,
-      local_keys: Array.isArray(fk.local_keys)
-        ? fk.local_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
-        : [],
-      remote_keys: Array.isArray(fk.remote_keys)
-        ? fk.remote_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
-        : [],
-    }))
+    // Transform foreign keys: extract column values and preserve all FK settings.
+    entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => {
+      const transformedFk: Record<string, unknown> = {
+        entity: fk.entity,
+        local_keys: Array.isArray(fk.local_keys)
+          ? fk.local_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
+          : [],
+        remote_keys: Array.isArray(fk.remote_keys)
+          ? fk.remote_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
+          : [],
+      }
+
+      if (fk.how) {
+        transformedFk.how = fk.how
+      }
+
+      if (fk.constraints && typeof fk.constraints === 'object') {
+        transformedFk.constraints = { ...fk.constraints }
+      }
+
+      if (fk.extra_columns !== undefined) {
+        transformedFk.extra_columns = fk.extra_columns
+      }
+
+      if (typeof fk.drop_remote_id === 'boolean') {
+        transformedFk.drop_remote_id = fk.drop_remote_id
+      }
+
+      return transformedFk
+    })
   }
 
   // Include depends_on if specified
