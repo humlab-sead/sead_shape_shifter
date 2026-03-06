@@ -151,6 +151,9 @@ class EntityValuesService:
             suffix: str = file_path.suffix.lower()
             format_type = "parquet" if suffix == ".parquet" else "csv"
 
+        # Validate shape before handing off to pandas for clearer API errors.
+        self._validate_values_shape(columns=columns, values=values)
+
         # Convert list[list] to DataFrame
         df = pd.DataFrame(values, columns=columns)
 
@@ -162,6 +165,22 @@ class EntityValuesService:
 
         logger.info(f"Wrote {len(values)} rows to {file_path} ({format_type})")
         return format_type
+
+    def _validate_values_shape(self, columns: list[str], values: list[list[Any]]) -> None:
+        """Validate that each row width matches the declared columns."""
+        expected_width: int = len(columns)
+
+        for idx, row in enumerate(values):
+            if not isinstance(row, list):
+                raise ValueError(f"Invalid values payload at row {idx}: expected list, got {type(row).__name__}")
+
+            actual_width: int = len(row)
+            if actual_width != expected_width:
+                raise ValueError(
+                    "Column/value width mismatch: "
+                    f"expected {expected_width} columns ({columns}), "
+                    f"but row {idx} has {actual_width} values"
+                )
 
     def get_values(self, project_name: str, entity_name: str) -> EntityValuesResponse:
         """
