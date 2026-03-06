@@ -7,40 +7,40 @@
 -- Dumped from database version 16.4 (Debian 16.4-1.pgdg110+2)
 -- Dumped by pg_dump version 18.1
 
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
-SET check_function_bodies = false;
-SET xmloption = content;
-SET client_min_messages = warning;
-SET row_security = off;
+set statement_timeout = 0;
+set lock_timeout = 0;
+set idle_in_transaction_session_timeout = 0;
+set transaction_timeout = 0;
+set client_encoding = 'UTF8';
+set standard_conforming_strings = on;
+select pg_catalog.set_config('search_path', '', false);
+set check_function_bodies = false;
+set xmloption = content;
+set client_min_messages = warning;
+set row_security = off;
 
 --
 -- Name: apa(); Type: FUNCTION; Schema: public; Owner: humlab_admin
 --
 
-CREATE FUNCTION public.apa() RETURNS integer
-    LANGUAGE plpgsql STABLE
-    AS $$
+create function public.apa() returns integer
+language plpgsql stable
+as $$
 begin
   return 42;
 end;
 $$;
 
 
-ALTER FUNCTION public.apa() OWNER TO humlab_admin;
+alter function public.apa() owner to humlab_admin;
 
 --
 -- Name: get_sample_graph(integer); Type: FUNCTION; Schema: public; Owner: humlab_admin
 --
 
-CREATE FUNCTION public.get_sample_graph(sample_id integer) RETURNS jsonb
-    LANGUAGE plpgsql STABLE
-    AS $_$
+create function public.get_sample_graph(sample_id integer) returns jsonb
+language plpgsql stable
+as $_$
 declare v_data jsonb;
 declare v_ae_limit int := 10;
 declare v_av_limit int := 5;
@@ -565,15 +565,15 @@ end;
 $_$;
 
 
-ALTER FUNCTION public.get_sample_graph(sample_id integer) OWNER TO humlab_admin;
+alter function public.get_sample_graph(sample_id integer) owner to humlab_admin;
 
 --
 -- Name: table_dependency_levels(); Type: FUNCTION; Schema: public; Owner: sead_master
 --
 
-CREATE FUNCTION public.table_dependency_levels() RETURNS TABLE(schema_name text, table_name text, level integer)
-    LANGUAGE plpgsql
-    AS $$
+create function public.table_dependency_levels() returns table (schema_name text, table_name text, level integer)
+language plpgsql
+as $$
 declare
 	v_level int;
 	v_count int;
@@ -656,15 +656,15 @@ begin
 end $$;
 
 
-ALTER FUNCTION public.table_dependency_levels() OWNER TO sead_master;
+alter function public.table_dependency_levels() owner to sead_master;
 
 --
 -- Name: whoami(); Type: FUNCTION; Schema: public; Owner: humlab_admin
 --
 
-CREATE FUNCTION public.whoami() RETURNS TABLE(user_name text, search_path text)
-    LANGUAGE plpgsql STABLE
-    AS $$
+create function public.whoami() returns table (user_name text, search_path text)
+language plpgsql stable
+as $$
 begin
   return query
   select current_user::text, current_setting('search_path')::text;
@@ -672,11 +672,10 @@ end;
 $$;
 
 
-ALTER FUNCTION public.whoami() OWNER TO humlab_admin;
+alter function public.whoami() owner to humlab_admin;
 
 --
 -- PostgreSQL database dump complete
 --
 
 \unrestrict t8vzGfeSUOgeKdezgypNIEKYe6p3YVep0icm3QiGYx4XxxeJIJs0yw4Z3KNhBaG
-

@@ -80,12 +80,25 @@ class FilterConfig(BaseModel):
 
 
 class AppendConfig(BaseModel):
-    """Configuration for appending data to an entity."""
+    """Configuration for appending data to an entity.
 
-    type: Literal["fixed", "sql"] = Field(..., description="Type of data to append")
-    values: list[list[Any]] | None = Field(default=None, description="Fixed values to append")
-    data_source: str | None = Field(default=None, description="Data source name for SQL")
-    query: str | None = Field(default=None, description="SQL query for appending data")
+    Supports three append strategies:
+    1. type='fixed': Hardcoded values to append
+    2. type='sql': SQL query results to append
+    3. source: Rows from another entity to append
+    """
+
+    # Type-based append (fixed or sql)
+    type: Literal["fixed", "sql"] | None = Field(default=None, description="Type of data to append (fixed or sql)")
+    values: list[list[Any]] | None = Field(default=None, description="Fixed values to append (for type='fixed')")
+    data_source: str | None = Field(default=None, description="Data source name for SQL (for type='sql')")
+    query: str | None = Field(default=None, description="SQL query for appending data (for type='sql')")
+
+    # Entity-based append (source)
+    source: str | None = Field(default=None, description="Entity name to append rows from")
+    columns: list[str] | None = Field(default=None, description="Columns to append (inherits from parent if not specified)")
+    align_by_position: bool = Field(default=False, description="Align columns by position instead of name")
+    column_mapping: dict[str, str] | None = Field(default=None, description="Explicit column name mapping (source_col: target_col)")
 
 
 class Entity(BaseModel):

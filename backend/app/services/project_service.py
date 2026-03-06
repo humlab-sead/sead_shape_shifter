@@ -184,11 +184,10 @@ class ProjectService:
             entity_count: int = len(copy.entities or {})
             entity_names: list[str] = sorted((copy.entities or {}).keys())
             logger.info(
-                "[{}] load_project: '{}' from CACHE (deep copy) entities={} names={}",
+                "[{}] load_project: '{}' from CACHE (deep copy) entities={}",
                 corr,
                 name,
                 entity_count,
-                entity_names,
             )
             return copy
 
@@ -220,7 +219,7 @@ class ProjectService:
             self.state.activate(project)
 
             entity_names = sorted((project.entities or {}).keys())
-            logger.info("[{}] load_project: '{}' from DISK entities={} names={}", corr, name, len(project.entities), entity_names)
+            logger.info("[{}] load_project: '{}' from DISK entities={}", corr, name, len(project.entities))
             return project
 
         except ConfigurationError:
@@ -774,7 +773,12 @@ class ProjectService:
         return self.files.list_data_source_files(extensions, project_name)
 
     def get_excel_metadata(
-        self, file_path: str, location: str = "global", sheet_name: str | None = None, cell_range: str | None = None
+        self,
+        file_path: str,
+        location: str = "global",
+        sheet_name: str | None = None,
+        cell_range: str | None = None,
+        project_name: str | None = None,
     ) -> tuple[list[str], list[str]]:
         """Return available sheets and columns for an Excel file.
 
@@ -783,6 +787,7 @@ class ProjectService:
             location: File location - "global" (shared data) or "local" (project-specific)
             sheet_name: Optional sheet to inspect for columns
             cell_range: Optional cell range (e.g., 'A1:H30') to limit columns
+            project_name: Optional project name (required when location="local" and file is in project directory)
 
         Returns:
             Tuple of (sheet_names, column_names)
@@ -790,7 +795,7 @@ class ProjectService:
         Raises:
             BadRequestError: If file is missing/unsupported or sheet is not found
         """
-        return self.files.get_excel_metadata(file_path, location, sheet_name, cell_range)
+        return self.files.get_excel_metadata(file_path, location, sheet_name, cell_range, project_name)
 
     def save_data_source_file(
         self,

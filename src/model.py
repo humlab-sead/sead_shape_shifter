@@ -491,6 +491,47 @@ class TableConfig:
         return ["system_id"] + ([self.public_id] if self.public_id else [])
 
     @property
+    def values_column_order(self) -> list[str]:
+        """Get canonical column order for fixed values: system_id → public_id → keys → data columns.
+
+        This defines the expected order for the 'values' field in fixed entities,
+        following the three-tier identity system:
+        1. system_id (local sequential identity)
+        2. public_id (target schema identity, if defined)
+        3. keys (business keys)
+        4. columns (data columns, excluding identity columns)
+
+        Returns:
+            Ordered list of column names
+
+        Example:
+            entity_cfg:
+              public_id: sample_type_id
+              keys: [type_code]
+              columns: [type_name, description]
+
+            Returns: ["system_id", "sample_type_id", "type_code", "type_name", "description"]
+        """
+        result: list[str] = []
+
+        # 1. system_id (always first)
+        result.append(self.system_id)
+
+        # 2. public_id (if defined)
+        if self.public_id:
+            result.append(self.public_id)
+
+        # 3. keys (business identifiers)
+        result.extend(sorted(self.keys))
+
+        # 4. data columns (excluding system_id and public_id to avoid duplicates)
+        identity_cols = {self.system_id, self.public_id} if self.public_id else {self.system_id}
+        data_cols = [c for c in self.safe_columns if c not in identity_cols and c not in self.keys]
+        result.extend(data_cols)
+
+        return result
+
+    @property
     def unnest_columns(self) -> set[str]:
         """Get set of columns that are pending (e.g., from unnesting)."""
         if self.unnest:

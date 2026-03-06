@@ -902,6 +902,65 @@ class TestTableConfig:
         # No column should be added
         assert list(result.columns) == ["name"]
 
+    def test_values_column_order_with_all_fields(self):
+        """Test values_column_order with all identity fields defined."""
+        entity_cfg = {
+            "public_id": "sample_type_id",
+            "keys": ["type_code", "lab_id"],
+            "columns": ["type_name", "description", "active"],
+        }
+        table = TableConfig(entities_cfg={"test": entity_cfg}, entity_name="test")
+
+        result = table.values_column_order
+
+        expected = ["system_id", "sample_type_id", "lab_id", "type_code", "type_name", "description", "active"]
+        assert result == expected
+
+    def test_values_column_order_without_public_id(self):
+        """Test values_column_order when public_id is not defined."""
+        entity_cfg = {"keys": ["code"], "columns": ["name", "description"]}
+        table = TableConfig(entities_cfg={"test": entity_cfg}, entity_name="test")
+
+        result = table.values_column_order
+
+        expected = ["system_id", "code", "name", "description"]
+        assert result == expected
+
+    def test_values_column_order_without_keys(self):
+        """Test values_column_order when keys are not defined."""
+        entity_cfg = {"public_id": "entity_id", "columns": ["name", "status"]}
+        table = TableConfig(entities_cfg={"test": entity_cfg}, entity_name="test")
+
+        result = table.values_column_order
+
+        expected = ["system_id", "entity_id", "name", "status"]
+        assert result == expected
+
+    def test_values_column_order_excludes_identity_columns_from_columns(self):
+        """Test values_column_order excludes system_id and public_id from columns list."""
+        entity_cfg = {
+            "public_id": "type_id",
+            "keys": ["code"],
+            "columns": ["system_id", "type_id", "code", "name"],  # Identity columns erroneously in columns list
+        }
+        table = TableConfig(entities_cfg={"test": entity_cfg}, entity_name="test")
+
+        result = table.values_column_order
+
+        # Should not have duplicates - system_id and type_id appear once
+        expected = ["system_id", "type_id", "code", "name"]
+        assert result == expected
+
+    def test_values_column_order_empty_entity(self):
+        """Test values_column_order with minimal entity configuration."""
+        entity_cfg = {"columns": []}
+        table = TableConfig(entities_cfg={"test": entity_cfg}, entity_name="test")
+
+        result = table.values_column_order
+
+        expected = ["system_id"]  # Only system_id should be present
+        assert result == expected
+
     def test_is_drop_duplicate_dependent_on_unnesting_true(self):
         """Test is_drop_duplicate_dependent_on_unnesting returns True."""
         entities: dict[str, dict[str, Any]] = {

@@ -178,7 +178,7 @@ class FileManager:
             files.append(
                 ProjectFileInfo(
                     name=file_path.name,
-                    path=file_path.name,
+                    path=file_path.name,  # Just filename for project files
                     location="local",
                     size_bytes=stat.st_size,
                     modified_at=stat.st_mtime,
@@ -381,7 +381,12 @@ class FileManager:
     # Excel metadata extraction
 
     def get_excel_metadata(
-        self, file_path: str, location: str = "global", sheet_name: str | None = None, cell_range: str | None = None
+        self,
+        file_path: str,
+        location: str = "global",
+        sheet_name: str | None = None,
+        cell_range: str | None = None,
+        project_name: str | None = None,
     ) -> tuple[list[str], list[str]]:
         """Return available sheets and columns for an Excel file.
 
@@ -390,6 +395,7 @@ class FileManager:
             location: File location - "global" (shared data) or "local" (project-specific)
             sheet_name: Optional sheet to inspect for columns
             cell_range: Optional cell range (e.g., 'A1:H30') to limit columns
+            project_name: Optional project name (required when location="local" and file is in project directory)
 
         Returns:
             Tuple of (sheet_names, column_names)
@@ -397,5 +403,15 @@ class FileManager:
         Raises:
             BadRequestError: If file is missing/unsupported or sheet is not found
         """
-        resolved_path: Path = self._resolve_path(file_path, location=location)
+        # Resolve file path based on location and project context
+        if location == "local" and project_name:
+            # File is in a specific project directory
+            project_dir = self._get_project_upload_dir(project_name)
+            resolved_path = project_dir / file_path
+            if not resolved_path.exists():
+                raise BadRequestError(f"File not found: {file_path} (location: {location}, project: {project_name})")
+        else:
+            # Use standard resolution (global or base projects_root)
+            resolved_path = self._resolve_path(file_path, location=location)
+
         return extract_excel_metadata(resolved_path, sheet_name=sheet_name, cell_range=cell_range)

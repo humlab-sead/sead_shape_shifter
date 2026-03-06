@@ -7,6 +7,7 @@ from loguru import logger
 
 from src.model import TableConfig
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
+from src.transforms.extra_columns import ExtraColumnEvaluator
 from src.transforms.replace import apply_replacements
 from src.utility import unique
 
@@ -15,6 +16,10 @@ from src.utility import unique
 
 class SubsetService:
     """Class for extracting subsets from DataFrames with various options."""
+
+    def __init__(self):
+        """Initialize SubsetService with ExtraColumnEvaluator."""
+        self.extra_col_evaluator = ExtraColumnEvaluator()
 
     def get_subset_columns(self, table_cfg: TableConfig) -> list[str]:
         """Get the list of columns to extract from the table configuration.
@@ -125,7 +130,7 @@ class SubsetService:
         columns = unique(columns)
         extra_columns = extra_columns or {}
 
-        extra_source_columns, extra_constant_columns = self._split_extra_columns(source, extra_columns, case_sensitive=False)
+        extra_source_columns, _ = self.extra_col_evaluator.split_extra_columns(source, extra_columns, case_sensitive=False)
 
         # Columns we need to read from source to build the result
         required_source_cols: set[str] = set(columns) | set(extra_source_columns.values())
@@ -136,13 +141,18 @@ class SubsetService:
         columns_to_extract: list[str] = [c for c in source.columns if c in required_source_cols]
         result: pd.DataFrame = source.loc[:, columns_to_extract].copy()
 
-        # Add extra columns that are copies of existing columns
-        for col_name, existing_col_name in extra_source_columns.items():
-            result[col_name] = result[existing_col_name]
+        # Use ExtraColumnEvaluator to add extra columns (supports constants, copies, and interpolations)
+        if extra_columns:
+            result, deferred = self.extra_col_evaluator.evaluate_extra_columns(
+                df=result,
+                extra_columns=extra_columns,
+                entity_name=entity_name,
+                defer_missing=True,  # Allow deferring columns that reference missing columns
+            )
 
-        # Add constant columns
-        for col_name, value in extra_constant_columns.items():
-            result[col_name] = value
+            # Log deferred columns (they'll be re-evaluated later by normalizer)
+            if deferred:
+                logger.debug(f"{entity_name}[extract]: Deferred extra_columns evaluation for: {list(deferred.keys())}")
 
         # Drop helper source columns that weren't explicitly requested
         helper_cols: set[str] = set(extra_source_columns.values()) - set(columns)
@@ -169,26 +179,6 @@ class SubsetService:
             result = apply_replacements(result, replacements=replacements, entity_name=entity_name)
 
         return result
-
-    def _split_extra_columns(
-        self, source: pd.DataFrame, extra_columns: dict[str, Any], case_sensitive: bool = False
-    ) -> tuple[dict[str, str], dict[str, Any]]:
-        """Split extra columns into those that copy existing source columns and those that are constants."""
-        source_columns: dict[str, str]
-        if not case_sensitive:
-            # Convert column names to strings to handle NaN/float columns from Excel
-            source_columns_lower: dict[str, str] = {str(col).lower(): col for col in source.columns if isinstance(col, str)}
-            source_columns = {
-                k: source_columns_lower[v.lower()]
-                for k, v in extra_columns.items()
-                if isinstance(v, str) and v.lower() in source_columns_lower
-            }
-        else:
-            source_columns = {k: v for k, v in extra_columns.items() if isinstance(v, str) and v in source.columns}
-
-        constant_columns: dict[str, Any] = {new_name: value for new_name, value in extra_columns.items() if new_name not in source_columns}
-
-        return source_columns, constant_columns
 
     def _check_if_missing_requested_columns(
         self, source: pd.DataFrame, entity_name: str, raise_if_missing: bool, all_requested_columns: set[str]

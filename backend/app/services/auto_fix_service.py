@@ -12,6 +12,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.core.config import settings
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.fix import FixAction, FixActionType, FixResult, FixSuggestion
 from backend.app.models.project import Project
 from backend.app.models.validation import ValidationError
@@ -326,7 +327,7 @@ class AutoFixService:
         """Create backup of project before applying fixes."""
 
         # New structure: projects_dir/project_name/shapeshifter.yml
-        project_dir = settings.PROJECTS_DIR / project_name
+        project_dir = settings.PROJECTS_DIR / ProjectNameMapper.to_path(project_name)
         project_path = project_dir / "shapeshifter.yml"
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -343,7 +344,7 @@ class AutoFixService:
         """Rollback project to backup."""
 
         # New structure: projects_dir/project_name/shapeshifter.yml
-        project_dir = settings.PROJECTS_DIR / project_name
+        project_dir = settings.PROJECTS_DIR / ProjectNameMapper.to_path(project_name)
         project_path = project_dir / "shapeshifter.yml"
 
         shutil.copy2(backup_path, project_path)
@@ -469,9 +470,7 @@ class AutoFixService:
                 val = row[system_id_index]
                 if val is not None:
                     try:
-                        id_num = int(val)
-                        if id_num > max_id:
-                            max_id = id_num
+                        max_id = max(max_id, int(val))
                     except (ValueError, TypeError):
                         pass
 
@@ -500,8 +499,7 @@ class AutoFixService:
                     try:
                         id_num = int(val)
                         seen_ids.add(id_num)
-                        if id_num > max_id:
-                            max_id = id_num
+                        max_id = max(max_id, id_num)
                     except (ValueError, TypeError):
                         pass
 

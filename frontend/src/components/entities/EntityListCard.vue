@@ -98,6 +98,22 @@
               <v-icon size="x-small" class="mr-1">mdi-database-check</v-icon>
               Materialized
             </v-chip>
+            <v-chip
+              v-if="hasExternalStorage(entity)"
+              size="x-small"
+              color="info"
+              variant="tonal"
+              class="mr-2"
+            >
+              <v-icon size="x-small" class="mr-1">mdi-file-sync-outline</v-icon>
+              <v-tooltip activator="parent" location="top">
+                <div class="text-caption">
+                  <strong>External Storage</strong><br>
+                  Values loaded from: <code>{{ getStoragePath(entity) }}</code>
+                </div>
+              </v-tooltip>
+              External
+            </v-chip>
             <span v-if="entity.entity_data.source" class="text-caption text-medium-emphasis">
               Source: {{ entity.entity_data.source }}
             </span>
@@ -234,6 +250,19 @@ function getEntityIcon(type: unknown): string {
     default:
       return 'mdi-cube'
   }
+}
+
+function hasExternalStorage(entity: EntityResponse): boolean {
+  const values = entity.entity_data.values
+  return typeof values === 'string' && values.startsWith('@load:')
+}
+
+function getStoragePath(entity: EntityResponse): string {
+  const values = entity.entity_data.values
+  if (typeof values === 'string' && values.startsWith('@load:')) {
+    return values.substring(6) // Strip "@load:" prefix
+  }
+  return ''
 }
 
 function handleSelectEntity(entity: EntityResponse) {

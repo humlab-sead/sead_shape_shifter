@@ -197,4 +197,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # entity CRUD in one worker to be invisible to others — leading to silent data
 # loss when a stale worker handles the next request.
 # To use multiple workers, implement shared state (e.g., Redis) first.
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8012", "--workers", "1"]
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8012", "--workers", "1", "--timeout-keep-alive", "120"]

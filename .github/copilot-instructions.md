@@ -807,14 +807,105 @@ When users say these phrases, execute the complete workflow:
 - "Commit with issue" / "Issue + commit"
 - "Document and commit my work"
 
+#### Quick Mode (Optimized for Speed)
+
+**For faster execution, skip verification steps and use concise formatting:**
+
+1. **Status Check Only** - Skip diff view if changes are understood from context
+2. **Concise Issue Description** - Use bullet points, skip verbose markdown
+3. **Direct Commit** - No final log verification (commit hash is enough)
+
+#### Fast Path (Default for "create issue + commit")
+
+Use this as the default behavior unless the user asks for deep analysis or multiple commits.
+
+1. **Status only**: check changed files once; avoid full diff unless unclear.
+2. **Scope strictly**: stage only files relevant to the requested fix (never `git add .`).
+3. **Create concise issue**: 3 short sections (`Problem`, `Solution`, `Files`).
+4. **Single atomic commit**: one Conventional Commit message with `Closes #<issue>`.
+5. **Skip extra verification**: do not run `git log`/extra status loops after successful commit.
+
+Speed guardrails:
+- If unrelated files are modified, leave them unstaged and explicitly mention that in the handoff.
+- Prefer one commit unless the user explicitly asks to split commits.
+- If context is clear from current edits, do not re-read large files or run broad repo scans.
+
+#### GH CLI Body Safety (Important)
+
+When using `gh issue create` in shell commands, avoid unescaped backticks in `--body` strings because they can trigger command substitution.
+
+Preferred pattern:
+```bash
+gh issue create --title "fix(scope): brief title" --body-file - <<'EOF'
+## Problem
+- Brief issue
+
+## Solution
+- Brief fix
+
+## Files
+- path/to/file.py
+EOF
+```
+
+Alternative: if using `--body`, do not include backticks in the text.
+
+**Example Quick Workflow:**
+```bash
+# 1. Check status (understand what's changed)
+mcp_gitkraken_git_status(directory="...")
+
+# 2. Create issue (concise format)
+mcp_io_github_git_issue_write({
+  title: "fix(backend): brief description",
+  body: "## Problem\n- Issue description\n\n## Solution\n- Fix applied\n\n## Files\n- file1.py\n- file2.ts",
+  labels: ["bug", "backend"]
+})
+
+# 3. Stage and commit (single batch)
+mcp_gitkraken_git_add_or_commit(action="add", files=[...])
+mcp_gitkraken_git_add_or_commit(
+  action="commit",
+  message="fix(backend): brief\n\n- Change\n\nCloses #XXX"
+)
+# Done - no need to verify with git log
+```
+
+**When to Use Quick Mode:**
+- Simple bug fixes with clear context
+- User explicitly asks for speed
+- Changes are well-understood from file edits
+- No complex multi-file coordination needed
+
+**When to Use Full Mode:**
+- Complex changes requiring diff analysis
+- Multiple logical commits needed (use composer)
+- Debugging or unclear changes
+- User needs detailed documentation
+
 #### What to Include in the Issue Description
 
-**Always structure issue body with**:
+**Standard Format (Detailed):**
 - **Description**: What was changed and why
 - **Changes**: Bullet list of specific modifications
 - **Technical Details**: Root cause or implementation notes
 - **Related Components**: File paths affected
 - **Type**: Bug fix, feature, refactor, etc.
+
+**Quick Format (Fast):**
+```markdown
+## Problem
+- Brief issue description
+
+## Solution
+- Fix applied
+
+## Files
+- file1.py
+- file2.ts
+```
+
+Use Quick Format for simple changes, Standard Format for complex features.
 
 #### Commit Message Format
 

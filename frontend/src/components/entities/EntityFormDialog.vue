@@ -12,6 +12,19 @@
           <v-icon :icon="mode === 'create' ? 'mdi-plus-circle' : 'mdi-pencil'" class="mr-2" />
           {{ mode === 'create' ? 'Create Entity' : `Edit ${entity?.name}` }}
         </v-toolbar-title>
+        
+        <!-- External Storage Badge -->
+        <v-chip
+          v-if="hasExternalValues && mode === 'edit'"
+          color="white"
+          variant="outlined"
+          size="small"
+          prepend-icon="mdi-database-outline"
+          class="ml-2"
+        >
+          External Storage
+        </v-chip>
+        
         <v-spacer />
 
         <!-- Three-state view toggle -->
@@ -343,8 +356,54 @@
                     </div>
                     <!-- Fixed Values Grid (only for fixed type) -->
                     <div class="form-row" v-if="formData.type === 'fixed'">
+                      <!-- External Values Status Badge -->
+                      <div v-if="hasExternalValues" class="mb-2 d-flex align-center">
+                        <v-chip color="primary" size="small" prepend-icon="mdi-database-outline" variant="tonal">
+                          External Data Storage
+                          <v-tooltip activator="parent" location="bottom">
+                            <div class="text-body-2">
+                              <strong>Values stored in separate file</strong>
+                              <div class="mt-1">
+                                • Data loaded from external storage on open<br />
+                                • Changes saved back to file on save<br />
+                                • Reduces project file size for large datasets
+                              </div>
+                            </div>
+                          </v-tooltip>
+                        </v-chip>
+                        <span class="text-caption text-medium-emphasis ml-2">
+                          Values loaded from file (editable)
+                        </span>
+                      </div>
+
+                      <!-- Loading Indicator for External Values -->
+                      <v-alert v-if="loadingExternalValues" type="info" variant="tonal" density="compact" class="mb-2">
+                        <div class="d-flex align-center">
+                          <v-progress-circular indeterminate size="20" width="2" class="mr-2" />
+                          <span>Loading external values...</span>
+                        </div>
+                      </v-alert>
+
+                      <!-- Error Loading External Values -->
+                      <v-alert v-else-if="externalValuesError" type="error" variant="tonal" density="compact" class="mb-2">
+                        <v-alert-title>Failed to Load External Values</v-alert-title>
+                        <div class="d-flex align-center justify-space-between">
+                          <span>{{ externalValuesError }}</span>
+                          <v-btn
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            prepend-icon="mdi-refresh"
+                            @click="currentEntity && loadExternalValuesIfNeeded(currentEntity)"
+                          >
+                            Retry
+                          </v-btn>
+                        </div>
+                      </v-alert>
+
+                      <!-- Fixed Values Grid -->
                       <FixedValuesGrid
-                        v-if="fixedValuesColumns.length > 0"
+                        v-else-if="fixedValuesColumns.length > 0"
                         v-model="formData.values"
                         :columns="fixedValuesColumns"
                         :public-id="formData.public_id"
@@ -475,11 +534,12 @@
 
               <v-window-item value="relationships">
                 <foreign-key-editor
-                  v-model="formData.foreign_keys"
+                  :model-value="formData.foreign_keys"
                   :available-entities="availableSourceEntities"
                   :project-name="projectName"
                   :entity-name="formData.name"
                   :is-entity-saved="mode === 'edit'"
+                  @update:model-value="handleForeignKeysUpdate"
                 />
               </v-window-item>
 
@@ -492,7 +552,7 @@
               </v-window-item>
 
               <v-window-item value="append">
-                <append-editor v-model="formData.advanced.append" />
+                <append-editor v-model="formData.advanced.append" :available-entities="availableSourceEntities" />
               </v-window-item>
 
               <v-window-item value="extra_columns">
@@ -500,7 +560,7 @@
               </v-window-item>
 
               <v-window-item value="replacements">
-                <replacements-editor v-model="formData.advanced.replacements" :available-columns="formData.columns" />
+                <replacements-editor v-model="formData.advanced.replacements" :available-columns="availableColumnsForReplacements" />
               </v-window-item>
 
               <v-window-item value="yaml">
@@ -670,12 +730,15 @@
         <v-fade-transition>
           <v-chip v-if="showSaveSuccess" color="success" size="small" prepend-icon="mdi-check-circle" class="ml-2">
             Saved successfully
+            <v-tooltip v-if="hasExternalValues" activator="parent" location="bottom">
+              Configuration and external values saved
+            </v-tooltip>
           </v-chip>
         </v-fade-transition>
 
         <v-spacer />
         <v-btn variant="text" @click="handleCancel" :disabled="loading"> Cancel </v-btn>
-        <v-btn color="primary" variant="flat" :loading="loading" :disabled="!formValid" @click="handleSubmit">
+        <v-btn color="primary" variant="flat" :loading="loading" :disabled="isSaveDisabled" @click="handleSubmit">
           <v-icon start>mdi-content-save</v-icon>
           Save
         </v-btn>
@@ -683,7 +746,7 @@
           color="primary"
           variant="outlined"
           :loading="loading"
-          :disabled="!formValid"
+          :disabled="isSaveDisabled"
           @click="handleSubmitAndClose"
         >
           Save & Close
@@ -746,6 +809,11 @@ import UnmaterializeDialog from './UnmaterializeDialog.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
+import {
+  applyMaterializationRoundTripToFixedEntity,
+  extractMaterializationRoundTripState,
+  getExternalValuesUpdateColumns,
+} from './entityFormMaterialization'
 
 // Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
 const FixedValuesGrid = defineAsyncComponent(() => import('./FixedValuesGrid.vue'))
@@ -842,6 +910,17 @@ const showUnmaterializeDialog = ref(false)
 
 // Store complete entity data (including materialized metadata) for UI checks
 const currentEntity = ref<EntityResponse | null>(null)
+
+// External values state (for @load: directives)
+const loadingExternalValues = ref(false)
+const hasExternalValues = ref(false)
+const externalValuesError = ref<string | null>(null)
+const externalValuesEtag = ref<string | null>(null)
+// Preserve non-inline values/materialization metadata so Save round-trips config correctly.
+const externalValuesDirective = ref<string | null>(null)
+const materializedConfig = ref<Record<string, any> | null>(null)
+const initialFormSnapshot = ref<string | null>(null)
+const hasPendingChanges = ref(false)
 
 interface FormData {
   name: string
@@ -992,8 +1071,14 @@ const fixedValuesColumns = computed(() => {
   const keys = (formData.value.keys || []).filter((k: string) => typeof k === 'string' && k.trim().length > 0)
   result.push(...keys)
 
-  // Include columns (data columns)
-  const columns = (formData.value.columns || []).filter((c: string) => typeof c === 'string' && c.trim().length > 0)
+  // Include columns (data columns), but exclude system_id and public_id to avoid duplicates
+  const columns = (formData.value.columns || []).filter((c: string) => {
+    if (typeof c !== 'string' || c.trim().length === 0) return false
+    // Exclude system_id and public_id to avoid duplicates
+    if (c === 'system_id') return false
+    if (formData.value.public_id && c === formData.value.public_id) return false
+    return true
+  })
   result.push(...columns)
 
   return result
@@ -1073,7 +1158,12 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
 
   // Always include values field for fixed type (required by backend validation)
   if (formData.value.type === 'fixed') {
-    entityData.values = formData.value.values || []
+    applyMaterializationRoundTripToFixedEntity(
+      entityData,
+      formData.value.values || [],
+      externalValuesDirective.value,
+      materializedConfig.value
+    )
   }
 
   if (formData.value.source) {
@@ -1121,16 +1211,36 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
 
   // Include foreign keys if any
   if (formData.value.foreign_keys.length > 0) {
-    // Transform foreign keys: extract just column values from column picker objects
-    entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => ({
-      entity: fk.entity,
-      local_keys: Array.isArray(fk.local_keys)
-        ? fk.local_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
-        : [],
-      remote_keys: Array.isArray(fk.remote_keys)
-        ? fk.remote_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
-        : [],
-    }))
+    // Transform foreign keys: extract column values and preserve all FK settings.
+    entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => {
+      const transformedFk: Record<string, unknown> = {
+        entity: fk.entity,
+        local_keys: Array.isArray(fk.local_keys)
+          ? fk.local_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
+          : [],
+        remote_keys: Array.isArray(fk.remote_keys)
+          ? fk.remote_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
+          : [],
+      }
+
+      if (fk.how) {
+        transformedFk.how = fk.how
+      }
+
+      if (fk.constraints && typeof fk.constraints === 'object') {
+        transformedFk.constraints = { ...fk.constraints }
+      }
+
+      if (fk.extra_columns !== undefined) {
+        transformedFk.extra_columns = fk.extra_columns
+      }
+
+      if (typeof fk.drop_remote_id === 'boolean') {
+        transformedFk.drop_remote_id = fk.drop_remote_id
+      }
+
+      return transformedFk
+    })
   }
 
   // Include depends_on if specified
@@ -1145,6 +1255,10 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
     } else {
       entityData.drop_duplicates = true
     }
+
+    // Backend defaults missing check_functional_dependency to true.
+    // Persist explicit value so unchecked state is respected.
+    entityData.check_functional_dependency = formData.value.check_functional_dependency
   }
 
   // Include drop_empty_rows if enabled
@@ -1154,11 +1268,6 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
     } else {
       entityData.drop_empty_rows = true
     }
-  }
-
-  // Include check_functional_dependency if enabled
-  if (formData.value.check_functional_dependency) {
-    entityData.check_functional_dependency = true
   }
 
   // Include advanced configuration
@@ -1255,7 +1364,13 @@ async function fetchSheetOptions() {
     const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
     const location = fileInfo?.location || 'global'
 
-    const meta = await api.excelMetadata.fetch(filename, location)
+    const meta = await api.excelMetadata.fetch(
+      filename,
+      location,
+      undefined,
+      undefined,
+      location === 'local' ? props.projectName : undefined
+    )
     sheetOptions.value = meta.sheets || []
 
     if (!formData.value.options.sheet_name && sheetOptions.value.length > 0) {
@@ -1292,7 +1407,13 @@ async function fetchColumns() {
     const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
     const location = fileInfo?.location || 'global'
 
-    const meta = await api.excelMetadata.fetch(filename, location, sheet, range)
+    const meta = await api.excelMetadata.fetch(
+      filename,
+      location,
+      sheet,
+      range,
+      location === 'local' ? props.projectName : undefined
+    )
     columnsOptions.value = meta.columns || []
     if (columnsOptions.value.length > 0) {
       formData.value.columns = [...columnsOptions.value]
@@ -1596,7 +1717,15 @@ const availableColumnsForUnnest = computed(() => {
   const keys = formData.value.keys || []
   const columns = formData.value.columns || []
   const options = columnsOptions.value.length > 0 ? columnsOptions.value : columns
-  const combined = Array.from(new Set([...keys, ...options]))
+  const extraColumnNames = Object.keys(formData.value.advanced.extra_columns || {})
+  const combined = Array.from(new Set([...keys, ...options, ...extraColumnNames]))
+  return combined.filter((c) => c && c !== 'system_id')
+})
+
+const availableColumnsForReplacements = computed(() => {
+  const columns = formData.value.columns || []
+  const extraColumnNames = Object.keys(formData.value.advanced.extra_columns || {})
+  const combined = Array.from(new Set([...columns, ...extraColumnNames]))
   return combined.filter((c) => c && c !== 'system_id')
 })
 
@@ -1697,6 +1826,11 @@ function yamlToFormData(yamlString: string): boolean {
   try {
     const data = yaml.load(yamlString) as Record<string, any>
 
+    // Keep non-inline values/materialization metadata from YAML edits.
+    const roundTrip = extractMaterializationRoundTripState(data)
+    externalValuesDirective.value = roundTrip.externalValuesDirective
+    materializedConfig.value = roundTrip.materializedConfig
+
     const dropDuplicates = data.drop_duplicates
     const dropDuplicatesData = {
       enabled: dropDuplicates !== undefined && dropDuplicates !== null,
@@ -1709,6 +1843,17 @@ function yamlToFormData(yamlString: string): boolean {
       columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
     }
 
+    const nestedCheckFunctionalDependency =
+      dropDuplicates && typeof dropDuplicates === 'object' && !Array.isArray(dropDuplicates)
+        ? (dropDuplicates as Record<string, any>).check_functional_dependency
+        : undefined
+    const effectiveCheckFunctionalDependency =
+      typeof data.check_functional_dependency === 'boolean'
+        ? data.check_functional_dependency
+        : typeof nestedCheckFunctionalDependency === 'boolean'
+          ? nestedCheckFunctionalDependency
+          : dropDuplicates !== undefined && dropDuplicates !== null
+
     formData.value = {
       name: data.name || formData.value.name,
       type: data.type || 'entity',
@@ -1717,7 +1862,7 @@ function yamlToFormData(yamlString: string): boolean {
       surrogate_id: data.surrogate_id || '', // Keep for backward compat
       keys: Array.isArray(data.keys) ? data.keys : [],
       columns: Array.isArray(data.columns) ? data.columns : [],
-      values: Array.isArray(data.values) ? data.values : [],
+      values: roundTrip.inlineValues,
       source: data.source || null,
       data_source: data.data_source || '',
       query: data.query || '',
@@ -1732,7 +1877,7 @@ function yamlToFormData(yamlString: string): boolean {
       depends_on: Array.isArray(data.depends_on) ? data.depends_on : [],
       drop_duplicates: dropDuplicatesData,
       drop_empty_rows: dropEmptyRowsData,
-      check_functional_dependency: data.check_functional_dependency || false,
+      check_functional_dependency: effectiveCheckFunctionalDependency,
       advanced: {
         filters: Array.isArray(data.filters) ? data.filters : [],
         unnest: data.unnest || null,
@@ -1773,9 +1918,60 @@ async function handleYamlChange(value: string) {
   }
 }
 
+async function handleForeignKeysUpdate(value: any[]) {
+  formData.value.foreign_keys = value
+
+  // Relationships tab lives outside v-form fields; force a validity refresh
+  // so Save/Save & Close become enabled after FK-only edits.
+  await nextTick()
+  const result = await formRef.value?.validate()
+  formValid.value = result?.valid ?? formValid.value
+}
+
+async function refreshFormValidity() {
+  await nextTick()
+  const result = await formRef.value?.validate()
+  formValid.value = result?.valid ?? false
+}
+
+function buildDirtySnapshot(): string {
+  const snapshot: Record<string, unknown> = {
+    entityData: buildEntityConfigFromFormData(),
+  }
+
+  if (hasExternalValues.value) {
+    snapshot.externalValues = {
+      columns: getExternalValuesUpdateColumns(formData.value.type, formData.value.columns, fixedValuesColumns.value),
+      values: formData.value.values,
+    }
+  }
+
+  return JSON.stringify(snapshot)
+}
+
+function captureInitialSnapshot() {
+  initialFormSnapshot.value = buildDirtySnapshot()
+  hasPendingChanges.value = false
+}
+
+function refreshDirtyState() {
+  if (props.mode !== 'edit' || !initialFormSnapshot.value) {
+    hasPendingChanges.value = false
+    return
+  }
+
+  hasPendingChanges.value = buildDirtySnapshot() !== initialFormSnapshot.value
+}
+
+const isSaveDisabled = computed(() => {
+  if (!formValid.value) return true
+  if (props.mode === 'edit') return !hasPendingChanges.value
+  return false
+})
+
 // Methods
 async function handleSubmit() {
-  if (!formValid.value || loading.value) return // Prevent double-submission
+  if (isSaveDisabled.value || loading.value) return // Prevent invalid/unchanged/double-submission
 
   const { valid } = await formRef.value.validate()
   if (!valid) return
@@ -1804,8 +2000,39 @@ async function handleSubmit() {
       await update(formData.value.name, {
         entity_data: entityData,
       })
+      
+      // Save external values if entity has @load: directive
+      if (hasExternalValues.value) {
+        try {
+          const response = await api.entities.updateValues(
+            props.projectName,
+            formData.value.name,
+            {
+              columns: getExternalValuesUpdateColumns(formData.value.type, formData.value.columns, fixedValuesColumns.value),
+              values: formData.value.values,
+            },
+            externalValuesEtag.value || undefined // Optimistic locking
+          )
+          // Update etag after successful save
+          externalValuesEtag.value = response.etag
+          console.log('[EntityFormDialog] Saved external values')
+        } catch (err: any) {
+          console.error('Failed to save external values:', err)
+          // Check for conflict (409)
+          if (err.response?.status === 409) {
+            error.value = 'External values were modified by another user. Please reload the entity and try again.'
+          } else {
+            error.value = 'Entity config saved, but failed to save external values: ' + (err instanceof Error ? err.message : 'Unknown error')
+          }
+          loading.value = false
+          return
+        }
+      }
+      
       // Keep dialog open after saving in edit mode
       emit('saved', formData.value.name)
+
+      captureInitialSnapshot()
 
       // Show success indicator
       showSaveSuccess.value = true
@@ -1822,7 +2049,7 @@ async function handleSubmit() {
 }
 
 async function handleSubmitAndClose() {
-  if (loading.value) return // Prevent double-submission
+  if (loading.value || isSaveDisabled.value) return // Prevent invalid/unchanged/double-submission
 
   loading.value = true
   error.value = null
@@ -1839,6 +2066,38 @@ async function handleSubmitAndClose() {
       await update(formData.value.name, {
         entity_data: entityData,
       })
+      
+      // Save external values if entity has @load: directive
+      if (hasExternalValues.value) {
+        try {
+          const response = await api.entities.updateValues(
+            props.projectName,
+            formData.value.name,
+            {
+              columns: getExternalValuesUpdateColumns(formData.value.type, formData.value.columns, fixedValuesColumns.value),
+              values: formData.value.values,
+            },
+            externalValuesEtag.value || undefined // Optimistic locking
+          )
+          // Update etag after successful save
+          externalValuesEtag.value = response.etag
+          console.log('[EntityFormDialog] Saved external values (close)')
+        } catch (err: any) {
+          console.error('Failed to save external values:', err)
+          // Check for conflict (409)
+          if (err.response?.status === 409) {
+            error.value = 'External values were modified by another user. Please reload the entity and try again.'
+          } else {
+            error.value = 'Entity config saved, but failed to save external values: ' + (err instanceof Error ? err.message : 'Unknown error')
+          }
+          loading.value = false
+          return
+        }
+      }
+    }
+
+    if (props.mode === 'edit') {
+      captureInitialSnapshot()
     }
 
     emit('saved', formData.value.name)
@@ -1874,9 +2133,10 @@ function handleMaterialized() {
     loading.value = true
     api.entities
       .get(props.projectName, props.entity.name)
-      .then((freshEntity) => {
+      .then(async (freshEntity) => {
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
+        await loadExternalValuesIfNeeded(freshEntity)
         yamlContent.value = formDataToYaml()
       })
       .catch((err) => {
@@ -1929,6 +2189,16 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
 function buildFormDataFromEntity(entity: EntityResponse): FormData {
   const dropDuplicates = entity.entity_data.drop_duplicates
   const dropEmptyRows = entity.entity_data.drop_empty_rows
+  const nestedCheckFunctionalDependency =
+    dropDuplicates && typeof dropDuplicates === 'object' && !Array.isArray(dropDuplicates)
+      ? (dropDuplicates as Record<string, any>).check_functional_dependency
+      : undefined
+  const effectiveCheckFunctionalDependency =
+    typeof entity.entity_data.check_functional_dependency === 'boolean'
+      ? entity.entity_data.check_functional_dependency
+      : typeof nestedCheckFunctionalDependency === 'boolean'
+        ? nestedCheckFunctionalDependency
+        : dropDuplicates !== undefined && dropDuplicates !== null
 
   // For fixed entities, strip system_id and public_id from columns
   // since they're auto-managed and will be auto-added on save
@@ -1938,6 +2208,11 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     columns = columns.filter(col => col !== 'system_id' && col !== publicId)
   }
 
+  // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
+  const roundTrip = extractMaterializationRoundTripState(entity.entity_data)
+  externalValuesDirective.value = roundTrip.externalValuesDirective
+  materializedConfig.value = roundTrip.materializedConfig
+
   return {
     name: entity.name,
     type: (entity.entity_data.type as string) || 'entity',
@@ -1946,7 +2221,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
     keys: (entity.entity_data.keys as string[]) || [],
     columns: columns,
-    values: (entity.entity_data.values as any[][]) || [],
+    values: roundTrip.inlineValues,
     source: (entity.entity_data.source as string) || null,
     data_source: (entity.entity_data.data_source as string) || '',
     query: (entity.entity_data.query as string) || '',
@@ -1967,7 +2242,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
       columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
     },
-    check_functional_dependency: (entity.entity_data.check_functional_dependency as boolean) || false,
+    check_functional_dependency: effectiveCheckFunctionalDependency,
     advanced: {
       filters: (entity.entity_data.filters as any[]) || [],
       unnest: entity.entity_data.unnest || null,
@@ -1977,7 +2252,59 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   }
 }
 
+/**
+ * Load external values for entity with @load: directive
+ */
+async function loadExternalValuesIfNeeded(entity: EntityResponse) {
+  const rawValues = entity.entity_data.values
+  
+  // Check if entity has @load: directive
+  if (typeof rawValues === 'string' && rawValues.startsWith('@load:')) {
+    hasExternalValues.value = true
+    externalValuesDirective.value = rawValues
+    loadingExternalValues.value = true
+    externalValuesError.value = null
+    
+    try {
+      console.log(`[EntityFormDialog] Loading external values for ${entity.name}: ${rawValues}`)
+      const response = await api.entities.getValues(props.projectName, entity.name)
+      
+      // Populate form data with fetched values
+      formData.value.values = response.values
+      if (formData.value.type === 'fixed') {
+        const publicId = formData.value.public_id
+        formData.value.columns = response.columns.filter((col) => col !== 'system_id' && col !== publicId)
+      } else {
+        formData.value.columns = response.columns
+      }
+      
+      // Store etag for optimistic locking
+      externalValuesEtag.value = response.etag
+      
+      console.log(`[EntityFormDialog] Loaded ${response.row_count} rows from external storage (${response.format}, etag: ${response.etag.substring(0, 8)}...)`)
+    } catch (err) {
+      externalValuesError.value = err instanceof Error ? err.message : 'Failed to load external values'
+      console.error('Failed to load external values:', err)
+      
+      // Reset to empty on error
+      formData.value.values = []
+      externalValuesEtag.value = null
+    } finally {
+      loadingExternalValues.value = false
+    }
+  } else {
+    // Inline values or empty
+    hasExternalValues.value = false
+    externalValuesDirective.value = null
+    externalValuesError.value = null
+    externalValuesEtag.value = null
+  }
+}
+
 function buildDefaultFormData(): FormData {
+  externalValuesDirective.value = null
+  materializedConfig.value = null
+
   return {
     name: '',
     type: 'entity',
@@ -2044,6 +2371,7 @@ watch(
       clearPreview()
       previewError.value = null
       viewMode.value = 'form' // Always reset to form view
+      activeTab.value = 'basic' // Always open entity editor on basic tab
 
       // Load entity data for edit mode
       if (mode === 'edit' && entityName) {
@@ -2055,10 +2383,16 @@ watch(
           formData.value = buildFormDataFromEntity(props.entity)
           yamlContent.value = formDataToYaml()
 
+          // Load external values if entity has @load: directive
+          await loadExternalValuesIfNeeded(props.entity)
+
           // Hydrate columns for entity type after form data is loaded
           if (formData.value.type === 'entity') {
             hydrateColumnsFromSource()
           }
+
+          await refreshFormValidity()
+          captureInitialSnapshot()
         } else {
           // Fallback: fetch from API if entity not provided (shouldn't happen in normal flow)
           loading.value = true
@@ -2070,10 +2404,16 @@ watch(
             formData.value = buildFormDataFromEntity(freshEntity)
             yamlContent.value = formDataToYaml()
 
+            // Load external values if entity has @load: directive
+            await loadExternalValuesIfNeeded(freshEntity)
+
             // Hydrate columns for entity type after form data is loaded
             if (formData.value.type === 'entity') {
               hydrateColumnsFromSource()
             }
+
+            await refreshFormValidity()
+            captureInitialSnapshot()
           } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to load entity data'
             console.error('Failed to fetch entity data:', err)
@@ -2086,10 +2426,28 @@ watch(
         currentEntity.value = null
         formData.value = buildDefaultFormData()
         yamlContent.value = ''
+        await refreshFormValidity()
+        initialFormSnapshot.value = null
+        hasPendingChanges.value = false
       }
     }
   },
   { immediate: true }
+)
+
+watch(
+  [
+    () => formData.value,
+    () => hasExternalValues.value,
+    () => externalValuesDirective.value,
+    () => materializedConfig.value,
+  ],
+  () => {
+    if (props.modelValue && props.mode === 'edit') {
+      refreshDirtyState()
+    }
+  },
+  { deep: true }
 )
 
 // Sync form to YAML when switching to YAML tab

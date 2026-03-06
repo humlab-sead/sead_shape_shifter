@@ -66,9 +66,6 @@ class DefaultEntityConfigMapper(EntityConfigMapper):
     - Any entity without file path dependencies
     """
 
-    def __init__(self, settings: Settings) -> None:
-        super().__init__(settings)
-
     def to_api(self, config: dict[str, Any], project_name: str) -> dict[str, Any]:
         """Return config unchanged (no transformation needed)."""
         return config
