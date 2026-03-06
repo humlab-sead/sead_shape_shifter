@@ -1,12 +1,13 @@
 <template>
   <v-dialog
     v-model="dialogModel"
-    :max-width="viewMode !== 'form' ? '95vw' : '900'"
-    :height="viewMode !== 'form' ? '90vh' : '800'"
+    :width="dialogContainerWidth"
+    :max-width="dialogContainerWidth"
+    :height="dialogContainerHeight"
     persistent
     scrollable
   >
-    <v-card style="height: 100%">
+    <v-card class="entity-dialog-card" style="height: 100%">
       <v-toolbar color="primary" density="compact">
         <v-toolbar-title>
           <v-icon :icon="mode === 'create' ? 'mdi-plus-circle' : 'mdi-pencil'" class="mr-2" />
@@ -766,6 +767,15 @@
         :entity-name="entity?.name || ''"
         @unmaterialized="handleUnmaterialized"
       />
+
+      <button
+        v-if="!isCompactScreen"
+        type="button"
+        class="dialog-resize-handle"
+        aria-label="Resize editor dialog"
+        title="Drag to resize"
+        @mousedown="startDialogResize"
+      />
     </v-card>
   </v-dialog>
 </template>
@@ -814,6 +824,12 @@ import {
   extractMaterializationRoundTripState,
   getExternalValuesUpdateColumns,
 } from './entityFormMaterialization'
+
+const DIALOG_SIZE_STORAGE_KEY = 'shape-shifter:entity-dialog-size:v1'
+const DEFAULT_DIALOG_WIDTH = 1100
+const DEFAULT_DIALOG_HEIGHT = 820
+const MIN_DIALOG_WIDTH = 900
+const MIN_DIALOG_HEIGHT = 640
 
 // Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
 const FixedValuesGrid = defineAsyncComponent(() => import('./FixedValuesGrid.vue'))
@@ -1002,6 +1018,19 @@ const formData = ref<FormData>({
 
 const activeTab = ref('basic')
 
+const isCompactScreen = ref(false)
+const dialogSize = ref({ width: DEFAULT_DIALOG_WIDTH, height: DEFAULT_DIALOG_HEIGHT })
+
+const dialogContainerWidth = computed(() => {
+  if (isCompactScreen.value) return '98vw'
+  return `${dialogSize.value.width}px`
+})
+
+const dialogContainerHeight = computed(() => {
+  if (isCompactScreen.value) return '94vh'
+  return `${dialogSize.value.height}px`
+})
+
 // Watch for initial tab from entity store overlay
 const entityStore = useEntityStore()
 watch(
@@ -1134,6 +1163,84 @@ function toggleSplitView() {
   if (viewMode.value !== 'form' && canPreview.value) {
     refreshPreview()
   }
+}
+
+function getDialogSizeBounds() {
+  const maxWidth = Math.max(MIN_DIALOG_WIDTH, Math.floor(window.innerWidth * 0.98))
+  const maxHeight = Math.max(MIN_DIALOG_HEIGHT, Math.floor(window.innerHeight * 0.96))
+  return { maxWidth, maxHeight }
+}
+
+function clampDialogSize(width: number, height: number) {
+  const { maxWidth, maxHeight } = getDialogSizeBounds()
+
+  return {
+    width: Math.min(Math.max(Math.round(width), MIN_DIALOG_WIDTH), maxWidth),
+    height: Math.min(Math.max(Math.round(height), MIN_DIALOG_HEIGHT), maxHeight),
+  }
+}
+
+function persistDialogSize() {
+  if (isCompactScreen.value) return
+
+  try {
+    localStorage.setItem(DIALOG_SIZE_STORAGE_KEY, JSON.stringify(dialogSize.value))
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
+  }
+}
+
+function loadDialogSize() {
+  try {
+    const stored = localStorage.getItem(DIALOG_SIZE_STORAGE_KEY)
+    if (!stored) {
+      dialogSize.value = clampDialogSize(DEFAULT_DIALOG_WIDTH, DEFAULT_DIALOG_HEIGHT)
+      return
+    }
+
+    const parsed = JSON.parse(stored) as { width?: number; height?: number }
+    const width = typeof parsed.width === 'number' ? parsed.width : DEFAULT_DIALOG_WIDTH
+    const height = typeof parsed.height === 'number' ? parsed.height : DEFAULT_DIALOG_HEIGHT
+    dialogSize.value = clampDialogSize(width, height)
+  } catch {
+    dialogSize.value = clampDialogSize(DEFAULT_DIALOG_WIDTH, DEFAULT_DIALOG_HEIGHT)
+  }
+}
+
+function updateResponsiveDialogMode() {
+  isCompactScreen.value = window.innerWidth < 1024
+
+  if (!isCompactScreen.value) {
+    dialogSize.value = clampDialogSize(dialogSize.value.width, dialogSize.value.height)
+  }
+}
+
+function startDialogResize(event: MouseEvent) {
+  if (isCompactScreen.value) return
+
+  event.preventDefault()
+
+  const startX = event.clientX
+  const startY = event.clientY
+  const startWidth = dialogSize.value.width
+  const startHeight = dialogSize.value.height
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    const nextWidth = startWidth + (moveEvent.clientX - startX)
+    const nextHeight = startHeight + (moveEvent.clientY - startY)
+    dialogSize.value = clampDialogSize(nextWidth, nextHeight)
+  }
+
+  const onMouseUp = () => {
+    document.body.classList.remove('entity-dialog-resizing')
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+    persistDialogSize()
+  }
+
+  document.body.classList.add('entity-dialog-resizing')
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
 }
 
 function buildEntityConfigFromFormData(): Record<string, unknown> {
@@ -1658,7 +1765,11 @@ function handleKeyPress(e: KeyboardEvent) {
 }
 
 onMounted(() => {
+  updateResponsiveDialogMode()
+  loadDialogSize()
+
   window.addEventListener('keydown', handleKeyPress)
+  window.addEventListener('resize', updateResponsiveDialogMode)
 
   // Fetch project files if editing a file type entity
   if (props.mode === 'edit' && isFileType.value) {
@@ -1672,7 +1783,22 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyPress)
+  window.removeEventListener('resize', updateResponsiveDialogMode)
+  document.body.classList.remove('entity-dialog-resizing')
 })
+
+watch(
+  () => viewMode.value,
+  (mode) => {
+    if (isCompactScreen.value) return
+
+    // Ensure split mode has enough width to remain usable.
+    if (mode === 'both' && dialogSize.value.width < 1100) {
+      dialogSize.value = clampDialogSize(1100, dialogSize.value.height)
+      persistDialogSize()
+    }
+  }
+)
 
 // Computed
 const dialogModel = computed({
@@ -2563,6 +2689,43 @@ function handleRejectDependency(dep: DependencySuggestion) {
 
 .system-id-field :deep(.v-field__outline) {
   opacity: 0.5;
+}
+
+.entity-dialog-card {
+  position: relative;
+}
+
+.dialog-resize-handle {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  cursor: nwse-resize;
+  z-index: 5;
+}
+
+.dialog-resize-handle::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 12px 12px;
+  border-color: transparent transparent rgba(var(--v-theme-primary), 0.55) transparent;
+}
+
+.dialog-resize-handle:hover::before {
+  border-color: transparent transparent rgba(var(--v-theme-primary), 0.8) transparent;
+}
+
+:global(body.entity-dialog-resizing) {
+  cursor: nwse-resize;
+  user-select: none;
 }
 
 /* Dialog content height management */
