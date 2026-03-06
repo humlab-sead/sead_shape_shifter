@@ -184,11 +184,10 @@ class ProjectService:
             entity_count: int = len(copy.entities or {})
             entity_names: list[str] = sorted((copy.entities or {}).keys())
             logger.info(
-                "[{}] load_project: '{}' from CACHE (deep copy) entities={} names={}",
+                "[{}] load_project: '{}' from CACHE (deep copy) entities={}",
                 corr,
                 name,
                 entity_count,
-                entity_names,
             )
             return copy
 
