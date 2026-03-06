@@ -1,11 +1,10 @@
 """Service for entity materialization operations."""
 
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Literal
 
+import pandas as pd
 from loguru import logger
-from pandas import DataFrame
 
 from backend.app.core.config import Settings
 from backend.app.mappers.project_mapper import ProjectMapper
@@ -14,12 +13,17 @@ from backend.app.models.materialization import (
     UnmaterializationResult,
 )
 from backend.app.models.project import Project
+from backend.app.services.entity_values_service import EntityValuesService
 from backend.app.services.project_service import ProjectService
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.specifications.materialize import CanMaterializeSpecification
 
-STORE_INLINE_THRESHOLD = 20  # Rows below which data is stored inline in YAML
+# pylint: disable=redefined-builtin
+
+
+class MaterializationError(Exception):
+    """Custom exception for materialization errors."""
 
 
 class MaterializationService:
@@ -28,6 +32,12 @@ class MaterializationService:
     def __init__(self, project_service: ProjectService):
         """Initialize service with project service dependency."""
         self.project_service: ProjectService = project_service
+        self.entity_values_service: EntityValuesService = EntityValuesService(project_service)
+
+    def _get_materialized_file_path(self, project_name: str, entity_name: str, format: str) -> str:
+        """Get relative path for materialized file (relative to project folder)."""
+        extension = "parquet" if format == "parquet" else "csv"
+        return f"materialized/{entity_name}.{extension}"
 
     async def materialize_entity(
         self,
@@ -48,129 +58,62 @@ class MaterializationService:
         7. Save updated project config
         """
         try:
-            # Load project
+            store_inline_threshold: int = Settings().MATERIALIZATION_INLINE_THRESHOLD
             api_project: Project = self.project_service.load_project(project_name)
             core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+            table_cfg: TableConfig = core_project.get_table(entity_name)
 
-            # Validate
-            table: TableConfig = core_project.get_table(entity_name)
             specification: CanMaterializeSpecification = CanMaterializeSpecification(core_project)
-            if not specification.is_satisfied_by(entity=table):
-                return MaterializationResult(
-                    success=False,
-                    errors=[str(issue) for issue in specification.errors],
-                    entity_name=entity_name,
-                )
+            if not specification.is_satisfied_by(entity=table_cfg):
+                return MaterializationResult(success=False, errors=[str(issue) for issue in specification.errors], entity_name=entity_name)
 
-            # Run normalization (dependencies + target entity)
             logger.info(f"Materializing entity '{entity_name}' in project '{project_name}'")
+
             shapeshifter = ShapeShifter(project=core_project, target_entities={entity_name})
             await shapeshifter.normalize()
 
-            # Get result DataFrame
             if entity_name not in shapeshifter.table_store:
-                return MaterializationResult(
-                    success=False,
-                    errors=[f"Entity '{entity_name}' not found in normalization results"],
-                    entity_name=entity_name,
-                )
+                raise MaterializationError(f"Entity '{entity_name}' not found in normalization results")
 
-            df: DataFrame = shapeshifter.table_store[entity_name]
+            df: pd.DataFrame = shapeshifter.table_store[entity_name]
 
             # Determine storage strategy
             data_file: str | None = None
-            values_inline: list[list[Any]] | None = None
+            values_inline: list[list[Any]] | str
+            actual_format: str = storage_format
 
-            if storage_format == "inline" or len(df) < STORE_INLINE_THRESHOLD:
-                # Inline: convert DataFrame to list of lists
-                try:
-                    values_inline = df.values.tolist()
-                    logger.info(f"Storing {len(df)} rows inline in YAML")
-                except Exception as e:  # pylint: disable=broad-except
-                    return MaterializationResult(
-                        success=False,
-                        errors=[f"Failed to convert data to inline format: {e}"],
-                        entity_name=entity_name,
-                    )
+            # Always honor explicit user choice for inline
+            if storage_format == "inline":
+                values_inline = df.values.tolist()
+                logger.info(f"Storing {len(df)} rows inline in YAML (explicit choice)")
+            # Auto-optimize small datasets to inline
+            elif len(df) < store_inline_threshold:
+                values_inline = df.values.tolist()
+                actual_format = "inline"
+                logger.info(f"Auto-storing {len(df)} rows inline in YAML (below threshold)")
             else:
-                # External file storage
-                folder: Path = Settings().PROJECTS_DIR
-                data_dir: Path = Path(folder) / f"projects/{project_name}/materialized"
+                # Construct file path and update entity config with @load: directive
+                data_file = self._get_materialized_file_path(project_name, entity_name, storage_format)
+                values_inline = f"@load:{data_file}"
 
-                try:
-                    data_dir.mkdir(parents=True, exist_ok=True)
-                except OSError as e:
-                    return MaterializationResult(
-                        success=False,
-                        errors=[f"Failed to create materialized directory: {e}"],
-                        entity_name=entity_name,
-                    )
+                # Update entity config with @load: directive first
+                api_project.entities[entity_name] = self._create_materialized_entity(table_cfg, df, values_inline)
+                self._store_project(api_project)
 
-                try:
-                    if storage_format == "parquet":
-                        data_file = f"materialized/{entity_name}.parquet"
-                        full_path: Path = data_dir / f"{entity_name}.parquet"
-                        df.to_parquet(full_path, index=False)
-                        logger.info(f"Saved {len(df)} rows to {full_path}")
-                    else:  # csv
-                        data_file = f"materialized/{entity_name}.csv"
-                        full_path = data_dir / f"{entity_name}.csv"
-                        df.to_csv(full_path, index=False)
-                        logger.info(f"Saved {len(df)} rows to {full_path}")
-                except (OSError, PermissionError) as e:
-                    return MaterializationResult(
-                        success=False,
-                        errors=[f"Failed to write data file: {e}"],
-                        entity_name=entity_name,
-                    )
-                except Exception as e:  # pylint: disable=broad-except
-                    return MaterializationResult(
-                        success=False,
-                        errors=[f"Unexpected error saving data: {e}"],
-                        entity_name=entity_name,
-                    )
-
-            # Snapshot current config (save all fields needed for unmaterialization except materialized metadata)
-            saved_state: dict[str, Any] = {}
-            for k, v in table.entity_cfg.items():
-                if k not in ["materialized", "values"]:
-                    # Skip empty/null values
-                    if v is None or v == "" or (isinstance(v, str) and not v.strip()):
-                        continue
-                    saved_state[k] = v
-
-            # Build new config (all values are POPO from YamlService.load())
-            # Build materialized metadata dict
-            materialized_meta: dict[str, Any] = {
-                "enabled": True,
-                "source_state": saved_state,
-                "materialized_at": datetime.now().isoformat(),
-            }
-
-            new_config = {
-                "type": "fixed",
-                "public_id": table.public_id,
-                "keys": list(table.keys),
-                "columns": list(df.columns),
-                "materialized": materialized_meta,
-            }
-
-            if values_inline:
-                new_config["values"] = values_inline
-            elif data_file:
-                new_config["values"] = f"@file:{data_file}"
-
-            # Update project (entities are stored as raw dicts)
-            api_project.entities[entity_name] = new_config
-
-            try:
-                self.project_service.save_project(api_project)
-            except Exception as e:  # pylint: disable=broad-except
-                return MaterializationResult(
-                    success=False,
-                    errors=[f"Failed to save project configuration: {e}"],
+                # Now write the actual data file using EntityValuesService
+                self.entity_values_service.update_values(
+                    project_name=project_name,
                     entity_name=entity_name,
+                    columns=df.columns.tolist(),
+                    values=df.values.tolist(),
+                    format_type=storage_format,
                 )
+
+            api_project.entities[entity_name] = self._create_materialized_entity(table_cfg, df, values_inline)
+
+            # Save project config (only if not already saved above for external storage)
+            if storage_format == "inline" or len(df) < store_inline_threshold:
+                self._store_project(api_project)
 
             logger.info(f"Successfully materialized entity '{entity_name}' with {len(df)} rows")
 
@@ -179,12 +122,44 @@ class MaterializationService:
                 entity_name=entity_name,
                 rows_materialized=len(df),
                 storage_file=data_file,
-                storage_format=storage_format if data_file else "inline",
+                storage_format=actual_format,
             )
+
+        except MaterializationError as e:
+            logger.error(f"Materialization error for entity '{entity_name}': {e}")
+            return MaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
 
         except Exception as e:  # pylint: disable=broad-except
             logger.exception(f"Failed to materialize entity '{entity_name}': {e}")
             return MaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
+
+    def _create_materialized_entity(self, table: TableConfig, df: pd.DataFrame, values_inline: list[list[Any]] | str) -> dict[str, Any]:
+        """Create the new entity config dict for the materialized entity, including saved state for unmaterialization."""
+        saved_state: dict[str, Any] = {}
+        for k, v in table.entity_cfg.items():
+            if k not in ["materialized", "values"]:
+                # Skip empty/null values
+                if v is None or v == "" or (isinstance(v, str) and not v.strip()):
+                    continue
+                saved_state[k] = v
+
+        if not saved_state:
+            logger.warning(f"Entity '{table.entity_name}' has no config to save - unmaterialization may not be possible")
+
+        new_config = {
+            "type": "fixed",
+            "public_id": table.public_id,
+            "keys": list(table.keys),
+            "columns": list(df.columns),
+            "values": values_inline if values_inline else None,
+            "materialized": {
+                "enabled": True,
+                "source_state": saved_state,
+                "materialized_at": datetime.now().isoformat(),
+            },
+        }
+
+        return new_config
 
     async def unmaterialize_entity(self, project_name: str, entity_name: str, cascade: bool = False) -> UnmaterializationResult:
         """
@@ -200,19 +175,16 @@ class MaterializationService:
         7. Save project
         """
         try:
-            # Load project
             api_project: Project = self.project_service.load_project(project_name)
             core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+            table_cfg: TableConfig = core_project.get_table(entity_name)
 
-            # Validate
-            table: TableConfig = core_project.get_table(entity_name)
-
-            if not table.is_materialized:
+            if not table_cfg.is_materialized:
                 return UnmaterializationResult(
                     success=False, errors=[f"Entity '{entity_name}' is not materialized"], entity_name=entity_name
                 )
 
-            dependents: list[str] = self._find_materialized_dependents(core_project, table)
+            dependents: list[str] = self._find_materialized_dependents(core_project, table_cfg)
 
             if dependents and not cascade:
                 return UnmaterializationResult(
@@ -233,28 +205,37 @@ class MaterializationService:
                     unmaterialized_entities.extend(result.unmaterialized_entities)
 
             # Restore config from saved state (includes original public_id, keys, columns, etc.)
-            saved_state: dict[str, Any] = table.materialized.source_state or {}
-            restored_config: dict[str, Any] = {**saved_state}
+            saved_state: dict[str, Any] = table_cfg.materialized.source_state or {}
+            restored_entity: dict[str, Any] = {**saved_state}
 
-            # Update project (entities are stored as raw dicts)
-            api_project.entities[entity_name] = restored_config
+            api_project.entities[entity_name] = restored_entity
 
-            try:
-                self.project_service.save_project(api_project)
-            except Exception as e:  # pylint: disable=broad-except
-                return UnmaterializationResult(
-                    success=False,
-                    errors=[f"Failed to save project configuration: {e}"],
-                    entity_name=entity_name,
-                )
+            self._store_project(api_project)
 
             logger.info(f"Successfully unmaterialized entity '{entity_name}'")
 
             return UnmaterializationResult(success=True, entity_name=entity_name, unmaterialized_entities=unmaterialized_entities)
 
+        except MaterializationError as e:
+            logger.error(f"Materialization error for entity '{entity_name}': {e}")
+            return UnmaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
+
         except Exception as e:  # pylint: disable=broad-except
             logger.exception(f"Failed to unmaterialize entity '{entity_name}': {e}")
             return UnmaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
 
-    def _find_materialized_dependents(self, core_project, table):
-        return [t for t in table.dependent_entities() if core_project.get_table(t).is_materialized]
+    def _find_materialized_dependents(self, core_project: ShapeShiftProject, table: TableConfig) -> list[str]:
+        """Find all materialized entities that depend on the given table."""
+        dependents = []
+        for entity_name in table.dependent_entities():
+            dep_table = core_project.get_table(entity_name)
+            if dep_table and dep_table.is_materialized:
+                dependents.append(entity_name)
+        return dependents
+
+    def _store_project(self, api_project: Project) -> None:
+        """Save project configuration with proper error handling."""
+        try:
+            self.project_service.save_project(api_project)
+        except Exception as e:  # pylint: disable=broad-except
+            raise MaterializationError(f"Failed to save project configuration: {e}") from e

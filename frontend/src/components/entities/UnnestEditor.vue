@@ -48,6 +48,24 @@
         density="compact"
       />
     </template>
+
+    <v-alert
+      type="info"
+      variant="tonal"
+      density="compact"
+      class="mt-3 text-caption"
+    >
+      <strong>Unnesting</strong> allows you to reshape data from wide format to long format.
+      <ul class="mt-2 mb-0 pl-4">
+        <li><strong>ID variables:</strong> columns to keep fixed (identifiers)</li>
+        <li><strong>Value variables:</strong> columns to unpivot (optional; defaults to all others)</li>
+        <li><strong>Variable name:</strong> name of the new column holding former column names</li>
+        <li><strong>Value name:</strong> name of the new column holding values</li>
+      </ul>
+
+    </v-alert>
+
+
   </div>
 </template>
 

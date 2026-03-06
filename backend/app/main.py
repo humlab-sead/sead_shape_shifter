@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
+from starlette.formparsers import MultiPartParser
 
 from backend.app.api.v1.api import api_router
 from backend.app.core.config import settings
@@ -24,7 +25,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
     """Application lifespan events."""
     # Configure logging first
     configure_logging(
-        log_dir=settings.LOGS_DIR,
+        log_dir=settings.LOG_DIR,
         log_level=settings.LOG_LEVEL,
         enable_file_logging=settings.LOG_FILE_ENABLED,
         enable_console_logging=settings.LOG_CONSOLE_ENABLED,
@@ -69,6 +70,14 @@ app = FastAPI(
     redoc_url=f"{settings.API_V1_PREFIX}/redoc",
     lifespan=lifespan,
 )
+
+# Increase multipart form data size limit for file uploads (default is 1MB)
+# Set to 100MB to match our application's file upload limits
+# Handle both old (max_file_size) and new (max_part_size) Starlette attribute names
+if hasattr(MultiPartParser, "max_file_size"):
+    MultiPartParser.max_file_size = 100 * 1024 * 1024  # type: ignore[attr-defined]
+if hasattr(MultiPartParser, "max_part_size"):
+    MultiPartParser.max_part_size = 100 * 1024 * 1024  # type: ignore[attr-defined]
 
 # logger.debug("Configuring FastAPI application")
 # logger.debug(f"Allowed CORS origins: {settings.ALLOWED_ORIGINS}")

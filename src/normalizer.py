@@ -18,16 +18,12 @@ from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
 from src.process_state import ProcessState
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
+from src.transforms.extra_columns import ExtraColumnEvaluator
 from src.transforms.filter import apply_filters
 from src.transforms.link import ForeignKeyLinker
 from src.transforms.translate import translate
 from src.transforms.unnest import unnest
 from src.transforms.utility import add_system_id  # Renamed from add_surrogate_id
-
-# Debug flag to control verbose normalization logging
-# Set to True to see detailed "Normalizing entity..." logs for each entity
-# When False, only INFO level logs for overall progress are shown
-_ENABLE_NORMALIZATION_DEBUG = True
 
 
 class ShapeShifter:
@@ -48,6 +44,7 @@ class ShapeShifter:
         self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
         self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
+        self.extra_col_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
 
     def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
         """Resolve the DataLoader, if any, for the given TableConfig."""
@@ -120,12 +117,6 @@ class ShapeShifter:
 
             table_cfg: TableConfig = self.project.get_table(entity)
 
-            if _ENABLE_NORMALIZATION_DEBUG:
-                logger.debug(f"{entity}[normalizing]: Normalizing entity...")
-
-            if not isinstance(table_cfg.columns, list):
-                raise ValueError(f"Invalid columns configuration for entity '{entity}': must be a list")
-
             if not all(isinstance(col, str) for col in table_cfg.columns):
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': all columns must be strings")
 
@@ -139,31 +130,24 @@ class ShapeShifter:
             # Apply post-concatenation deduplication if append_mode is "distinct"
             # if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
             if table_cfg.drop_duplicates and not delay_drop_duplicates:
-                data = drop_duplicate_rows(
-                    data=data,
-                    columns=table_cfg.drop_duplicates if table_cfg.drop_duplicates else True,
-                    entity_name=entity,
-                    fd_check=table_cfg.check_functional_dependency,
-                    strict_fd_check=table_cfg.strict_functional_dependency,
-                )
+                data = self.drop_duplicates(entity, table_cfg, data)
                 # logger.info(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
 
             self.table_store[entity] = data
 
             self.linker.link_entity(entity_name=entity)
 
+            # Re-evaluate deferred extra_columns after FK linking (in case they reference FK-added columns)
+            self._evaluate_deferred_extra_columns(entity)
+
             if table_cfg.unnest:
                 self.unnest_entity(entity=entity)
                 self.linker.link_entity(entity_name=entity)
+                # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
+                self._evaluate_deferred_extra_columns(entity)
 
             if delay_drop_duplicates and table_cfg.drop_duplicates:
-                self.table_store[entity] = drop_duplicate_rows(
-                    data=self.table_store[entity],
-                    columns=table_cfg.drop_duplicates,
-                    entity_name=entity,
-                    fd_check=table_cfg.check_functional_dependency,
-                    strict_fd_check=table_cfg.strict_functional_dependency,
-                )
+                self.table_store[entity] = self.drop_duplicates(entity, table_cfg, self.table_store[entity])
 
             self._check_duplicate_keys(entity, table_cfg)
 
@@ -178,6 +162,10 @@ class ShapeShifter:
 
             self.retry_linking()
 
+            # Verify extra_columns were evaluated for this entity
+            if table_cfg.extra_columns:
+                self.extra_col_evaluator.verify_extra_columns(self.table_store[entity], table_cfg.extra_columns, entity)
+
         if self.linker.deferred_tracker.deferred:
             logger.warning(f"Entities with unresolved deferred links after normalization: {self.linker.deferred_tracker.deferred}")
 
@@ -188,6 +176,15 @@ class ShapeShifter:
         self.move_keys_to_front()
 
         return self
+
+    def drop_duplicates(self, entity_name: str, table_cfg: TableConfig, data: pd.DataFrame) -> pd.DataFrame:
+        return drop_duplicate_rows(
+            data=data,
+            columns=table_cfg.drop_duplicates if table_cfg.drop_duplicates else True,
+            entity_name=entity_name,
+            fd_check=table_cfg.check_functional_dependency,
+            strict_fd_check=table_cfg.strict_functional_dependency,
+        )
 
     def _check_duplicate_keys(self, entity: str, table_cfg: TableConfig) -> None:
         """Check for duplicate keys in the processed table and log an error if found."""
@@ -206,6 +203,40 @@ class ShapeShifter:
         if has_duplicate_keys:
             # raise ValueError(f"{entity}[keys]: Duplicate keys found for keys {table_cfg.keys}.")
             logger.error(f"{entity}[keys]: DUPLICATE KEYS FOUND FOR KEYS {table_cfg.keys}.")
+
+    def _evaluate_deferred_extra_columns(self, entity_name: str) -> None:
+        """Re-evaluate deferred extra_columns for an entity after FK linking or unnesting.
+
+        This handles interpolated strings that reference columns added by FK linking
+        (e.g., extra_columns from remote FK tables) or by unnesting operations.
+
+        The evaluator is idempotent - it skips columns already in the DataFrame.
+
+        Args:
+            entity_name: Name of entity to process deferred columns for
+        """
+        table_cfg: TableConfig = self.project.get_table(entity_name)
+        if not table_cfg.extra_columns:
+            return  # No extra_columns configured
+
+        df: pd.DataFrame = self.table_store[entity_name]
+
+        # Pass ALL extra_columns - evaluator will skip existing ones (idempotent)
+        result, still_deferred = self.extra_col_evaluator.evaluate_extra_columns(
+            df=df,
+            extra_columns=table_cfg.extra_columns,  # Full dict, not filtered
+            entity_name=entity_name,
+            defer_missing=True,  # Allow re-deferral if columns still missing
+        )
+
+        # Update table store with newly evaluated columns
+        self.table_store[entity_name] = result
+
+        # Log status
+        if still_deferred:
+            logger.debug(f"{entity_name}[deferred]: Still waiting for columns: " f"{list(still_deferred.keys())}")
+        else:
+            logger.debug(f"{entity_name}[deferred]: Successfully evaluated all deferred extra_columns")
 
     def retry_linking(self) -> None:
         """Retry linking only for entities currently in deferred set."""

@@ -95,7 +95,7 @@ const storageFormat = ref<'parquet' | 'csv' | 'inline'>('parquet')
 const storageFormats = [
   {
     value: 'parquet',
-    title: 'Parquet (Recommended)',
+    title: 'Parquet (Default)',
     subtitle: 'Binary format, efficient for large datasets',
     icon: 'mdi-table-arrow-down',
   },

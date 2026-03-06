@@ -1,10 +1,11 @@
 """API endpoints for entity data preview."""
 
-from typing import Any, Optional
+from typing import Any, NoReturn, Optional
 
 from fastapi import APIRouter, Body, Depends, Path, Query
 from loguru import logger
 
+from backend.app.exceptions import ValidationError
 from backend.app.models.join_test import JoinTestResult
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.project_service import ProjectService
@@ -12,8 +13,45 @@ from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.services.validate_fk_service import ValidateForeignKeyService
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
+from src.exceptions import FunctionalDependencyError
 
 router = APIRouter()
+
+
+def _find_fd_error(error: BaseException) -> FunctionalDependencyError | None:
+    """Find wrapped FunctionalDependencyError in exception cause/context chain."""
+    seen: set[int] = set()
+    current: BaseException | None = error
+
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, FunctionalDependencyError):
+            return current
+        current = current.__cause__ or current.__context__
+
+    return None
+
+
+def _raise_fd_validation_error(error: FunctionalDependencyError, entity_name: str) -> NoReturn:
+    """Raise a structured ValidationError for typed FD failures."""
+    tips: list[str] = [
+        "This error is related to Functional Dependency (FD) validation during duplicate handling.",
+        "If this check is not required, disable 'Check Functional Dependency' for this entity.",
+        "Otherwise, review deduplication keys so each keyset maps to consistent values.",
+    ]
+
+    raise ValidationError(
+        message=error.message,
+        error_code="VALIDATION_FAILED",
+        tips=tips,
+        context={
+            "entity": entity_name,
+            "validation": "functional_dependency",
+            "determinant_columns": error.determinant_columns,
+            "details": error.details,
+        },
+        recoverable=True,
+    ) from error
 
 
 def get_project_service() -> ProjectService:
@@ -79,6 +117,13 @@ async def preview_entity(
 
         result: PreviewResult = await preview_service.preview_entity(project_name, entity_name, limit, override_config=entity_config)
         return result
+    except FunctionalDependencyError as e:
+        _raise_fd_validation_error(e, entity_name)
+    except RuntimeError as e:
+        fd_error = _find_fd_error(e)
+        if fd_error is not None:
+            _raise_fd_validation_error(fd_error, entity_name)
+        raise
     except ValueError as e:
         logger.warning(f"Preview request failed: {e}")
         raise NotFoundError(str(e)) from e
@@ -113,6 +158,13 @@ async def get_entity_sample(
     try:
         result = await preview_service.get_entity_sample(project_name, entity_name, limit)
         return result
+    except FunctionalDependencyError as e:
+        _raise_fd_validation_error(e, entity_name)
+    except RuntimeError as e:
+        fd_error = _find_fd_error(e)
+        if fd_error is not None:
+            _raise_fd_validation_error(fd_error, entity_name)
+        raise
     except ValueError as e:
         logger.warning(f"Sample request failed: {e}")
         raise NotFoundError(str(e)) from e

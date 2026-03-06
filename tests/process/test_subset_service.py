@@ -7,6 +7,7 @@ import pytest
 
 from src.extract import SubsetService
 from src.model import TableConfig
+from src.transforms.extra_columns import ExtraColumnEvaluator
 
 ENTITY_NAME = "test_entity"
 
@@ -695,7 +696,7 @@ def test_get_subset_ignores_replacements_for_missing_columns() -> None:
     df = pd.DataFrame({"id": [1, 2]})
     table_cfg = build_table_config(columns=["id"], replacements={"missing_col": {1: 100}})
 
-    result = service.get_subset(source=df, table_cfg=table_cfg)
+    result: pd.DataFrame = service.get_subset(source=df, table_cfg=table_cfg)
 
     assert list(result.columns) == ["id"]
     assert result["id"].tolist() == [1, 2]
@@ -705,9 +706,9 @@ def test_get_subset_preserves_column_order() -> None:
     """Test that column order is preserved according to table_cfg columns."""
     service = SubsetService()
     df = pd.DataFrame({"c": [3], "b": [2], "a": [1]})
-    table_cfg = build_table_config(columns=["a", "b", "c"])
+    table_cfg: TableConfig = build_table_config(columns=["a", "b", "c"])
 
-    result = service.get_subset(source=df, table_cfg=table_cfg)
+    result: pd.DataFrame = service.get_subset(source=df, table_cfg=table_cfg)
 
     assert list(result.columns) == ["a", "b", "c"]
 
@@ -726,11 +727,10 @@ def test_get_subset_appends_extra_columns_at_end() -> None:
 
 def test_split_extra_columns_case_sensitive() -> None:
     """Test _split_extra_columns with case_sensitive=True."""
-    service = SubsetService()
     df = pd.DataFrame({"ID": [1, 2], "Value": ["x", "y"]})
-    extra_cols = {"copy_id": "ID", "constant_col": "static_value"}
+    extra_cols: dict[str, str] = {"copy_id": "ID", "constant_col": "static_value"}
 
-    source_cols, constant_cols = service._split_extra_columns(df, extra_cols, case_sensitive=True)
+    source_cols, constant_cols = ExtraColumnEvaluator.split_extra_columns(df, extra_cols, case_sensitive=True)
 
     assert source_cols == {"copy_id": "ID"}
     assert constant_cols == {"constant_col": "static_value"}
@@ -738,11 +738,10 @@ def test_split_extra_columns_case_sensitive() -> None:
 
 def test_split_extra_columns_case_insensitive() -> None:
     """Test _split_extra_columns with case_sensitive=False (default)."""
-    service = SubsetService()
     df = pd.DataFrame({"ID": [1, 2], "Value": ["x", "y"]})
-    extra_cols = {"copy_id": "id", "copy_value": "value", "const": "not_in_df"}
+    extra_cols: dict[str, str] = {"copy_id": "id", "copy_value": "value", "const": "not_in_df"}
 
-    source_cols, constant_cols = service._split_extra_columns(df, extra_cols, case_sensitive=False)
+    source_cols, constant_cols = ExtraColumnEvaluator.split_extra_columns(df, extra_cols, case_sensitive=False)
 
     assert source_cols == {"copy_id": "ID", "copy_value": "Value"}
     assert constant_cols == {"const": "not_in_df"}
@@ -850,3 +849,134 @@ def test_get_subset_with_drop_duplicates_dict_and_fd_settings() -> None:
     # Verify that the FD settings are accessible
     assert table_cfg.check_functional_dependency is False
     assert table_cfg.strict_functional_dependency is False
+
+
+# ============================================================================
+# Interpolated String Tests (New Feature)
+# ============================================================================
+
+
+def test_get_subset_interpolated_string_simple() -> None:
+    """Test simple interpolated string in extra_columns."""
+    service = SubsetService()
+    df = pd.DataFrame({"first": ["John", "Jane"], "last": ["Doe", "Smith"]})
+    table_cfg = build_table_config(columns=["first", "last"], extra_columns={"fullname": "{first} {last}"})
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert "fullname" in result.columns
+    assert result["fullname"].tolist() == ["John Doe", "Jane Smith"]
+
+
+def test_get_subset_interpolated_string_with_literals() -> None:
+    """Test interpolated string mixed with literal text."""
+    service = SubsetService()
+    df = pd.DataFrame({"username": ["jdoe"], "domain": ["example.com"]})
+    table_cfg = build_table_config(columns=["username"], extra_columns={"email": "{username}@example.com"})
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["email"].iloc[0] == "jdoe@example.com"
+
+
+def test_get_subset_interpolated_string_with_nulls() -> None:
+    """Test interpolated string handles null values gracefully."""
+    service = SubsetService()
+    df = pd.DataFrame({"first": ["John", None], "last": [None, "Smith"]})
+    table_cfg = build_table_config(columns=["first", "last"], extra_columns={"fullname": "{first} {last}"})
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["fullname"].tolist() == ["John ", " Smith"]
+
+
+def test_get_subset_interpolated_string_with_numbers() -> None:
+    """Test interpolated string converts numbers to strings."""
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2], "code": ["A", "B"]})
+    table_cfg = build_table_config(columns=["id", "code"], extra_columns={"label": "Item {id}-{code}"})
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["label"].tolist() == ["Item 1-A", "Item 2-B"]
+
+
+def test_get_subset_interpolated_string_with_escaping() -> None:
+    """Test interpolated string handles escaped braces."""
+    service = SubsetService()
+    df = pd.DataFrame({"value": ["test"]})
+    table_cfg = build_table_config(columns=["value"], extra_columns={"json": '{{"key": "{value}"}}'})
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["json"].iloc[0] == '{"key": "test"}'
+
+
+def test_get_subset_mixed_extra_columns() -> None:
+    """Test mixing constants, copies, and interpolations."""
+    service = SubsetService()
+    df = pd.DataFrame({"a": [1], "b": [2]})
+    table_cfg = build_table_config(columns=["a"], extra_columns={"const": 99, "copy": "b", "interp": "{a}-{b}"})
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert result["const"].iloc[0] == 99
+    assert result["copy"].iloc[0] == 2
+    assert result["interp"].iloc[0] == "1-2"
+
+
+def test_get_subset_interpolation_defers_missing_column() -> None:
+    """Test that interpolation with missing column is deferred (not an error)."""
+    service = SubsetService()
+    df = pd.DataFrame({"a": [1]})
+    table_cfg = build_table_config(columns=["a"], extra_columns={"bad": "{missing}"})
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # Column with missing dependency should be deferred (not added)
+    assert "bad" not in result.columns
+    # Source column should be present
+    assert "a" in result.columns
+
+
+def test_get_subset_defers_columns_with_missing_dependencies() -> None:
+    """Test that columns with missing dependencies are silently deferred (logged but not added)."""
+    service = SubsetService()
+    df = pd.DataFrame({"first": ["John"], "last": ["Doe"]})
+    table_cfg = build_table_config(
+        columns=["first", "last"],
+        extra_columns={
+            "full_name": "{first} {last}",  # Can evaluate immediately
+            "profile": "{first} - {missing_col}",  # Missing column - should defer
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # full_name should be evaluated
+    assert "full_name" in result.columns
+    assert result["full_name"].iloc[0] == "John Doe"
+
+    # profile should be deferred (missing column) - not added to result
+    assert "profile" not in result.columns
+
+
+def test_get_subset_evaluates_all_when_dependencies_present() -> None:
+    """Test that all columns are evaluated when dependencies are present."""
+    service = SubsetService()
+    df = pd.DataFrame({"first": ["John"], "last": ["Doe"]})
+    table_cfg = build_table_config(
+        columns=["first", "last"],
+        extra_columns={
+            "full_name": "{first} {last}",
+            "greeting": "Hello {first}",
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # Both columns should be evaluated
+    assert "full_name" in result.columns
+    assert "greeting" in result.columns
+    assert result["full_name"].iloc[0] == "John Doe"
+    assert result["greeting"].iloc[0] == "Hello John"

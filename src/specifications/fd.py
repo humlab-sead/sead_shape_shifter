@@ -3,6 +3,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from src.exceptions import FunctionalDependencyError
 from src.specifications.base import Specification
 
 
@@ -23,38 +24,6 @@ class FunctionalDependencySpecification(Specification):
 
     """
 
-    def check_functional_dependency_original_to_sloq(
-        self, *, df: pd.DataFrame, determinant_columns: list[str], raise_error: bool = True
-    ) -> bool:
-        """Check functional dependency: for each unique combination of subset columns,
-        the other columns should have consistent values.
-        Args:
-            df (pd.DataFrame): DataFrame to check.
-            determinant_columns (list[str]): List of column names that are checked for functional dependency.
-            raise_error (bool): Whether to raise an error if inconsistencies are found.
-        Returns:
-            bool: True if no inconsistencies are found, otherwise False.
-        """
-
-        # The columns that should have consistent values given the determinant columns
-        dependent_columns: list[str] = df.columns.difference(determinant_columns).to_list()
-
-        if len(dependent_columns) == 0:
-            return True
-
-        bad_keys: list = []
-        for keys, group in df.groupby(determinant_columns):
-            if (group[dependent_columns].nunique(dropna=False) > 1).any():
-                bad_keys.append(keys)
-
-        if bad_keys:
-            msg: str = f"inconsistent non-subset values for keys: {bad_keys}"
-            if raise_error:
-                raise ValueError(f"[fd_check]: {msg}")
-            logger.warning(f"[fd_check]: {msg}")
-
-        return len(bad_keys) == 0
-
     def is_satisfied_by(
         self,
         *,
@@ -65,7 +34,6 @@ class FunctionalDependencySpecification(Specification):
         **kwargs,
     ) -> bool:
         """
-        NOTE: ChatGPT-5.2 optimized version of functional dependency check.
         Check functional dependency: for each unique combination of determinant_columns,
         all other columns must be consistent.
 
@@ -98,7 +66,12 @@ class FunctionalDependencySpecification(Specification):
         self.add_error(msg, entity=kwargs.get("entity_name"))
 
         if strict:
-            raise ValueError(f"[fd_check]: {msg}")
+            raise FunctionalDependencyError(
+                f"[fd_check]: {msg}",
+                entity_name=kwargs.get("entity_name"),
+                determinant_columns=determinant_columns,
+                details={"bad_keys": bad.index.tolist(), "max_bad_keys": max_bad_keys},
+            )
 
         logger.error(f"[fd_check]: {msg}")
 
@@ -109,3 +82,39 @@ class FunctionalDependencySpecification(Specification):
         more_msg: str = "" if len(bad_keys) <= max_bad_keys else f" (showing first {max_bad_keys} of {len(bad_keys)})"
         msg: str = f"values vary within keyset: {bad_keys[:max_bad_keys]}{more_msg}"
         return msg
+
+    # def check_functional_dependency_original_to_sloq(
+    #     self, *, df: pd.DataFrame, determinant_columns: list[str], raise_error: bool = True
+    # ) -> bool:
+    #     """Check functional dependency: for each unique combination of subset columns,
+    #     the other columns should have consistent values.
+    #     Args:
+    #         df (pd.DataFrame): DataFrame to check.
+    #         determinant_columns (list[str]): List of column names that are checked for functional dependency.
+    #         raise_error (bool): Whether to raise an error if inconsistencies are found.
+    #     Returns:
+    #         bool: True if no inconsistencies are found, otherwise False.
+    #     """
+
+    #     # The columns that should have consistent values given the determinant columns
+    #     dependent_columns: list[str] = df.columns.difference(determinant_columns).to_list()
+
+    #     if len(dependent_columns) == 0:
+    #         return True
+
+    #     bad_keys: list = []
+    #     for keys, group in df.groupby(determinant_columns):
+    #         if (group[dependent_columns].nunique(dropna=False) > 1).any():
+    #             bad_keys.append(keys)
+
+    #     if bad_keys:
+    #         msg: str = f"inconsistent non-subset values for keys: {bad_keys}"
+    #         if raise_error:
+    #             raise FunctionalDependencyError(
+    #                 f"[fd_check]: {msg}",
+    #                 determinant_columns=determinant_columns,
+    #                 details={"bad_keys": bad_keys},
+    #             )
+    #         logger.warning(f"[fd_check]: {msg}")
+
+    #     return len(bad_keys) == 0

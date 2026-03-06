@@ -660,7 +660,9 @@ function removeExtraColumn(fkIndex: number, colIndex: number) {
 watch(
   foreignKeys,
   (newValue) => {
-    emit('update:modelValue', newValue)
+    // Emit a fresh cloned array so parent watchers reliably detect FK changes
+    // for nested fields like join type and constraints.
+    emit('update:modelValue', newValue.map(cloneForeignKey))
   },
   { deep: true }
 )

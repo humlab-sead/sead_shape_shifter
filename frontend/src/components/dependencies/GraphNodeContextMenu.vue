@@ -37,7 +37,7 @@
         
         <!-- Mark as Done -->
         <v-list-item
-          v-if="canMarkComplete"
+          :disabled="!canMarkComplete"
           prepend-icon="mdi-check-circle"
           title="Mark as Done"
           @click="handleMarkComplete"
@@ -45,7 +45,7 @@
         
         <!-- Mark as Ignored -->
         <v-list-item
-          v-if="taskStatus.status !== 'ignored'"
+          :disabled="taskStatus.status === 'ignored'"
           prepend-icon="mdi-cancel"
           title="Mark as Ignored"
           @click="handleMarkIgnored"
@@ -53,7 +53,7 @@
         
         <!-- Reset Status -->
         <v-list-item
-          v-if="taskStatus.status !== 'todo'"
+          :disabled="taskStatus.status === 'todo'"
           prepend-icon="mdi-refresh"
           title="Reset Status"
           @click="handleResetStatus"

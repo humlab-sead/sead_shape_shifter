@@ -57,7 +57,7 @@
             <v-form ref="form" v-model="valid">
           <!-- Entity and Target Field Selection (only for new) -->
           <template v-if="isNew">
-            <v-row>
+            <v-row class="mt-2">
               <v-col cols="6">
                 <v-autocomplete
                   v-model="formData.entity_name"

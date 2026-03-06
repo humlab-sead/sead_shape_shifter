@@ -80,13 +80,13 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
         # Validate required identity fields
         entity_cfg = self.get_entity_cfg(entity_name)
-        
+
         # Check for public_id (required for fixed entities)
         public_id = entity_cfg.get("public_id") or entity_cfg.get("surrogate_id")
         if not public_id:
             self.add_error(f"Entity '{entity_name}': Field 'public_id' is required but missing.", entity=entity_name, field="public_id")
             return not self.has_errors()  # Can't proceed without public_id
-        
+
         # Note: system_id is always "system_id" (standardized name, auto-generated)
 
         self.check_fields(entity_name, ["values"], "exists/E,not_empty/W")
@@ -119,7 +119,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
             expected_with_identity: int = len(set(columns) | {public_id, "system_id"})
             expected_without_identity: int = len(columns)
             values_length: int = len(values[0]) if values else 0
-            
+
             # Check all rows have consistent length
             if not all(len(row) == values_length for row in values):
                 self.add_error(
@@ -185,7 +185,11 @@ class FixedEntitySystemIdSpecification(ProjectSpecification):
         system_id_values = [row[system_id_index] for row in values]
 
         # Validate: No null/None values
-        null_count = sum(1 for val in system_id_values if val is None or (isinstance(val, float) and val != val))
+        null_count = sum(
+            1
+            for val in system_id_values
+            if val is None or (isinstance(val, float) and val != val)  # pylint: disable=comparison-with-itself
+        )
         if null_count > 0:
             self.add_error(
                 f"Entity '{entity_name}': system_id column has {null_count} null value(s). All system_id values must be present.",
@@ -195,7 +199,11 @@ class FixedEntitySystemIdSpecification(ProjectSpecification):
             )
 
         # Filter out nulls for uniqueness/type checks
-        non_null_values = [val for val in system_id_values if val is not None and not (isinstance(val, float) and val != val)]
+        non_null_values = [
+            val
+            for val in system_id_values
+            if val is not None and not (isinstance(val, float) and val != val)  # pylint: disable=comparison-with-itself
+        ]
 
         if non_null_values:
             # Validate: All values are positive integers
@@ -405,6 +413,45 @@ class PublicIdSpecification(ProjectSpecification):
         if public_id:
             self.check_fields(entity_name, ["public_id"], "of_type/E", expected_types=(str,))
             self.check_fields(entity_name, ["public_id"], "ends_with_id/E")
+
+        return not self.has_errors()
+
+
+@ENTITY_SPECIFICATION.register(key="extra_columns_conflicts")
+class ExtraColumnsConflictsSpecification(ProjectSpecification):
+    """Validates that extra_columns don't conflict with existing columns.
+
+    Checks that extra_column names don't conflict with:
+    - Columns from "columns" field
+    - Business keys from "keys" field
+    - Public ID from "public_id" field
+    - System column "system_id"
+    - Unnest columns (value_name, var_name)
+    """
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that extra_columns don't conflict with existing columns."""
+        self.clear()
+
+        entities_cfg: dict[str, Any] = self.project_cfg.get("entities", {})
+        table_cfg = TableConfig(entities_cfg=entities_cfg, entity_name=entity_name)
+
+        if not table_cfg.extra_columns:
+            return True
+
+        existing_columns: set[str] = set(
+            table_cfg.get_columns(include_keys=True, include_fks=False, include_extra=False, include_unnest=True)
+        )
+
+        conflicts: set[str] = set(table_cfg.extra_columns.keys()) & existing_columns
+
+        if conflicts:
+            for conflict in sorted(conflicts):
+                self.add_warning(
+                    f"Column '{conflict}' already exists in entity '{entity_name}'. " f"The extra_columns value will be skipped.",
+                    entity=entity_name,
+                    field="extra_columns",
+                )
 
         return not self.has_errors()
 

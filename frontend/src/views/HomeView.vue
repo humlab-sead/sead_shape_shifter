@@ -72,10 +72,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import { useRouter } from 'vue-router'
 import seadLogo from '@/assets/images/SEAD-logo-subtext.svg'
-
-const router = useRouter()
 
 const navItems = [
   {

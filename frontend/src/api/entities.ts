@@ -32,6 +32,20 @@ export interface GenerateFromTableRequest {
   schema_name?: string
 }
 
+export interface EntityValuesResponse {
+  columns: string[]
+  values: unknown[][]
+  format: string
+  row_count: number
+  etag: string
+}
+
+export interface EntityValuesUpdateRequest {
+  columns: string[]
+  values: unknown[][]
+  format?: string
+}
+
 /**
  * Entity API service
  */
@@ -96,6 +110,44 @@ export const entitiesApi = {
       method: 'POST',
       url: `/projects/${projectName}/entities/generate-from-table`,
       data,
+    })
+  },
+
+  /**
+   * Get external values for entity with @load: directive
+   * 
+   * @param format - Optional format negotiation (parquet/csv)
+   */
+  getValues: async (
+    projectName: string,
+    entityName: string,
+    format?: string
+  ): Promise<EntityValuesResponse> => {
+    const params = format ? { format } : undefined
+    return apiRequest<EntityValuesResponse>({
+      method: 'GET',
+      url: `/projects/${projectName}/entities/${entityName}/values`,
+      params,
+    })
+  },
+
+  /**
+   * Update external values for entity with @load: directive
+   * 
+   * @param ifMatch - Optional etag for optimistic locking
+   */
+  updateValues: async (
+    projectName: string,
+    entityName: string,
+    data: EntityValuesUpdateRequest,
+    ifMatch?: string
+  ): Promise<EntityValuesResponse> => {
+    const headers = ifMatch ? { 'If-Match': ifMatch } : undefined
+    return apiRequest<EntityValuesResponse>({
+      method: 'PUT',
+      url: `/projects/${projectName}/entities/${entityName}/values`,
+      data,
+      headers,
     })
   },
 }

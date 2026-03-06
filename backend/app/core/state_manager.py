@@ -258,15 +258,9 @@ class ApplicationStateManager:
                 return None
             project: Project | None = get_app_state().get_project(name)
             if project:
-                entity_count = len(project.entities or {})
-                entity_names = sorted((project.entities or {}).keys())
-                logger.info(
-                    "[{}] state.get: project='{}' HIT entities={} names={}",
-                    corr,
-                    name,
-                    entity_count,
-                    entity_names,
-                )
+                # entity_count: int = len(project.entities or {})
+                # entity_names: list[str] = sorted((project.entities or {}).keys())
+                # logger.info("[{}] state.get: project='{}' HIT entities={} names={}", corr, name, entity_count, entity_names)
                 return project
             logger.debug("[{}] state.get: project='{}' MISS", corr, name)
         return None

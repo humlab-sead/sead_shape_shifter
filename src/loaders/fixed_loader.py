@@ -27,15 +27,20 @@ class FixedLoader(DataLoader):
         self.validate(entity_name, table_cfg)
 
         data: pd.DataFrame
+        raw_values: list[Any] | None = table_cfg.values if isinstance(table_cfg.values, list) else None
 
-        values: list[list[Any]] = table_cfg.safe_values
-        columns: list[str] = table_cfg.columns
+        if raw_values and isinstance(raw_values[0], dict):
+            # Values came from @load: directive - columns are embedded as dict keys
+            data = pd.DataFrame(raw_values)
+        else:
+            values: list[list[Any]] = table_cfg.safe_values
+            columns: list[str] = table_cfg.columns
 
-        if len(columns) == 0 and len(values) == 0:
-            logger.warning(f"Fixed data entity '{entity_name}' has no columns or values defined, returning empty DataFrame")
-            return pd.DataFrame()
+            if len(columns) == 0 and len(values) == 0:
+                logger.warning(f"Fixed data entity '{entity_name}' has no columns or values defined, returning empty DataFrame")
+                return pd.DataFrame()
 
-        data = pd.DataFrame(table_cfg.safe_values, columns=table_cfg.columns)
+            data = pd.DataFrame(values, columns=columns)
 
         # Add system_id if configured (always "system_id" column name)
         if table_cfg.system_id and table_cfg.system_id not in data.columns:
