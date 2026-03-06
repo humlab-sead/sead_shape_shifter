@@ -43,7 +43,7 @@ class TestEntityValuesService:
         """Test resolving values file path."""
         # Mock project with file_path
         mock_project = Mock()
-        mock_project.metadata.file_path = "/projects/test_project/shapeshifter.yml"
+        mock_project.folder = Path("/projects/test_project")
         mock_project_service.load_project.return_value = mock_project
 
         result = service._resolve_values_path("test_project", "materialized/feature_type.parquet")
@@ -150,11 +150,29 @@ class TestEntityValuesService:
         assert file_path.exists()
         assert file_path.parent.exists()
 
+    def test_write_values_file_column_value_mismatch_raises_clear_error(self, service, tmp_path):
+        """Test clear validation error when row width differs from columns."""
+        file_path = tmp_path / "output.parquet"
+        columns = ["a", "b", "c", "d"]
+        values = [[1, 2, 3, 4, 5, 6]]  # 6 values, 4 columns
+
+        with pytest.raises(ValueError, match="Column/value width mismatch"):
+            service._write_values_file(file_path, columns, values, "parquet")
+
+    def test_write_values_file_non_list_row_raises_clear_error(self, service, tmp_path):
+        """Test clear validation error for malformed rows."""
+        file_path = tmp_path / "output.parquet"
+        columns = ["a"]
+        values = [123]  # type: ignore[list-item]
+
+        with pytest.raises(ValueError, match="expected list"):
+            service._write_values_file(file_path, columns, values, "parquet")
+
     def test_get_values_success(self, service, mock_project_service, tmp_path):
         """Test getting values for entity with @load: directive."""
         # Setup mocks
         mock_project = Mock()
-        mock_project.metadata.file_path = str(tmp_path / "shapeshifter.yml")
+        mock_project.folder = tmp_path
         mock_project_service.load_project.return_value = mock_project
 
         entity_data = {"values": "@load:materialized/test.parquet"}
@@ -188,7 +206,7 @@ class TestEntityValuesService:
         """Test getting values for non-existent file raises FileNotFoundError."""
         # Setup mocks
         mock_project = Mock()
-        mock_project.metadata.file_path = str(tmp_path / "shapeshifter.yml")
+        mock_project.folder = tmp_path
         mock_project_service.load_project.return_value = mock_project
 
         entity_data = {"values": "@load:materialized/nonexistent.parquet"}
@@ -201,7 +219,7 @@ class TestEntityValuesService:
         """Test updating values for entity with @load: directive."""
         # Setup mocks
         mock_project = Mock()
-        mock_project.metadata.file_path = str(tmp_path / "shapeshifter.yml")
+        mock_project.folder = tmp_path
         mock_project_service.load_project.return_value = mock_project
 
         entity_data = {"values": "@load:materialized/test.parquet"}
@@ -235,7 +253,7 @@ class TestEntityValuesService:
         """Test updating values preserves existing format when not specified."""
         # Setup mocks
         mock_project = Mock()
-        mock_project.metadata.file_path = str(tmp_path / "shapeshifter.yml")
+        mock_project.folder = tmp_path
         mock_project_service.load_project.return_value = mock_project
 
         entity_data = {"values": "@load:materialized/test.csv"}
@@ -313,7 +331,7 @@ class TestEntityValuesService:
         """Test get_values returns etag in response."""
         # Setup mocks
         mock_project = Mock()
-        mock_project.metadata.file_path = str(tmp_path / "shapeshifter.yml")
+        mock_project.folder = tmp_path
         mock_project_service.load_project.return_value = mock_project
 
         entity_data = {"values": "@load:test.parquet"}
@@ -336,7 +354,7 @@ class TestEntityValuesService:
         """Test update_values succeeds with matching etag."""
         # Setup mocks
         mock_project = Mock()
-        mock_project.metadata.file_path = str(tmp_path / "shapeshifter.yml")
+        mock_project.folder = tmp_path
         mock_project_service.load_project.return_value = mock_project
 
         entity_data = {"values": "@load:test.parquet"}
@@ -366,7 +384,7 @@ class TestEntityValuesService:
         """Test update_values fails with mismatched etag (409 Conflict)."""
         # Setup mocks
         mock_project = Mock()
-        mock_project.metadata.file_path = str(tmp_path / "shapeshifter.yml")
+        mock_project.folder = tmp_path
         mock_project_service.load_project.return_value = mock_project
 
         entity_data = {"values": "@load:test.parquet"}
@@ -388,7 +406,7 @@ class TestEntityValuesService:
         """Test update_values succeeds without etag (no optimistic locking)."""
         # Setup mocks
         mock_project = Mock()
-        mock_project.metadata.file_path = str(tmp_path / "shapeshifter.yml")
+        mock_project.folder = tmp_path
         mock_project_service.load_project.return_value = mock_project
 
         entity_data = {"values": "@load:test.parquet"}

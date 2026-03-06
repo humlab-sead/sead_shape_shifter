@@ -219,7 +219,7 @@ class ProjectService:
             self.state.activate(project)
 
             entity_names = sorted((project.entities or {}).keys())
-            logger.info("[{}] load_project: '{}' from DISK entities={} names={}", corr, name, len(project.entities), entity_names)
+            logger.info("[{}] load_project: '{}' from DISK entities={}", corr, name, len(project.entities))
             return project
 
         except ConfigurationError:
