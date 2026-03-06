@@ -20,7 +20,7 @@
             density="comfortable"
             autofocus
             required
-            hint="Enter a unique name for the copy (with or without .yml extension)"
+            hint="Enter a unique relative name (supports ':' or '/', optional .yml). Absolute paths are not allowed."
             persistent-hint
             class="mb-4"
           />
@@ -87,6 +87,13 @@ const targetName = ref('')
 const loading = ref(false)
 const error = ref<string | null>(null)
 
+function normalizeProjectNameInput(value: string): string {
+  return value
+    .trim()
+    .replace(/\.yml$/, '')
+    .replace(/\//g, ':')
+}
+
 // Computed
 const dialogModel = computed({
   get: () => props.modelValue,
@@ -99,10 +106,14 @@ const nameRules = [
   (v: string) => v.length >= 3 || 'Name must be at least 3 characters',
   (v: string) => v.length <= 50 || 'Name must be less than 50 characters',
   (v: string) =>
-    /^[a-zA-Z0-9_-]+(?:\.yml)?$/.test(v) ||
-    'Name can only contain letters, numbers, hyphens, and underscores (with optional .yml extension)',
+    /^[a-zA-Z0-9_:/-]+(?:\.yml)?$/.test(v) ||
+    'Name can only contain letters, numbers, hyphens, underscores, ":", and "/" (with optional .yml extension)',
+  (v: string) => !v.includes('..') || 'Directory traversal is not allowed',
+  (v: string) => !v.startsWith('/') || 'Absolute paths are not allowed',
+  (v: string) => !v.includes('\\') || 'Backslashes are not allowed',
+  (v: string) => !/(^[:/])|([:/]$)|(\/\/)|(::)/.test(v.trim()) || 'Path segments cannot be empty',
   (v: string) => {
-    const cleanName = v.replace(/\.yml$/, '')
+    const cleanName = normalizeProjectNameInput(v)
     return !projects.value.some((c) => c.name === cleanName) || 'A project with this name already exists'
   },
 ]
@@ -121,8 +132,8 @@ async function handleSubmit() {
   try {
     await projectsApi.copy(props.sourceName, targetName.value)
 
-    // Emit the clean name (without .yml)
-    const cleanName = targetName.value.replace(/\.yml$/, '')
+    // Emit normalized API-safe name (':' separator)
+    const cleanName = normalizeProjectNameInput(targetName.value)
     emit('copied', cleanName)
     handleClose()
   } catch (err) {

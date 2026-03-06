@@ -425,7 +425,9 @@ class ProjectService:
             ResourceConflictError: If target project already exists
             ProjectServiceError: If copy fails
         """
-        return self.operations.copy_project(source_name, target_name)
+        safe_source_name: str = self.utils.validate_project_name(source_name)
+        safe_target_name: str = self.utils.validate_project_name(target_name)
+        return self.operations.copy_project(safe_source_name, safe_target_name)
 
     def update_metadata(
         self,
