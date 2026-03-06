@@ -738,7 +738,7 @@
         </v-fade-transition>
 
         <v-spacer />
-        <v-btn variant="text" @click="handleCancel" :disabled="loading"> Cancel </v-btn>
+        <v-btn variant="text" @click="handleCancel" :disabled="loading"> Close </v-btn>
         <v-btn color="primary" variant="flat" :loading="loading" :disabled="isSaveDisabled" @click="handleSubmit">
           <v-icon start>mdi-content-save</v-icon>
           Save
@@ -2240,6 +2240,11 @@ function handleCancel() {
 }
 
 function handleClose() {
+  if (props.mode === 'edit' && hasPendingChanges.value) {
+    const shouldDiscard = window.confirm('You have unsaved changes. Close without saving?')
+    if (!shouldDiscard) return
+  }
+
   error.value = null
   showSaveSuccess.value = false
   if (saveSuccessTimeout) {
