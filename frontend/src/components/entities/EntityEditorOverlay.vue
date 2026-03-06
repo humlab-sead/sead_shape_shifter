@@ -1,14 +1,14 @@
 <template>
   <v-overlay v-model="isOpen" class="entity-editor-overlay" persistent :scrim="true" @click:outside="handleClose">
     <transition name="slide-from-right">
-      <v-card v-if="isOpen" class="overlay-panel" elevation="24">
+      <v-card v-if="isOpen" class="overlay-panel" :style="overlayPanelStyle" elevation="24">
         <v-toolbar color="primary" density="compact">
           <v-toolbar-title>
             <v-icon icon="mdi-pencil" class="mr-2" />
             Edit {{ entityName }}
           </v-toolbar-title>
           <v-spacer />
-          
+
           <!-- View mode toggle -->
           <v-btn-toggle v-model="viewMode" mandatory density="compact" class="mr-2">
             <v-btn value="form" size="small">
@@ -47,7 +47,10 @@
         <v-card-text class="pa-0 overlay-content" :class="{ 'split-container': viewMode !== 'form' }">
           <div :class="viewMode !== 'form' ? 'split-layout' : ''" :data-view-mode="viewMode">
             <!-- Left: Form panels -->
-            <div v-show="viewMode === 'form' || viewMode === 'both'" :class="viewMode === 'both' ? 'form-panel' : 'pt-6 px-4 form-content'">
+            <div
+              v-show="viewMode === 'form' || viewMode === 'both'"
+              :class="viewMode === 'both' ? 'form-panel' : 'pt-6 px-4 form-content'"
+            >
               <v-window v-model="activeTab">
                 <!-- We'll reuse the form content from EntityFormDialog -->
                 <v-window-item value="basic">
@@ -99,7 +102,10 @@
             </div>
 
             <!-- Right: Preview panel -->
-            <div v-show="viewMode === 'preview' || viewMode === 'both'" :class="viewMode === 'both' ? 'preview-panel' : 'preview-content'">
+            <div
+              v-show="viewMode === 'preview' || viewMode === 'both'"
+              :class="viewMode === 'both' ? 'preview-panel' : 'preview-content'"
+            >
               <slot name="preview-content" />
             </div>
           </div>
@@ -120,6 +126,15 @@
             </v-btn>
           </div>
         </v-card-actions>
+
+        <button
+          v-if="!isCompactScreen"
+          type="button"
+          class="overlay-resize-handle"
+          aria-label="Resize entity editor overlay"
+          title="Drag to resize"
+          @mousedown="startOverlayResize"
+        />
       </v-card>
     </transition>
   </v-overlay>
@@ -127,6 +142,12 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+
+const OVERLAY_SIZE_STORAGE_KEY = 'shape-shifter:entity-overlay-size:v1'
+const DEFAULT_OVERLAY_WIDTH = 1280
+const DEFAULT_OVERLAY_HEIGHT = 920
+const MIN_OVERLAY_WIDTH = 980
+const MIN_OVERLAY_HEIGHT = 700
 
 interface Props {
   modelValue: boolean
@@ -152,12 +173,108 @@ const emit = defineEmits<Emits>()
 // Local state
 const activeTab = ref('basic')
 const viewMode = ref<'form' | 'both' | 'preview'>('both')
+const isCompactScreen = ref(false)
+const overlaySize = ref({ width: DEFAULT_OVERLAY_WIDTH, height: DEFAULT_OVERLAY_HEIGHT })
 
 // Computed
 const isOpen = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value),
 })
+
+const overlayPanelStyle = computed(() => {
+  if (isCompactScreen.value) {
+    return {
+      width: '100vw',
+      maxWidth: '100vw',
+      height: '100vh',
+    }
+  }
+
+  return {
+    width: `${overlaySize.value.width}px`,
+    maxWidth: `${overlaySize.value.width}px`,
+    height: `${overlaySize.value.height}px`,
+  }
+})
+
+function getOverlayBounds() {
+  const maxWidth = Math.max(MIN_OVERLAY_WIDTH, Math.floor(window.innerWidth * 0.98))
+  const maxHeight = Math.max(MIN_OVERLAY_HEIGHT, Math.floor(window.innerHeight * 0.98))
+  return { maxWidth, maxHeight }
+}
+
+function clampOverlaySize(width: number, height: number) {
+  const { maxWidth, maxHeight } = getOverlayBounds()
+
+  return {
+    width: Math.min(Math.max(Math.round(width), MIN_OVERLAY_WIDTH), maxWidth),
+    height: Math.min(Math.max(Math.round(height), MIN_OVERLAY_HEIGHT), maxHeight),
+  }
+}
+
+function persistOverlaySize() {
+  if (isCompactScreen.value) return
+
+  try {
+    localStorage.setItem(OVERLAY_SIZE_STORAGE_KEY, JSON.stringify(overlaySize.value))
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+function loadOverlaySize() {
+  try {
+    const stored = localStorage.getItem(OVERLAY_SIZE_STORAGE_KEY)
+    if (!stored) {
+      overlaySize.value = clampOverlaySize(DEFAULT_OVERLAY_WIDTH, DEFAULT_OVERLAY_HEIGHT)
+      return
+    }
+
+    const parsed = JSON.parse(stored) as { width?: number; height?: number }
+    const width = typeof parsed.width === 'number' ? parsed.width : DEFAULT_OVERLAY_WIDTH
+    const height = typeof parsed.height === 'number' ? parsed.height : DEFAULT_OVERLAY_HEIGHT
+    overlaySize.value = clampOverlaySize(width, height)
+  } catch {
+    overlaySize.value = clampOverlaySize(DEFAULT_OVERLAY_WIDTH, DEFAULT_OVERLAY_HEIGHT)
+  }
+}
+
+function updateResponsiveOverlayMode() {
+  isCompactScreen.value = window.innerWidth < 1024
+
+  if (!isCompactScreen.value) {
+    overlaySize.value = clampOverlaySize(overlaySize.value.width, overlaySize.value.height)
+  }
+}
+
+function startOverlayResize(event: MouseEvent) {
+  if (isCompactScreen.value) return
+
+  event.preventDefault()
+  const startX = event.clientX
+  const startY = event.clientY
+  const startWidth = overlaySize.value.width
+  const startHeight = overlaySize.value.height
+
+  // Overlay is right-anchored, so width changes invert horizontal drag.
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    const nextWidth = startWidth - (moveEvent.clientX - startX)
+    const nextHeight = startHeight + (moveEvent.clientY - startY)
+    overlaySize.value = clampOverlaySize(nextWidth, nextHeight)
+  }
+
+  const onMouseUp = () => {
+    document.body.classList.remove('entity-overlay-resizing')
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+    persistOverlaySize()
+  }
+
+  document.body.classList.add('entity-overlay-resizing')
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
 
 // Methods
 function handleClose() {
@@ -189,12 +306,30 @@ function handleKeydown(event: KeyboardEvent) {
 
 // Lifecycle
 onMounted(() => {
+  updateResponsiveOverlayMode()
+  loadOverlaySize()
+
   document.addEventListener('keydown', handleKeydown)
+  window.addEventListener('resize', updateResponsiveOverlayMode)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('resize', updateResponsiveOverlayMode)
+  document.body.classList.remove('entity-overlay-resizing')
 })
+
+watch(
+  () => viewMode.value,
+  (mode) => {
+    if (isCompactScreen.value) return
+
+    if (mode === 'both' && overlaySize.value.width < 1160) {
+      overlaySize.value = clampOverlaySize(1160, overlaySize.value.height)
+      persistOverlaySize()
+    }
+  }
+)
 
 // Watch for entity changes
 watch(
@@ -216,12 +351,42 @@ watch(
   position: fixed;
   top: 0;
   right: 0;
-  width: 85vw;
-  max-width: 1400px;
-  height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.overlay-resize-handle {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  cursor: nesw-resize;
+  z-index: 5;
+}
+
+.overlay-resize-handle::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 12px 12px 0;
+  border-color: transparent rgba(var(--v-theme-primary), 0.55) transparent transparent;
+}
+
+.overlay-resize-handle:hover::before {
+  border-color: transparent rgba(var(--v-theme-primary), 0.8) transparent transparent;
+}
+
+:global(body.entity-overlay-resizing) {
+  cursor: nesw-resize;
+  user-select: none;
 }
 
 .overlay-content {
