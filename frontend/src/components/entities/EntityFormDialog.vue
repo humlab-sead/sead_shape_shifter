@@ -808,6 +808,10 @@ import UnmaterializeDialog from './UnmaterializeDialog.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
+import {
+  applyMaterializationRoundTripToFixedEntity,
+  extractMaterializationRoundTripState,
+} from './entityFormMaterialization'
 
 // Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
 const FixedValuesGrid = defineAsyncComponent(() => import('./FixedValuesGrid.vue'))
@@ -910,6 +914,9 @@ const loadingExternalValues = ref(false)
 const hasExternalValues = ref(false)
 const externalValuesError = ref<string | null>(null)
 const externalValuesEtag = ref<string | null>(null)
+// Preserve non-inline values/materialization metadata so Save round-trips config correctly.
+const externalValuesDirective = ref<string | null>(null)
+const materializedConfig = ref<Record<string, any> | null>(null)
 
 interface FormData {
   name: string
@@ -1147,7 +1154,12 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
 
   // Always include values field for fixed type (required by backend validation)
   if (formData.value.type === 'fixed') {
-    entityData.values = formData.value.values || []
+    applyMaterializationRoundTripToFixedEntity(
+      entityData,
+      formData.value.values || [],
+      externalValuesDirective.value,
+      materializedConfig.value
+    )
   }
 
   if (formData.value.source) {
@@ -1790,6 +1802,11 @@ function yamlToFormData(yamlString: string): boolean {
   try {
     const data = yaml.load(yamlString) as Record<string, any>
 
+    // Keep non-inline values/materialization metadata from YAML edits.
+    const roundTrip = extractMaterializationRoundTripState(data)
+    externalValuesDirective.value = roundTrip.externalValuesDirective
+    materializedConfig.value = roundTrip.materializedConfig
+
     const dropDuplicates = data.drop_duplicates
     const dropDuplicatesData = {
       enabled: dropDuplicates !== undefined && dropDuplicates !== null,
@@ -1821,7 +1838,7 @@ function yamlToFormData(yamlString: string): boolean {
       surrogate_id: data.surrogate_id || '', // Keep for backward compat
       keys: Array.isArray(data.keys) ? data.keys : [],
       columns: Array.isArray(data.columns) ? data.columns : [],
-      values: Array.isArray(data.values) ? data.values : [],
+      values: roundTrip.inlineValues,
       source: data.source || null,
       data_source: data.data_source || '',
       query: data.query || '',
@@ -2035,9 +2052,10 @@ function handleMaterialized() {
     loading.value = true
     api.entities
       .get(props.projectName, props.entity.name)
-      .then((freshEntity) => {
+      .then(async (freshEntity) => {
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
+        await loadExternalValuesIfNeeded(freshEntity)
         yamlContent.value = formDataToYaml()
       })
       .catch((err) => {
@@ -2110,8 +2128,9 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   }
 
   // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
-  const rawValues = entity.entity_data.values
-  const valuesArray = Array.isArray(rawValues) ? rawValues : []
+  const roundTrip = extractMaterializationRoundTripState(entity.entity_data)
+  externalValuesDirective.value = roundTrip.externalValuesDirective
+  materializedConfig.value = roundTrip.materializedConfig
 
   return {
     name: entity.name,
@@ -2121,7 +2140,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
     keys: (entity.entity_data.keys as string[]) || [],
     columns: columns,
-    values: valuesArray,
+    values: roundTrip.inlineValues,
     source: (entity.entity_data.source as string) || null,
     data_source: (entity.entity_data.data_source as string) || '',
     query: (entity.entity_data.query as string) || '',
@@ -2161,6 +2180,7 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
   // Check if entity has @load: directive
   if (typeof rawValues === 'string' && rawValues.startsWith('@load:')) {
     hasExternalValues.value = true
+    externalValuesDirective.value = rawValues
     loadingExternalValues.value = true
     externalValuesError.value = null
     
@@ -2189,12 +2209,16 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
   } else {
     // Inline values or empty
     hasExternalValues.value = false
+    externalValuesDirective.value = null
     externalValuesError.value = null
     externalValuesEtag.value = null
   }
 }
 
 function buildDefaultFormData(): FormData {
+  externalValuesDirective.value = null
+  materializedConfig.value = null
+
   return {
     name: '',
     type: 'entity',
