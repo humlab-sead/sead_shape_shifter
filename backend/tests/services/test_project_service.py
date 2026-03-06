@@ -848,7 +848,7 @@ options: {}
         result = service.copy_project("category/source_project", "category/target_project")
 
         assert result.metadata
-        assert result.metadata.name == "category/target_project"
+        assert result.metadata.name == "category:target_project"
         assert (service.projects_dir / "category" / "target_project" / "shapeshifter.yml").exists()
 
     # update_metadata tests
@@ -921,8 +921,13 @@ options: {}
 
     def test_validate_project_name_absolute_path(self, service: ProjectService):
         """Test absolute paths with slash are rejected."""
-        with pytest.raises(BadRequestError, match="use ':' for nested projects"):
+        with pytest.raises(BadRequestError, match="absolute path"):
             service._validate_project_name("/absolute/path")
+
+    def test_validate_project_name_slash_normalized(self, service: ProjectService):
+        """Test slash separators are normalized to colon separators."""
+        result = service._validate_project_name("category/sub/project")
+        assert result == "category:sub:project"
 
     def test_validate_project_name_strips_whitespace(self, service: ProjectService):
         """Test that leading/trailing whitespace is stripped."""
