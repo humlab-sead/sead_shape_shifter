@@ -738,7 +738,7 @@
 
         <v-spacer />
         <v-btn variant="text" @click="handleCancel" :disabled="loading"> Cancel </v-btn>
-        <v-btn color="primary" variant="flat" :loading="loading" :disabled="!formValid" @click="handleSubmit">
+        <v-btn color="primary" variant="flat" :loading="loading" :disabled="isSaveDisabled" @click="handleSubmit">
           <v-icon start>mdi-content-save</v-icon>
           Save
         </v-btn>
@@ -746,7 +746,7 @@
           color="primary"
           variant="outlined"
           :loading="loading"
-          :disabled="!formValid"
+          :disabled="isSaveDisabled"
           @click="handleSubmitAndClose"
         >
           Save & Close
@@ -919,6 +919,8 @@ const externalValuesEtag = ref<string | null>(null)
 // Preserve non-inline values/materialization metadata so Save round-trips config correctly.
 const externalValuesDirective = ref<string | null>(null)
 const materializedConfig = ref<Record<string, any> | null>(null)
+const initialFormSnapshot = ref<string | null>(null)
+const hasPendingChanges = ref(false)
 
 interface FormData {
   name: string
@@ -1903,12 +1905,53 @@ async function handleForeignKeysUpdate(value: any[]) {
   // so Save/Save & Close become enabled after FK-only edits.
   await nextTick()
   const result = await formRef.value?.validate()
-  formValid.value = !!result?.valid
+  formValid.value = result?.valid ?? formValid.value
 }
+
+async function refreshFormValidity() {
+  await nextTick()
+  const result = await formRef.value?.validate()
+  formValid.value = result?.valid ?? false
+}
+
+function buildDirtySnapshot(): string {
+  const snapshot: Record<string, unknown> = {
+    entityData: buildEntityConfigFromFormData(),
+  }
+
+  if (hasExternalValues.value) {
+    snapshot.externalValues = {
+      columns: getExternalValuesUpdateColumns(formData.value.type, formData.value.columns, fixedValuesColumns.value),
+      values: formData.value.values,
+    }
+  }
+
+  return JSON.stringify(snapshot)
+}
+
+function captureInitialSnapshot() {
+  initialFormSnapshot.value = buildDirtySnapshot()
+  hasPendingChanges.value = false
+}
+
+function refreshDirtyState() {
+  if (props.mode !== 'edit' || !initialFormSnapshot.value) {
+    hasPendingChanges.value = false
+    return
+  }
+
+  hasPendingChanges.value = buildDirtySnapshot() !== initialFormSnapshot.value
+}
+
+const isSaveDisabled = computed(() => {
+  if (!formValid.value) return true
+  if (props.mode === 'edit') return !hasPendingChanges.value
+  return false
+})
 
 // Methods
 async function handleSubmit() {
-  if (!formValid.value || loading.value) return // Prevent double-submission
+  if (isSaveDisabled.value || loading.value) return // Prevent invalid/unchanged/double-submission
 
   const { valid } = await formRef.value.validate()
   if (!valid) return
@@ -1969,6 +2012,8 @@ async function handleSubmit() {
       // Keep dialog open after saving in edit mode
       emit('saved', formData.value.name)
 
+      captureInitialSnapshot()
+
       // Show success indicator
       showSaveSuccess.value = true
       if (saveSuccessTimeout) clearTimeout(saveSuccessTimeout)
@@ -1984,7 +2029,7 @@ async function handleSubmit() {
 }
 
 async function handleSubmitAndClose() {
-  if (loading.value) return // Prevent double-submission
+  if (loading.value || isSaveDisabled.value) return // Prevent invalid/unchanged/double-submission
 
   loading.value = true
   error.value = null
@@ -2029,6 +2074,10 @@ async function handleSubmitAndClose() {
           return
         }
       }
+    }
+
+    if (props.mode === 'edit') {
+      captureInitialSnapshot()
     }
 
     emit('saved', formData.value.name)
@@ -2302,6 +2351,7 @@ watch(
       clearPreview()
       previewError.value = null
       viewMode.value = 'form' // Always reset to form view
+      activeTab.value = 'basic' // Always open entity editor on basic tab
 
       // Load entity data for edit mode
       if (mode === 'edit' && entityName) {
@@ -2320,6 +2370,9 @@ watch(
           if (formData.value.type === 'entity') {
             hydrateColumnsFromSource()
           }
+
+          await refreshFormValidity()
+          captureInitialSnapshot()
         } else {
           // Fallback: fetch from API if entity not provided (shouldn't happen in normal flow)
           loading.value = true
@@ -2338,6 +2391,9 @@ watch(
             if (formData.value.type === 'entity') {
               hydrateColumnsFromSource()
             }
+
+            await refreshFormValidity()
+            captureInitialSnapshot()
           } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to load entity data'
             console.error('Failed to fetch entity data:', err)
@@ -2350,10 +2406,28 @@ watch(
         currentEntity.value = null
         formData.value = buildDefaultFormData()
         yamlContent.value = ''
+        await refreshFormValidity()
+        initialFormSnapshot.value = null
+        hasPendingChanges.value = false
       }
     }
   },
   { immediate: true }
+)
+
+watch(
+  [
+    () => formData.value,
+    () => hasExternalValues.value,
+    () => externalValuesDirective.value,
+    () => materializedConfig.value,
+  ],
+  () => {
+    if (props.modelValue && props.mode === 'edit') {
+      refreshDirtyState()
+    }
+  },
+  { deep: true }
 )
 
 // Sync form to YAML when switching to YAML tab
