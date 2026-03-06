@@ -207,3 +207,21 @@ Add support for interpolated string syntax (e.g., `"{first_name} {last_name}"`) 
 ### TODO: Reset tab to "basic" when an entity is opened
 
 ### TODO: Improve APPEND editor
+
+```yaml
+name: feature_type
+type: sql
+system_id: system_id
+keys: []
+columns:
+  - Befundtyp
+  - Beschreibung
+public_id: feature_type_id
+data_source: arbodat_lookup
+query: select [Befundtyp], [Beschreibung] from [Befundtypen];
+drop_duplicates: true
+check_functional_dependency: true
+extra_columns:
+  feature_type_name: Befundtyp
+  description: Beschreibung
+```
