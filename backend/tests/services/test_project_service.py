@@ -1167,7 +1167,7 @@ task_list:
         assert task_list is not None
         assert "sample" in task_list.get("completed", [])
 
-        def test_modify_and_save_task_list(self, simple_service: ProjectService, tmp_path: Path):
+    def test_modify_and_save_task_list(self, simple_service: ProjectService, tmp_path: Path):
             """Test modifying task_list and saving preserves changes in sidecar."""
             # Create project with sidecar
             project_dir = tmp_path / "test_project"
