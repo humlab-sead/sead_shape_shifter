@@ -1382,15 +1382,34 @@ async function handleVerifyEntity(entityName: string) {
     
     // Step 4: Check if entity can now be marked as done
     const entityStatus = taskStatusStore.getEntityStatus(entityName)
+    
+    // Debug logging
+    console.log(`Entity status for "${entityName}":`, {
+      exists: entityStatus?.exists,
+      validation_passed: entityStatus?.validation_passed,
+      preview_available: entityStatus?.preview_available,
+      status: entityStatus?.status,
+    })
+    
     const canMarkDone = entityStatus?.exists && 
                         entityStatus?.validation_passed && 
                         entityStatus?.preview_available
     
-    // Success message
+    // Success message with details
     if (canMarkDone) {
       successMessage.value = `✓ Entity "${entityName}" verified successfully. You can now mark it as done!`
     } else {
-      successMessage.value = `Entity "${entityName}" verified, but some requirements are not met yet.`
+      // Build detailed message about what's missing
+      const missing: string[] = []
+      if (!entityStatus?.exists) missing.push('entity does not exist')
+      if (!entityStatus?.validation_passed) missing.push('validation failed')
+      if (!entityStatus?.preview_available) missing.push('preview not available')
+      
+      if (missing.length > 0) {
+        successMessage.value = `Entity "${entityName}" verified, but: ${missing.join(', ')}`
+      } else {
+        successMessage.value = `Entity "${entityName}" verified, but some requirements are not met yet.`
+      }
     }
     showSuccessSnackbar.value = true
     
