@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { shouldShowNodeForTaskFilter } from '@/utils/taskGraph'
+import { getTaskStatusNodeClasses, shouldShowNodeForTaskFilter } from '@/utils/taskGraph'
 import type { EntityTaskStatus } from '@/composables/useTaskStatus'
 
 function mkStatus(overrides: Partial<EntityTaskStatus> = {}): EntityTaskStatus {
@@ -41,5 +41,16 @@ describe('taskGraph', () => {
   it('filters critical entities', () => {
     expect(shouldShowNodeForTaskFilter(mkStatus({ priority: 'critical' as any }), 'critical')).toBe(true)
     expect(shouldShowNodeForTaskFilter(mkStatus({ priority: 'ready' as any }), 'critical')).toBe(false)
+  })
+
+  it('computes task status classes for graph nodes', () => {
+    expect(getTaskStatusNodeClasses(mkStatus({ status: 'done' as any }))).toEqual(['task-done'])
+    expect(getTaskStatusNodeClasses(mkStatus({ status: 'ignored' as any }))).toEqual(['task-ignored'])
+    expect(getTaskStatusNodeClasses(mkStatus({ status: 'ongoing' as any }))).toEqual(['task-ongoing'])
+    expect(getTaskStatusNodeClasses(mkStatus({ blocked_by: ['dep_a'] }))).toEqual(['task-blocked'])
+    expect(getTaskStatusNodeClasses(mkStatus({ priority: 'critical' as any }))).toEqual(['task-critical'])
+    expect(getTaskStatusNodeClasses(mkStatus({ priority: 'ready' as any }))).toEqual(['task-ready'])
+    expect(getTaskStatusNodeClasses(mkStatus({ status: 'done' as any, flagged: true }))).toEqual(['task-done', 'task-flagged'])
+    expect(getTaskStatusNodeClasses(undefined)).toEqual([])
   })
 })

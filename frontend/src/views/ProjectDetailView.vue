@@ -156,6 +156,20 @@
 
                 <v-divider vertical />
 
+                <v-select
+                  v-model="colorByMode"
+                  :items="colorByOptions"
+                  item-title="title"
+                  item-value="value"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  label="Color By"
+                  class="color-by-select"
+                />
+
+                <v-divider vertical />
+
                 <!-- Graph Display Options -->
                 <graph-display-options-dropdown
                   :options="displayOptions"
@@ -622,11 +636,12 @@ import { api } from '@/api'
 import { useProjects, useEntities, useValidation, useDependencies, useCytoscape } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
-import { shouldShowNodeForTaskFilter } from '@/utils/taskGraph'
+import { getTaskStatusNodeClasses, shouldShowNodeForTaskFilter } from '@/utils/taskGraph'
 import { useEntityStore } from '@/stores/entity'
 import { useProjectStore } from '@/stores'
 import { useTaskStatusStore } from '@/stores/taskStatus'
 import type { CustomGraphLayout } from '@/types'
+import type { GraphColorByMode } from '@/utils/taskGraph'
 import type { TaskFilter } from '@/components/dependencies/TaskFilterDropdown.vue'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import EntityFormDialog from '@/components/entities/EntityFormDialog.vue'
@@ -760,6 +775,12 @@ const contextMenuEntity = ref<string | null>(null)
 
 // Task status state
 const currentTaskFilter = ref<TaskFilter>('all')
+const colorByMode = ref<GraphColorByMode>('task')
+const colorByOptions = [
+  { title: 'Task Status', value: 'task' as const },
+  { title: 'Entity Type', value: 'type' as const },
+]
+const colorByStorageKey = computed(() => `shapeshifter.graph.colorBy.${projectName.value || 'default'}`)
 
 // YAML editing state
 const rawYamlContent = ref<string | null>(null)
@@ -1399,23 +1420,18 @@ function applyTaskStatusToNodes() {
   cy.value.nodes().forEach(node => {
     const entityName = node.id()
     const status = taskStatusStore.getEntityStatus(entityName)
-    
-    if (!status) return
 
     // Remove existing task classes
-    node.removeClass('task-done task-ignored task-blocked task-critical task-ready')
+    node.removeClass('task-done task-ignored task-ongoing task-blocked task-critical task-ready task-flagged')
 
-    // Apply status-based classes
-    if (status.status === 'done') {
-      node.addClass('task-done')
-    } else if (status.status === 'ignored') {
-      node.addClass('task-ignored')
-    } else if (status.blocked_by && status.blocked_by.length > 0) {
-      node.addClass('task-blocked')
-    } else if (status.priority === 'critical') {
-      node.addClass('task-critical')
-    } else if (status.priority === 'ready') {
-      node.addClass('task-ready')
+    // In type mode, keep default entity/source type color classes only.
+    if (colorByMode.value !== 'task' || !status) {
+      return
+    }
+
+    const taskClasses = getTaskStatusNodeClasses(status)
+    if (taskClasses.length > 0) {
+      node.addClass(taskClasses.join(' '))
     }
   })
 }
@@ -1637,6 +1653,11 @@ onMounted(async () => {
   }
 
   try {
+    const savedColorBy = window.localStorage.getItem(colorByStorageKey.value)
+    if (savedColorBy === 'task' || savedColorBy === 'type') {
+      colorByMode.value = savedColorBy
+    }
+
     console.debug(`ProjectDetailView: Initializing for project "${projectName.value}"`)
     
     // Always load the project on mount to ensure fresh data
@@ -1669,6 +1690,9 @@ watch(
     
     // Avoid re-loading on initial mount (onMounted handles that)
     if (!oldName) return
+
+    const savedColorBy = window.localStorage.getItem(colorByStorageKey.value)
+    colorByMode.value = savedColorBy === 'type' ? 'type' : 'task'
     
     console.debug(`ProjectDetailView: Project changed from "${oldName}" to "${newName}"`)
     
@@ -1766,6 +1790,14 @@ watch(
   }
 )
 
+watch(
+  () => colorByMode.value,
+  (mode) => {
+    window.localStorage.setItem(colorByStorageKey.value, mode)
+    applyTaskStatusToNodes()
+  }
+)
+
 // Apply task filter to show/hide nodes based on status
 function applyTaskFilter() {
   if (!cy.value || !taskStatusStore.taskStatus) return
@@ -1806,6 +1838,11 @@ function applyTaskFilter() {
 
 .gap-4 {
   gap: 1rem;
+}
+
+.color-by-select {
+  max-width: 180px;
+  min-width: 160px;
 }
 
 .graph-card {

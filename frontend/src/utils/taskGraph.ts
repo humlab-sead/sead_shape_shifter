@@ -1,6 +1,9 @@
 import type { EntityTaskStatus } from '@/composables/useTaskStatus'
 
 export type TaskGraphFilter = 'all' | 'todo' | 'ongoing' | 'done' | 'ignored' | 'blocked' | 'critical' | 'flagged'
+export type GraphColorByMode = 'task' | 'type'
+
+export const TASK_STATUS_NODE_CLASSES = ['task-done', 'task-ignored', 'task-ongoing', 'task-blocked', 'task-critical', 'task-ready', 'task-flagged']
 
 /**
  * Decide if a node should be visible for the active task filter.
@@ -29,4 +32,36 @@ export function shouldShowNodeForTaskFilter(status: EntityTaskStatus | undefined
     default:
       return true
   }
+}
+
+/**
+ * Compute task status classes applied to graph nodes.
+ * Only one primary status class is applied, while `task-flagged` can be combined.
+ */
+export function getTaskStatusNodeClasses(status: EntityTaskStatus | undefined): string[] {
+  if (!status) {
+    return []
+  }
+
+  const classes: string[] = []
+
+  if (status.status === 'done') {
+    classes.push('task-done')
+  } else if (status.status === 'ignored') {
+    classes.push('task-ignored')
+  } else if (status.status === 'ongoing') {
+    classes.push('task-ongoing')
+  } else if ((status.blocked_by?.length ?? 0) > 0) {
+    classes.push('task-blocked')
+  } else if (status.priority === 'critical') {
+    classes.push('task-critical')
+  } else if (status.priority === 'ready') {
+    classes.push('task-ready')
+  }
+
+  if (status.flagged === true) {
+    classes.push('task-flagged')
+  }
+
+  return classes
 }
