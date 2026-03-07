@@ -26,10 +26,14 @@ def mock_core_project():
     task_list = MagicMock(spec=TaskList)
     task_list.required_entities = ["location", "site", "sample"]
     task_list.completed = ["location"]
+    task_list.ongoing = []
     task_list.ignored = []
+    task_list.flagged = {}
     task_list.is_required.side_effect = lambda name: name in ["location", "site", "sample"]
     task_list.is_completed.side_effect = lambda name: name in ["location"]
+    task_list.is_ongoing.side_effect = lambda name: name in []
     task_list.is_ignored.side_effect = lambda name: name in []
+    task_list.is_flagged.side_effect = lambda name: False
     project.task_list = task_list
 
     # Mock table configs

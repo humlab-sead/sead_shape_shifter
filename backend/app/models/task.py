@@ -10,6 +10,7 @@ class TaskStatus(str, Enum):
 
     DONE = "done"
     TODO = "todo"
+    ONGOING = "ongoing"
     IGNORED = "ignored"
 
 
@@ -25,12 +26,13 @@ class TaskPriority(str, Enum):
 class EntityTaskStatus(BaseModel):
     """Status information for a single entity task."""
 
-    status: TaskStatus = Field(..., description="Current status (done, todo, ignored)")
+    status: TaskStatus = Field(..., description="Current status (done, todo, ongoing, ignored)")
     priority: TaskPriority = Field(..., description="Derived priority level")
     required: bool = Field(..., description="Whether entity is required for project completion")
     exists: bool = Field(..., description="Whether entity exists in project")
     validation_passed: bool = Field(..., description="Whether entity passes validation")
     preview_available: bool = Field(..., description="Whether preview data can be generated")
+    flagged: bool = Field(default=False, description="Whether entity is flagged for attention")
     blocked_by: list[str] = Field(default_factory=list, description="Entity names blocking this entity")
     issues: list[str] = Field(default_factory=list, description="Validation error messages")
 

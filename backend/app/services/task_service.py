@@ -90,6 +90,8 @@ class TaskService:
         # Determine base status (from task_list)
         if project.task_list.is_completed(entity_name):
             status: TaskStatus = TaskStatus.DONE
+        elif project.task_list.is_ongoing(entity_name):
+            status = TaskStatus.ONGOING
         elif project.task_list.is_ignored(entity_name):
             status = TaskStatus.IGNORED
         else:
@@ -171,6 +173,9 @@ class TaskService:
             status=status,
         )
 
+        # Get flagged status
+        flagged: bool = project.task_list.is_flagged(entity_name)
+
         return EntityTaskStatus(
             status=status,
             priority=priority,
@@ -178,6 +183,7 @@ class TaskService:
             exists=exists,
             validation_passed=validation_passed,
             preview_available=preview_available,
+            flagged=flagged,
             blocked_by=list(set(blocked_by)),  # Remove duplicates
             issues=validation_issues,
         )
@@ -223,22 +229,28 @@ class TaskService:
         """Calculate completion statistics."""
         total = len(entity_statuses)
         done = sum(1 for s in entity_statuses.values() if s.status == TaskStatus.DONE)
+        ongoing = sum(1 for s in entity_statuses.values() if s.status == TaskStatus.ONGOING)
         ignored = sum(1 for s in entity_statuses.values() if s.status == TaskStatus.IGNORED)
-        todo = total - done - ignored
+        todo = total - done - ongoing - ignored
+        flagged = sum(1 for s in entity_statuses.values() if s.flagged)
         completion_percentage = (done / total * 100.0) if total > 0 else 0.0
 
         required_total = len(required_entities)
         required_done = sum(1 for name in required_entities if name in entity_statuses and entity_statuses[name].status == TaskStatus.DONE)
-        required_todo = required_total - required_done
+        required_ongoing = sum(1 for name in required_entities if name in entity_statuses and entity_statuses[name].status == TaskStatus.ONGOING)
+        required_todo = required_total - required_done - required_ongoing
 
         return {
             "total": total,
             "done": done,
+            "ongoing": ongoing,
             "todo": todo,
             "ignored": ignored,
+            "flagged": flagged,
             "completion_percentage": completion_percentage,
             "required_total": required_total,
             "required_done": required_done,
+            "required_ongoing": required_ongoing,
             "required_todo": required_todo,
         }
 
@@ -358,6 +370,68 @@ class TaskService:
             "entity_name": entity_name,
             "status": "todo",
             "message": "Entity status reset to todo",
+        }
+
+    async def mark_ongoing(self, project_name: str, entity_name: str) -> dict[str, Any]:
+        """
+        Mark entity as ongoing.
+
+        Args:
+            project_name: Name of the project
+            entity_name: Name of entity to mark as ongoing
+
+        Returns:
+            Dict with success status and message
+        """
+        # Load project (API layer)
+        api_project: Project = self.project_service.load_project(project_name)
+
+        # Convert to core layer for task_list access
+        project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+
+        # Mark as ongoing (doesn't require validation)
+        project.task_list.mark_ongoing(entity_name)
+
+        # Convert back to API layer and save
+        updated_api_project: Project = ProjectMapper.to_api_config(project.cfg, project_name)
+        self.project_service.save_project(updated_api_project)
+
+        return {
+            "success": True,
+            "entity_name": entity_name,
+            "status": "ongoing",
+            "message": "Entity marked as ongoing",
+        }
+
+    async def toggle_flagged(self, project_name: str, entity_name: str) -> dict[str, Any]:
+        """
+        Toggle flagged status for an entity.
+
+        Args:
+            project_name: Name of the project
+            entity_name: Name of entity to toggle
+
+        Returns:
+            Dict with success status and new flagged state
+        """
+        # Load project (API layer)
+        api_project: Project = self.project_service.load_project(project_name)
+
+        # Convert to core layer for task_list access
+        project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+
+        # Toggle flagged status
+        new_state = project.task_list.toggle_flagged(entity_name)
+
+        # Convert back to API layer and save
+        updated_api_project: Project = ProjectMapper.to_api_config(project.cfg, project_name)
+        self.project_service.save_project(updated_api_project)
+
+        return {
+            "success": True,
+            "entity_name": entity_name,
+            "flagged": new_state,
+            "message": f"Entity {'flagged' if new_state else 'unflagged'}",
         }
 
     async def initialize_task_list(

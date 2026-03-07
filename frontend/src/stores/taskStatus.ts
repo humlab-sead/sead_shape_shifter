@@ -79,10 +79,36 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
   }
 
   /**
+   * Mark entity as ongoing
+   */
+  async function markOngoing(entityName: string): Promise<boolean> {
+    const success = await taskComposable.markOngoing(entityName)
+    
+    // Sync state
+    taskStatus.value = taskComposable.taskStatus.value
+    error.value = taskComposable.error.value
+    
+    return success
+  }
+
+  /**
    * Reset entity status to todo
    */
   async function resetStatus(entityName: string): Promise<boolean> {
     const success = await taskComposable.resetStatus(entityName)
+    
+    // Sync state
+    taskStatus.value = taskComposable.taskStatus.value
+    error.value = taskComposable.error.value
+    
+    return success
+  }
+
+  /**
+   * Toggle flagged status for entity
+   */
+  async function toggleFlagged(entityName: string): Promise<boolean> {
+    const success = await taskComposable.toggleFlagged(entityName)
     
     // Sync state
     taskStatus.value = taskComposable.taskStatus.value
@@ -106,10 +132,24 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
   }
 
   /**
+   * Check if entity is ongoing
+   */
+  function isOngoing(entityName: string): boolean {
+    return getEntityStatus(entityName)?.status === 'ongoing'
+  }
+
+  /**
    * Check if entity is ignored
    */
   function isIgnored(entityName: string): boolean {
     return getEntityStatus(entityName)?.status === 'ignored'
+  }
+
+  /**
+   * Check if entity is flagged
+   */
+  function isFlagged(entityName: string): boolean {
+    return getEntityStatus(entityName)?.flagged ?? false
   }
 
   /**
@@ -183,10 +223,14 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
     refresh,
     markComplete,
     markIgnored,
+    markOngoing,
     resetStatus,
+    toggleFlagged,
     getEntityStatus,
     isDone,
+    isOngoing,
     isIgnored,
+    isFlagged,
     isBlocked,
     hasErrors,
     getEntitiesByStatus,

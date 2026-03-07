@@ -15,6 +15,7 @@ import { apiClient } from '@/api/client'
  */
 export enum TaskStatus {
   TODO = 'todo',
+  ONGOING = 'ongoing',
   DONE = 'done',
   IGNORED = 'ignored'
 }
@@ -40,6 +41,7 @@ export interface EntityTaskStatus {
   exists: boolean
   validation_passed: boolean
   preview_available: boolean
+  flagged: boolean
   blocked_by: string[]
   issues: string[]
 }
@@ -53,10 +55,13 @@ export interface ProjectTaskStatus {
   completion_stats: {
     total: number
     done: number
+    ongoing: number
     ignored: number
     todo: number
+    flagged: number
     required_total: number
     required_done: number
+    required_ongoing: number
     required_todo: number
     completion_percentage: number
   }
@@ -182,6 +187,41 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
   }
 
   /**
+   * Mark an entity as ongoing
+   */
+  async function markOngoing(entityName: string): Promise<boolean> {
+    if (!project.value) {
+      error.value = 'No project specified'
+      return false
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await apiClient.post<TaskOperationResponse>(
+        `/projects/${project.value}/tasks/${entityName}/ongoing`
+      )
+
+      // Update local state
+      if (taskStatus.value?.entities[entityName]) {
+        taskStatus.value.entities[entityName].status = TaskStatus.ONGOING
+      }
+
+      // Refresh full status to get updated stats
+      await fetchTaskStatus()
+
+      return response.data.success
+    } catch (err: any) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to mark ongoing'
+      console.error('Failed to mark ongoing:', err)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Reset entity status to todo
    */
   async function resetStatus(entityName: string): Promise<boolean> {
@@ -217,6 +257,41 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
   }
 
   /**
+   * Toggle flagged status for an entity
+   */
+  async function toggleFlagged(entityName: string): Promise<boolean> {
+    if (!project.value) {
+      error.value = 'No project specified'
+      return false
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await apiClient.post<{ success: boolean; entity_name: string; flagged: boolean; message: string }>(
+        `/projects/${project.value}/tasks/${entityName}/flag`
+      )
+
+      // Update local state
+      if (taskStatus.value?.entities[entityName]) {
+        taskStatus.value.entities[entityName].flagged = response.data.flagged
+      }
+
+      // Refresh full status to get updated stats
+      await fetchTaskStatus()
+
+      return response.data.success
+    } catch (err: any) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to toggle flag'
+      console.error('Failed to toggle flag:', err)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Get status for a specific entity
    */
   function getEntityStatus(entityName: string): EntityTaskStatus | undefined {
@@ -231,10 +306,24 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
   }
 
   /**
+   * Check if entity is ongoing
+   */
+  function isOngoing(entityName: string): boolean {
+    return getEntityStatus(entityName)?.status === TaskStatus.ONGOING
+  }
+
+  /**
    * Check if entity is ignored
    */
   function isIgnored(entityName: string): boolean {
     return getEntityStatus(entityName)?.status === TaskStatus.IGNORED
+  }
+
+  /**
+   * Check if entity is flagged
+   */
+  function isFlagged(entityName: string): boolean {
+    return getEntityStatus(entityName)?.flagged ?? false
   }
 
   /**
@@ -289,10 +378,14 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
     fetchTaskStatus,
     markComplete,
     markIgnored,
+    markOngoing,
     resetStatus,
+    toggleFlagged,
     getEntityStatus,
     isDone,
+    isOngoing,
     isIgnored,
+    isFlagged,
     isBlocked,
     hasErrors,
     getEntitiesByStatus,
