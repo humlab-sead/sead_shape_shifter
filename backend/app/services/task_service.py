@@ -121,37 +121,65 @@ class TaskService:
         if exists and validation_passed:
             try:
                 # Check if preview is cached (fast check without triggering normalization)
-                # Use get_dataframe which does TTL + version + hash validation but doesn't generate data.
-                # If strict hash validation misses, fall back to a version-only check to avoid false negatives
-                # when equivalent entity configs are represented differently across code paths.
+                # Use 4-tier fallback strategy to avoid false negatives from version mismatches
+                # that can occur if ApplicationState gets initialized between preview generation
+                # and task status check.
                 table_cfg: TableConfig = project.get_table(entity_name)
                 project_version: int = self.shapeshift_service.get_project_version(project_name)
+
+                entity_hash_str = table_cfg.hash()[:8] if table_cfg else 'N/A'
+                logger.debug(
+                    f"[CACHE_LOOKUP_STRICT] {project_name}/{entity_name}: project_version={project_version}, "
+                    f"entity_hash={entity_hash_str}"
+                )
+
+                # Tier 1: Strict lookup with version + hash
                 cached_df: pd.DataFrame | None = self.shapeshift_service.cache.get_dataframe(
                     project_name=project_name,
                     entity_name=entity_name,
                     project_version=project_version,
                     entity_config=table_cfg,
+                    strict_version=True,
                 )
 
                 if cached_df is None:
-                    # Relaxed fallback: TTL + project version only (no entity hash)
+                    # Tier 2: Skip entity hash (config might differ between code paths)
+                    logger.debug(
+                        f"[CACHE_LOOKUP_FALLBACK_HASH] {project_name}/{entity_name}: "
+                        f"project_version={project_version} (no entity hash)"
+                    )
                     cached_df = self.shapeshift_service.cache.get_dataframe(
                         project_name=project_name,
                         entity_name=entity_name,
                         project_version=project_version,
+                        strict_version=True,
+                    )
+
+                if cached_df is None:
+                    # Tier 3: Skip version check (might differ if ApplicationState initialized between calls)
+                    logger.debug(
+                        f"[CACHE_LOOKUP_FALLBACK_VERSION] {project_name}/{entity_name}: "
+                        f"skipping version check (ApplicationState timing sensitivity)"
+                    )
+                    cached_df = self.shapeshift_service.cache.get_dataframe(
+                        project_name=project_name,
+                        entity_name=entity_name,
+                        project_version=None,
+                        entity_config=None,
+                        strict_version=False,
                     )
 
                 if cached_df is not None:
                     # Cache exists and is valid
                     preview_available = True
-                    logger.debug(f"Preview available for {entity_name} (from cache)")
+                    logger.debug(f"[CACHE_HIT] {project_name}/{entity_name}: preview available from cache")
                 else:
                     # Cache miss or stale - skip expensive preview generation for task status
                     # Task status endpoint should be fast; preview will be generated on-demand when user views entity
                     preview_available = False
-                    logger.debug(f"Skipping preview generation for {entity_name} in task status (cache miss)")
+                    logger.debug(f"[CACHE_MISS] {project_name}/{entity_name}: skipping preview generation (cache miss)")
             except Exception as e:  # pylint: disable=broad-except
-                logger.debug(f"Preview check failed for {entity_name}: {e}")
+                logger.debug(f"[CACHE_ERROR] {project_name}/{entity_name}: {e}")
                 preview_available = False
 
         # Determine blocked_by (dependencies that aren't done)
