@@ -75,3 +75,20 @@ def test_replace_references_plain_list_unchanged() -> None:
     resolved: dict = replace_references(data)  # type: ignore
 
     assert resolved["plain"] == ["a", "b", "c"]
+
+
+def test_replace_references_with_space_after_directive() -> None:
+    """@value: directive with space after colon should work identically to no space."""
+    data: dict = {
+        "base": {"letters": ["a", "b", "c"]},
+        "no_space": "@value:base.letters",
+        "with_space": "@value: base.letters",  # Space after colon
+        "list_op": "@value: base.letters + ['d']",  # Space in list operation
+    }
+
+    resolved: dict = replace_references(data)  # type: ignore
+
+    # Both should resolve to the same value
+    assert resolved["no_space"] == ["a", "b", "c"]
+    assert resolved["with_space"] == ["a", "b", "c"]
+    assert resolved["list_op"] == ["a", "b", "c", "d"]
