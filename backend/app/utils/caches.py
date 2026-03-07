@@ -56,25 +56,28 @@ class ShapeShiftCache:
         entity_name: str,
         project_version: int | None = None,
         entity_config: TableConfig | None = None,
+        strict_version: bool = True,
     ) -> pd.DataFrame | None:
         """Get cached DataFrame for entity with 3-tier validation.
 
         Validation order:
         1. TTL - Check if cache entry has expired
-        2. Project version - Validate against ApplicationState version
+        2. Project version - Validate against ApplicationState version (if strict_version=True)
         3. Entity hash - Validate against entity configuration hash
 
         Args:
             project_name: Configuration name
             entity_name: Entity name
-            config_version: Optional config version for validation (from ApplicationState)
+            project_version: Optional project version for validation (from ApplicationState)
             entity_config: Optional entity configuration for hash validation
+            strict_version: If True, require version match. If False, skip version check.
 
         Returns:
             DataFrame if cached and valid, None otherwise
         """
         key = self._generate_key(project_name, entity_name)
         if key not in self._dataframes or key not in self._metadata:
+            logger.debug(f"[GET_DATAFRAME_NOTFOUND] {project_name}/{entity_name}: key not in cache storage")
             return None
 
         metadata = self._metadata[key]
@@ -86,8 +89,8 @@ class ShapeShiftCache:
             logger.debug(f"Cache expired for {entity_name} (TTL)")
             return None
 
-        # Tier 2: Check project version if provided
-        if project_version is not None and metadata.project_version != project_version:
+        # Tier 2: Check project version if provided and strict_version=True
+        if strict_version and project_version is not None and metadata.project_version != project_version:
             del self._dataframes[key]
             del self._metadata[key]
             logger.debug(f"Cache invalidated for {entity_name} (version mismatch: {metadata.project_version} != {project_version})")
@@ -158,8 +161,17 @@ class ShapeShiftCache:
         """
         for entity_name, df in table_store.items():
             entity_config: TableConfig | None = entity_configs.get(entity_name) if entity_configs else None
+            entity_hash = entity_config.hash() if entity_config else "N/A"
+            hash_str = entity_hash[:8] if isinstance(entity_hash, str) else 'N/A'
+            logger.debug(
+                f"[SET_DATAFRAME] {project_name}/{entity_name}: project_version={project_version}, "
+                f"entity_hash={hash_str}"
+            )
             self.set_dataframe(project_name, entity_name, df, project_version, entity_config)
-        logger.debug(f"Cached {len(table_store)} entities from {target_entity} execution")
+        logger.debug(
+            f"[CACHE_SET_DONE] {project_name}/{target_entity}: Cached {len(table_store)} entities with "
+            f"project_version={project_version}"
+        )
 
     def get_dependencies(
         self,
