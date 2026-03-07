@@ -341,7 +341,8 @@ describe('useProjectStore', () => {
 
       await expect(store.deleteProject('test-project')).rejects.toThrow('Delete failed')
 
-      expect(store.error).toBe('Delete failed')
+      // deleteProject rethrows operation errors and does not set global error state.
+      expect(store.error).toBeNull()
     })
   })
 
