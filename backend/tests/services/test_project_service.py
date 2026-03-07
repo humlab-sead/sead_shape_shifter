@@ -1064,7 +1064,6 @@ task_list:
     def test_save_project_moves_task_list_to_sidecar(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
         """Test that saving project moves task_list to sidecar file."""
         project_dir = project_with_task_list_in_main.parent
-        main_file = project_with_task_list_in_main
         sidecar_file = project_dir / "shapeshifter.tasks.yml"
 
         # Load project (has task_list in main)
@@ -1169,14 +1168,14 @@ task_list:
         assert "sample" in task_list.get("completed", [])
 
         def test_modify_and_save_task_list(self, simple_service: ProjectService, tmp_path: Path):
-                """Test modifying task_list and saving preserves changes in sidecar."""
-                # Create project with sidecar
-                project_dir = tmp_path / "test_project"
-                project_dir.mkdir()
-                main_file = project_dir / "shapeshifter.yml"
-                sidecar_file = project_dir / "shapeshifter.tasks.yml"
+            """Test modifying task_list and saving preserves changes in sidecar."""
+            # Create project with sidecar
+            project_dir = tmp_path / "test_project"
+            project_dir.mkdir()
+            main_file = project_dir / "shapeshifter.yml"
+            sidecar_file = project_dir / "shapeshifter.tasks.yml"
 
-                main_content = """
+            main_content = """
 metadata:
     type: shapeshifter-project
     name: test_project
@@ -1188,32 +1187,32 @@ entities:
         keys: [id]
         columns: [name]
 """
-                main_file.write_text(main_content)
+            main_file.write_text(main_content)
 
-                sidecar_content = """
+            sidecar_content = """
 task_list:
     required_entities: [entity1]
     completed: []
     ignored: []
 """
-                sidecar_file.write_text(sidecar_content)
+            sidecar_file.write_text(sidecar_content)
 
-                # Load project
-                project1 = simple_service.load_project("test_project")
+            # Load project
+            project1 = simple_service.load_project("test_project")
 
-                # Modify task_list in loaded project directly
-                if project1.task_list is None:
-                        project1.task_list = {}
-                if "completed" not in project1.task_list:
-                        project1.task_list["completed"] = []
-                if "entity1" not in project1.task_list["completed"]:
-                        project1.task_list["completed"].append("entity1")
+            # Modify task_list in loaded project directly
+            if project1.task_list is None:
+                project1.task_list = {}
+            if "completed" not in project1.task_list:
+                project1.task_list["completed"] = []
+            if "entity1" not in project1.task_list["completed"]:
+                project1.task_list["completed"].append("entity1")
 
-                # Save modified project
-                simple_service.save_project(project1)
+            # Save modified project
+            simple_service.save_project(project1)
 
-                # Reload and verify changes persisted
-                project2 = simple_service.load_project("test_project")
-                task_list2 = project2.task_list or {}
+            # Reload and verify changes persisted
+            project2 = simple_service.load_project("test_project")
+            task_list2 = project2.task_list or {}
 
-                assert "entity1" in task_list2.get("completed", [])
+            assert "entity1" in task_list2.get("completed", [])

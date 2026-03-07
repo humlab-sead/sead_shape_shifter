@@ -2,7 +2,6 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -108,10 +107,12 @@ class TestTaskListSidecarManager:
         sidecar_path = sidecar_manager.get_sidecar_path(project_file)
         sidecar_path.parent.mkdir(parents=True, exist_ok=True)
 
-        task_list = TaskList({
-            "required_entities": ["entity1", "entity2"],
-            "completed": ["entity1"],
-        })
+        task_list = TaskList(
+            {
+                "required_entities": ["entity1", "entity2"],
+                "completed": ["entity1"],
+            }
+        )
 
         sidecar_manager.save_task_list(project_file, task_list)
 
@@ -235,11 +236,13 @@ class TestTaskListSidecarManager:
         sidecar_path = sidecar_manager.get_sidecar_path(project_file)
         sidecar_path.parent.mkdir(parents=True, exist_ok=True)
 
-        original_task_list = TaskList({
-            "required_entities": ["entity1", "entity2"],
-            "completed": ["entity1"],
-            "ignored": ["entity2"],
-        })
+        original_task_list = TaskList(
+            {
+                "required_entities": ["entity1", "entity2"],
+                "completed": ["entity1"],
+                "ignored": ["entity2"],
+            }
+        )
 
         sidecar_manager.save_task_list(project_file, original_task_list)
         loaded_data = sidecar_manager.load_task_list(project_file)
