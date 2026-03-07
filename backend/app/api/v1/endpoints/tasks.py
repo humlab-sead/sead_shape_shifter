@@ -329,3 +329,200 @@ async def toggle_task_flagged(name: str, entity_name: str) -> dict[str, Any]:
     logger.info(f"Toggled flag for '{entity_name}' in project '{name}': {result['flagged']}")
 
     return result
+
+
+@router.post("/projects/{name}/tasks/migrate-to-sidecar", response_model=dict[str, Any])
+@handle_endpoint_errors
+async def migrate_tasks_to_sidecar(name: str) -> dict[str, Any]:
+    """
+    Migrate task list from main project file to sidecar file.
+
+    One-time migration: moves task_list from shapeshifter.yml to shapeshifter.tasks.yml
+    and removes it from the main project file.
+
+    If sidecar already exists or main file has no task_list, returns success
+    without making changes.
+
+    Args:
+        name: Project name
+
+    Returns:
+        Dict with success status and migration results
+
+    Example:
+        POST /api/v1/projects/my-project/tasks/migrate-to-sidecar
+
+        Response:
+        {
+          "success": true,
+          "project_name": "my-project",
+          "sidecar_path": "/path/to/shapeshifter.tasks.yml",
+          "migrated": true,
+          "message": "Task list migrated to sidecar"
+        }
+    """
+    from backend.app.mappers.project_name_mapper import ProjectNameMapper  # pylint: disable=import-outside-toplevel
+    from pathlib import Path  # pylint: disable=import-outside-toplevel
+    from backend.app.core.config import settings  # pylint: disable=import-outside-toplevel
+    from backend.app.services.project_service import get_project_service  # pylint: disable=import-outside-toplevel
+    from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager  # pylint: disable=import-outside-toplevel
+    from backend.app.services.yaml_service import get_yaml_service  # pylint: disable=import-outside-toplevel
+
+    try:
+        # Get project file path
+        projects_dir = Path(settings.PROJECTS_DIR)
+        filename = projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
+
+        if not filename.exists():
+            raise HTTPException(status_code=404, detail=f"Project not found: {name}")
+
+        # Initialize sidecar manager
+        yaml_service = get_yaml_service()
+        sidecar_manager = TaskListSidecarManager(yaml_service)
+
+        # Check if sidecar already exists
+        if sidecar_manager.sidecar_exists(filename):
+            logger.info(f"Sidecar already exists for '{name}' - skipping migration")
+            return {
+                "success": True,
+                "project_name": name,
+                "sidecar_path": str(sidecar_manager.get_sidecar_path(filename)),
+                "migrated": False,
+                "message": "Sidecar already exists - no migration needed",
+            }
+
+        # Load project data
+        yaml_service = get_yaml_service()
+        project_data = yaml_service.load(filename)
+
+        # Check if task_list exists in main file
+        if "task_list" not in project_data:
+            logger.info(f"No task_list in main file for '{name}' - skipping migration")
+            return {
+                "success": True,
+                "project_name": name,
+                "sidecar_path": str(sidecar_manager.get_sidecar_path(filename)),
+                "migrated": False,
+                "message": "No task_list in main file - no migration needed",
+            }
+
+        # Perform migration
+        sidecar_manager.save_task_list(filename, __import__("src.model", fromlist=["TaskList"]).TaskList(project_data.get("task_list", {})))
+
+        # Update main project file (remove task_list)
+        project_data_updated = dict(project_data)
+        del project_data_updated["task_list"]
+        yaml_service.save(project_data_updated, filename, create_backup=True)
+
+        # Invalidate cache to force reload
+        project_service = get_project_service()
+        project_service.state.invalidate(name)
+
+        logger.info(f"Successfully migrated task_list to sidecar for '{name}'")
+
+        return {
+            "success": True,
+            "project_name": name,
+            "sidecar_path": str(sidecar_manager.get_sidecar_path(filename)),
+            "migrated": True,
+            "message": "Task list successfully migrated to sidecar",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Migration failed for '{name}': {e}")
+        raise HTTPException(status_code=500, detail=f"Migration failed: {str(e)}") from e
+
+
+@router.get("/projects/{name}/tasks/sidecar/status", response_model=dict[str, Any])
+@handle_endpoint_errors
+async def get_sidecar_status(name: str) -> dict[str, Any]:
+    """
+    Get current sidecar status for task list.
+
+    Checks whether task_list is stored in main project file or in separate sidecar file.
+    Useful for monitoring migration state and determining next steps.
+
+    Args:
+        name: Project name
+
+    Returns:
+        Dict with sidecar status information
+
+    Example:
+        GET /api/v1/projects/my-project/tasks/sidecar/status
+
+        Response (sidecar exists):
+        {
+          "success": true,
+          "project_name": "my-project",
+          "sidecar_exists": true,
+          "sidecar_path": "/path/to/shapeshifter.tasks.yml",
+          "task_list_location": "sidecar",
+          "message": "Task list stored in sidecar file"
+        }
+
+        Response (in main file):
+        {
+          "success": true,
+          "project_name": "my-project",
+          "sidecar_exists": false,
+          "task_list_location": "main_file",
+          "message": "Task list stored in main project file"
+        }
+    """
+    from backend.app.mappers.project_name_mapper import ProjectNameMapper  # pylint: disable=import-outside-toplevel
+    from pathlib import Path  # pylint: disable=import-outside-toplevel
+    from backend.app.core.config import settings  # pylint: disable=import-outside-toplevel
+    from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager  # pylint: disable=import-outside-toplevel
+    from backend.app.services.yaml_service import get_yaml_service  # pylint: disable=import-outside-toplevel
+
+    try:
+        # Get project file path
+        projects_dir = Path(settings.PROJECTS_DIR)
+        filename = projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
+
+        if not filename.exists():
+            raise HTTPException(status_code=404, detail=f"Project not found: {name}")
+
+        # Initialize sidecar manager
+        yaml_service = get_yaml_service()
+        sidecar_manager = TaskListSidecarManager(yaml_service)
+
+        # Check sidecar status
+        sidecar_path = sidecar_manager.get_sidecar_path(filename)
+        sidecar_exists = sidecar_manager.sidecar_exists(filename)
+
+        # Check main file for task_list
+        project_data = yaml_service.load(filename)
+        has_task_list_in_main = "task_list" in project_data
+
+        # Determine current location
+        if sidecar_exists:
+            location = "sidecar"
+            message = "Task list stored in sidecar file"
+        elif has_task_list_in_main:
+            location = "main_file"
+            message = "Task list stored in main project file (migration recommended)"
+        else:
+            location = "none"
+            message = "No task list found"
+
+        logger.info(f"Sidecar status for '{name}': {location}")
+
+        return {
+            "success": True,
+            "project_name": name,
+            "sidecar_exists": sidecar_exists,
+            "sidecar_path": str(sidecar_path),
+            "task_list_location": location,
+            "has_task_list_in_main": has_task_list_in_main,
+            "message": message,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get sidecar status for '{name}': {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get sidecar status: {str(e)}") from e

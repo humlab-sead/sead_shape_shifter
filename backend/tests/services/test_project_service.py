@@ -1016,3 +1016,204 @@ options: {}
         # Should return path relative to projects_dir
         assert "test_project" in result
         assert "data.xlsx" in result
+
+
+class TestProjectServiceSidecarIntegration:
+    """Integration tests for task list sidecar support."""
+
+    @pytest.fixture
+    def simple_service(self, tmp_path: Path, monkeypatch):
+        """Create ProjectService with temporary directory."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        return ProjectService()
+
+    @pytest.fixture
+    def project_with_task_list_in_main(self, tmp_path: Path):
+        """Create a project with task_list in main file (old format)."""
+        project_dir = tmp_path / "old_project"
+        project_dir.mkdir()
+        config_path = project_dir / "shapeshifter.yml"
+        content = """
+metadata:
+  type: shapeshifter-project
+  name: old_project
+  description: Project with task_list in main file
+
+entities:
+  sample:
+    type: entity
+    keys: [sample_id]
+    columns: [name, value]
+
+task_list:
+  required_entities: [sample]
+  completed: []
+  ignored: []
+"""
+        config_path.write_text(content)
+        return config_path
+
+    def test_load_project_with_task_list_in_main_file(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
+        """Test loading project with task_list in main file (backward compatibility)."""
+        project = simple_service.load_project("old_project")
+
+        assert project is not None
+        assert "entities" in project.model_dump()
+        assert project.model_dump().get("task_list") is not None
+
+    def test_save_project_moves_task_list_to_sidecar(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
+        """Test that saving project moves task_list to sidecar file."""
+        project_dir = project_with_task_list_in_main.parent
+        main_file = project_with_task_list_in_main
+        sidecar_file = project_dir / "shapeshifter.tasks.yml"
+
+        # Load project (has task_list in main)
+        project = simple_service.load_project("old_project")
+        task_list_data = project.model_dump().get("task_list")
+
+        # Save project
+        simple_service.save_project(project)
+
+        # Verify sidecar was created
+        assert sidecar_file.exists()
+
+        # Verify sidecar contains task_list
+        sidecar_content = yaml.safe_load(sidecar_file.read_text())
+        assert "task_list" in sidecar_content
+        assert sidecar_content["task_list"] == task_list_data
+
+    def test_reloading_project_uses_sidecar_after_migration(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
+        """Test that reloading project after migration uses sidecar file."""
+        project_dir = project_with_task_list_in_main.parent
+
+        # First load and save (triggers migration)
+        project1 = simple_service.load_project("old_project")
+        task_list_data1 = project1.task_list or {}
+        simple_service.save_project(project1)
+
+        # Second load should get task_list from sidecar
+        project2 = simple_service.load_project("old_project")
+        task_list_data2 = project2.task_list or {}
+
+        assert task_list_data1 == task_list_data2
+        sidecar_file = project_dir / "shapeshifter.tasks.yml"
+        assert sidecar_file.exists()
+
+    def test_sidecar_file_structure(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
+        """Test that sidecar file has correct structure."""
+        project_dir = project_with_task_list_in_main.parent
+        sidecar_file = project_dir / "shapeshifter.tasks.yml"
+
+        # Load and save to create sidecar
+        project = simple_service.load_project("old_project")
+        simple_service.save_project(project)
+
+        # Verify sidecar structure
+        sidecar_content = yaml.safe_load(sidecar_file.read_text())
+        assert "task_list" in sidecar_content
+        assert isinstance(sidecar_content["task_list"], dict)
+        assert "required_entities" in sidecar_content["task_list"]
+
+    def test_main_file_without_task_list_after_migration(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
+        """Test that task_list is removed from main file after migration."""
+        main_file = project_with_task_list_in_main
+
+        # Load and save to trigger migration
+        project = simple_service.load_project("old_project")
+        simple_service.save_project(project)
+
+        # Check main file
+        main_content = yaml.safe_load(main_file.read_text())
+        assert "task_list" not in main_content
+        assert "entities" in main_content
+        assert "metadata" in main_content
+
+    def test_load_project_with_existing_sidecar(self, simple_service: ProjectService, tmp_path: Path):
+        """Test loading project that already has sidecar file."""
+        # Create project with both main and sidecar files
+        project_dir = tmp_path / "new_project"
+        project_dir.mkdir()
+        main_file = project_dir / "shapeshifter.yml"
+        sidecar_file = project_dir / "shapeshifter.tasks.yml"
+
+        # Main file (no task_list)
+        main_content = """
+metadata:
+  type: shapeshifter-project
+  name: new_project
+  description: Project with separate sidecar
+
+entities:
+  sample:
+    type: entity
+    keys: [sample_id]
+    columns: [name, value]
+"""
+        main_file.write_text(main_content)
+
+        # Sidecar file (has task_list)
+        sidecar_content = """
+task_list:
+  required_entities: [sample]
+  completed: [sample]
+  ignored: []
+"""
+        sidecar_file.write_text(sidecar_content)
+
+        # Load project
+        project = simple_service.load_project("new_project")
+
+        # Verify task_list loaded from sidecar
+        task_list = project.model_dump().get("task_list")
+        assert task_list is not None
+        assert "sample" in task_list.get("completed", [])
+
+        def test_modify_and_save_task_list(self, simple_service: ProjectService, tmp_path: Path):
+                """Test modifying task_list and saving preserves changes in sidecar."""
+                # Create project with sidecar
+                project_dir = tmp_path / "test_project"
+                project_dir.mkdir()
+                main_file = project_dir / "shapeshifter.yml"
+                sidecar_file = project_dir / "shapeshifter.tasks.yml"
+
+                main_content = """
+metadata:
+    type: shapeshifter-project
+    name: test_project
+    description: Test
+
+entities:
+    entity1:
+        type: entity
+        keys: [id]
+        columns: [name]
+"""
+                main_file.write_text(main_content)
+
+                sidecar_content = """
+task_list:
+    required_entities: [entity1]
+    completed: []
+    ignored: []
+"""
+                sidecar_file.write_text(sidecar_content)
+
+                # Load project
+                project1 = simple_service.load_project("test_project")
+
+                # Modify task_list in loaded project directly
+                if project1.task_list is None:
+                        project1.task_list = {}
+                if "completed" not in project1.task_list:
+                        project1.task_list["completed"] = []
+                if "entity1" not in project1.task_list["completed"]:
+                        project1.task_list["completed"].append("entity1")
+
+                # Save modified project
+                simple_service.save_project(project1)
+
+                # Reload and verify changes persisted
+                project2 = simple_service.load_project("test_project")
+                task_list2 = project2.task_list or {}
+
+                assert "entity1" in task_list2.get("completed", [])
