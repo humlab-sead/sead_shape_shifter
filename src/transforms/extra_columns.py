@@ -231,14 +231,14 @@ class ExtraColumnEvaluator:
             # This allows passing the full extra_columns dict multiple times
             if new_col in result.columns:
                 skipped_count += 1
-                logger.debug(f"{entity_name}[extra_columns]: Skipping '{new_col}' (already exists)")
+                logger.trace(f"{entity_name}[extra_columns]: Skipping '{new_col}' (already exists)")
                 continue
 
             # Case 1: Non-string constant
             if not isinstance(value, str):
                 result[new_col] = value
                 added_count += 1
-                logger.debug(f"{entity_name}[extra_columns]: Added constant '{new_col}' = {value}")
+                logger.trace(f"{entity_name}[extra_columns]: Added constant '{new_col}' = {value}")
                 continue
 
             # Case 2: Interpolated string
@@ -249,7 +249,7 @@ class ExtraColumnEvaluator:
                 if missing:
                     if defer_missing:
                         deferred[new_col] = value
-                        logger.debug(
+                        logger.trace(
                             f"{entity_name}[extra_columns]: Deferred interpolation '{new_col}' " f"(missing columns: {sorted(missing)})"
                         )
                     else:
@@ -262,7 +262,7 @@ class ExtraColumnEvaluator:
                 # All columns available - evaluate
                 result[new_col] = self.evaluate_interpolation(result, value, entity_name)
                 added_count += 1
-                logger.debug(f"{entity_name}[extra_columns]: Added interpolation '{new_col}' = '{value}'")
+                logger.trace(f"{entity_name}[extra_columns]: Added interpolation '{new_col}' = '{value}'")
                 continue
 
             # Case 3: Column copy (string matching existing column, case-insensitive)
@@ -273,13 +273,13 @@ class ExtraColumnEvaluator:
             if col_lower in col_map:
                 result[new_col] = result[col_map[col_lower]]
                 added_count += 1
-                logger.debug(f"{entity_name}[extra_columns]: Copied column '{new_col}' from '{value}'")
+                logger.trace(f"{entity_name}[extra_columns]: Copied column '{new_col}' from '{value}'")
                 continue
 
             # Case 4: String constant (doesn't match any column)
             result[new_col] = value
             added_count += 1
-            logger.debug(f"{entity_name}[extra_columns]: Added constant '{new_col}' = '{value}'")
+            logger.trace(f"{entity_name}[extra_columns]: Added constant '{new_col}' = '{value}'")
 
         if added_count > 0 or deferred or skipped_count > 0:
             msg_parts = []
