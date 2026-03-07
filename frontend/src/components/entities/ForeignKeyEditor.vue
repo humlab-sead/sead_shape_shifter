@@ -278,11 +278,13 @@ interface Props {
   availableEntities?: string[]
   projectName: string
   entityName: string
+  entityColumns?: string[] | string
   isEntitySaved?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   availableEntities: () => [],
+  entityColumns: () => [],
   isEntitySaved: false,
 })
 
@@ -446,6 +448,31 @@ async function getColumnSuggestions(entityName: string): Promise<Array<{ value: 
 }
 
 /**
+ * Extract @value directives from entity columns configuration.
+ */
+function extractColumnDirectives(): string[] {
+  const columns = props.entityColumns
+  if (!columns) return []
+
+  const directives: string[] = []
+
+  // Handle scalar directive string
+  if (typeof columns === 'string' && columns.trim().startsWith('@value:')) {
+    directives.push(columns.trim())
+  }
+  // Handle array of columns (may contain directive elements)
+  else if (Array.isArray(columns)) {
+    columns.forEach((col) => {
+      if (typeof col === 'string' && col.trim().startsWith('@value:')) {
+        directives.push(col.trim())
+      }
+    })
+  }
+
+  return directives
+}
+
+/**
  * Load local columns for a specific FK.
  */
 async function loadLocalColumns(fkIndex: number) {
@@ -458,9 +485,16 @@ async function loadLocalColumns(fkIndex: number) {
     getColumnSuggestions(props.entityName),
     getValidDirectives(props.projectName),
   ])
+
+  // Extract directives from entity's columns configuration
+  const columnDirectives = extractColumnDirectives()
+
+  // Combine all suggestions, avoiding duplicates
+  const allDirectives = [...new Set([...directives, ...columnDirectives])]
+
   localColumnItems.value[fkIndex] = [
     ...suggestions.map((s) => ({ title: s.value, value: s.value, category: s.category })),
-    ...directives.map((d) => ({ title: d, value: d, category: 'directive' })),
+    ...allDirectives.map((d) => ({ title: d, value: d, category: 'directive' })),
   ]
 }
 

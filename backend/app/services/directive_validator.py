@@ -46,7 +46,7 @@ class DirectiveValidator:
                 error="Directive must start with '@value:'",
             )
 
-        path = directive[7:]  # Remove "@value:" prefix
+        path = directive[7:].strip()  # Remove "@value:" prefix and strip whitespace
 
         # Split path into parts
         parts = path.split(".")
@@ -208,13 +208,13 @@ class DirectiveValidator:
         # Traverse entities
         for entity_name in self.project.entity_names:
             entity = self.project.entities[entity_name]
-            paths.append(f"@value: entities.{entity_name}.keys")
-            paths.append(f"@value: entities.{entity_name}.columns")
+            paths.append(f"@value:entities.{entity_name}.keys")
+            paths.append(f"@value:entities.{entity_name}.columns")
 
             if isinstance(entity, dict):
                 # Add paths for common fields
                 for field in ["public_id", "system_id", "extra_columns"]:
                     if field in entity:
-                        paths.append(f"@value: entities.{entity_name}.{field}")
+                        paths.append(f"@value:entities.{entity_name}.{field}")
 
         return paths

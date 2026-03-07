@@ -51,6 +51,15 @@ class TestDirectiveValidator:
         assert not result.is_valid
         assert "must start with '@value:'" in result.error
 
+    def test_validate_directive_with_space_after_colon(self, validator):
+        """Test validation handles space after colon correctly."""
+        result = validator.validate_directive("@value: entities.site.keys")
+
+        assert result.is_valid
+        assert result.path == "entities.site.keys"
+        assert result.resolved_value == ["site_name"]
+        assert result.error is None
+
     def test_validate_directive_too_short(self, validator):
         """Test validation fails with too short path."""
         result = validator.validate_directive("@value:entities")
@@ -114,11 +123,11 @@ class TestDirectiveValidator:
         """Test getting all valid directive paths."""
         paths = validator.get_all_valid_paths()
 
-        assert "@value: entities.location.keys" in paths
-        assert "@value: entities.location.columns" in paths
-        assert "@value: entities.site.keys" in paths
-        assert "@value: entities.site.columns" in paths
-        assert "@value: entities.site.extra_columns" in paths
+        assert "@value:entities.location.keys" in paths
+        assert "@value:entities.location.columns" in paths
+        assert "@value:entities.site.keys" in paths
+        assert "@value:entities.site.columns" in paths
+        assert "@value:entities.site.extra_columns" in paths
 
     def test_suggestions_for_partial_path(self, validator):
         """Test suggestions are provided for invalid paths."""
