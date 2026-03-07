@@ -234,9 +234,9 @@ class ShapeShifter:
 
         # Log status
         if still_deferred:
-            logger.debug(f"{entity_name}[deferred]: Still waiting for columns: " f"{list(still_deferred.keys())}")
+            logger.trace(f"{entity_name}[deferred]: Still waiting for columns: {list(still_deferred.keys())}")
         else:
-            logger.debug(f"{entity_name}[deferred]: Successfully evaluated all deferred extra_columns")
+            logger.trace(f"{entity_name}[deferred]: Successfully evaluated all deferred extra_columns")
 
     def retry_linking(self) -> None:
         """Retry linking only for entities currently in deferred set."""

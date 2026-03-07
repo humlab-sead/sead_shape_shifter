@@ -152,7 +152,7 @@ class SubsetService:
 
             # Log deferred columns (they'll be re-evaluated later by normalizer)
             if deferred:
-                logger.debug(f"{entity_name}[extract]: Deferred extra_columns evaluation for: {list(deferred.keys())}")
+                logger.trace(f"{entity_name}[extract]: Deferred extra_columns evaluation for: {list(deferred.keys())}")
 
         # Drop helper source columns that weren't explicitly requested
         helper_cols: set[str] = set(extra_source_columns.values()) - set(columns)
