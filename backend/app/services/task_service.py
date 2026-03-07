@@ -66,6 +66,7 @@ class TaskService:
         for entity_name in all_entity_names:
             entity_status = await self._compute_entity_status(
                 project=project,
+                project_name=project_name,
                 entity_name=entity_name,
                 validation_result=validation_result,
             )
@@ -79,6 +80,7 @@ class TaskService:
     async def _compute_entity_status(
         self,
         project: ShapeShiftProject,
+        project_name: str,
         entity_name: str,
         validation_result: ValidationResult,
     ) -> EntityTaskStatus:
@@ -121,9 +123,9 @@ class TaskService:
                 # Check if preview is cached (fast check without triggering normalization)
                 # Use get_dataframe which does TTL + version + hash validation but doesn't generate data
                 table_cfg: TableConfig = project.get_table(entity_name)
-                project_version: int = self.shapeshift_service.get_project_version(project.filename)
+                project_version: int = self.shapeshift_service.get_project_version(project_name)
                 cached_df: pd.DataFrame | None = self.shapeshift_service.cache.get_dataframe(
-                    project_name=project.filename,
+                    project_name=project_name,
                     entity_name=entity_name,
                     project_version=project_version,
                     entity_config=table_cfg,
@@ -294,7 +296,7 @@ class TaskService:
 
         # Check preview availability
         try:
-            await self.shapeshift_service.preview_entity(project_name=project.filename, entity_name=entity_name, limit=1)
+            await self.shapeshift_service.preview_entity(project_name=project_name, entity_name=entity_name, limit=1)
         except Exception as e:
             raise ValueError(f"Cannot mark entity as done: preview generation failed: {str(e)}") from e
 

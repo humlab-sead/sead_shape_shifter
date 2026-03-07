@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
+import pandas as pd
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
@@ -260,6 +261,33 @@ class TestTaskServiceMarkComplete:
             await task_service.mark_complete("test-project", "site")
 
             task_service.shapeshift_service.preview_entity.assert_called_once()
+            task_service.shapeshift_service.preview_entity.assert_called_once_with(
+                project_name="test-project",
+                entity_name="site",
+                limit=1,
+            )
+
+    @pytest.mark.asyncio
+    async def test_compute_status_uses_project_name_for_cache_lookups(
+        self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
+    ):
+        """Test that compute_status checks preview cache using request project_name, not project.filename."""
+        task_service.project_service.load_project = Mock(return_value=mock_api_project)
+        task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
+
+        # Cache + version checks should use the route project name to match preview endpoint keys
+        task_service.shapeshift_service.get_project_version = Mock(return_value=123)
+        task_service.shapeshift_service.cache = MagicMock()
+        task_service.shapeshift_service.cache.get_dataframe = Mock(return_value=MagicMock(spec=pd.DataFrame))
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            await task_service.compute_status("test-project")
+
+            assert task_service.shapeshift_service.get_project_version.call_count == 3
+            task_service.shapeshift_service.get_project_version.assert_called_with("test-project")
+            assert task_service.shapeshift_service.cache.get_dataframe.call_count == 3
+            for call in task_service.shapeshift_service.cache.get_dataframe.call_args_list:
+                assert call.kwargs["project_name"] == "test-project"
 
     @pytest.mark.asyncio
     async def test_mark_complete_fails_if_validation_fails(self, task_service: TaskService, mock_api_project, mock_core_project):
