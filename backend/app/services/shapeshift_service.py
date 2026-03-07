@@ -78,7 +78,7 @@ class ShapeShiftService:
         project_version: int = self.get_project_version(project_name)
 
         override_indicator = 'yes' if override_config else 'no'
-        logger.debug(
+        logger.trace(
             f"[PREVIEW_START] {project_name}/{entity_name}: project_version={project_version}, "
             f"override_config={override_indicator}"
         )
@@ -136,7 +136,7 @@ class ShapeShiftService:
                 if not using_override:
                     entities: dict[str, TableConfig] = {name: project.get_table(name) for name in table_store.keys()}
                     hashes = [(name, cfg.hash()[:8]) for name, cfg in entities.items()]
-                    logger.debug(
+                    logger.trace(
                         f"[CACHE_SET] {project_name}/{entity_name}: project_version={project_version}, hashes={hashes}"
                     )
                     self.cache.set_table_store(project_name, table_store, entity_name, project_version, entities)

@@ -128,7 +128,7 @@ class TaskService:
                 project_version: int = self.shapeshift_service.get_project_version(project_name)
 
                 entity_hash_str = table_cfg.hash()[:8] if table_cfg else 'N/A'
-                logger.debug(
+                logger.trace(
                     f"[CACHE_LOOKUP_STRICT] {project_name}/{entity_name}: project_version={project_version}, "
                     f"entity_hash={entity_hash_str}"
                 )
@@ -144,7 +144,7 @@ class TaskService:
 
                 if cached_df is None:
                     # Tier 2: Skip entity hash (config might differ between code paths)
-                    logger.debug(
+                    logger.trace(
                         f"[CACHE_LOOKUP_FALLBACK_HASH] {project_name}/{entity_name}: "
                         f"project_version={project_version} (no entity hash)"
                     )
@@ -157,7 +157,7 @@ class TaskService:
 
                 if cached_df is None:
                     # Tier 3: Skip version check (might differ if ApplicationState initialized between calls)
-                    logger.debug(
+                    logger.trace(
                         f"[CACHE_LOOKUP_FALLBACK_VERSION] {project_name}/{entity_name}: "
                         f"skipping version check (ApplicationState timing sensitivity)"
                     )
@@ -172,14 +172,14 @@ class TaskService:
                 if cached_df is not None:
                     # Cache exists and is valid
                     preview_available = True
-                    logger.debug(f"[CACHE_HIT] {project_name}/{entity_name}: preview available from cache")
+                    logger.trace(f"[CACHE_HIT] {project_name}/{entity_name}: preview available from cache")
                 else:
                     # Cache miss or stale - skip expensive preview generation for task status
                     # Task status endpoint should be fast; preview will be generated on-demand when user views entity
                     preview_available = False
-                    logger.debug(f"[CACHE_MISS] {project_name}/{entity_name}: skipping preview generation (cache miss)")
+                    logger.trace(f"[CACHE_MISS] {project_name}/{entity_name}: skipping preview generation (cache miss)")
             except Exception as e:  # pylint: disable=broad-except
-                logger.debug(f"[CACHE_ERROR] {project_name}/{entity_name}: {e}")
+                logger.trace(f"[CACHE_ERROR] {project_name}/{entity_name}: {e}")
                 preview_available = False
 
         # Determine blocked_by (dependencies that aren't done)
