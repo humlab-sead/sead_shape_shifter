@@ -344,6 +344,7 @@
               @preview="handleContextMenuPreview"
               @duplicate="handleContextMenuDuplicate"
               @delete="handleContextMenuDelete"
+              @verify-entity="handleVerifyEntity"
               @mark-complete="handleMarkComplete"
               @mark-ignored="handleMarkIgnored"
               @reset-status="handleResetStatus"
@@ -635,6 +636,7 @@ import { useTheme } from 'vuetify'
 import { api } from '@/api'
 import { useProjects, useEntities, useValidation, useDependencies, useCytoscape } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
+import { useEntityPreview } from '@/composables/useEntityPreview'
 import { useSession } from '@/composables/useSession'
 import { getTaskStatusNodeClasses, shouldShowNodeForTaskFilter } from '@/utils/taskGraph'
 import { useEntityStore } from '@/stores/entity'
@@ -709,6 +711,9 @@ const {
 // Session management
 const { startSession, saveWithVersionCheck, hasActiveSession } = useSession()
 
+// Entity preview
+const { previewEntity } = useEntityPreview()
+
 const {
   validationResult,
   loading: validationLoading,
@@ -717,6 +722,7 @@ const {
   errorCount,
   warningCount,
   validate,
+  validateEntity,
 } = useValidation({
   projectName: projectName.value,
   autoValidate: false,
@@ -1344,6 +1350,60 @@ async function handleContextMenuDelete(entityName: string) {
 }
 
 // Task status handlers
+async function handleVerifyEntity(entityName: string) {
+  const verifyingMessage = `Verifying entity "${entityName}"...`
+  successMessage.value = verifyingMessage
+  showSuccessSnackbar.value = true
+  
+  try {
+    // Step 1: Validate the entity
+    console.log(`Validating entity "${entityName}"...`)
+    const validationResult = await validateEntity(projectName.value, entityName)
+    
+    if (!validationResult.is_valid) {
+      const errorCount = validationResult.errors.length
+      const errorMessages = validationResult.errors.slice(0, 3).map(e => e.message).join('; ')
+      throw new Error(
+        `Validation failed with ${errorCount} error(s): ${errorMessages}`
+      )
+    }
+    
+    // Step 2: Generate preview (which caches it)
+    console.log(`Generating preview for entity "${entityName}"...`)
+    const previewResult = await previewEntity(projectName.value, entityName, 1)
+    
+    if (!previewResult) {
+      throw new Error('Preview generation failed')
+    }
+    
+    // Step 3: Refresh task status to update preview_available flag
+    console.log(`Refreshing task status for "${projectName.value}"...`)
+    await taskStatusStore.refresh()
+    
+    // Step 4: Check if entity can now be marked as done
+    const entityStatus = taskStatusStore.getEntityStatus(entityName)
+    const canMarkDone = entityStatus?.exists && 
+                        entityStatus?.validation_passed && 
+                        entityStatus?.preview_available
+    
+    // Success message
+    if (canMarkDone) {
+      successMessage.value = `✓ Entity "${entityName}" verified successfully. You can now mark it as done!`
+    } else {
+      successMessage.value = `Entity "${entityName}" verified, but some requirements are not met yet.`
+    }
+    showSuccessSnackbar.value = true
+    
+    // Refresh graph to show updated badges
+    applyTaskStatusToNodes()
+    
+  } catch (err) {
+    console.error('Failed to verify entity:', err)
+    successMessage.value = err instanceof Error ? err.message : `Failed to verify entity "${entityName}"`
+    showSuccessSnackbar.value = true
+  }
+}
+
 async function handleMarkComplete(entityName: string) {
   try {
     const success = await taskStatusStore.markComplete(entityName)
