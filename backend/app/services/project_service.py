@@ -304,7 +304,7 @@ class ProjectService:
                     sidecar_path = self.sidecar_manager.get_sidecar_path(file_path)
                     self.yaml_service.save({"task_list": task_list_data}, sidecar_path)
                     logger.debug(f"Saved task_list to sidecar: {sidecar_path}")
-                except Exception as e:
+                except Exception as e:  # noqa: PERF203 ; pylint: disable=broad-exception-caught
                     logger.error(f"Failed to save task_list to sidecar: {e}")
                     # Continue anyway - main project is saved
 

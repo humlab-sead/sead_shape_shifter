@@ -85,7 +85,7 @@ class TaskListSidecarManager:
             logger.debug(f"Loaded task list from sidecar: {sidecar_path}")
             return task_list_data
 
-        except Exception as e:
+        except Exception as e:  # noqa: PERF203 ; pylint: disable=broad-exception-caught
             logger.error(f"Failed to load task list sidecar {sidecar_path}: {e}")
             return {}
 
@@ -147,7 +147,7 @@ class TaskListSidecarManager:
 
                 return project_data
 
-            except Exception as e:
+            except Exception as e:  # noqa: PERF203 ; pylint: disable=broad-exception-caught
                 logger.error(f"Failed to migrate task_list: {e}")
                 # Continue without migration - main file will be used
 
@@ -169,7 +169,7 @@ class TaskListSidecarManager:
                 sidecar_path.unlink()
                 logger.info(f"Deleted sidecar: {sidecar_path}")
                 return True
-            except Exception as e:
+            except Exception as e:  # noqa: PERF203 ; pylint: disable=broad-exception-caught
                 logger.error(f"Failed to delete sidecar {sidecar_path}: {e}")
                 return False
 
