@@ -147,6 +147,7 @@ class TestTaskServiceBasic:
             assert result.completion_stats["total"] == 3
             assert result.completion_stats["done"] == 1
             assert result.completion_stats["todo"] == 2
+            assert result.completion_stats["completion_percentage"] == pytest.approx(33.3333333333)
             assert result.completion_stats["required_total"] == 3
             assert result.completion_stats["required_done"] == 1
 

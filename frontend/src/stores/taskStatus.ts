@@ -148,7 +148,7 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
   const completionSummary = computed(() => {
     if (!taskStatus.value) return 'No data'
     const stats = taskStatus.value.completion_stats
-    return `${stats.completed} of ${stats.total} complete`
+    return `${stats.done} of ${stats.total} complete`
   })
 
   const hasData = computed(() => taskStatus.value !== null)

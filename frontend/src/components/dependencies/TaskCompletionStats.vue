@@ -18,7 +18,7 @@
         <!-- Stats text -->
         <v-col>
           <div class="text-caption">
-            <span class="font-weight-medium">{{ stats.completed }}</span>
+            <span class="font-weight-medium">{{ stats.done }}</span>
             <span class="text-medium-emphasis"> of </span>
             <span class="font-weight-medium">{{ stats.total }}</span>
             <span class="text-medium-emphasis"> complete</span>
@@ -90,9 +90,12 @@ const stats = computed(() => {
   if (!props.taskStatus) {
     return {
       total: 0,
-      completed: 0,
+      done: 0,
       ignored: 0,
       todo: 0,
+      required_total: 0,
+      required_done: 0,
+      required_todo: 0,
       completion_percentage: 0
     }
   }

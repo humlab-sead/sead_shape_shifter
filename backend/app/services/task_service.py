@@ -219,12 +219,13 @@ class TaskService:
         self,
         entity_statuses: dict[str, EntityTaskStatus],
         required_entities: list[str],
-    ) -> dict[str, int]:
+    ) -> dict[str, int | float]:
         """Calculate completion statistics."""
         total = len(entity_statuses)
         done = sum(1 for s in entity_statuses.values() if s.status == TaskStatus.DONE)
         ignored = sum(1 for s in entity_statuses.values() if s.status == TaskStatus.IGNORED)
         todo = total - done - ignored
+        completion_percentage = (done / total * 100.0) if total > 0 else 0.0
 
         required_total = len(required_entities)
         required_done = sum(1 for name in required_entities if name in entity_statuses and entity_statuses[name].status == TaskStatus.DONE)
@@ -235,6 +236,7 @@ class TaskService:
             "done": done,
             "todo": todo,
             "ignored": ignored,
+            "completion_percentage": completion_percentage,
             "required_total": required_total,
             "required_done": required_done,
             "required_todo": required_todo,
