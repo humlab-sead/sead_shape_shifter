@@ -199,3 +199,72 @@ The system most then resolve the reference so the end result is a flattened list
 Given the context, we should be able to constrict valid dot.path, e.g. when picking column given a source entity. We also need to add a validation that checks for "dangling" references in the project.
 
 What are your thought? How would an implementation plan look like? 
+
+### FIXME: Store resolved bug
+
+We have a bug related to the recently fixes related to the "@value" directive. All "@value" directives have been resolved in the stored (on disk) file
+
+
+### FIXME: Entity not persisted ** CAN NOT REPRODUCE! ***
+
+There is new bug related to saving project/entity most likely caused by recent changes. 
+
+1. I open this entity in the Entity Editor:
+
+```
+name: abundance_element
+type: sql
+system_id: system_id
+keys:
+  - RTyp
+columns:
+  - Resttyp
+  - RTypGrup
+  - RTypNr
+public_id: abundance_element_id
+data_source: arbodat_lookup
+query: select [RTyp], [Resttyp], [RTypGrup], [RTypNr] from [RTyp];
+foreign_keys:
+  - entity: abundance_element_group
+    local_keys:
+      - RTypGrup
+    remote_keys:
+      - RTypGrup
+depends_on:
+  - abundance_element_group
+extra_columns:
+  element_name: RTyp
+  element_description: Resttyp
+```
+
+2. Add "@value:entities.abundance.keys" to "keys". Opening YAML tab shows as expected that '@value:entities.abundance.keys' has been added to keys.
+
+```
+name: abundance_element
+type: sql
+system_id: system_id
+keys:
+  - RTyp
+  - '@value:entities.abundance.keys'
+columns:
+...
+```
+
+3. Press SAVE in entity editor
+   ==> Status message that entity has been saved successfully
+   ==> Button "SAVE CHANGES" in project details view becomes enabled. This is not expected.
+
+4. Verify entity in project detail views YAML tab shows expected values:
+
+```
+name: abundance_element
+type: sql
+system_id: system_id
+keys:
+  - RTyp
+  - '@value:entities.abundance.keys'
+columns:
+...
+```
+
+5. Verify YAML on disk
