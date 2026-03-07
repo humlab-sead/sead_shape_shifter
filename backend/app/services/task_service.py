@@ -121,7 +121,9 @@ class TaskService:
         if exists and validation_passed:
             try:
                 # Check if preview is cached (fast check without triggering normalization)
-                # Use get_dataframe which does TTL + version + hash validation but doesn't generate data
+                # Use get_dataframe which does TTL + version + hash validation but doesn't generate data.
+                # If strict hash validation misses, fall back to a version-only check to avoid false negatives
+                # when equivalent entity configs are represented differently across code paths.
                 table_cfg: TableConfig = project.get_table(entity_name)
                 project_version: int = self.shapeshift_service.get_project_version(project_name)
                 cached_df: pd.DataFrame | None = self.shapeshift_service.cache.get_dataframe(
@@ -130,6 +132,14 @@ class TaskService:
                     project_version=project_version,
                     entity_config=table_cfg,
                 )
+
+                if cached_df is None:
+                    # Relaxed fallback: TTL + project version only (no entity hash)
+                    cached_df = self.shapeshift_service.cache.get_dataframe(
+                        project_name=project_name,
+                        entity_name=entity_name,
+                        project_version=project_version,
+                    )
 
                 if cached_df is not None:
                     # Cache exists and is valid

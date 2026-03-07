@@ -290,6 +290,50 @@ class TestTaskServiceMarkComplete:
                 assert call.kwargs["project_name"] == "test-project"
 
     @pytest.mark.asyncio
+    async def test_compute_status_falls_back_to_version_only_cache_lookup_when_hash_check_misses(
+        self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
+    ):
+        """Test preview availability fallback when strict entity-hash cache lookup misses."""
+        task_service.project_service.load_project = Mock(return_value=mock_api_project)
+        task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
+        task_service.shapeshift_service.get_project_version = Mock(return_value=123)
+        task_service.shapeshift_service.cache = MagicMock()
+
+        # For entities evaluated for preview, strict lookups miss and fallback lookups hit.
+        # Use kwargs-based side effect to avoid dependence on set iteration order.
+        def get_dataframe_side_effect(*args, **kwargs):
+            entity_name = kwargs.get("entity_name")
+            is_strict = "entity_config" in kwargs
+            if entity_name in {"site", "sample"}:
+                if is_strict:
+                    return None
+                return MagicMock(spec=pd.DataFrame)
+            return MagicMock(spec=pd.DataFrame)
+
+        task_service.shapeshift_service.cache.get_dataframe = Mock(side_effect=get_dataframe_side_effect)
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            result = await task_service.compute_status("test-project")
+
+            assert result.entities["site"].preview_available is True
+            assert result.entities["sample"].preview_available is True
+            assert task_service.shapeshift_service.cache.get_dataframe.call_count >= 4
+
+            # Every call should use request project name key
+            for call in task_service.shapeshift_service.cache.get_dataframe.call_args_list:
+                assert call.kwargs["project_name"] == "test-project"
+
+            # For site and sample we should observe both strict and fallback lookups
+            site_calls = [c.kwargs for c in task_service.shapeshift_service.cache.get_dataframe.call_args_list if c.kwargs["entity_name"] == "site"]
+            sample_calls = [
+                c.kwargs for c in task_service.shapeshift_service.cache.get_dataframe.call_args_list if c.kwargs["entity_name"] == "sample"
+            ]
+            assert any("entity_config" in c for c in site_calls)
+            assert any("entity_config" not in c for c in site_calls)
+            assert any("entity_config" in c for c in sample_calls)
+            assert any("entity_config" not in c for c in sample_calls)
+
+    @pytest.mark.asyncio
     async def test_mark_complete_fails_if_validation_fails(self, task_service: TaskService, mock_api_project, mock_core_project):
         """Test that mark_complete raises error if validation fails."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
