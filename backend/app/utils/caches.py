@@ -91,21 +91,21 @@ class ShapeShiftCache:
 
         # Tier 2: Check project version if provided and strict_version=True
         if strict_version and project_version is not None and metadata.project_version != project_version:
-            del self._dataframes[key]
-            del self._metadata[key]
-            logger.debug(f"Cache invalidated for {entity_name} (version mismatch: {metadata.project_version} != {project_version})")
-            return None
+            logger.debug(
+                f"Cache version mismatch for {entity_name} "
+                f"(cached: {metadata.project_version}, requested: {project_version}) - checking fallback"
+            )
+            return None  # Don't delete - let fallback tiers try
 
         # Tier 3: Check entity hash if entity_config provided
         if entity_config is not None:
             current_hash = entity_config.hash()
             if metadata.entity_hash != current_hash:
-                del self._dataframes[key]
-                del self._metadata[key]
                 logger.debug(
-                    f"Cache invalidated for {entity_name} (entity config changed: {metadata.entity_hash[:8]} != {current_hash[:8]})"
+                    f"Cache hash mismatch for {entity_name} "
+                    f"(cached: {metadata.entity_hash[:8]}, current: {current_hash[:8]}) - checking fallback"
                 )
-                return None
+                return None  # Don't delete - let fallback tiers try
 
         logger.debug(f"Cache hit for {entity_name} (valid: TTL + version + hash)")
         return self._dataframes[key].copy()  # Return copy to prevent modifications
