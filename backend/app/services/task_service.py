@@ -237,7 +237,9 @@ class TaskService:
 
         required_total = len(required_entities)
         required_done = sum(1 for name in required_entities if name in entity_statuses and entity_statuses[name].status == TaskStatus.DONE)
-        required_ongoing = sum(1 for name in required_entities if name in entity_statuses and entity_statuses[name].status == TaskStatus.ONGOING)
+        required_ongoing = sum(
+            1 for name in required_entities if name in entity_statuses and entity_statuses[name].status == TaskStatus.ONGOING
+        )
         required_todo = required_total - required_done - required_ongoing
 
         return {

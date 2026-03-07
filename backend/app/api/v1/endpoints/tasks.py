@@ -361,9 +361,10 @@ async def migrate_tasks_to_sidecar(name: str) -> dict[str, Any]:
           "message": "Task list migrated to sidecar"
         }
     """
-    from backend.app.mappers.project_name_mapper import ProjectNameMapper  # pylint: disable=import-outside-toplevel
     from pathlib import Path  # pylint: disable=import-outside-toplevel
+
     from backend.app.core.config import settings  # pylint: disable=import-outside-toplevel
+    from backend.app.mappers.project_name_mapper import ProjectNameMapper  # pylint: disable=import-outside-toplevel
     from backend.app.services.project_service import get_project_service  # pylint: disable=import-outside-toplevel
     from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager  # pylint: disable=import-outside-toplevel
     from backend.app.services.yaml_service import get_yaml_service  # pylint: disable=import-outside-toplevel
@@ -472,9 +473,10 @@ async def get_sidecar_status(name: str) -> dict[str, Any]:
           "message": "Task list stored in main project file"
         }
     """
-    from backend.app.mappers.project_name_mapper import ProjectNameMapper  # pylint: disable=import-outside-toplevel
     from pathlib import Path  # pylint: disable=import-outside-toplevel
+
     from backend.app.core.config import settings  # pylint: disable=import-outside-toplevel
+    from backend.app.mappers.project_name_mapper import ProjectNameMapper  # pylint: disable=import-outside-toplevel
     from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager  # pylint: disable=import-outside-toplevel
     from backend.app.services.yaml_service import get_yaml_service  # pylint: disable=import-outside-toplevel
 
