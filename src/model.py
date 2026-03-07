@@ -957,11 +957,13 @@ class TaskList:
 
     Status Model:
         - done: User explicitly marked as complete (requires validation + preview)
+        - ongoing: User marked as in-progress
         - todo: Not marked done (derived)
         - ignored: User explicitly excluded from project
 
     Derived Signals:
         - blocked: Has validation errors or dependency issues
+        - flagged: User flagged for attention or action needed
         - in_progress: Entity exists but not done
         - pending: Entity doesn't exist yet
     """
@@ -973,7 +975,9 @@ class TaskList:
             data: Dictionary containing task list configuration with keys:
                 - required_entities: List of entity names that must be completed
                 - completed: List of entity names marked as done by user
+                - ongoing: List of entity names marked as in-progress by user
                 - ignored: List of entity names explicitly excluded
+                - flagged: Dictionary mapping entity names to flagged status
         """
         self.data: dict[str, Any] = data or {}
 
@@ -988,9 +992,19 @@ class TaskList:
         return self.data.get("completed", []) or []
 
     @property
+    def ongoing(self) -> list[str]:
+        """Get list of ongoing entity names."""
+        return self.data.get("ongoing", []) or []
+
+    @property
     def ignored(self) -> list[str]:
         """Get list of ignored entity names."""
         return self.data.get("ignored", []) or []
+
+    @property
+    def flagged(self) -> dict[str, bool]:
+        """Get mapping of flagged entity statuses."""
+        return self.data.get("flagged", {}) or {}
 
     def is_required(self, entity_name: str) -> bool:
         """Check if entity is required."""
@@ -1000,9 +1014,17 @@ class TaskList:
         """Check if entity is marked as completed."""
         return entity_name in self.completed
 
+    def is_ongoing(self, entity_name: str) -> bool:
+        """Check if entity is marked as ongoing."""
+        return entity_name in self.ongoing
+
     def is_ignored(self, entity_name: str) -> bool:
         """Check if entity is marked as ignored."""
         return entity_name in self.ignored
+
+    def is_flagged(self, entity_name: str) -> bool:
+        """Check if entity is flagged."""
+        return self.flagged.get(entity_name, False)
 
     def mark_completed(self, entity_name: str) -> None:
         """Mark entity as completed.
@@ -1025,6 +1047,29 @@ class TaskList:
         if "ignored" in self.data and entity_name in self.data["ignored"]:
             self.data["ignored"] = [e for e in self.data["ignored"] if e != entity_name]
 
+    def mark_ongoing(self, entity_name: str) -> None:
+        """Mark entity as ongoing.
+
+        Args:
+            entity_name: Name of entity to mark as ongoing
+
+        Note:
+            This only updates in-memory state. Caller must persist to project file.
+        """
+        # Ensure ongoing list exists in data
+        if "ongoing" not in self.data:
+            self.data["ongoing"] = []
+
+        # Add to ongoing list if not already there
+        if entity_name not in self.data["ongoing"]:
+            self.data["ongoing"].append(entity_name)
+
+        # Remove from completed and ignored if present
+        if "completed" in self.data and entity_name in self.data["completed"]:
+            self.data["completed"] = [e for e in self.data["completed"] if e != entity_name]
+        if "ignored" in self.data and entity_name in self.data["ignored"]:
+            self.data["ignored"] = [e for e in self.data["ignored"] if e != entity_name]
+
     def mark_ignored(self, entity_name: str) -> None:
         """Mark entity as ignored.
 
@@ -1042,9 +1087,31 @@ class TaskList:
         if entity_name not in self.data["ignored"]:
             self.data["ignored"].append(entity_name)
 
-        # Remove from completed if present
+        # Remove from completed and ongoing if present
         if "completed" in self.data and entity_name in self.data["completed"]:
             self.data["completed"] = [e for e in self.data["completed"] if e != entity_name]
+        if "ongoing" in self.data and entity_name in self.data["ongoing"]:
+            self.data["ongoing"] = [e for e in self.data["ongoing"] if e != entity_name]
+
+    def toggle_flagged(self, entity_name: str) -> bool:
+        """Toggle flagged status for an entity.
+
+        Args:
+            entity_name: Name of entity to toggle
+
+        Returns:
+            New flagged status after toggle
+
+        Note:
+            This only updates in-memory state. Caller must persist to project file.
+        """
+        if "flagged" not in self.data:
+            self.data["flagged"] = {}
+
+        current = self.data["flagged"].get(entity_name, False)
+        new_status = not current
+        self.data["flagged"][entity_name] = new_status
+        return new_status
 
     def reset_status(self, entity_name: str) -> None:
         """Reset entity status to todo.
@@ -1055,11 +1122,11 @@ class TaskList:
         Note:
             This only updates in-memory state. Caller must persist to project file.
         """
-        # Remove from completed if present
+        # Remove from completed, ongoing, and ignored
         if "completed" in self.data and entity_name in self.data["completed"]:
             self.data["completed"] = [e for e in self.data["completed"] if e != entity_name]
-
-        # Remove from ignored if present
+        if "ongoing" in self.data and entity_name in self.data["ongoing"]:
+            self.data["ongoing"] = [e for e in self.data["ongoing"] if e != entity_name]
         if "ignored" in self.data and entity_name in self.data["ignored"]:
             self.data["ignored"] = [e for e in self.data["ignored"] if e != entity_name]
 
@@ -1070,8 +1137,12 @@ class TaskList:
             result["required_entities"] = self.required_entities
         if self.completed:
             result["completed"] = self.completed
+        if self.ongoing:
+            result["ongoing"] = self.ongoing
         if self.ignored:
             result["ignored"] = self.ignored
+        if self.flagged:
+            result["flagged"] = self.flagged
         return result
 
     @property

@@ -12,5 +12,7 @@ describe('cytoscape task styles', () => {
     expect(selectors.has('node.task-blocked')).toBe(true)
     expect(selectors.has('node.task-critical')).toBe(true)
     expect(selectors.has('node.task-ready')).toBe(true)
+    expect(selectors.has('node.task-ongoing')).toBe(true)
+    expect(selectors.has('node.task-flagged')).toBe(true)
   })
 })

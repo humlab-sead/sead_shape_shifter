@@ -254,3 +254,78 @@ async def reset_task_status(name: str, entity_name: str) -> TaskUpdateResponse:
         new_status=result["status"],
         message=result.get("message"),
     )
+
+
+@router.post("/projects/{name}/tasks/{entity_name}/ongoing", response_model=TaskUpdateResponse)
+@handle_endpoint_errors
+async def mark_task_ongoing(name: str, entity_name: str) -> TaskUpdateResponse:
+    """
+    Mark entity task as ongoing (in progress).
+
+    Indicates that work has started on the entity but is not yet complete.
+    Does not require validation or preview.
+
+    Args:
+        name: Project name
+        entity_name: Entity name to mark as ongoing
+
+    Returns:
+        TaskUpdateResponse with success status
+
+    Example:
+        POST /api/v1/projects/my-project/tasks/site/ongoing
+
+        Response:
+        {
+          "success": true,
+          "entity_name": "site",
+          "new_status": "ongoing",
+          "message": "Entity marked as ongoing"
+        }
+    """
+    task_service = get_task_service()
+    result = await task_service.mark_ongoing(name, entity_name)
+
+    logger.info(f"Marked '{entity_name}' as ongoing in project '{name}'")
+
+    return TaskUpdateResponse(
+        success=result["success"],
+        entity_name=result["entity_name"],
+        new_status=result["status"],
+        message=result.get("message"),
+    )
+
+
+@router.post("/projects/{name}/tasks/{entity_name}/flag", response_model=dict[str, Any])
+@handle_endpoint_errors
+async def toggle_task_flagged(name: str, entity_name: str) -> dict[str, Any]:
+    """
+    Toggle flagged status for an entity task.
+
+    Marks entity for special attention or review without changing its status.
+    Can be combined with any task status (done, ongoing, todo, ignored).
+
+    Args:
+        name: Project name
+        entity_name: Entity name to toggle flag
+
+    Returns:
+        Dict with success status and new flagged state
+
+    Example:
+        POST /api/v1/projects/my-project/tasks/location/flag
+
+        Response:
+        {
+          "success": true,
+          "entity_name": "location",
+          "flagged": true,
+          "message": "Entity flagged"
+        }
+    """
+    task_service = get_task_service()
+    result = await task_service.toggle_flagged(name, entity_name)
+
+    logger.info(f"Toggled flag for '{entity_name}' in project '{name}': {result['flagged']}")
+
+    return result

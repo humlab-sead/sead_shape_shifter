@@ -302,6 +302,22 @@ const baseStyles: StylesheetCSS[] = [
       'border-width': 3,
     },
   },
+  {
+    selector: 'node.task-ongoing',
+    css: {
+      'background-color': '#FFA726',
+      'border-color': '#F57C00',
+      'border-width': 3,
+    },
+  },
+  {
+    selector: 'node.task-flagged',
+    css: {
+      'border-color': '#E91E63',
+      'border-width': 4,
+      'border-style': 'double',
+    },
+  },
 
   // Cycle highlighting - nodes (must come after node type styles)
   {

@@ -12,6 +12,7 @@ function mkStatus(overrides: Partial<EntityTaskStatus> = {}): EntityTaskStatus {
     exists: true,
     validation_passed: true,
     preview_available: true,
+    flagged: false,
     blocked_by: [],
     issues: [],
     ...overrides,
@@ -26,6 +27,7 @@ describe('taskGraph', () => {
 
   it('filters by basic task status', () => {
     expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'todo' as any }), 'todo')).toBe(true)
+    expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'ongoing' as any }), 'ongoing')).toBe(true)
     expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'done' as any }), 'done')).toBe(true)
     expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'ignored' as any }), 'ignored')).toBe(true)
     expect(shouldShowNodeForTaskFilter(mkStatus({ status: 'done' as any }), 'todo')).toBe(false)
