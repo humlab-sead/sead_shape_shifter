@@ -2,8 +2,8 @@
 
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-import pytest
 import pandas as pd
+import pytest
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
@@ -324,7 +324,9 @@ class TestTaskServiceMarkComplete:
                 assert call.kwargs["project_name"] == "test-project"
 
             # For site and sample we should observe both strict and fallback lookups
-            site_calls = [c.kwargs for c in task_service.shapeshift_service.cache.get_dataframe.call_args_list if c.kwargs["entity_name"] == "site"]
+            site_calls = [
+                c.kwargs for c in task_service.shapeshift_service.cache.get_dataframe.call_args_list if c.kwargs["entity_name"] == "site"
+            ]
             sample_calls = [
                 c.kwargs for c in task_service.shapeshift_service.cache.get_dataframe.call_args_list if c.kwargs["entity_name"] == "sample"
             ]
