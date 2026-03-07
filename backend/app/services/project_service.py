@@ -182,7 +182,6 @@ class ProjectService:
             # cause lost-update race conditions.
             copy: Project = cached_project.model_copy(deep=True)
             entity_count: int = len(copy.entities or {})
-            entity_names: list[str] = sorted((copy.entities or {}).keys())
             logger.info(
                 "[{}] load_project: '{}' from CACHE (deep copy) entities={}",
                 corr,
@@ -218,7 +217,6 @@ class ProjectService:
             # Cache in ApplicationState for subsequent requests (multiple projects can be cached)
             self.state.activate(project)
 
-            entity_names = sorted((project.entities or {}).keys())
             logger.info("[{}] load_project: '{}' from DISK entities={}", corr, name, len(project.entities))
             return project
 

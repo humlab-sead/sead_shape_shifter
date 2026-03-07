@@ -129,7 +129,15 @@ def _replace_references(
     if isinstance(data, dict):
         return {k: _replace_references(v, full_data=full_data) for k, v in data.items()}
     if isinstance(data, list):
-        return [_replace_references(i, full_data=full_data) for i in data]
+        result: list[Any] = []
+        for item in data:
+            resolved = _replace_references(item, full_data=full_data)
+            # Flatten @value: directive items that resolve to a list (new YAML-list form)
+            if isinstance(item, str) and item.strip().startswith(REF_TAG) and isinstance(resolved, list):
+                result.extend(resolved)
+            else:
+                result.append(resolved)
+        return result
     if isinstance(data, str):
         # Check for list expressions with operations
         if (REF_TAG in data and "+" in data) or (data.count("[") > 0 and "+" in data):
@@ -161,9 +169,11 @@ def replace_references(data: dict[str, Any] | list[Any] | str) -> dict[str, Any]
     Recursively searches dict for values matching @value directives optionally with list operations.
 
     Supports:
-    - Simple value: "@value: some.path.to.value"
-    - List concatenation: "['item'] + @value: path.to.list"
+    - Simple scalar value: "@value: some.path.to.value"
+    - List concatenation (string expression): "['item'] + @value: path.to.list"
     - Multiple operations: "@value: path1 + ['item'] + @value: path2"
+    - YAML list with directive elements: ["@value: path1", "@value: path2", "col_a"]
+      → Each @value: element that resolves to a list is flattened (extended) into the result.
 
     Args:
         data: Configuration data to process

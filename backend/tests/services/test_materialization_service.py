@@ -218,7 +218,7 @@ class TestMaterializeEntity:
                         assert result.rows_materialized == 30
                         assert result.storage_format == "parquet"
                     assert result.storage_file == "materialized/location.parquet"
-        """Test materialization with CSV storage."""
+
         mock_project_service.load_project.return_value = mock_api_project
         mock_project_service.save_project = Mock()
 

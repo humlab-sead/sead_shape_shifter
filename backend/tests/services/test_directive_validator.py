@@ -114,11 +114,11 @@ class TestDirectiveValidator:
         """Test getting all valid directive paths."""
         paths = validator.get_all_valid_paths()
 
-        assert "@value:entities.location.keys" in paths
-        assert "@value:entities.location.columns" in paths
-        assert "@value:entities.site.keys" in paths
-        assert "@value:entities.site.columns" in paths
-        assert "@value:entities.site.extra_columns" in paths
+        assert "@value: entities.location.keys" in paths
+        assert "@value: entities.location.columns" in paths
+        assert "@value: entities.site.keys" in paths
+        assert "@value: entities.site.columns" in paths
+        assert "@value: entities.site.extra_columns" in paths
 
     def test_suggestions_for_partial_path(self, validator):
         """Test suggestions are provided for invalid paths."""

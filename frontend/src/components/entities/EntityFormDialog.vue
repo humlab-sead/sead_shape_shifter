@@ -796,6 +796,7 @@
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useEntities, useSuggestions, useEntityPreview, useSettings } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
+import { useDirectiveValidation } from '@/composables/useDirectiveValidation'
 import { useProjectStore, useEntityStore } from '@/stores'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
@@ -1073,6 +1074,9 @@ const sheetOptions = ref<string[]>([])
 const sheetOptionsLoading = ref(false)
 const columnsOptions = ref<string[]>([])
 const columnsLoading = ref(false)
+const directivePaths = ref<string[]>([])
+
+const { getValidDirectives } = useDirectiveValidation()
 
 // Delimiter options for CSV
 const delimiterOptions = [
@@ -1248,12 +1252,29 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
    * Convert form data to entity config format.
    * Shared by both handleSubmit and refreshPreview to ensure consistency.
    */
+
+  /**
+   * Serialize a keys/columns array back to YAML form.
+   * A single @value: directive element is written as a scalar string for cleaner YAML.
+   * Mixed arrays (directives + regular columns) are preserved as lists.
+   */
+  function serializeKeysField(keys: string[]): string | string[] {
+    const first = keys[0]
+    if (keys.length === 1 && first !== undefined && first.trim().startsWith('@value:')) {
+      return first.trim()
+    }
+    return keys
+  }
+
   const entityData: Record<string, unknown> = {
     type: formData.value.type,
-    keys: formData.value.keys,
+    keys: serializeKeysField(formData.value.keys),
     // For fixed entities, explicitly include system_id and public_id in columns list
     // This ensures the columns match the fixedValuesColumns order used by the grid
-    columns: formData.value.type === 'fixed' ? fixedValuesColumns.value : formData.value.columns,
+    columns:
+      formData.value.type === 'fixed'
+        ? fixedValuesColumns.value
+        : serializeKeysField(formData.value.columns),
   }
 
   // Always include public_id (even if null) to prevent field from being omitted
@@ -1320,14 +1341,27 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
   if (formData.value.foreign_keys.length > 0) {
     // Transform foreign keys: extract column values and preserve all FK settings.
     entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => {
+      // Normalize FK keys arrays, then apply the same scalar-directive rule as serializeKeysField
+      const normalizeFkKeys = (keys: any): string | string[] => {
+        if (typeof keys === 'string' && keys.trim().startsWith('@value:')) {
+          // Scalar directive string — serialize as-is
+          return keys.trim()
+        }
+        const arr: string[] = Array.isArray(keys)
+          ? keys.map((col: any) => (typeof col === 'string' ? col : col.value))
+          : []
+        // Single @value: element — collapse to scalar for cleaner YAML
+        const firstArr = arr[0]
+        if (arr.length === 1 && firstArr !== undefined && firstArr.trim().startsWith('@value:')) {
+          return firstArr.trim()
+        }
+        return arr
+      }
+
       const transformedFk: Record<string, unknown> = {
         entity: fk.entity,
-        local_keys: Array.isArray(fk.local_keys)
-          ? fk.local_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
-          : [],
-        remote_keys: Array.isArray(fk.remote_keys)
-          ? fk.remote_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
-          : [],
+        local_keys: normalizeFkKeys(fk.local_keys),
+        remote_keys: normalizeFkKeys(fk.remote_keys),
       }
 
       if (fk.how) {
@@ -1779,6 +1813,13 @@ onMounted(() => {
   if (isExcelType.value && formData.value.options.filename) {
     fetchSheetOptions()
   }
+
+  // Pre-fetch @value: directive suggestions for the combobox
+  if (props.projectName) {
+    getValidDirectives(props.projectName).then((paths) => {
+      directivePaths.value = paths
+    })
+  }
 })
 
 onUnmounted(() => {
@@ -1837,7 +1878,13 @@ const isExcelType = computed(() => {
   return ['xlsx', 'openpyxl'].includes(formData.value.type)
 })
 
-const availableColumns = computed(() => columnsOptions.value)
+const availableColumns = computed(() => {
+  const cols = columnsOptions.value
+  const directives = directivePaths.value
+  if (directives.length === 0) return cols
+  // Show regular columns first, then @value: directive paths as additional options
+  return [...cols, ...directives.filter((d) => !cols.includes(d))]
+})
 
 const availableColumnsForUnnest = computed(() => {
   const keys = formData.value.keys || []
@@ -2350,7 +2397,11 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     system_id: 'system_id', // Always standardized
     public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '', // Migrate
     surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
-    keys: (entity.entity_data.keys as string[]) || [],
+    keys: Array.isArray(entity.entity_data.keys)
+      ? (entity.entity_data.keys as string[])
+      : typeof entity.entity_data.keys === 'string'
+        ? [entity.entity_data.keys as string]
+        : [],
     columns: columns,
     values: roundTrip.inlineValues,
     source: (entity.entity_data.source as string) || null,

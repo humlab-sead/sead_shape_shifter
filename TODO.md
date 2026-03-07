@@ -162,3 +162,40 @@ Should open a modal with a Monaco Editor for SQL editing, allowing users to test
 The system currently fails to find the ingesters folder when running in Docker. Cause: the ingesters folder is not copied to the Docker image, we need to copy the ingesters folder to the Docker image in the Dockerfile, and set environment variables accordingly.
 Wouldn't the simple solution be to only have resolved path in core layer? I code think a rule if "location" in "options", "filename" = strip_filenames_path(filename). Or is that do hacky? I could think adding a  simple mechanism for adding type specific mappings. 
 
+### TODO: Edit @value directive
+The "@value: dot-path" is directive that expands a key's value by replacing the directive with the value referenced by the dot-path. A dict {"a": "@value: b.c", "b": {"c": "hello"}}, will be resolved to  {"a":  "hello", "b": {"c": "hello"}}. This feature was introduced since e.g. the number of business keys for an entity can be close to 10 keys. The core layer resolves the @value directive using logic fould in #file:utility.py, so project YAML files can contain these directives, and they are expandad when the project is resolved at the API/core boundry.
+
+The current rudimentary syntax of expressions allowed in the @value-directive is stems from the need of simplifying complex compound keys which are resolved to a list of strings. This feature is useful for other use cases as well, though.
+
+THie only operator allowed/implemented is current the "+" operator, which in this syntax is a list append operation, and which always resolves to a list of strings.
+
+
+```
+    1. Simple value:    "@value: path.to.value" 
+    2. Prepend:         "['a', 'b'] + @value: path.to.list"
+    3. Append:          "@value: path.to.list + ['c', 'd']"
+    4. Multiple values: "@value: path1 + @value: path2"
+    5. Chaining:        "['a'] + @value: path1 + @value: path2 + ['b']"
+```
+
+The UX currently has very limited support for edititing this kind of expression. Some support exists in the Foreign Key editor (but I'm not sure it works). It would be of very high value if we could add at least a basic support for these references for the Columns field, the Business Key field, and the remote/local fields in the Foreign Key editor.
+
+These are some requirements/fingerpointers given that we are editing the values V for (dict-) key K (e.g. editing of "columns" in an entity's YAML).
+
+ - If the user has picked/entered only primitive values, than the V stored in the YAML, unchanged to current implementation, is a list of those values:
+     K: ["v1", "v2", "v3", ...]
+ - If the user has added a single "@value: dot.path", and noting more, than this string is stored as "K: "@value: dot.path". 
+
+How to deal with more complex expressions involving both primtime values and references is more open for suggestions. One way would be to store them like a list such as:
+  K: ['a', 'b'] + @value: path.to.list"
+which is equalent to:
+  K:
+    - 'a'
+    - 'b'
+    - @value: dot.path"
+
+The system most then resolve the reference so the end result is a flattened list, i.e. use append or add depending what the reference resolved to.
+
+Given the context, we should be able to constrict valid dot.path, e.g. when picking column given a source entity. We also need to add a validation that checks for "dangling" references in the project.
+
+What are your thought? How would an implementation plan look like? 

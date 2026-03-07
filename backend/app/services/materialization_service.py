@@ -34,7 +34,7 @@ class MaterializationService:
         self.project_service: ProjectService = project_service
         self.entity_values_service: EntityValuesService = EntityValuesService(project_service)
 
-    def _get_materialized_file_path(self, project_name: str, entity_name: str, format: str) -> str:
+    def _get_materialized_file_path(self, project_name: str, entity_name: str, format: str) -> str:  # pylint: disable=unused-argument
         """Get relative path for materialized file (relative to project folder)."""
         extension = "parquet" if format == "parquet" else "csv"
         return f"materialized/{entity_name}.{extension}"
