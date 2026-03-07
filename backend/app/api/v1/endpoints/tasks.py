@@ -63,6 +63,7 @@ async def get_project_task_status(name: str) -> ProjectTaskStatus:
             "done": 1,
             "todo": 1,
             "ignored": 0,
+                        "completion_percentage": 50.0,
             "required_total": 2,
             "required_done": 1,
             "required_todo": 1

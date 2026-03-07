@@ -52,9 +52,12 @@ export interface ProjectTaskStatus {
   entities: Record<string, EntityTaskStatus>
   completion_stats: {
     total: number
-    completed: number
+    done: number
     ignored: number
     todo: number
+    required_total: number
+    required_done: number
+    required_todo: number
     completion_percentage: number
   }
 }
@@ -273,7 +276,7 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
   const completionSummary = computed(() => {
     if (!taskStatus.value) return 'No data'
     const stats = taskStatus.value.completion_stats
-    return `${stats.completed} of ${stats.total} entities complete`
+    return `${stats.done} of ${stats.total} entities complete`
   })
 
   return {

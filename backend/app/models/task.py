@@ -39,7 +39,9 @@ class ProjectTaskStatus(BaseModel):
     """Task status for all entities in a project."""
 
     entities: dict[str, EntityTaskStatus] = Field(..., description="Map of entity names to their task status")
-    completion_stats: dict[str, int] = Field(..., description="Completion statistics (total, done, required_done, etc.)")
+    completion_stats: dict[str, int | float] = Field(
+        ..., description="Completion statistics (total, done, required_done, completion_percentage, etc.)"
+    )
 
 
 class TaskUpdateRequest(BaseModel):

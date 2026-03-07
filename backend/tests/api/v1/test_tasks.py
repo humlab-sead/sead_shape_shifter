@@ -104,6 +104,7 @@ class TestGetTaskStatus:
         assert "done" in stats
         assert "todo" in stats
         assert "ignored" in stats
+        assert "completion_percentage" in stats
         assert "required_total" in stats
         assert "required_done" in stats
         assert "required_todo" in stats
@@ -348,9 +349,11 @@ class TestTaskStatusFlow:
         stats = status_response.json()["completion_stats"]
         assert stats["done"] == 0
         assert stats["ignored"] == 0
+        assert stats["completion_percentage"] == 0.0
 
         # Mark one as ignored
         client.post("/api/v1/projects/test_project/tasks/location/ignore")
         status_response = client.get("/api/v1/projects/test_project/tasks")
         stats = status_response.json()["completion_stats"]
         assert stats["ignored"] == 1
+        assert stats["completion_percentage"] == 0.0

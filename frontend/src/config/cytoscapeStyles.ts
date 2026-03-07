@@ -261,6 +261,48 @@ const baseStyles: StylesheetCSS[] = [
     },
   },
 
+  // Task status overlays (applied by ProjectDetailView via node classes)
+  {
+    selector: 'node.task-done',
+    css: {
+      'background-color': '#43A047',
+      'border-color': '#2E7D32',
+      'border-width': 3,
+    },
+  },
+  {
+    selector: 'node.task-ignored',
+    css: {
+      'background-color': '#9E9E9E',
+      'border-color': '#616161',
+      'border-style': 'dashed',
+      'border-width': 3,
+      opacity: 0.75,
+    },
+  },
+  {
+    selector: 'node.task-blocked',
+    css: {
+      'border-color': '#FB8C00',
+      'border-width': 4,
+    },
+  },
+  {
+    selector: 'node.task-critical',
+    css: {
+      'border-color': '#E53935',
+      'border-width': 4,
+      'background-color': '#EF5350',
+    },
+  },
+  {
+    selector: 'node.task-ready',
+    css: {
+      'border-color': '#1E88E5',
+      'border-width': 3,
+    },
+  },
+
   // Cycle highlighting - nodes (must come after node type styles)
   {
     selector: 'node.in-cycle',

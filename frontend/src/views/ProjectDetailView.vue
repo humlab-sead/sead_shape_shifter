@@ -202,7 +202,7 @@
                           </v-col>
                           <v-col>
                             <div class="text-caption">
-                              <span class="font-weight-medium">{{ taskStats.completed }}</span>
+                              <span class="font-weight-medium">{{ taskStats.done }}</span>
                               <span class="text-medium-emphasis"> of </span>
                               <span class="font-weight-medium">{{ taskStats.total }}</span>
                               <span class="text-medium-emphasis"> complete</span>
@@ -622,6 +622,7 @@ import { api } from '@/api'
 import { useProjects, useEntities, useValidation, useDependencies, useCytoscape } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
+import { shouldShowNodeForTaskFilter } from '@/utils/taskGraph'
 import { useEntityStore } from '@/stores/entity'
 import { useProjectStore } from '@/stores'
 import { useTaskStatusStore } from '@/stores/taskStatus'
@@ -829,9 +830,12 @@ const taskStats = computed(() => {
   if (!taskStatusStore.taskStatus) {
     return {
       total: 0,
-      completed: 0,
+      done: 0,
       ignored: 0,
       todo: 0,
+      required_total: 0,
+      required_done: 0,
+      required_todo: 0,
       completion_percentage: 0
     }
   }
@@ -1778,23 +1782,7 @@ function applyTaskFilter() {
       return
     }
 
-    let shouldShow = true
-
-    switch (filter) {
-      case 'todo':
-        shouldShow = status.status === 'todo'
-        break
-      case 'done':
-        shouldShow = status.status === 'done'
-        break
-      case 'ignored':
-        shouldShow = status.status === 'ignored'
-        break
-      case 'all':
-      default:
-        shouldShow = true
-        break
-    }
+    const shouldShow = shouldShowNodeForTaskFilter(status, filter)
 
     node.style('display', shouldShow ? 'element' : 'none')
   })
