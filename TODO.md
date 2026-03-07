@@ -16,13 +16,7 @@
 
 ---
 
-### Bugs
-
-FIXME: Projects are sometimes stored with resolved values.
-FIXME: #219 Inline data source configurations raised an error.
-
 ### Tech debts:
-
 
 ### New features
 
@@ -32,17 +26,12 @@ FIXME: #219 Inline data source configurations raised an error.
  - [] TODO: #68 Add a "finally" step that removes intermediate tables and columns.
  - [] TODO: #66 Introduce a "transformations" section with more advance columnar transforms (e.g. toWSG84).
  - [] TODO: #69 Add "parent" property to entity definitions.
- - [] TODO: #67 Introduce support for string concatenation in "extra_columns".
- - [] TODO: Add capability to duplicate an existing configuration.
  - [] TODO: #108 Add tiny DSL Expression Support in extra_columns
  - [] TODO: Introduce optional support for types for entity fields
           (e.g., string, integer, date) and support type conversions in extra_columns.
  - [] TODO: Improve multiuser support (working on same project)
  - [] TODO: Add more reconciliation entity types, and non-SEAD types (e.g. Geonames, RAÄ-lämningsnummer)
- - [] TODO: NOT WORTH THE EFFORT! Improve user experience (Add new edge/relationship in dependency graph)
- - [] TODO: Improve in-system help (full User Guide, more context sensitive help)
  - [] TODO: Improve UX suggestions when editing entity (awareness of availiable tables, columns etc)
- - [] TODO: Auto-save feature in YAML editing mode (trigger after 2 seconds of inactivity)
  - [] TODO: Consider limiting "@value:" directive usage to only refer to non-directive keys.
  - [] TODO: Consnider moving specifications/base/get_entity_columns it to TableConfig
             Note that columns avaliable at a specifik FK's linking includes result columns from previous linked FKs.
@@ -127,40 +116,15 @@ Keep helper mappings simple so non-technical users can combine columns with stri
 ### TODO: Add more reconciliation entity types - **Domain-Specific**
 - Geonames, RAÄ, etc.
 
-### TODO: Improve UX suggestions when editing entity - **Context-Aware Editor**
-- Show available tables/columns from data source
-- Could integrate with existing YAML intelligence
-
-Add capability to upload Excel files (.xls, .xlsx) to the data source files directory defined by SHAPE_SHIFTER_DATA_SOURCE_FILES_DIR in the .env file. The uploaded Excel files should be accessible for use in entity configurations within the Shape Shifter application.
-
 ### TODO: Introduce entity type "file" for entities based on files,
 Type of files could be csv, excel, json, xml etc, and specified in e.g a "file_type" field.
 This would give a more plugin friendly way of adding file based entities.
 
-### TODO: #202 Improve FK editing user experience
-
-We can improve the user experience when editing FKs. Currently, thw system offers no assistance when entering local and remote FK. 
-
-I think the system could offer picklists of available local and remote columns. This picklist should include all columns from each entity that is a candidate for the FK relationship, i.e. all columns in columns, keys nd extra_columns, any columns that are generated during normalization (e.g. result of unnesting unnested columns (value id, value vars, id_vars), FK-columns and FK's extra columns etc), system_id, public_id.
-The candidate columns can be computed without doing the full normalization, by analyzing the entity definitions and their relationships.
-
-A special case is if the user wants to use a "@value"-directive to point to e.g. another YAML-key in the project. To keep it aimple "@value: entities.**local/remote-entity-name**.keys" could be added to the picklist.
-One could also for flexibility allow the user to enter arbitrary YAML-path i.e. a åath that doesn't exist in the picklist.
-If a "@value" is used, that can be the only value, and should be a string (not a list). This will be resolved at runtime to the actual column(s).
-
-The "
 ### TODO: #213 Copy SQL feature from Schema Explorer.
 Add a convenience function for copying an SQL select statement to the clipboard for selected entity in schema explorer. This is useful when a user want to create an SQL select in the entity editor based on a table in the specified data source. This could also possibly be extended to a "picker" in the entity editor that allows users to select a table from the data source and automatically generate a select statement for that table.
 
 ### TODO: Add a "Test Query" button in the entity editor.
 Should open a modal with a Monaco Editor for SQL editing, allowing users to test SQL queries against the data source directly from the entity editor. This would provide a more integrated experience for users working with SQL entities.
-
-### TODO: Save custom graph layout in separate file
-
-
-### TODO: #221 System fails to find ingesters folder
-The system currently fails to find the ingesters folder when running in Docker. Cause: the ingesters folder is not copied to the Docker image, we need to copy the ingesters folder to the Docker image in the Dockerfile, and set environment variables accordingly.
-Wouldn't the simple solution be to only have resolved path in core layer? I code think a rule if "location" in "options", "filename" = strip_filenames_path(filename). Or is that do hacky? I could think adding a  simple mechanism for adding type specific mappings. 
 
 ### TODO: Edit @value directive
 The "@value: dot-path" is directive that expands a key's value by replacing the directive with the value referenced by the dot-path. A dict {"a": "@value: b.c", "b": {"c": "hello"}}, will be resolved to  {"a":  "hello", "b": {"c": "hello"}}. This feature was introduced since e.g. the number of business keys for an entity can be close to 10 keys. The core layer resolves the @value directive using logic fould in #file:utility.py, so project YAML files can contain these directives, and they are expandad when the project is resolved at the API/core boundry.
