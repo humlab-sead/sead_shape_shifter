@@ -35,6 +35,18 @@
       <template v-if="taskStatus">
         <v-divider />
         
+        <!-- Verify Entity -->
+        <v-list-item
+          :disabled="!taskStatus.exists"
+          prepend-icon="mdi-clipboard-check-outline"
+          title="Verify Entity"
+          @click="handleVerifyEntity"
+        >
+          <v-tooltip activator="parent" location="right">
+            Validate and generate preview to enable 'Mark as Done'
+          </v-tooltip>
+        </v-list-item>
+        
         <!-- Mark as Done -->
         <v-list-item
           :disabled="!canMarkComplete"
@@ -89,6 +101,7 @@ interface Emits {
   (e: 'preview', entityName: string): void
   (e: 'duplicate', entityName: string): void
   (e: 'delete', entityName: string): void
+  (e: 'verify-entity', entityName: string): void
   (e: 'mark-complete', entityName: string): void
   (e: 'mark-ignored', entityName: string): void
   (e: 'reset-status', entityName: string): void
@@ -153,6 +166,13 @@ function handleDelete() {
   if (props.entityName) {
     console.log('[GraphNodeContextMenu] Emitting delete event')
     emit('delete', props.entityName)
+  }
+  isOpen.value = false
+}
+
+function handleVerifyEntity() {
+  if (props.entityName) {
+    emit('verify-entity', props.entityName)
   }
   isOpen.value = false
 }
