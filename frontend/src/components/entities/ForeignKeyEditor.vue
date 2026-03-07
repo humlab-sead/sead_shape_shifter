@@ -292,11 +292,35 @@ const emit = defineEmits<{
   'update:modelValue': [value: ForeignKeyConfig[]]
 }>()
 
+/**
+ * Normalize keys array to always contain strings.
+ * Handles case where v-combobox might store objects instead of string values.
+ * Scalar @value: directive strings are wrapped in a single-element array so they
+ * appear as a removable chip in the combobox.
+ */
+function normalizeKeysArray(keys: any): string[] {
+  if (!Array.isArray(keys)) {
+    // Preserve scalar directive strings as a single chip
+    if (typeof keys === 'string' && keys.trim().startsWith('@value:')) {
+      return [keys.trim()]
+    }
+    return []
+  }
+
+  return keys
+    .map((key) => {
+      if (typeof key === 'string') return key
+      if (typeof key === 'object' && key !== null && 'value' in key) return key.value
+      return String(key)
+    })
+    .filter((k) => k && k.trim().length > 0)
+}
+
 function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
   return {
     ...fk,
-    local_keys: Array.isArray(fk.local_keys) ? [...fk.local_keys] : [],
-    remote_keys: Array.isArray(fk.remote_keys) ? [...fk.remote_keys] : [],
+    local_keys: normalizeKeysArray(fk.local_keys),
+    remote_keys: normalizeKeysArray(fk.remote_keys),
     constraints: fk.constraints || {
       cardinality: 'many_to_one',
       require_unique_left: false,
@@ -324,30 +348,6 @@ const remoteColumnItems = ref<Array<Array<{ title: string; value: string; catego
 // Validation errors for directive values (indexed by FK index)
 const localKeyErrors = ref<Array<string | undefined>>([])
 const remoteKeyErrors = ref<Array<string | undefined>>([])
-
-/**
- * Normalize keys array to always contain strings.
- * Handles case where v-combobox might store objects instead of string values.
- * Scalar @value: directive strings are wrapped in a single-element array so they
- * appear as a removable chip in the combobox.
- */
-function normalizeKeysArray(keys: any): string[] {
-  if (!Array.isArray(keys)) {
-    // Preserve scalar directive strings as a single chip
-    if (typeof keys === 'string' && keys.trim().startsWith('@value:')) {
-      return [keys.trim()]
-    }
-    return []
-  }
-
-  return keys
-    .map((key) => {
-      if (typeof key === 'string') return key
-      if (typeof key === 'object' && key !== null && 'value' in key) return key.value
-      return String(key)
-    })
-    .filter((k) => k && k.trim().length > 0)
-}
 
 /**
  * Validate local keys for directive references.
