@@ -310,7 +310,7 @@ function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
 
 const foreignKeys = ref<ForeignKeyConfig[]>(props.modelValue.map(cloneForeignKey))
 const { getAvailableColumns, flattenColumns } = useColumnIntrospection()
-const { validateDirective, isDirective } = useDirectiveValidation()
+const { validateDirective, getValidDirectives, isDirective } = useDirectiveValidation()
 
 // Cache for column suggestions per entity
 const columnCache = ref<Map<string, Array<{ value: string; category: string }>>>(new Map())
@@ -326,9 +326,17 @@ const remoteKeyErrors = ref<Array<string | undefined>>([])
 /**
  * Normalize keys array to always contain strings.
  * Handles case where v-combobox might store objects instead of string values.
+ * Scalar @value: directive strings are wrapped in a single-element array so they
+ * appear as a removable chip in the combobox.
  */
 function normalizeKeysArray(keys: any): string[] {
-  if (!Array.isArray(keys)) return []
+  if (!Array.isArray(keys)) {
+    // Preserve scalar directive strings as a single chip
+    if (typeof keys === 'string' && keys.trim().startsWith('@value:')) {
+      return [keys.trim()]
+    }
+    return []
+  }
 
   return keys
     .map((key) => {
@@ -446,12 +454,14 @@ async function loadLocalColumns(fkIndex: number) {
     return // Already loaded
   }
 
-  const suggestions = await getColumnSuggestions(props.entityName)
-  localColumnItems.value[fkIndex] = suggestions.map((s) => ({
-    title: s.value,
-    value: s.value,
-    category: s.category,
-  }))
+  const [suggestions, directives] = await Promise.all([
+    getColumnSuggestions(props.entityName),
+    getValidDirectives(props.projectName),
+  ])
+  localColumnItems.value[fkIndex] = [
+    ...suggestions.map((s) => ({ title: s.value, value: s.value, category: s.category })),
+    ...directives.map((d) => ({ title: d, value: d, category: 'directive' })),
+  ]
 }
 
 /**
@@ -470,12 +480,14 @@ async function loadRemoteColumns(fkIndex: number) {
     return // Already loaded
   }
 
-  const suggestions = await getColumnSuggestions(fk.entity)
-  remoteColumnItems.value[fkIndex] = suggestions.map((s) => ({
-    title: s.value,
-    value: s.value,
-    category: s.category,
-  }))
+  const [suggestions, directives] = await Promise.all([
+    getColumnSuggestions(fk.entity),
+    getValidDirectives(props.projectName),
+  ])
+  remoteColumnItems.value[fkIndex] = [
+    ...suggestions.map((s) => ({ title: s.value, value: s.value, category: s.category })),
+    ...directives.map((d) => ({ title: d, value: d, category: 'directive' })),
+  ]
 }
 
 // Watch for entity changes to reload remote columns
