@@ -162,10 +162,12 @@
                   item-title="title"
                   item-value="value"
                   density="compact"
-                  variant="outlined"
+                  variant="filled"
+                  size="small"
+                  prepend-inner-icon="mdi-palette-outline"
                   hide-details
                   label="Color By"
-                  class="color-by-select"
+                  class="text-capitalize color-by-select"
                 />
 
                 <v-divider vertical />
