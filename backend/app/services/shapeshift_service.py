@@ -77,10 +77,9 @@ class ShapeShiftService:
         project: ShapeShiftProject = await self.project_cache.get_project(project_name)
         project_version: int = self.get_project_version(project_name)
 
-        override_indicator = 'yes' if override_config else 'no'
+        override_indicator = "yes" if override_config else "no"
         logger.trace(
-            f"[PREVIEW_START] {project_name}/{entity_name}: project_version={project_version}, "
-            f"override_config={override_indicator}"
+            f"[PREVIEW_START] {project_name}/{entity_name}: project_version={project_version}, " f"override_config={override_indicator}"
         )
 
         # If override_config provided, temporarily replace entity config
