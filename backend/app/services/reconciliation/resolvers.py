@@ -35,12 +35,12 @@ class ReconciliationSourceResolver(abc.ABC):
         """
         self.project_name: str = project_name
         self.project: ShapeShiftProject = project
-        
+
         # Import here to avoid circular dependency at module level
         from backend.app.services.shapeshift_service import (  # pylint: disable=import-outside-toplevel
             get_shapeshift_service,
         )
-        
+
         # Use shared singleton cache (not a new instance)
         self.preview_service: ShapeShiftService = get_shapeshift_service()
 
