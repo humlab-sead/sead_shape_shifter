@@ -374,18 +374,59 @@ def dotset(data: dict, path: str, value: Any) -> dict:
 
 
 def env2dict(prefix: str, data: dict[str, str] | None = None, lower_key: bool = True) -> dict[str, str]:
-    """Loads environment variables starting with prefix into."""
+    """Loads environment variables starting with prefix into nested dict.
+
+    Expected format: PREFIX_KEY_NAME (with underscore separator).
+    Prefix may include trailing underscore (will be normalized).
+    Keys without underscore separator after prefix are skipped with a warning.
+
+    Args:
+        prefix: Environment variable prefix (e.g., "SHAPE_SHIFTER" or "SHAPE_SHIFTER_")
+        data: Optional existing dict to update (default: new dict)
+        lower_key: Whether to lowercase keys (default: True)
+
+    Returns:
+        Dict with env vars loaded as nested structure (underscores become colons)
+
+    Examples:
+        >>> os.environ['APP_DB_HOST'] = 'localhost'
+        >>> env2dict('APP')  # Returns {'db': {'host': 'localhost'}}
+        >>> env2dict('APP_')  # Same result (trailing underscore normalized)
+    """
     if data is None:
         data = {}
     if not prefix:
         return data
+
+    # Normalize prefix: strip trailing underscore for consistent handling
+    prefix = prefix.rstrip("_")
     if lower_key:
         prefix = prefix.lower()
+
+    # Expected format: PREFIX_KEY_NAME (prefix + underscore + key)
+    expected_prefix = prefix + "_"
+    expected_prefix_len = len(expected_prefix)
+
     for key, value in os.environ.items():
         if lower_key:
             key = key.lower()
-        if key.startswith(prefix):
-            dotset(data, key[len(prefix) + 1 :].replace("_", ":"), value)
+
+        # BUGFIX: Only process keys with proper PREFIX_KEY format
+        # This prevents corruption when prefix is empty or malformed
+        if key.startswith(expected_prefix):
+            # Extract key after prefix+underscore: PREFIX_KEY_NAME → KEY_NAME
+            # Use expected_prefix_len (includes underscore) not prefix length
+            suffix = key[expected_prefix_len:]
+            if suffix:  # Skip if nothing after prefix (e.g., "APP_" with no key)
+                # Convert underscores to colons for nested dict (KEY_NAME → key:name)
+                dotset(data, suffix.replace("_", ":"), value)
+        elif key.startswith(prefix) and len(key) > len(prefix):
+            # Key starts with prefix but missing underscore separator - warn and skip
+            logger.warning(
+                f"Skipping env var '{key}' - starts with prefix '{prefix}' "
+                f"but missing underscore separator (expected format: {expected_prefix}KEY_NAME)"
+            )
+
     return data
 
 

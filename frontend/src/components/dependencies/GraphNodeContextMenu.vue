@@ -43,7 +43,7 @@
           @click="handleVerifyEntity"
         >
           <v-tooltip activator="parent" location="right">
-            Validate and generate preview to enable 'Mark as Done'
+            Validate and generate preview data
           </v-tooltip>
         </v-list-item>
         
@@ -127,14 +127,13 @@ const activatorStyle = computed(() => ({
   top: `${props.y}px`,
 }))
 
-// Can mark complete if entity exists, validation passed, and preview available
+// Can mark complete if entity exists and is not already done or ignored
 const canMarkComplete = computed(() => {
   if (!props.taskStatus) return false
   return (
     props.taskStatus.exists &&
-    props.taskStatus.validation_passed &&
-    props.taskStatus.preview_available &&
-    props.taskStatus.status !== 'done'
+    props.taskStatus.status !== 'done' &&
+    props.taskStatus.status !== 'ignored'
   )
 })
 
