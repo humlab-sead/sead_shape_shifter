@@ -558,6 +558,7 @@ class ReconciliationService:
             from backend.app.services.shapeshift_service import (  # pylint: disable=import-outside-toplevel
                 get_shapeshift_service,
             )
+
             # Use shared singleton cache (not a new instance)
             self.shapeshift_service = get_shapeshift_service()
 

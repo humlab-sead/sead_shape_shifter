@@ -50,6 +50,7 @@ def mock_core_project():
     project.cfg = {
         "entities": {"location": {}, "site": {}, "sample": {}},
         "options": {"task_list": {"required": ["location", "site", "sample"], "completed": ["location"], "ignored": []}},
+        "tasks": {"location": {"status": "done"}, "site": {"status": "todo"}},  # Add tasks for mark_complete/ignore methods
     }
 
     return project
@@ -58,7 +59,16 @@ def mock_core_project():
 @pytest.fixture
 def mock_api_project():
     """Create mock API Project."""
-    return MagicMock(spec=Project)
+    project = MagicMock(spec=Project)
+    # Add task_list attribute that is accessed in task_service methods
+    project.task_list = {
+        "required_entities": ["location", "site", "sample"],
+        "completed": ["location"],
+        "ongoing": [],
+        "ignored": [],
+        "flagged": {},
+    }
+    return project
 
 
 @pytest.fixture
@@ -378,15 +388,26 @@ class TestTaskServiceMarkComplete:
             return_value=ValidationResult(is_valid=True, errors=[], warnings=[])
         )
         task_service.shapeshift_service.preview_entity = AsyncMock()
-        task_service.project_service.save_project = Mock()  # Not AsyncMock since it's not awaited
 
-        with (
-            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
-            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
-        ):
+        # Mock sidecar manager operations
+        initial_task_list_data = {
+            "required_entities": ["location", "site", "sample"],
+            "completed": ["location"],
+            "ongoing": [],
+            "ignored": [],
+            "flagged": {},
+        }
+        task_service.sidecar_manager.load_task_list = Mock(return_value=initial_task_list_data)
+        task_service.sidecar_manager.save_task_list = Mock()
+
+        # Patch to_core for validation checks
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             await task_service.mark_complete("test-project", "site")
 
-            mock_core_project.task_list.mark_completed.assert_called_once_with("site")
+            # Verify sidecar was saved with updated task list
+            task_service.sidecar_manager.save_task_list.assert_called_once()
+            saved_task_list = task_service.sidecar_manager.save_task_list.call_args[0][1]
+            assert "site" in saved_task_list.completed
 
 
 class TestTaskServiceMarkIgnored:
@@ -395,32 +416,43 @@ class TestTaskServiceMarkIgnored:
     @pytest.mark.asyncio
     async def test_mark_ignored_updates_task_list(self, task_service: TaskService, mock_api_project, mock_core_project):
         """Test that mark_ignored updates task list."""
-        task_service.project_service.load_project = Mock(return_value=mock_api_project)
-        task_service.project_service.save_project = Mock()  # Not AsyncMock
+        # Mock sidecar manager operations
+        initial_task_list_data = {
+            "required_entities": ["location", "site", "sample"],
+            "completed": ["location"],
+            "ongoing": [],
+            "ignored": [],
+            "flagged": {},
+        }
+        task_service.sidecar_manager.load_task_list = Mock(return_value=initial_task_list_data)
+        task_service.sidecar_manager.save_task_list = Mock()
 
-        with (
-            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
-            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
-        ):
-            result = await task_service.mark_ignored("test-project", "site")
+        result = await task_service.mark_ignored("test-project", "site")
 
-            assert result["success"] is True
-            assert result["status"] == "ignored"
-            mock_core_project.task_list.mark_ignored.assert_called_once_with("site")
+        assert result["success"] is True
+        assert result["status"] == "ignored"
+        # Verify sidecar was saved with updated task list
+        task_service.sidecar_manager.save_task_list.assert_called_once()
+        saved_task_list = task_service.sidecar_manager.save_task_list.call_args[0][1]
+        assert "site" in saved_task_list.ignored
 
     @pytest.mark.asyncio
-    async def test_mark_ignored_saves_project(self, task_service: TaskService, mock_api_project, mock_core_project):
-        """Test that mark_ignored saves project."""
-        task_service.project_service.load_project = Mock(return_value=mock_api_project)
-        task_service.project_service.save_project = Mock()  # Not AsyncMock
+    async def test_mark_ignored_saves_sidecar(self, task_service: TaskService, mock_api_project, mock_core_project):
+        """Test that mark_ignored saves sidecar."""
+        # Mock sidecar manager operations
+        initial_task_list_data = {
+            "required_entities": ["location", "site", "sample"],
+            "completed": ["location"],
+            "ongoing": [],
+            "ignored": [],
+            "flagged": {},
+        }
+        task_service.sidecar_manager.load_task_list = Mock(return_value=initial_task_list_data)
+        task_service.sidecar_manager.save_task_list = Mock()
 
-        with (
-            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
-            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
-        ):
-            await task_service.mark_ignored("test-project", "site")
+        await task_service.mark_ignored("test-project", "site")
 
-            task_service.project_service.save_project.assert_called_once()
+        task_service.sidecar_manager.save_task_list.assert_called_once()
 
 
 class TestTaskServiceResetStatus:
@@ -429,29 +461,40 @@ class TestTaskServiceResetStatus:
     @pytest.mark.asyncio
     async def test_reset_status_updates_task_list(self, task_service: TaskService, mock_api_project, mock_core_project):
         """Test that reset_status updates task list."""
-        task_service.project_service.load_project = Mock(return_value=mock_api_project)
-        task_service.project_service.save_project = Mock()  # Not AsyncMock
+        # Mock sidecar manager operations
+        initial_task_list_data = {
+            "required_entities": ["location", "site", "sample"],
+            "completed": ["location"],
+            "ongoing": [],
+            "ignored": [],
+            "flagged": {},
+        }
+        task_service.sidecar_manager.load_task_list = Mock(return_value=initial_task_list_data)
+        task_service.sidecar_manager.save_task_list = Mock()
 
-        with (
-            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
-            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
-        ):
-            result = await task_service.reset_status("test-project", "location")
+        result = await task_service.reset_status("test-project", "location")
 
-            assert result["success"] is True
-            assert result["status"] == "todo"
-            mock_core_project.task_list.reset_status.assert_called_once_with("location")
+        assert result["success"] is True
+        assert result["status"] == "todo"
+        # Verify sidecar was saved with updated task list
+        task_service.sidecar_manager.save_task_list.assert_called_once()
+        saved_task_list = task_service.sidecar_manager.save_task_list.call_args[0][1]
+        assert "location" not in saved_task_list.completed
 
     @pytest.mark.asyncio
-    async def test_reset_status_saves_project(self, task_service: TaskService, mock_api_project, mock_core_project):
-        """Test that reset_status saves project."""
-        task_service.project_service.load_project = Mock(return_value=mock_api_project)
-        task_service.project_service.save_project = Mock()  # Not AsyncMock
+    async def test_reset_status_saves_sidecar(self, task_service: TaskService, mock_api_project, mock_core_project):
+        """Test that reset_status saves sidecar."""
+        # Mock sidecar manager operations
+        initial_task_list_data = {
+            "required_entities": ["location", "site", "sample"],
+            "completed": ["location"],
+            "ongoing": [],
+            "ignored": [],
+            "flagged": {},
+        }
+        task_service.sidecar_manager.load_task_list = Mock(return_value=initial_task_list_data)
+        task_service.sidecar_manager.save_task_list = Mock()
 
-        with (
-            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
-            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
-        ):
-            await task_service.reset_status("test-project", "location")
+        await task_service.reset_status("test-project", "location")
 
-            task_service.project_service.save_project.assert_called_once()
+        task_service.sidecar_manager.save_task_list.assert_called_once()

@@ -1,20 +1,24 @@
 """Service for managing entity task status and progress tracking."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
 from loguru import logger
 
+from backend.app.exceptions import ResourceNotFoundError
 from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import Project
 from backend.app.models.task import EntityTaskStatus, ProjectTaskStatus, TaskPriority, TaskStatus
 from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.dependency_service import get_dependency_service
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService, get_shapeshift_service
+from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager
 from backend.app.services.validation_service import ValidationService, get_validation_service
-from src.model import ShapeShiftProject, TableConfig
+from src.model import ShapeShiftProject, TableConfig, TaskList
 
 
 class TaskService:
@@ -25,12 +29,39 @@ class TaskService:
         project_service: ProjectService | None = None,
         validation_service: ValidationService | None = None,
         shapeshift_service: ShapeShiftService | None = None,
+        sidecar_manager: TaskListSidecarManager | None = None,
     ):
         """Initialize task service with dependencies."""
 
         self.project_service: ProjectService = project_service or get_project_service()
         self.validation_service: ValidationService = validation_service or get_validation_service()
         self.shapeshift_service: ShapeShiftService = shapeshift_service or get_shapeshift_service()
+        self.sidecar_manager: TaskListSidecarManager = sidecar_manager or TaskListSidecarManager()
+
+    def _get_project_file_path(self, project_name: str) -> Path:
+        """
+        Get shapeshifter.yml file path from project name.
+
+        Args:
+            project_name: Name of the project
+
+        Returns:
+            Path to project file
+
+        Raises:
+            ResourceNotFoundError: If project file doesn't exist
+        """
+        project_file_path = self.project_service.projects_dir / ProjectNameMapper.to_path(project_name) / "shapeshifter.yml"
+
+        # Validate project file exists
+        if not project_file_path.exists():
+            raise ResourceNotFoundError(
+                message=f"Project '{project_name}' not found",
+                resource_type="project",
+                resource_id=project_name,
+            )
+
+        return project_file_path
 
     async def compute_status(self, project_name: str) -> ProjectTaskStatus:
         """
@@ -127,7 +158,7 @@ class TaskService:
                 table_cfg: TableConfig = project.get_table(entity_name)
                 project_version: int = self.shapeshift_service.get_project_version(project_name)
 
-                entity_hash_str = table_cfg.hash()[:8] if table_cfg else 'N/A'
+                entity_hash_str = table_cfg.hash()[:8] if table_cfg else "N/A"
                 logger.trace(
                     f"[CACHE_LOOKUP_STRICT] {project_name}/{entity_name}: project_version={project_version}, "
                     f"entity_hash={entity_hash_str}"
@@ -145,8 +176,7 @@ class TaskService:
                 if cached_df is None:
                     # Tier 2: Skip entity hash (config might differ between code paths)
                     logger.trace(
-                        f"[CACHE_LOOKUP_FALLBACK_HASH] {project_name}/{entity_name}: "
-                        f"project_version={project_version} (no entity hash)"
+                        f"[CACHE_LOOKUP_FALLBACK_HASH] {project_name}/{entity_name}: " f"project_version={project_version} (no entity hash)"
                     )
                     cached_df = self.shapeshift_service.cache.get_dataframe(
                         project_name=project_name,
@@ -313,13 +343,10 @@ class TaskService:
         Raises:
             ValueError: If entity doesn't exist or fails validation
         """
-        # Load project (API layer)
+        # Quick validation: check entity exists (load project for this check only)
         api_project: Project = self.project_service.load_project(project_name)
-
-        # Convert to core layer for task_list access
         project: ShapeShiftProject = ProjectMapper.to_core(api_project)
 
-        # Check entity exists
         if not project.has_table(entity_name):
             raise ValueError(f"Entity '{entity_name}' does not exist in project")
 
@@ -338,12 +365,12 @@ class TaskService:
         except Exception as e:
             raise ValueError(f"Cannot mark entity as done: preview generation failed: {str(e)}") from e
 
-        # Mark as completed (modifies core model)
-        project.task_list.mark_completed(entity_name)
-
-        # Convert back to API layer and save
-        updated_api_project: Project = ProjectMapper.to_api_config(project.cfg, project_name)
-        self.project_service.save_project(updated_api_project)
+        # Update task_list in sidecar directly (no need to save entire project)
+        project_file_path = self._get_project_file_path(project_name)
+        task_list_data = self.sidecar_manager.load_task_list(project_file_path)
+        task_list = TaskList(task_list_data or {})
+        task_list.mark_completed(entity_name)
+        self.sidecar_manager.save_task_list(project_file_path, task_list)
 
         return {
             "success": True,
@@ -363,18 +390,12 @@ class TaskService:
         Returns:
             Dict with success status and message
         """
-        # Load project (API layer)
-        api_project: Project = self.project_service.load_project(project_name)
-
-        # Convert to core layer for task_list access
-        project: ShapeShiftProject = ProjectMapper.to_core(api_project)
-
-        # Mark as ignored (doesn't require validation)
-        project.task_list.mark_ignored(entity_name)
-
-        # Convert back to API layer and save
-        updated_api_project: Project = ProjectMapper.to_api_config(project.cfg, project_name)
-        self.project_service.save_project(updated_api_project)
+        # Update task_list in sidecar directly
+        project_file_path = self._get_project_file_path(project_name)
+        task_list_data = self.sidecar_manager.load_task_list(project_file_path)
+        task_list = TaskList(task_list_data or {})
+        task_list.mark_ignored(entity_name)
+        self.sidecar_manager.save_task_list(project_file_path, task_list)
 
         return {
             "success": True,
@@ -394,18 +415,12 @@ class TaskService:
         Returns:
             Dict with success status and message
         """
-        # Load project (API layer)
-        api_project: Project = self.project_service.load_project(project_name)
-
-        # Convert to core layer for task_list access
-        project: ShapeShiftProject = ProjectMapper.to_core(api_project)
-
-        # Reset status
-        project.task_list.reset_status(entity_name)
-
-        # Convert back to API layer and save
-        updated_api_project: Project = ProjectMapper.to_api_config(project.cfg, project_name)
-        self.project_service.save_project(updated_api_project)
+        # Update task_list in sidecar directly
+        project_file_path = self._get_project_file_path(project_name)
+        task_list_data = self.sidecar_manager.load_task_list(project_file_path)
+        task_list = TaskList(task_list_data or {})
+        task_list.reset_status(entity_name)
+        self.sidecar_manager.save_task_list(project_file_path, task_list)
 
         return {
             "success": True,
@@ -425,18 +440,12 @@ class TaskService:
         Returns:
             Dict with success status and message
         """
-        # Load project (API layer)
-        api_project: Project = self.project_service.load_project(project_name)
-
-        # Convert to core layer for task_list access
-        project: ShapeShiftProject = ProjectMapper.to_core(api_project)
-
-        # Mark as ongoing (doesn't require validation)
-        project.task_list.mark_ongoing(entity_name)
-
-        # Convert back to API layer and save
-        updated_api_project: Project = ProjectMapper.to_api_config(project.cfg, project_name)
-        self.project_service.save_project(updated_api_project)
+        # Update task_list in sidecar directly
+        project_file_path = self._get_project_file_path(project_name)
+        task_list_data = self.sidecar_manager.load_task_list(project_file_path)
+        task_list = TaskList(task_list_data or {})
+        task_list.mark_ongoing(entity_name)
+        self.sidecar_manager.save_task_list(project_file_path, task_list)
 
         return {
             "success": True,
@@ -456,18 +465,12 @@ class TaskService:
         Returns:
             Dict with success status and new flagged state
         """
-        # Load project (API layer)
-        api_project: Project = self.project_service.load_project(project_name)
-
-        # Convert to core layer for task_list access
-        project: ShapeShiftProject = ProjectMapper.to_core(api_project)
-
-        # Toggle flagged status
-        new_state = project.task_list.toggle_flagged(entity_name)
-
-        # Convert back to API layer and save
-        updated_api_project: Project = ProjectMapper.to_api_config(project.cfg, project_name)
-        self.project_service.save_project(updated_api_project)
+        # Update task_list in sidecar directly
+        project_file_path = self._get_project_file_path(project_name)
+        task_list_data = self.sidecar_manager.load_task_list(project_file_path)
+        task_list = TaskList(task_list_data or {})
+        new_state = task_list.toggle_flagged(entity_name)
+        self.sidecar_manager.save_task_list(project_file_path, task_list)
 
         return {
             "success": True,
