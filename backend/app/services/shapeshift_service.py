@@ -135,9 +135,7 @@ class ShapeShiftService:
                 if not using_override:
                     entities: dict[str, TableConfig] = {name: project.get_table(name) for name in table_store.keys()}
                     hashes = [(name, cfg.hash()[:8]) for name, cfg in entities.items()]
-                    logger.trace(
-                        f"[CACHE_SET] {project_name}/{entity_name}: project_version={project_version}, hashes={hashes}"
-                    )
+                    logger.trace(f"[CACHE_SET] {project_name}/{entity_name}: project_version={project_version}, hashes={hashes}")
                     self.cache.set_table_store(project_name, table_store, entity_name, project_version, entities)
 
         result: PreviewResult = PreviewResultBuilder().build(
