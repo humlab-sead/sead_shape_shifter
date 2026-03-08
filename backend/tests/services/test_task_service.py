@@ -242,12 +242,18 @@ class TestTaskServiceMarkComplete:
             return_value=ValidationResult(is_valid=True, errors=[], warnings=[])
         )
         task_service.shapeshift_service.preview_entity = AsyncMock()
-        task_service.project_service.save_project = Mock()  # Not AsyncMock since it's not awaited
 
-        with (
-            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
-            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
-        ):
+        initial_task_list_data = {
+            "required_entities": ["location", "site", "sample"],
+            "completed": ["location"],
+            "ongoing": [],
+            "ignored": [],
+            "flagged": {},
+        }
+        task_service.sidecar_manager.load_task_list = Mock(return_value=initial_task_list_data)
+        task_service.sidecar_manager.save_task_list = Mock()
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             result = await task_service.mark_complete("test-project", "site")
 
             assert result["success"] is True
@@ -262,12 +268,18 @@ class TestTaskServiceMarkComplete:
             return_value=ValidationResult(is_valid=True, errors=[], warnings=[])
         )
         task_service.shapeshift_service.preview_entity = AsyncMock()
-        task_service.project_service.save_project = Mock()  # Not AsyncMock since it's not awaited
 
-        with (
-            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
-            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
-        ):
+        initial_task_list_data = {
+            "required_entities": ["location", "site", "sample"],
+            "completed": ["location"],
+            "ongoing": [],
+            "ignored": [],
+            "flagged": {},
+        }
+        task_service.sidecar_manager.load_task_list = Mock(return_value=initial_task_list_data)
+        task_service.sidecar_manager.save_task_list = Mock()
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             await task_service.mark_complete("test-project", "site")
 
             task_service.shapeshift_service.preview_entity.assert_called_once()
