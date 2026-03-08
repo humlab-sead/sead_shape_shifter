@@ -162,11 +162,8 @@ class ShapeShiftCache:
         for entity_name, df in table_store.items():
             entity_config: TableConfig | None = entity_configs.get(entity_name) if entity_configs else None
             entity_hash = entity_config.hash() if entity_config else "N/A"
-            hash_str = entity_hash[:8] if isinstance(entity_hash, str) else 'N/A'
-            logger.trace(
-                f"[SET_DATAFRAME] {project_name}/{entity_name}: project_version={project_version}, "
-                f"entity_hash={hash_str}"
-            )
+            hash_str = entity_hash[:8] if isinstance(entity_hash, str) else "N/A"
+            logger.trace(f"[SET_DATAFRAME] {project_name}/{entity_name}: project_version={project_version}, " f"entity_hash={hash_str}")
             self.set_dataframe(project_name, entity_name, df, project_version, entity_config)
         logger.trace(
             f"[CACHE_SET_DONE] {project_name}/{target_entity}: Cached {len(table_store)} entities with "
