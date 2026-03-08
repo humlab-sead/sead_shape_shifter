@@ -66,13 +66,13 @@ class ValidationService:
             orchestrator = self._data_orchestrator_factory()
         else:
             # Default factory - import here to avoid circular dependency
+            from backend.app.services.shapeshift_service import (  # pylint: disable=import-outside-toplevel
+                get_shapeshift_service,
+            )
             from backend.app.validators.data_validation_orchestrator import (  # pylint: disable=import-outside-toplevel
                 DataValidationOrchestrator,
                 FullDataFetchStrategy,
                 PreviewDataFetchStrategy,
-            )
-            from backend.app.services.shapeshift_service import (  # pylint: disable=import-outside-toplevel
-                get_shapeshift_service,
             )
 
             # Use shared singleton cache (not a new instance)
