@@ -19,6 +19,8 @@ from src.validators.data_validators import ValidationIssue
 if TYPE_CHECKING:
     from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
 
+# pylint: disable=unused-argument
+
 
 class ValidationService:
     """Service for validating projects using existing specifications."""
