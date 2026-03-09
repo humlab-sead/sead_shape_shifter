@@ -1,262 +1,80 @@
-# SEAD SQL Ingester - Design Documentation
+# SEAD Ingestion And SIMS Proposal Docs
 
-This directory contains comprehensive design documentation for the new SEAD SQL ingester component.
+This folder contains two related but separate feature proposals:
 
----
+1. the **Shape Shifter SEAD ingester**, which lives in this application and generates SQL DML
+2. **SIMS** (SEAD Identity Management System), which is an external SEAD-side system consumed by the ingester via API
 
-## 📁 Document Structure
+The goal of this folder is to keep those proposals linked, but not mixed.
 
-### Core Design Documents
+## Structure
 
-1. **[SEAD_IDENTITY_SYSTEM.md](./SEAD_IDENTITY_SYSTEM.md)** ⭐ **Start Here - Design**
-   - **Scope:** SEAD Database System (external to Shape Shifter)
-   - **Purpose:** Hybrid identity allocation design (UUID OR natural keys + integer PKs)
-   - **Key Innovation:** Flexible external identifiers enabling distributed, concurrent ingestion
-   - **Content:** Architecture, workflows, API principles, change detection strategy, aggregate roots
-   - **Status:** Design Phase - Foundation for the ingester
-   - **Read this first** to understand the identity allocation architecture
+### Ingester proposal
 
-2. **[SEAD_IDENTITY_IMPLEMENTATION.md](./SEAD_IDENTITY_IMPLEMENTATION.md)** 🔧 **Implementation Details**
-   - **Scope:** Database schema, SQL functions, API specification
-   - **Purpose:** Complete implementation reference for SEAD Identity System
-   - **Content:** DDL (CREATE TABLE), PL/pgSQL functions, REST endpoints, migration phases
-   - **Dependencies:** Requires PostgreSQL 12+, uuid-ossp extension
-   - **Use this for:** Database deployment, API development, SQL generation
+- [SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md)
+   Shape Shifter component design for generating Sqitch-ready SQL DML from normalized DataFrames.
 
-3. **[Aggregate Model Documentation](../aggregate_model/)** 🏗️ **Aggregate Metadata Model** → **See docs/aggregate_model/**
-   - **Scope:** Generic database model for entity hierarchies (domain-agnostic)
-   - **Purpose:** Track aggregate roots, dependencies, and relationships for identity system
-   - **Key Innovation:** Metadata-driven validation, topological sorting, and allocation optimization
-   - **Content:** Entity registry, dependency graph, PostgreSQL functions, validation logic
-   - **Documents:**
-     - [AGGREGATE_MODEL_DESIGN.md](../aggregate_model/AGGREGATE_MODEL_DESIGN.md) - Generic model design
-     - [SEAD_AGGREGATE_MODEL.md](../aggregate_model/SEAD_AGGREGATE_MODEL.md) - SEAD-specific implementation
-     - [README.md](../aggregate_model/README.md) - Navigation guide
-   - **Use this for:** Entity hierarchy management, submission validation, allocation ordering
+- [NEW_INGESTER.md](./NEW_INGESTER.md)
+   Original notes and problem statement that led to the structured design.
 
-4. **[SEAD_IDENTITY_NFR.md](./SEAD_IDENTITY_NFR.md)** 📊 **Non-Functional Requirements**
-   - **Scope:** Performance, security, reliability, testing
-   - **Purpose:** Operational requirements and success criteria
-   - **Content:** Latency targets (< 10ms P95), security (OAuth 2.0), monitoring (Prometheus), load tests
-   - **Use this for:** DevOps setup, performance tuning, incident response
+### SIMS proposal
 
-5. **[SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md)** ⭐ **Main Ingester Design**
-   - **Scope:** Shape Shifter SEAD Ingester Component
-   - **Purpose:** Generate Sqitch-ready SQL DML from normalized DataFrames
-   - **Key Innovation:** Direct DataFrame → SQL transformation with automated ID allocation
-   - **Dependencies:** Requires SEAD Identity System API (documents #1-4)
-   - **Isolation Principle:** ALL SEAD-specific logic resides in this ingester
+- [sims/README.md](./sims/README.md)
+   Navigation for the external SIMS proposal.
 
-6. **[NEW_INGESTER.md](./NEW_INGESTER.md)** 📝 **Original Notes**
-   - **Scope:** Reference document (original design notes)
-   - **Purpose:** Historical context and initial problem statement
-   - **Status:** Superseded by documents #1-5 (kept for reference)
+- [sims/SEAD_IDENTITY_SYSTEM.md](./sims/SEAD_IDENTITY_SYSTEM.md)
+   SIMS design and requirements.
 
----
+- [sims/SEAD_IDENTITY_IMPLEMENTATION.md](./sims/SEAD_IDENTITY_IMPLEMENTATION.md)
+   SIMS implementation details: schema, functions, and API shape.
 
-## 🎯 Quick Start
+- [sims/SEAD_IDENTITY_NFR.md](./sims/SEAD_IDENTITY_NFR.md)
+   SIMS non-functional requirements, security, operations, and testing.
 
-### For Implementers
+### Related material
 
-**Recommended reading order:**
+- [../aggregate_model/README.md](../aggregate_model/README.md)
+   Aggregate model documentation referenced by the SIMS design.
 
-1. **Identity Design** ([SEAD_IDENTITY_SYSTEM.md](./SEAD_IDENTITY_SYSTEM.md))
-   - Understand hybrid identity model (UUID/natural key + integer PK)
-   - Review three-tier architecture and workflows
-   - Study aggregate root strategy and change detection
-   - **Time:** 30-45 minutes
+## How To Read These Docs
 
-2. **Implementation Details** ([SEAD_IDENTITY_IMPLEMENTATION.md](./SEAD_IDENTITY_IMPLEMENTATION.md))
-   - Review database schema (DDL for identity_allocations, submissions)
-   - Study PostgreSQL functions (allocate_identity, resolve_external_id, etc.)
-   - Understand REST API specification (6 endpoints)
-   - **Implementation:** Deploy SEAD Identity API first (Phase 1-2)
+### If you are designing the ingester
 
-3. **Aggregate Model** ([docs/aggregate_model/](../aggregate_model/)) *Optional*
-   - Understand entity hierarchy metadata model (domain-agnostic)
-   - Review aggregate registry, dependency tracking, validation functions
-   - Study topological sorting and allocation ordering
-   - **Documents:**  
-     - [AGGREGATE_MODEL_DESIGN.md](../aggregate_model/AGGREGATE_MODEL_DESIGN.md) - Generic design
-     - [SEAD_AGGREGATE_MODEL.md](../aggregate_model/SEAD_AGGREGATE_MODEL.md) - SEAD implementation
-   - **Implementation:** Deploy after identity system for enhanced validation (Phase 2-3)
+1. Read [SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md)
+2. Use [sims/SEAD_IDENTITY_SYSTEM.md](./sims/SEAD_IDENTITY_SYSTEM.md) only as the external API/system dependency context
+3. Use [sims/SEAD_IDENTITY_IMPLEMENTATION.md](./sims/SEAD_IDENTITY_IMPLEMENTATION.md) only when you need concrete SIMS API or persistence details
 
-4. **Non-Functional Requirements** ([SEAD_IDENTITY_NFR.md](./SEAD_IDENTITY_NFR.md))
-   - Review performance targets (< 10ms P95, 10k req/s throughput)
-   - Study security requirements (OAuth 2.0, API keys, audit trail)
-   - Understand monitoring and alerting setup (Prometheus, Grafana)
-   - **Implementation:** Configure DevOps infrastructure (Phase 1)
+### If you are designing SIMS
 
-5. **Ingester Design** ([SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md))
-   - Review component architecture (6 components)
-   - Study integration with Shape Shifter's three-tier identity system
-   - Understand SQL generation workflow (topological sorting)
-   - **Implementation:** Build ingester components (Phase 3-6)
+1. Start with [sims/README.md](./sims/README.md)
+2. Read [sims/SEAD_IDENTITY_SYSTEM.md](./sims/SEAD_IDENTITY_SYSTEM.md)
+3. Continue with [sims/SEAD_IDENTITY_IMPLEMENTATION.md](./sims/SEAD_IDENTITY_IMPLEMENTATION.md)
+4. Use [sims/SEAD_IDENTITY_NFR.md](./sims/SEAD_IDENTITY_NFR.md) for operational and security concerns
 
-### For Reviewers
+## Proposal Boundary
 
-**Focus areas by document:**
+### In scope for the ingester docs
 
-- **SEAD_IDENTITY_SYSTEM.md** (Design)
-  - Architecture: Three-tier model, aggregate roots, change detection strategy
-  - Business logic: Idempotent allocation, flexible identifier types
-  - Integration: API design principles, workflow diagrams
+- DataFrame to SQL transformation
+- reconciliation and mapping use inside Shape Shifter
+- SIMS API consumption from the ingester
+- foreign key resolution using SIMS-allocated SEAD IDs
+- Sqitch-ready output and rollback handling in the ingester
 
-- **SEAD_IDENTITY_IMPLEMENTATION.md** (Technical)
-  - Database schema: Table structures, constraints, indexes
-  - SQL functions: PL/pgSQL implementations, error handling
-  - API specification: REST endpoints, request/response formats
-  - Migration strategy: 5-phase rollout plan
+### In scope for the SIMS docs
 
-- **Aggregate Model** ([docs/aggregate_model/](../aggregate_model/)) **(Technical - Optional Enhancement)**
-  - Metadata model: Entity types registry, aggregate definitions, dependencies
-  - Validation logic: Submission validation, missing parent detection
-  - Query patterns: Hierarchy views, dependency graphs, topological sorting
-  - Integration: API enhancements for validation and allocation ordering
-  - Benefits: Self-documenting system, early validation, optimized batch allocation
-  - **Documents:** [AGGREGATE_MODEL_DESIGN.md](../aggregate_model/AGGREGATE_MODEL_DESIGN.md) (generic), [SEAD_AGGREGATE_MODEL.md](../aggregate_model/SEAD_AGGREGATE_MODEL.md) (SEAD-specific)
+- external identity allocation model
+- aggregate-root identity strategy
+- external identifier formats: UUID or natural/business key
+- API design, persistence model, and change detection foundation
+- SIMS operations, security, performance, and audit
 
-- **SEAD_IDENTITY_NFR.md** (Operational)
-  - Performance: Latency targets, throughput benchmarks, scalability
-  - Security: Authentication (OAuth 2.0, API keys), authorization, audit trail
-  - Reliability: High availability, fault tolerance, disaster recovery
-  - Testing: Unit, integration, load, chaos engineering strategies
+### Out of scope for the ingester docs
 
-- **SEAD_INGESTER_DESIGN.md** (Shape Shifter Component)
-  - Component isolation: ALL SEAD logic in ingester (core remains agnostic)
-  - Integration points: mappings.yml, ShapeShifter.table_store, Sqitch
-  - SQL generation: Topological sorting, FK resolution, idempotent INSERT
-
----
-
-## 🏗️ Architecture Overview
-
-### Two-System Design
-
-```
-┌──────────────────────────────────────────────────────┐
-│ SEAD Identity System (External to Shape Shifter)     │
-│ • Hybrid Integer + UUID architecture                 │
-│ • REST API for ID allocation                         │
-│ • PostgreSQL functions and tables                    │
-│ • Idempotent allocation (same UUID → same integer)   │
-│ • See: SEAD_IDENTITY_SYSTEM.md                       │
-└──────────────────────────────────────────────────────┘
-                        ↕ API Calls
-┌──────────────────────────────────────────────────────┐
-│ Shape Shifter SEAD Ingester (This Component)         │
-│ • UUID generation for entities                       │
-│ • Identity allocation via SEAD API                   │
-│ • FK resolution (system_id → SEAD ID)                │
-│ • SQL DML generation (topologically sorted)          │
-│ • Sqitch integration (deploy/rollback scripts)       │
-│ • See: SEAD_INGESTER_DESIGN.md                       │
-└──────────────────────────────────────────────────────┘
-```
-
-### Current vs. Proposed Workflow
-
-**Before (6 handoffs, 2-5 days):**
-```
-Data → Shape Shifter (User) → YAML → Normalizer → DataFrames →
-Dispatcher → CSV/Excel → Ingester → Clearinghouse → 
-Transport System (ID allocation) → Sqitch → Database
-```
-
-**After (3 handoffs, same day):**
-```
-Data → Shape Shifter (User) → YAML → Normalizer → DataFrames →
-SEAD Ingester (ID allocation via API) → Sqitch → Database
-```
-
-**Improvements:**
-- 50% fewer handoffs
-- 5x faster turnaround time
-- Automated ID allocation
-- Concurrent-safe submissions
-- Idempotent (replayable) ingestion
-
----
-
-## 🔑 Key Innovations
-
-### 1. Hybrid Identity System (Integer + UUID)
-
-**Problem:** External systems can't predict SEAD integer IDs, causing:
-- Brittle FK resolution
-- No idempotent ingestion
-- Manual reconciliation required
-
-**Solution:** Complementary UUIDs
-- External systems generate UUIDs locally (stable across runs)
-- SEAD allocates integers via API, maintains UUID ↔ Integer mapping
-- FKs resolved via UUID references during ingestion
-- Same UUID → Same integer (idempotent)
-
-**Benefits:**
-- Distributed ID generation (offline-capable)
-- Concurrent submissions without conflicts
-- Cross-system entity linking
-- Audit trail for all allocations
-
-### 2. Isolation Principle
-
-**ALL SEAD-specific logic resides in the ingester component:**
-
-✅ **In Ingester:**
-- UUID generation
-- SEAD API calls
-- SEAD table mapping
-- SQL dialect specifics
-- Sqitch integration
-
-❌ **Not in Shape Shifter Core:**
-- Core remains domain-agnostic
-- No SEAD dependencies in normalizer
-- Reusable for other target systems
-
-**Benefits:**
-- Maintainability (isolated SEAD changes)
-- Testability (mock SEAD API easily)
-- Reusability (core works with any target)
-
-### 3. Topological SQL Generation
-
-**Reuses Shape Shifter's ProcessState:**
-- Entities sorted by FK dependencies (parents before children)
-- Validates referential integrity before SQL generation
-- Generates transaction-safe SQL (BEGIN/COMMIT)
-
-**Benefits:**
-- FK constraints always satisfied
-- Single transaction (atomic commit)
-- Rollback on failure (clean recovery)
-
----
-
-## 📊 Implementation Phases
-
-### Phase 1: SEAD Identity System (External) - **Weeks 1-3**
-**Owner:** SEAD Team
-
-- [ ] Deploy `identity_allocations` table to SEAD staging
-- [ ] Deploy PostgreSQL functions (allocate, resolve, commit, rollback)
-- [ ] Implement REST API (FastAPI/Flask)
-- [ ] Load testing (10,000 allocations/sec target)
-- [ ] Deploy to SEAD production
-
-**Deliverables:** SEAD Identity API live and tested
-
----
-
-### Phase 2: Shape Shifter Ingester - **Weeks 4-8**
-**Owner:** Shape Shifter Team
-
-#### Week 4-5: Core Components
-- [ ] UUID Generator
-- [ ] Identity Allocator (API client)
-- [ ] FK Resolver
-- [ ] Unit tests
+- SIMS internal database schema
+- SIMS deployment model
+- SIMS security and NFR details
+- SIMS internal implementation choices unless required by the API contract
 
 #### Week 6: SQL Generation
 - [ ] SQL Generator (topological sorting)

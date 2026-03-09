@@ -9,11 +9,11 @@
 
 ## Executive Summary
 
-This document describes a new SEAD ingester for Shape Shifter that generates Sqitch-ready SQL DML directly from normalized DataFrames, eliminating the multi-step file-based workflow. The ingester integrates with SEAD's hybrid identity system (see [SEAD_IDENTITY_SYSTEM.md](./SEAD_IDENTITY_SYSTEM.md)) to allocate IDs via API and generates topologically-sorted SQL INSERT/UPSERT statements ready for database change control.
+This document describes a new SEAD ingester for Shape Shifter that generates Sqitch-ready SQL DML directly from normalized DataFrames, eliminating the multi-step file-based workflow. The ingester integrates with SIMS, the external SEAD Identity Management System (see [sims/SEAD_IDENTITY_SYSTEM.md](./sims/SEAD_IDENTITY_SYSTEM.md)), to allocate IDs via API and generates topologically-sorted SQL INSERT/UPSERT statements ready for database change control.
 
 **Key Innovation:** Direct DataFrame → SQL DML transformation with automated ID allocation, FK resolution, and Sqitch integration, reducing ingestion time from days to hours.
 
-**Isolation Principle:** ALL SEAD-specific logic (identity allocation, SQL generation, reconciliation) resides in this ingester component. Shape Shifter core remains domain-agnostic.
+**Isolation Principle:** ALL Shape Shifter-side SEAD ingestion logic (API consumption, SQL generation, reconciliation, mapping) resides in this ingester component. SIMS remains an external system dependency. Shape Shifter core remains domain-agnostic.
 
 ---
 
@@ -75,7 +75,7 @@ Data Provider → Shape Shifter (User) → Project YAML
 
 ### Primary Goals
 - ✅ **Generate Sqitch-ready SQL DML** from normalized DataFrames
-- ✅ **Automate SEAD ID allocation** via SEAD Identity API (UUID-based)
+- ✅ **Automate SEAD ID allocation** via the SIMS API (UUID or natural-key based external identity)
 - ✅ **Resolve Foreign Keys** from Shape Shifter `system_id` to allocated SEAD IDs
 - ✅ **Preserve existing Project YAML** - Reusable across datasets
 - ✅ **Topological SQL ordering** - Parents before children (FK constraints)
@@ -367,7 +367,7 @@ allocate_ids_for(df_new_locations)
 
 **Purpose:** Call SEAD Identity API to allocate integer IDs for new entities.
 
-**See:** [SEAD_IDENTITY_SYSTEM.md](./SEAD_IDENTITY_SYSTEM.md) for full API specification.
+**See:** [sims/SEAD_IDENTITY_SYSTEM.md](./sims/SEAD_IDENTITY_SYSTEM.md) for the external system design and [sims/SEAD_IDENTITY_IMPLEMENTATION.md](./sims/SEAD_IDENTITY_IMPLEMENTATION.md) for the detailed API specification.
 
 **Implementation:**
 
@@ -1248,7 +1248,7 @@ python -m backend.app.scripts.ingest ingest sead_sql \
 
 ### Phase 1: Core Infrastructure (Weeks 1-3)
 
-**Dependencies:** SEAD Identity System deployed (see [SEAD_IDENTITY_SYSTEM.md](./SEAD_IDENTITY_SYSTEM.md))
+**Dependencies:** SIMS deployed and reachable by API (see [sims/SEAD_IDENTITY_SYSTEM.md](./sims/SEAD_IDENTITY_SYSTEM.md))
 
 **Deliverables:**
 - [ ] UUID Generation component
@@ -1618,7 +1618,7 @@ ingesters/
 **End of Document**
 
 **Related Documents:**
-- [SEAD_IDENTITY_SYSTEM.md](./SEAD_IDENTITY_SYSTEM.md) - Hybrid Integer + UUID identity allocation system (external to Shape Shifter)
+- [sims/SEAD_IDENTITY_SYSTEM.md](./sims/SEAD_IDENTITY_SYSTEM.md) - SIMS design and external identity allocation model
 - [NEW_INGESTER.md](./NEW_INGESTER.md) - Original design notes (reference)
 - [../CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md) - Shape Shifter configuration reference
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) - Shape Shifter system architecture
