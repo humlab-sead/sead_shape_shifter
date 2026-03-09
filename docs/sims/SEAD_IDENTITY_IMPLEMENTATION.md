@@ -1,4 +1,4 @@
-# SEAD Identity System - Implementation Specification
+# SIMS - Implementation Specification
 
 **Status:** Draft  
 **Version:** 2.0  
@@ -6,7 +6,7 @@
 **Related Documents:**
 - [SEAD_IDENTITY_SYSTEM.md](./SEAD_IDENTITY_SYSTEM.md) - Design and architecture
 - [SEAD_IDENTITY_NFR.md](./SEAD_IDENTITY_NFR.md) - Non-functional requirements
-- [SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md) - Shape Shifter integration
+- [../SEAD_INGESTER_DESIGN.md](../SEAD_INGESTER_DESIGN.md) - Shape Shifter integration
 
 ---
 
@@ -1413,4 +1413,4 @@ LIMIT 10;
 **Related Documents:**
 - [SEAD_IDENTITY_SYSTEM.md](./SEAD_IDENTITY_SYSTEM.md) - Design and architecture
 - [SEAD_IDENTITY_NFR.md](./SEAD_IDENTITY_NFR.md) - Performance, security, testing
-- [SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md) - Shape Shifter integration
+- [../SEAD_INGESTER_DESIGN.md](../SEAD_INGESTER_DESIGN.md) - Shape Shifter integration

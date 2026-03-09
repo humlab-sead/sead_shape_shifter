@@ -1,9 +1,9 @@
-# SEAD Identity System - Design Document
+# SIMS - SEAD Identity Management System Design
 
 **Version:** 2.0  
 **Date:** February 21, 2026  
 **Status:** Design Phase  
-**Scope:** SEAD Database System (External to Shape Shifter)
+**Scope:** External SEAD-side identity management system used by Shape Shifter via API
 
 ---
 
@@ -16,6 +16,7 @@ This document defines a hybrid identity system for SEAD that supports stable ext
 **Supporting Documents:**
 - [SEAD_IDENTITY_IMPLEMENTATION.md](./SEAD_IDENTITY_IMPLEMENTATION.md) - Database schema, API specification, SQL functions
 - [SEAD_IDENTITY_NFR.md](./SEAD_IDENTITY_NFR.md) - Non-functional requirements, performance, security, testing
+- [../SEAD_INGESTER_DESIGN.md](../SEAD_INGESTER_DESIGN.md) - Shape Shifter ingester that consumes SIMS via API
 
 ---
 
@@ -626,5 +627,5 @@ def compute_content_hash(entity_data: dict) -> str:
 **Related Documents:**
 - [SEAD_IDENTITY_IMPLEMENTATION.md](./SEAD_IDENTITY_IMPLEMENTATION.md) - Database schema, API specification, SQL functions
 - [SEAD_IDENTITY_NFR.md](./SEAD_IDENTITY_NFR.md) - Performance, security, testing, monitoring
-- [SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md) - Shape Shifter ingester integration
+- [../SEAD_INGESTER_DESIGN.md](../SEAD_INGESTER_DESIGN.md) - Shape Shifter ingester integration
 

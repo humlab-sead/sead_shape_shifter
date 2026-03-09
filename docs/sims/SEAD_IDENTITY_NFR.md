@@ -1,4 +1,4 @@
-# SEAD Identity System - Non-Functional Requirements
+# SIMS - Non-Functional Requirements
 
 **Status:** Draft  
 **Version:** 2.0  
@@ -6,7 +6,7 @@
 **Related Documents:**
 - [SEAD_IDENTITY_SYSTEM.md](./SEAD_IDENTITY_SYSTEM.md) - Design and architecture
 - [SEAD_IDENTITY_IMPLEMENTATION.md](./SEAD_IDENTITY_IMPLEMENTATION.md) - Implementation details
-- [SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md) - Shape Shifter integration
+- [../SEAD_INGESTER_DESIGN.md](../SEAD_INGESTER_DESIGN.md) - Shape Shifter integration
 
 ---
 
@@ -943,4 +943,4 @@ groups:
 **Related Documents:**
 - [SEAD_IDENTITY_SYSTEM.md](./SEAD_IDENTITY_SYSTEM.md) - Design and architecture
 - [SEAD_IDENTITY_IMPLEMENTATION.md](./SEAD_IDENTITY_IMPLEMENTATION.md) - Implementation details
-- [SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md) - Shape Shifter integration
+- [../SEAD_INGESTER_DESIGN.md](../SEAD_INGESTER_DESIGN.md) - Shape Shifter integration
