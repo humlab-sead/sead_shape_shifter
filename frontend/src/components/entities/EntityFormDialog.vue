@@ -986,6 +986,28 @@ interface FormData {
   }
 }
 
+function normalizeChipField(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === 'string') return item.trim()
+        if (typeof item === 'object' && item !== null && 'value' in item) {
+          const chipValue = (item as { value?: unknown }).value
+          return typeof chipValue === 'string' ? chipValue.trim() : String(chipValue ?? '').trim()
+        }
+        return String(item ?? '').trim()
+      })
+      .filter((item) => item.length > 0)
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? [trimmed] : []
+  }
+
+  return []
+}
+
 const formData = ref<FormData>({
   name: '',
   type: 'entity',
@@ -2038,8 +2060,8 @@ function yamlToFormData(yamlString: string): boolean {
       system_id: 'system_id', // Always standardized
       public_id: data.public_id || data.surrogate_id || '', // Migrate surrogate_id → public_id
       surrogate_id: data.surrogate_id || '', // Keep for backward compat
-      keys: Array.isArray(data.keys) ? data.keys : [],
-      columns: Array.isArray(data.columns) ? data.columns : [],
+      keys: normalizeChipField(data.keys),
+      columns: normalizeChipField(data.columns),
       values: roundTrip.inlineValues,
       source: data.source || null,
       data_source: data.data_source || '',
@@ -2052,7 +2074,7 @@ function yamlToFormData(yamlString: string): boolean {
         range: data.options?.range || '',
       },
       foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
-      depends_on: Array.isArray(data.depends_on) ? data.depends_on : [],
+      depends_on: normalizeChipField(data.depends_on),
       drop_duplicates: dropDuplicatesData,
       drop_empty_rows: dropEmptyRowsData,
       check_functional_dependency: effectiveCheckFunctionalDependency,
@@ -2397,7 +2419,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
 
   // For fixed entities, strip system_id and public_id from columns
   // since they're auto-managed and will be auto-added on save
-  let columns = (entity.entity_data.columns as string[]) || []
+  let columns = normalizeChipField(entity.entity_data.columns)
   if (entity.entity_data.type === 'fixed') {
     const publicId = (entity.entity_data.public_id as string) || ''
     columns = columns.filter((col) => col !== 'system_id' && col !== publicId)
@@ -2414,11 +2436,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     system_id: 'system_id', // Always standardized
     public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '', // Migrate
     surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
-    keys: Array.isArray(entity.entity_data.keys)
-      ? (entity.entity_data.keys as string[])
-      : typeof entity.entity_data.keys === 'string'
-        ? [entity.entity_data.keys as string]
-        : [],
+    keys: normalizeChipField(entity.entity_data.keys),
     columns: columns,
     values: roundTrip.inlineValues,
     source: (entity.entity_data.source as string) || null,
@@ -2432,7 +2450,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       range: (entity.entity_data.options as any)?.range || '',
     },
     foreign_keys: (entity.entity_data.foreign_keys as any[]) || [],
-    depends_on: (entity.entity_data.depends_on as string[]) || [],
+    depends_on: normalizeChipField(entity.entity_data.depends_on),
     drop_duplicates: {
       enabled: dropDuplicates !== undefined && dropDuplicates !== null,
       columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
