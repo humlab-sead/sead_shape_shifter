@@ -463,6 +463,7 @@
 
                           <v-combobox
                             v-model="formData.drop_duplicates.columns"
+                            :items="availableColumns"
                             label="Deduplication Columns"
                             variant="outlined"
                             multiple
@@ -490,6 +491,7 @@
                           </v-row>
                           <v-combobox
                             v-model="formData.drop_empty_rows.columns"
+                            :items="availableColumns"
                             label="Columns to Check for Empty Values"
                             variant="outlined"
                             multiple
