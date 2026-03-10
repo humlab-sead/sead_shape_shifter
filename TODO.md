@@ -232,3 +232,24 @@ columns:
 ```
 
 5. Verify YAML on disk
+
+### TODO: Fixes related to task status
+
+In the graph view, when changing "Color by" from "Entity Type" to "Task Status", only entities with types "Done" or "Ignored" changes color. All other entities remain colored by entity type.
+
+We have four task status values: "todo", "ongoing", "done" and "ignored". The shapeshifter.tasks.yml has keys "required_entities", "completed" and "ignored". The mapping of "todo" and "ongoing" to "required_entities" is unclear.
+
+I think we should use the keys "todo", "ongoing", "done" and "ignored" in shapeshifter.tasks.yml.
+
+The keys should have the following semantics:
+ - "todo": initial state, an entity that don't yet exists in the project file: COLOR: yellowish?
+ - "ongoing": if entity exists, but "done" or "ignored": COLOR: bluish?
+ - "ignored": entity is ignored by task system's definition of done: COLOR: greyish
+ - "done": end state, entity is finalized. COLOR: greenish
+
+With this semantics, we need to add placeholder nodes in the graph for "todo" entities.
+Possibly, also, we need to simple ways of adding/removing "todo" entities.
+Or, possibly, we could allow user to edit "shapeshifter.tasks.yml"
+
+I think these changes (and bugfixes) would increase the usability of the task feature.
+What do you think?
