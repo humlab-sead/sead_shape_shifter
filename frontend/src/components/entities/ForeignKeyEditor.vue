@@ -295,14 +295,14 @@ const emit = defineEmits<{
 /**
  * Normalize keys array to always contain strings.
  * Handles case where v-combobox might store objects instead of string values.
- * Scalar @value: directive strings are wrapped in a single-element array so they
- * appear as a removable chip in the combobox.
+ * Scalar strings are wrapped in a single-element array so they appear as a
+ * removable chip in the combobox.
  */
 function normalizeKeysArray(keys: any): string[] {
   if (!Array.isArray(keys)) {
-    // Preserve scalar directive strings as a single chip
-    if (typeof keys === 'string' && keys.trim().startsWith('@value:')) {
-      return [keys.trim()]
+    if (typeof keys === 'string') {
+      const trimmed = keys.trim()
+      return trimmed.length > 0 ? [trimmed] : []
     }
     return []
   }
