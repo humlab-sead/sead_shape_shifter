@@ -362,7 +362,7 @@ async function handleSave() {
     }
 
     // Map options to top-level fields and options object
-    const topLevelFields = ['host', 'port', 'database', 'username', 'password', 'filename']
+    const topLevelFields = ['host', 'port', 'database', 'username', 'password']
     const options: Record<string, any> = {}
 
     for (const field of schema.fields) {
