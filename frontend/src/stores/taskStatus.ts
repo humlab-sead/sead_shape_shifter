@@ -92,6 +92,19 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
   }
 
   /**
+   * Mark entity as todo (planned but not yet created)
+   */
+  async function markTodo(entityName: string): Promise<boolean> {
+    const success = await taskComposable.markTodo(entityName)
+    
+    // Sync state
+    taskStatus.value = taskComposable.taskStatus.value
+    error.value = taskComposable.error.value
+    
+    return success
+  }
+
+  /**
    * Reset entity status to todo
    */
   async function resetStatus(entityName: string): Promise<boolean> {
@@ -224,6 +237,7 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
     markComplete,
     markIgnored,
     markOngoing,
+    markTodo,
     resetStatus,
     toggleFlagged,
     getEntityStatus,

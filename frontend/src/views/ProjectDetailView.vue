@@ -349,6 +349,7 @@
               @verify-entity="handleVerifyEntity"
               @mark-complete="handleMarkComplete"
               @mark-ignored="handleMarkIgnored"
+              @mark-todo="handleMarkTodo"
               @reset-status="handleResetStatus"
             />
 
@@ -1457,6 +1458,22 @@ async function handleMarkIgnored(entityName: string) {
   }
 }
 
+async function handleMarkTodo(entityName: string) {
+  try {
+    const success = await taskStatusStore.markTodo(entityName)
+    if (success) {
+      successMessage.value = `Entity "${entityName}" marked as todo`
+      showSuccessSnackbar.value = true
+      // Refresh graph to show updated badges
+      applyTaskStatusToNodes()
+    }
+  } catch (err) {
+    console.error('Failed to mark entity as todo:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to mark entity as todo'
+    showSuccessSnackbar.value = true
+  }
+}
+
 async function handleResetStatus(entityName: string) {
   try {
     const success = await taskStatusStore.resetStatus(entityName)
@@ -1503,7 +1520,7 @@ function applyTaskStatusToNodes() {
     const status = taskStatusStore.getEntityStatus(entityName)
 
     // Remove existing task classes
-    node.removeClass('task-done task-ignored task-ongoing task-blocked task-critical task-ready task-flagged')
+    node.removeClass('task-todo task-done task-ignored task-ongoing task-blocked task-critical task-ready task-flagged')
 
     // In type mode, keep default entity/source type color classes only.
     if (colorByMode.value !== 'task' || !status) {

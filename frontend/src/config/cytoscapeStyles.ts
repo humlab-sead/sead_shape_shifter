@@ -263,6 +263,14 @@ const baseStyles: StylesheetCSS[] = [
 
   // Task status overlays (applied by ProjectDetailView via node classes)
   {
+    selector: 'node.task-todo',
+    css: {
+      'background-color': '#FDD835',
+      'border-color': '#F9A825',
+      'border-width': 3,
+    },
+  },
+  {
     selector: 'node.task-done',
     css: {
       'background-color': '#43A047',
