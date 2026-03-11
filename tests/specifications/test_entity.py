@@ -726,6 +726,8 @@ class TestPublicIdSpecification:
                 "no_id_suffix": {"public_id": "entity"},
                 "non_string_id": {"public_id": 123},
                 "no_public_id": {},
+                "source_entity": {"public_id": "site_id"},
+                "derived_conflict": {"source": "source_entity", "public_id": "site_id"},
             }
         }
 
@@ -754,6 +756,15 @@ class TestPublicIdSpecification:
         result = spec.is_satisfied_by(entity_name="non_string_id")
 
         assert result is False
+
+    def test_derived_entity_public_id_cannot_match_source_public_id(self, project_cfg):
+        """Test validation fails when derived entity reuses its source public_id."""
+        spec = PublicIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="derived_conflict")
+
+        assert result is False
+        assert any("conflicts with source entity" in str(error) for error in spec.errors)
 
 
 class TestAppendSpecification:

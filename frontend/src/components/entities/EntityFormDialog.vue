@@ -143,6 +143,10 @@
                           >
                             <template #message>
                               <span class="text-caption">Parent entity to derive this entity from</span>
+                              <span v-if="sourceReferenceColumn" class="text-caption d-block mt-1">
+                                Selecting <strong>{{ sourceReferenceColumn }}</strong> in Columns adds a parent reference.
+                                Values come from the source entity's <strong>system_id</strong>, matching FK behavior.
+                              </span>
                             </template>
                           </v-autocomplete>
 
@@ -1614,8 +1618,15 @@ function getColumnsFromEntity(entityName: string | null): string[] {
   const sourceKeys = Array.isArray((sourceEntity as any)?.entity_data?.keys)
     ? (sourceEntity as any).entity_data.keys
     : []
+  const sourcePublicId = typeof (sourceEntity as any)?.entity_data?.public_id === 'string'
+    ? (sourceEntity as any).entity_data.public_id.trim()
+    : ''
 
-  const combined = Array.from(new Set([...sourceKeys, ...sourceColumns]))
+  const combined = Array.from(new Set([
+    ...sourceKeys,
+    ...sourceColumns,
+    ...(sourcePublicId && sourcePublicId !== formData.value.public_id ? [sourcePublicId] : []),
+  ]))
   return combined.filter((c) => c !== 'system_id')
 }
 
@@ -1913,6 +1924,21 @@ const availableColumns = computed(() => {
   if (directives.length === 0) return cols
   // Show regular columns first, then @value: directive paths as additional options
   return [...cols, ...directives.filter((d) => !cols.includes(d))]
+})
+
+const sourceReferenceColumn = computed(() => {
+  if (formData.value.type !== 'entity' || !formData.value.source) return null
+
+  const sourceEntity = entities.value.find((entity) => entity.name === formData.value.source)
+  const sourcePublicId = typeof (sourceEntity as any)?.entity_data?.public_id === 'string'
+    ? (sourceEntity as any).entity_data.public_id.trim()
+    : ''
+
+  if (!sourcePublicId || sourcePublicId === formData.value.public_id) {
+    return null
+  }
+
+  return sourcePublicId
 })
 
 const availableColumnsForUnnest = computed(() => {

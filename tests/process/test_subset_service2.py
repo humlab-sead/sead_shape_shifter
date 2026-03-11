@@ -80,6 +80,28 @@ def test_get_subset2_extracts_columns_and_adds_extra_source_and_constant_columns
     assert out["const"].tolist() == [99, 99]
 
 
+def test_get_subset2_column_aliases_copy_source_columns_under_requested_names():
+    svc = SubsetService()
+    df = pd.DataFrame(
+        {
+            "system_id": [11, 12],
+            "name": ["a", "b"],
+        }
+    )
+
+    out = svc.get_subset2(
+        df,
+        ["site_id", "name"],
+        entity_name="X",
+        column_aliases={"site_id": "system_id"},
+        raise_if_missing=True,
+    )
+
+    assert list(out.columns) == ["site_id", "name"]
+    assert out["site_id"].tolist() == [11, 12]
+    assert "system_id" not in out.columns
+
+
 def test_get_subset2_raise_if_missing_true_raises():
     svc = SubsetService()
     df = pd.DataFrame({"id": [1], "name": ["a"]})
@@ -235,6 +257,7 @@ def test_get_subset_calls_get_subset2_with_config_values(monkeypatch):
 
     assert "kwargs" in called
     assert called["kwargs"]["entity_name"] == "E"
+    assert called["kwargs"]["column_aliases"] == {}
     assert called["kwargs"]["drop_duplicates"] is True
     assert called["kwargs"]["extra_columns"] == {"copied": "src"}
     assert out["name"].tolist() == ["A"]  # dedup + replacement

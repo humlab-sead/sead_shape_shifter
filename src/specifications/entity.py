@@ -414,6 +414,19 @@ class PublicIdSpecification(ProjectSpecification):
             self.check_fields(entity_name, ["public_id"], "of_type/E", expected_types=(str,))
             self.check_fields(entity_name, ["public_id"], "ends_with_id/E")
 
+            source_entity_name = entity_cfg.get("source")
+            if isinstance(source_entity_name, str) and source_entity_name:
+                source_entity_cfg: dict[str, Any] = self.get_entity_cfg(source_entity_name)
+                source_public_id = source_entity_cfg.get("public_id")
+                if isinstance(source_public_id, str) and source_public_id == public_id:
+                    self.add_error(
+                        f"Entity '{entity_name}': public_id '{public_id}' conflicts with source entity '{source_entity_name}'. "
+                        "A derived entity cannot use the same public_id as its source because that name is reserved "
+                        "for the parent reference column.",
+                        entity=entity_name,
+                        field="public_id",
+                    )
+
         return not self.has_errors()
 
 
