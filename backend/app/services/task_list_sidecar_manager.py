@@ -53,6 +53,14 @@ class TaskListSidecarManager:
         sidecar_path = self.get_sidecar_path(project_file_path)
         return sidecar_path.exists()
 
+    def _normalize_task_list_data(self, task_list_data: dict[str, Any]) -> dict[str, Any]:
+        """Normalize task list data to the current server-side schema.
+
+        This centralizes legacy migration at the file boundary so callers receive a
+        consistent task list shape regardless of what is stored on disk.
+        """
+        return TaskList(task_list_data).to_dict()
+
     def load_task_list(self, project_file_path: Path) -> dict[str, Any]:
         """Load task list from sidecar file if it exists.
 
@@ -64,7 +72,7 @@ class TaskListSidecarManager:
             project_file_path: Path to shapeshifter.yml
 
         Returns:
-            Task list configuration dict (keys: required_entities, completed, ongoing, ignored, flagged)
+            Task list configuration dict (keys: todo, done, ongoing, ignored, flagged)
             Returns empty dict if sidecar doesn't exist
         """
         sidecar_path = self.get_sidecar_path(project_file_path)
@@ -81,9 +89,15 @@ class TaskListSidecarManager:
 
             # Extract task_list section or use root as task_list
             task_list_data = data.get("task_list", data if isinstance(data, dict) else {})
+            normalized_task_list = self._normalize_task_list_data(task_list_data)
+
+            # Opportunistically rewrite legacy state so future reads stay canonical.
+            if normalized_task_list != task_list_data:
+                self.yaml_service.save({"task_list": normalized_task_list}, sidecar_path)
+                logger.info(f"Normalized legacy task list sidecar: {sidecar_path}")
 
             logger.debug(f"Loaded task list from sidecar: {sidecar_path}")
-            return task_list_data
+            return normalized_task_list
 
         except Exception as e:  # noqa: PERF203 ; pylint: disable=broad-exception-caught
             logger.error(f"Failed to load task list sidecar {sidecar_path}: {e}")
@@ -137,7 +151,8 @@ class TaskListSidecarManager:
         if task_list_in_main and not sidecar_path.exists():
             try:
                 # Save task_list to sidecar
-                self.yaml_service.save({"task_list": task_list_in_main}, sidecar_path)
+                normalized_task_list = self._normalize_task_list_data(task_list_in_main)
+                self.yaml_service.save({"task_list": normalized_task_list}, sidecar_path)
 
                 # Remove from main file
                 project_data = dict(project_data)  # Copy to avoid mutating input

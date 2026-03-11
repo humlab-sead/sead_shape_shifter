@@ -68,8 +68,10 @@ class TestTaskListSidecarManager:
 
         # Create sidecar file with task_list data
         task_list_data = {
-            "required": ["entity1", "entity2"],
-            "completed": ["entity1"],
+            "todo": ["entity2"],
+            "ongoing": [],
+            "done": ["entity1"],
+            "ignored": [],
         }
         yaml_service.save({"task_list": task_list_data}, sidecar_path)
 
@@ -77,13 +79,36 @@ class TestTaskListSidecarManager:
 
         assert result == task_list_data
 
+    def test_load_task_list_normalizes_legacy_format(self, project_file, sidecar_manager, yaml_service):
+        """Test load_task_list normalizes legacy required_entities/completed state server-side."""
+        sidecar_path = sidecar_manager.get_sidecar_path(project_file)
+        sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+
+        legacy_task_list_data = {
+            "required_entities": ["entity1", "entity2"],
+            "completed": ["entity1"],
+            "ongoing": [],
+            "ignored": [],
+        }
+        yaml_service.save({"task_list": legacy_task_list_data}, sidecar_path)
+
+        result = sidecar_manager.load_task_list(project_file)
+
+        assert result == {
+            "todo": ["entity2"],
+            "done": ["entity1"],
+        }
+
+        persisted_data = yaml_service.load(sidecar_path)
+        assert persisted_data["task_list"] == result
+
     def test_load_task_list_handles_missing_task_list_key(self, project_file, sidecar_manager, yaml_service):
         """Test load_task_list returns full data when sidecar has no explicit task_list key."""
         sidecar_path = sidecar_manager.get_sidecar_path(project_file)
         sidecar_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Create sidecar file without explicit task_list key (treat root as task_list)
-        sidecar_content = {"completed": ["entity1"], "ongoing": ["entity2"]}
+        sidecar_content = {"done": ["entity1"], "ongoing": ["entity2"], "ignored": []}
         yaml_service.save(sidecar_content, sidecar_path)
 
         result = sidecar_manager.load_task_list(project_file)
@@ -96,13 +121,13 @@ class TestTaskListSidecarManager:
         sidecar_path = sidecar_manager.get_sidecar_path(project_file)
         sidecar_path.parent.mkdir(parents=True, exist_ok=True)
 
-        task_list = TaskList({"required": ["entity1"], "completed": []})
+        task_list = TaskList({"todo": ["entity1"], "ongoing": [], "done": [], "ignored": []})
 
         sidecar_manager.save_task_list(project_file, task_list)
 
         assert sidecar_path.exists()
 
-    def test_save_task_list_saves_correct_format(self, project_file, sidecar_manager, yaml_service):
+    def test_save_task_list_saves_correct_format(self, project_file, sidecar_manager: TaskListSidecarManager, yaml_service):
         """Test save_task_list saves correct format (new format with migration)."""
         sidecar_path = sidecar_manager.get_sidecar_path(project_file)
         sidecar_path.parent.mkdir(parents=True, exist_ok=True)
@@ -133,7 +158,7 @@ class TestTaskListSidecarManager:
         project_file = temp_dir / "nested" / "dir" / "shapeshifter.yml"
         sidecar_path = sidecar_manager.get_sidecar_path(project_file)
 
-        task_list = TaskList({"required_entities": ["entity1"], "completed": []})
+        task_list = TaskList({"todo": ["entity1"], "ongoing": [], "done": [], "ignored": []})
 
         sidecar_manager.save_task_list(project_file, task_list)
 
@@ -148,8 +173,10 @@ class TestTaskListSidecarManager:
         project_data = {
             "entities": {"entity1": {}},
             "task_list": {
-                "required_entities": ["entity1"],
-                "completed": [],
+                "todo": ["entity1"],
+                "ongoing": [],
+                "done": [],
+                "ignored": [],
             },
         }
 
@@ -166,6 +193,29 @@ class TestTaskListSidecarManager:
         # Verify task_list was removed from returned data
         assert "task_list" not in result
         assert "entities" in result
+
+    def test_migrate_task_list_normalizes_legacy_format_before_saving(self, project_file, sidecar_manager, yaml_service):
+        """Test migrate_task_list writes normalized current-format task state to sidecar."""
+        sidecar_path = sidecar_manager.get_sidecar_path(project_file)
+        sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+
+        project_data = {
+            "entities": {"entity1": {}},
+            "task_list": {
+                "required_entities": ["entity1", "entity2"],
+                "completed": ["entity1"],
+                "ongoing": [],
+                "ignored": [],
+            },
+        }
+
+        sidecar_manager.migrate_task_list(project_file, project_data)
+
+        sidecar_data = yaml_service.load(sidecar_path)
+        assert sidecar_data["task_list"] == {
+            "todo": ["entity2"],
+            "done": ["entity1"],
+        }
 
     def test_migrate_task_list_skips_if_sidecar_exists(self, project_file, sidecar_manager, yaml_service):
         """Test migrate_task_list skips if sidecar already exists."""
@@ -238,7 +288,7 @@ class TestTaskListSidecarManager:
         """Test migrate_task_list returns copy of data, not reference."""
         project_data = {
             "entities": {"entity1": {}},
-            "task_list": {"required": ["entity1"]},
+            "task_list": {"todo": ["entity1"], "ongoing": [], "done": [], "ignored": []},
         }
 
         result = sidecar_manager.migrate_task_list(project_file, project_data)
@@ -273,8 +323,9 @@ class TestTaskListSidecarManager:
 
         original_task_list = TaskList(
             {
-                "required_entities": ["entity1", "entity2"],
-                "completed": ["entity1"],
+                "todo": ["entity2"],
+                "ongoing": [],
+                "done": ["entity1"],
                 "ignored": ["entity2"],
             }
         )
@@ -285,7 +336,6 @@ class TestTaskListSidecarManager:
         # After migration, should have new format
         assert "done" in loaded_data
         assert "entity1" in loaded_data["done"]
-        # entity2 is in required but not completed/ongoing, so it goes to todo
         assert "todo" in loaded_data
         assert "entity2" in loaded_data["todo"]
         # Ignored status is preserved separately
