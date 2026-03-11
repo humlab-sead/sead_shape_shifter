@@ -358,9 +358,9 @@ class TestDeleteSpecification:
 class TestGetAvailableFields:
     """Tests for GET /api/v1/reconcile/available-fields/{entity_name} endpoint."""
 
-    @patch("backend.app.services.reconciliation.service.ShapeShiftService")
-    async def test_get_available_fields_success(
-        self, mock_shapeshift, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config
+    @patch("backend.app.services.shapeshift_service.get_shapeshift_service")
+    def test_get_available_fields_success(
+        self, mock_get_shapeshift_service, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config
     ):
         """Test getting available fields."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -376,7 +376,7 @@ class TestGetAvailableFields:
 
         mock_service_instance = MagicMock()
         mock_service_instance.preview_entity = AsyncMock(return_value=mock_preview_result)
-        mock_shapeshift.return_value = mock_service_instance
+        mock_get_shapeshift_service.return_value = mock_service_instance
 
         response = client.get("/api/v1/projects/test_project/reconciliation/available-fields/site")
 
