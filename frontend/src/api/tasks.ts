@@ -7,7 +7,7 @@ import { apiClient } from './client'
 export interface TaskInitializeResponse {
   success: boolean
   strategy: string
-  required_entities: string[]
+  todo: string[]
   message: string
 }
 
