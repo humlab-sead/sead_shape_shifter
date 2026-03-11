@@ -157,7 +157,7 @@ class TestMarkComplete:
                     "success": True,
                     "entity_name": "location",
                     "status": "done",
-                    "message": "Entity marked as completed",
+                    "message": "Entity marked as done",
                 }
             )
             mock_get_service.return_value = mock_service

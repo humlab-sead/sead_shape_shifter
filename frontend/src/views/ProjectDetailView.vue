@@ -236,7 +236,7 @@
                               <span class="font-weight-medium">{{ taskStats.done }}</span>
                               <span class="text-medium-emphasis"> of </span>
                               <span class="font-weight-medium">{{ taskStats.total }}</span>
-                              <span class="text-medium-emphasis"> complete</span>
+                              <span class="text-medium-emphasis"> done</span>
                             </div>
                           </v-col>
                           <v-col cols="auto" class="ml-2">
@@ -834,14 +834,13 @@ const contextMenuEntity = ref<string | null>(null)
 
 // Task status state
 const currentTaskFilter = ref<TaskFilter>('all')
-const colorByMode = ref<GraphColorByMode>('task')
+const colorByMode = ref<GraphColorByMode>('type')
 const colorByOptions = [
   { title: 'Task Status', value: 'task' as const },
   { title: 'Entity Type', value: 'type' as const },
 ]
 const colorByStorageKey = computed(() => `shapeshifter.graph.colorBy.${projectName.value || 'default'}`)
 
-// YAML editing state
 const rawYamlContent = ref<string | null>(null)
 const originalYamlContent = ref<string | null>(null)
 const yamlLoading = ref(false)
@@ -1868,7 +1867,7 @@ watch(
     if (!oldName) return
 
     const savedColorBy = window.localStorage.getItem(colorByStorageKey.value)
-    colorByMode.value = savedColorBy === 'type' ? 'type' : 'task'
+    colorByMode.value = savedColorBy === 'task' ? 'task' : 'type'
     
     console.debug(`ProjectDetailView: Project changed from "${oldName}" to "${newName}"`)
     
