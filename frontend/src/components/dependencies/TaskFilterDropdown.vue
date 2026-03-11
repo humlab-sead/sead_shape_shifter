@@ -120,6 +120,16 @@
         </template>
       </v-list-item>
 
+      <v-divider class="my-2" />
+      
+      <!-- Add Todo Entity -->
+      <v-list-item @click="$emit('create-todo')">
+        <template #prepend>
+          <v-icon icon="mdi-plus" color="primary" />
+        </template>
+        <v-list-item-title>Add Todo Entity</v-list-item-title>
+      </v-list-item>
+      
       <template v-if="!taskStatus || (stats?.total ?? 0) === 0">
         <v-divider class="my-2" />
         <v-list-item disabled>
@@ -159,6 +169,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   (e: 'update:modelValue', value: TaskFilter): void
   (e: 'initialize'): void
+  (e: 'create-todo'): void
 }>()
 
 const selectedFilter = computed({
@@ -174,7 +185,7 @@ const stats = computed(() => {
   return {
     total: entities.length,
     todo: entities.filter(e => e.status === 'todo').length,
-    completed: entities.filter(e => e.status === 'done').length,
+    done: entities.filter(e => e.status === 'done').length,
     ignored: entities.filter(e => e.status === 'ignored').length,
   }
 })

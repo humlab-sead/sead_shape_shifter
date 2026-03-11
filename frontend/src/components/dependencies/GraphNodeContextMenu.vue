@@ -63,6 +63,18 @@
           @click="handleMarkIgnored"
         />
         
+        <!-- Mark as Ongoing -->
+        <v-list-item
+          :disabled="taskStatus.status === 'ongoing'"
+          prepend-icon="mdi-progress-clock"
+          title="Mark as Ongoing"
+          @click="handleMarkOngoing"
+        >
+          <v-tooltip activator="parent" location="right">
+            Mark as work in progress
+          </v-tooltip>
+        </v-list-item>
+        
         <!-- Mark as Todo -->
         <v-list-item
           :disabled="taskStatus.status === 'todo'"
@@ -116,6 +128,7 @@ interface Emits {
   (e: 'verify-entity', entityName: string): void
   (e: 'mark-complete', entityName: string): void
   (e: 'mark-ignored', entityName: string): void
+  (e: 'mark-ongoing', entityName: string): void
   (e: 'mark-todo', entityName: string): void
   (e: 'reset-status', entityName: string): void
 }
@@ -199,6 +212,13 @@ function handleMarkComplete() {
 function handleMarkIgnored() {
   if (props.entityName) {
     emit('mark-ignored', props.entityName)
+  }
+  isOpen.value = false
+}
+
+function handleMarkOngoing() {
+  if (props.entityName) {
+    emit('mark-ongoing', props.entityName)
   }
   isOpen.value = false
 }

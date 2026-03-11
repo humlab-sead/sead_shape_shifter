@@ -141,6 +141,7 @@
                   v-model="currentTaskFilter"
                   :task-status="taskStatusStore.taskStatus"
                   @initialize="handleInitializeTaskList"
+                  @create-todo="handleCreateTodoEntity"
                 />
 
                 <v-divider vertical />
@@ -166,8 +167,8 @@
                   size="small"
                   prepend-inner-icon="mdi-palette-outline"
                   hide-details
-                  label="Color By"
                   class="text-capitalize color-by-select"
+                  style="min-width: 180px;"
                 />
 
                 <v-divider vertical />
@@ -259,19 +260,19 @@
                         <div class="mb-1" style="font-size: 10px; font-weight: 500;">Task Status</div>
                         <div class="d-flex align-center gap-1 mb-1">
                           <div style="width: 10px; height: 10px; background-color: #FDD835; border-radius: 50%;" />
-                          <span style="font-size: 10px;">Todo - Planned but not created</span>
+                          <span style="font-size: 10px;">&nbsp;Todo (not created)</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
                           <div style="width: 10px; height: 10px; background-color: #2196F3; border-radius: 50%;" />
-                          <span style="font-size: 10px;">Ongoing - Work in progress</span>
+                          <span style="font-size: 10px;">&nbsp;Ongoing</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
                           <div style="width: 10px; height: 10px; background-color: #43A047; border-radius: 50%;" />
-                          <span style="font-size: 10px;">Done - Completed</span>
+                          <span style="font-size: 10px;">&nbsp;Done</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
                           <div style="width: 10px; height: 10px; background-color: #9E9E9E; border-radius: 50%;" />
-                          <span style="font-size: 10px;">Ignored - Excluded</span>
+                          <span style="font-size: 10px;">&nbsp;Ignored</span>
                         </div>
                       </div>
                     </v-card-text>
@@ -362,6 +363,7 @@
               @verify-entity="handleVerifyEntity"
               @mark-complete="handleMarkComplete"
               @mark-ignored="handleMarkIgnored"
+              @mark-ongoing="handleMarkOngoing"
               @mark-todo="handleMarkTodo"
               @reset-status="handleResetStatus"
             />
@@ -1471,6 +1473,22 @@ async function handleMarkIgnored(entityName: string) {
   }
 }
 
+async function handleMarkOngoing(entityName: string) {
+  try {
+    const success = await taskStatusStore.markOngoing(entityName)
+    if (success) {
+      successMessage.value = `Entity "${entityName}" marked as ongoing`
+      showSuccessSnackbar.value = true
+      // Refresh graph to show updated badges
+      applyTaskStatusToNodes()
+    }
+  } catch (err) {
+    console.error('Failed to mark entity as ongoing:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to mark entity as ongoing'
+    showSuccessSnackbar.value = true
+  }
+}
+
 async function handleMarkTodo(entityName: string) {
   try {
     const success = await taskStatusStore.markTodo(entityName)
@@ -1522,6 +1540,18 @@ async function handleInitializeTaskList() {
     successMessage.value = err instanceof Error ? err.message : 'Failed to initialize task list'
     showSuccessSnackbar.value = true
   }
+}
+
+function handleCreateTodoEntity() {
+  // Open entity creation dialog/form
+  // For now, just show a message - this would typically open a dialog
+  successMessage.value = 'Create Todo Entity dialog - to be implemented'
+  showSuccessSnackbar.value = true
+  // TODO: Implement entity creation dialog that:
+  // 1. Prompts for entity name
+  // 2. Creates minimal entity config
+  // 3. Automatically marks it as todo
+  // 4. Opens in editor
 }
 
 // Apply task status styling to graph nodes
@@ -1986,7 +2016,7 @@ function applyTaskFilter() {
 }
 
 .stats-card {
-  background: rgba(var(--v-theme-surface), 0.95) !important;
+  background: rgba(var(--v-theme-surface), 0.5) !important;
   backdrop-filter: blur(12px);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   border: 1px solid rgba(var(--v-border-color), 0.12);
