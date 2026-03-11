@@ -270,7 +270,7 @@
                       </div>
                       
                       <!-- Task Status Legend -->
-                      <div class="text-caption text-medium-emphasis">
+                      <div v-if="colorByMode === 'task'" class="text-caption text-medium-emphasis">
                         <div class="mb-1" style="font-size: 10px; font-weight: 500;">Task Status</div>
                         <div class="d-flex align-center gap-1 mb-1">
                           <div style="width: 10px; height: 10px; background-color: #FDD835; border-radius: 50%;" />
@@ -287,6 +287,27 @@
                         <div class="d-flex align-center gap-1 mb-1">
                           <div style="width: 10px; height: 10px; background-color: #9E9E9E; border-radius: 50%;" />
                           <span style="font-size: 10px;">&nbsp;Ignored</span>
+                        </div>
+                      </div>
+                      
+                      <!-- Entity Type Legend -->
+                      <div v-else-if="colorByMode === 'type'" class="text-caption text-medium-emphasis">
+                        <div class="mb-1" style="font-size: 10px; font-weight: 500;">Entity Type</div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #6A1B9A; border-radius: 50%;" />
+                          <span style="font-size: 10px;">&nbsp;Fixed</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #2E7D32; border-radius: 50%;" />
+                          <span style="font-size: 10px;">&nbsp;SQL</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #1976d2; border-radius: 50%;" />
+                          <span style="font-size: 10px;">&nbsp;Derived</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #ef5350; border-radius: 50%;" />
+                          <span style="font-size: 10px;">&nbsp;Cyclic error</span>
                         </div>
                       </div>
                     </v-card-text>
