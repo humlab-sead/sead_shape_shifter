@@ -244,7 +244,7 @@ const availableDriversFiltered = computed(() => {
 const projectFileItems = computed(() =>
   projectFiles.value.map((file) => ({
     title: file.name,
-    value: file.path,
+    value: file.location === 'global' ? `\${GLOBAL_DATA_DIR}/${file.path}` : file.path,
     subtitle: formatProjectFileSubtitle(file),
   }))
 )
