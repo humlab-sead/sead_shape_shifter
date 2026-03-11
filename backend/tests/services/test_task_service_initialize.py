@@ -96,7 +96,9 @@ class TestInitializeTaskList:
 
             # Verify task_list was created in cfg
             assert "task_list" in mock_core_project.cfg
-            assert mock_core_project.cfg["task_list"]["completed"] == []
+            assert mock_core_project.cfg["task_list"]["todo"] == ["location", "site", "sample"]
+            assert mock_core_project.cfg["task_list"]["ongoing"] == []
+            assert mock_core_project.cfg["task_list"]["done"] == []
             assert mock_core_project.cfg["task_list"]["ignored"] == []
 
     async def test_initialize_required_only_strategy(self, mock_project):

@@ -1029,7 +1029,7 @@ class TestProjectServiceSidecarIntegration:
 
     @pytest.fixture
     def project_with_task_list_in_main(self, tmp_path: Path):
-        """Create a project with task_list in main file (old format)."""
+        """Create a project with task_list in main file using current task states."""
         project_dir = tmp_path / "old_project"
         project_dir.mkdir()
         config_path = project_dir / "shapeshifter.yml"
@@ -1047,7 +1047,8 @@ entities:
 
 task_list:
   required_entities: [sample]
-  completed: []
+    ongoing: []
+    done: []
   ignored: []
 """
         config_path.write_text(content)
@@ -1111,7 +1112,9 @@ task_list:
         sidecar_content = yaml.safe_load(sidecar_file.read_text())
         assert "task_list" in sidecar_content
         assert isinstance(sidecar_content["task_list"], dict)
-        assert "required_entities" in sidecar_content["task_list"]
+        assert "done" in sidecar_content["task_list"]
+        assert "ongoing" in sidecar_content["task_list"]
+        assert "ignored" in sidecar_content["task_list"]
 
     def test_main_file_without_task_list_after_migration(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
         """Test that task_list is removed from main file after migration."""
@@ -1153,8 +1156,9 @@ entities:
         # Sidecar file (has task_list)
         sidecar_content = """
 task_list:
-  required_entities: [sample]
-  completed: [sample]
+    todo: []
+    ongoing: []
+    done: [sample]
   ignored: []
 """
         sidecar_file.write_text(sidecar_content)
@@ -1165,7 +1169,7 @@ task_list:
         # Verify task_list loaded from sidecar
         task_list = project.model_dump().get("task_list")
         assert task_list is not None
-        assert "sample" in task_list.get("completed", [])
+        assert "sample" in task_list.get("done", [])
 
     def test_modify_and_save_task_list(self, simple_service: ProjectService, tmp_path: Path):
         """Test modifying task_list and saving preserves changes in sidecar."""
@@ -1191,8 +1195,9 @@ entities:
 
         sidecar_content = """
 task_list:
-    required_entities: [entity1]
-    completed: []
+    todo: [entity1]
+    ongoing: []
+    done: []
     ignored: []
 """
         sidecar_file.write_text(sidecar_content)
@@ -1203,10 +1208,12 @@ task_list:
         # Modify task_list in loaded project directly
         if project1.task_list is None:
             project1.task_list = {}
-        if "completed" not in project1.task_list:
-            project1.task_list["completed"] = []
-        if "entity1" not in project1.task_list["completed"]:
-            project1.task_list["completed"].append("entity1")
+        if "done" not in project1.task_list:
+            project1.task_list["done"] = []
+        if "entity1" not in project1.task_list["done"]:
+            project1.task_list["done"].append("entity1")
+        if "todo" in project1.task_list and "entity1" in project1.task_list["todo"]:
+            project1.task_list["todo"].remove("entity1")
 
         # Save modified project
         simple_service.save_project(project1)
@@ -1215,4 +1222,4 @@ task_list:
         project2 = simple_service.load_project("test_project")
         task_list2 = project2.task_list or {}
 
-        assert "entity1" in task_list2.get("completed", [])
+        assert "entity1" in task_list2.get("done", [])

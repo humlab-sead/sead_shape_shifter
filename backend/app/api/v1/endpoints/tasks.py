@@ -1,13 +1,19 @@
 """API endpoints for entity task management and progress tracking."""
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
 from backend.app.models.task import ProjectTaskStatus, TaskUpdateResponse
-from backend.app.services.task_service import get_task_service
+from backend.app.services.task_service import TaskService, get_task_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
+from backend.app.core.config import settings
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
+from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager
+from backend.app.services.yaml_service import YamlService, get_yaml_service
+from backend.app.services.project_service import get_project_service  # pylint: disable=import-outside-toplevel
 
 router = APIRouter()
 
@@ -19,7 +25,7 @@ async def get_project_task_status(name: str) -> ProjectTaskStatus:
     Get task status for all entities in project.
 
     Computes full task status by combining:
-    - Stored task list state (completed, ignored, required)
+    - Stored task list state (todo, done, ignored, ongoing)
     - Derived state (validation results, preview availability)
     - Dependency analysis (blocked_by)
 
@@ -155,7 +161,7 @@ async def mark_task_complete(name: str, entity_name: str) -> TaskUpdateResponse:
           "success": true,
           "entity_name": "location",
           "new_status": "done",
-          "message": "Entity marked as completed"
+          "message": "Entity marked as done"
         }
     """
     task_service = get_task_service()
@@ -163,7 +169,7 @@ async def mark_task_complete(name: str, entity_name: str) -> TaskUpdateResponse:
     try:
         result = await task_service.mark_complete(name, entity_name)
 
-        logger.info(f"Marked '{entity_name}' as complete in project '{name}'")
+        logger.info(f"Marked '{entity_name}' as done in project '{name}'")
 
         return TaskUpdateResponse(
             success=result["success"],
@@ -173,7 +179,7 @@ async def mark_task_complete(name: str, entity_name: str) -> TaskUpdateResponse:
         )
 
     except ValueError as e:
-        logger.warning(f"Failed to mark '{entity_name}' as complete: {e}")
+        logger.warning(f"Failed to mark '{entity_name}' as done: {e}")
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
@@ -223,7 +229,7 @@ async def reset_task_status(name: str, entity_name: str) -> TaskUpdateResponse:
     """
     Reset entity task status to todo.
 
-    Removes completed or ignored status, returning entity to todo state.
+    Removes done or ignored status, returning entity to todo state.
 
     Args:
         name: Project name
@@ -283,8 +289,8 @@ async def mark_task_todo(name: str, entity_name: str) -> TaskUpdateResponse:
           "message": "Entity marked as todo"
         }
     """
-    task_service = get_task_service()
-    result = await task_service.mark_todo(name, entity_name)
+    task_service: TaskService = get_task_service()
+    result: dict[str, Any] = await task_service.mark_todo(name, entity_name)
 
     logger.info(f"Marked '{entity_name}' as todo in project '{name}'")
 
@@ -323,7 +329,7 @@ async def mark_task_ongoing(name: str, entity_name: str) -> TaskUpdateResponse:
           "message": "Entity marked as ongoing"
         }
     """
-    task_service = get_task_service()
+    task_service: TaskService = get_task_service()
     result = await task_service.mark_ongoing(name, entity_name)
 
     logger.info(f"Marked '{entity_name}' as ongoing in project '{name}'")
@@ -363,7 +369,7 @@ async def toggle_task_flagged(name: str, entity_name: str) -> dict[str, Any]:
           "message": "Entity flagged"
         }
     """
-    task_service = get_task_service()
+    task_service: TaskService = get_task_service()
     result = await task_service.toggle_flagged(name, entity_name)
 
     logger.info(f"Toggled flag for '{entity_name}' in project '{name}': {result['flagged']}")
@@ -401,13 +407,6 @@ async def migrate_tasks_to_sidecar(name: str) -> dict[str, Any]:
           "message": "Task list migrated to sidecar"
         }
     """
-    from pathlib import Path  # pylint: disable=import-outside-toplevel
-
-    from backend.app.core.config import settings  # pylint: disable=import-outside-toplevel
-    from backend.app.mappers.project_name_mapper import ProjectNameMapper  # pylint: disable=import-outside-toplevel
-    from backend.app.services.project_service import get_project_service  # pylint: disable=import-outside-toplevel
-    from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager  # pylint: disable=import-outside-toplevel
-    from backend.app.services.yaml_service import get_yaml_service  # pylint: disable=import-outside-toplevel
 
     try:
         # Get project file path
@@ -513,32 +512,26 @@ async def get_sidecar_status(name: str) -> dict[str, Any]:
           "message": "Task list stored in main project file"
         }
     """
-    from pathlib import Path  # pylint: disable=import-outside-toplevel
-
-    from backend.app.core.config import settings  # pylint: disable=import-outside-toplevel
-    from backend.app.mappers.project_name_mapper import ProjectNameMapper  # pylint: disable=import-outside-toplevel
-    from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager  # pylint: disable=import-outside-toplevel
-    from backend.app.services.yaml_service import get_yaml_service  # pylint: disable=import-outside-toplevel
 
     try:
         # Get project file path
         projects_dir = Path(settings.PROJECTS_DIR)
-        filename = projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
+        filename: Path = projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
 
         if not filename.exists():
             raise HTTPException(status_code=404, detail=f"Project not found: {name}")
 
         # Initialize sidecar manager
-        yaml_service = get_yaml_service()
+        yaml_service: YamlService = get_yaml_service()
         sidecar_manager = TaskListSidecarManager(yaml_service)
 
         # Check sidecar status
-        sidecar_path = sidecar_manager.get_sidecar_path(filename)
-        sidecar_exists = sidecar_manager.sidecar_exists(filename)
+        sidecar_path: Path = sidecar_manager.get_sidecar_path(filename)
+        sidecar_exists: bool = sidecar_manager.sidecar_exists(filename)
 
         # Check main file for task_list
         project_data = yaml_service.load(filename)
-        has_task_list_in_main = "task_list" in project_data
+        has_task_list_in_main: bool = "task_list" in project_data
 
         # Determine current location
         if sidecar_exists:

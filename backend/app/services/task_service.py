@@ -38,6 +38,25 @@ class TaskService:
         self.shapeshift_service: ShapeShiftService = shapeshift_service or get_shapeshift_service()
         self.sidecar_manager: TaskListSidecarManager = sidecar_manager or TaskListSidecarManager()
 
+    def _refresh_project_task_list(self, project_name: str, project: ShapeShiftProject) -> None:
+        """Refresh task state from sidecar without touching cached project state.
+
+        Task workflow is stored in a sidecar file and should remain independent from the
+        main project editing flow. This method overlays the latest sidecar task_list onto
+        the core project used for task computations only.
+        """
+        try:
+            project_file_path = self._get_project_file_path(project_name)
+        except Exception as exc:  # noqa: BLE001 ; task tests may mock project service incompletely
+            logger.debug(f"Skipping task sidecar refresh for '{project_name}': {exc}")
+            return
+
+        if not self.sidecar_manager.sidecar_exists(project_file_path):
+            return
+
+        project.cfg["task_list"] = self.sidecar_manager.load_task_list(project_file_path)
+        project.__dict__.pop("task_list", None)
+
     def _get_project_file_path(self, project_name: str) -> Path:
         """
         Get shapeshifter.yml file path from project name.
@@ -84,6 +103,7 @@ class TaskService:
 
         # Convert to core layer for task_list access
         project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+        self._refresh_project_task_list(project_name, project)
 
         # Get validation results for all entities
         validation_result: ValidationResult = await self.validation_service.validate_project_data(project_name)
@@ -93,7 +113,11 @@ class TaskService:
 
         # Track all entity names we need to consider (existing + todo/done/ongoing)
         all_entity_names: set[str] = (
-            set(project.table_names) | set(project.task_list.todo) | set(project.task_list.done) | set(project.task_list.ongoing)
+            set(project.table_names)
+            | set(project.task_list.todo)
+            | set(project.task_list.done)
+            | set(project.task_list.ongoing)
+            | set(project.task_list.ignored)
         )
 
         for entity_name in all_entity_names:

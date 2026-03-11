@@ -27,7 +27,7 @@ def mock_core_project():
     task_list = MagicMock(spec=TaskList)
     task_list.required_entities = ["location", "site", "sample"]
     task_list.todo = ["site", "sample"]  # Entities not yet done
-    task_list.done = ["location"]  # Completed entities
+    task_list.done = ["location"]  # Done entities
     task_list.ongoing = []
     task_list.ignored = []
     task_list.flagged = {}
@@ -130,10 +130,10 @@ class TestTaskServiceBasic:
             assert "sample" in result.entities
 
     @pytest.mark.asyncio
-    async def test_compute_status_marks_completed_entity_as_done(
+    async def test_compute_status_marks_done_entity_as_done(
         self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
     ):
-        """Test that completed entities have done status."""
+        """Test that done entities have done status."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
         task_service.shapeshift_service.preview_entity = AsyncMock()
@@ -145,10 +145,10 @@ class TestTaskServiceBasic:
             assert result.entities["location"].status == TaskStatus.DONE
 
     @pytest.mark.asyncio
-    async def test_compute_status_marks_uncompleted_as_todo(
+    async def test_compute_status_marks_todo_entities_as_todo(
         self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
     ):
-        """Test that uncompleted entities have todo status."""
+        """Test that todo entities have todo status."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
         task_service.shapeshift_service.preview_entity = AsyncMock()
@@ -159,6 +159,39 @@ class TestTaskServiceBasic:
 
             assert result.entities["site"].status == TaskStatus.TODO
             assert result.entities["sample"].status == TaskStatus.TODO
+
+    @pytest.mark.asyncio
+    async def test_compute_status_includes_ignored_only_entities(
+        self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
+    ):
+        """Fresh sidecar task state should include ignored-only entities in task status."""
+        mock_core_project.table_names = ["location", "site", "sample"]
+        mock_core_project.has_table.side_effect = lambda name: name in ["location", "site", "sample"]
+        mock_core_project.task_list.ignored = []
+        mock_core_project.task_list.is_ignored.side_effect = lambda name: False
+        mock_core_project.task_list.is_required.side_effect = lambda name: name in ["location", "site", "sample"]
+        mock_core_project.task_list.is_done.side_effect = lambda name: name in ["location"]
+        mock_core_project.task_list.is_todo.side_effect = lambda name: name in ["site", "sample"]
+        mock_core_project.task_list.is_ongoing.side_effect = lambda name: False
+
+        task_service.project_service.load_project = Mock(return_value=mock_api_project)
+        task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
+        task_service.shapeshift_service.preview_entity = AsyncMock()
+        task_service.sidecar_manager.sidecar_exists = Mock(return_value=True)
+        task_service.sidecar_manager.load_task_list = Mock(
+            return_value={
+                "todo": ["site", "sample"],
+                "done": ["location"],
+                "ignored": ["taxa_persistence"],
+            }
+        )
+        task_service._get_project_file_path = Mock()
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            result = await task_service.compute_status("test-project")
+
+            assert "taxa_persistence" in result.entities
+            assert result.entities["taxa_persistence"].status == TaskStatus.IGNORED
 
     @pytest.mark.asyncio
     async def test_compute_status_calculates_stats(
@@ -259,7 +292,8 @@ class TestTaskServiceMarkComplete:
 
         initial_task_list_data = {
             "required_entities": ["location", "site", "sample"],
-            "completed": ["location"],
+            "todo": ["site", "sample"],
+            "done": ["location"],
             "ongoing": [],
             "ignored": [],
             "flagged": {},
@@ -285,7 +319,8 @@ class TestTaskServiceMarkComplete:
 
         initial_task_list_data = {
             "required_entities": ["location", "site", "sample"],
-            "completed": ["location"],
+            "todo": ["site", "sample"],
+            "done": ["location"],
             "ongoing": [],
             "ignored": [],
             "flagged": {},
@@ -418,7 +453,8 @@ class TestTaskServiceMarkComplete:
         # Mock sidecar manager operations
         initial_task_list_data = {
             "required_entities": ["location", "site", "sample"],
-            "completed": ["location"],
+            "todo": ["site", "sample"],
+            "done": ["location"],
             "ongoing": [],
             "ignored": [],
             "flagged": {},
@@ -433,7 +469,7 @@ class TestTaskServiceMarkComplete:
             # Verify sidecar was saved with updated task list
             task_service.sidecar_manager.save_task_list.assert_called_once()
             saved_task_list = task_service.sidecar_manager.save_task_list.call_args[0][1]
-            assert "site" in saved_task_list.completed
+            assert "site" in saved_task_list.done
 
 
 class TestTaskServiceMarkIgnored:
@@ -445,7 +481,8 @@ class TestTaskServiceMarkIgnored:
         # Mock sidecar manager operations
         initial_task_list_data = {
             "required_entities": ["location", "site", "sample"],
-            "completed": ["location"],
+            "todo": ["site", "sample"],
+            "done": ["location"],
             "ongoing": [],
             "ignored": [],
             "flagged": {},
@@ -468,7 +505,8 @@ class TestTaskServiceMarkIgnored:
         # Mock sidecar manager operations
         initial_task_list_data = {
             "required_entities": ["location", "site", "sample"],
-            "completed": ["location"],
+            "todo": ["site", "sample"],
+            "done": ["location"],
             "ongoing": [],
             "ignored": [],
             "flagged": {},
@@ -480,6 +518,25 @@ class TestTaskServiceMarkIgnored:
 
         task_service.sidecar_manager.save_task_list.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_mark_ignored_does_not_touch_project_cache(self, task_service: TaskService, mock_api_project, mock_core_project):
+        """Task sidecar writes should stay separate from project cache management."""
+        initial_task_list_data = {
+            "required_entities": ["location", "site", "sample"],
+            "todo": ["site", "sample"],
+            "done": ["location"],
+            "ongoing": [],
+            "ignored": [],
+            "flagged": {},
+        }
+        task_service.sidecar_manager.load_task_list = Mock(return_value=initial_task_list_data)
+        task_service.sidecar_manager.save_task_list = Mock()
+        task_service.project_service.state.invalidate = Mock()
+
+        await task_service.mark_ignored("test-project", "site")
+
+        task_service.project_service.state.invalidate.assert_not_called()
+
 
 class TestTaskServiceResetStatus:
     """Tests for resetting entity status."""
@@ -490,7 +547,8 @@ class TestTaskServiceResetStatus:
         # Mock sidecar manager operations
         initial_task_list_data = {
             "required_entities": ["location", "site", "sample"],
-            "completed": ["location"],
+            "todo": ["site", "sample"],
+            "done": ["location"],
             "ongoing": [],
             "ignored": [],
             "flagged": {},
@@ -505,7 +563,7 @@ class TestTaskServiceResetStatus:
         # Verify sidecar was saved with updated task list
         task_service.sidecar_manager.save_task_list.assert_called_once()
         saved_task_list = task_service.sidecar_manager.save_task_list.call_args[0][1]
-        assert "location" not in saved_task_list.completed
+        assert "location" not in saved_task_list.done
 
     @pytest.mark.asyncio
     async def test_reset_status_saves_sidecar(self, task_service: TaskService, mock_api_project, mock_core_project):
@@ -513,7 +571,8 @@ class TestTaskServiceResetStatus:
         # Mock sidecar manager operations
         initial_task_list_data = {
             "required_entities": ["location", "site", "sample"],
-            "completed": ["location"],
+            "todo": ["site", "sample"],
+            "done": ["location"],
             "ongoing": [],
             "ignored": [],
             "flagged": {},
