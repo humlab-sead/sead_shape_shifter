@@ -92,6 +92,7 @@ async def list_drivers() -> dict[str, DriverSchemaResponse]:
                         max_value=f.max_value,
                         placeholder=f.placeholder,
                         aliases=f.aliases or [],
+                        extensions=f.extensions,
                     )
                     for f in schema.fields
                 ],
