@@ -2025,10 +2025,10 @@ function applyTaskFilter() {
 }
 
 .stats-card {
-  background: rgba(var(--v-theme-surface), 0.5) !important;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(var(--v-border-color), 0.12);
+  background: transparent !important;
+  backdrop-filter: blur(8px);
+  box-shadow: none;
+  border: none;
   border-radius: 8px;
 }
 
