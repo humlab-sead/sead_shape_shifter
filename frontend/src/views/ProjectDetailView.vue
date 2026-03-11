@@ -157,19 +157,33 @@
 
                 <v-divider vertical />
 
-                <v-select
-                  v-model="colorByMode"
-                  :items="colorByOptions"
-                  item-title="title"
-                  item-value="value"
-                  density="compact"
-                  variant="filled"
-                  size="small"
-                  prepend-inner-icon="mdi-palette-outline"
-                  hide-details
-                  class="text-capitalize color-by-select"
-                  style="min-width: 180px;"
-                />
+                <!-- Color By Dropdown -->
+                <v-menu offset-y>
+                  <template #activator="{ props: menuProps }">
+                    <v-btn
+                      v-bind="menuProps"
+                      size="small"
+                      variant="tonal"
+                      prepend-icon="mdi-palette-outline"
+                      append-icon="mdi-menu-down"
+                      color="primary"
+                      class="text-capitalize"
+                    >
+                      {{ colorByOptions.find(opt => opt.value === colorByMode)?.title || 'Task Status' }}
+                    </v-btn>
+                  </template>
+
+                  <v-list density="compact" min-width="160">
+                    <v-list-item
+                      v-for="option in colorByOptions"
+                      :key="option.value"
+                      :active="colorByMode === option.value"
+                      @click="colorByMode = option.value"
+                    >
+                      <v-list-item-title>{{ option.title }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
 
                 <v-divider vertical />
 
@@ -1979,11 +1993,6 @@ function applyTaskFilter() {
 
 .gap-4 {
   gap: 1rem;
-}
-
-.color-by-select {
-  max-width: 180px;
-  min-width: 160px;
 }
 
 .graph-card {
