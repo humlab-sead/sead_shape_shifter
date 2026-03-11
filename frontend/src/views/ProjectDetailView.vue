@@ -254,11 +254,24 @@
                         </v-chip>
                       </div>
                       
-                      <!-- Visual Indicators Legend -->
+                      <!-- Task Status Legend -->
                       <div class="text-caption text-medium-emphasis">
+                        <div class="mb-1" style="font-size: 10px; font-weight: 500;">Task Status</div>
                         <div class="d-flex align-center gap-1 mb-1">
-                          <div style="width: 12px; height: 12px; border: 2px double #4CAF50; border-radius: 50%;" />
-                          <span style="font-size: 10px;">Materialized</span>
+                          <div style="width: 10px; height: 10px; background-color: #FDD835; border-radius: 50%;" />
+                          <span style="font-size: 10px;">Todo - Planned but not created</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #2196F3; border-radius: 50%;" />
+                          <span style="font-size: 10px;">Ongoing - Work in progress</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #43A047; border-radius: 50%;" />
+                          <span style="font-size: 10px;">Done - Completed</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #9E9E9E; border-radius: 50%;" />
+                          <span style="font-size: 10px;">Ignored - Excluded</span>
                         </div>
                       </div>
                     </v-card-text>

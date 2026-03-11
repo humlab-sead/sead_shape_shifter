@@ -313,8 +313,8 @@ const baseStyles: StylesheetCSS[] = [
   {
     selector: 'node.task-ongoing',
     css: {
-      'background-color': '#FFA726',
-      'border-color': '#F57C00',
+      'background-color': '#2196F3',
+      'border-color': '#1976D2',
       'border-width': 3,
     },
   },

@@ -121,7 +121,8 @@ const helpContentMap: Record<string, HelpContent> = {
       'Source node icons: 🗄️ Database, 📋 Table, 📊 CSV, 📗 Excel, 📄 Sheet, 📁 File',
       'Source colors: Blue (database), Teal (table), Red (CSV), Green (Excel), Purple (generic)',
       'Solid edges show entity dependencies, dotted edges show source relationships',
-      '<span style="color: #4CAF50; font-weight: 600;">Dashed green</span> edges indicate frozen dependencies from materialized entities'
+      '<span style="color: #4CAF50; font-weight: 600;">Dashed green</span> edges indicate frozen dependencies from materialized entities',
+      '<span style="color: #4CAF50; font-weight: 600;">Double green border</span> indicates materialized entities (cached data)'
     ],
     shortcuts: [
       { keys: 'Click', action: 'Open YAML editor' },
