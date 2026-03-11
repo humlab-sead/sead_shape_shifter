@@ -231,13 +231,16 @@ const connectedSources = computed(() => {
 })
 
 const availableSourceFiles = computed(() => {
-  return dataSourceStore.sortedDataSources.map((ds) => ({
-    filename: ds.filename || `${ds.name}.yml`,
-    display: `${ds.name} (${ds.filename || `${ds.name}.yml`})`,
-    driver: ds.driver,
-    host: ds.host,
-    name: ds.name,
-  }))
+  return dataSourceStore.sortedDataSources.map((ds) => {
+    const filename = ds.filename || `${ds.name}.yml`
+    return {
+      filename: `\${GLOBAL_DATA_SOURCE_DIR}/${filename}`,
+      display: `${ds.name} (${filename})`,
+      driver: ds.driver,
+      host: ds.host,
+      name: ds.name,
+    }
+  })
 })
 
 // Methods
