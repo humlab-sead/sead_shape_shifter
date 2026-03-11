@@ -155,7 +155,11 @@ const dataSourceConfig = computed(() => {
     // Check for @include: directive
     const includeMatch = dsConfig.match(/^@include:\s*(.+)$/)
     if (includeMatch) {
-      return (includeMatch[1] || '').trim() // Return filename
+      const fullPath = (includeMatch[1] || '').trim()
+      // Extract filename from path (remove ${GLOBAL_DATA_SOURCE_DIR}/ prefix if present)
+      const filenamePart = fullPath.replace(/\$\{GLOBAL_DATA_SOURCE_DIR\}\//, '')
+      // Remove .yml extension to get data source name
+      return filenamePart.replace(/\.yml$/, '')
     }
     return dsConfig
   }
