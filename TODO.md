@@ -253,3 +253,6 @@ Or, possibly, we could allow user to edit "shapeshifter.tasks.yml"
 
 I think these changes (and bugfixes) would increase the usability of the task feature.
 What do you think?
+
+### TODO: Consider adding a trash bin when deleteing projects (move instead of delete)
+### TODO: Allow accdb & mdb to be uploaded

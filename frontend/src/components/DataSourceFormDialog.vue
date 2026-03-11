@@ -87,7 +87,6 @@
                     item-title="title"
                     item-value="value"
                     :rules="field.required ? [rules.required] : []"
-                    @focus="fetchProjectFiles"
                   >
                     <template #item="{ props, item }">
                       <v-list-item v-bind="props">
