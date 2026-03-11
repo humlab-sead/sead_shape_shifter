@@ -142,9 +142,9 @@ class SubsetService:
         extra_source_columns, _ = self.extra_col_evaluator.split_extra_columns(source, extra_columns, case_sensitive=False)
 
         # Columns we need to read from source to build the result
-        required_source_cols: set[str] = {
-            selected_aliases.get(column_name, column_name) for column_name in columns
-        } | set(extra_source_columns.values())
+        required_source_cols: set[str] = {selected_aliases.get(column_name, column_name) for column_name in columns} | set(
+            extra_source_columns.values()
+        )
 
         self._check_if_missing_requested_columns(source, entity_name, raise_if_missing, required_source_cols)
 
