@@ -37,7 +37,7 @@ def reset_services():
 
 @pytest.fixture
 def sample_project_data():
-    """Sample project data for tests."""
+    """Sample project data for tests (using new task list format)."""
     return {
         "name": "test_project",
         "entities": {
@@ -61,8 +61,9 @@ def sample_project_data():
             },
         },
         "task_list": {
-            "required_entities": ["location", "site"],
-            "completed": [],
+            "todo": ["location", "site"],
+            "done": [],
+            "ongoing": [],
             "ignored": [],
         },
     }
@@ -207,14 +208,10 @@ class TestMarkComplete:
             project_response = client.get("/api/v1/projects/test_project")
             project_data = project_response.json()
 
-            # Check if task_list.completed includes location
-            assert "task_list" in project_data
-            assert project_data["task_list"] is not None, "task_list should not be None"
-            assert "location" in project_data["task_list"].get("completed", [])
-
-
-class TestMarkIgnored:
-    """Tests for POST /projects/{name}/tasks/{entity}/ignore endpoint."""
+        # Check if task_list.done includes location (new format)
+        assert "task_list" in project_data
+        assert project_data["task_list"] is not None, "task_list should not be None"
+        assert "location" in project_data["task_list"].get("done", [])
 
     def test_mark_ignored_success(self, tmp_path, monkeypatch, reset_services, sample_project_data):
         """Test successfully marking entity as ignored."""

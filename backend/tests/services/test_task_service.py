@@ -23,18 +23,33 @@ def mock_core_project():
     project.table_names = ["location", "site", "sample"]
     project.has_table.side_effect = lambda name: name in ["location", "site", "sample"]
 
-    # Mock task list
+    # Mock task list (using new format)
     task_list = MagicMock(spec=TaskList)
     task_list.required_entities = ["location", "site", "sample"]
-    task_list.completed = ["location"]
+    task_list.todo = ["site", "sample"]  # Entities not yet done
+    task_list.done = ["location"]  # Completed entities
     task_list.ongoing = []
     task_list.ignored = []
     task_list.flagged = {}
     task_list.is_required.side_effect = lambda name: name in ["location", "site", "sample"]
-    task_list.is_completed.side_effect = lambda name: name in ["location"]
+    task_list.is_done.side_effect = lambda name: name in ["location"]
+    task_list.is_todo.side_effect = lambda name: name in ["site", "sample"]
     task_list.is_ongoing.side_effect = lambda name: name in []
     task_list.is_ignored.side_effect = lambda name: name in []
     task_list.is_flagged.side_effect = lambda name: False
+    task_list.mark_completed = MagicMock()
+    task_list.mark_todo = MagicMock()
+    task_list.mark_ongoing = MagicMock()
+    task_list.mark_ignored = MagicMock()
+    task_list.reset_status = MagicMock()
+    project.task_list = task_list
+    task_list.is_ignored.side_effect = lambda name: name in []
+    task_list.is_flagged.side_effect = lambda name: False
+    task_list.mark_completed = MagicMock()
+    task_list.mark_todo = MagicMock()
+    task_list.mark_ongoing = MagicMock()
+    task_list.mark_ignored = MagicMock()
+    task_list.reset_status = MagicMock()
     project.task_list = task_list
 
     # Mock table configs
@@ -46,10 +61,10 @@ def mock_core_project():
 
     project.get_table.side_effect = get_table_mock
 
-    # Add cfg attribute that save_project expects
+    # Add cfg attribute that save_project expects (using new format)
     project.cfg = {
         "entities": {"location": {}, "site": {}, "sample": {}},
-        "options": {"task_list": {"required": ["location", "site", "sample"], "completed": ["location"], "ignored": []}},
+        "options": {},
         "tasks": {"location": {"status": "done"}, "site": {"status": "todo"}},  # Add tasks for mark_complete/ignore methods
     }
 
@@ -60,13 +75,12 @@ def mock_core_project():
 def mock_api_project():
     """Create mock API Project."""
     project = MagicMock(spec=Project)
-    # Add task_list attribute that is accessed in task_service methods
+    # Add task_list attribute that is accessed in task_service methods (using new format)
     project.task_list = {
-        "required_entities": ["location", "site", "sample"],
-        "completed": ["location"],
+        "todo": ["site", "sample"],
+        "done": ["location"],
         "ongoing": [],
         "ignored": [],
-        "flagged": {},
     }
     return project
 

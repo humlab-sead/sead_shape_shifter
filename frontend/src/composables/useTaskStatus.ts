@@ -222,6 +222,41 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
   }
 
   /**
+   * Mark an entity as todo (planned but not yet created)
+   */
+  async function markTodo(entityName: string): Promise<boolean> {
+    if (!project.value) {
+      error.value = 'No project specified'
+      return false
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await apiClient.post<TaskOperationResponse>(
+        `/projects/${project.value}/tasks/${entityName}/todo`
+      )
+
+      // Update local state
+      if (taskStatus.value?.entities[entityName]) {
+        taskStatus.value.entities[entityName].status = TaskStatus.TODO
+      }
+
+      // Refresh full status to get updated stats
+      await fetchTaskStatus()
+
+      return response.data.success
+    } catch (err: any) {
+      error.value = err.response?.data?.detail || err.message || 'Failed to mark as todo'
+      console.error('Failed to mark as todo:', err)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Reset entity status to todo
    */
   async function resetStatus(entityName: string): Promise<boolean> {
@@ -379,6 +414,7 @@ export function useTaskStatus(projectName?: Ref<string> | string) {
     markComplete,
     markIgnored,
     markOngoing,
+    markTodo,
     resetStatus,
     toggleFlagged,
     getEntityStatus,

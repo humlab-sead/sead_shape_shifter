@@ -256,6 +256,46 @@ async def reset_task_status(name: str, entity_name: str) -> TaskUpdateResponse:
     )
 
 
+@router.post("/projects/{name}/tasks/{entity_name}/todo", response_model=TaskUpdateResponse)
+@handle_endpoint_errors
+async def mark_task_todo(name: str, entity_name: str) -> TaskUpdateResponse:
+    """
+    Mark entity task as todo (planned but not yet created).
+
+    Adds entity to the todo list, indicating it's planned for creation.
+    Useful for adding placeholder nodes in the dependency graph.
+
+    Args:
+        name: Project name
+        entity_name: Entity name to mark as todo
+
+    Returns:
+        TaskUpdateResponse with success status
+
+    Example:
+        POST /api/v1/projects/my-project/tasks/sample/todo
+
+        Response:
+        {
+          "success": true,
+          "entity_name": "sample",
+          "new_status": "todo",
+          "message": "Entity marked as todo"
+        }
+    """
+    task_service = get_task_service()
+    result = await task_service.mark_todo(name, entity_name)
+
+    logger.info(f"Marked '{entity_name}' as todo in project '{name}'")
+
+    return TaskUpdateResponse(
+        success=result["success"],
+        entity_name=result["entity_name"],
+        new_status=result["status"],
+        message=result.get("message"),
+    )
+
+
 @router.post("/projects/{name}/tasks/{entity_name}/ongoing", response_model=TaskUpdateResponse)
 @handle_endpoint_errors
 async def mark_task_ongoing(name: str, entity_name: str) -> TaskUpdateResponse:

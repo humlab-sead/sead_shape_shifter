@@ -103,10 +103,11 @@ class TestTaskListSidecarManager:
         assert sidecar_path.exists()
 
     def test_save_task_list_saves_correct_format(self, project_file, sidecar_manager, yaml_service):
-        """Test save_task_list saves correct format."""
+        """Test save_task_list saves correct format (new format with migration)."""
         sidecar_path = sidecar_manager.get_sidecar_path(project_file)
         sidecar_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # Input uses old format - will be automatically migrated
         task_list = TaskList(
             {
                 "required_entities": ["entity1", "entity2"],
@@ -120,8 +121,12 @@ class TestTaskListSidecarManager:
         loaded_data = yaml_service.load(sidecar_path)
 
         assert "task_list" in loaded_data
-        assert "required_entities" in loaded_data["task_list"]
-        assert "entity1" in loaded_data["task_list"]["required_entities"]
+        # New format should be saved (migrated from old)
+        assert "done" in loaded_data["task_list"]
+        assert "entity1" in loaded_data["task_list"]["done"]
+        # The todo list = required_entities - completed = ["entity2"]
+        assert "todo" in loaded_data["task_list"]
+        assert "entity2" in loaded_data["task_list"]["todo"]
 
     def test_save_task_list_creates_parent_directory(self, temp_dir, sidecar_manager):
         """Test save_task_list creates parent directory if needed."""
@@ -199,6 +204,36 @@ class TestTaskListSidecarManager:
         # Verify project_data returned unchanged
         assert result == project_data
 
+    def test_task_list_migration_from_old_format(self, project_file, sidecar_manager, yaml_service):
+        """Test TaskList automatically migrates from old format to new format."""
+        sidecar_path = sidecar_manager.get_sidecar_path(project_file)
+        sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create TaskList with old format
+        task_list = TaskList(
+            {
+                "required_entities": ["location", "site", "sample"],
+                "completed": ["location", "site"],
+                "ongoing": ["sample"],
+            }
+        )
+
+        # Save and reload to verify migration
+        sidecar_manager.save_task_list(project_file, task_list)
+        loaded_data = yaml_service.load(sidecar_path)
+
+        # Should have new format
+        assert "done" in loaded_data["task_list"]
+        assert set(loaded_data["task_list"]["done"]) == {"location", "site"}
+        assert "ongoing" in loaded_data["task_list"]
+        assert "sample" in loaded_data["task_list"]["ongoing"]
+        # The todo list should be empty (required_entities - completed - ongoing = {})
+        assert "todo" not in loaded_data["task_list"] or loaded_data["task_list"]["todo"] == []
+
+        # Old keys should not be present
+        assert "required_entities" not in loaded_data["task_list"]
+        assert "completed" not in loaded_data["task_list"]
+
     def test_migrate_task_list_returns_copy_not_reference(self, project_file, sidecar_manager):
         """Test migrate_task_list returns copy of data, not reference."""
         project_data = {
@@ -232,7 +267,7 @@ class TestTaskListSidecarManager:
         sidecar_manager.delete_sidecar(project_file)
 
     def test_roundtrip_save_and_load(self, project_file, sidecar_manager):
-        """Test save and load roundtrip preserves data."""
+        """Test save and load roundtrip preserves data (with format migration)."""
         sidecar_path = sidecar_manager.get_sidecar_path(project_file)
         sidecar_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -247,9 +282,15 @@ class TestTaskListSidecarManager:
         sidecar_manager.save_task_list(project_file, original_task_list)
         loaded_data = sidecar_manager.load_task_list(project_file)
 
-        assert "required_entities" in loaded_data
-        assert "entity1" in loaded_data["required_entities"]
-        assert "entity1" in loaded_data.get("completed", [])
+        # After migration, should have new format
+        assert "done" in loaded_data
+        assert "entity1" in loaded_data["done"]
+        # entity2 is in required but not completed/ongoing, so it goes to todo
+        assert "todo" in loaded_data
+        assert "entity2" in loaded_data["todo"]
+        # Ignored status is preserved separately
+        assert "ignored" in loaded_data
+        assert "entity2" in loaded_data["ignored"]
 
     def test_multiple_projects_have_separate_sidecars(self, temp_dir, sidecar_manager):
         """Test multiple projects have separate sidecar files."""

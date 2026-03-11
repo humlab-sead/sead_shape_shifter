@@ -91,8 +91,10 @@ class TaskService:
         # Build status for all entities (existing + required but missing)
         entity_statuses: dict[str, EntityTaskStatus] = {}
 
-        # Track all entity names we need to consider
-        all_entity_names: set[str] = set(project.table_names) | set(project.task_list.required_entities)
+        # Track all entity names we need to consider (existing + todo/done/ongoing)
+        all_entity_names: set[str] = (
+            set(project.table_names) | set(project.task_list.todo) | set(project.task_list.done) | set(project.task_list.ongoing)
+        )
 
         for entity_name in all_entity_names:
             entity_status = await self._compute_entity_status(
@@ -121,13 +123,21 @@ class TaskService:
         exists: bool = project.has_table(entity_name)
 
         # Determine base status (from task_list)
-        if project.task_list.is_completed(entity_name):
+        # Priority order: done > ongoing > ignored > todo (explicit or implicit)
+        if project.task_list.is_done(entity_name):
             status: TaskStatus = TaskStatus.DONE
         elif project.task_list.is_ongoing(entity_name):
             status = TaskStatus.ONGOING
         elif project.task_list.is_ignored(entity_name):
             status = TaskStatus.IGNORED
+        elif project.task_list.is_todo(entity_name):
+            # Explicitly marked as todo
+            status = TaskStatus.TODO
+        elif exists:
+            # Entity exists but not explicitly marked - default to ONGOING
+            status = TaskStatus.ONGOING
         else:
+            # Entity doesn't exist and not marked - default to TODO
             status = TaskStatus.TODO
 
         # Check if required
@@ -452,6 +462,31 @@ class TaskService:
             "entity_name": entity_name,
             "status": "ongoing",
             "message": "Entity marked as ongoing",
+        }
+
+    async def mark_todo(self, project_name: str, entity_name: str) -> dict[str, Any]:
+        """
+        Mark entity as todo (planned but not yet created).
+
+        Args:
+            project_name: Name of the project
+            entity_name: Name of entity to mark as todo
+
+        Returns:
+            Dict with success status and message
+        """
+        # Update task_list in sidecar directly
+        project_file_path = self._get_project_file_path(project_name)
+        task_list_data = self.sidecar_manager.load_task_list(project_file_path)
+        task_list = TaskList(task_list_data or {})
+        task_list.mark_todo(entity_name)
+        self.sidecar_manager.save_task_list(project_file_path, task_list)
+
+        return {
+            "success": True,
+            "entity_name": entity_name,
+            "status": "todo",
+            "message": "Entity marked as todo",
         }
 
     async def toggle_flagged(self, project_name: str, entity_name: str) -> dict[str, Any]:

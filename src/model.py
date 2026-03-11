@@ -956,16 +956,16 @@ class TaskList:
     with derived state (validation, preview availability) to guide workflow.
 
     Status Model:
-        - done: User explicitly marked as complete (requires validation + preview)
-        - ongoing: User marked as in-progress
-        - todo: Not marked done (derived)
-        - ignored: User explicitly excluded from project
+        - todo: Entity planned but not yet created (yellowish color)
+        - ongoing: Entity exists and is being worked on (bluish color)
+        - done: User explicitly marked as complete (greenish color)
+        - ignored: User explicitly excluded from project (greyish color)
 
     Derived Signals:
         - blocked: Has validation errors or dependency issues
         - flagged: User flagged for attention or action needed
-        - in_progress: Entity exists but not done
-        - pending: Entity doesn't exist yet
+        - critical: Required entity missing or has errors
+        - ready: All dependencies done, validation passes
     """
 
     def __init__(self, data: dict[str, Any] | None = None) -> None:
@@ -973,23 +973,78 @@ class TaskList:
 
         Args:
             data: Dictionary containing task list configuration with keys:
-                - required_entities: List of entity names that must be completed
-                - completed: List of entity names marked as done by user
+                - todo: List of entity names that are planned but not yet created
                 - ongoing: List of entity names marked as in-progress by user
+                - done: List of entity names marked as complete by user
                 - ignored: List of entity names explicitly excluded
                 - flagged: Dictionary mapping entity names to flagged status
+
+        Note:
+            Automatically migrates old format (required_entities/completed) to new format (todo/done).
         """
         self.data: dict[str, Any] = data or {}
+        self._migrate_legacy_format()
+
+    def _migrate_legacy_format(self) -> None:
+        """Migrate old format (required_entities/completed) to new format (todo/done).
+
+        Old format:
+            required_entities: [location, site, sample]
+            completed: [location, site]
+
+        New format:
+            todo: [sample]
+            done: [location, site]
+
+        Migration logic:
+            - done = completed
+            - todo = required_entities - completed - ongoing
+            - Remove old keys after migration
+        """
+        if "required_entities" in self.data or "completed" in self.data:
+            # Get old values
+            required = set(self.data.get("required_entities", []) or [])
+            completed_old = set(self.data.get("completed", []) or [])
+            ongoing_existing = set(self.data.get("ongoing", []) or [])
+
+            # Migrate to new format
+            if completed_old:
+                self.data.setdefault("done", []).extend(sorted(completed_old))
+
+            # Calculate todo: entities in required but not completed and not ongoing
+            todo_entities = required - completed_old - ongoing_existing
+            if todo_entities:
+                self.data.setdefault("todo", []).extend(sorted(todo_entities))
+
+            # Remove old keys
+            self.data.pop("required_entities", None)
+            self.data.pop("completed", None)
+
+    @property
+    def todo(self) -> list[str]:
+        """Get list of todo entity names (planned but not yet created)."""
+        return self.data.get("todo", []) or []
+
+    @property
+    def done(self) -> list[str]:
+        """Get list of completed entity names."""
+        return self.data.get("done", []) or []
 
     @property
     def required_entities(self) -> list[str]:
-        """Get list of required entity names."""
-        return self.data.get("required_entities", []) or []
+        """Get list of required entity names (for backward compatibility).
+
+        Returns union of todo and done entities.
+        """
+        return sorted(set(self.todo) | set(self.done))
 
     @property
     def completed(self) -> list[str]:
-        """Get list of completed entity names."""
-        return self.data.get("completed", []) or []
+        """Get list of completed entity names (for backward compatibility).
+
+        Alias for done property.
+        """
+        return self.done
 
     @property
     def ongoing(self) -> list[str]:
@@ -1007,12 +1062,20 @@ class TaskList:
         return self.data.get("flagged", {}) or {}
 
     def is_required(self, entity_name: str) -> bool:
-        """Check if entity is required."""
-        return entity_name in self.required_entities
+        """Check if entity is required (in todo or done lists)."""
+        return entity_name in self.todo or entity_name in self.done
+
+    def is_todo(self, entity_name: str) -> bool:
+        """Check if entity is marked as todo."""
+        return entity_name in self.todo
 
     def is_completed(self, entity_name: str) -> bool:
         """Check if entity is marked as completed."""
-        return entity_name in self.completed
+        return entity_name in self.done
+
+    def is_done(self, entity_name: str) -> bool:
+        """Check if entity is marked as done (alias for is_completed)."""
+        return entity_name in self.done
 
     def is_ongoing(self, entity_name: str) -> bool:
         """Check if entity is marked as ongoing."""
@@ -1035,15 +1098,19 @@ class TaskList:
         Note:
             This only updates in-memory state. Caller must persist to project file.
         """
-        # Ensure completed list exists in data
-        if "completed" not in self.data:
-            self.data["completed"] = []
+        # Ensure done list exists in data
+        if "done" not in self.data:
+            self.data["done"] = []
 
-        # Add to completed list if not already there
-        if entity_name not in self.data["completed"]:
-            self.data["completed"].append(entity_name)
+        # Add to done list if not already there
+        if entity_name not in self.data["done"]:
+            self.data["done"].append(entity_name)
 
-        # Remove from ignored if present
+        # Remove from todo, ongoing, and ignored if present
+        if "todo" in self.data and entity_name in self.data["todo"]:
+            self.data["todo"] = [e for e in self.data["todo"] if e != entity_name]
+        if "ongoing" in self.data and entity_name in self.data["ongoing"]:
+            self.data["ongoing"] = [e for e in self.data["ongoing"] if e != entity_name]
         if "ignored" in self.data and entity_name in self.data["ignored"]:
             self.data["ignored"] = [e for e in self.data["ignored"] if e != entity_name]
 
@@ -1064,9 +1131,11 @@ class TaskList:
         if entity_name not in self.data["ongoing"]:
             self.data["ongoing"].append(entity_name)
 
-        # Remove from completed and ignored if present
-        if "completed" in self.data and entity_name in self.data["completed"]:
-            self.data["completed"] = [e for e in self.data["completed"] if e != entity_name]
+        # Remove from todo, done, and ignored if present
+        if "todo" in self.data and entity_name in self.data["todo"]:
+            self.data["todo"] = [e for e in self.data["todo"] if e != entity_name]
+        if "done" in self.data and entity_name in self.data["done"]:
+            self.data["done"] = [e for e in self.data["done"] if e != entity_name]
         if "ignored" in self.data and entity_name in self.data["ignored"]:
             self.data["ignored"] = [e for e in self.data["ignored"] if e != entity_name]
 
@@ -1087,9 +1156,11 @@ class TaskList:
         if entity_name not in self.data["ignored"]:
             self.data["ignored"].append(entity_name)
 
-        # Remove from completed and ongoing if present
-        if "completed" in self.data and entity_name in self.data["completed"]:
-            self.data["completed"] = [e for e in self.data["completed"] if e != entity_name]
+        # Remove from todo, done, and ongoing if present
+        if "todo" in self.data and entity_name in self.data["todo"]:
+            self.data["todo"] = [e for e in self.data["todo"] if e != entity_name]
+        if "done" in self.data and entity_name in self.data["done"]:
+            self.data["done"] = [e for e in self.data["done"] if e != entity_name]
         if "ongoing" in self.data and entity_name in self.data["ongoing"]:
             self.data["ongoing"] = [e for e in self.data["ongoing"] if e != entity_name]
 
@@ -1113,6 +1184,31 @@ class TaskList:
         self.data["flagged"][entity_name] = new_status
         return new_status
 
+    def mark_todo(self, entity_name: str) -> None:
+        """Mark entity as todo (planned but not yet created).
+
+        Args:
+            entity_name: Name of entity to mark as todo
+
+        Note:
+            This only updates in-memory state. Caller must persist to project file.
+        """
+        # Ensure todo list exists in data
+        if "todo" not in self.data:
+            self.data["todo"] = []
+
+        # Add to todo list if not already there
+        if entity_name not in self.data["todo"]:
+            self.data["todo"].append(entity_name)
+
+        # Remove from done, ongoing, and ignored if present
+        if "done" in self.data and entity_name in self.data["done"]:
+            self.data["done"] = [e for e in self.data["done"] if e != entity_name]
+        if "ongoing" in self.data and entity_name in self.data["ongoing"]:
+            self.data["ongoing"] = [e for e in self.data["ongoing"] if e != entity_name]
+        if "ignored" in self.data and entity_name in self.data["ignored"]:
+            self.data["ignored"] = [e for e in self.data["ignored"] if e != entity_name]
+
     def reset_status(self, entity_name: str) -> None:
         """Reset entity status to todo.
 
@@ -1122,23 +1218,18 @@ class TaskList:
         Note:
             This only updates in-memory state. Caller must persist to project file.
         """
-        # Remove from completed, ongoing, and ignored
-        if "completed" in self.data and entity_name in self.data["completed"]:
-            self.data["completed"] = [e for e in self.data["completed"] if e != entity_name]
-        if "ongoing" in self.data and entity_name in self.data["ongoing"]:
-            self.data["ongoing"] = [e for e in self.data["ongoing"] if e != entity_name]
-        if "ignored" in self.data and entity_name in self.data["ignored"]:
-            self.data["ignored"] = [e for e in self.data["ignored"] if e != entity_name]
+        # Use mark_todo to add to todo list and remove from others
+        self.mark_todo(entity_name)
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for serialization."""
+        """Convert to dictionary for serialization (uses new format)."""
         result = {}
-        if self.required_entities:
-            result["required_entities"] = self.required_entities
-        if self.completed:
-            result["completed"] = self.completed
+        if self.todo:
+            result["todo"] = self.todo
         if self.ongoing:
             result["ongoing"] = self.ongoing
+        if self.done:
+            result["done"] = self.done
         if self.ignored:
             result["ignored"] = self.ignored
         if self.flagged:
@@ -1148,7 +1239,7 @@ class TaskList:
     @property
     def is_empty(self) -> bool:
         """Check if task list has no configuration."""
-        return not (self.required_entities or self.completed or self.ignored)
+        return not (self.todo or self.done or self.ongoing or self.ignored)
 
 
 class ShapeShiftProject:
