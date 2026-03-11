@@ -18,6 +18,8 @@ from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
 from src.reconciliation import model as core
 from src.reconciliation.source_strategy import SourceStrategyType
 
+# pylint: disable=unused-argument
+
 
 class ReconciliationSourceResolver(abc.ABC):
     """Base resolver for reconciliation source data.
