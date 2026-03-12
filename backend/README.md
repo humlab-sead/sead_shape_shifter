@@ -320,7 +320,6 @@ Provides multi-type validation:
 - **Structural**: Configuration schema validation
 - **Entity**: Per-entity validation rules
 - **Data**: Runtime data quality checks
-- Auto-fix suggestion generation
 
 ### ShapeShiftService
 Entity data preview with caching:

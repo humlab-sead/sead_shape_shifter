@@ -226,7 +226,7 @@ sample:
 - 🖥️ No installation required (browser-based)
 - 📑 Tabbed interface: Entities, Dependencies, Validation, Reconciliation, Dispatch
 - 📝 Monaco editor with YAML syntax highlighting
-- 🔍 Real-time validation with auto-fix suggestions
+- 🔍 Real-time validation with clear issue reporting
 - 💾 Automatic timestamped backups
 - 📱 Works on any device
 
@@ -298,23 +298,24 @@ sample:
 
 ---
 
-## 5. Auto-Fix Capabilities
+## 5. Validation Review Workflow
 
-**Smart Error Resolution:**
+**Smart Error Review:**
 
 ```
 ❌ Error: Column 'SampleType' not found in source
 
-💡 Auto-fix available:
-   Did you mean 'sample_type'?
-   [Apply Fix]
+🔎 Review the entity configuration:
+  Check source columns
+  Correct the mapping in the editor or YAML
+  Re-run validation
 ```
 
-**Features:**
-- Automatic backup before fixes
-- Preview changes before applying
-- One-click error resolution
-- Learn from corrections
+**Workflow:**
+- Review validation messages by entity and category
+- Inspect the relevant editor form or YAML
+- Correct configuration issues directly
+- Re-run validation to confirm the fix
 
 ---
 
@@ -770,8 +771,8 @@ entities:
 
 **Actions:**
 - Review warnings by entity
-- View auto-fix suggestions
-- Preview and apply fixes
+- Inspect affected entities or YAML
+- Correct issues directly
 - Re-validate after changes
 
 ---

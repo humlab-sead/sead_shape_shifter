@@ -90,16 +90,6 @@
 
       <!-- Validation Results -->
       <div v-else>
-        <!-- Auto-fix Suggestions -->
-        <validation-suggestion
-          v-if="result && autoFixableIssues.length > 0"
-          :issues="allMessages"
-          class="mb-4"
-          @apply-fix="handleApplyFix"
-          @apply-all="handleApplyAll"
-          @dismiss="showSuggestions = false"
-        />
-
         <!-- Summary Card -->
         <v-card variant="tonal" :color="summaryColor" class="mb-4">
           <v-card-text>
@@ -226,9 +216,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useNotification } from '@/composables/useNotification'
-import type { ValidationResult, ValidationError } from '@/types'
+import type { ValidationResult } from '@/types'
 import ValidationMessageList from './ValidationMessageList.vue'
-import ValidationSuggestion from './ValidationSuggestion.vue'
 import DataValidationConfig from './DataValidationConfig.vue'
 
 interface Props {
@@ -248,8 +237,6 @@ interface ValidationConfig {
 interface Emits {
   (e: 'validate'): void
   (e: 'validate-data', config?: ValidationConfig): void
-  (e: 'apply-fix', issue: ValidationError): void
-  (e: 'apply-all-fixes'): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -259,7 +246,6 @@ const emit = defineEmits<Emits>()
 
 const activeTab = ref('all')
 const showDataConfig = ref(false)
-const showSuggestions = ref(true)
 
 const { success, error } = useNotification()
 
@@ -289,8 +275,6 @@ const summaryTitle = computed(() => {
 })
 
 // Category-based grouping
-const result = computed(() => props.validationResult)
-
 const structuralIssues = computed(() => {
   return allMessages.value.filter((msg) => msg.category === 'structural' || !msg.category)
 })
@@ -315,22 +299,10 @@ const performanceErrors = computed(() => {
   return performanceIssues.value.filter((msg) => msg.severity === 'error')
 })
 
-const autoFixableIssues = computed(() => {
-  return allMessages.value.filter((msg) => msg.auto_fixable === true)
-})
-
 // Methods
 function handleDataValidationRun(config: ValidationConfig) {
   showDataConfig.value = false
   emit('validate-data', config)
-}
-
-function handleApplyFix(issue: ValidationError) {
-  emit('apply-fix', issue)
-}
-
-function handleApplyAll() {
-  emit('apply-all-fixes')
 }
 
 async function copyToClipboard() {
