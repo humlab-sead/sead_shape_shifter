@@ -219,7 +219,9 @@ class TestTaskServiceBasic:
             assert result.completion_stats["required_done"] == 1
 
     @pytest.mark.asyncio
-    async def test_compute_status_marks_entities_with_notes(self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result):
+    async def test_compute_status_marks_entities_with_notes(
+        self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
+    ):
         """Entities with sidecar notes should expose has_note in task status."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)

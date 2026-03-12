@@ -94,13 +94,15 @@ class TestUnnestValidationErrors:
         """Test that unnest succeeds when extra_columns are present in table."""
         entity = "site_property"
         # Simulate table AFTER extra_columns have been evaluated
-        table = pd.DataFrame({
-            "site_id": [1, 2],
-            "socken": ["ABC", "DEF"],
-            "raanr": ["123", "456"],
-            "raa_number": ["ABC 123", "DEF 456"],  # Created by extra_columns
-            "lamningsnummer": ["L001", "L002"],
-        })
+        table = pd.DataFrame(
+            {
+                "site_id": [1, 2],
+                "socken": ["ABC", "DEF"],
+                "raanr": ["123", "456"],
+                "raa_number": ["ABC 123", "DEF 456"],  # Created by extra_columns
+                "lamningsnummer": ["L001", "L002"],
+            }
+        )
         config = {
             "site_property": {
                 "columns": ["site_id", "socken", "raanr", "lamningsnummer"],
