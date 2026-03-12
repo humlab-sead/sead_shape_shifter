@@ -40,10 +40,6 @@ class DataSourceConfig(BaseModel):
     username: Optional[str] = Field(None, description="Database username")
     password: Optional[SecretStr] = Field(None, description="Database password (sensitive)")
 
-    # File path (for Access, SQLite, CSV)
-    filename: Optional[str] = Field(None, description="File path for file-based sources")
-    file_path: Optional[str] = Field(None, description="File path (alias for filename)")
-
     # Custom connection string (advanced)
     connection_string: Optional[str] = Field(None, description="Custom connection string")
 
@@ -59,11 +55,6 @@ class DataSourceConfig(BaseModel):
     def effective_database(self) -> Optional[str]:
         """Get database name, checking both 'database' and 'dbname' fields."""
         return self.database or self.dbname
-
-    @property
-    def effective_file_path(self) -> Optional[str]:
-        """Get file path, checking both 'filename' and 'file_path' fields."""
-        return self.filename or self.file_path
 
     def resolve_config_env_vars(self) -> "DataSourceConfig":
         settings: Settings = get_settings()

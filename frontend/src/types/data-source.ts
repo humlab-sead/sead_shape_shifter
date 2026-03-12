@@ -13,8 +13,6 @@ export interface DataSourceConfig {
   dbname?: string | null
   username?: string | null
   password?: string | null
-  filename?: string | null
-  file_path?: string | null
   connection_string?: string | null
   options?: Record<string, unknown> | null
   description?: string | null

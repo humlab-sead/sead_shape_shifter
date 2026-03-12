@@ -186,13 +186,13 @@ class TestDataSourceService:
         assert all(isinstance(c, DataSourceConfig) for c in configs)
 
     def test_list_data_sources_sets_metadata(self, service: DataSourceService, temp_sources_dir: Path, sample_yaml_data: dict):
-        """Test list sets name and filename metadata."""
+        """Test list derives config name from YAML filename stem only."""
         (temp_sources_dir / "mydb.yml").write_text(yaml.dump(sample_yaml_data))
 
         configs = service.list_data_sources()
         assert len(configs) == 1
         assert configs[0].name == "mydb"
-        assert configs[0].filename == "mydb.yml"
+        assert "filename" not in configs[0].model_dump()
 
     def test_list_data_sources_skips_invalid_files(self, service: DataSourceService, temp_sources_dir: Path, sample_yaml_data: dict):
         """Test list skips files with invalid YAML."""
@@ -234,14 +234,14 @@ class TestDataSourceService:
         result = service.create_data_source("newdb.yml", sample_config)
 
         assert result.name == "newdb"
-        assert result.filename == "newdb.yml"
+        assert "filename" not in result.model_dump()
         assert (service.data_sources_dir / "newdb.yml").exists()
 
     def test_create_data_source_without_extension(self, service: DataSourceService, sample_config: DataSourceConfig):
         """Test creating data source without .yml extension."""
         result = service.create_data_source("newdb", sample_config)
 
-        assert result.filename == "newdb"
+        assert "filename" not in result.model_dump()
         assert (service.data_sources_dir / "newdb.yml").exists()
 
     def test_create_data_source_already_exists(self, service: DataSourceService, temp_sources_dir: Path, sample_config: DataSourceConfig):

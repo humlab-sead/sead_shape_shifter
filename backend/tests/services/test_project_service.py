@@ -1046,9 +1046,9 @@ entities:
     columns: [name, value]
 
 task_list:
-  required_entities: [sample]
-    ongoing: []
-    done: []
+  todo: [sample]
+  done: []
+  ongoing: []
   ignored: []
 """
         config_path.write_text(content)
@@ -1112,9 +1112,7 @@ task_list:
         sidecar_content = yaml.safe_load(sidecar_file.read_text())
         assert "task_list" in sidecar_content
         assert isinstance(sidecar_content["task_list"], dict)
-        assert "done" in sidecar_content["task_list"]
-        assert "ongoing" in sidecar_content["task_list"]
-        assert "ignored" in sidecar_content["task_list"]
+        assert sidecar_content["task_list"] == {"todo": ["sample"]}
 
     def test_main_file_without_task_list_after_migration(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
         """Test that task_list is removed from main file after migration."""
@@ -1156,9 +1154,9 @@ entities:
         # Sidecar file (has task_list)
         sidecar_content = """
 task_list:
-    todo: []
-    ongoing: []
-    done: [sample]
+  todo: []
+  ongoing: []
+  done: [sample]
   ignored: []
 """
         sidecar_file.write_text(sidecar_content)

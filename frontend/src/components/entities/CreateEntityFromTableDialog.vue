@@ -163,7 +163,7 @@ const dataSourceConfig = computed(() => {
       
       // Look up data source in store by filename match
       const dataSource = dataSourceStore.dataSources.find(
-        (ds) => ds.name === filename || ds.filename === `${filename}.yml`
+        (ds) => ds.name === filename
       )
       
       // Return the clean name from the store, or fallback to extracted filename

@@ -40,7 +40,7 @@ def test_list_data_sources_preserves_env_vars(settings: Settings):
         assert ds is not None
 
         assert ds.name == cfg_name
-        assert ds.filename == cfg_path.name
+        assert "filename" not in ds.model_dump()
         assert ds.options is not None
 
         # Verify env vars are preserved (not resolved)
