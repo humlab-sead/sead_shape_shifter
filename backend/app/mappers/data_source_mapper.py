@@ -49,7 +49,7 @@ class DataSourceMapper:
         for field in schema.fields:
             value = None
 
-            # File paths should come from options (actual DB/CSV path), not the YAML filename metadata
+            # File paths should come from options (actual DB/CSV path), not YAML config metadata.
             if field.type == "file_path" and ds_config.options:
                 value = ds_config.options.get(field.name)
 

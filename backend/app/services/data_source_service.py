@@ -119,7 +119,6 @@ class DataSourceService:
                 if not data:
                     continue
 
-                data["filename"] = file_path.name
                 ds_config = DataSourceConfig(name=file_path.stem, **data)
                 result.append(ds_config)
 

@@ -6,14 +6,14 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-from backend.app.models.task import ProjectTaskStatus, TaskUpdateResponse
-from backend.app.services.task_service import TaskService, get_task_service
-from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
-from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager
-from backend.app.services.yaml_service import YamlService, get_yaml_service
+from backend.app.models.task import ProjectTaskStatus, TaskUpdateResponse
 from backend.app.services.project_service import get_project_service  # pylint: disable=import-outside-toplevel
+from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager
+from backend.app.services.task_service import TaskService, get_task_service
+from backend.app.services.yaml_service import YamlService, get_yaml_service
+from backend.app.utils.error_handlers import handle_endpoint_errors
 
 router = APIRouter()
 

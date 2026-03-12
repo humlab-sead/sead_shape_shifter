@@ -177,15 +177,20 @@ class TestTaskServiceBasic:
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
         task_service.shapeshift_service.preview_entity = AsyncMock()
-        task_service.sidecar_manager.sidecar_exists = Mock(return_value=True)
-        task_service.sidecar_manager.load_task_list = Mock(
-            return_value={
+
+        refreshed_task_list = TaskList(
+            {
                 "todo": ["site", "sample"],
                 "done": ["location"],
                 "ignored": ["taxa_persistence"],
             }
         )
-        task_service._get_project_file_path = Mock()
+
+        def refresh_task_list(_project_name: str, project: ShapeShiftProject) -> None:
+            project.cfg["task_list"] = refreshed_task_list.to_dict()
+            project.task_list = refreshed_task_list
+
+        task_service._refresh_project_task_list = Mock(side_effect=refresh_task_list)
 
         with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             result = await task_service.compute_status("test-project")

@@ -47,7 +47,7 @@ class TaskService:
         """
         try:
             project_file_path = self._get_project_file_path(project_name)
-        except Exception as exc:  # noqa: BLE001 ; task tests may mock project service incompletely
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(f"Skipping task sidecar refresh for '{project_name}': {exc}")
             return
 

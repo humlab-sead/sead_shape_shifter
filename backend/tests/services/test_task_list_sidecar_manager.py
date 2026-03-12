@@ -77,7 +77,10 @@ class TestTaskListSidecarManager:
 
         result = sidecar_manager.load_task_list(project_file)
 
-        assert result == task_list_data
+        assert result == {"todo": ["entity2"], "done": ["entity1"]}
+
+        persisted_data = yaml_service.load(sidecar_path)
+        assert persisted_data["task_list"] == result
 
     def test_load_task_list_normalizes_legacy_format(self, project_file, sidecar_manager, yaml_service):
         """Test load_task_list normalizes legacy required_entities/completed state server-side."""
@@ -113,8 +116,11 @@ class TestTaskListSidecarManager:
 
         result = sidecar_manager.load_task_list(project_file)
 
-        # Should return the content as-is since there's no explicit task_list key
-        assert result == sidecar_content
+        # Root-level task state is normalized and returned in canonical compact form.
+        assert result == {"done": ["entity1"], "ongoing": ["entity2"]}
+
+        persisted_data = yaml_service.load(sidecar_path)
+        assert persisted_data["task_list"] == result
 
     def test_save_task_list_creates_sidecar_file(self, project_file, sidecar_manager):
         """Test save_task_list creates sidecar file."""
@@ -188,7 +194,7 @@ class TestTaskListSidecarManager:
         # Verify sidecar contains task_list
         sidecar_data = yaml_service.load(sidecar_path)
         assert "task_list" in sidecar_data
-        assert sidecar_data["task_list"] == project_data["task_list"]
+        assert sidecar_data["task_list"] == {"todo": ["entity1"]}
 
         # Verify task_list was removed from returned data
         assert "task_list" not in result
