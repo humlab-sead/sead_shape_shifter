@@ -255,4 +255,8 @@ I think these changes (and bugfixes) would increase the usability of the task fe
 What do you think?
 
 ### TODO: Consider adding a trash bin when deleteing projects (move instead of delete)
-### TODO: Allow accdb & mdb to be uploaded
+### TODO: Change "optimistic locking" concurrency strategy
+
+When saving project YAML, the system compares client's project's version number to server side version number. If the version
+number differs, the the client's updates are discarded. We should instead use a merging strategy as the default 
+concurrency resolver. If client's project only differ
