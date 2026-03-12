@@ -99,7 +99,7 @@ class CustomValidator(ConstraintValidator):
 **Responsibility**: Expose Core capabilities via REST API, manage project lifecycle, provide editor services.
 
 **Key Abstractions**:
-- **Services**: Business logic for validation, auto-fix, entity preview, schema introspection
+- **Services**: Business logic for validation, entity preview, schema introspection
 - **Mappers**: Translate between API models (raw `${ENV_VARS}`) and Core models (resolved)
 - **Models**: Pydantic schemas for request/response validation
 
@@ -122,7 +122,7 @@ Core Layer (src/)
 **Extension Points**:
 - Add services for new features
 - Register custom validators
-- Extend auto-fix suggestion logic
+- Extend validation and remediation workflows
 
 **Backend Invariants**:
 - API models never contain resolved environment variables
@@ -138,7 +138,7 @@ Core Layer (src/)
 
 **Key Abstractions**:
 - **Stores (Pinia)**: Client-side state management for projects, entities, validation
-- **Composables**: Reusable logic for validation, auto-fix, entity preview
+- **Composables**: Reusable logic for validation and entity preview
 - **Components**: Entity editor, dependency graph, validation panel, Monaco YAML editor
 
 **Architectural Patterns**:

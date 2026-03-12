@@ -79,9 +79,7 @@ const helpContentMap: Record<string, HelpContent> = {
     title: 'Welcome to SEAD Shape Shifter',
     description: 'A tool for transforming and normalizing data for the SEAD database.',
     tips: [
-      'Create a new project to get started',
-      'Import existing project configurations',
-      'Explore sample projects for examples'
+      'Create a new project to get started'
     ]
   },
   'projects': {
@@ -90,7 +88,6 @@ const helpContentMap: Record<string, HelpContent> = {
     tips: [
       'Click a project to open it',
       'Use the search bar to filter projects',
-      'Create backups before major changes',
       'Projects are stored as YAML files'
     ],
     shortcuts: [
@@ -100,47 +97,46 @@ const helpContentMap: Record<string, HelpContent> = {
   },
   'project-detail-dependencies': {
     title: 'Dependency Graph',
-    description: 'Visualize entity dependencies and data flow.',
+    description: 'Visualize entity dependencies, source lineage, and task status.',
     tips: [
-      'Right-click nodes for quick actions (Preview, Duplicate, Delete)',
-      'Double-click nodes to edit entity configuration',
-      'Click nodes to open YAML editor',
-      'Drag nodes in custom layout mode to rearrange',
-      'Save custom layouts to preserve positions',
-      '<strong>Display Options:</strong>',
-      '• <em>Show Sources</em> - Toggle databases and files visibility',
-      '• <em>Show Source Entities</em> - Toggle tables and sheets visibility',
-      '• Both on: Full chain (database → table → entity)',
-      '• Only Sources: Direct links (database → entity)',
-      '• Only Source Entities: Entity focus (table → entity)',
-      '<span style="color: #9C27B0; font-weight: 600;">Purple</span> entities have fixed values (no data source)',
-      '<span style="color: #4CAF50; font-weight: 600;">Green</span> entities are SQL sourced (e.g. SEAD)',
-      '<span style="color: #2196F3; font-weight: 600;">Blue</span> entities are source from another entity',
-      '<span style="color: #f44336; font-weight: 600;">Red</span> nodes/edges indicate circular dependencies',
-      'Entity shapes: Ellipse (CSV/file), Rectangle (SQL), Diamond (Fixed values)',
-      'Source node icons: 🗄️ Database, 📋 Table, 📊 CSV, 📗 Excel, 📄 Sheet, 📁 File',
-      'Source colors: Blue (database), Teal (table), Red (CSV), Green (Excel), Purple (generic)',
-      'Solid edges show entity dependencies, dotted edges show source relationships',
-      '<span style="color: #4CAF50; font-weight: 600;">Dashed green</span> edges indicate frozen dependencies from materialized entities',
-      '<span style="color: #4CAF50; font-weight: 600;">Double green border</span> indicates materialized entities (cached data)'
+      'Click an entity node to open the quick YAML drawer.',
+      'Double-click an entity node to open the full editor overlay.',
+      'Use Ctrl/Cmd + double-click to jump straight to the YAML tab in the editor.',
+      'Right-click a node for preview, verify, duplicate, delete, and task-status actions.',
+      'Use <strong>Layout</strong> to switch between hierarchical, force-directed, and saved custom positions.',
+      'Drag nodes only when using a custom layout, then save the layout to preserve positions.',
+      'Use <strong>Display</strong> to toggle node labels, edge labels, sources, and source entities.',
+      '<em>Show Sources</em> adds databases and files; <em>Show Source Entities</em> adds tables and sheets between sources and entities.',
+      'Use <strong>Color By</strong> to switch between entity type and task status.',
+      'The floating buttons on the right let you fit, zoom, reset the view, create a new entity, and export PNG.',
+      'Solid edges show entity dependencies, dotted edges show source lineage, and dashed green edges show frozen dependencies from materialized entities.',
+      '<span style="color: #4CAF50; font-weight: 600;">Double green borders</span> mark materialized entities with cached data.'
     ],
     shortcuts: [
-      { keys: 'Click', action: 'Open YAML editor' },
-      { keys: 'Double-click', action: 'Edit entity' },
-      { keys: 'Right-click', action: 'Context menu (Preview/Duplicate/Delete)' },
-      { keys: 'Drag', action: 'Move node (custom layout)' }
+      { keys: 'Click', action: 'Open quick YAML drawer' },
+      { keys: 'Double-click', action: 'Open full entity editor' },
+      { keys: 'Ctrl/Cmd + Double-click', action: 'Open YAML tab in editor' },
+      { keys: 'Right-click', action: 'Open context menu and task actions' },
+      { keys: 'Drag', action: 'Move node in custom layout mode' }
     ]
   },
   'project-detail-entities': {
     title: 'Entity Configuration',
-    description: 'Configure data entities and transformations.',
+    description: 'Create entities, define transformations, and inspect results while you edit.',
     tips: [
-      'Each entity represents a target table',
-      'Define data sources and SQL queries',
-      'Use "unnest" to transform wide to long format',
-      'Map source columns to target columns',
-      'Set up foreign key relationships',
-      'Use filters to exclude rows'
+      'Use the search box and type filter to narrow large entity lists quickly.',
+      'Use <strong>Add Entity</strong> to create a new entity, or the pencil button to edit an existing one.',
+      'The editor supports form view, split view, and preview view so you can compare configuration and output side by side.',
+      'Use the <strong>YAML</strong> tab when you need direct control over the raw entity configuration.',
+      'Set identity fields carefully: <em>system_id</em> is always local, <em>public_id</em> defines exported and FK column names, and <em>business keys</em> control matching and deduplication.',
+      'Use the <strong>Foreign Keys</strong>, <strong>Filters</strong>, <strong>Unnest</strong>, <strong>Append</strong>, <strong>Extra Columns</strong>, and <strong>Replace</strong> tabs to model each transformation step explicitly.',
+      'Use preview to verify columns, row shape, and source data before saving larger changes.',
+      'Fixed entities can be edited as grid values, and some entities may load values from external storage instead of inline YAML.',
+      'Materialized badges indicate cached entity data; materialize or unmaterialize from the editor when you need to freeze or refresh derived output.'
+    ],
+    shortcuts: [
+      { keys: 'Esc', action: 'Close the entity editor' },
+      { keys: 'Ctrl+Shift+P', action: 'Toggle split preview view in the entity editor' }
     ]
   },
   'project-detail-validation': {
@@ -150,7 +146,6 @@ const helpContentMap: Record<string, HelpContent> = {
       'Red errors must be fixed before execution',
       'Yellow warnings should be reviewed',
       'Click errors to see details and fixes',
-      'Use Auto-fix for common issues',
       'Validate data to check actual values'
     ]
   },
@@ -169,9 +164,7 @@ const helpContentMap: Record<string, HelpContent> = {
     description: 'Manage database connections across projects.',
     tips: [
       'Shared data sources available to all projects',
-      'Test connections to verify settings',
-      'Store credentials securely',
-      'Use meaningful names for easy reference'
+      'Test connections to verify settings'
     ]
   },
   'schema-explorer': {

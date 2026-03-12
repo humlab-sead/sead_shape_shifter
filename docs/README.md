@@ -16,7 +16,6 @@ These are the primary system documentation files:
   - Managing entities and relationships
   - Dual-mode entity editing (Form and YAML)
   - Validation workflows
-  - Auto-fix features
   - Performance optimization
   - Tips, troubleshooting, and FAQ
 
