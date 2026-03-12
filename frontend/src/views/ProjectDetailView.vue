@@ -416,7 +416,7 @@
               <template v-if="selectedNode">
                 <v-toolbar color="primary" density="compact">
                   <v-toolbar-title class="text-subtitle-1">
-                    <v-icon size="small" class="mr-2">mdi-code-braces</v-icon>
+                    <v-icon size="small" class="mr-2">mdi-dock-right</v-icon>
                     {{ selectedNode }}
                   </v-toolbar-title>
                   <v-spacer />
@@ -432,29 +432,74 @@
                       <v-icon size="small" class="mr-1">mdi-alert</v-icon>
                       Part of circular dependency
                     </v-alert>
+
+                    <v-tabs v-model="detailsDrawerTab" density="compact" class="px-2 pt-2">
+                      <v-tab value="note">
+                        <v-icon size="small" class="mr-2">mdi-note-edit-outline</v-icon>
+                        Note
+                      </v-tab>
+                      <v-tab value="yaml" :disabled="isSelectedNodeDataSource">
+                        <v-icon size="small" class="mr-2">mdi-code-braces</v-icon>
+                        YAML
+                      </v-tab>
+                    </v-tabs>
                     
-                    <v-progress-linear v-if="drawerYamlLoading" indeterminate color="primary" />
+                    <v-progress-linear v-if="activeDrawerLoading" indeterminate color="primary" />
                     
-                    <v-alert v-if="drawerYamlError" type="error" variant="tonal" density="compact" class="ma-2" closable @click:close="drawerYamlError = null">
-                      {{ drawerYamlError }}
+                    <v-alert
+                      v-if="activeDrawerError"
+                      type="error"
+                      variant="tonal"
+                      density="compact"
+                      class="ma-2"
+                      closable
+                      @click:close="clearActiveDrawerError"
+                    >
+                      {{ activeDrawerError }}
                     </v-alert>
                   </div>
                   
                   <div class="drawer-editor">
-                    <div v-if="isSelectedNodeDataSource" class="data-source-info pa-4">
-                      <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-database</v-icon>
-                      <div class="text-subtitle-2 mb-2">Data Source Node</div>
-                      <div class="text-caption text-medium-emphasis">
-                        Data sources cannot be edited from the graph view.
-                        Configure data sources in the Data Sources tab.
-                      </div>
-                    </div>
-                    <yaml-editor
-                      v-else-if="drawerYamlContent !== null"
-                      v-model="drawerYamlContent"
-                      height="calc(100vh - 200px)"
-                      @change="handleDrawerYamlChange"
-                    />
+                    <v-window v-model="detailsDrawerTab" class="drawer-window" :touch="false">
+                      <v-window-item value="note" class="drawer-window-item">
+                        <div v-if="isSelectedNodeDataSource" class="data-source-info pa-4">
+                          <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-database</v-icon>
+                          <div class="text-subtitle-2 mb-2">Data Source Node</div>
+                          <div class="text-caption text-medium-emphasis">
+                            Notes are currently available for entity nodes only.
+                          </div>
+                        </div>
+                        <div v-else class="drawer-tab-content pa-3">
+                          <div class="text-caption text-medium-emphasis mb-2">
+                            Quick task notes for this entity. Markdown is supported.
+                          </div>
+                          <monaco-text-editor
+                            v-model="drawerNoteContent"
+                            language="markdown"
+                            height="calc(100vh - 260px)"
+                            :readonly="drawerNoteLoading || drawerNoteSaving"
+                            @change="handleDrawerNoteChange"
+                          />
+                        </div>
+                      </v-window-item>
+
+                      <v-window-item value="yaml" class="drawer-window-item">
+                        <div v-if="isSelectedNodeDataSource" class="data-source-info pa-4">
+                          <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-database</v-icon>
+                          <div class="text-subtitle-2 mb-2">Data Source Node</div>
+                          <div class="text-caption text-medium-emphasis">
+                            Data sources cannot be edited from the graph view.
+                            Configure data sources in the Data Sources tab.
+                          </div>
+                        </div>
+                        <yaml-editor
+                          v-else-if="drawerYamlContent !== null"
+                          v-model="drawerYamlContent"
+                          height="calc(100vh - 240px)"
+                          @change="handleDrawerYamlChange"
+                        />
+                      </v-window-item>
+                    </v-window>
                   </div>
                 </div>
 
@@ -464,12 +509,33 @@
                     <v-btn 
                       variant="text" 
                       @click="handleCloseQuickEdit"
-                      :disabled="drawerYamlSaving"
+                      :disabled="drawerYamlSaving || drawerNoteSaving"
                     >
                       Cancel
                     </v-btn>
                     <v-spacer />
+                    <template v-if="detailsDrawerTab === 'note'">
+                      <v-btn
+                        variant="text"
+                        color="error"
+                        :disabled="drawerNoteLoading || drawerNoteSaving || !drawerOriginalNoteContent"
+                        @click="handleRemoveDrawerNote"
+                      >
+                        Remove Note
+                      </v-btn>
+                      <v-btn 
+                        color="primary" 
+                        variant="flat"
+                        prepend-icon="mdi-content-save"
+                        :loading="drawerNoteSaving"
+                        :disabled="!drawerNoteHasChanges || drawerNoteLoading"
+                        @click="handleSaveDrawerNote"
+                      >
+                        Save Note
+                      </v-btn>
+                    </template>
                     <v-btn 
+                      v-else
                       color="primary" 
                       variant="flat"
                       prepend-icon="mdi-content-save"
@@ -477,7 +543,7 @@
                       :disabled="!drawerYamlHasChanges || drawerYamlLoading"
                       @click="handleSaveQuickEdit"
                     >
-                      Save
+                      Save YAML
                     </v-btn>
                   </v-card-actions>
                 </div>
@@ -659,36 +725,6 @@
       @executed="handleExecuted"
     />
 
-    <v-dialog v-model="showNoteDialog" max-width="640">
-      <v-card>
-        <v-card-title>
-          <v-icon icon="mdi-note-edit-outline" class="mr-2" />
-          {{ noteDialogEntity ? `Note for ${noteDialogEntity}` : 'Entity Note' }}
-        </v-card-title>
-        <v-card-text>
-          <v-progress-linear v-if="noteDialogLoading" indeterminate color="primary" class="mb-4" />
-          <v-alert v-if="noteDialogError" type="error" variant="tonal" class="mb-4">
-            {{ noteDialogError }}
-          </v-alert>
-          <v-textarea
-            v-model="noteDialogText"
-            label="Note"
-            auto-grow
-            rows="6"
-            variant="outlined"
-            :disabled="noteDialogLoading || noteDialogSaving"
-            hint="Simple multiline task note. Leave empty and save to remove it."
-            persistent-hint
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" :disabled="noteDialogSaving" @click="showNoteDialog = false"> Close </v-btn>
-          <v-btn color="primary" :loading="noteDialogSaving" @click="handleSaveNote"> Save Note </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <!-- Entity Editor Overlay (for graph double-click) -->
     <entity-form-dialog
       v-if="entityStore.overlayEntityName"
@@ -751,6 +787,7 @@ import GraphLayoutDropdown from '@/components/dependencies/GraphLayoutDropdown.v
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
+import MonacoTextEditor from '@/components/common/MonacoTextEditor.vue'
 import ExecuteDialog from '@/components/execute/ExecuteDialog.vue'
 import IngesterForm from '@/components/ingester/IngesterForm.vue'
 import ProjectFileUploadCard from '@/components/projects/ProjectFileUploadCard.vue'
@@ -839,12 +876,6 @@ const fixPreview = ref<any>(null)
 const fixPreviewLoading = ref(false)
 const fixPreviewError = ref<string | null>(null)
 const entityToEdit = ref<string | null>(null)
-const showNoteDialog = ref(false)
-const noteDialogEntity = ref<string | null>(null)
-const noteDialogText = ref('')
-const noteDialogLoading = ref(false)
-const noteDialogSaving = ref(false)
-const noteDialogError = ref<string | null>(null)
 
 // Graph state
 const graphContainer = ref<HTMLElement | null>(null)
@@ -861,6 +892,7 @@ const displayOptions = ref<GraphDisplayOptions>({
 const highlightCycles = ref(true)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
+const detailsDrawerTab = ref<'note' | 'yaml'>('note')
 
 // Quick YAML editor state (drawer)
 const drawerYamlContent = ref<string | null>(null)
@@ -869,6 +901,16 @@ const drawerYamlLoading = ref(false)
 const drawerYamlSaving = ref(false)
 const drawerYamlError = ref<string | null>(null)
 const drawerYamlHasChanges = ref(false)
+const drawerYamlLoadedEntity = ref<string | null>(null)
+
+// Drawer note state
+const drawerNoteContent = ref('')
+const drawerOriginalNoteContent = ref('')
+const drawerNoteLoading = ref(false)
+const drawerNoteSaving = ref(false)
+const drawerNoteError = ref<string | null>(null)
+const drawerNoteHasChanges = ref(false)
+const drawerNoteLoadedEntity = ref<string | null>(null)
 
 // Context menu state
 const showContextMenu = ref(false)
@@ -943,6 +985,9 @@ const isSelectedNodeDataSource = computed(() => {
   return sourceNodes.some((sn: any) => sn.name === selectedNode.value)
 })
 
+const activeDrawerLoading = computed(() => detailsDrawerTab.value === 'note' ? drawerNoteLoading.value : drawerYamlLoading.value)
+const activeDrawerError = computed(() => detailsDrawerTab.value === 'note' ? drawerNoteError.value : drawerYamlError.value)
+
 // Cytoscape integration
 const entityStore = useEntityStore()
 const projectStore = useProjectStore()
@@ -995,7 +1040,8 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
   isDark,
   onNodeClick: async (nodeId: string) => {
     selectedNode.value = nodeId
-    await loadEntityYamlForDrawer(nodeId)
+    detailsDrawerTab.value = 'note'
+    await loadDrawerNote(nodeId)
     showDetailsDrawer.value = true
   },
   onNodeDoubleClick: (nodeId: string, isCtrlKey: boolean) => {
@@ -1282,21 +1328,10 @@ async function handleContextMenuPreview(entityName: string) {
 }
 
 async function handleEditNote(entityName: string) {
-  noteDialogEntity.value = entityName
-  noteDialogText.value = ''
-  noteDialogError.value = null
-  noteDialogLoading.value = true
-  showNoteDialog.value = true
-
-  try {
-    const response = await api.tasks.getNote(projectName.value, entityName)
-    noteDialogText.value = response.note || ''
-  } catch (err) {
-    console.error('Failed to load note:', err)
-    noteDialogError.value = err instanceof Error ? err.message : 'Failed to load note'
-  } finally {
-    noteDialogLoading.value = false
-  }
+  selectedNode.value = entityName
+  detailsDrawerTab.value = 'note'
+  await loadDrawerNote(entityName)
+  showDetailsDrawer.value = true
 }
 
 async function handleRemoveNote(entityName: string) {
@@ -1305,11 +1340,11 @@ async function handleRemoveNote(entityName: string) {
     await taskStatusStore.refresh()
     applyTaskStatusToNodes()
 
-    if (noteDialogEntity.value === entityName) {
-      showNoteDialog.value = false
-      noteDialogEntity.value = null
-      noteDialogText.value = ''
-      noteDialogError.value = null
+    if (selectedNode.value === entityName) {
+      drawerOriginalNoteContent.value = ''
+      drawerNoteContent.value = ''
+      drawerNoteHasChanges.value = false
+      drawerNoteError.value = null
     }
 
     successMessage.value = response.message || `Note removed for "${entityName}"`
@@ -1318,31 +1353,6 @@ async function handleRemoveNote(entityName: string) {
     console.error('Failed to remove note:', err)
     successMessage.value = err instanceof Error ? err.message : 'Failed to remove note'
     showSuccessSnackbar.value = true
-  }
-}
-
-async function handleSaveNote() {
-  if (!noteDialogEntity.value) return
-
-  noteDialogSaving.value = true
-  noteDialogError.value = null
-
-  try {
-    const response = await api.tasks.setNote(projectName.value, noteDialogEntity.value, noteDialogText.value)
-    await taskStatusStore.refresh()
-    applyTaskStatusToNodes()
-
-    showNoteDialog.value = false
-    noteDialogEntity.value = null
-    noteDialogText.value = ''
-
-    successMessage.value = response.message || 'Note saved'
-    showSuccessSnackbar.value = true
-  } catch (err) {
-    console.error('Failed to save note:', err)
-    noteDialogError.value = err instanceof Error ? err.message : 'Failed to save note'
-  } finally {
-    noteDialogSaving.value = false
   }
 }
 
@@ -1697,6 +1707,80 @@ function handleCreateTodoEntity() {
   // 4. Opens in editor
 }
 
+function clearActiveDrawerError() {
+  if (detailsDrawerTab.value === 'note') {
+    drawerNoteError.value = null
+    return
+  }
+
+  drawerYamlError.value = null
+}
+
+async function loadDrawerNote(entityName: string) {
+  if (isSelectedNodeDataSource.value) {
+    drawerNoteContent.value = ''
+    drawerOriginalNoteContent.value = ''
+    drawerNoteHasChanges.value = false
+    drawerNoteLoadedEntity.value = entityName
+    return
+  }
+
+  if (drawerNoteLoadedEntity.value === entityName && drawerNoteContent.value !== '' && !drawerNoteLoading.value) {
+    return
+  }
+
+  drawerNoteLoading.value = true
+  drawerNoteError.value = null
+
+  try {
+    const response = await api.tasks.getNote(projectName.value, entityName)
+    drawerNoteContent.value = response.note || ''
+    drawerOriginalNoteContent.value = response.note || ''
+    drawerNoteHasChanges.value = false
+    drawerNoteLoadedEntity.value = entityName
+  } catch (err) {
+    console.error('Failed to load note:', err)
+    drawerNoteError.value = err instanceof Error ? err.message : 'Failed to load note'
+  } finally {
+    drawerNoteLoading.value = false
+  }
+}
+
+function handleDrawerNoteChange() {
+  drawerNoteHasChanges.value = drawerNoteContent.value !== drawerOriginalNoteContent.value
+}
+
+async function handleSaveDrawerNote() {
+  if (!selectedNode.value) return
+
+  drawerNoteSaving.value = true
+  drawerNoteError.value = null
+
+  try {
+    const response = await api.tasks.setNote(projectName.value, selectedNode.value, drawerNoteContent.value)
+    await taskStatusStore.refresh()
+    applyTaskStatusToNodes()
+
+    const savedNote = response.note || ''
+    drawerNoteContent.value = savedNote
+    drawerOriginalNoteContent.value = savedNote
+    drawerNoteHasChanges.value = false
+
+    successMessage.value = response.message || 'Note saved'
+    showSuccessSnackbar.value = true
+  } catch (err) {
+    console.error('Failed to save note:', err)
+    drawerNoteError.value = err instanceof Error ? err.message : 'Failed to save note'
+  } finally {
+    drawerNoteSaving.value = false
+  }
+}
+
+async function handleRemoveDrawerNote() {
+  if (!selectedNode.value) return
+  await handleRemoveNote(selectedNode.value)
+}
+
 // Apply task status styling to graph nodes
 function applyTaskStatusToNodes() {
   if (!cy.value || !taskStatusStore.taskStatus) return
@@ -1771,8 +1855,13 @@ async function loadEntityYamlForDrawer(entityName: string) {
       drawerYamlContent.value = null
       drawerOriginalYamlContent.value = null
       drawerYamlHasChanges.value = false
+      drawerYamlLoadedEntity.value = entityName
       return
     }
+  }
+
+  if (drawerYamlLoadedEntity.value === entityName && drawerYamlContent.value !== null && !drawerYamlLoading.value) {
+    return
   }
   
   drawerYamlLoading.value = true
@@ -1789,6 +1878,7 @@ async function loadEntityYamlForDrawer(entityName: string) {
     drawerYamlContent.value = yamlContent
     drawerOriginalYamlContent.value = yamlContent
     drawerYamlHasChanges.value = false
+    drawerYamlLoadedEntity.value = entityName
   } catch (err) {
     drawerYamlError.value = err instanceof Error ? err.message : 'Failed to load entity YAML'
     console.error('Failed to load entity YAML:', err)
@@ -1845,7 +1935,7 @@ async function handleSaveQuickEdit() {
 }
 
 function handleCloseQuickEdit() {
-  if (drawerYamlHasChanges.value) {
+  if (drawerYamlHasChanges.value || drawerNoteHasChanges.value) {
     if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
       return
     }
@@ -1853,10 +1943,17 @@ function handleCloseQuickEdit() {
   
   showDetailsDrawer.value = false
   selectedNode.value = null
+  detailsDrawerTab.value = 'note'
   drawerYamlContent.value = null
   drawerOriginalYamlContent.value = null
   drawerYamlHasChanges.value = false
   drawerYamlError.value = null
+  drawerYamlLoadedEntity.value = null
+  drawerNoteContent.value = ''
+  drawerOriginalNoteContent.value = ''
+  drawerNoteHasChanges.value = false
+  drawerNoteError.value = null
+  drawerNoteLoadedEntity.value = null
 }
 
 async function handleLoadYaml() {
@@ -2082,6 +2179,19 @@ watch(
   }
 )
 
+watch(
+  () => detailsDrawerTab.value,
+  async (tab) => {
+    if (!selectedNode.value) return
+    if (tab === 'yaml' && drawerYamlLoadedEntity.value !== selectedNode.value) {
+      await loadEntityYamlForDrawer(selectedNode.value)
+    }
+    if (tab === 'note' && drawerNoteLoadedEntity.value !== selectedNode.value) {
+      await loadDrawerNote(selectedNode.value)
+    }
+  }
+)
+
 // Apply task filter to show/hide nodes based on status
 function applyTaskFilter() {
   if (!cy.value || !taskStatusStore.taskStatus) return
@@ -2200,6 +2310,22 @@ function applyTaskFilter() {
   flex: 1;
   min-height: 0; /* Critical for flex */
   overflow: hidden;
+}
+
+.drawer-window {
+  height: 100%;
+}
+
+.drawer-window-item {
+  height: 100%;
+}
+
+.drawer-window-item :deep(.v-window-item__content) {
+  height: 100%;
+}
+
+.drawer-tab-content {
+  height: 100%;
 }
 
 .drawer-footer {
