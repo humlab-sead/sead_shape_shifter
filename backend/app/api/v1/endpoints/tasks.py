@@ -8,7 +8,7 @@ from loguru import logger
 
 from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
-from backend.app.models.task import ProjectTaskStatus, TaskUpdateResponse
+from backend.app.models.task import ProjectTaskStatus, TaskNoteRequest, TaskNoteResponse, TaskUpdateResponse
 from backend.app.services.project_service import get_project_service  # pylint: disable=import-outside-toplevel
 from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager
 from backend.app.services.task_service import TaskService, get_task_service
@@ -375,6 +375,58 @@ async def toggle_task_flagged(name: str, entity_name: str) -> dict[str, Any]:
     logger.info(f"Toggled flag for '{entity_name}' in project '{name}': {result['flagged']}")
 
     return result
+
+
+@router.get("/projects/{name}/tasks/{entity_name}/note", response_model=TaskNoteResponse)
+@handle_endpoint_errors
+async def get_task_note(name: str, entity_name: str) -> TaskNoteResponse:
+    """Get the current note for an entity task."""
+    task_service: TaskService = get_task_service()
+    result = await task_service.get_note(name, entity_name)
+
+    return TaskNoteResponse(
+        success=result["success"],
+        entity_name=result["entity_name"],
+        note=result.get("note"),
+        has_note=result["has_note"],
+        message=result.get("message"),
+    )
+
+
+@router.put("/projects/{name}/tasks/{entity_name}/note", response_model=TaskNoteResponse)
+@handle_endpoint_errors
+async def set_task_note(name: str, entity_name: str, request: TaskNoteRequest) -> TaskNoteResponse:
+    """Create or update a note for an entity task."""
+    task_service: TaskService = get_task_service()
+    result = await task_service.set_note(name, entity_name, request.note)
+
+    logger.info(f"Updated note for '{entity_name}' in project '{name}'")
+
+    return TaskNoteResponse(
+        success=result["success"],
+        entity_name=result["entity_name"],
+        note=result.get("note"),
+        has_note=result["has_note"],
+        message=result.get("message"),
+    )
+
+
+@router.delete("/projects/{name}/tasks/{entity_name}/note", response_model=TaskNoteResponse)
+@handle_endpoint_errors
+async def delete_task_note(name: str, entity_name: str) -> TaskNoteResponse:
+    """Remove the current note for an entity task."""
+    task_service: TaskService = get_task_service()
+    result = await task_service.remove_note(name, entity_name)
+
+    logger.info(f"Removed note for '{entity_name}' in project '{name}'")
+
+    return TaskNoteResponse(
+        success=result["success"],
+        entity_name=result["entity_name"],
+        note=result.get("note"),
+        has_note=result["has_note"],
+        message=result.get("message"),
+    )
 
 
 @router.post("/projects/{name}/tasks/migrate-to-sidecar", response_model=dict[str, Any])

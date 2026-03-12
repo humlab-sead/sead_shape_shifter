@@ -33,6 +33,7 @@ class EntityTaskStatus(BaseModel):
     validation_passed: bool = Field(..., description="Whether entity passes validation")
     preview_available: bool = Field(..., description="Whether preview data can be generated")
     flagged: bool = Field(default=False, description="Whether entity is flagged for attention")
+    has_note: bool = Field(default=False, description="Whether entity has a persisted task note")
     blocked_by: list[str] = Field(default_factory=list, description="Entity names blocking this entity")
     issues: list[str] = Field(default_factory=list, description="Validation error messages")
 
@@ -60,3 +61,19 @@ class TaskUpdateResponse(BaseModel):
     entity_name: str = Field(..., description="Name of updated entity")
     new_status: TaskStatus = Field(..., description="New status after update")
     message: str | None = Field(None, description="Optional message or error")
+
+
+class TaskNoteRequest(BaseModel):
+    """Request body for setting an entity note."""
+
+    note: str = Field(..., description="Multiline note text")
+
+
+class TaskNoteResponse(BaseModel):
+    """Response model for entity task notes."""
+
+    success: bool = Field(..., description="Whether the note operation succeeded")
+    entity_name: str = Field(..., description="Name of the entity")
+    note: str | None = Field(None, description="Current note text, if any")
+    has_note: bool = Field(..., description="Whether the entity currently has a note")
+    message: str | None = Field(None, description="Optional message")

@@ -30,7 +30,7 @@ from typing import Any
 from loguru import logger
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
-from ruamel.yaml.scalarstring import SingleQuotedScalarString
+from ruamel.yaml.scalarstring import LiteralScalarString, SingleQuotedScalarString
 
 
 class YamlServiceError(Exception):
@@ -295,6 +295,10 @@ class YamlService:
 
         if isinstance(obj, dict):
             for key, value in obj.items():
+                if key == "notes" and isinstance(value, dict):
+                    for note_key, note_value in value.items():
+                        if isinstance(note_value, str) and "\n" in note_value:
+                            value[note_key] = LiteralScalarString(note_value.rstrip("\n"))
                 # Special case: 'values' should always be formatted as list of rows
                 if key == "values" and isinstance(value, list) and value and isinstance(value[0], list):
                     # Outer list: block style (each row on its own line)

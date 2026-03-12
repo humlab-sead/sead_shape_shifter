@@ -94,6 +94,25 @@
           title="Reset Status"
           @click="handleResetStatus"
         />
+
+        <v-divider />
+
+        <v-list-item
+          prepend-icon="mdi-note-edit-outline"
+          :title="taskStatus.has_note ? 'Edit Note' : 'Add Note'"
+          @click="handleEditNote"
+        >
+          <v-tooltip activator="parent" location="right">
+            Add or edit a simple note for this entity
+          </v-tooltip>
+        </v-list-item>
+
+        <v-list-item
+          :disabled="!taskStatus.has_note"
+          prepend-icon="mdi-note-remove-outline"
+          title="Remove Note"
+          @click="handleRemoveNote"
+        />
       </template>
       
       <v-divider />
@@ -131,6 +150,8 @@ interface Emits {
   (e: 'mark-ongoing', entityName: string): void
   (e: 'mark-todo', entityName: string): void
   (e: 'reset-status', entityName: string): void
+  (e: 'edit-note', entityName: string): void
+  (e: 'remove-note', entityName: string): void
 }
 
 const props = defineProps<Props>()
@@ -233,6 +254,20 @@ function handleMarkTodo() {
 function handleResetStatus() {
   if (props.entityName) {
     emit('reset-status', props.entityName)
+  }
+  isOpen.value = false
+}
+
+function handleEditNote() {
+  if (props.entityName) {
+    emit('edit-note', props.entityName)
+  }
+  isOpen.value = false
+}
+
+function handleRemoveNote() {
+  if (props.entityName) {
+    emit('remove-note', props.entityName)
   }
   isOpen.value = false
 }
