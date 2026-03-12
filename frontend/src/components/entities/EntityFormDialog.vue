@@ -2383,6 +2383,8 @@ function handleMaterialized() {
         formData.value = buildFormDataFromEntity(freshEntity)
         await loadExternalValuesIfNeeded(freshEntity)
         yamlContent.value = formDataToYaml()
+        await refreshFormValidity()
+        captureInitialSnapshot()
       })
       .catch((err) => {
         console.error('Failed to reload after materialization:', err)
@@ -2412,6 +2414,8 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
         formData.value = buildFormDataFromEntity(freshEntity)
         await loadExternalValuesIfNeeded(freshEntity)
         yamlContent.value = formDataToYaml()
+        await refreshFormValidity()
+        captureInitialSnapshot()
       })
       .catch((err) => {
         console.error('Failed to reload after unmaterialization:', err)
