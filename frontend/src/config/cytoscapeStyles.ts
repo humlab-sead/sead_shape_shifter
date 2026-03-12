@@ -10,7 +10,7 @@ export interface CytoscapeStyleConfig {
   dark: StylesheetCSS[]
 }
 
-const NOTE_DOT_SVG = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><circle cx="10" cy="10" r="4" fill="%23FFFFFF" stroke="%230F172A" stroke-width="1.5"/></svg>'
+const NOTE_DOT_SVG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCI+PGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iNSIgZmlsbD0iI0ZGRkZGRiIgc3Ryb2tlPSIjMEYxNzJBIiBzdHJva2Utd2lkdGg9IjEuNzUiLz48L3N2Zz4='
 
 /**
  * Base styles that work for both light and dark themes
@@ -333,10 +333,12 @@ const baseStyles: StylesheetCSS[] = [
     css: {
       'background-image': NOTE_DOT_SVG,
       'background-image-opacity': 1,
-      'background-width': '24%',
-      'background-height': '24%',
+      'background-width': '34%',
+      'background-height': '34%',
       'background-position-x': '50%',
       'background-position-y': '50%',
+      'background-fit': 'contain',
+      'background-repeat': 'no-repeat',
     },
   },
 
