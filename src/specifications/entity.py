@@ -95,9 +95,21 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
 
         columns: str | list[Any] = table.safe_columns
-        values: str | list[Any] = table.safe_values
+        raw_values = table.values
+        dict_rows = isinstance(raw_values, list) and all(isinstance(row, dict) for row in raw_values)
+        values: str | list[Any] = raw_values if dict_rows else table.safe_values
 
-        if not all(isinstance(row, list) for row in values):
+        if dict_rows:
+            row_keys = set().union(*(row.keys() for row in raw_values)) if raw_values else set()
+            missing_columns = set(columns) - row_keys
+            if missing_columns:
+                self.add_error(
+                    f"Fixed data entity '{entity_name}' has externally loaded rows missing columns {sorted(missing_columns)}",
+                    entity=entity_name,
+                    field="values",
+                )
+                return not self.has_errors()
+        elif not all(isinstance(row, list) for row in values):
             self.add_error(f"Fixed data entity '{entity_name}' must have values as a list of lists", entity=entity_name, field="values")
 
         # Check for empty columns with non-empty values (mixed format error)
@@ -115,7 +127,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         # 1. Old format: values match columns exactly (backward compatibility)
         # 2. New format: values include identity columns (system_id, public_id)
         #    Using set union elegantly deduplicates if identity columns are mistakenly in columns
-        if values:
+        if values and not dict_rows:
             expected_with_identity: int = len(set(columns) | {public_id, "system_id"})
             expected_without_identity: int = len(columns)
             values_length: int = len(values[0]) if values else 0

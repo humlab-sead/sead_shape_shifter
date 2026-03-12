@@ -109,6 +109,16 @@ class TestFixedEntityFieldsSpecification:
                     "public_id": "entity_id",
                     "values": [[1, None]],
                 },
+                "external_loaded_fixed": {
+                    "type": "fixed",
+                    "columns": ["system_id", "entity_id", "label"],
+                    "keys": ["label"],
+                    "public_id": "entity_id",
+                    "values": [
+                        {"system_id": 1, "entity_id": None, "label": "one"},
+                        {"system_id": 2, "entity_id": None, "label": "two"},
+                    ],
+                },
             }
         }
 
@@ -190,6 +200,15 @@ class TestFixedEntityFieldsSpecification:
         assert result is False, spec.get_report()
         assert len(spec.errors) > 0, spec.get_report()
         assert any("no columns defined" in str(e).lower() for e in spec.errors), spec.get_report()
+
+    def test_external_loaded_fixed_entity_with_dict_rows_is_valid(self, project_cfg):
+        """Resolved @load fixed values should validate when row dicts provide the configured columns."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="external_loaded_fixed")
+
+        assert result is True, spec.get_report()
+        assert len(spec.errors) == 0, spec.get_report()
 
 
 class TestSqlEntityFieldsSpecification:
