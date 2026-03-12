@@ -10,7 +10,9 @@ export interface CytoscapeStyleConfig {
   dark: StylesheetCSS[]
 }
 
-const NOTE_DOT_SVG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCI+PGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iNSIgZmlsbD0iI0ZGRkZGRiIgc3Ryb2tlPSIjMEYxNzJBIiBzdHJva2Utd2lkdGg9IjEuNzUiLz48L3N2Zz4='
+const NOTE_DOT_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(
+  '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE svg><svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="16" fill="#0F172A"/><circle cx="50" cy="50" r="12.5" fill="#FFFFFF"/></svg>'
+)}`
 
 /**
  * Base styles that work for both light and dark themes
@@ -333,11 +335,13 @@ const baseStyles: StylesheetCSS[] = [
     css: {
       'background-image': NOTE_DOT_SVG,
       'background-image-opacity': 1,
-      'background-width': '34%',
-      'background-height': '34%',
+      'background-width': '100%',
+      'background-height': '100%',
+      'background-width-relative-to': 'inner',
+      'background-height-relative-to': 'inner',
       'background-position-x': '50%',
       'background-position-y': '50%',
-      'background-fit': 'contain',
+      'background-fit': 'none',
       'background-repeat': 'no-repeat',
     },
   },
