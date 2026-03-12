@@ -744,7 +744,8 @@ class UnnestColumnsSpecification(ProjectSpecification):
             missing_id_vars: set[str] = set(id_vars) - all_columns
             if missing_id_vars:
                 self.add_error(
-                    f"Unnest configuration references missing id_vars columns: {missing_id_vars}. "
+                    f"Unnest configuration references missing id_vars columns: {sorted(missing_id_vars)}. "
+                    f"Available columns: {sorted(all_columns)}. "
                     f"These columns must be in 'columns', 'keys', 'extra_columns', or added by foreign keys.",
                     entity=entity_name,
                     field="unnest.id_vars",
@@ -755,7 +756,8 @@ class UnnestColumnsSpecification(ProjectSpecification):
             missing_value_vars: set[str] = set(value_vars) - all_columns
             if missing_value_vars:
                 self.add_error(
-                    f"Unnest configuration references missing value_vars columns: {missing_value_vars}. "
+                    f"Unnest configuration references missing value_vars columns: {sorted(missing_value_vars)}. "
+                    f"Available columns: {sorted(all_columns)}. "
                     f"These columns must be in 'columns', 'keys', 'extra_columns', or added by foreign keys.",
                     entity=entity_name,
                     field="unnest.value_vars",
