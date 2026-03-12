@@ -94,10 +94,10 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
         self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
 
-        columns: str | list[Any] = table.safe_columns
-        raw_values = table.values
-        dict_rows = isinstance(raw_values, list) and all(isinstance(row, dict) for row in raw_values)
-        values: str | list[Any] = raw_values if dict_rows else table.safe_values
+        columns: list[str] = table.safe_columns
+        raw_values: list[Any] | None = table.values if isinstance(table.values, list) else None
+        dict_rows = raw_values is not None and all(isinstance(row, dict) for row in raw_values)
+        values: list[Any] = raw_values if dict_rows and raw_values is not None else table.safe_values
 
         if dict_rows:
             row_keys = set().union(*(row.keys() for row in raw_values)) if raw_values else set()
