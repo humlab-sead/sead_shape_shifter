@@ -2407,9 +2407,10 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
     loading.value = true
     api.entities
       .get(props.projectName, props.entity.name)
-      .then((freshEntity) => {
+      .then(async (freshEntity) => {
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
+        await loadExternalValuesIfNeeded(freshEntity)
         yamlContent.value = formDataToYaml()
       })
       .catch((err) => {
@@ -2455,8 +2456,13 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
 
   // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
   const roundTrip = extractMaterializationRoundTripState(entity.entity_data)
+  hasExternalValues.value = Boolean(roundTrip.externalValuesDirective)
   externalValuesDirective.value = roundTrip.externalValuesDirective
   materializedConfig.value = roundTrip.materializedConfig
+  if (!roundTrip.externalValuesDirective) {
+    externalValuesError.value = null
+    externalValuesEtag.value = null
+  }
 
   return {
     name: entity.name,
