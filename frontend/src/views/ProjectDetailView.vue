@@ -288,6 +288,12 @@
                           <div style="width: 10px; height: 10px; background-color: #9E9E9E; border-radius: 50%;" />
                           <span style="font-size: 10px;">&nbsp;Ignored</span>
                         </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="position: relative; width: 10px; height: 10px; border-radius: 50%; background-color: #B0BEC5;">
+                            <div style="position: absolute; inset: 3px; border-radius: 50%; background-color: #FFFFFF; border: 1px solid #0F172A;" />
+                          </div>
+                          <span style="font-size: 10px;">&nbsp;Has note</span>
+                        </div>
                       </div>
                       
                       <!-- Entity Type Legend -->
@@ -401,6 +407,8 @@
               @mark-ongoing="handleMarkOngoing"
               @mark-todo="handleMarkTodo"
               @reset-status="handleResetStatus"
+              @edit-note="handleEditNote"
+              @remove-note="handleRemoveNote"
             />
 
             <!-- Entity Details Drawer -->
@@ -651,6 +659,36 @@
       @executed="handleExecuted"
     />
 
+    <v-dialog v-model="showNoteDialog" max-width="640">
+      <v-card>
+        <v-card-title>
+          <v-icon icon="mdi-note-edit-outline" class="mr-2" />
+          {{ noteDialogEntity ? `Note for ${noteDialogEntity}` : 'Entity Note' }}
+        </v-card-title>
+        <v-card-text>
+          <v-progress-linear v-if="noteDialogLoading" indeterminate color="primary" class="mb-4" />
+          <v-alert v-if="noteDialogError" type="error" variant="tonal" class="mb-4">
+            {{ noteDialogError }}
+          </v-alert>
+          <v-textarea
+            v-model="noteDialogText"
+            label="Note"
+            auto-grow
+            rows="6"
+            variant="outlined"
+            :disabled="noteDialogLoading || noteDialogSaving"
+            hint="Simple multiline task note. Leave empty and save to remove it."
+            persistent-hint
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" :disabled="noteDialogSaving" @click="showNoteDialog = false"> Close </v-btn>
+          <v-btn color="primary" :loading="noteDialogSaving" @click="handleSaveNote"> Save Note </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Entity Editor Overlay (for graph double-click) -->
     <entity-form-dialog
       v-if="entityStore.overlayEntityName"
@@ -801,6 +839,12 @@ const fixPreview = ref<any>(null)
 const fixPreviewLoading = ref(false)
 const fixPreviewError = ref<string | null>(null)
 const entityToEdit = ref<string | null>(null)
+const showNoteDialog = ref(false)
+const noteDialogEntity = ref<string | null>(null)
+const noteDialogText = ref('')
+const noteDialogLoading = ref(false)
+const noteDialogSaving = ref(false)
+const noteDialogError = ref<string | null>(null)
 
 // Graph state
 const graphContainer = ref<HTMLElement | null>(null)
@@ -1237,6 +1281,71 @@ async function handleContextMenuPreview(entityName: string) {
   entityStore.openEditorOverlay(entityName, 'form')
 }
 
+async function handleEditNote(entityName: string) {
+  noteDialogEntity.value = entityName
+  noteDialogText.value = ''
+  noteDialogError.value = null
+  noteDialogLoading.value = true
+  showNoteDialog.value = true
+
+  try {
+    const response = await api.tasks.getNote(projectName.value, entityName)
+    noteDialogText.value = response.note || ''
+  } catch (err) {
+    console.error('Failed to load note:', err)
+    noteDialogError.value = err instanceof Error ? err.message : 'Failed to load note'
+  } finally {
+    noteDialogLoading.value = false
+  }
+}
+
+async function handleRemoveNote(entityName: string) {
+  try {
+    const response = await api.tasks.removeNote(projectName.value, entityName)
+    await taskStatusStore.refresh()
+    applyTaskStatusToNodes()
+
+    if (noteDialogEntity.value === entityName) {
+      showNoteDialog.value = false
+      noteDialogEntity.value = null
+      noteDialogText.value = ''
+      noteDialogError.value = null
+    }
+
+    successMessage.value = response.message || `Note removed for "${entityName}"`
+    showSuccessSnackbar.value = true
+  } catch (err) {
+    console.error('Failed to remove note:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to remove note'
+    showSuccessSnackbar.value = true
+  }
+}
+
+async function handleSaveNote() {
+  if (!noteDialogEntity.value) return
+
+  noteDialogSaving.value = true
+  noteDialogError.value = null
+
+  try {
+    const response = await api.tasks.setNote(projectName.value, noteDialogEntity.value, noteDialogText.value)
+    await taskStatusStore.refresh()
+    applyTaskStatusToNodes()
+
+    showNoteDialog.value = false
+    noteDialogEntity.value = null
+    noteDialogText.value = ''
+
+    successMessage.value = response.message || 'Note saved'
+    showSuccessSnackbar.value = true
+  } catch (err) {
+    console.error('Failed to save note:', err)
+    noteDialogError.value = err instanceof Error ? err.message : 'Failed to save note'
+  } finally {
+    noteDialogSaving.value = false
+  }
+}
+
 async function handleContextMenuDuplicate(entityName: string) {
   console.log('=========================================')
   console.log('[ProjectDetailView] handleContextMenuDuplicate CALLED')
@@ -1597,7 +1706,7 @@ function applyTaskStatusToNodes() {
     const status = taskStatusStore.getEntityStatus(entityName)
 
     // Remove existing task classes
-    node.removeClass('task-todo task-done task-ignored task-ongoing task-blocked task-critical task-ready task-flagged')
+    node.removeClass('task-todo task-done task-ignored task-ongoing task-blocked task-critical task-ready task-flagged task-has-note')
 
     // In type mode, keep default entity/source type color classes only.
     if (colorByMode.value !== 'task' || !status) {

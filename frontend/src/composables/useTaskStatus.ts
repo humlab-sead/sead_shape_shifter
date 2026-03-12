@@ -42,6 +42,7 @@ export interface EntityTaskStatus {
   validation_passed: boolean
   preview_available: boolean
   flagged: boolean
+  has_note: boolean
   blocked_by: string[]
   issues: string[]
 }

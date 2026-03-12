@@ -171,6 +171,62 @@ class TestTaskListSidecarManager:
         assert sidecar_path.parent.exists()
         assert sidecar_path.exists()
 
+    def test_save_task_list_preserves_existing_notes(self, project_file, sidecar_manager, yaml_service):
+        """Saving task state should not remove persisted notes."""
+        sidecar_path = sidecar_manager.get_sidecar_path(project_file)
+        sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+
+        yaml_service.save({"notes": {"site": "Need coordinates"}}, sidecar_path)
+
+        sidecar_manager.save_task_list(project_file, TaskList({"todo": ["site"]}))
+
+        sidecar_data = yaml_service.load(sidecar_path)
+        assert sidecar_data["task_list"] == {"todo": ["site"]}
+        assert sidecar_data["notes"] == {"site": "Need coordinates"}
+
+    def test_load_notes_returns_note_mapping(self, project_file, sidecar_manager, yaml_service):
+        """Sidecar manager should load notes independently of task_list."""
+        sidecar_path = sidecar_manager.get_sidecar_path(project_file)
+        sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+
+        yaml_service.save({"task_list": {"done": ["site"]}, "notes": {"site": "Need coordinates"}}, sidecar_path)
+
+        assert sidecar_manager.load_notes(project_file) == {"site": "Need coordinates"}
+
+    def test_set_note_persists_multiline_note(self, project_file, sidecar_manager, yaml_service):
+        """Setting a note should write it to the sidecar and preserve line breaks."""
+        saved_note = sidecar_manager.set_note(project_file, "site", "Need coordinates\nConfirm CRS")
+
+        assert saved_note == "Need coordinates\nConfirm CRS"
+
+        sidecar_path = sidecar_manager.get_sidecar_path(project_file)
+        raw_content = sidecar_path.read_text(encoding="utf-8")
+        assert "notes:" in raw_content
+        assert "site: |" in raw_content
+
+        sidecar_data = yaml_service.load(sidecar_path)
+        assert sidecar_data["notes"]["site"] == "Need coordinates\nConfirm CRS"
+
+    def test_set_note_removes_blank_note(self, project_file, sidecar_manager):
+        """Whitespace-only notes should be removed instead of stored."""
+        sidecar_manager.set_note(project_file, "site", "Need coordinates")
+        saved_note = sidecar_manager.set_note(project_file, "site", "   \n")
+
+        assert saved_note is None
+        assert sidecar_manager.get_note(project_file, "site") is None
+
+    def test_remove_note_deletes_notes_section_when_empty(self, project_file, sidecar_manager, yaml_service):
+        """Removing the last note should drop the notes section entirely."""
+        sidecar_path = sidecar_manager.get_sidecar_path(project_file)
+        sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+        yaml_service.save({"task_list": {"todo": ["site"]}, "notes": {"site": "Need coordinates"}}, sidecar_path)
+
+        removed = sidecar_manager.remove_note(project_file, "site")
+
+        assert removed is True
+        sidecar_data = yaml_service.load(sidecar_path)
+        assert sidecar_data == {"task_list": {"todo": ["site"]}}
+
     def test_migrate_task_list_copies_from_main_to_sidecar(self, project_file, sidecar_manager, yaml_service):
         """Test migrate_task_list copies task_list from main to sidecar."""
         sidecar_path = sidecar_manager.get_sidecar_path(project_file)

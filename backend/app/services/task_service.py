@@ -105,6 +105,13 @@ class TaskService:
         project: ShapeShiftProject = ProjectMapper.to_core(api_project)
         self._refresh_project_task_list(project_name, project)
 
+        note_entities: set[str] = set()
+        try:
+            project_file_path = self._get_project_file_path(project_name)
+            note_entities = set(self.sidecar_manager.load_notes(project_file_path).keys())
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(f"Skipping task note sidecar refresh for '{project_name}': {exc}")
+
         # Get validation results for all entities
         validation_result: ValidationResult = await self.validation_service.validate_project_data(project_name)
 
@@ -118,6 +125,7 @@ class TaskService:
             | set(project.task_list.done)
             | set(project.task_list.ongoing)
             | set(project.task_list.ignored)
+            | note_entities
         )
 
         for entity_name in all_entity_names:
@@ -126,6 +134,7 @@ class TaskService:
                 project_name=project_name,
                 entity_name=entity_name,
                 validation_result=validation_result,
+                note_entities=note_entities,
             )
             entity_statuses[entity_name] = entity_status
 
@@ -140,6 +149,7 @@ class TaskService:
         project_name: str,
         entity_name: str,
         validation_result: ValidationResult,
+        note_entities: set[str],
     ) -> EntityTaskStatus:
         """Compute status for a single entity."""
 
@@ -279,6 +289,7 @@ class TaskService:
 
         # Get flagged status
         flagged: bool = project.task_list.is_flagged(entity_name)
+        has_note: bool = entity_name in note_entities
 
         return EntityTaskStatus(
             status=status,
@@ -288,6 +299,7 @@ class TaskService:
             validation_passed=validation_passed,
             preview_available=preview_available,
             flagged=flagged,
+            has_note=has_note,
             blocked_by=list(set(blocked_by)),  # Remove duplicates
             issues=validation_issues,
         )
@@ -618,6 +630,42 @@ class TaskService:
             "strategy": strategy,
             "required_entities": required_entities,
             "message": f"Task list initialized with {len(required_entities)} entities",
+        }
+
+    async def get_note(self, project_name: str, entity_name: str) -> dict[str, Any]:
+        """Get the current task note for an entity."""
+        project_file_path = self._get_project_file_path(project_name)
+        note = self.sidecar_manager.get_note(project_file_path, entity_name)
+        return {
+            "success": True,
+            "entity_name": entity_name,
+            "note": note,
+            "has_note": note is not None,
+            "message": "Entity note loaded" if note is not None else "Entity has no note",
+        }
+
+    async def set_note(self, project_name: str, entity_name: str, note: str) -> dict[str, Any]:
+        """Set or replace a task note for an entity."""
+        project_file_path = self._get_project_file_path(project_name)
+        saved_note = self.sidecar_manager.set_note(project_file_path, entity_name, note)
+        return {
+            "success": True,
+            "entity_name": entity_name,
+            "note": saved_note,
+            "has_note": saved_note is not None,
+            "message": "Entity note saved" if saved_note is not None else "Entity note removed",
+        }
+
+    async def remove_note(self, project_name: str, entity_name: str) -> dict[str, Any]:
+        """Remove a task note from an entity."""
+        project_file_path = self._get_project_file_path(project_name)
+        removed = self.sidecar_manager.remove_note(project_file_path, entity_name)
+        return {
+            "success": True,
+            "entity_name": entity_name,
+            "note": None,
+            "has_note": False,
+            "message": "Entity note removed" if removed else "Entity had no note",
         }
 
 

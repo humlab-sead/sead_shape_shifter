@@ -218,6 +218,20 @@ class TestTaskServiceBasic:
             assert result.completion_stats["required_total"] == 3
             assert result.completion_stats["required_done"] == 1
 
+    @pytest.mark.asyncio
+    async def test_compute_status_marks_entities_with_notes(self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result):
+        """Entities with sidecar notes should expose has_note in task status."""
+        task_service.project_service.load_project = Mock(return_value=mock_api_project)
+        task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
+        task_service.shapeshift_service.preview_entity = AsyncMock()
+        task_service.sidecar_manager.load_notes = Mock(return_value={"site": "Need coordinates"})
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            result = await task_service.compute_status("test-project")
+
+            assert result.entities["site"].has_note is True
+            assert result.entities["location"].has_note is False
+
 
 class TestTaskServicePriority:
     """Tests for priority determination."""
@@ -588,3 +602,44 @@ class TestTaskServiceResetStatus:
         await task_service.reset_status("test-project", "location")
 
         task_service.sidecar_manager.save_task_list.assert_called_once()
+
+
+class TestTaskServiceNotes:
+    """Tests for entity note operations."""
+
+    @pytest.mark.asyncio
+    async def test_get_note_returns_existing_note(self, task_service: TaskService):
+        """Existing notes should be returned through the service."""
+        task_service.sidecar_manager.get_note = Mock(return_value="Need coordinates")
+
+        result = await task_service.get_note("test-project", "site")
+
+        assert result == {
+            "success": True,
+            "entity_name": "site",
+            "note": "Need coordinates",
+            "has_note": True,
+            "message": "Entity note loaded",
+        }
+
+    @pytest.mark.asyncio
+    async def test_set_note_persists_note(self, task_service: TaskService):
+        """Setting a note should delegate to the sidecar manager."""
+        task_service.sidecar_manager.set_note = Mock(return_value="Need coordinates")
+
+        result = await task_service.set_note("test-project", "site", "Need coordinates")
+
+        task_service.sidecar_manager.set_note.assert_called_once()
+        assert result["has_note"] is True
+        assert result["note"] == "Need coordinates"
+
+    @pytest.mark.asyncio
+    async def test_remove_note_clears_note(self, task_service: TaskService):
+        """Removing a note should report a cleared note state."""
+        task_service.sidecar_manager.remove_note = Mock(return_value=True)
+
+        result = await task_service.remove_note("test-project", "site")
+
+        task_service.sidecar_manager.remove_note.assert_called_once()
+        assert result["has_note"] is False
+        assert result["note"] is None
