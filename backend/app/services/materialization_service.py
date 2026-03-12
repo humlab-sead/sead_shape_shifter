@@ -39,6 +39,22 @@ class MaterializationService:
         extension = "parquet" if format == "parquet" else "csv"
         return f"materialized/{entity_name}.{extension}"
 
+    @staticmethod
+    def _sanitize_materialized_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+        """Drop temporary helper columns and duplicate labels before freezing entity data."""
+        sanitized_df = df.copy()
+
+        helper_columns: list[str] = [
+            column for column in sanitized_df.columns if isinstance(column, str) and column.startswith("_merge_indicator_")
+        ]
+        if helper_columns:
+            sanitized_df = sanitized_df.drop(columns=helper_columns, errors="ignore")
+
+        if sanitized_df.columns.has_duplicates:
+            sanitized_df = sanitized_df.loc[:, ~sanitized_df.columns.duplicated()].copy()
+
+        return sanitized_df
+
     async def materialize_entity(
         self,
         project_name: str,
@@ -75,7 +91,7 @@ class MaterializationService:
             if entity_name not in shapeshifter.table_store:
                 raise MaterializationError(f"Entity '{entity_name}' not found in normalization results")
 
-            df: pd.DataFrame = shapeshifter.table_store[entity_name]
+            df: pd.DataFrame = self._sanitize_materialized_dataframe(shapeshifter.table_store[entity_name])
 
             # Determine storage strategy
             data_file: str | None = None
@@ -135,6 +151,8 @@ class MaterializationService:
 
     def _create_materialized_entity(self, table: TableConfig, df: pd.DataFrame, values_inline: list[list[Any]] | str) -> dict[str, Any]:
         """Create the new entity config dict for the materialized entity, including saved state for unmaterialization."""
+        df = self._sanitize_materialized_dataframe(df)
+
         saved_state: dict[str, Any] = {}
         for k, v in table.entity_cfg.items():
             if k not in ["materialized", "values"]:

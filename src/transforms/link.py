@@ -64,6 +64,9 @@ class ForeignKeyLinker:
 
         validator.validate_after_merge(local_df, remote_df, linked_df, merge_indicator_col=validator.merge_indicator_col)
 
+        if validator.merge_indicator_col:
+            linked_df = linked_df.drop(columns=[validator.merge_indicator_col], errors="ignore")
+
         if fk.extra_columns and fk.drop_remote_id:
             linked_df = linked_df.drop(columns=[remote_cfg.public_id], errors="ignore")
 

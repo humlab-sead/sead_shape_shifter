@@ -94,6 +94,7 @@ def test_link_foreign_key_renames_and_drops_remote_id(fk_config: ForeignKeyConfi
 
     assert "remote_pk" not in linked.columns  # dropped after merge
     assert "remote_name" in linked.columns
+    assert "_merge_indicator_" not in linked.columns
     assert linked["remote_name"].tolist() == ["alpha", "beta"]
     assert captured["init_entity"] == "local"
     assert captured["merge_opts_called"] is True

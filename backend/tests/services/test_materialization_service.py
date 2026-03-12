@@ -426,6 +426,17 @@ class TestCreateMaterializedEntity:
 
         assert result["values"] == "@load:test-project/materialized/location.parquet"
 
+    def test_create_materialized_entity_strips_helper_and_duplicate_columns(self, materialization_service, mock_table_config):
+        """Materialized entity columns should not include temporary merge helper columns or duplicates."""
+        df = pd.DataFrame(
+            [[1, "A", "A-shadow", "both", 10]],
+            columns=["system_id", "name", "name", "_merge_indicator_remote", "location_id"],
+        )
+
+        result = materialization_service._create_materialized_entity(mock_table_config, df, "@load:test-project/materialized/location.parquet")
+
+        assert result["columns"] == ["system_id", "name", "location_id"]
+
     def test_create_materialized_entity_empty_saved_state(self, materialization_service, sample_dataframe):
         """Test creating materialized entity when saved_state is empty."""
         mock_table = MagicMock(spec=TableConfig)
