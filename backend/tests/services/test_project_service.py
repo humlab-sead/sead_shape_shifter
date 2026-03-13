@@ -12,6 +12,12 @@ from backend.app.core.config import settings
 from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError, SchemaValidationError
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectMetadata
+from backend.app.services.project.entity_persistence_strategies import (
+    DefaultEntityPersistenceStrategy,
+    EntityPersistenceStrategyRegistry,
+    FixedEntityPersistenceStrategy,
+)
+from backend.app.services.project.entity_operations import EntityOperations
 from backend.app.services.project_service import (
     ProjectService,
     get_project_service,
@@ -523,6 +529,50 @@ options:
         config = service.load_project("test")
         assert "new_entity" in config.entities
 
+    def test_entity_persistence_strategy_registry_uses_fixed_strategy_for_fixed_entities(self):
+        """Fixed entities should resolve to the fixed persistence strategy."""
+        registry = EntityPersistenceStrategyRegistry()
+
+        strategy = registry.get_strategy({"type": "fixed"})
+
+        assert isinstance(strategy, FixedEntityPersistenceStrategy)
+
+    def test_entity_persistence_strategy_registry_uses_default_strategy_for_other_entities(self):
+        """Non-fixed entities should use the default persistence strategy."""
+        registry = EntityPersistenceStrategyRegistry()
+
+        strategy = registry.get_strategy({"type": "sql"})
+
+        assert isinstance(strategy, DefaultEntityPersistenceStrategy)
+
+    def test_entity_operations_uses_injected_persistence_strategy_registry(self):
+        """EntityOperations should delegate preparation to the injected registry."""
+        strategy = MagicMock()
+        strategy.prepare_for_persistence.return_value = {"type": "entity", "source": "prepared_table"}
+
+        registry = MagicMock()
+        registry.get_strategy.return_value = strategy
+
+        operations = EntityOperations(
+            project_lock_getter=lambda _project_name: MagicMock(),
+            load_project_callback=MagicMock(),
+            save_project_callback=MagicMock(),
+            persistence_strategy_registry=registry,
+        )
+
+        project = MagicMock(spec=Project)
+        project.entities = {}
+
+        entity = MagicMock(spec=Entity)
+        entity.model_dump.return_value = {"type": "entity", "source": "raw_table"}
+        entity.public_id = None
+
+        operations.add_entity(project, "sample", entity)
+
+        registry.get_strategy.assert_called_once_with({"type": "entity", "source": "raw_table", "public_id": None})
+        strategy.prepare_for_persistence.assert_called_once_with("sample", {"type": "entity", "source": "raw_table", "public_id": None})
+        assert project.entities["sample"] == {"type": "entity", "source": "prepared_table"}
+
     def test_add_entity_by_name_already_exists(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test adding duplicate entity by name raises error."""
         # New structure: project_name/shapeshifter.yml
@@ -558,6 +608,29 @@ options:
 
         with pytest.raises(SchemaValidationError, match="duplicate columns"):
             service.add_entity_by_name("test", "site", entity_data)
+
+    def test_add_entity_by_name_normalizes_fixed_columns(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Legacy fixed entities should be normalized to canonical full columns on save."""
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "site_id",
+            "keys": ["Fustel", "EVNr"],
+            "columns": ["site_type_id", "altitude"],
+            "values": "@load:materialized/site.parquet",
+        }
+
+        service.add_entity_by_name("test", "site", entity_data)
+
+        config = service.load_project("test")
+        assert config.entities["site"]["columns"] == ["system_id", "site_id", "Fustel", "EVNr", "site_type_id", "altitude"]
 
     def test_update_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test updating entity by configuration name."""

@@ -147,8 +147,9 @@ async def create_entity(project_name: str, request: EntityCreateRequest) -> Enti
     """
     project_service: ProjectService = get_project_service()
     project_service.add_entity_by_name(project_name, request.name, request.entity_data)
+    entity_data: dict[str, Any] = project_service.get_entity_by_name(project_name, request.name)
     logger.info(f"Added entity '{request.name}' to '{project_name}'")
-    return _build_entity_response(request.name, request.entity_data)
+    return _build_entity_response(request.name, entity_data)
 
 
 @router.put("/projects/{project_name}/entities/{entity_name}", response_model=EntityResponse)
@@ -167,8 +168,9 @@ async def update_entity(project_name: str, entity_name: str, request: EntityUpda
     """
     project_service: ProjectService = get_project_service()
     project_service.update_entity_by_name(project_name, entity_name, request.entity_data)
+    entity_data: dict[str, Any] = project_service.get_entity_by_name(project_name, entity_name)
     logger.info(f"Updated entity '{entity_name}' in '{project_name}'")
-    return _build_entity_response(entity_name, request.entity_data)
+    return _build_entity_response(entity_name, entity_data)
 
 
 @router.delete(
