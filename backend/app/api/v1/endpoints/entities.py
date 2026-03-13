@@ -20,6 +20,7 @@ from backend.app.services.project_service import (
     get_project_service,
 )
 from backend.app.utils.error_handlers import handle_endpoint_errors
+from backend.app.utils.fixed_schema import FixedSchema, derive_fixed_schema
 
 router = APIRouter()
 
@@ -46,6 +47,17 @@ class EntityResponse(BaseModel):
     name: str = Field(..., description="Entity name")
     entity_data: dict[str, Any] = Field(..., description="Entity configuration data")
     materialized: dict[str, Any] | None = Field(default=None, description="Materialization metadata (if entity is materialized)")
+    fixed_schema: FixedSchema | None = Field(default=None, description="Authoritative fixed-schema metadata for fixed entities")
+
+
+def _build_entity_response(name: str, entity_data: dict[str, Any]) -> EntityResponse:
+    """Build a consistent entity response payload."""
+    return EntityResponse(
+        name=name,
+        entity_data=entity_data,
+        materialized=entity_data.get("materialized"),
+        fixed_schema=derive_fixed_schema(entity_data),
+    )
 
 
 class GenerateFromTableRequest(BaseModel):
@@ -92,9 +104,7 @@ async def list_entities(project_name: str) -> list[EntityResponse]:
     """
     project_service: ProjectService = get_project_service()
     config: Project = project_service.load_project(project_name)
-    entities = [
-        EntityResponse(name=name, entity_data=data, materialized=data.get("materialized")) for name, data in config.entities.items()
-    ]
+    entities = [_build_entity_response(name, data) for name, data in config.entities.items()]
     logger.debug(f"Listed {len(entities)} entities in '{project_name}'")
     return entities
 
@@ -115,7 +125,7 @@ async def get_entity(project_name: str, entity_name: str) -> EntityResponse:
     project_service: ProjectService = get_project_service()
     entity_data: dict[str, Any] = project_service.get_entity_by_name(project_name, entity_name)
     logger.info(f"Retrieved entity '{entity_name}' from '{project_name}'")
-    return EntityResponse(name=entity_name, entity_data=entity_data, materialized=entity_data.get("materialized"))
+    return _build_entity_response(entity_name, entity_data)
 
 
 @router.post(
@@ -138,7 +148,7 @@ async def create_entity(project_name: str, request: EntityCreateRequest) -> Enti
     project_service: ProjectService = get_project_service()
     project_service.add_entity_by_name(project_name, request.name, request.entity_data)
     logger.info(f"Added entity '{request.name}' to '{project_name}'")
-    return EntityResponse(name=request.name, entity_data=request.entity_data)
+    return _build_entity_response(request.name, request.entity_data)
 
 
 @router.put("/projects/{project_name}/entities/{entity_name}", response_model=EntityResponse)
@@ -158,7 +168,7 @@ async def update_entity(project_name: str, entity_name: str, request: EntityUpda
     project_service: ProjectService = get_project_service()
     project_service.update_entity_by_name(project_name, entity_name, request.entity_data)
     logger.info(f"Updated entity '{entity_name}' in '{project_name}'")
-    return EntityResponse(name=entity_name, entity_data=request.entity_data)
+    return _build_entity_response(entity_name, request.entity_data)
 
 
 @router.delete(
@@ -213,7 +223,7 @@ async def generate_entity_from_table(project_name: str, request: GenerateFromTab
 
     entity_name = request.entity_name or request.table_name
     logger.info(f"Generated entity '{entity_name}' from table '{request.table_name}' in '{project_name}'")
-    return EntityResponse(name=entity_name, entity_data=entity_config)
+    return _build_entity_response(entity_name, entity_config)
 
 
 @router.get("/projects/{project_name}/entities/{entity_name}/values", response_model=EntityValuesResponse)

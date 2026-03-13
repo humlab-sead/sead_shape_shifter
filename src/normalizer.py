@@ -90,13 +90,17 @@ class ShapeShifter:
             sub_data = sub_table_cfg.apply_column_renaming(sub_data, parent_columns=table_cfg.columns)
             dfs.append(sub_data)
 
-            # Concatenate all dataframes (filter out empty DataFrames to avoid FutureWarning)
+        # Concatenate all dataframes while excluding all-NA columns from dtype inference.
+        # The dropped columns are restored afterward to preserve the expected schema.
         non_empty_dfs: list[pd.DataFrame] = [df for df in dfs if not df.empty]
         if not non_empty_dfs:
             logger.warning(f"{entity}[normalizing]: All sub-tables are empty after processing.")
 
+        concat_columns: list[str] = list(dict.fromkeys(col for df in non_empty_dfs for col in df.columns))
+        sanitized_dfs: list[pd.DataFrame] = [df.dropna(axis=1, how="all") for df in non_empty_dfs]
+
         data: pd.DataFrame = (
-            pd.concat(non_empty_dfs, ignore_index=True)
+            pd.concat(sanitized_dfs, ignore_index=True).reindex(columns=concat_columns)
             if non_empty_dfs
             else pd.DataFrame(columns=table_cfg.keys_columns_and_fks) if len(dfs) == 0 else dfs[0]
         )

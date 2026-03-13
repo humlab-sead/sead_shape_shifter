@@ -96,7 +96,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
         columns: list[str] = table.safe_columns
         raw_values: list[Any] | None = table.values if isinstance(table.values, list) else None
-        dict_rows = raw_values is not None and all(isinstance(row, dict) for row in raw_values)
+        dict_rows = bool(raw_values) and all(isinstance(row, dict) for row in raw_values)
         values: list[Any] = raw_values if dict_rows and raw_values is not None else table.safe_values
 
         if dict_rows:

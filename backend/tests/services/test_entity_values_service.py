@@ -270,6 +270,24 @@ class TestEntityValuesService:
         file_path = tmp_path / "materialized" / "test.csv"
         assert file_path.exists()
 
+    def test_update_values_rejects_non_authoritative_fixed_columns(self, service, mock_project_service, tmp_path):
+        """Fixed entity updates must use backend-authoritative full column order."""
+        mock_project = Mock()
+        mock_project.folder = tmp_path
+        mock_project_service.load_project.return_value = mock_project
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "location_id",
+            "keys": ["name"],
+            "columns": ["system_id", "location_id", "name", "country"],
+            "values": "@load:materialized/test.parquet",
+        }
+        mock_project_service.get_entity_by_name.return_value = entity_data
+
+        with pytest.raises(ValueError, match="authoritative columns"):
+            service.update_values("test_project", "location", ["country"], [["Sweden"]], "parquet")
+
     def test_get_entity_values_service_factory(self):
         """Test factory function returns service instance."""
 
