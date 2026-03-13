@@ -2458,10 +2458,12 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   let columns = normalizedColumns
   if (entity.entity_data.type === 'fixed') {
     const publicId = (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || ''
-    columns = normalizeEditableFixedColumns(columns, keys, publicId)
+    columns = entity.fixed_schema?.editable_columns ?? normalizeEditableFixedColumns(columns, keys, publicId)
   }
 
-  fixedStoredColumnOrder.value = entity.entity_data.type === 'fixed' ? normalizedColumns : []
+  fixedStoredColumnOrder.value = entity.entity_data.type === 'fixed'
+    ? (entity.fixed_schema?.full_columns ?? normalizedColumns)
+    : []
 
   // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
   const roundTrip = extractMaterializationRoundTripState(entity.entity_data)
@@ -2533,8 +2535,12 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
       // Populate form data with fetched values
       formData.value.values = response.values
       if (formData.value.type === 'fixed') {
-        const publicId = formData.value.public_id
-        formData.value.columns = response.columns.filter((col) => col !== 'system_id' && col !== publicId)
+        const fullColumns = entity.fixed_schema?.full_columns ?? response.columns
+        const editableColumns = entity.fixed_schema?.editable_columns
+          ?? normalizeEditableFixedColumns(response.columns, formData.value.keys, formData.value.public_id)
+
+        fixedStoredColumnOrder.value = fullColumns
+        formData.value.columns = editableColumns
       } else {
         formData.value.columns = response.columns
       }

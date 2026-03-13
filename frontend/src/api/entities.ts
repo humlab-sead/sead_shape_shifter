@@ -10,10 +10,19 @@ export interface MaterializedMetadata {
   materialized_at?: string
 }
 
+export interface FixedSchema {
+  full_columns: string[]
+  editable_columns: string[]
+  identity_columns: string[]
+  key_columns: string[]
+  order_source: 'stored' | 'derived'
+}
+
 export interface EntityResponse {
   name: string
   entity_data: Record<string, unknown>
   materialized?: MaterializedMetadata
+  fixed_schema?: FixedSchema | null
 }
 
 export interface EntityCreateRequest {
