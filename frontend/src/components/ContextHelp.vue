@@ -99,7 +99,7 @@ const helpContentMap: Record<string, HelpContent> = {
     title: 'Dependency Graph',
     description: 'Visualize entity dependencies, source lineage, and task status.',
     tips: [
-      'Click an entity node to open the quick YAML drawer.',
+      'Click an entity node to open the quick Task Note/YAML drawer.',
       'Double-click an entity node to open the full editor overlay.',
       'Use Ctrl/Cmd + double-click to jump straight to the YAML tab in the editor.',
       'Right-click a node for preview, verify, duplicate, delete, task-status actions, and task notes.',
