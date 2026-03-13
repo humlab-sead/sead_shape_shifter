@@ -4,6 +4,8 @@
 
 When referencing project documentation, **ignore all files in `docs/archive/`**. These are historical implementation notes and deprecated documentation. Refer only to current documentation in the main `docs/` directory:
 
+Treat `docs/features/` as future-feature backlog rather than authoritative implementation guidance. Ignore it by default for debugging, validation, and implementation work unless the user explicitly asks about roadmap, planned features, or backlog ideas.
+
 - **CONFIGURATION_GUIDE.md** - Complete YAML configuration reference
 - **ARCHITECTURE.md** - System architecture and component overview
 - **DEVELOPER_GUIDE.md** - Development setup and contribution guidelines
