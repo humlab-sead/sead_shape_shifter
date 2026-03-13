@@ -1114,6 +1114,11 @@ const columnsOptions = ref<string[]>([])
 const columnsLoading = ref(false)
 const directivePaths = ref<string[]>([])
 
+function findSelectedFileInfo(filename: string, location?: 'global' | 'local'): FileInfo | undefined {
+  return availableProjectFiles.value.find((file) => file.name === filename && file.location === location)
+    || availableProjectFiles.value.find((file) => file.name === filename)
+}
+
 const { getValidDirectives } = useDirectiveValidation()
 
 // Delimiter options for CSV
@@ -1345,7 +1350,7 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
     }
 
     // Preserve file location from the form, but refresh it from the file list when available.
-    const selectedFile = availableProjectFiles.value.find((f) => f.name === formData.value.options.filename)
+    const selectedFile = findSelectedFileInfo(formData.value.options.filename, formData.value.options.location)
     if (selectedFile) {
       options.location = selectedFile.location
     } else {
@@ -1535,7 +1540,7 @@ async function fetchSheetOptions() {
   }
 
   try {
-    const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
+    const fileInfo = findSelectedFileInfo(filename, formData.value.options.location)
     const location = fileInfo?.location || formData.value.options.location || 'global'
 
     const meta = await api.excelMetadata.fetch(
@@ -1577,7 +1582,7 @@ async function fetchColumns() {
   }
 
   try {
-    const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
+    const fileInfo = findSelectedFileInfo(filename, formData.value.options.location)
     const location = fileInfo?.location || formData.value.options.location || 'global'
 
     const meta = await api.excelMetadata.fetch(
