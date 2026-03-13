@@ -971,6 +971,7 @@ interface FormData {
     encoding: string
     sheet_name: string
     range: string
+    location: 'global' | 'local'
   }
   foreign_keys: any[]
   depends_on: string[]
@@ -1032,6 +1033,7 @@ const formData = ref<FormData>({
     encoding: 'utf-8',
     sheet_name: '',
     range: '',
+    location: 'global',
   },
   foreign_keys: [],
   depends_on: [],
@@ -1342,13 +1344,12 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
       filename: formData.value.options.filename,
     }
 
-    // Add location field to indicate where file is stored
+    // Preserve file location from the form, but refresh it from the file list when available.
     const selectedFile = availableProjectFiles.value.find((f) => f.name === formData.value.options.filename)
     if (selectedFile) {
       options.location = selectedFile.location
     } else {
-      // Default to global for backwards compatibility
-      options.location = 'global'
+      options.location = formData.value.options.location || 'global'
     }
 
     if (formData.value.type === 'csv') {
@@ -1534,9 +1535,8 @@ async function fetchSheetOptions() {
   }
 
   try {
-    // Find the file to get its location
     const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
-    const location = fileInfo?.location || 'global'
+    const location = fileInfo?.location || formData.value.options.location || 'global'
 
     const meta = await api.excelMetadata.fetch(
       filename,
@@ -1577,9 +1577,8 @@ async function fetchColumns() {
   }
 
   try {
-    // Find the file to get its location
     const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
-    const location = fileInfo?.location || 'global'
+    const location = fileInfo?.location || formData.value.options.location || 'global'
 
     const meta = await api.excelMetadata.fetch(
       filename,
@@ -1771,6 +1770,7 @@ watch(
         encoding: 'utf-8',
         sheet_name: '',
         range: '',
+        location: 'global',
       }
     }
 
@@ -2100,6 +2100,7 @@ function yamlToFormData(yamlString: string): boolean {
         encoding: data.options?.encoding || 'utf-8',
         sheet_name: data.options?.sheet_name || '',
         range: data.options?.range || '',
+        location: data.options?.location || 'global',
       },
       foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
       depends_on: normalizeChipField(data.depends_on),
@@ -2489,6 +2490,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       encoding: (entity.entity_data.options as any)?.encoding || 'utf-8',
       sheet_name: (entity.entity_data.options as any)?.sheet_name || '',
       range: (entity.entity_data.options as any)?.range || '',
+      location: (entity.entity_data.options as any)?.location || 'global',
     },
     foreign_keys: (entity.entity_data.foreign_keys as any[]) || [],
     depends_on: normalizeChipField(entity.entity_data.depends_on),
@@ -2583,6 +2585,7 @@ function buildDefaultFormData(): FormData {
       encoding: 'utf-8',
       sheet_name: '',
       range: '',
+      location: 'global',
     },
     foreign_keys: [],
     depends_on: [],
