@@ -2167,7 +2167,7 @@ function buildDirtySnapshot(): string {
     entityData: buildEntityConfigFromFormData(),
   }
 
-  if (hasExternalValues.value) {
+  if (externalValuesDirective.value) {
     snapshot.externalValues = {
       columns: getExternalValuesUpdateColumns(formData.value.type, formData.value.columns, fixedValuesColumns.value),
       values: formData.value.values,
@@ -2210,6 +2210,8 @@ async function handleSubmit() {
   try {
     // Use shared function to build entity config
     const entityData = buildEntityConfigFromFormData()
+    const valuesField = entityData.values
+    const shouldSaveExternalValues = typeof valuesField === 'string' && valuesField.startsWith('@load:')
 
     if (props.mode === 'create') {
       await create({
@@ -2230,7 +2232,7 @@ async function handleSubmit() {
       })
 
       // Save external values if entity has @load: directive
-      if (hasExternalValues.value) {
+      if (shouldSaveExternalValues) {
         try {
           const response = await api.entities.updateValues(
             props.projectName,
@@ -2290,6 +2292,8 @@ async function handleSubmitAndClose() {
 
   try {
     const entityData = buildEntityConfigFromFormData()
+    const valuesField = entityData.values
+    const shouldSaveExternalValues = typeof valuesField === 'string' && valuesField.startsWith('@load:')
 
     if (props.mode === 'create') {
       await create({
@@ -2302,7 +2306,7 @@ async function handleSubmitAndClose() {
       })
 
       // Save external values if entity has @load: directive
-      if (hasExternalValues.value) {
+      if (shouldSaveExternalValues) {
         try {
           const response = await api.entities.updateValues(
             props.projectName,
