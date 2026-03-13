@@ -920,12 +920,17 @@ const contextMenuEntity = ref<string | null>(null)
 
 // Task status state
 const currentTaskFilter = ref<TaskFilter>('all')
-const colorByMode = ref<GraphColorByMode>('type')
+const defaultColorByMode: GraphColorByMode = 'task'
+const colorByMode = ref<GraphColorByMode>(defaultColorByMode)
 const colorByOptions = [
   { title: 'Task Status', value: 'task' as const },
   { title: 'Entity Type', value: 'type' as const },
 ]
 const colorByStorageKey = computed(() => `shapeshifter.graph.colorBy.${projectName.value || 'default'}`)
+
+function getSavedColorByMode(savedMode: string | null): GraphColorByMode {
+  return savedMode === 'type' ? 'type' : defaultColorByMode
+}
 
 const rawYamlContent = ref<string | null>(null)
 const originalYamlContent = ref<string | null>(null)
@@ -2039,10 +2044,7 @@ onMounted(async () => {
   }
 
   try {
-    const savedColorBy = window.localStorage.getItem(colorByStorageKey.value)
-    if (savedColorBy === 'task' || savedColorBy === 'type') {
-      colorByMode.value = savedColorBy
-    }
+    colorByMode.value = getSavedColorByMode(window.localStorage.getItem(colorByStorageKey.value))
 
     console.debug(`ProjectDetailView: Initializing for project "${projectName.value}"`)
     
@@ -2077,8 +2079,7 @@ watch(
     // Avoid re-loading on initial mount (onMounted handles that)
     if (!oldName) return
 
-    const savedColorBy = window.localStorage.getItem(colorByStorageKey.value)
-    colorByMode.value = savedColorBy === 'task' ? 'task' : 'type'
+    colorByMode.value = getSavedColorByMode(window.localStorage.getItem(colorByStorageKey.value))
     
     console.debug(`ProjectDetailView: Project changed from "${oldName}" to "${newName}"`)
     
