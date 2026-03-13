@@ -1342,7 +1342,7 @@ async function handleEditNote(entityName: string) {
 async function handleRemoveNote(entityName: string) {
   try {
     const response = await api.tasks.removeNote(projectName.value, entityName)
-    await taskStatusStore.refresh()
+    taskStatusStore.setEntityHasNote(entityName, false)
     applyTaskStatusToNodes()
 
     if (selectedNode.value === entityName) {
@@ -1763,7 +1763,7 @@ async function handleSaveDrawerNote() {
 
   try {
     const response = await api.tasks.setNote(projectName.value, selectedNode.value, drawerNoteContent.value)
-    await taskStatusStore.refresh()
+    taskStatusStore.setEntityHasNote(selectedNode.value, response.has_note)
     applyTaskStatusToNodes()
 
     const savedNote = response.note || ''

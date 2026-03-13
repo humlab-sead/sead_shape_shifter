@@ -138,6 +138,18 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
   }
 
   /**
+   * Update local note presence for a specific entity without a full refresh.
+   */
+  function setEntityHasNote(entityName: string, hasNote: boolean): void {
+    const entityStatus = taskStatus.value?.entities[entityName]
+    if (!entityStatus) {
+      return
+    }
+
+    entityStatus.has_note = hasNote
+  }
+
+  /**
    * Check if entity is done
    */
   function isDone(entityName: string): boolean {
@@ -241,6 +253,7 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
     resetStatus,
     toggleFlagged,
     getEntityStatus,
+    setEntityHasNote,
     isDone,
     isOngoing,
     isIgnored,
