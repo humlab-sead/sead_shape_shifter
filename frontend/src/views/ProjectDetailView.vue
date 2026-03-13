@@ -805,7 +805,6 @@ const {
   hasUnsavedChanges,
   backups,
   select,
-  refresh: refreshProject,
   clearError,
   fetchBackups,
   restore,
@@ -1288,9 +1287,7 @@ async function handleRefresh() {
 }
 
 async function handleEntityUpdated() {
-  if (projectName.value) {
-    await refreshProject(projectName.value)
-  }
+  await fetchEntities()
 
   if (activeTab.value === 'dependencies' && projectName.value) {
     await fetchDependencies(projectName.value)
@@ -1305,10 +1302,8 @@ function handleEditEntity(entityName: string) {
 }
 
 async function handleOverlayEntitySaved() {
-  // Refresh project-backed state after saving from overlay.
-  if (projectName.value) {
-    await refreshProject(projectName.value)
-  }
+  // Refresh entity-backed state after saving from overlay without remounting the page.
+  await fetchEntities()
 
   successMessage.value = 'Entity saved successfully'
   showSuccessSnackbar.value = true
