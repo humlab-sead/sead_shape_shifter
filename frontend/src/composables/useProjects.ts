@@ -48,6 +48,15 @@ export function useProjects(options: UseProjectsOptions = {}) {
     }
   }
 
+  async function refresh(name: string) {
+    try {
+      return await store.refreshProject(name)
+    } catch (err) {
+      console.error(`Failed to refresh project "${name}":`, err)
+      throw err
+    }
+  }
+
   async function create(data: ProjectCreateRequest) {
     try {
       return await store.createProject(data)
@@ -148,6 +157,7 @@ export function useProjects(options: UseProjectsOptions = {}) {
     // Actions
     fetch,
     select,
+    refresh,
     create,
     update,
     remove,
