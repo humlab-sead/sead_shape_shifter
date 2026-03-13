@@ -835,6 +835,7 @@ import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
 import {
+  buildFixedValuesColumns,
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
   getExternalValuesUpdateColumns,
@@ -1114,6 +1115,7 @@ const sheetOptionsLoading = ref(false)
 const columnsOptions = ref<string[]>([])
 const columnsLoading = ref(false)
 const directivePaths = ref<string[]>([])
+const fixedStoredColumnOrder = ref<string[]>([])
 
 function findSelectedFileInfo(filename: string, location?: 'global' | 'local'): FileInfo | undefined {
   return availableProjectFiles.value.find((file) => file.name === filename && file.location === location)
@@ -1134,31 +1136,12 @@ const delimiterOptions = [
 // Important: `values` is a positional 2D array, so the grid column order must match the three-tier identity model.
 // Fixed values grid must include: system_id, public_id (if defined), keys, and columns
 const fixedValuesColumns = computed(() => {
-  const result: string[] = []
-
-  // Always include system_id first (required for three-tier identity)
-  result.push('system_id')
-
-  // Include public_id if defined (required for entities with FK children or mappings)
-  if (formData.value.public_id && formData.value.public_id.trim().length > 0) {
-    result.push(formData.value.public_id)
-  }
-
-  // Include keys (business keys)
-  const keys = (formData.value.keys || []).filter((k: string) => typeof k === 'string' && k.trim().length > 0)
-  result.push(...keys)
-
-  // Include columns (data columns), but exclude system_id and public_id to avoid duplicates
-  const columns = (formData.value.columns || []).filter((c: string) => {
-    if (typeof c !== 'string' || c.trim().length === 0) return false
-    // Exclude system_id and public_id to avoid duplicates
-    if (c === 'system_id') return false
-    if (formData.value.public_id && c === formData.value.public_id) return false
-    return true
-  })
-  result.push(...columns)
-
-  return result
+  return buildFixedValuesColumns(
+    formData.value.columns || [],
+    formData.value.keys || [],
+    formData.value.public_id,
+    fixedStoredColumnOrder.value
+  )
 })
 
 // Can preview only in edit mode
@@ -2061,6 +2044,9 @@ function yamlToFormData(yamlString: string): boolean {
     const data = yaml.load(yamlString) as Record<string, any>
     const normalizedKeys = normalizeChipField(data.keys)
     const publicId = data.public_id || data.surrogate_id || ''
+    const normalizedColumns = normalizeChipField(data.columns)
+
+    fixedStoredColumnOrder.value = (data.type || 'entity') === 'fixed' ? normalizedColumns : []
 
     // Keep non-inline values/materialization metadata from YAML edits.
     const roundTrip = extractMaterializationRoundTripState(data)
@@ -2099,8 +2085,8 @@ function yamlToFormData(yamlString: string): boolean {
       keys: normalizedKeys,
       columns:
         (data.type || 'entity') === 'fixed'
-          ? normalizeEditableFixedColumns(normalizeChipField(data.columns), normalizedKeys, publicId)
-          : normalizeChipField(data.columns),
+          ? normalizeEditableFixedColumns(normalizedColumns, normalizedKeys, publicId)
+          : normalizedColumns,
       values: roundTrip.inlineValues,
       source: data.source || null,
       data_source: data.data_source || '',
@@ -2468,11 +2454,14 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   // For fixed entities, strip system_id and public_id from columns
   // since they're auto-managed and will be auto-added on save
   const keys = normalizeChipField(entity.entity_data.keys)
-  let columns = normalizeChipField(entity.entity_data.columns)
+  const normalizedColumns = normalizeChipField(entity.entity_data.columns)
+  let columns = normalizedColumns
   if (entity.entity_data.type === 'fixed') {
     const publicId = (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || ''
     columns = normalizeEditableFixedColumns(columns, keys, publicId)
   }
+
+  fixedStoredColumnOrder.value = entity.entity_data.type === 'fixed' ? normalizedColumns : []
 
   // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
   const roundTrip = extractMaterializationRoundTripState(entity.entity_data)

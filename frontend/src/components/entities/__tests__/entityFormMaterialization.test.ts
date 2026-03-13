@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildFixedValuesColumns,
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
   getExternalValuesUpdateColumns,
@@ -116,6 +117,55 @@ describe('entityFormMaterialization', () => {
       'national_site_identifier',
       'site_name',
       'FustelTyp',
+    ])
+  })
+
+  it('preserves stored full column order for fixed values rows', () => {
+    const result = buildFixedValuesColumns(
+      [
+        'site_type_id',
+        'altitude',
+        'coordinate_system',
+        'latitude_dd',
+        'longitude_dd',
+        'national_site_identifier',
+        'site_name',
+        'FustelTyp',
+        'KoordSys',
+      ],
+      ['Fustel', 'EVNr'],
+      'site_id',
+      [
+        'system_id',
+        'site_id',
+        'site_type_id',
+        'altitude',
+        'coordinate_system',
+        'latitude_dd',
+        'longitude_dd',
+        'national_site_identifier',
+        'site_name',
+        'EVNr',
+        'Fustel',
+        'FustelTyp',
+        'KoordSys',
+      ]
+    )
+
+    expect(result).toEqual([
+      'system_id',
+      'site_id',
+      'site_type_id',
+      'altitude',
+      'coordinate_system',
+      'latitude_dd',
+      'longitude_dd',
+      'national_site_identifier',
+      'site_name',
+      'EVNr',
+      'Fustel',
+      'FustelTyp',
+      'KoordSys',
     ])
   })
 })
