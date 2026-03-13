@@ -838,6 +838,7 @@ import {
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
   getExternalValuesUpdateColumns,
+  normalizeEditableFixedColumns,
 } from './entityFormMaterialization'
 
 const DIALOG_SIZE_STORAGE_KEY = 'shape-shifter:entity-dialog-size:v1'
@@ -2058,6 +2059,8 @@ function formDataToYaml(): string {
 function yamlToFormData(yamlString: string): boolean {
   try {
     const data = yaml.load(yamlString) as Record<string, any>
+    const normalizedKeys = normalizeChipField(data.keys)
+    const publicId = data.public_id || data.surrogate_id || ''
 
     // Keep non-inline values/materialization metadata from YAML edits.
     const roundTrip = extractMaterializationRoundTripState(data)
@@ -2091,10 +2094,13 @@ function yamlToFormData(yamlString: string): boolean {
       name: data.name || formData.value.name,
       type: data.type || 'entity',
       system_id: 'system_id', // Always standardized
-      public_id: data.public_id || data.surrogate_id || '', // Migrate surrogate_id → public_id
+      public_id: publicId, // Migrate surrogate_id → public_id
       surrogate_id: data.surrogate_id || '', // Keep for backward compat
-      keys: normalizeChipField(data.keys),
-      columns: normalizeChipField(data.columns),
+      keys: normalizedKeys,
+      columns:
+        (data.type || 'entity') === 'fixed'
+          ? normalizeEditableFixedColumns(normalizeChipField(data.columns), normalizedKeys, publicId)
+          : normalizeChipField(data.columns),
       values: roundTrip.inlineValues,
       source: data.source || null,
       data_source: data.data_source || '',
@@ -2461,10 +2467,11 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
 
   // For fixed entities, strip system_id and public_id from columns
   // since they're auto-managed and will be auto-added on save
+  const keys = normalizeChipField(entity.entity_data.keys)
   let columns = normalizeChipField(entity.entity_data.columns)
   if (entity.entity_data.type === 'fixed') {
-    const publicId = (entity.entity_data.public_id as string) || ''
-    columns = columns.filter((col) => col !== 'system_id' && col !== publicId)
+    const publicId = (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || ''
+    columns = normalizeEditableFixedColumns(columns, keys, publicId)
   }
 
   // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
@@ -2483,7 +2490,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     system_id: 'system_id', // Always standardized
     public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '', // Migrate
     surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
-    keys: normalizeChipField(entity.entity_data.keys),
+    keys,
     columns: columns,
     values: roundTrip.inlineValues,
     source: (entity.entity_data.source as string) || null,

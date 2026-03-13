@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
-from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError
+from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError, SchemaValidationError
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project
@@ -62,6 +62,66 @@ class EntityOperations:
 
         return entity_dict
 
+    @staticmethod
+    def _validate_fixed_entity_shape(entity_name: str, entity_data: dict[str, Any]) -> None:
+        """Reject malformed fixed entities before they reach YAML persistence."""
+        if entity_data.get("type") != "fixed":
+            return
+
+        columns = entity_data.get("columns")
+        if not isinstance(columns, list):
+            return
+
+        duplicate_columns = sorted({column for column in columns if columns.count(column) > 1})
+        if duplicate_columns:
+            raise SchemaValidationError(
+                message=f"Fixed data entity '{entity_name}' has duplicate columns {duplicate_columns}",
+                entity=entity_name,
+                field="columns",
+            )
+
+        values = entity_data.get("values")
+        if values is None or isinstance(values, str):
+            return
+
+        if not isinstance(values, list) or not all(isinstance(row, list) for row in values):
+            raise SchemaValidationError(
+                message=f"Fixed data entity '{entity_name}' must have values as a list of lists",
+                entity=entity_name,
+                field="values",
+            )
+
+        if not values:
+            return
+
+        row_lengths = {len(row) for row in values}
+        if len(row_lengths) != 1:
+            raise SchemaValidationError(
+                message=f"Fixed data entity '{entity_name}' has inconsistent row lengths in values",
+                entity=entity_name,
+                field="values",
+            )
+
+        values_length = next(iter(row_lengths))
+        public_id = entity_data.get("public_id")
+        identity_columns = {"system_id"}
+        if isinstance(public_id, str) and public_id:
+            identity_columns.add(public_id)
+
+        expected_without_identity = len(columns)
+        expected_with_identity = len(set(columns) | identity_columns)
+
+        if values_length not in (expected_without_identity, expected_with_identity):
+            raise SchemaValidationError(
+                message=(
+                    f"Fixed data entity '{entity_name}' has mismatched number of columns and values "
+                    f"(got {values_length} values per row, expected {expected_without_identity} for data-only "
+                    f"or {expected_with_identity} with identity columns)"
+                ),
+                entity=entity_name,
+                field="values",
+            )
+
     # Object-based entity operations (work on Project instances)
 
     def add_entity(self, project: Project, entity_name: str, entity: Entity) -> Project:
@@ -82,7 +142,9 @@ class EntityOperations:
         if entity_name in project.entities:
             raise ResourceConflictError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists")
 
-        project.entities[entity_name] = self._serialize_entity(entity)
+        entity_dict = self._serialize_entity(entity)
+        self._validate_fixed_entity_shape(entity_name, entity_dict)
+        project.entities[entity_name] = entity_dict
         logger.debug(f"Added entity '{entity_name}'")
         return project
 
@@ -104,7 +166,9 @@ class EntityOperations:
         if entity_name not in project.entities:
             raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
 
-        project.entities[entity_name] = self._serialize_entity(entity)
+        entity_dict = self._serialize_entity(entity)
+        self._validate_fixed_entity_shape(entity_name, entity_dict)
+        project.entities[entity_name] = entity_dict
         logger.debug(f"Updated entity '{entity_name}'")
         return project
 
@@ -193,6 +257,8 @@ class EntityOperations:
                     resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists"
                 )
 
+            self._validate_fixed_entity_shape(entity_name, entity_data)
+
             # Use the model's add_entity method to ensure proper handling
             project.add_entity(entity_name, entity_data)
 
@@ -251,6 +317,8 @@ class EntityOperations:
             # If not in incoming data, keep existing value (even if None)
             if "public_id" not in entity_data and "public_id" in project.entities[entity_name]:
                 entity_data["public_id"] = project.entities[entity_name]["public_id"]
+
+            self._validate_fixed_entity_shape(entity_name, entity_data)
 
             # Use the model's add_entity method to ensure proper handling
             project.add_entity(entity_name, entity_data)
