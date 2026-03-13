@@ -2384,7 +2384,6 @@ function handleMaterialized() {
         await loadExternalValuesIfNeeded(freshEntity)
         yamlContent.value = formDataToYaml()
         await refreshFormValidity()
-        captureInitialSnapshot()
       })
       .catch((err) => {
         console.error('Failed to reload after materialization:', err)
