@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 from backend.app.core.config import settings
-from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError
+from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError, SchemaValidationError
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.services.project_service import (
@@ -537,6 +537,28 @@ options:
         with pytest.raises(ResourceConflictError):
             service.add_entity_by_name("test", "sample", {"source": "table"})
 
+    def test_add_entity_by_name_rejects_duplicate_fixed_columns(
+        self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict
+    ):
+        """Fixed entities with duplicate columns should be rejected before save."""
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "site_id",
+            "columns": ["system_id", "site_id", "Fustel", "EVNr", "Fustel"],
+            "values": [[1, None, "site-a", "224073", "site-a"]],
+        }
+
+        with pytest.raises(SchemaValidationError, match="duplicate columns"):
+            service.add_entity_by_name("test", "site", entity_data)
+
     def test_update_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test updating entity by configuration name."""
         # New structure: project_name/shapeshifter.yml
@@ -563,6 +585,28 @@ options:
 
         with pytest.raises(ResourceNotFoundError):
             service.update_entity_by_name("test", "nonexistent", {"source": "table"})
+
+    def test_update_entity_by_name_rejects_fixed_value_shape_mismatch(
+        self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict
+    ):
+        """Fixed entities with mismatched row widths should be rejected before save."""
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "sample_id",
+            "columns": ["system_id", "sample_id", "name", "value"],
+            "values": [[1, None, "sample-a"]],
+        }
+
+        with pytest.raises(SchemaValidationError, match="mismatched number of columns and values"):
+            service.update_entity_by_name("test", "sample", entity_data)
 
     def test_delete_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test deleting entity by configuration name."""

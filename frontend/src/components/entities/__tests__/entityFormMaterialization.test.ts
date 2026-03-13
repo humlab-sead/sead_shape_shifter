@@ -4,6 +4,7 @@ import {
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
   getExternalValuesUpdateColumns,
+  normalizeEditableFixedColumns,
 } from '../entityFormMaterialization'
 
 describe('entityFormMaterialization', () => {
@@ -84,5 +85,37 @@ describe('entityFormMaterialization', () => {
     const result = getExternalValuesUpdateColumns('sql', ['a', 'b'], ['system_id', 'x_id', 'a', 'b'])
 
     expect(result).toEqual(['a', 'b'])
+  })
+
+  it('strips identity and key columns from editable fixed columns', () => {
+    const result = normalizeEditableFixedColumns(
+      [
+        'system_id',
+        'site_id',
+        'Fustel',
+        'EVNr',
+        'site_type_id',
+        'altitude',
+        'coordinate_system',
+        'latitude_dd',
+        'longitude_dd',
+        'national_site_identifier',
+        'site_name',
+        'FustelTyp',
+      ],
+      ['Fustel', 'EVNr'],
+      'site_id'
+    )
+
+    expect(result).toEqual([
+      'site_type_id',
+      'altitude',
+      'coordinate_system',
+      'latitude_dd',
+      'longitude_dd',
+      'national_site_identifier',
+      'site_name',
+      'FustelTyp',
+    ])
   })
 })
