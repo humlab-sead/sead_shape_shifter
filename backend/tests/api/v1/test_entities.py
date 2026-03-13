@@ -151,8 +151,8 @@ class TestEntitiesGet:
 class TestFixedSchemaDerivation:
     """Tests for derived fixed-schema metadata."""
 
-    def test_create_fixed_entity_derives_schema_when_identity_columns_not_stored(self, tmp_path, monkeypatch, reset_services):
-        """Backend should derive full fixed schema when only editable columns are stored."""
+    def test_create_fixed_entity_persists_canonical_fixed_schema(self, tmp_path, monkeypatch, reset_services):
+        """Created fixed entities should be normalized to canonical stored columns."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -177,7 +177,7 @@ class TestFixedSchemaDerivation:
             "editable_columns": ["description"],
             "identity_columns": ["system_id", "feature_type_id"],
             "key_columns": ["name"],
-            "order_source": "derived",
+            "order_source": "stored",
         }
 
 
