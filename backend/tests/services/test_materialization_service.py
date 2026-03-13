@@ -433,7 +433,9 @@ class TestCreateMaterializedEntity:
             columns=["system_id", "name", "name", "_merge_indicator_remote", "location_id"],
         )
 
-        result = materialization_service._create_materialized_entity(mock_table_config, df, "@load:test-project/materialized/location.parquet")
+        result = materialization_service._create_materialized_entity(
+            mock_table_config, df, "@load:test-project/materialized/location.parquet"
+        )
 
         assert result["columns"] == ["system_id", "name", "location_id"]
 
