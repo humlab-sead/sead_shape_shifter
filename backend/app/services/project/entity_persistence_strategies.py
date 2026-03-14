@@ -29,15 +29,15 @@ class EntityPersistenceStrategy(Protocol):
 class DefaultEntityPersistenceStrategy:
     """Default persistence strategy with no type-specific behavior."""
 
-    def prepare_for_persistence(self, entity_name: str, entity_data: dict[str, Any]) -> dict[str, Any]:
+    def prepare_for_persistence(self, entity_name: str, entity_data: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=unused-argument
         return entity_data
 
     def normalize_materialized_dataframe(
         self,
-        entity_name: str,
+        entity_name: str,  # pylint: disable=unused-argument
         df: pd.DataFrame,
-        public_id: str | None,
-        keys: list[str],
+        public_id: str | None,  # pylint: disable=unused-argument
+        keys: list[str],  # pylint: disable=unused-argument
     ) -> pd.DataFrame:
         return df
 
@@ -108,7 +108,7 @@ class FixedEntityPersistenceStrategy:
 
     def normalize_materialized_dataframe(
         self,
-        entity_name: str,
+        entity_name: str,  # pylint: disable=unused-argument
         df: pd.DataFrame,
         public_id: str | None,
         keys: list[str],
