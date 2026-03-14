@@ -717,6 +717,51 @@
       @cancel="handleCancelPreview"
     />
 
+    <v-dialog v-model="showCreateTodoDialog" max-width="560">
+      <v-card>
+        <v-card-title>Add Todo Entity</v-card-title>
+        <v-card-text>
+          <v-alert v-if="createTodoError" type="error" variant="tonal" class="mb-4">
+            {{ createTodoError }}
+          </v-alert>
+
+          <v-text-field
+            v-model="createTodoEntityName"
+            label="Entity name"
+            placeholder="sample_type"
+            hint="Use a new snake_case name for a planned entity."
+            persistent-hint
+            :error="createTodoEntityName.trim().length > 0 && !isCreateTodoNameValid"
+            :error-messages="createTodoNameError ? [createTodoNameError] : []"
+            :disabled="createTodoSaving"
+            @keydown.enter.prevent="handleSubmitCreateTodo"
+          />
+
+          <v-textarea
+            v-model="createTodoNote"
+            label="Optional task note"
+            placeholder="Add context about why this entity is planned or still missing."
+            rows="4"
+            auto-grow
+            :disabled="createTodoSaving"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" :disabled="createTodoSaving" @click="closeCreateTodoDialog">Cancel</v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="createTodoSaving"
+            :disabled="!canSubmitCreateTodo"
+            @click="handleSubmitCreateTodo"
+          >
+            Add Todo Entity
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Execute Dialog -->
     <execute-dialog
       v-model="showExecuteDialog"
@@ -871,10 +916,15 @@ const showExecuteDialog = ref(false)
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
 const showPreviewModal = ref(false)
+const showCreateTodoDialog = ref(false)
 const fixPreview = ref<any>(null)
 const fixPreviewLoading = ref(false)
 const fixPreviewError = ref<string | null>(null)
 const entityToEdit = ref<string | null>(null)
+const createTodoEntityName = ref('')
+const createTodoNote = ref('')
+const createTodoSaving = ref(false)
+const createTodoError = ref<string | null>(null)
 
 // Graph state
 const graphContainer = ref<HTMLElement | null>(null)
@@ -996,6 +1046,28 @@ const activeDrawerError = computed(() => detailsDrawerTab.value === 'note' ? dra
 const entityStore = useEntityStore()
 const projectStore = useProjectStore()
 const taskStatusStore = useTaskStatusStore()
+
+const normalizedCreateTodoName = computed(() => createTodoEntityName.value.trim())
+
+const createTodoNameError = computed(() => {
+  const entityName = normalizedCreateTodoName.value
+
+  if (!entityName) return 'Entity name is required'
+  if (!/^[a-z][a-z0-9_]*$/.test(entityName)) {
+    return 'Entity name must be snake_case and start with a lowercase letter'
+  }
+  if (entityNames.value.includes(entityName)) {
+    return 'An entity with this name already exists in the project'
+  }
+  if (taskStatusStore.getEntityStatus(entityName)) {
+    return 'This entity name is already present in the task list'
+  }
+
+  return null
+})
+
+const isCreateTodoNameValid = computed(() => createTodoNameError.value === null)
+const canSubmitCreateTodo = computed(() => !createTodoSaving.value && isCreateTodoNameValid.value)
 
 // Task completion stats
 const taskStats = computed(() => {
@@ -1688,16 +1760,56 @@ async function handleInitializeTaskList() {
   }
 }
 
+function closeCreateTodoDialog() {
+  showCreateTodoDialog.value = false
+  createTodoEntityName.value = ''
+  createTodoNote.value = ''
+  createTodoError.value = null
+}
+
 function handleCreateTodoEntity() {
-  // Open entity creation dialog/form
-  // For now, just show a message - this would typically open a dialog
-  successMessage.value = 'Create Todo Entity dialog - to be implemented'
-  showSuccessSnackbar.value = true
-  // TODO: Implement entity creation dialog that:
-  // 1. Prompts for entity name
-  // 2. Creates minimal entity config
-  // 3. Automatically marks it as todo
-  // 4. Opens in editor
+  createTodoError.value = null
+  showCreateTodoDialog.value = true
+}
+
+async function handleSubmitCreateTodo() {
+  const entityName = normalizedCreateTodoName.value
+
+  if (!canSubmitCreateTodo.value || !entityName) {
+    createTodoError.value = createTodoNameError.value
+    return
+  }
+
+  createTodoSaving.value = true
+  createTodoError.value = null
+
+  try {
+    const success = await taskStatusStore.markTodo(entityName)
+    if (!success) {
+      throw new Error(taskStatusStore.error || `Failed to add todo entity "${entityName}"`)
+    }
+
+    const noteText = createTodoNote.value.trim()
+    if (noteText) {
+      await api.tasks.setNote(projectName.value, entityName, noteText)
+    }
+
+    await taskStatusStore.refresh()
+    await fetchDependencies(projectName.value)
+    await nextTick()
+    applyTaskStatusToNodes()
+
+    successMessage.value = noteText
+      ? `Todo entity "${entityName}" added with note`
+      : `Todo entity "${entityName}" added`
+    showSuccessSnackbar.value = true
+    closeCreateTodoDialog()
+  } catch (err) {
+    console.error('Failed to create todo entity:', err)
+    createTodoError.value = err instanceof Error ? err.message : 'Failed to create todo entity'
+  } finally {
+    createTodoSaving.value = false
+  }
 }
 
 function clearActiveDrawerError() {
