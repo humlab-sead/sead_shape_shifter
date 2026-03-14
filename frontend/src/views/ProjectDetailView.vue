@@ -36,7 +36,7 @@
               Execute
               <v-tooltip activator="parent">Execute the full workflow and export data</v-tooltip>
             </v-btn>
-            <v-btn variant="outlined" prepend-icon="mdi-history" color="success" @click="showBackupsDialog = true">
+            <v-btn variant="outlined" prepend-icon="mdi-history" color="success" @click="openBackupsDialog">
               Backups
               <v-tooltip activator="parent">View and restore previous versions of this project</v-tooltip>
             </v-btn>
@@ -2032,6 +2032,20 @@ async function handleRestoreBackup(backupPath: string) {
 
 function formatBackupDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString()
+}
+
+async function openBackupsDialog() {
+  showBackupsDialog.value = true
+
+  if (!projectName.value) {
+    return
+  }
+
+  try {
+    await fetchBackups(projectName.value)
+  } catch (err) {
+    console.error('Failed to refresh backups:', err)
+  }
 }
 
 // Lifecycle
