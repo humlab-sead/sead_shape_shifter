@@ -162,6 +162,13 @@ class DependencyService:
 
             dependency_map[entity_name] = deps
 
+        # Add placeholder nodes for todo entities (planned but not yet created)
+        task_list = project.task_list
+        for todo_entity in task_list.todo:
+            if todo_entity not in dependency_map:
+                # Add as standalone node with no dependencies
+                dependency_map[todo_entity] = []
+
         # Detect cycles
         cycles: list[list[str]] = find_cycles(dependency_map)
         has_cycles: bool = len(cycles) > 0

@@ -167,12 +167,11 @@ describe('useEntityStore', () => {
     it('should select an entity successfully', async () => {
       const store = useEntityStore()
       const mockEntity = { name: 'test-entity', entity_data: {} } as EntityResponse
-
-      vi.mocked(api.entities.get).mockResolvedValue(mockEntity)
+      store.entities = [mockEntity]
 
       const result = await store.selectEntity('test-project', 'test-entity')
 
-      expect(api.entities.get).toHaveBeenCalledWith('test-project', 'test-entity')
+      expect(api.entities.get).not.toHaveBeenCalled()
       expect(store.selectedEntity).toEqual(mockEntity)
       expect(store.hasUnsavedChanges).toBe(false)
       expect(result).toEqual(mockEntity)
@@ -181,11 +180,12 @@ describe('useEntityStore', () => {
     it('should handle select errors', async () => {
       const store = useEntityStore()
 
-      vi.mocked(api.entities.get).mockRejectedValue(new Error('Not found'))
+      await expect(store.selectEntity('test-project', 'nonexistent')).rejects.toThrow(
+        "Entity 'nonexistent' not found in cache",
+      )
 
-      await expect(store.selectEntity('test-project', 'nonexistent')).rejects.toThrow('Not found')
-
-      expect(store.error).toBe('Not found')
+      expect(api.entities.get).not.toHaveBeenCalled()
+      expect(store.error).toBe("Entity 'nonexistent' not found in cache")
     })
   })
 

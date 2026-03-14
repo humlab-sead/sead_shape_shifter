@@ -72,10 +72,10 @@ import { useHelp } from '@/composables'
 const sections = [
   { id: '1-introduction', title: 'Introduction' },
   { id: '2-getting-started', title: 'Getting Started' },
-  { id: '3-working-with-configurations', title: 'Projects' },
+  { id: '3-project-workspace', title: 'Workspace' },
   { id: '4-managing-entities', title: 'Entities' },
   { id: '5-validation', title: 'Validation' },
-  { id: '6-auto-fix-features', title: 'Auto-Fix' },
+  { id: '6-reconciliation-and-dispatch', title: 'Reconcile / Dispatch' },
   { id: '7-execute-workflow', title: 'Execute' },
   { id: '8-tips--best-practices', title: 'Best Practices' },
   { id: '9-troubleshooting', title: 'Troubleshooting' },

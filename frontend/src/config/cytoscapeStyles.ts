@@ -10,6 +10,10 @@ export interface CytoscapeStyleConfig {
   dark: StylesheetCSS[]
 }
 
+const NOTE_DOT_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(
+  '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE svg><svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="16" fill="#0F172A"/><circle cx="50" cy="50" r="12.5" fill="#FFFFFF"/></svg>'
+)}`
+
 /**
  * Base styles that work for both light and dark themes
  */
@@ -258,6 +262,87 @@ const baseStyles: StylesheetCSS[] = [
       'border-width': 4,
       'border-color': '#4CAF50', // Green = stable/cached
       'background-opacity': 0.85, // Slightly transparent
+    },
+  },
+
+  // Task status overlays (applied by ProjectDetailView via node classes)
+  {
+    selector: 'node.task-todo',
+    css: {
+      'background-color': '#FDD835',
+      'border-color': '#F9A825',
+      'border-width': 3,
+    },
+  },
+  {
+    selector: 'node.task-done',
+    css: {
+      'background-color': '#43A047',
+      'border-color': '#2E7D32',
+      'border-width': 3,
+    },
+  },
+  {
+    selector: 'node.task-ignored',
+    css: {
+      'background-color': '#9E9E9E',
+      'border-color': '#616161',
+      'border-style': 'dashed',
+      'border-width': 3,
+      opacity: 0.75,
+    },
+  },
+  {
+    selector: 'node.task-blocked',
+    css: {
+      'border-color': '#FB8C00',
+      'border-width': 4,
+    },
+  },
+  {
+    selector: 'node.task-critical',
+    css: {
+      'border-color': '#E53935',
+      'border-width': 4,
+      'background-color': '#EF5350',
+    },
+  },
+  {
+    selector: 'node.task-ready',
+    css: {
+      'border-color': '#1E88E5',
+      'border-width': 3,
+    },
+  },
+  {
+    selector: 'node.task-ongoing',
+    css: {
+      'background-color': '#2196F3',
+      'border-color': '#1976D2',
+      'border-width': 3,
+    },
+  },
+  {
+    selector: 'node.task-flagged',
+    css: {
+      'border-color': '#E91E63',
+      'border-width': 4,
+      'border-style': 'double',
+    },
+  },
+  {
+    selector: 'node.task-has-note',
+    css: {
+      'background-image': NOTE_DOT_SVG,
+      'background-image-opacity': 1,
+      'background-width': '100%',
+      'background-height': '100%',
+      'background-width-relative-to': 'inner',
+      'background-height-relative-to': 'inner',
+      'background-position-x': '50%',
+      'background-position-y': '50%',
+      'background-fit': 'none',
+      'background-repeat': 'no-repeat',
     },
   },
 

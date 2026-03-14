@@ -56,25 +56,28 @@ class ShapeShiftCache:
         entity_name: str,
         project_version: int | None = None,
         entity_config: TableConfig | None = None,
+        strict_version: bool = True,
     ) -> pd.DataFrame | None:
         """Get cached DataFrame for entity with 3-tier validation.
 
         Validation order:
         1. TTL - Check if cache entry has expired
-        2. Project version - Validate against ApplicationState version
+        2. Project version - Validate against ApplicationState version (if strict_version=True)
         3. Entity hash - Validate against entity configuration hash
 
         Args:
             project_name: Configuration name
             entity_name: Entity name
-            config_version: Optional config version for validation (from ApplicationState)
+            project_version: Optional project version for validation (from ApplicationState)
             entity_config: Optional entity configuration for hash validation
+            strict_version: If True, require version match. If False, skip version check.
 
         Returns:
             DataFrame if cached and valid, None otherwise
         """
         key = self._generate_key(project_name, entity_name)
         if key not in self._dataframes or key not in self._metadata:
+            logger.trace(f"[GET_DATAFRAME_NOTFOUND] {project_name}/{entity_name}: key not in cache storage")
             return None
 
         metadata = self._metadata[key]
@@ -83,28 +86,28 @@ class ShapeShiftCache:
         if time.time() - metadata.timestamp >= self._ttl:
             del self._dataframes[key]
             del self._metadata[key]
-            logger.debug(f"Cache expired for {entity_name} (TTL)")
+            logger.trace(f"Cache expired for {entity_name} (TTL)")
             return None
 
-        # Tier 2: Check project version if provided
-        if project_version is not None and metadata.project_version != project_version:
-            del self._dataframes[key]
-            del self._metadata[key]
-            logger.debug(f"Cache invalidated for {entity_name} (version mismatch: {metadata.project_version} != {project_version})")
-            return None
+        # Tier 2: Check project version if provided and strict_version=True
+        if strict_version and project_version is not None and metadata.project_version != project_version:
+            logger.trace(
+                f"Cache version mismatch for {entity_name} "
+                f"(cached: {metadata.project_version}, requested: {project_version}) - checking fallback"
+            )
+            return None  # Don't delete - let fallback tiers try
 
         # Tier 3: Check entity hash if entity_config provided
         if entity_config is not None:
             current_hash = entity_config.hash()
             if metadata.entity_hash != current_hash:
-                del self._dataframes[key]
-                del self._metadata[key]
-                logger.debug(
-                    f"Cache invalidated for {entity_name} (entity config changed: {metadata.entity_hash[:8]} != {current_hash[:8]})"
+                logger.trace(
+                    f"Cache hash mismatch for {entity_name} "
+                    f"(cached: {metadata.entity_hash[:8]}, current: {current_hash[:8]}) - checking fallback"
                 )
-                return None
+                return None  # Don't delete - let fallback tiers try
 
-        logger.debug(f"Cache hit for {entity_name} (valid: TTL + version + hash)")
+        logger.trace(f"Cache hit for {entity_name} (valid: TTL + version + hash)")
         return self._dataframes[key].copy()  # Return copy to prevent modifications
 
     def set_dataframe(
@@ -137,7 +140,7 @@ class ShapeShiftCache:
             project_version=project_version,
             entity_hash=entity_hash,
         )
-        logger.debug(f"Cached DataFrame for {entity_name} (version {project_version}, hash {entity_hash[:8]}, {len(dataframe)} rows)")
+        logger.trace(f"Cached DataFrame for {entity_name} (version {project_version}, hash {entity_hash[:8]}, {len(dataframe)} rows)")
 
     def set_table_store(
         self,
@@ -158,8 +161,14 @@ class ShapeShiftCache:
         """
         for entity_name, df in table_store.items():
             entity_config: TableConfig | None = entity_configs.get(entity_name) if entity_configs else None
+            entity_hash = entity_config.hash() if entity_config else "N/A"
+            hash_str = entity_hash[:8] if isinstance(entity_hash, str) else "N/A"
+            logger.trace(f"[SET_DATAFRAME] {project_name}/{entity_name}: project_version={project_version}, " f"entity_hash={hash_str}")
             self.set_dataframe(project_name, entity_name, df, project_version, entity_config)
-        logger.debug(f"Cached {len(table_store)} entities from {target_entity} execution")
+        logger.trace(
+            f"[CACHE_SET_DONE] {project_name}/{target_entity}: Cached {len(table_store)} entities with "
+            f"project_version={project_version}"
+        )
 
     def get_dependencies(
         self,
@@ -188,7 +197,7 @@ class ShapeShiftCache:
                 cached_deps[dep_name] = cached_df
 
         if cached_deps:
-            logger.debug(f"Found {len(cached_deps)} cached dependencies for {entity_config.entity_name}: {list(cached_deps.keys())}")
+            logger.trace(f"Found {len(cached_deps)} cached dependencies for {entity_config.entity_name}: {list(cached_deps.keys())}")
 
         return cached_deps
 
@@ -235,7 +244,7 @@ class ShapeShiftCache:
                 del self._dataframes[key]
             if key in self._metadata:
                 del self._metadata[key]
-        logger.debug(f"Invalidated {len(keys_to_remove)} cache entries for {project_name}:{entity_name or 'all'}")
+        logger.trace(f"Invalidated {len(keys_to_remove)} cache entries for {project_name}:{entity_name or 'all'}")
 
     def invalidate_project(self, project_name: str) -> None:
         """Remove ALL cached entries for a project.
@@ -290,11 +299,11 @@ class ShapeShiftProjectCache:
 
             # Check if cached version is still valid
             if project_name in self._cache and cached_version == current_version:
-                logger.debug(f"ShapeShiftProject cache hit for '{project_name}' (version {current_version})")
+                logger.trace(f"ShapeShiftProject cache hit for '{project_name}' (version {current_version})")
                 return self._cache[project_name]
 
             # Version mismatch or no cache - reload
-            logger.debug(
+            logger.trace(
                 f"ShapeShiftProject cache miss/invalid for '{project_name}' (cached: {cached_version}, current: {current_version})"
             )
             api_project: Project | None = get_app_state().get_project(project_name)
@@ -304,7 +313,7 @@ class ShapeShiftProjectCache:
                 shapeshift: ShapeShiftProject = ProjectMapper.to_core(api_project)
                 self._cache[project_name] = shapeshift
                 self._versions[project_name] = current_version
-                logger.debug(f"Loaded ShapeShiftProject from ApplicationState for '{project_name}'")
+                logger.trace(f"Loaded ShapeShiftProject from ApplicationState for '{project_name}'")
                 return shapeshift
 
         except RuntimeError:
@@ -312,7 +321,7 @@ class ShapeShiftProjectCache:
             pass
 
         # Fallback: Load from disk
-        logger.debug(f"Loading ShapeShiftProject from disk for '{project_name}'")
+        logger.trace(f"Loading ShapeShiftProject from disk for '{project_name}'")
         api_project = self.project_service.load_project(project_name)
         shapeshift: ShapeShiftProject = ProjectMapper.to_core(api_project)
 

@@ -23,7 +23,7 @@ def initialize_jvm():
 
 def test_validate_project_file():
 
-    config_file: str = "./data/projects/arbodat/arbodat-copy/shapeshifter.yml"
+    config_file: str = "./data/projects/arbodat/shapeshifter.yml"
     project: ShapeShiftProject = ShapeShiftProject.from_file(
         config_file,
         env_prefix="SHAPE_SHIFTER",
@@ -40,7 +40,7 @@ def test_validate_project_file():
 
 def test_access_database_csv_workflow():
 
-    config_file: str = "./data/projects/arbodat/arbodat-copy/shapeshifter.yml"
+    config_file: str = "./data/projects/arbodat/shapeshifter.yml"
     config: ShapeShiftProject = ShapeShiftProject.from_file(
         config_file,
         env_prefix="SHAPE_SHIFTER",

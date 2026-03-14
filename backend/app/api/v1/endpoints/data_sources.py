@@ -92,6 +92,7 @@ async def list_drivers() -> dict[str, DriverSchemaResponse]:
                         max_value=f.max_value,
                         placeholder=f.placeholder,
                         aliases=f.aliases or [],
+                        extensions=f.extensions,
                     )
                     for f in schema.fields
                 ],
@@ -118,11 +119,10 @@ async def list_data_sources(
     Passwords are excluded from the response.
 
     **Response Fields**:
-    - `name`: Data source identifier (filename without extension)
-    - `filename`: YAML filename (e.g., "sead-options.yml")
+    - `name`: Data source identifier used to derive the YAML filename
     - `driver`: Database/file driver type (postgresql, access, sqlite, csv)
     - `host`, `port`, `database`: Database connection details (for database sources)
-    - `options`: Driver-specific configuration
+    - `options`: Driver-specific configuration. File-based drivers store their path in `options.filename`.
     """
     try:
         logger.info("Listing all global data source files")
@@ -243,10 +243,10 @@ async def create_data_source(
 
     **Request Body**: DataSourceConfig with all required fields
     - Database sources require: `driver`, `host`, `port`, `database`, `username`
-    - File sources require: `driver`, `filename`
+    - File sources require: `driver`, `options.filename`
     - `name`: Will be used to generate filename
 
-    **Returns**: Created data source configuration with filename set
+    **Returns**: Created data source configuration
 
     **Errors**:
     - 400: Invalid configuration or file already exists

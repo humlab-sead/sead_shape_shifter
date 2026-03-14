@@ -103,6 +103,7 @@ import yaml from 'js-yaml'
 import { schemaApi } from '@/api/schema'
 import { entitiesApi } from '@/api/entities'
 import { useProjectStore } from '@/stores/project'
+import { useDataSourceStore } from '@/stores/data-source'
 import type { TableMetadata, TableSchema } from '@/types/schema'
 
 const props = defineProps<{
@@ -117,6 +118,7 @@ const emit = defineEmits<{
 }>()
 
 const projectStore = useProjectStore()
+const dataSourceStore = useDataSourceStore()
 
 // State
 const loadingTables = ref(false)
@@ -150,12 +152,22 @@ const dataSourceConfig = computed(() => {
     return { ...dsConfig, name: props.dataSource }
   }
   
-  // If it's a string like "@include: file.yml", extract filename
+  // If it's a string like "@include: ${GLOBAL_DATA_SOURCE_DIR}/file.yml"
+  // Look up the data source in the store to get its clean name
   if (typeof dsConfig === 'string') {
-    // Check for @include: directive
     const includeMatch = dsConfig.match(/^@include:\s*(.+)$/)
     if (includeMatch) {
-      return (includeMatch[1] || '').trim() // Return filename
+      const fullPath = (includeMatch[1] || '').trim()
+      // Extract filename from path
+      const filename = fullPath.split('/').pop()?.replace(/\.yml$/, '') || ''
+      
+      // Look up data source in store by filename match
+      const dataSource = dataSourceStore.dataSources.find(
+        (ds) => ds.name === filename
+      )
+      
+      // Return the clean name from the store, or fallback to extracted filename
+      return dataSource?.name || filename
     }
     return dsConfig
   }

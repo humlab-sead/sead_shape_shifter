@@ -87,7 +87,6 @@
                     item-title="title"
                     item-value="value"
                     :rules="field.required ? [rules.required] : []"
-                    @focus="fetchProjectFiles"
                   >
                     <template #item="{ props, item }">
                       <v-list-item v-bind="props">
@@ -245,7 +244,7 @@ const availableDriversFiltered = computed(() => {
 const projectFileItems = computed(() =>
   projectFiles.value.map((file) => ({
     title: file.name,
-    value: file.path,
+    value: file.location === 'global' ? `\${GLOBAL_DATA_DIR}/${file.path}` : file.path,
     subtitle: formatProjectFileSubtitle(file),
   }))
 )
@@ -327,7 +326,7 @@ function formatFieldLabel(field: FieldMetadata): string {
   return field.required ? `${label} *` : label
 }
 
-function shouldShowHint(field: FieldMetadata): boolean {
+function shouldShowHint(_field: FieldMetadata): boolean {
   // Don't show hint - description is already used as the label
   return false
 }
@@ -363,7 +362,7 @@ async function handleSave() {
     }
 
     // Map options to top-level fields and options object
-    const topLevelFields = ['host', 'port', 'database', 'username', 'password', 'filename']
+    const topLevelFields = ['host', 'port', 'database', 'username', 'password']
     const options: Record<string, any> = {}
 
     for (const field of schema.fields) {
@@ -440,8 +439,6 @@ function loadDataSource(dataSource: DataSourceConfig) {
   if (dataSource.database) options.database = dataSource.database
   if (dataSource.dbname) options.database = dataSource.dbname // Handle alias
   if (dataSource.username) options.username = dataSource.username
-  if (dataSource.filename) options.filename = dataSource.filename
-  if (dataSource.file_path) options.filename = dataSource.file_path // Handle alias
 
   // Load options object and handle aliases
   if (dataSource.options) {

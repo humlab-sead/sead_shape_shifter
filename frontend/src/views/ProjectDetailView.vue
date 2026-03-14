@@ -36,7 +36,7 @@
               Execute
               <v-tooltip activator="parent">Execute the full workflow and export data</v-tooltip>
             </v-btn>
-            <v-btn variant="outlined" prepend-icon="mdi-history" color="success" @click="showBackupsDialog = true">
+            <v-btn variant="outlined" prepend-icon="mdi-history" color="success" @click="openBackupsDialog">
               Backups
               <v-tooltip activator="parent">View and restore previous versions of this project</v-tooltip>
             </v-btn>
@@ -141,6 +141,7 @@
                   v-model="currentTaskFilter"
                   :task-status="taskStatusStore.taskStatus"
                   @initialize="handleInitializeTaskList"
+                  @create-todo="handleCreateTodoEntity"
                 />
 
                 <v-divider vertical />
@@ -153,6 +154,36 @@
                   @save-custom="handleSaveCustomLayout"
                   @clear-custom="handleClearCustomLayout"
                 />
+
+                <v-divider vertical />
+
+                <!-- Color By Dropdown -->
+                <v-menu offset-y>
+                  <template #activator="{ props: menuProps }">
+                    <v-btn
+                      v-bind="menuProps"
+                      size="small"
+                      variant="tonal"
+                      prepend-icon="mdi-palette-outline"
+                      append-icon="mdi-menu-down"
+                      color="primary"
+                      class="text-capitalize"
+                    >
+                      {{ colorByOptions.find(opt => opt.value === colorByMode)?.title || 'Task Status' }}
+                    </v-btn>
+                  </template>
+
+                  <v-list density="compact" min-width="160">
+                    <v-list-item
+                      v-for="option in colorByOptions"
+                      :key="option.value"
+                      :active="colorByMode === option.value"
+                      @click="colorByMode = option.value"
+                    >
+                      <v-list-item-title>{{ option.title }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
 
                 <v-divider vertical />
 
@@ -202,10 +233,10 @@
                           </v-col>
                           <v-col>
                             <div class="text-caption">
-                              <span class="font-weight-medium">{{ taskStats.completed }}</span>
+                              <span class="font-weight-medium">{{ taskStats.done }}</span>
                               <span class="text-medium-emphasis"> of </span>
                               <span class="font-weight-medium">{{ taskStats.total }}</span>
-                              <span class="text-medium-emphasis"> complete</span>
+                              <span class="text-medium-emphasis"> done</span>
                             </div>
                           </v-col>
                           <v-col cols="auto" class="ml-2">
@@ -238,11 +269,51 @@
                         </v-chip>
                       </div>
                       
-                      <!-- Visual Indicators Legend -->
-                      <div class="text-caption text-medium-emphasis">
+                      <!-- Task Status Legend -->
+                      <div v-if="colorByMode === 'task'" class="text-caption text-medium-emphasis">
+                        <div class="mb-1" style="font-size: 10px; font-weight: 500;">Task Status</div>
                         <div class="d-flex align-center gap-1 mb-1">
-                          <div style="width: 12px; height: 12px; border: 2px double #4CAF50; border-radius: 50%;" />
-                          <span style="font-size: 10px;">Materialized</span>
+                          <div style="width: 10px; height: 10px; background-color: #FDD835; border-radius: 50%;" />
+                          <span style="font-size: 10px;">&nbsp;Todo (not created)</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #2196F3; border-radius: 50%;" />
+                          <span style="font-size: 10px;">&nbsp;Ongoing</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #43A047; border-radius: 50%;" />
+                          <span style="font-size: 10px;">&nbsp;Done</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #9E9E9E; border-radius: 50%;" />
+                          <span style="font-size: 10px;">&nbsp;Ignored</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="position: relative; width: 10px; height: 10px; border-radius: 50%; background-color: #B0BEC5;">
+                            <div style="position: absolute; inset: 3px; border-radius: 50%; background-color: #FFFFFF; border: 1px solid #0F172A;" />
+                          </div>
+                          <span style="font-size: 10px;">&nbsp;Has note</span>
+                        </div>
+                      </div>
+                      
+                      <!-- Entity Type Legend -->
+                      <div v-else-if="colorByMode === 'type'" class="text-caption text-medium-emphasis">
+                        <div class="mb-1" style="font-size: 10px; font-weight: 500;">Entity Type</div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #6A1B9A; border-radius: 50%;" />
+                          <span style="font-size: 10px;">&nbsp;Fixed</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #2E7D32; border-radius: 50%;" />
+                          <span style="font-size: 10px;">&nbsp;SQL</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #1976d2; border-radius: 50%;" />
+                          <span style="font-size: 10px;">&nbsp;Derived</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #ef5350; border-radius: 50%;" />
+                          <span style="font-size: 10px;">&nbsp;Cyclic error</span>
                         </div>
                       </div>
                     </v-card-text>
@@ -330,9 +401,14 @@
               @preview="handleContextMenuPreview"
               @duplicate="handleContextMenuDuplicate"
               @delete="handleContextMenuDelete"
+              @verify-entity="handleVerifyEntity"
               @mark-complete="handleMarkComplete"
               @mark-ignored="handleMarkIgnored"
+              @mark-ongoing="handleMarkOngoing"
+              @mark-todo="handleMarkTodo"
               @reset-status="handleResetStatus"
+              @edit-note="handleEditNote"
+              @remove-note="handleRemoveNote"
             />
 
             <!-- Entity Details Drawer -->
@@ -340,7 +416,7 @@
               <template v-if="selectedNode">
                 <v-toolbar color="primary" density="compact">
                   <v-toolbar-title class="text-subtitle-1">
-                    <v-icon size="small" class="mr-2">mdi-code-braces</v-icon>
+                    <v-icon size="small" class="mr-2">mdi-dock-right</v-icon>
                     {{ selectedNode }}
                   </v-toolbar-title>
                   <v-spacer />
@@ -356,29 +432,74 @@
                       <v-icon size="small" class="mr-1">mdi-alert</v-icon>
                       Part of circular dependency
                     </v-alert>
+
+                    <v-tabs v-model="detailsDrawerTab" density="compact" class="px-2 pt-2">
+                      <v-tab value="note">
+                        <v-icon size="small" class="mr-2">mdi-note-edit-outline</v-icon>
+                        Note
+                      </v-tab>
+                      <v-tab value="yaml" :disabled="isSelectedNodeDataSource">
+                        <v-icon size="small" class="mr-2">mdi-code-braces</v-icon>
+                        YAML
+                      </v-tab>
+                    </v-tabs>
                     
-                    <v-progress-linear v-if="drawerYamlLoading" indeterminate color="primary" />
+                    <v-progress-linear v-if="activeDrawerLoading" indeterminate color="primary" />
                     
-                    <v-alert v-if="drawerYamlError" type="error" variant="tonal" density="compact" class="ma-2" closable @click:close="drawerYamlError = null">
-                      {{ drawerYamlError }}
+                    <v-alert
+                      v-if="activeDrawerError"
+                      type="error"
+                      variant="tonal"
+                      density="compact"
+                      class="ma-2"
+                      closable
+                      @click:close="clearActiveDrawerError"
+                    >
+                      {{ activeDrawerError }}
                     </v-alert>
                   </div>
                   
                   <div class="drawer-editor">
-                    <div v-if="isSelectedNodeDataSource" class="data-source-info pa-4">
-                      <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-database</v-icon>
-                      <div class="text-subtitle-2 mb-2">Data Source Node</div>
-                      <div class="text-caption text-medium-emphasis">
-                        Data sources cannot be edited from the graph view.
-                        Configure data sources in the Data Sources tab.
-                      </div>
-                    </div>
-                    <yaml-editor
-                      v-else-if="drawerYamlContent !== null"
-                      v-model="drawerYamlContent"
-                      height="calc(100vh - 200px)"
-                      @change="handleDrawerYamlChange"
-                    />
+                    <v-window v-model="detailsDrawerTab" class="drawer-window" :touch="false">
+                      <v-window-item value="note" class="drawer-window-item">
+                        <div v-if="isSelectedNodeDataSource" class="data-source-info pa-4">
+                          <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-database</v-icon>
+                          <div class="text-subtitle-2 mb-2">Data Source Node</div>
+                          <div class="text-caption text-medium-emphasis">
+                            Notes are currently available for entity nodes only.
+                          </div>
+                        </div>
+                        <div v-else class="drawer-tab-content pa-3">
+                          <div class="text-caption text-medium-emphasis mb-2">
+                            Quick task notes for this entity. Markdown is supported.
+                          </div>
+                          <monaco-text-editor
+                            v-model="drawerNoteContent"
+                            language="markdown"
+                            height="calc(100vh - 260px)"
+                            :readonly="drawerNoteLoading || drawerNoteSaving"
+                            @change="handleDrawerNoteChange"
+                          />
+                        </div>
+                      </v-window-item>
+
+                      <v-window-item value="yaml" class="drawer-window-item">
+                        <div v-if="isSelectedNodeDataSource" class="data-source-info pa-4">
+                          <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-database</v-icon>
+                          <div class="text-subtitle-2 mb-2">Data Source Node</div>
+                          <div class="text-caption text-medium-emphasis">
+                            Data sources cannot be edited from the graph view.
+                            Configure data sources in the Data Sources tab.
+                          </div>
+                        </div>
+                        <yaml-editor
+                          v-else-if="drawerYamlContent !== null"
+                          v-model="drawerYamlContent"
+                          height="calc(100vh - 240px)"
+                          @change="handleDrawerYamlChange"
+                        />
+                      </v-window-item>
+                    </v-window>
                   </div>
                 </div>
 
@@ -388,12 +509,33 @@
                     <v-btn 
                       variant="text" 
                       @click="handleCloseQuickEdit"
-                      :disabled="drawerYamlSaving"
+                      :disabled="drawerYamlSaving || drawerNoteSaving"
                     >
                       Cancel
                     </v-btn>
                     <v-spacer />
+                    <template v-if="detailsDrawerTab === 'note'">
+                      <v-btn
+                        variant="text"
+                        color="error"
+                        :disabled="drawerNoteLoading || drawerNoteSaving || !drawerOriginalNoteContent"
+                        @click="handleRemoveDrawerNote"
+                      >
+                        Remove Note
+                      </v-btn>
+                      <v-btn 
+                        color="primary" 
+                        variant="flat"
+                        prepend-icon="mdi-content-save"
+                        :loading="drawerNoteSaving"
+                        :disabled="!drawerNoteHasChanges || drawerNoteLoading"
+                        @click="handleSaveDrawerNote"
+                      >
+                        Save Note
+                      </v-btn>
+                    </template>
                     <v-btn 
+                      v-else
                       color="primary" 
                       variant="flat"
                       prepend-icon="mdi-content-save"
@@ -401,7 +543,7 @@
                       :disabled="!drawerYamlHasChanges || drawerYamlLoading"
                       @click="handleSaveQuickEdit"
                     >
-                      Save
+                      Save YAML
                     </v-btn>
                   </v-card-actions>
                 </div>
@@ -621,11 +763,14 @@ import { useTheme } from 'vuetify'
 import { api } from '@/api'
 import { useProjects, useEntities, useValidation, useDependencies, useCytoscape } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
+import { useEntityPreview } from '@/composables/useEntityPreview'
 import { useSession } from '@/composables/useSession'
+import { getTaskStatusNodeClasses, shouldShowNodeForTaskFilter } from '@/utils/taskGraph'
 import { useEntityStore } from '@/stores/entity'
 import { useProjectStore } from '@/stores'
 import { useTaskStatusStore } from '@/stores/taskStatus'
 import type { CustomGraphLayout } from '@/types'
+import type { GraphColorByMode } from '@/utils/taskGraph'
 import type { TaskFilter } from '@/components/dependencies/TaskFilterDropdown.vue'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import EntityFormDialog from '@/components/entities/EntityFormDialog.vue'
@@ -642,6 +787,7 @@ import GraphLayoutDropdown from '@/components/dependencies/GraphLayoutDropdown.v
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
+import MonacoTextEditor from '@/components/common/MonacoTextEditor.vue'
 import ExecuteDialog from '@/components/execute/ExecuteDialog.vue'
 import IngesterForm from '@/components/ingester/IngesterForm.vue'
 import ProjectFileUploadCard from '@/components/projects/ProjectFileUploadCard.vue'
@@ -693,6 +839,9 @@ const {
 // Session management
 const { startSession, saveWithVersionCheck, hasActiveSession } = useSession()
 
+// Entity preview
+const { previewEntity } = useEntityPreview()
+
 const {
   validationResult,
   loading: validationLoading,
@@ -701,6 +850,7 @@ const {
   errorCount,
   warningCount,
   validate,
+  validateEntity,
 } = useValidation({
   projectName: projectName.value,
   autoValidate: false,
@@ -742,6 +892,7 @@ const displayOptions = ref<GraphDisplayOptions>({
 const highlightCycles = ref(true)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
+const detailsDrawerTab = ref<'note' | 'yaml'>('note')
 
 // Quick YAML editor state (drawer)
 const drawerYamlContent = ref<string | null>(null)
@@ -750,6 +901,16 @@ const drawerYamlLoading = ref(false)
 const drawerYamlSaving = ref(false)
 const drawerYamlError = ref<string | null>(null)
 const drawerYamlHasChanges = ref(false)
+const drawerYamlLoadedEntity = ref<string | null>(null)
+
+// Drawer note state
+const drawerNoteContent = ref('')
+const drawerOriginalNoteContent = ref('')
+const drawerNoteLoading = ref(false)
+const drawerNoteSaving = ref(false)
+const drawerNoteError = ref<string | null>(null)
+const drawerNoteHasChanges = ref(false)
+const drawerNoteLoadedEntity = ref<string | null>(null)
 
 // Context menu state
 const showContextMenu = ref(false)
@@ -759,8 +920,18 @@ const contextMenuEntity = ref<string | null>(null)
 
 // Task status state
 const currentTaskFilter = ref<TaskFilter>('all')
+const defaultColorByMode: GraphColorByMode = 'task'
+const colorByMode = ref<GraphColorByMode>(defaultColorByMode)
+const colorByOptions = [
+  { title: 'Task Status', value: 'task' as const },
+  { title: 'Entity Type', value: 'type' as const },
+]
+const colorByStorageKey = computed(() => `shapeshifter.graph.colorBy.${projectName.value || 'default'}`)
 
-// YAML editing state
+function getSavedColorByMode(savedMode: string | null): GraphColorByMode {
+  return savedMode === 'type' ? 'type' : defaultColorByMode
+}
+
 const rawYamlContent = ref<string | null>(null)
 const originalYamlContent = ref<string | null>(null)
 const yamlLoading = ref(false)
@@ -819,6 +990,9 @@ const isSelectedNodeDataSource = computed(() => {
   return sourceNodes.some((sn: any) => sn.name === selectedNode.value)
 })
 
+const activeDrawerLoading = computed(() => detailsDrawerTab.value === 'note' ? drawerNoteLoading.value : drawerYamlLoading.value)
+const activeDrawerError = computed(() => detailsDrawerTab.value === 'note' ? drawerNoteError.value : drawerYamlError.value)
+
 // Cytoscape integration
 const entityStore = useEntityStore()
 const projectStore = useProjectStore()
@@ -829,9 +1003,12 @@ const taskStats = computed(() => {
   if (!taskStatusStore.taskStatus) {
     return {
       total: 0,
-      completed: 0,
+      done: 0,
       ignored: 0,
       todo: 0,
+      required_total: 0,
+      required_done: 0,
+      required_todo: 0,
       completion_percentage: 0
     }
   }
@@ -868,7 +1045,8 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
   isDark,
   onNodeClick: async (nodeId: string) => {
     selectedNode.value = nodeId
-    await loadEntityYamlForDrawer(nodeId)
+    detailsDrawerTab.value = 'note'
+    await loadDrawerNote(nodeId)
     showDetailsDrawer.value = true
   },
   onNodeDoubleClick: (nodeId: string, isCtrlKey: boolean) => {
@@ -1113,8 +1291,12 @@ async function handleRefresh() {
   }
 }
 
-function handleEntityUpdated() {
-  markAsChanged()
+async function handleEntityUpdated() {
+  await fetchEntities()
+
+  if (activeTab.value === 'dependencies' && projectName.value) {
+    await fetchDependencies(projectName.value)
+  }
 }
 
 function handleEditEntity(entityName: string) {
@@ -1125,8 +1307,9 @@ function handleEditEntity(entityName: string) {
 }
 
 async function handleOverlayEntitySaved() {
-  // Refresh entities and dependencies after saving from overlay
-  markAsChanged()
+  // Refresh entity-backed state after saving from overlay without remounting the page.
+  await fetchEntities()
+
   successMessage.value = 'Entity saved successfully'
   showSuccessSnackbar.value = true
   
@@ -1152,6 +1335,35 @@ async function handleContextMenuPreview(entityName: string) {
   console.debug('[ProjectDetailView] Preview entity:', entityName)
   // Open entity editor to preview data
   entityStore.openEditorOverlay(entityName, 'form')
+}
+
+async function handleEditNote(entityName: string) {
+  selectedNode.value = entityName
+  detailsDrawerTab.value = 'note'
+  await loadDrawerNote(entityName)
+  showDetailsDrawer.value = true
+}
+
+async function handleRemoveNote(entityName: string) {
+  try {
+    const response = await api.tasks.removeNote(projectName.value, entityName)
+    taskStatusStore.setEntityHasNote(entityName, false)
+    applyTaskStatusToNodes()
+
+    if (selectedNode.value === entityName) {
+      drawerOriginalNoteContent.value = ''
+      drawerNoteContent.value = ''
+      drawerNoteHasChanges.value = false
+      drawerNoteError.value = null
+    }
+
+    successMessage.value = response.message || `Note removed for "${entityName}"`
+    showSuccessSnackbar.value = true
+  } catch (err) {
+    console.error('Failed to remove note:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to remove note'
+    showSuccessSnackbar.value = true
+  }
 }
 
 async function handleContextMenuDuplicate(entityName: string) {
@@ -1319,6 +1531,79 @@ async function handleContextMenuDelete(entityName: string) {
 }
 
 // Task status handlers
+async function handleVerifyEntity(entityName: string) {
+  const verifyingMessage = `Verifying entity "${entityName}"...`
+  successMessage.value = verifyingMessage
+  showSuccessSnackbar.value = true
+  
+  try {
+    // Step 1: Validate the entity
+    console.log(`Validating entity "${entityName}"...`)
+    const validationResult = await validateEntity(projectName.value, entityName)
+    
+    if (!validationResult.is_valid) {
+      const errorCount = validationResult.errors.length
+      const errorMessages = validationResult.errors.slice(0, 3).map(e => e.message).join('; ')
+      throw new Error(
+        `Validation failed with ${errorCount} error(s): ${errorMessages}`
+      )
+    }
+    
+    // Step 2: Generate preview (which caches it)
+    console.log(`Generating preview for entity "${entityName}"...`)
+    const previewResult = await previewEntity(projectName.value, entityName, 1)
+    
+    if (!previewResult) {
+      throw new Error('Preview generation failed')
+    }
+    
+    // Step 3: Refresh task status to update preview_available flag
+    console.log(`Refreshing task status for "${projectName.value}"...`)
+    await taskStatusStore.refresh()
+    
+    // Step 4: Check if entity can now be marked as done
+    const entityStatus = taskStatusStore.getEntityStatus(entityName)
+    
+    // Debug logging
+    console.log(`Entity status for "${entityName}":`, {
+      exists: entityStatus?.exists,
+      validation_passed: entityStatus?.validation_passed,
+      preview_available: entityStatus?.preview_available,
+      status: entityStatus?.status,
+    })
+    
+    const canMarkDone = entityStatus?.exists && 
+                        entityStatus?.validation_passed && 
+                        entityStatus?.preview_available
+    
+    // Success message with details
+    if (canMarkDone) {
+      successMessage.value = `✓ Entity "${entityName}" verified successfully. You can now mark it as done!`
+    } else {
+      // Build detailed message about what's missing
+      const missing: string[] = []
+      if (!entityStatus?.exists) missing.push('entity does not exist')
+      if (!entityStatus?.validation_passed) missing.push('validation failed')
+      if (!entityStatus?.preview_available) missing.push('preview not available')
+      
+      if (missing.length > 0) {
+        successMessage.value = `Entity "${entityName}" verified, but: ${missing.join(', ')}`
+      } else {
+        successMessage.value = `Entity "${entityName}" verified, but some requirements are not met yet.`
+      }
+    }
+    showSuccessSnackbar.value = true
+    
+    // Refresh graph to show updated badges
+    applyTaskStatusToNodes()
+    
+  } catch (err) {
+    console.error('Failed to verify entity:', err)
+    successMessage.value = err instanceof Error ? err.message : `Failed to verify entity "${entityName}"`
+    showSuccessSnackbar.value = true
+  }
+}
+
 async function handleMarkComplete(entityName: string) {
   try {
     const success = await taskStatusStore.markComplete(entityName)
@@ -1347,6 +1632,38 @@ async function handleMarkIgnored(entityName: string) {
   } catch (err) {
     console.error('Failed to mark entity as ignored:', err)
     successMessage.value = err instanceof Error ? err.message : 'Failed to mark entity as ignored'
+    showSuccessSnackbar.value = true
+  }
+}
+
+async function handleMarkOngoing(entityName: string) {
+  try {
+    const success = await taskStatusStore.markOngoing(entityName)
+    if (success) {
+      successMessage.value = `Entity "${entityName}" marked as ongoing`
+      showSuccessSnackbar.value = true
+      // Refresh graph to show updated badges
+      applyTaskStatusToNodes()
+    }
+  } catch (err) {
+    console.error('Failed to mark entity as ongoing:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to mark entity as ongoing'
+    showSuccessSnackbar.value = true
+  }
+}
+
+async function handleMarkTodo(entityName: string) {
+  try {
+    const success = await taskStatusStore.markTodo(entityName)
+    if (success) {
+      successMessage.value = `Entity "${entityName}" marked as todo`
+      showSuccessSnackbar.value = true
+      // Refresh graph to show updated badges
+      applyTaskStatusToNodes()
+    }
+  } catch (err) {
+    console.error('Failed to mark entity as todo:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to mark entity as todo'
     showSuccessSnackbar.value = true
   }
 }
@@ -1388,6 +1705,92 @@ async function handleInitializeTaskList() {
   }
 }
 
+function handleCreateTodoEntity() {
+  // Open entity creation dialog/form
+  // For now, just show a message - this would typically open a dialog
+  successMessage.value = 'Create Todo Entity dialog - to be implemented'
+  showSuccessSnackbar.value = true
+  // TODO: Implement entity creation dialog that:
+  // 1. Prompts for entity name
+  // 2. Creates minimal entity config
+  // 3. Automatically marks it as todo
+  // 4. Opens in editor
+}
+
+function clearActiveDrawerError() {
+  if (detailsDrawerTab.value === 'note') {
+    drawerNoteError.value = null
+    return
+  }
+
+  drawerYamlError.value = null
+}
+
+async function loadDrawerNote(entityName: string) {
+  if (isSelectedNodeDataSource.value) {
+    drawerNoteContent.value = ''
+    drawerOriginalNoteContent.value = ''
+    drawerNoteHasChanges.value = false
+    drawerNoteLoadedEntity.value = entityName
+    return
+  }
+
+  if (drawerNoteLoadedEntity.value === entityName && drawerNoteContent.value !== '' && !drawerNoteLoading.value) {
+    return
+  }
+
+  drawerNoteLoading.value = true
+  drawerNoteError.value = null
+
+  try {
+    const response = await api.tasks.getNote(projectName.value, entityName)
+    drawerNoteContent.value = response.note || ''
+    drawerOriginalNoteContent.value = response.note || ''
+    drawerNoteHasChanges.value = false
+    drawerNoteLoadedEntity.value = entityName
+  } catch (err) {
+    console.error('Failed to load note:', err)
+    drawerNoteError.value = err instanceof Error ? err.message : 'Failed to load note'
+  } finally {
+    drawerNoteLoading.value = false
+  }
+}
+
+function handleDrawerNoteChange() {
+  drawerNoteHasChanges.value = drawerNoteContent.value !== drawerOriginalNoteContent.value
+}
+
+async function handleSaveDrawerNote() {
+  if (!selectedNode.value) return
+
+  drawerNoteSaving.value = true
+  drawerNoteError.value = null
+
+  try {
+    const response = await api.tasks.setNote(projectName.value, selectedNode.value, drawerNoteContent.value)
+    taskStatusStore.setEntityHasNote(selectedNode.value, response.has_note)
+    applyTaskStatusToNodes()
+
+    const savedNote = response.note || ''
+    drawerNoteContent.value = savedNote
+    drawerOriginalNoteContent.value = savedNote
+    drawerNoteHasChanges.value = false
+
+    successMessage.value = response.message || 'Note saved'
+    showSuccessSnackbar.value = true
+  } catch (err) {
+    console.error('Failed to save note:', err)
+    drawerNoteError.value = err instanceof Error ? err.message : 'Failed to save note'
+  } finally {
+    drawerNoteSaving.value = false
+  }
+}
+
+async function handleRemoveDrawerNote() {
+  if (!selectedNode.value) return
+  await handleRemoveNote(selectedNode.value)
+}
+
 // Apply task status styling to graph nodes
 function applyTaskStatusToNodes() {
   if (!cy.value || !taskStatusStore.taskStatus) return
@@ -1395,23 +1798,18 @@ function applyTaskStatusToNodes() {
   cy.value.nodes().forEach(node => {
     const entityName = node.id()
     const status = taskStatusStore.getEntityStatus(entityName)
-    
-    if (!status) return
 
     // Remove existing task classes
-    node.removeClass('task-done task-ignored task-blocked task-critical task-ready')
+    node.removeClass('task-todo task-done task-ignored task-ongoing task-blocked task-critical task-ready task-flagged task-has-note')
 
-    // Apply status-based classes
-    if (status.status === 'done') {
-      node.addClass('task-done')
-    } else if (status.status === 'ignored') {
-      node.addClass('task-ignored')
-    } else if (status.blocked_by && status.blocked_by.length > 0) {
-      node.addClass('task-blocked')
-    } else if (status.priority === 'critical') {
-      node.addClass('task-critical')
-    } else if (status.priority === 'ready') {
-      node.addClass('task-ready')
+    // In type mode, keep default entity/source type color classes only.
+    if (colorByMode.value !== 'task' || !status) {
+      return
+    }
+
+    const taskClasses = getTaskStatusNodeClasses(status)
+    if (taskClasses.length > 0) {
+      node.addClass(taskClasses.join(' '))
     }
   })
 }
@@ -1467,8 +1865,13 @@ async function loadEntityYamlForDrawer(entityName: string) {
       drawerYamlContent.value = null
       drawerOriginalYamlContent.value = null
       drawerYamlHasChanges.value = false
+      drawerYamlLoadedEntity.value = entityName
       return
     }
+  }
+
+  if (drawerYamlLoadedEntity.value === entityName && drawerYamlContent.value !== null && !drawerYamlLoading.value) {
+    return
   }
   
   drawerYamlLoading.value = true
@@ -1485,6 +1888,7 @@ async function loadEntityYamlForDrawer(entityName: string) {
     drawerYamlContent.value = yamlContent
     drawerOriginalYamlContent.value = yamlContent
     drawerYamlHasChanges.value = false
+    drawerYamlLoadedEntity.value = entityName
   } catch (err) {
     drawerYamlError.value = err instanceof Error ? err.message : 'Failed to load entity YAML'
     console.error('Failed to load entity YAML:', err)
@@ -1541,7 +1945,7 @@ async function handleSaveQuickEdit() {
 }
 
 function handleCloseQuickEdit() {
-  if (drawerYamlHasChanges.value) {
+  if (drawerYamlHasChanges.value || drawerNoteHasChanges.value) {
     if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
       return
     }
@@ -1549,10 +1953,17 @@ function handleCloseQuickEdit() {
   
   showDetailsDrawer.value = false
   selectedNode.value = null
+  detailsDrawerTab.value = 'note'
   drawerYamlContent.value = null
   drawerOriginalYamlContent.value = null
   drawerYamlHasChanges.value = false
   drawerYamlError.value = null
+  drawerYamlLoadedEntity.value = null
+  drawerNoteContent.value = ''
+  drawerOriginalNoteContent.value = ''
+  drawerNoteHasChanges.value = false
+  drawerNoteError.value = null
+  drawerNoteLoadedEntity.value = null
 }
 
 async function handleLoadYaml() {
@@ -1623,6 +2034,20 @@ function formatBackupDate(timestamp: number): string {
   return new Date(timestamp * 1000).toLocaleString()
 }
 
+async function openBackupsDialog() {
+  showBackupsDialog.value = true
+
+  if (!projectName.value) {
+    return
+  }
+
+  try {
+    await fetchBackups(projectName.value)
+  } catch (err) {
+    console.error('Failed to refresh backups:', err)
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   // Ensure we have a project name from route params
@@ -1633,6 +2058,8 @@ onMounted(async () => {
   }
 
   try {
+    colorByMode.value = getSavedColorByMode(window.localStorage.getItem(colorByStorageKey.value))
+
     console.debug(`ProjectDetailView: Initializing for project "${projectName.value}"`)
     
     // Always load the project on mount to ensure fresh data
@@ -1665,6 +2092,8 @@ watch(
     
     // Avoid re-loading on initial mount (onMounted handles that)
     if (!oldName) return
+
+    colorByMode.value = getSavedColorByMode(window.localStorage.getItem(colorByStorageKey.value))
     
     console.debug(`ProjectDetailView: Project changed from "${oldName}" to "${newName}"`)
     
@@ -1762,6 +2191,27 @@ watch(
   }
 )
 
+watch(
+  () => colorByMode.value,
+  (mode) => {
+    window.localStorage.setItem(colorByStorageKey.value, mode)
+    applyTaskStatusToNodes()
+  }
+)
+
+watch(
+  () => detailsDrawerTab.value,
+  async (tab) => {
+    if (!selectedNode.value) return
+    if (tab === 'yaml' && drawerYamlLoadedEntity.value !== selectedNode.value) {
+      await loadEntityYamlForDrawer(selectedNode.value)
+    }
+    if (tab === 'note' && drawerNoteLoadedEntity.value !== selectedNode.value) {
+      await loadDrawerNote(selectedNode.value)
+    }
+  }
+)
+
 // Apply task filter to show/hide nodes based on status
 function applyTaskFilter() {
   if (!cy.value || !taskStatusStore.taskStatus) return
@@ -1778,23 +2228,7 @@ function applyTaskFilter() {
       return
     }
 
-    let shouldShow = true
-
-    switch (filter) {
-      case 'todo':
-        shouldShow = status.status === 'todo'
-        break
-      case 'done':
-        shouldShow = status.status === 'done'
-        break
-      case 'ignored':
-        shouldShow = status.status === 'ignored'
-        break
-      case 'all':
-      default:
-        shouldShow = true
-        break
-    }
+    const shouldShow = shouldShowNodeForTaskFilter(status, filter)
 
     node.style('display', shouldShow ? 'element' : 'none')
   })
@@ -1850,10 +2284,10 @@ function applyTaskFilter() {
 }
 
 .stats-card {
-  background: rgba(var(--v-theme-surface), 0.95) !important;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(var(--v-border-color), 0.12);
+  background: transparent !important;
+  backdrop-filter: blur(8px);
+  box-shadow: none;
+  border: none;
   border-radius: 8px;
 }
 
@@ -1896,6 +2330,22 @@ function applyTaskFilter() {
   flex: 1;
   min-height: 0; /* Critical for flex */
   overflow: hidden;
+}
+
+.drawer-window {
+  height: 100%;
+}
+
+.drawer-window-item {
+  height: 100%;
+}
+
+.drawer-window-item :deep(.v-window-item__content) {
+  height: 100%;
+}
+
+.drawer-tab-content {
+  height: 100%;
 }
 
 .drawer-footer {

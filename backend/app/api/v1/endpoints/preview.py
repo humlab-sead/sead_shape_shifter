@@ -9,7 +9,7 @@ from backend.app.exceptions import ValidationError
 from backend.app.models.join_test import JoinTestResult
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.project_service import ProjectService
-from backend.app.services.shapeshift_service import ShapeShiftService
+from backend.app.services.shapeshift_service import ShapeShiftService, get_shapeshift_service
 from backend.app.services.validate_fk_service import ValidateForeignKeyService
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
@@ -59,11 +59,9 @@ def get_project_service() -> ProjectService:
     return ProjectService()
 
 
-def get_preview_service(
-    project_service: ProjectService = Depends(get_project_service),
-) -> ShapeShiftService:
-    """Dependency to get preview service instance."""
-    return ShapeShiftService(project_service=project_service)
+def get_preview_service() -> ShapeShiftService:
+    """Dependency to get preview service instance (singleton)."""
+    return get_shapeshift_service()
 
 
 def get_validate_fk_service(

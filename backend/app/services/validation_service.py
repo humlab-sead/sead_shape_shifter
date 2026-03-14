@@ -19,6 +19,8 @@ from src.validators.data_validators import ValidationIssue
 if TYPE_CHECKING:
     from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
 
+# pylint: disable=unused-argument
+
 
 class ValidationService:
     """Service for validating projects using existing specifications."""
@@ -66,13 +68,17 @@ class ValidationService:
             orchestrator = self._data_orchestrator_factory()
         else:
             # Default factory - import here to avoid circular dependency
+            from backend.app.services.shapeshift_service import (  # pylint: disable=import-outside-toplevel
+                get_shapeshift_service,
+            )
             from backend.app.validators.data_validation_orchestrator import (  # pylint: disable=import-outside-toplevel
                 DataValidationOrchestrator,
                 FullDataFetchStrategy,
                 PreviewDataFetchStrategy,
             )
 
-            shapeshift_service: ShapeShiftService = ShapeShiftService(project_service)
+            # Use shared singleton cache (not a new instance)
+            shapeshift_service: ShapeShiftService = get_shapeshift_service()
 
             # Create appropriate strategy based on use_full_data flag
             if use_full_data:

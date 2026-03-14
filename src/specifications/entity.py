@@ -94,10 +94,22 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
         self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
 
-        columns: str | list[Any] = table.safe_columns
-        values: str | list[Any] = table.safe_values
+        columns: list[str] = table.safe_columns
+        raw_values: list[Any] | None = table.values if isinstance(table.values, list) else None
+        dict_rows = bool(raw_values) and all(isinstance(row, dict) for row in raw_values)
+        values: list[Any] = raw_values if dict_rows and raw_values is not None else table.safe_values
 
-        if not all(isinstance(row, list) for row in values):
+        if dict_rows:
+            row_keys = set().union(*(row.keys() for row in raw_values)) if raw_values else set()
+            missing_columns = set(columns) - row_keys
+            if missing_columns:
+                self.add_error(
+                    f"Fixed data entity '{entity_name}' has externally loaded rows missing columns {sorted(missing_columns)}",
+                    entity=entity_name,
+                    field="values",
+                )
+                return not self.has_errors()
+        elif not all(isinstance(row, list) for row in values):
             self.add_error(f"Fixed data entity '{entity_name}' must have values as a list of lists", entity=entity_name, field="values")
 
         # Check for empty columns with non-empty values (mixed format error)
@@ -115,7 +127,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         # 1. Old format: values match columns exactly (backward compatibility)
         # 2. New format: values include identity columns (system_id, public_id)
         #    Using set union elegantly deduplicates if identity columns are mistakenly in columns
-        if values:
+        if values and not dict_rows:
             expected_with_identity: int = len(set(columns) | {public_id, "system_id"})
             expected_without_identity: int = len(columns)
             values_length: int = len(values[0]) if values else 0
@@ -174,15 +186,19 @@ class FixedEntitySystemIdSpecification(ProjectSpecification):
             return True
 
         columns: list[str] = table.safe_columns
-        values: list[list[Any]] = table.safe_values
+        raw_values: list[Any] | None = table.values if isinstance(table.values, list) else None
 
         # Check if system_id column exists
         if "system_id" not in columns:
             # system_id is optional, but if missing it will be auto-generated
             return True
 
-        system_id_index = columns.index("system_id")
-        system_id_values = [row[system_id_index] for row in values]
+        if raw_values and all(isinstance(row, dict) for row in raw_values):
+            system_id_values = [row.get("system_id") for row in raw_values]
+        else:
+            values: list[list[Any]] = table.safe_values
+            system_id_index = columns.index("system_id")
+            system_id_values = [row[system_id_index] for row in values]
 
         # Validate: No null/None values
         null_count = sum(
@@ -413,6 +429,19 @@ class PublicIdSpecification(ProjectSpecification):
         if public_id:
             self.check_fields(entity_name, ["public_id"], "of_type/E", expected_types=(str,))
             self.check_fields(entity_name, ["public_id"], "ends_with_id/E")
+
+            source_entity_name = entity_cfg.get("source")
+            if isinstance(source_entity_name, str) and source_entity_name:
+                source_entity_cfg: dict[str, Any] = self.get_entity_cfg(source_entity_name)
+                source_public_id = source_entity_cfg.get("public_id")
+                if isinstance(source_public_id, str) and source_public_id == public_id:
+                    self.add_error(
+                        f"Entity '{entity_name}': public_id '{public_id}' conflicts with source entity '{source_entity_name}'. "
+                        "A derived entity cannot use the same public_id as its source because that name is reserved "
+                        "for the parent reference column.",
+                        entity=entity_name,
+                        field="public_id",
+                    )
 
         return not self.has_errors()
 
@@ -731,7 +760,8 @@ class UnnestColumnsSpecification(ProjectSpecification):
             missing_id_vars: set[str] = set(id_vars) - all_columns
             if missing_id_vars:
                 self.add_error(
-                    f"Unnest configuration references missing id_vars columns: {missing_id_vars}. "
+                    f"Unnest configuration references missing id_vars columns: {sorted(missing_id_vars)}. "
+                    f"Available columns: {sorted(all_columns)}. "
                     f"These columns must be in 'columns', 'keys', 'extra_columns', or added by foreign keys.",
                     entity=entity_name,
                     field="unnest.id_vars",
@@ -742,7 +772,8 @@ class UnnestColumnsSpecification(ProjectSpecification):
             missing_value_vars: set[str] = set(value_vars) - all_columns
             if missing_value_vars:
                 self.add_error(
-                    f"Unnest configuration references missing value_vars columns: {missing_value_vars}. "
+                    f"Unnest configuration references missing value_vars columns: {sorted(missing_value_vars)}. "
+                    f"Available columns: {sorted(all_columns)}. "
                     f"These columns must be in 'columns', 'keys', 'extra_columns', or added by foreign keys.",
                     entity=entity_name,
                     field="unnest.value_vars",

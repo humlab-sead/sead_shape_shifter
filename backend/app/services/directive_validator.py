@@ -46,7 +46,7 @@ class DirectiveValidator:
                 error="Directive must start with '@value:'",
             )
 
-        path = directive[7:]  # Remove "@value:" prefix
+        path = directive[7:].strip()  # Remove "@value:" prefix and strip whitespace
 
         # Split path into parts
         parts = path.split(".")

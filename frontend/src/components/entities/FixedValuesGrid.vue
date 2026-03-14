@@ -17,11 +17,11 @@
       </div>
     </div>
     <ag-grid-vue
-      ref="gridRef"
       class="ag-theme-alpine compact-grid"
       :style="{ height: gridHeight }"
       :columnDefs="columnDefs"
       :rowData="rowData"
+      :getRowId="getRowId"
       :defaultColDef="defaultColDef"
       :rowSelection="'multiple'"
       :suppressRowClickSelection="true"
@@ -32,7 +32,6 @@
       :stopEditingWhenCellsLoseFocus="true"
       @grid-ready="onGridReady"
       @cell-value-changed="onCellValueChanged"
-      @cell-editing-stopped="onCellEditingStopped"
       @selection-changed="onSelectionChanged"
     />
   </div>
@@ -41,7 +40,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import type { ColDef, GridApi, GridReadyEvent, CellValueChangedEvent } from 'ag-grid-community'
+import type { ColDef, GridApi, GridReadyEvent, CellValueChangedEvent, GetRowIdParams } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
@@ -61,12 +60,13 @@ const emit = defineEmits<{
   'update:modelValue': [value: any[][]]
 }>()
 
-const gridRef = ref<InstanceType<typeof AgGridVue>>()
 const gridApi = ref<GridApi>()
 const hasSelection = ref(false)
+const lastEmittedModelSignature = ref<string | null>(null)
 
 // Grid configuration
 const gridHeight = computed(() => props.height)
+const systemIdColumnIndex = computed(() => props.columns.findIndex((col) => col === 'system_id'))
 
 const defaultColDef: ColDef = {
   editable: true,
@@ -133,9 +133,11 @@ const rowData = computed(() => {
   }
 
   return props.modelValue.map((row, rowIndex) => {
-    const rowObj: any = { id: rowIndex }
+    const stableSystemId = systemIdColumnIndex.value >= 0 ? row[systemIdColumnIndex.value] : undefined
+    const rowObj: any = {
+      id: stableSystemId !== null && stableSystemId !== undefined ? stableSystemId : `row-${rowIndex}`,
+    }
     row.forEach((value, colIndex) => {
-      const columnName = props.columns[colIndex]
       // CRITICAL: Use actual system_id values from YAML, not rowIndex+1
       // system_id must remain stable when rows are added/deleted/reordered
       // to maintain FK relationship integrity
@@ -149,18 +151,24 @@ function onGridReady(params: GridReadyEvent) {
   gridApi.value = params.api
 }
 
-function onCellValueChanged(event: CellValueChangedEvent) {
-  // Cell value has changed - emit update
-  // No need to stop editing here as the change has already been committed
-  const allRows = getAllRows()
-  emit('update:modelValue', allRows)
+function getRowId(params: GetRowIdParams): string {
+  return String(params.data?.id ?? '')
 }
 
-function onCellEditingStopped() {
-  // Additional handler to ensure changes are captured when editing stops
-  // This catches cases where cell-value-changed might not fire
-  const allRows = getAllRows()
-  emit('update:modelValue', allRows)
+function serializeModelValue(rows: any[][]): string {
+  return JSON.stringify(rows)
+}
+
+function emitModelValueUpdate(rows: any[][]) {
+  lastEmittedModelSignature.value = serializeModelValue(rows)
+  emit('update:modelValue', rows)
+}
+
+function onCellValueChanged(_event: CellValueChangedEvent) {
+  // Cell value has changed - emit update
+  // No need to stop editing here as the change has already been committed
+  const allRows = getAllRows(false)
+  emitModelValueUpdate(allRows)
 }
 
 function onSelectionChanged() {
@@ -168,13 +176,13 @@ function onSelectionChanged() {
   hasSelection.value = selectedRows.length > 0
 }
 
-function getAllRows(): any[][] {
+function getAllRows(stopEditing = false): any[][] {
   if (!gridApi.value) return []
 
-  // CRITICAL: Stop any active cell editing to commit pending changes
-  // This ensures that if a cell is currently being edited, those changes
-  // are saved before we read the data
-  gridApi.value.stopEditing()
+  if (stopEditing) {
+    // Commit any in-progress edit before reading grid data.
+    gridApi.value.stopEditing()
+  }
 
   const rows: any[][] = []
   gridApi.value.forEachNode((node) => {
@@ -226,7 +234,7 @@ function addRow() {
   const nextSystemId = maxSystemId + 1
 
   // Create a new row with null values for all columns
-  const newRow: any = { id: Date.now() }
+  const newRow: any = { id: nextSystemId }
   for (let i = 0; i < props.columns.length; i++) {
     const columnName = props.columns[i]
     // CRITICAL: Use max(system_id) + 1, not rowCount + 1
@@ -241,8 +249,8 @@ function addRow() {
   gridApi.value.applyTransaction({ add: [newRow] })
 
   // Update model
-  const allRows = getAllRows()
-  emit('update:modelValue', allRows)
+  const allRows = getAllRows(false)
+  emitModelValueUpdate(allRows)
 }
 
 function deleteSelectedRows() {
@@ -257,8 +265,8 @@ function deleteSelectedRows() {
   gridApi.value.applyTransaction({ remove: selectedRows })
 
   // Update model
-  const allRows = getAllRows()
-  emit('update:modelValue', allRows)
+  const allRows = getAllRows(false)
+  emitModelValueUpdate(allRows)
 
   hasSelection.value = false
 }
@@ -266,7 +274,14 @@ function deleteSelectedRows() {
 // Watch for external changes to modelValue
 watch(
   () => props.modelValue,
-  () => {
+  (newValue) => {
+    const incomingSignature = serializeModelValue(newValue || [])
+
+    // Skip resetting rowData when the change originated from this grid edit.
+    if (incomingSignature === lastEmittedModelSignature.value) {
+      return
+    }
+
     if (gridApi.value) {
       gridApi.value.setGridOption('rowData', rowData.value)
     }

@@ -267,8 +267,7 @@ async def test_debug_mapper_validation():
     access = dto.DataSourceConfig(
         name="access_test",
         driver="ucanaccess",  # type: ignore
-        filename="./projects/test.mdb",
-        options={"ucanaccess_dir": "lib/ucanaccess"},
+        options={"filename": "./projects/test.mdb", "ucanaccess_dir": "lib/ucanaccess"},
         **{},
     )
 
@@ -279,9 +278,9 @@ async def test_debug_mapper_validation():
     except Exception as e:  # pylint: disable=broad-except
         print(f"  ✗ Failed: {e}")
 
-    # Test 4: CSV with filename
-    print("\nTest 4: CSV with filename")
-    csv = dto.DataSourceConfig(name="csv_test", driver="csv", filename="./projects/test.csv", **{})  # type: ignore
+    # Test 4: CSV with options.filename
+    print("\nTest 4: CSV with options.filename")
+    csv = dto.DataSourceConfig(name="csv_test", driver="csv", options={"filename": "./projects/test.csv"}, **{})  # type: ignore
 
     try:
         cfg_core = DataSourceMapper.to_core_config(csv)

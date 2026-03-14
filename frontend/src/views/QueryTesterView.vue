@@ -21,7 +21,7 @@
               <v-icon class="mr-2">mdi-code-tags</v-icon>
               SQL Editor
             </v-tab>
-            <v-tab value="builder">
+            <v-tab value="builder" disabled>
               <v-icon class="mr-2">mdi-database-cog</v-icon>
               Visual Builder
             </v-tab>
@@ -44,7 +44,9 @@
             <!-- Visual Builder Tab -->
             <v-window-item value="builder">
               <div class="pa-4">
-                <QueryBuilder @use-query="handleUseQuery" />
+                <v-alert type="info" variant="tonal">
+                  Visual Builder is temporarily unavailable.
+                </v-alert>
               </div>
             </v-window-item>
           </v-window>
@@ -97,24 +99,6 @@
                     </v-list-item>
                   </v-list>
                 </v-col>
-
-                <v-col cols="12">
-                  <h3 class="text-h6 mb-2 mt-4">Example Queries</h3>
-                  <v-list density="compact">
-                    <v-list-item
-                      v-for="example in exampleQueries"
-                      :key="example.title"
-                      @click="loadExample(example.query)"
-                      class="cursor-pointer"
-                    >
-                      <template #prepend>
-                        <v-icon>mdi-code-tags</v-icon>
-                      </template>
-                      <v-list-item-title>{{ example.title }}</v-list-item-title>
-                      <v-list-item-subtitle>{{ example.description }}</v-list-item-subtitle>
-                    </v-list-item>
-                  </v-list>
-                </v-col>
               </v-row>
             </v-expansion-panel-text>
           </v-expansion-panel>
@@ -136,7 +120,6 @@
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import QueryEditor from '@/components/query/QueryEditor.vue'
-import QueryBuilder from '@/components/query/QueryBuilder.vue'
 import QueryResults from '@/components/query/QueryResults.vue'
 import type { QueryResult } from '@/types/query'
 
@@ -157,43 +140,6 @@ const snackbar = ref({
 const initialQuery = ref((route.query.query as string) || '')
 const initialDataSource = ref((route.query.dataSource as string) || '')
 
-// Example queries
-const exampleQueries = [
-  {
-    title: 'Select all rows',
-    description: 'Retrieve all columns from a table',
-    query: 'SELECT * FROM table_name LIMIT 100',
-  },
-  {
-    title: 'Filter with WHERE',
-    description: 'Select rows matching a condition',
-    query: 'SELECT * FROM table_name WHERE column_name = value',
-  },
-  {
-    title: 'Join tables',
-    description: 'Combine data from multiple tables',
-    query: `SELECT t1.*, t2.column
-FROM table1 t1
-JOIN table2 t2 ON t1.id = t2.foreign_id`,
-  },
-  {
-    title: 'Aggregate with GROUP BY',
-    description: 'Count or sum values by group',
-    query: `SELECT category, COUNT(*) as count
-FROM table_name
-GROUP BY category
-ORDER BY count DESC`,
-  },
-  {
-    title: 'Date filtering',
-    description: 'Filter by date range',
-    query: `SELECT *
-FROM table_name
-WHERE created_at >= '2024-01-01'
-  AND created_at < '2024-02-01'`,
-  },
-]
-
 // Methods
 function handleQueryResult(result: QueryResult) {
   queryResult.value = result
@@ -211,30 +157,6 @@ function handleQueryError(error: string) {
     message: error,
     color: 'error',
   }
-}
-
-function handleUseQuery(sql: string, dataSource: string) {
-  // Switch to editor tab and populate with generated SQL
-  activeTab.value = 'editor'
-  initialQuery.value = sql
-  initialDataSource.value = dataSource
-  editorKey.value++ // Force re-render
-
-  // Scroll to top
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-
-  // Show success message
-  snackbar.value = {
-    show: true,
-    message: 'SQL query loaded into editor. Click "Execute Query" to run it.',
-    color: 'success',
-  }
-}
-
-function loadExample(query: string) {
-  initialQuery.value = query
-  editorKey.value++ // Force re-render
-  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 </script>
 

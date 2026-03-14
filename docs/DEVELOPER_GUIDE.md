@@ -40,6 +40,7 @@ This guide is for developers who are:
 - [User Guide](USER_GUIDE.md) - End-user documentation
 - [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures
+- [AI Notice To Devs](AI_NOTICE_TO_DEVS.md) - Guidance for keeping the repo AI-friendly as it grows
 
 ---
 
@@ -858,14 +859,6 @@ class ValidationError(BaseAPIException):
             status_code=400
         )
 
-class AutoFixError(BaseAPIException):
-    """Auto-fix operation failed."""
-    
-    def __init__(self, reason: str):
-        super().__init__(
-            f"Auto-fix failed: {reason}",
-            status_code=500
-        )
 ```
 
 #### Exception Handlers
@@ -1391,11 +1384,6 @@ DELETE /api/v1/projects/{name}    # Delete
 # Validation
 POST   /api/v1/validate                 # Validate
 GET    /api/v1/validate/{name}/results  # Get cached
-
-# Auto-Fix
-POST   /api/v1/auto-fix/preview         # Preview
-POST   /api/v1/auto-fix/apply           # Apply
-POST   /api/v1/auto-fix/rollback        # Rollback
 ```
 
 ### Adding New Endpoints
@@ -1601,8 +1589,8 @@ except Exception as e:
 
 ```python
 # Good - Descriptive test names
-def test_apply_fix_removes_missing_column_from_entity():
-    """Test that auto-fix correctly removes non-existent columns."""
+def test_validation_reports_missing_column_for_entity():
+    """Test that validation reports non-existent columns clearly."""
     pass
 
 # Bad - Generic names

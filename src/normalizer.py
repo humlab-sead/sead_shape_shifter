@@ -13,9 +13,10 @@ from loguru import logger
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService
 from src.loaders import DataLoader
-from src.loaders.base_loader import DataLoaders
+from src.loaders.base_loader import DataLoaders, LoaderType
 from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
+from src.path_resolution import resolve_managed_file_path
 from src.process_state import ProcessState
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.transforms.extra_columns import ExtraColumnEvaluator
@@ -57,17 +58,42 @@ class ShapeShifter:
 
         return None
 
+    def _resolve_project_local_file_options(self, table_cfg: TableConfig, loader: DataLoader) -> None:
+        """Resolve `location: local` file paths relative to the project file directory."""
+        if loader.loader_type() != LoaderType.FILE:
+            return
+
+        project_filename: str | None = self.project.filename
+        if not project_filename:
+            return
+
+        options: dict[str, Any] = dict(table_cfg.options or {})
+        filename: str | None = options.get("filename")
+        location: str | None = options.get("location")
+
+        if location != "local" or not isinstance(filename, str) or not filename.strip():
+            return
+
+        file_path = Path(filename)
+        if file_path.is_absolute():
+            return
+
+        project_dir = Path(project_filename).resolve().parent
+        options["filename"] = str(resolve_managed_file_path(filename, location="local", local_root=project_dir))
+        table_cfg.entity_cfg["options"] = options
+
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
-        logger.info(f"Resolving source for entity '{table_cfg.entity_name}'")
+        logger.trace(f"Resolving source for entity '{table_cfg.entity_name}'")
         loader: DataLoader | None = self.resolve_loader(table_cfg=table_cfg)
         if loader:
-            logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
+            self._resolve_project_local_file_options(table_cfg, loader)
+            logger.trace(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
 
         source_table: str | None = table_cfg.source or self.default_entity
         if source_table and source_table in self.table_store:
-            logger.debug(f"{table_cfg.entity_name}[source]: Using source table '{source_table}' from table_store...")
+            logger.trace(f"{table_cfg.entity_name}[source]: Using source table '{source_table}' from table_store...")
             return self.table_store[source_table]
 
         raise ValueError(f"Unable to resolve source for entity '{table_cfg.entity_name}'")
@@ -90,13 +116,17 @@ class ShapeShifter:
             sub_data = sub_table_cfg.apply_column_renaming(sub_data, parent_columns=table_cfg.columns)
             dfs.append(sub_data)
 
-            # Concatenate all dataframes (filter out empty DataFrames to avoid FutureWarning)
+        # Concatenate all dataframes while excluding all-NA columns from dtype inference.
+        # The dropped columns are restored afterward to preserve the expected schema.
         non_empty_dfs: list[pd.DataFrame] = [df for df in dfs if not df.empty]
         if not non_empty_dfs:
             logger.warning(f"{entity}[normalizing]: All sub-tables are empty after processing.")
 
+        concat_columns: list[str] = list(dict.fromkeys(col for df in non_empty_dfs for col in df.columns))
+        sanitized_dfs: list[pd.DataFrame] = [df.dropna(axis=1, how="all") for df in non_empty_dfs]
+
         data: pd.DataFrame = (
-            pd.concat(non_empty_dfs, ignore_index=True)
+            pd.concat(sanitized_dfs, ignore_index=True).reindex(columns=concat_columns)
             if non_empty_dfs
             else pd.DataFrame(columns=table_cfg.keys_columns_and_fks) if len(dfs) == 0 else dfs[0]
         )
@@ -234,9 +264,9 @@ class ShapeShifter:
 
         # Log status
         if still_deferred:
-            logger.debug(f"{entity_name}[deferred]: Still waiting for columns: " f"{list(still_deferred.keys())}")
+            logger.trace(f"{entity_name}[deferred]: Still waiting for columns: {list(still_deferred.keys())}")
         else:
-            logger.debug(f"{entity_name}[deferred]: Successfully evaluated all deferred extra_columns")
+            logger.trace(f"{entity_name}[deferred]: Successfully evaluated all deferred extra_columns")
 
     def retry_linking(self) -> None:
         """Retry linking only for entities currently in deferred set."""

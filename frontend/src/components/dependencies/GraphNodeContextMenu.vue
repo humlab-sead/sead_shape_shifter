@@ -35,6 +35,18 @@
       <template v-if="taskStatus">
         <v-divider />
         
+        <!-- Verify Entity -->
+        <v-list-item
+          :disabled="!taskStatus.exists"
+          prepend-icon="mdi-clipboard-check-outline"
+          title="Verify Entity"
+          @click="handleVerifyEntity"
+        >
+          <v-tooltip activator="parent" location="right">
+            Validate and generate preview data
+          </v-tooltip>
+        </v-list-item>
+        
         <!-- Mark as Done -->
         <v-list-item
           :disabled="!canMarkComplete"
@@ -51,12 +63,55 @@
           @click="handleMarkIgnored"
         />
         
+        <!-- Mark as Ongoing -->
+        <v-list-item
+          :disabled="taskStatus.status === 'ongoing'"
+          prepend-icon="mdi-progress-clock"
+          title="Mark as Ongoing"
+          @click="handleMarkOngoing"
+        >
+          <v-tooltip activator="parent" location="right">
+            Mark as work in progress
+          </v-tooltip>
+        </v-list-item>
+        
+        <!-- Mark as Todo -->
+        <v-list-item
+          :disabled="taskStatus.status === 'todo'"
+          prepend-icon="mdi-playlist-check"
+          title="Mark as Todo"
+          @click="handleMarkTodo"
+        >
+          <v-tooltip activator="parent" location="right">
+            Mark as planned for creation
+          </v-tooltip>
+        </v-list-item>
+        
         <!-- Reset Status -->
         <v-list-item
           :disabled="taskStatus.status === 'todo'"
           prepend-icon="mdi-refresh"
           title="Reset Status"
           @click="handleResetStatus"
+        />
+
+        <v-divider />
+
+        <v-list-item
+          prepend-icon="mdi-note-edit-outline"
+          :title="taskStatus.has_note ? 'Edit Note' : 'Add Note'"
+          @click="handleEditNote"
+        >
+          <v-tooltip activator="parent" location="right">
+            Add or edit a simple note for this entity
+          </v-tooltip>
+        </v-list-item>
+
+        <v-list-item
+          :disabled="!taskStatus.has_note"
+          prepend-icon="mdi-note-remove-outline"
+          title="Remove Note"
+          @click="handleRemoveNote"
         />
       </template>
       
@@ -89,9 +144,14 @@ interface Emits {
   (e: 'preview', entityName: string): void
   (e: 'duplicate', entityName: string): void
   (e: 'delete', entityName: string): void
+  (e: 'verify-entity', entityName: string): void
   (e: 'mark-complete', entityName: string): void
   (e: 'mark-ignored', entityName: string): void
+  (e: 'mark-ongoing', entityName: string): void
+  (e: 'mark-todo', entityName: string): void
   (e: 'reset-status', entityName: string): void
+  (e: 'edit-note', entityName: string): void
+  (e: 'remove-note', entityName: string): void
 }
 
 const props = defineProps<Props>()
@@ -114,14 +174,13 @@ const activatorStyle = computed(() => ({
   top: `${props.y}px`,
 }))
 
-// Can mark complete if entity exists, validation passed, and preview available
+// Can mark complete if entity exists and is not already done or ignored
 const canMarkComplete = computed(() => {
   if (!props.taskStatus) return false
   return (
     props.taskStatus.exists &&
-    props.taskStatus.validation_passed &&
-    props.taskStatus.preview_available &&
-    props.taskStatus.status !== 'done'
+    props.taskStatus.status !== 'done' &&
+    props.taskStatus.status !== 'ignored'
   )
 })
 
@@ -157,6 +216,13 @@ function handleDelete() {
   isOpen.value = false
 }
 
+function handleVerifyEntity() {
+  if (props.entityName) {
+    emit('verify-entity', props.entityName)
+  }
+  isOpen.value = false
+}
+
 function handleMarkComplete() {
   if (props.entityName) {
     emit('mark-complete', props.entityName)
@@ -171,9 +237,37 @@ function handleMarkIgnored() {
   isOpen.value = false
 }
 
+function handleMarkOngoing() {
+  if (props.entityName) {
+    emit('mark-ongoing', props.entityName)
+  }
+  isOpen.value = false
+}
+
+function handleMarkTodo() {
+  if (props.entityName) {
+    emit('mark-todo', props.entityName)
+  }
+  isOpen.value = false
+}
+
 function handleResetStatus() {
   if (props.entityName) {
     emit('reset-status', props.entityName)
+  }
+  isOpen.value = false
+}
+
+function handleEditNote() {
+  if (props.entityName) {
+    emit('edit-note', props.entityName)
+  }
+  isOpen.value = false
+}
+
+function handleRemoveNote() {
+  if (props.entityName) {
+    emit('remove-note', props.entityName)
   }
   isOpen.value = false
 }

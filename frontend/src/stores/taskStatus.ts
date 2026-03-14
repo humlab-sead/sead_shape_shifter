@@ -79,10 +79,49 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
   }
 
   /**
+   * Mark entity as ongoing
+   */
+  async function markOngoing(entityName: string): Promise<boolean> {
+    const success = await taskComposable.markOngoing(entityName)
+    
+    // Sync state
+    taskStatus.value = taskComposable.taskStatus.value
+    error.value = taskComposable.error.value
+    
+    return success
+  }
+
+  /**
+   * Mark entity as todo (planned but not yet created)
+   */
+  async function markTodo(entityName: string): Promise<boolean> {
+    const success = await taskComposable.markTodo(entityName)
+    
+    // Sync state
+    taskStatus.value = taskComposable.taskStatus.value
+    error.value = taskComposable.error.value
+    
+    return success
+  }
+
+  /**
    * Reset entity status to todo
    */
   async function resetStatus(entityName: string): Promise<boolean> {
     const success = await taskComposable.resetStatus(entityName)
+    
+    // Sync state
+    taskStatus.value = taskComposable.taskStatus.value
+    error.value = taskComposable.error.value
+    
+    return success
+  }
+
+  /**
+   * Toggle flagged status for entity
+   */
+  async function toggleFlagged(entityName: string): Promise<boolean> {
+    const success = await taskComposable.toggleFlagged(entityName)
     
     // Sync state
     taskStatus.value = taskComposable.taskStatus.value
@@ -99,6 +138,18 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
   }
 
   /**
+   * Update local note presence for a specific entity without a full refresh.
+   */
+  function setEntityHasNote(entityName: string, hasNote: boolean): void {
+    const entityStatus = taskStatus.value?.entities[entityName]
+    if (!entityStatus) {
+      return
+    }
+
+    entityStatus.has_note = hasNote
+  }
+
+  /**
    * Check if entity is done
    */
   function isDone(entityName: string): boolean {
@@ -106,10 +157,24 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
   }
 
   /**
+   * Check if entity is ongoing
+   */
+  function isOngoing(entityName: string): boolean {
+    return getEntityStatus(entityName)?.status === 'ongoing'
+  }
+
+  /**
    * Check if entity is ignored
    */
   function isIgnored(entityName: string): boolean {
     return getEntityStatus(entityName)?.status === 'ignored'
+  }
+
+  /**
+   * Check if entity is flagged
+   */
+  function isFlagged(entityName: string): boolean {
+    return getEntityStatus(entityName)?.flagged ?? false
   }
 
   /**
@@ -148,7 +213,7 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
   const completionSummary = computed(() => {
     if (!taskStatus.value) return 'No data'
     const stats = taskStatus.value.completion_stats
-    return `${stats.completed} of ${stats.total} complete`
+    return `${stats.done} of ${stats.total} complete`
   })
 
   const hasData = computed(() => taskStatus.value !== null)
@@ -183,10 +248,16 @@ export const useTaskStatusStore = defineStore('taskStatus', () => {
     refresh,
     markComplete,
     markIgnored,
+    markOngoing,
+    markTodo,
     resetStatus,
+    toggleFlagged,
     getEntityStatus,
+    setEntityHasNote,
     isDone,
+    isOngoing,
     isIgnored,
+    isFlagged,
     isBlocked,
     hasErrors,
     getEntitiesByStatus,

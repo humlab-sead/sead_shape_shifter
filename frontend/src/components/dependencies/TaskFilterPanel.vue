@@ -64,7 +64,7 @@
             <v-list-item-title>Complete</v-list-item-title>
             <template #append>
               <v-chip size="x-small" color="success" variant="flat">
-                {{ stats?.completed ?? 0 }}
+                {{ stats?.done ?? 0 }}
               </v-chip>
             </template>
           </v-list-item>

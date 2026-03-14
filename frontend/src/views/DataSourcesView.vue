@@ -310,11 +310,7 @@ function getDriverColor(driver: string): string {
 }
 
 function getFilePath(dataSource: DataSourceConfig): string | undefined {
-  // Check top-level filename or file_path
-  if (dataSource.filename) return dataSource.filename
-  if (dataSource.file_path) return dataSource.file_path
-
-  // Check options.filename (for Access databases)
+  // Canonical file-based path storage
   if (dataSource.options?.filename && typeof dataSource.options.filename === 'string') {
     return dataSource.options.filename
   }

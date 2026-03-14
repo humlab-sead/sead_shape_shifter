@@ -80,19 +80,35 @@ options: {}
             utils.validate_project_name("..:parent")
 
     def test_validate_project_name_forward_slash(self, utils: ProjectUtils):
-        """Test forward slashes are rejected (use colon instead)."""
-        with pytest.raises(BadRequestError, match="use ':' for nested projects"):
-            utils.validate_project_name("parent/child")
+        """Test forward slashes are accepted and normalized to ':' separator."""
+        assert utils.validate_project_name("parent/child") == "parent:child"
 
     def test_validate_project_name_absolute_path(self, utils: ProjectUtils):
         """Test absolute paths with slash are rejected."""
-        with pytest.raises(BadRequestError, match="use ':' for nested projects"):
+        with pytest.raises(BadRequestError, match="absolute path"):
             utils.validate_project_name("/absolute/path")
 
     def test_validate_project_name_strips_whitespace(self, utils: ProjectUtils):
         """Test whitespace is stripped."""
         assert utils.validate_project_name("  test  ") == "test"
         assert utils.validate_project_name("  parent:child  ") == "parent:child"
+        assert utils.validate_project_name("  parent/child  ") == "parent:child"
+
+    def test_validate_project_name_empty_segments(self, utils: ProjectUtils):
+        """Test empty path segments are rejected."""
+        with pytest.raises(BadRequestError, match="empty path segments"):
+            utils.validate_project_name("parent::child")
+
+        with pytest.raises(BadRequestError, match="empty path segments"):
+            utils.validate_project_name("parent//child")
+
+        with pytest.raises(BadRequestError, match="empty path segments"):
+            utils.validate_project_name(":child")
+
+    def test_validate_project_name_backslash_rejected(self, utils: ProjectUtils):
+        """Test Windows-style backslashes are rejected."""
+        with pytest.raises(BadRequestError, match="Backslashes|backslashes"):
+            utils.validate_project_name("parent\\child")
 
     # ensure_project_exists tests
 

@@ -51,8 +51,7 @@ def test_map_ucanaccess_config():
     api_config = DataSourceConfig(
         name="test_access",
         driver="ucanaccess",  # type: ignore
-        filename="./projects/test.mdb",
-        options={"ucanaccess_dir": "lib/ucanaccess"},
+        options={"filename": "./projects/test.mdb", "ucanaccess_dir": "lib/ucanaccess"},
         **{},
     )
 
@@ -67,12 +66,11 @@ def test_map_ucanaccess_config():
     assert options["ucanaccess_dir"] == "lib/ucanaccess"
 
 
-def test_map_ucanaccess_prefers_options_filename_when_metadata_present():
-    """Mapper should ignore YAML filename metadata and use real file path from options."""
+def test_map_ucanaccess_uses_options_filename():
+    """Mapper should use canonical file path from options."""
     api_config = DataSourceConfig(
         name="test_access",
         driver="ucanaccess",  # type: ignore
-        filename="arbodat-data-options.yml",  # metadata from service
         options={"filename": "./projects/real-db.mdb", "ucanaccess_dir": "lib/ucanaccess"},
         **{},
     )
@@ -86,7 +84,7 @@ def test_map_ucanaccess_prefers_options_filename_when_metadata_present():
 
 def test_map_sqlite_config():
     """Test mapping SQLite configuration."""
-    api_config = DataSourceConfig(name="test_sqlite", driver="sqlite", filename="./data/test.db", **{})  # type: ignore
+    api_config = DataSourceConfig(name="test_sqlite", driver="sqlite", options={"filename": "./data/test.db"}, **{})  # type: ignore
 
     core_config = DataSourceMapper.to_core_config(api_config)
 
@@ -100,7 +98,10 @@ def test_map_sqlite_config():
 def test_map_csv_config():
     """Test mapping CSV configuration."""
     api_config = DataSourceConfig(
-        name="test_csv", driver="csv", filename="./data/test.csv", options={"encoding": "utf-8", "delimiter": ","}, **{}  # type: ignore
+        name="test_csv",
+        driver="csv",
+        options={"filename": "./data/test.csv", "encoding": "utf-8", "delimiter": ","},
+        **{},  # type: ignore
     )
 
     core_config = DataSourceMapper.to_core_config(api_config)

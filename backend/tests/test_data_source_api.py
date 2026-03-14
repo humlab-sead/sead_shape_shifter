@@ -48,7 +48,7 @@ class TestListDataSources:
         """Should return list of data sources."""
         mock_service.list_data_sources.return_value = [
             DataSourceConfig(name="sead", driver="postgresql", host="localhost", port=5432, database="sead", username="user", **{}),
-            DataSourceConfig(name="arbodat", driver="access", filename="arbodat.mdb", **{}),
+            DataSourceConfig(name="arbodat", driver="access", options={"filename": "arbodat.mdb"}, **{}),
         ]
 
         response = client.get("/api/v1/data-sources")
@@ -92,7 +92,6 @@ class TestGetDataSource:
             port=5432,
             database="sead",
             username="user",
-            filename="sead-options.yml",
             **{},
         )
 
@@ -128,7 +127,6 @@ class TestCreateDataSource:
             port=5432,
             database="newdb",
             username="user",
-            filename="new_db-options.yml",
             **{},
         )
         mock_service.create_data_source.return_value = created_config
@@ -147,7 +145,6 @@ class TestCreateDataSource:
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == "new_db"
-        assert data["filename"] == "new_db-options.yml"
         mock_service.create_data_source.assert_called_once()
 
     def test_create_data_source_already_exists(self, client, mock_service):
@@ -160,7 +157,6 @@ class TestCreateDataSource:
             port=5432,
             database="db",
             username="user",
-            filename="existing-options.yml",
             **{},
         )
 
@@ -207,7 +203,6 @@ class TestUpdateDataSource:
             port=5432,
             database="sead",
             username="user",
-            filename="sead-options.yml",
             **{},
         )
 
@@ -219,7 +214,6 @@ class TestUpdateDataSource:
             port=5433,
             database="sead_updated",
             username="newuser",
-            filename="sead-options.yml",
             **{},
         )
         mock_service.update_data_source.return_value = updated_config
@@ -267,7 +261,6 @@ class TestUpdateDataSource:
             port=5432,
             database="sead",
             username="user",
-            filename="sead-options.yml",
             **{},
         )
         mock_service.update_data_source.side_effect = Exception("Invalid configuration")
@@ -293,7 +286,7 @@ class TestDeleteDataSource:
     def test_delete_data_source_success(self, client, mock_service):
         """Should delete data source."""
 
-        mock_service.load_data_source.return_value = DataSourceConfig(name="unused", driver="csv", filename="unused-datasource.yml", **{})
+        mock_service.load_data_source.return_value = DataSourceConfig(name="unused", driver="csv", options={"filename": "unused.csv"}, **{})
         mock_service.delete_data_source.return_value = None
 
         response = client.delete("/api/v1/data-sources/unused-datasource.yml")
@@ -322,7 +315,6 @@ class TestDeleteDataSource:
             port=5432,
             database="db",
             username="user",
-            filename="error_case-options.yml",
             **{},
         )
         mock_service.delete_data_source.side_effect = Exception("Failed to delete file")
@@ -345,7 +337,6 @@ class TestTestConnection:
             port=5432,
             database="sead",
             username="user",
-            filename="sead-options.yml",
             **{},
         )
 
@@ -376,7 +367,6 @@ class TestTestConnection:
             port=5432,
             database="db",
             username="user",
-            filename="bad_db-options.yml",
             **{},
         )
 
@@ -419,7 +409,6 @@ class TestGetStatus:
             port=5432,
             database="sead",
             username="user",
-            filename="sead-options.yml",
             **{},
         )
         mock_service.get_status.return_value = DataSourceStatus(

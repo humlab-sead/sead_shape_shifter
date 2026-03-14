@@ -623,6 +623,57 @@ class TestShapeShifter:
             with pytest.raises(ValueError, match="Circular or unresolved dependencies"):
                 await normalizer.normalize()
 
+    @pytest.mark.asyncio
+    async def test_normalize_derived_entity_exposes_source_public_id_from_source_system_id(self):
+        """Derived entities should carry parent references under the source public_id through unnesting."""
+        survey_df = pd.DataFrame(
+            {
+                "property_1": ["alpha", "gamma"],
+                "property_2": ["beta", "delta"],
+            }
+        )
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "site": {
+                        "columns": ["property_1", "property_2"],
+                        "public_id": "site_id",
+                    },
+                    "site_property": {
+                        "type": "entity",
+                        "source": "site",
+                        "public_id": "site_property_id",
+                        "columns": ["site_id", "property_1", "property_2"],
+                        "unnest": {
+                            "id_vars": ["site_id"],
+                            "value_vars": ["property_1", "property_2"],
+                            "var_name": "property_name",
+                            "value_name": "property_value",
+                        },
+                    },
+                }
+            }
+        )
+
+        normalizer = ShapeShifter(project=project, default_entity="survey", table_store={"survey": survey_df})
+
+        await normalizer.normalize()
+
+        result = normalizer.table_store["site_property"][["site_id", "property_name", "property_value"]].copy()
+        result = result.sort_values(["site_id", "property_name"]).reset_index(drop=True)
+
+        expected = pd.DataFrame(
+            {
+                "site_id": [1, 1, 2, 2],
+                "property_name": ["property_1", "property_2", "property_1", "property_2"],
+                "property_value": ["alpha", "beta", "gamma", "delta"],
+            }
+        )
+
+        pd.testing.assert_frame_equal(result, expected)
+        assert "system_id" in normalizer.table_store["site_property"].columns
+        assert "site_property_id" in normalizer.table_store["site_property"].columns
+
     def test_unnest_all(self, survey_only_config: ShapeShiftProject):
         """Test unnesting all entities."""
         df = pd.DataFrame({"col1": [1, 2]})

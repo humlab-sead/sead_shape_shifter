@@ -96,6 +96,7 @@ class TestInitializeTaskList:
 
             # Verify task_list was created in cfg
             assert "task_list" in mock_core_project.cfg
+            assert mock_core_project.cfg["task_list"]["required_entities"] == ["location", "site", "sample"]
             assert mock_core_project.cfg["task_list"]["completed"] == []
             assert mock_core_project.cfg["task_list"]["ignored"] == []
 

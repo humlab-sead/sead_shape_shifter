@@ -40,7 +40,12 @@ class FixedLoader(DataLoader):
                 logger.warning(f"Fixed data entity '{entity_name}' has no columns or values defined, returning empty DataFrame")
                 return pd.DataFrame()
 
-            data = pd.DataFrame(values, columns=columns)
+            resolved_columns: list[str] = self._resolve_columns_for_values(entity_name, table_cfg, columns, values)
+
+            try:
+                data = pd.DataFrame(values, columns=resolved_columns)
+            except ValueError as exc:
+                raise ValueError(f"Fixed data entity '{entity_name}' failed to build DataFrame: {exc}") from exc
 
         # Add system_id if configured (always "system_id" column name)
         if table_cfg.system_id and table_cfg.system_id not in data.columns:
@@ -57,6 +62,41 @@ class FixedLoader(DataLoader):
 
         if not is_valid:
             raise ValueError(f"Table '{entity_name}' failed validation {spec.get_report()}.")
+
+    @staticmethod
+    def _resolve_columns_for_values(
+        entity_name: str,
+        table_cfg: "TableConfig",
+        columns: list[str],
+        values: list[list[Any]],
+    ) -> list[str]:
+        """Resolve effective fixed-value columns and validate shape with entity-aware errors."""
+
+        if not values:
+            return columns
+
+        row_length: int = len(values[0])
+        if not all(len(row) == row_length for row in values):
+            raise ValueError(f"Fixed data entity '{entity_name}' has inconsistent row lengths in values")
+
+        identity_columns: list[str] = []
+        if table_cfg.system_id not in columns:
+            identity_columns.append(table_cfg.system_id)
+        if table_cfg.public_id and table_cfg.public_id not in columns:
+            identity_columns.append(table_cfg.public_id)
+
+        columns_with_identity: list[str] = identity_columns + columns
+
+        if row_length == len(columns):
+            return columns
+
+        if row_length == len(columns_with_identity):
+            return columns_with_identity
+
+        raise ValueError(
+            f"Fixed data entity '{entity_name}' has mismatched number of values per row "
+            f"(got {row_length}, expected {len(columns)} for data-only rows or {len(columns_with_identity)} with identity columns)"
+        )
 
     async def test_connection(self) -> ConnectTestResult:
         return ConnectTestResult.create_empty(success=True)

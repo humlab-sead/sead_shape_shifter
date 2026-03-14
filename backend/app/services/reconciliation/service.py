@@ -555,7 +555,12 @@ class ReconciliationService:
         """
         # Lazy-load ShapeShiftService if needed
         if self.shapeshift_service is None:
-            self.shapeshift_service = ShapeShiftService(self.project_service)
+            from backend.app.services.shapeshift_service import (  # pylint: disable=import-outside-toplevel
+                get_shapeshift_service,
+            )
+
+            # Use shared singleton cache (not a new instance)
+            self.shapeshift_service = get_shapeshift_service()
 
         try:
             preview_result: PreviewResult = await self.shapeshift_service.preview_entity(project_name, entity_name, limit=1)
