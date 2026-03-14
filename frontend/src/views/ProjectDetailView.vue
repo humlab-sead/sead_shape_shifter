@@ -405,7 +405,6 @@
               @mark-complete="handleMarkComplete"
               @mark-ignored="handleMarkIgnored"
               @mark-ongoing="handleMarkOngoing"
-              @mark-todo="handleMarkTodo"
               @reset-status="handleResetStatus"
               @edit-note="handleEditNote"
               @remove-note="handleRemoveNote"
@@ -1648,22 +1647,6 @@ async function handleMarkOngoing(entityName: string) {
   } catch (err) {
     console.error('Failed to mark entity as ongoing:', err)
     successMessage.value = err instanceof Error ? err.message : 'Failed to mark entity as ongoing'
-    showSuccessSnackbar.value = true
-  }
-}
-
-async function handleMarkTodo(entityName: string) {
-  try {
-    const success = await taskStatusStore.markTodo(entityName)
-    if (success) {
-      successMessage.value = `Entity "${entityName}" marked as todo`
-      showSuccessSnackbar.value = true
-      // Refresh graph to show updated badges
-      applyTaskStatusToNodes()
-    }
-  } catch (err) {
-    console.error('Failed to mark entity as todo:', err)
-    successMessage.value = err instanceof Error ? err.message : 'Failed to mark entity as todo'
     showSuccessSnackbar.value = true
   }
 }
