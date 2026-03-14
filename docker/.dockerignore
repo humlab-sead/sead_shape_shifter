@@ -69,9 +69,9 @@ Dockerfile
 .dockerignore
 
 # Documentation
-docs/
 *.md
 !README.md
+!docs/**
 
 # CI/CD
 .releaserc.json
