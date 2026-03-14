@@ -120,7 +120,7 @@ describe('entityFormMaterialization', () => {
     ])
   })
 
-  it('preserves stored full column order for fixed values rows', () => {
+  it('builds canonical fixed values column order', () => {
     const result = buildFixedValuesColumns(
       [
         'site_type_id',
@@ -134,27 +134,14 @@ describe('entityFormMaterialization', () => {
         'KoordSys',
       ],
       ['Fustel', 'EVNr'],
-      'site_id',
-      [
-        'system_id',
-        'site_id',
-        'site_type_id',
-        'altitude',
-        'coordinate_system',
-        'latitude_dd',
-        'longitude_dd',
-        'national_site_identifier',
-        'site_name',
-        'EVNr',
-        'Fustel',
-        'FustelTyp',
-        'KoordSys',
-      ]
+      'site_id'
     )
 
     expect(result).toEqual([
       'system_id',
       'site_id',
+      'Fustel',
+      'EVNr',
       'site_type_id',
       'altitude',
       'coordinate_system',
@@ -162,8 +149,6 @@ describe('entityFormMaterialization', () => {
       'longitude_dd',
       'national_site_identifier',
       'site_name',
-      'EVNr',
-      'Fustel',
       'FustelTyp',
       'KoordSys',
     ])

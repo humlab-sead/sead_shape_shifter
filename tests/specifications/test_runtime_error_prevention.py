@@ -416,6 +416,47 @@ class TestForeignKeyColumnsSpecification:
         assert result is True, f"Expected no errors but got: {spec.get_report()}"
         assert len(spec.errors) == 0
 
+    def test_prelinked_foreign_key_column_passes(self):
+        """Test that an explicitly stored remote public-id column is a valid FK local key.
+
+        This covers the manual pre-linked pattern where a fixed entity already stores
+        the FK values in a remote public-id column before the FK relationship is added.
+        Runtime linking treats that as already linked, so config validation must accept it.
+        """
+        project_cfg = {
+            "entities": {
+                "ecocode_group": {
+                    "type": "fixed",
+                    "public_id": "ecocode_group_id",
+                    "keys": [],
+                    "columns": ["system_id", "ecocode_group_id", "ecocode_system_id", "definition", "name"],
+                    "values": [
+                        [1, None, 1, "Default group for ArboDat ecological groups", "ArboDat group"],
+                    ],
+                    "foreign_keys": [
+                        {
+                            "entity": "ecocode_system",
+                            "local_keys": ["ecocode_system_id"],
+                            "remote_keys": ["system_id"],
+                        }
+                    ],
+                },
+                "ecocode_system": {
+                    "type": "fixed",
+                    "public_id": "ecocode_system_id",
+                    "keys": [],
+                    "columns": ["system_id", "ecocode_system_id", "name"],
+                    "values": [[1, None, "ArboDat ecological groups"]],
+                },
+            }
+        }
+
+        spec = ForeignKeyColumnsSpecification(project_cfg)
+        result = spec.is_satisfied_by(entity_name="ecocode_group")
+
+        assert result is True, spec.get_report()
+        assert len(spec.errors) == 0, spec.get_report()
+
     def test_fk_references_extra_columns_added_by_prior_fk(self):
         """Test that FK can reference extra_columns added by previous FK."""
         project_cfg = {

@@ -118,6 +118,68 @@ class TestEntitiesGet:
         response = client.get("/api/v1/projects/test_project/entities/nonexistent")
         assert response.status_code == 404
 
+    def test_get_fixed_entity_includes_authoritative_fixed_schema(self, tmp_path, monkeypatch, reset_services):
+        """Fixed entities should expose backend-owned schema metadata."""
+
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "location_id",
+            "keys": ["name"],
+            "columns": ["system_id", "location_id", "name", "country"],
+            "values": [[1, 100, "Uppsala", "Sweden"]],
+        }
+
+        client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"location": entity_data}},
+        )
+
+        response = client.get("/api/v1/projects/test_project/entities/location")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["fixed_schema"] == {
+            "full_columns": ["system_id", "location_id", "name", "country"],
+            "editable_columns": ["country"],
+            "identity_columns": ["system_id", "location_id"],
+            "key_columns": ["name"],
+            "order_source": "stored",
+        }
+
+
+class TestFixedSchemaDerivation:
+    """Tests for derived fixed-schema metadata."""
+
+    def test_create_fixed_entity_persists_canonical_fixed_schema(self, tmp_path, monkeypatch, reset_services):
+        """Created fixed entities should be normalized to canonical stored columns."""
+
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "feature_type_id",
+            "keys": ["name"],
+            "columns": ["description"],
+            "values": [],
+        }
+
+        response = client.post(
+            "/api/v1/projects/test_project/entities",
+            json={"name": "feature_type", "entity_data": entity_data},
+        )
+        assert response.status_code == 201
+        payload = response.json()
+        assert payload["fixed_schema"] == {
+            "full_columns": ["system_id", "feature_type_id", "name", "description"],
+            "editable_columns": ["description"],
+            "identity_columns": ["system_id", "feature_type_id"],
+            "key_columns": ["name"],
+            "order_source": "stored",
+        }
+
 
 class TestEntitiesCreate:
     """Tests for creating entities."""
@@ -350,7 +412,7 @@ class TestEntityValues:
         assert "does not have @load: directive" in response.json()["detail"]
 
     def test_update_entity_values(self, tmp_path, monkeypatch, reset_services):
-        """Test updating entity values."""
+        """Test updating fixed entity values with authoritative columns."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project folder structure
@@ -373,12 +435,12 @@ class TestEntityValues:
         )
 
         # Update entity values
-        update_data = {"columns": ["id", "name", "value"], "values": [[1, "A", 100], [2, "B", 200], [3, "C", 300]]}
+        update_data = {"columns": ["system_id", "id", "name"], "values": [[1, 10, "A"], [2, 20, "B"], [3, 30, "C"]]}
         response = client.put("/api/v1/projects/test_project/entities/test_entity/values", json=update_data)
         assert response.status_code == 200
 
         data = response.json()
-        assert data["columns"] == ["id", "name", "value"]
+        assert data["columns"] == ["system_id", "id", "name"]
         assert data["row_count"] == 3
         assert data["format"] == "parquet"
 
@@ -389,7 +451,7 @@ class TestEntityValues:
         # Verify we can read it back
 
         df = pd.read_parquet(parquet_file)
-        assert df.columns.tolist() == ["id", "name", "value"]
+        assert df.columns.tolist() == ["system_id", "id", "name"]
         assert len(df) == 3
 
     def test_update_entity_values_no_load_directive(self, tmp_path, monkeypatch, reset_services):
@@ -483,7 +545,7 @@ class TestEntityValues:
         current_etag = get_response.json()["etag"]
 
         # Update with matching etag
-        update_data = {"columns": ["col1"], "values": [[10], [20]]}
+        update_data = {"columns": ["system_id", "col1"], "values": [[1, 10], [2, 20]]}
         response = client.put(
             "/api/v1/projects/test_project/entities/test_entity/values", json=update_data, headers={"If-Match": current_etag}
         )
@@ -524,7 +586,7 @@ class TestEntityValues:
         )
 
         # Update with wrong etag
-        update_data = {"columns": ["col1"], "values": [[10], [20]]}
+        update_data = {"columns": ["system_id", "col1"], "values": [[1, 10], [2, 20]]}
         response = client.put(
             "/api/v1/projects/test_project/entities/test_entity/values",
             json=update_data,

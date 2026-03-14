@@ -30,18 +30,12 @@ export function normalizeEditableFixedColumns(
 }
 
 /**
- * Build the authoritative fixed-values column order.
- *
- * For existing fixed/materialized entities we preserve the stored full column
- * order so the positional values array stays aligned. If the active column set
- * changes, keep the preserved order for shared columns and append any new ones
- * using the canonical identity/key-first order.
+ * Build the canonical fixed-values column order.
  */
 export function buildFixedValuesColumns(
   columns: string[],
   keys: string[],
-  publicId: string | null | undefined,
-  preferredOrder?: string[]
+  publicId: string | null | undefined
 ): string[] {
   const canonical: string[] = ['system_id']
 
@@ -64,26 +58,7 @@ export function buildFixedValuesColumns(
     }
   }
 
-  if (!preferredOrder || preferredOrder.length === 0) {
-    return canonical
-  }
-
-  const active = new Set(canonical)
-  const preserved: string[] = []
-
-  for (const column of preferredOrder) {
-    if (active.has(column) && !preserved.includes(column)) {
-      preserved.push(column)
-    }
-  }
-
-  for (const column of canonical) {
-    if (!preserved.includes(column)) {
-      preserved.push(column)
-    }
-  }
-
-  return preserved
+  return canonical
 }
 
 /**
