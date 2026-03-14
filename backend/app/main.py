@@ -126,6 +126,13 @@ app.add_middleware(
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 
+# Serve canonical documentation files from the repository/root docs directory.
+docs_dir = Path(__file__).parent.parent.parent / "docs"
+if docs_dir.exists() and docs_dir.is_dir():
+    logger.info(f"Serving documentation from: {docs_dir}")
+    app.mount("/docs", StaticFiles(directory=docs_dir), name="docs")
+
+
 # Serve static frontend files (production mode)
 frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
 if frontend_dist.exists() and frontend_dist.is_dir():

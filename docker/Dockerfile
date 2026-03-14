@@ -162,6 +162,7 @@ COPY --from=python-builder /usr/local/bin /usr/local/bin
 # Copy application source from source resolver
 COPY --from=source-resolver /source/src ./src/
 COPY --from=source-resolver /source/backend ./backend/
+COPY --from=source-resolver /source/docs ./docs/
 COPY --from=source-resolver /source/scripts ./scripts/
 COPY --from=source-resolver /source/ingesters ./ingesters/
 
