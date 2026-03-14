@@ -7,6 +7,7 @@ from src.model import ForeignKeyConfig, ForeignKeyMergeSetup, ShapeShiftProject,
 from src.process_state import DeferredLinkingTracker
 from src.specifications import ForeignKeyDataSpecification
 from src.specifications.constraints import ForeignKeyConstraintValidator
+from src.transforms.utility import merge_with_null_safety
 
 
 class ForeignKeyLinker:
@@ -60,7 +61,12 @@ class ForeignKeyLinker:
         if "right_on" in opts:
             opts["right_on"] = [link_setup.rename_map.get(key, key) for key in opts["right_on"]]
 
-        linked_df: pd.DataFrame = local_df.merge(remote_df, **opts)
+        linked_df: pd.DataFrame = merge_with_null_safety(
+            local_df=local_df,
+            remote_df=remote_df,
+            allow_null_keys=fk.constraints.allow_null_keys,
+            **opts,
+        )
 
         validator.validate_after_merge(local_df, remote_df, linked_df, merge_indicator_col=validator.merge_indicator_col)
 
