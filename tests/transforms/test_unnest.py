@@ -67,8 +67,8 @@ class TestUnnest:
         with pytest.raises(ValueError, match="missing `id_vars` columns"):
             unnest(entity, table, table_cfg)
 
-    def test_unnest_defers_when_value_vars_missing(self):
-        """Test that unnest returns original table when value_vars columns missing."""
+    def test_unnest_raises_when_value_vars_missing(self):
+        """Test that unnest raises ValueError when value_vars columns missing."""
         entity = "test_entity"
         table = pd.DataFrame({"id": [1, 2], "col1": [3, 4]})
         config = {
@@ -79,10 +79,8 @@ class TestUnnest:
         }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
-        result = unnest(entity, table, table_cfg)
-
-        # Returns original table because missing_col is not in DataFrame
-        pd.testing.assert_frame_equal(result, table)
+        with pytest.raises(ValueError, match="Cannot unnest entity, missing `value_vars` columns"):
+            unnest(entity, table, table_cfg)
 
     def test_unnest_basic_melt_no_id_vars(self):
         """Test basic unnest without id_vars."""

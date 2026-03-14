@@ -1725,39 +1725,6 @@ For comprehensive testing coverage, see:
 - [ ] Version-based cache invalidation works
 - [ ] Entity-specific changes invalidate full project cache
 
-### Auto-Fix Suggestions
-
-**Test: Apply Auto-Fix**
-
-1. Run validation with fixable errors
-2. Find validation error with "Apply Fix" button
-3. Click "Apply Fix"
-4. Observe changes in YAML editor
-5. Save project
-
-**Expected Results:**
-
-- [ ] Fix applied to YAML immediately
-- [ ] YAML editor updates in real-time
-- [ ] Success notification shown
-- [ ] Unsaved changes indicator appears (*)
-- [ ] Re-validation shows error resolved
-- [ ] Backup created when project is saved
-- [ ] Can undo via backup or browser undo (Ctrl+Z)
-
-**Test: Multiple Auto-Fixes**
-
-1. Apply one fix
-2. Apply another fix
-3. Run validation
-
-**Expected Results:**
-
-- [ ] Each fix applies independently
-- [ ] No conflicts between fixes
-- [ ] All fixes persist
-- [ ] Validation shows improvements
-
 ### Validation Error Details
 
 **Test: Expand Error Details**

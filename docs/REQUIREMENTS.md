@@ -74,7 +74,7 @@ mappings:                            # Remote entity mappings
 **Validation & Quality**:
 - Multi-type validation (structural, data, entity-specific)
 - Circular dependency detection
-- Auto-fix suggestions with preview
+- Clear validation messages with guided remediation
 - Real-time validation feedback
 
 **Data Integration**:
@@ -181,13 +181,6 @@ mappings:                            # Remote entity mappings
 - Error categorization (error, warning, info)
 - Entity-level error summaries
 - Quick navigation to errors
-
-**Auto-Fix System**:
-- Intelligent fix suggestions
-- Fix preview with before/after comparison
-- One-click fix application
-- Automatic backups before fixes
-- Rollback capability
 
 ### 3.5 Data Source Integration
 
@@ -466,7 +459,7 @@ Shape Shifter provides a comprehensive web-based interface for managing declarat
 - Declarative approach reduces ETL complexity
 - Visual tools make complex relationships understandable
 - Validation prevents errors before execution
-- Auto-fix accelerates problem resolution
+- Structured issue reporting supports manual remediation
 - Modular configuration supports maintainability
 
 **Target Users**:
@@ -476,8 +469,8 @@ Shape Shifter provides a comprehensive web-based interface for managing declarat
 
 **Typical Workflows**:
 1. **New Project**: Create configuration → Add data sources → Define entities → Validate → Dispatch
-2. **Extend Project**: Load existing → Add entities → Auto-fix validation errors → Save
-3. **Debug Issues**: Validate → Review errors → Preview fixes → Apply → Re-validate
+2. **Extend Project**: Load existing → Add entities → Review validation issues → Save
+3. **Debug Issues**: Validate → Review errors → Edit configuration → Re-validate
 4. **Data Integration**: Connect sources → Explore schema → Test queries → Configure reconciliation
 5. **Production Deploy**: Validate data → Configure dispatch → Execute transformations
 
@@ -525,8 +518,6 @@ Shape Shifter provides a comprehensive web-based interface for managing declarat
 **Reconciliation**: Matching and enriching data against external reference services
 
 **Dispatch**: Sending transformed data to target systems (e.g., databases, APIs)
-
-**Auto-Fix**: Automated correction suggestions for validation errors
 
 **@include**: YAML directive for modular configuration composition
 

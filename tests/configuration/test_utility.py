@@ -29,3 +29,66 @@ def test_replace_references_ignores_nested_list_expression() -> None:
     resolved: dict = replace_references(data)  # type: ignore
 
     assert resolved["bad"] == expr
+
+
+def test_replace_references_directive_as_list_element() -> None:
+    """@value: directive as a YAML list element should be flattened into the surrounding list."""
+    data: dict = {
+        "parent_keys": ["a", "b"],
+        "child_keys": ["@value: parent_keys", "c"],
+    }
+
+    resolved: dict = replace_references(data)  # type: ignore
+
+    assert resolved["child_keys"] == ["a", "b", "c"]
+
+
+def test_replace_references_multiple_directive_list_elements() -> None:
+    """Multiple @value: directives as list elements should each be flattened."""
+    data: dict = {
+        "list_a": ["x"],
+        "list_b": ["y", "z"],
+        "combined": ["@value: list_a", "@value: list_b"],
+    }
+
+    resolved: dict = replace_references(data)  # type: ignore
+
+    assert resolved["combined"] == ["x", "y", "z"]
+
+
+def test_replace_references_directive_list_element_scalar_result_not_flattened() -> None:
+    """A @value: item in a list that resolves to a scalar should be appended (not extended)."""
+    data: dict = {
+        "single": "hello",
+        "mixed": ["@value: single", "world"],
+    }
+
+    resolved: dict = replace_references(data)  # type: ignore
+
+    assert resolved["mixed"] == ["hello", "world"]
+
+
+def test_replace_references_plain_list_unchanged() -> None:
+    """A plain list with no directives should remain exactly as-is."""
+    data: dict = {"plain": ["a", "b", "c"]}
+
+    resolved: dict = replace_references(data)  # type: ignore
+
+    assert resolved["plain"] == ["a", "b", "c"]
+
+
+def test_replace_references_with_space_after_directive() -> None:
+    """@value: directive with space after colon should work identically to no space."""
+    data: dict = {
+        "base": {"letters": ["a", "b", "c"]},
+        "no_space": "@value:base.letters",
+        "with_space": "@value: base.letters",  # Space after colon
+        "list_op": "@value: base.letters + ['d']",  # Space in list operation
+    }
+
+    resolved: dict = replace_references(data)  # type: ignore
+
+    # Both should resolve to the same value
+    assert resolved["no_space"] == ["a", "b", "c"]
+    assert resolved["with_space"] == ["a", "b", "c"]
+    assert resolved["list_op"] == ["a", "b", "c", "d"]

@@ -10,6 +10,7 @@ from loguru import logger
 
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService, get_project_service
+from backend.app.utils.fixed_schema import derive_fixed_schema
 
 
 class EntityValuesResponse:
@@ -182,6 +183,18 @@ class EntityValuesService:
                     f"but row {idx} has {actual_width} values"
                 )
 
+    def _validate_fixed_columns(self, entity_name: str, entity_data: dict[str, Any], columns: list[str]) -> None:
+        """Require fixed-entity updates to use the authoritative full column order."""
+        fixed_schema = derive_fixed_schema(entity_data)
+        if not fixed_schema:
+            return
+
+        expected_columns: list[str] = fixed_schema["full_columns"]
+        if columns != expected_columns:
+            raise ValueError(
+                f"Fixed entity '{entity_name}' must update values using authoritative columns {expected_columns}; " f"received {columns}"
+            )
+
     def get_values(self, project_name: str, entity_name: str) -> EntityValuesResponse:
         """
         Get external values for entity with @load: directive.
@@ -249,6 +262,8 @@ class EntityValuesService:
         filename: str | None = self._parse_load_directive(values_field)
         if not filename:
             raise ValueError(f"Entity '{entity_name}' does not have @load: directive (values: {values_field})")
+
+        self._validate_fixed_columns(entity_name, entity_data, columns)
 
         # Resolve file path
         file_path: Path = self._resolve_values_path(project_name, filename)

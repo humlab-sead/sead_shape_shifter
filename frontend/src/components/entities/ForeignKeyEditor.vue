@@ -278,11 +278,13 @@ interface Props {
   availableEntities?: string[]
   projectName: string
   entityName: string
+  entityColumns?: string[] | string
   isEntitySaved?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   availableEntities: () => [],
+  entityColumns: () => [],
   isEntitySaved: false,
 })
 
@@ -290,11 +292,35 @@ const emit = defineEmits<{
   'update:modelValue': [value: ForeignKeyConfig[]]
 }>()
 
+/**
+ * Normalize keys array to always contain strings.
+ * Handles case where v-combobox might store objects instead of string values.
+ * Scalar strings are wrapped in a single-element array so they appear as a
+ * removable chip in the combobox.
+ */
+function normalizeKeysArray(keys: any): string[] {
+  if (!Array.isArray(keys)) {
+    if (typeof keys === 'string') {
+      const trimmed = keys.trim()
+      return trimmed.length > 0 ? [trimmed] : []
+    }
+    return []
+  }
+
+  return keys
+    .map((key) => {
+      if (typeof key === 'string') return key
+      if (typeof key === 'object' && key !== null && 'value' in key) return key.value
+      return String(key)
+    })
+    .filter((k) => k && k.trim().length > 0)
+}
+
 function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
   return {
     ...fk,
-    local_keys: Array.isArray(fk.local_keys) ? [...fk.local_keys] : [],
-    remote_keys: Array.isArray(fk.remote_keys) ? [...fk.remote_keys] : [],
+    local_keys: normalizeKeysArray(fk.local_keys),
+    remote_keys: normalizeKeysArray(fk.remote_keys),
     constraints: fk.constraints || {
       cardinality: 'many_to_one',
       require_unique_left: false,
@@ -310,7 +336,7 @@ function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
 
 const foreignKeys = ref<ForeignKeyConfig[]>(props.modelValue.map(cloneForeignKey))
 const { getAvailableColumns, flattenColumns } = useColumnIntrospection()
-const { validateDirective, isDirective } = useDirectiveValidation()
+const { validateDirective, getValidDirectives, isDirective } = useDirectiveValidation()
 
 // Cache for column suggestions per entity
 const columnCache = ref<Map<string, Array<{ value: string; category: string }>>>(new Map())
@@ -322,22 +348,6 @@ const remoteColumnItems = ref<Array<Array<{ title: string; value: string; catego
 // Validation errors for directive values (indexed by FK index)
 const localKeyErrors = ref<Array<string | undefined>>([])
 const remoteKeyErrors = ref<Array<string | undefined>>([])
-
-/**
- * Normalize keys array to always contain strings.
- * Handles case where v-combobox might store objects instead of string values.
- */
-function normalizeKeysArray(keys: any): string[] {
-  if (!Array.isArray(keys)) return []
-
-  return keys
-    .map((key) => {
-      if (typeof key === 'string') return key
-      if (typeof key === 'object' && key !== null && 'value' in key) return key.value
-      return String(key)
-    })
-    .filter((k) => k && k.trim().length > 0)
-}
 
 /**
  * Validate local keys for directive references.
@@ -438,6 +448,31 @@ async function getColumnSuggestions(entityName: string): Promise<Array<{ value: 
 }
 
 /**
+ * Extract @value directives from entity columns configuration.
+ */
+function extractColumnDirectives(): string[] {
+  const columns = props.entityColumns
+  if (!columns) return []
+
+  const directives: string[] = []
+
+  // Handle scalar directive string
+  if (typeof columns === 'string' && columns.trim().startsWith('@value:')) {
+    directives.push(columns.trim())
+  }
+  // Handle array of columns (may contain directive elements)
+  else if (Array.isArray(columns)) {
+    columns.forEach((col) => {
+      if (typeof col === 'string' && col.trim().startsWith('@value:')) {
+        directives.push(col.trim())
+      }
+    })
+  }
+
+  return directives
+}
+
+/**
  * Load local columns for a specific FK.
  */
 async function loadLocalColumns(fkIndex: number) {
@@ -446,12 +481,21 @@ async function loadLocalColumns(fkIndex: number) {
     return // Already loaded
   }
 
-  const suggestions = await getColumnSuggestions(props.entityName)
-  localColumnItems.value[fkIndex] = suggestions.map((s) => ({
-    title: s.value,
-    value: s.value,
-    category: s.category,
-  }))
+  const [suggestions, directives] = await Promise.all([
+    getColumnSuggestions(props.entityName),
+    getValidDirectives(props.projectName),
+  ])
+
+  // Extract directives from entity's columns configuration
+  const columnDirectives = extractColumnDirectives()
+
+  // Combine all suggestions, avoiding duplicates
+  const allDirectives = [...new Set([...directives, ...columnDirectives])]
+
+  localColumnItems.value[fkIndex] = [
+    ...suggestions.map((s) => ({ title: s.value, value: s.value, category: s.category })),
+    ...allDirectives.map((d) => ({ title: d, value: d, category: 'directive' })),
+  ]
 }
 
 /**
@@ -470,12 +514,14 @@ async function loadRemoteColumns(fkIndex: number) {
     return // Already loaded
   }
 
-  const suggestions = await getColumnSuggestions(fk.entity)
-  remoteColumnItems.value[fkIndex] = suggestions.map((s) => ({
-    title: s.value,
-    value: s.value,
-    category: s.category,
-  }))
+  const [suggestions, directives] = await Promise.all([
+    getColumnSuggestions(fk.entity),
+    getValidDirectives(props.projectName),
+  ])
+  remoteColumnItems.value[fkIndex] = [
+    ...suggestions.map((s) => ({ title: s.value, value: s.value, category: s.category })),
+    ...directives.map((d) => ({ title: d, value: d, category: 'directive' })),
+  ]
 }
 
 // Watch for entity changes to reload remote columns

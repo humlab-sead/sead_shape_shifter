@@ -119,7 +119,6 @@ class DataSourceService:
                 if not data:
                     continue
 
-                data["filename"] = file_path.name
                 ds_config = DataSourceConfig(name=file_path.stem, **data)
                 result.append(ds_config)
 
@@ -151,7 +150,6 @@ class DataSourceService:
             if not data:
                 return None
 
-            data["filename"] = file_path.name
             return DataSourceConfig(name=file_path.stem, **data)
         except Exception as e:  # pylint: disable=broad-except
             logger.error(f"Failed to load data source {source}: {e}")
@@ -173,7 +171,7 @@ class DataSourceService:
         if file_path.exists():
             raise ValueError(f"Data source file '{filename}' already exists")
 
-        config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name", "filename"})
+        config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name"})
 
         if config.password:
             config_dict["password"] = config.password.get_secret_value()
@@ -183,7 +181,6 @@ class DataSourceService:
         logger.info(f"Created data source file '{filename}' (driver: {config.driver})")
 
         result: DataSourceConfig = config.model_copy()
-        result.filename = str(filename)
         result.name = file_path.stem
         return result
 
@@ -203,7 +200,7 @@ class DataSourceService:
         if not file_path.exists():
             raise ValueError(f"Data source file '{filename}' not found")
 
-        config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name", "filename"})
+        config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name"})
 
         if config.password:
             config_dict["password"] = config.password.get_secret_value()
@@ -212,9 +209,8 @@ class DataSourceService:
 
         logger.info(f"Updated data source file '{filename}' (driver: {config.driver})")
 
-        # Return with filename set
+        # Return with name set
         result: DataSourceConfig = config.model_copy()
-        result.filename = str(filename)
         result.name = file_path.stem
         return result
 

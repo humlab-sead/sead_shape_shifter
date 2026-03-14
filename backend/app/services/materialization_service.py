@@ -14,6 +14,7 @@ from backend.app.models.materialization import (
 )
 from backend.app.models.project import Project
 from backend.app.services.entity_values_service import EntityValuesService
+from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.services.project_service import ProjectService
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
@@ -29,15 +30,41 @@ class MaterializationError(Exception):
 class MaterializationService:
     """Service for materializing and unmaterializing entities."""
 
-    def __init__(self, project_service: ProjectService):
+    def __init__(
+        self,
+        project_service: ProjectService,
+        persistence_strategy_registry: EntityPersistenceStrategyRegistry | None = None,
+    ):
         """Initialize service with project service dependency."""
         self.project_service: ProjectService = project_service
         self.entity_values_service: EntityValuesService = EntityValuesService(project_service)
+        self._persistence_strategy_registry = persistence_strategy_registry or EntityPersistenceStrategyRegistry()
 
-    def _get_materialized_file_path(self, project_name: str, entity_name: str, format: str) -> str:
+    def _get_materialized_file_path(self, project_name: str, entity_name: str, format: str) -> str:  # pylint: disable=unused-argument
         """Get relative path for materialized file (relative to project folder)."""
         extension = "parquet" if format == "parquet" else "csv"
         return f"materialized/{entity_name}.{extension}"
+
+    @staticmethod
+    def _sanitize_materialized_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+        """Drop temporary helper columns and duplicate labels before freezing entity data."""
+        sanitized_df = df.copy()
+
+        helper_columns: list[str] = [
+            column for column in sanitized_df.columns if isinstance(column, str) and column.startswith("_merge_indicator_")
+        ]
+        if helper_columns:
+            sanitized_df = sanitized_df.drop(columns=helper_columns, errors="ignore")
+
+        if sanitized_df.columns.has_duplicates:
+            sanitized_df = sanitized_df.loc[:, ~sanitized_df.columns.duplicated()].copy()
+
+        return sanitized_df
+
+    def _normalize_materialized_dataframe(self, table: TableConfig, df: pd.DataFrame) -> pd.DataFrame:
+        """Normalize materialized data to canonical fixed-entity columns."""
+        strategy = self._persistence_strategy_registry.get_strategy_for_type("fixed")
+        return strategy.normalize_materialized_dataframe(table.entity_name, df, table.public_id, list(table.keys))
 
     async def materialize_entity(
         self,
@@ -75,7 +102,10 @@ class MaterializationService:
             if entity_name not in shapeshifter.table_store:
                 raise MaterializationError(f"Entity '{entity_name}' not found in normalization results")
 
-            df: pd.DataFrame = shapeshifter.table_store[entity_name]
+            df: pd.DataFrame = self._normalize_materialized_dataframe(
+                table_cfg,
+                self._sanitize_materialized_dataframe(shapeshifter.table_store[entity_name]),
+            )
 
             # Determine storage strategy
             data_file: str | None = None
@@ -135,6 +165,8 @@ class MaterializationService:
 
     def _create_materialized_entity(self, table: TableConfig, df: pd.DataFrame, values_inline: list[list[Any]] | str) -> dict[str, Any]:
         """Create the new entity config dict for the materialized entity, including saved state for unmaterialization."""
+        df = self._normalize_materialized_dataframe(table, self._sanitize_materialized_dataframe(df))
+
         saved_state: dict[str, Any] = {}
         for k, v in table.entity_cfg.items():
             if k not in ["materialized", "values"]:
@@ -151,7 +183,7 @@ class MaterializationService:
             "public_id": table.public_id,
             "keys": list(table.keys),
             "columns": list(df.columns),
-            "values": values_inline if values_inline else None,
+            "values": df.values.tolist() if isinstance(values_inline, list) else values_inline if values_inline else None,
             "materialized": {
                 "enabled": True,
                 "source_state": saved_state,

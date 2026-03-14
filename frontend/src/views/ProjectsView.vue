@@ -63,64 +63,75 @@
       </v-col>
     </v-row>
 
+    <!-- No Matching Results -->
+    <v-row v-else-if="filteredProjects.length === 0" class="mt-4">
+      <v-col cols="12">
+        <v-card variant="flat">
+          <v-card-text class="text-center py-8">
+            <v-icon icon="mdi-file-search-outline" size="64" color="grey" />
+            <p class="text-h6 mt-4 mb-2">No matching projects</p>
+            <p class="text-grey">Try adjusting your search or sort selection.</p>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- Project List -->
     <v-row v-else class="mt-4">
-      <v-col v-for="project in filteredProjects" :key="project.name" cols="12" md="6" lg="4">
-        <v-card variant="outlined" hover :ripple="false" @click="handleSelectProject(project.name)">
-          <v-card-title class="d-flex align-center">
-            <v-icon icon="mdi-file-document" class="mr-2" />
-            <span class="text-truncate">{{ project.name }}</span>
-          </v-card-title>
-
-          <v-card-text>
-            <div class="d-flex align-center mb-2">
-              <v-icon icon="mdi-cube-outline" size="small" class="mr-2" />
-              <span class="text-body-2">
-                {{ project.entity_count }}
-                {{ project.entity_count === 1 ? 'entity' : 'entities' }}
-              </span>
-            </div>
-
-            <div v-if="project.modified_at" class="d-flex align-center">
-              <v-icon icon="mdi-clock-outline" size="small" class="mr-2" />
-              <span class="text-body-2 text-grey"> Modified {{ formatDate(project.modified_at) }} </span>
-            </div>
-          </v-card-text>
-
-          <v-card-actions>
-            <v-btn
-              variant="text"
-              size="small"
-              prepend-icon="mdi-pencil"
-              @click.stop="handleSelectProject(project.name)"
+      <v-col cols="12">
+        <v-card variant="flat">
+          <v-list density="compact">
+            <v-list-item
+              v-for="project in filteredProjects"
+              :key="project.name"
+              :value="project.name"
+              class="project-list-item"
+              @click="handleSelectProject(project.name)"
             >
-              Edit
-            </v-btn>
-            <v-btn
-              variant="text"
-              size="small"
-              prepend-icon="mdi-content-copy"
-              @click.stop="handleCopyClick(project)"
-            >
-              Copy
-            </v-btn>
-            <v-btn
-              variant="text"
-              size="small"
-              prepend-icon="mdi-check-circle-outline"
-              @click.stop="handleValidate(project.name)"
-            >
-              Validate
-            </v-btn>
-            <v-spacer />
-            <v-btn
-              variant="text"
-              size="small"
-              color="error"
-              icon="mdi-delete"
-              @click.stop="handleDeleteClick(project)"
-            />
-          </v-card-actions>
+              <template #prepend>
+                <v-icon icon="mdi-file-document" size="small" />
+              </template>
+
+              <v-list-item-title class="project-title-row">
+                <span class="project-name">{{ project.name }}</span>
+                <v-chip size="x-small" variant="outlined" class="mx-2">
+                  {{ project.entity_count }}
+                  {{ project.entity_count === 1 ? 'entity' : 'entities' }}
+                </v-chip>
+                <span v-if="project.modified_at" class="text-caption text-medium-emphasis">
+                  Modified {{ formatDate(project.modified_at) }}
+                </span>
+              </v-list-item-title>
+
+              <template #append>
+                <v-btn
+                  icon="mdi-pencil"
+                  variant="text"
+                  size="x-small"
+                  @click.stop="handleSelectProject(project.name)"
+                />
+                <v-btn
+                  icon="mdi-content-copy"
+                  variant="text"
+                  size="x-small"
+                  @click.stop="handleCopyClick(project)"
+                />
+                <v-btn
+                  icon="mdi-check-circle-outline"
+                  variant="text"
+                  size="x-small"
+                  @click.stop="handleValidate(project.name)"
+                />
+                <v-btn
+                  icon="mdi-delete"
+                  variant="text"
+                  size="x-small"
+                  color="error"
+                  @click.stop="handleDeleteClick(project)"
+                />
+              </template>
+            </v-list-item>
+          </v-list>
         </v-card>
       </v-col>
     </v-row>
@@ -322,12 +333,19 @@ async function handleRefresh() {
 </script>
 
 <style scoped>
-.v-card {
-  cursor: pointer;
-  transition: all 0.2s;
+.project-list-item {
+  font-size: 0.9rem;
 }
 
-.v-card:hover {
-  border-color: rgb(var(--v-theme-primary));
+.project-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.project-name {
+  font-weight: 500;
+  font-size: 0.9rem;
 }
 </style>

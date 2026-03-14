@@ -24,8 +24,9 @@ class ProjectUtils:
     def validate_project_name(self, name: str) -> str:
         """Validate project name for new directory structure.
 
-        Allows nested paths like 'arbodat:arbodat-test' but prevents directory traversal.
-        Uses ':' as separator to avoid URL path parsing issues.
+        Allows nested relative paths like 'arbodat:arbodat-test' or 'arbodat/arbodat-test'
+        but prevents directory traversal and absolute paths.
+        Returns API-safe format using ':' separators.
 
         Args:
             name: Project name (can be nested path like 'parent:child')
@@ -44,14 +45,22 @@ class ProjectUtils:
         if ".." in safe_name:
             raise BadRequestError("Invalid project name: directory traversal not allowed")
 
-        # Prevent forward slash in project names (use colon for nesting)
-        if "/" in safe_name:
-            raise BadRequestError("Invalid project name: use ':' for nested projects, not '/'")
-
-        if Path(safe_name.replace(":", "/")).is_absolute():
+        if safe_name.startswith("/"):
             raise BadRequestError("Project name cannot be an absolute path")
 
-        return safe_name
+        if "\\" in safe_name:
+            raise BadRequestError("Invalid project name: backslashes are not allowed")
+
+        normalized_name = safe_name.replace("/", ":")
+
+        # Reject empty segments like ':foo', 'foo:', 'foo::bar', 'foo//bar'
+        if normalized_name.startswith(":") or normalized_name.endswith(":") or "::" in normalized_name:
+            raise BadRequestError("Invalid project name: empty path segments are not allowed")
+
+        if Path(normalized_name.replace(":", "/")).is_absolute():
+            raise BadRequestError("Project name cannot be an absolute path")
+
+        return normalized_name
 
     def ensure_project_exists(self, name: str) -> Path:
         """Ensure project exists in new directory structure.

@@ -1,18 +1,19 @@
 <template>
   <v-dialog
     v-model="dialogModel"
-    :max-width="viewMode !== 'form' ? '95vw' : '900'"
-    :height="viewMode !== 'form' ? '90vh' : '800'"
+    :width="dialogContainerWidth"
+    :max-width="dialogContainerWidth"
+    :height="dialogContainerHeight"
     persistent
     scrollable
   >
-    <v-card style="height: 100%">
+    <v-card class="entity-dialog-card" style="height: 100%">
       <v-toolbar color="primary" density="compact">
         <v-toolbar-title>
           <v-icon :icon="mode === 'create' ? 'mdi-plus-circle' : 'mdi-pencil'" class="mr-2" />
           {{ mode === 'create' ? 'Create Entity' : `Edit ${entity?.name}` }}
         </v-toolbar-title>
-        
+
         <!-- External Storage Badge -->
         <v-chip
           v-if="hasExternalValues && mode === 'edit'"
@@ -24,7 +25,7 @@
         >
           External Storage
         </v-chip>
-        
+
         <v-spacer />
 
         <!-- Three-state view toggle -->
@@ -142,6 +143,10 @@
                           >
                             <template #message>
                               <span class="text-caption">Parent entity to derive this entity from</span>
+                              <span v-if="sourceReferenceColumn" class="text-caption d-block mt-1">
+                                Selecting <strong>{{ sourceReferenceColumn }}</strong> in Columns adds a parent reference.
+                                Values come from the source entity's <strong>system_id</strong>, matching FK behavior.
+                              </span>
                             </template>
                           </v-autocomplete>
 
@@ -371,9 +376,7 @@
                             </div>
                           </v-tooltip>
                         </v-chip>
-                        <span class="text-caption text-medium-emphasis ml-2">
-                          Values loaded from file (editable)
-                        </span>
+                        <span class="text-caption text-medium-emphasis ml-2"> Values loaded from file (editable) </span>
                       </div>
 
                       <!-- Loading Indicator for External Values -->
@@ -385,7 +388,13 @@
                       </v-alert>
 
                       <!-- Error Loading External Values -->
-                      <v-alert v-else-if="externalValuesError" type="error" variant="tonal" density="compact" class="mb-2">
+                      <v-alert
+                        v-else-if="externalValuesError"
+                        type="error"
+                        variant="tonal"
+                        density="compact"
+                        class="mb-2"
+                      >
                         <v-alert-title>Failed to Load External Values</v-alert-title>
                         <div class="d-flex align-center justify-space-between">
                           <span>{{ externalValuesError }}</span>
@@ -458,6 +467,7 @@
 
                           <v-combobox
                             v-model="formData.drop_duplicates.columns"
+                            :items="availableColumns"
                             label="Deduplication Columns"
                             variant="outlined"
                             multiple
@@ -485,6 +495,7 @@
                           </v-row>
                           <v-combobox
                             v-model="formData.drop_empty_rows.columns"
+                            :items="availableColumns"
                             label="Columns to Check for Empty Values"
                             variant="outlined"
                             multiple
@@ -538,6 +549,7 @@
                   :available-entities="availableSourceEntities"
                   :project-name="projectName"
                   :entity-name="formData.name"
+                  :entity-columns="formData.columns"
                   :is-entity-saved="mode === 'edit'"
                   @update:model-value="handleForeignKeysUpdate"
                 />
@@ -560,7 +572,10 @@
               </v-window-item>
 
               <v-window-item value="replacements">
-                <replacements-editor v-model="formData.advanced.replacements" :available-columns="availableColumnsForReplacements" />
+                <replacements-editor
+                  v-model="formData.advanced.replacements"
+                  :available-columns="availableColumnsForReplacements"
+                />
               </v-window-item>
 
               <v-window-item value="yaml">
@@ -737,7 +752,7 @@
         </v-fade-transition>
 
         <v-spacer />
-        <v-btn variant="text" @click="handleCancel" :disabled="loading"> Cancel </v-btn>
+        <v-btn variant="text" @click="handleCancel" :disabled="loading"> Close </v-btn>
         <v-btn color="primary" variant="flat" :loading="loading" :disabled="isSaveDisabled" @click="handleSubmit">
           <v-icon start>mdi-content-save</v-icon>
           Save
@@ -766,6 +781,15 @@
         :entity-name="entity?.name || ''"
         @unmaterialized="handleUnmaterialized"
       />
+
+      <button
+        v-if="!isCompactScreen"
+        type="button"
+        class="dialog-resize-handle"
+        aria-label="Resize editor dialog"
+        title="Drag to resize"
+        @mousedown="startDialogResize"
+      />
     </v-card>
   </v-dialog>
 </template>
@@ -786,6 +810,7 @@
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useEntities, useSuggestions, useEntityPreview, useSettings } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
+import { useDirectiveValidation } from '@/composables/useDirectiveValidation'
 import { useProjectStore, useEntityStore } from '@/stores'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
@@ -810,10 +835,18 @@ import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
 import {
+  buildFixedValuesColumns,
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
   getExternalValuesUpdateColumns,
+  normalizeEditableFixedColumns,
 } from './entityFormMaterialization'
+
+const DIALOG_SIZE_STORAGE_KEY = 'shape-shifter:entity-dialog-size:v1'
+const DEFAULT_DIALOG_WIDTH = 1100
+const DEFAULT_DIALOG_HEIGHT = 820
+const MIN_DIALOG_WIDTH = 900
+const MIN_DIALOG_HEIGHT = 640
 
 // Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
 const FixedValuesGrid = defineAsyncComponent(() => import('./FixedValuesGrid.vue'))
@@ -940,6 +973,7 @@ interface FormData {
     encoding: string
     sheet_name: string
     range: string
+    location: 'global' | 'local'
   }
   foreign_keys: any[]
   depends_on: string[]
@@ -961,6 +995,28 @@ interface FormData {
   }
 }
 
+function normalizeChipField(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === 'string') return item.trim()
+        if (typeof item === 'object' && item !== null && 'value' in item) {
+          const chipValue = (item as { value?: unknown }).value
+          return typeof chipValue === 'string' ? chipValue.trim() : String(chipValue ?? '').trim()
+        }
+        return String(item ?? '').trim()
+      })
+      .filter((item) => item.length > 0)
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? [trimmed] : []
+  }
+
+  return []
+}
+
 const formData = ref<FormData>({
   name: '',
   type: 'entity',
@@ -979,6 +1035,7 @@ const formData = ref<FormData>({
     encoding: 'utf-8',
     sheet_name: '',
     range: '',
+    location: 'global',
   },
   foreign_keys: [],
   depends_on: [],
@@ -1001,6 +1058,19 @@ const formData = ref<FormData>({
 })
 
 const activeTab = ref('basic')
+
+const isCompactScreen = ref(false)
+const dialogSize = ref({ width: DEFAULT_DIALOG_WIDTH, height: DEFAULT_DIALOG_HEIGHT })
+
+const dialogContainerWidth = computed(() => {
+  if (isCompactScreen.value) return '98vw'
+  return `${dialogSize.value.width}px`
+})
+
+const dialogContainerHeight = computed(() => {
+  if (isCompactScreen.value) return '94vh'
+  return `${dialogSize.value.height}px`
+})
 
 // Watch for initial tab from entity store overlay
 const entityStore = useEntityStore()
@@ -1044,6 +1114,14 @@ const sheetOptions = ref<string[]>([])
 const sheetOptionsLoading = ref(false)
 const columnsOptions = ref<string[]>([])
 const columnsLoading = ref(false)
+const directivePaths = ref<string[]>([])
+
+function findSelectedFileInfo(filename: string, location?: 'global' | 'local'): FileInfo | undefined {
+  return availableProjectFiles.value.find((file) => file.name === filename && file.location === location)
+    || availableProjectFiles.value.find((file) => file.name === filename)
+}
+
+const { getValidDirectives } = useDirectiveValidation()
 
 // Delimiter options for CSV
 const delimiterOptions = [
@@ -1057,31 +1135,11 @@ const delimiterOptions = [
 // Important: `values` is a positional 2D array, so the grid column order must match the three-tier identity model.
 // Fixed values grid must include: system_id, public_id (if defined), keys, and columns
 const fixedValuesColumns = computed(() => {
-  const result: string[] = []
-
-  // Always include system_id first (required for three-tier identity)
-  result.push('system_id')
-
-  // Include public_id if defined (required for entities with FK children or mappings)
-  if (formData.value.public_id && formData.value.public_id.trim().length > 0) {
-    result.push(formData.value.public_id)
-  }
-
-  // Include keys (business keys)
-  const keys = (formData.value.keys || []).filter((k: string) => typeof k === 'string' && k.trim().length > 0)
-  result.push(...keys)
-
-  // Include columns (data columns), but exclude system_id and public_id to avoid duplicates
-  const columns = (formData.value.columns || []).filter((c: string) => {
-    if (typeof c !== 'string' || c.trim().length === 0) return false
-    // Exclude system_id and public_id to avoid duplicates
-    if (c === 'system_id') return false
-    if (formData.value.public_id && c === formData.value.public_id) return false
-    return true
-  })
-  result.push(...columns)
-
-  return result
+  return buildFixedValuesColumns(
+    formData.value.columns || [],
+    formData.value.keys || [],
+    formData.value.public_id
+  )
 })
 
 // Can preview only in edit mode
@@ -1136,17 +1194,109 @@ function toggleSplitView() {
   }
 }
 
+function getDialogSizeBounds() {
+  const maxWidth = Math.max(MIN_DIALOG_WIDTH, Math.floor(window.innerWidth * 0.98))
+  const maxHeight = Math.max(MIN_DIALOG_HEIGHT, Math.floor(window.innerHeight * 0.96))
+  return { maxWidth, maxHeight }
+}
+
+function clampDialogSize(width: number, height: number) {
+  const { maxWidth, maxHeight } = getDialogSizeBounds()
+
+  return {
+    width: Math.min(Math.max(Math.round(width), MIN_DIALOG_WIDTH), maxWidth),
+    height: Math.min(Math.max(Math.round(height), MIN_DIALOG_HEIGHT), maxHeight),
+  }
+}
+
+function persistDialogSize() {
+  if (isCompactScreen.value) return
+
+  try {
+    localStorage.setItem(DIALOG_SIZE_STORAGE_KEY, JSON.stringify(dialogSize.value))
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
+  }
+}
+
+function loadDialogSize() {
+  try {
+    const stored = localStorage.getItem(DIALOG_SIZE_STORAGE_KEY)
+    if (!stored) {
+      dialogSize.value = clampDialogSize(DEFAULT_DIALOG_WIDTH, DEFAULT_DIALOG_HEIGHT)
+      return
+    }
+
+    const parsed = JSON.parse(stored) as { width?: number; height?: number }
+    const width = typeof parsed.width === 'number' ? parsed.width : DEFAULT_DIALOG_WIDTH
+    const height = typeof parsed.height === 'number' ? parsed.height : DEFAULT_DIALOG_HEIGHT
+    dialogSize.value = clampDialogSize(width, height)
+  } catch {
+    dialogSize.value = clampDialogSize(DEFAULT_DIALOG_WIDTH, DEFAULT_DIALOG_HEIGHT)
+  }
+}
+
+function updateResponsiveDialogMode() {
+  isCompactScreen.value = window.innerWidth < 1024
+
+  if (!isCompactScreen.value) {
+    dialogSize.value = clampDialogSize(dialogSize.value.width, dialogSize.value.height)
+  }
+}
+
+function startDialogResize(event: MouseEvent) {
+  if (isCompactScreen.value) return
+
+  event.preventDefault()
+
+  const startX = event.clientX
+  const startY = event.clientY
+  const startWidth = dialogSize.value.width
+  const startHeight = dialogSize.value.height
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    const nextWidth = startWidth + (moveEvent.clientX - startX)
+    const nextHeight = startHeight + (moveEvent.clientY - startY)
+    dialogSize.value = clampDialogSize(nextWidth, nextHeight)
+  }
+
+  const onMouseUp = () => {
+    document.body.classList.remove('entity-dialog-resizing')
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+    persistDialogSize()
+  }
+
+  document.body.classList.add('entity-dialog-resizing')
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
 function buildEntityConfigFromFormData(): Record<string, unknown> {
   /**
    * Convert form data to entity config format.
    * Shared by both handleSubmit and refreshPreview to ensure consistency.
    */
+
+  /**
+   * Serialize a keys/columns array back to YAML form.
+   * A single @value: directive element is written as a scalar string for cleaner YAML.
+   * Mixed arrays (directives + regular columns) are preserved as lists.
+   */
+  function serializeKeysField(keys: string[]): string | string[] {
+    const first = keys[0]
+    if (keys.length === 1 && first !== undefined && first.trim().startsWith('@value:')) {
+      return first.trim()
+    }
+    return keys
+  }
+
   const entityData: Record<string, unknown> = {
     type: formData.value.type,
-    keys: formData.value.keys,
+    keys: serializeKeysField(formData.value.keys),
     // For fixed entities, explicitly include system_id and public_id in columns list
     // This ensures the columns match the fixedValuesColumns order used by the grid
-    columns: formData.value.type === 'fixed' ? fixedValuesColumns.value : formData.value.columns,
+    columns: formData.value.type === 'fixed' ? fixedValuesColumns.value : serializeKeysField(formData.value.columns),
   }
 
   // Always include public_id (even if null) to prevent field from being omitted
@@ -1181,13 +1331,12 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
       filename: formData.value.options.filename,
     }
 
-    // Add location field to indicate where file is stored
-    const selectedFile = availableProjectFiles.value.find((f) => f.name === formData.value.options.filename)
+    // Preserve file location from the form, but refresh it from the file list when available.
+    const selectedFile = findSelectedFileInfo(formData.value.options.filename, formData.value.options.location)
     if (selectedFile) {
       options.location = selectedFile.location
     } else {
-      // Default to global for backwards compatibility
-      options.location = 'global'
+      options.location = formData.value.options.location || 'global'
     }
 
     if (formData.value.type === 'csv') {
@@ -1213,14 +1362,27 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
   if (formData.value.foreign_keys.length > 0) {
     // Transform foreign keys: extract column values and preserve all FK settings.
     entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => {
+      // Normalize FK keys arrays, then apply the same scalar-directive rule as serializeKeysField
+      const normalizeFkKeys = (keys: any): string | string[] => {
+        if (typeof keys === 'string' && keys.trim().startsWith('@value:')) {
+          // Scalar directive string — serialize as-is
+          return keys.trim()
+        }
+        const arr: string[] = Array.isArray(keys)
+          ? keys.map((col: any) => (typeof col === 'string' ? col : col.value))
+          : []
+        // Single @value: element — collapse to scalar for cleaner YAML
+        const firstArr = arr[0]
+        if (arr.length === 1 && firstArr !== undefined && firstArr.trim().startsWith('@value:')) {
+          return firstArr.trim()
+        }
+        return arr
+      }
+
       const transformedFk: Record<string, unknown> = {
         entity: fk.entity,
-        local_keys: Array.isArray(fk.local_keys)
-          ? fk.local_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
-          : [],
-        remote_keys: Array.isArray(fk.remote_keys)
-          ? fk.remote_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
-          : [],
+        local_keys: normalizeFkKeys(fk.local_keys),
+        remote_keys: normalizeFkKeys(fk.remote_keys),
       }
 
       if (fk.how) {
@@ -1360,9 +1522,8 @@ async function fetchSheetOptions() {
   }
 
   try {
-    // Find the file to get its location
-    const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
-    const location = fileInfo?.location || 'global'
+    const fileInfo = findSelectedFileInfo(filename, formData.value.options.location)
+    const location = fileInfo?.location || formData.value.options.location || 'global'
 
     const meta = await api.excelMetadata.fetch(
       filename,
@@ -1403,9 +1564,8 @@ async function fetchColumns() {
   }
 
   try {
-    // Find the file to get its location
-    const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
-    const location = fileInfo?.location || 'global'
+    const fileInfo = findSelectedFileInfo(filename, formData.value.options.location)
+    const location = fileInfo?.location || formData.value.options.location || 'global'
 
     const meta = await api.excelMetadata.fetch(
       filename,
@@ -1444,8 +1604,15 @@ function getColumnsFromEntity(entityName: string | null): string[] {
   const sourceKeys = Array.isArray((sourceEntity as any)?.entity_data?.keys)
     ? (sourceEntity as any).entity_data.keys
     : []
+  const sourcePublicId = typeof (sourceEntity as any)?.entity_data?.public_id === 'string'
+    ? (sourceEntity as any).entity_data.public_id.trim()
+    : ''
 
-  const combined = Array.from(new Set([...sourceKeys, ...sourceColumns]))
+  const combined = Array.from(new Set([
+    ...sourceKeys,
+    ...sourceColumns,
+    ...(sourcePublicId && sourcePublicId !== formData.value.public_id ? [sourcePublicId] : []),
+  ]))
   return combined.filter((c) => c !== 'system_id')
 }
 
@@ -1590,6 +1757,7 @@ watch(
         encoding: 'utf-8',
         sheet_name: '',
         range: '',
+        location: 'global',
       }
     }
 
@@ -1658,7 +1826,11 @@ function handleKeyPress(e: KeyboardEvent) {
 }
 
 onMounted(() => {
+  updateResponsiveDialogMode()
+  loadDialogSize()
+
   window.addEventListener('keydown', handleKeyPress)
+  window.addEventListener('resize', updateResponsiveDialogMode)
 
   // Fetch project files if editing a file type entity
   if (props.mode === 'edit' && isFileType.value) {
@@ -1668,11 +1840,33 @@ onMounted(() => {
   if (isExcelType.value && formData.value.options.filename) {
     fetchSheetOptions()
   }
+
+  // Pre-fetch @value: directive suggestions for the combobox
+  if (props.projectName) {
+    getValidDirectives(props.projectName).then((paths) => {
+      directivePaths.value = paths
+    })
+  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyPress)
+  window.removeEventListener('resize', updateResponsiveDialogMode)
+  document.body.classList.remove('entity-dialog-resizing')
 })
+
+watch(
+  () => viewMode.value,
+  (mode) => {
+    if (isCompactScreen.value) return
+
+    // Ensure split mode has enough width to remain usable.
+    if (mode === 'both' && dialogSize.value.width < 1100) {
+      dialogSize.value = clampDialogSize(1100, dialogSize.value.height)
+      persistDialogSize()
+    }
+  }
+)
 
 // Computed
 const dialogModel = computed({
@@ -1711,7 +1905,28 @@ const isExcelType = computed(() => {
   return ['xlsx', 'openpyxl'].includes(formData.value.type)
 })
 
-const availableColumns = computed(() => columnsOptions.value)
+const availableColumns = computed(() => {
+  const cols = columnsOptions.value
+  const directives = directivePaths.value
+  if (directives.length === 0) return cols
+  // Show regular columns first, then @value: directive paths as additional options
+  return [...cols, ...directives.filter((d) => !cols.includes(d))]
+})
+
+const sourceReferenceColumn = computed(() => {
+  if (formData.value.type !== 'entity' || !formData.value.source) return null
+
+  const sourceEntity = entities.value.find((entity) => entity.name === formData.value.source)
+  const sourcePublicId = typeof (sourceEntity as any)?.entity_data?.public_id === 'string'
+    ? (sourceEntity as any).entity_data.public_id.trim()
+    : ''
+
+  if (!sourcePublicId || sourcePublicId === formData.value.public_id) {
+    return null
+  }
+
+  return sourcePublicId
+})
 
 const availableColumnsForUnnest = computed(() => {
   const keys = formData.value.keys || []
@@ -1825,6 +2040,9 @@ function formDataToYaml(): string {
 function yamlToFormData(yamlString: string): boolean {
   try {
     const data = yaml.load(yamlString) as Record<string, any>
+    const normalizedKeys = normalizeChipField(data.keys)
+    const publicId = data.public_id || data.surrogate_id || ''
+    const normalizedColumns = normalizeChipField(data.columns)
 
     // Keep non-inline values/materialization metadata from YAML edits.
     const roundTrip = extractMaterializationRoundTripState(data)
@@ -1858,10 +2076,13 @@ function yamlToFormData(yamlString: string): boolean {
       name: data.name || formData.value.name,
       type: data.type || 'entity',
       system_id: 'system_id', // Always standardized
-      public_id: data.public_id || data.surrogate_id || '', // Migrate surrogate_id → public_id
+      public_id: publicId, // Migrate surrogate_id → public_id
       surrogate_id: data.surrogate_id || '', // Keep for backward compat
-      keys: Array.isArray(data.keys) ? data.keys : [],
-      columns: Array.isArray(data.columns) ? data.columns : [],
+      keys: normalizedKeys,
+      columns:
+        (data.type || 'entity') === 'fixed'
+          ? normalizeEditableFixedColumns(normalizedColumns, normalizedKeys, publicId)
+          : normalizedColumns,
       values: roundTrip.inlineValues,
       source: data.source || null,
       data_source: data.data_source || '',
@@ -1872,9 +2093,10 @@ function yamlToFormData(yamlString: string): boolean {
         encoding: data.options?.encoding || 'utf-8',
         sheet_name: data.options?.sheet_name || '',
         range: data.options?.range || '',
+        location: data.options?.location || 'global',
       },
       foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
-      depends_on: Array.isArray(data.depends_on) ? data.depends_on : [],
+      depends_on: normalizeChipField(data.depends_on),
       drop_duplicates: dropDuplicatesData,
       drop_empty_rows: dropEmptyRowsData,
       check_functional_dependency: effectiveCheckFunctionalDependency,
@@ -1939,7 +2161,7 @@ function buildDirtySnapshot(): string {
     entityData: buildEntityConfigFromFormData(),
   }
 
-  if (hasExternalValues.value) {
+  if (externalValuesDirective.value) {
     snapshot.externalValues = {
       columns: getExternalValuesUpdateColumns(formData.value.type, formData.value.columns, fixedValuesColumns.value),
       values: formData.value.values,
@@ -1982,6 +2204,8 @@ async function handleSubmit() {
   try {
     // Use shared function to build entity config
     const entityData = buildEntityConfigFromFormData()
+    const valuesField = entityData.values
+    const shouldSaveExternalValues = typeof valuesField === 'string' && valuesField.startsWith('@load:')
 
     if (props.mode === 'create') {
       await create({
@@ -2000,15 +2224,19 @@ async function handleSubmit() {
       await update(formData.value.name, {
         entity_data: entityData,
       })
-      
+
       // Save external values if entity has @load: directive
-      if (hasExternalValues.value) {
+      if (shouldSaveExternalValues) {
         try {
           const response = await api.entities.updateValues(
             props.projectName,
             formData.value.name,
             {
-              columns: getExternalValuesUpdateColumns(formData.value.type, formData.value.columns, fixedValuesColumns.value),
+              columns: getExternalValuesUpdateColumns(
+                formData.value.type,
+                formData.value.columns,
+                fixedValuesColumns.value
+              ),
               values: formData.value.values,
             },
             externalValuesEtag.value || undefined // Optimistic locking
@@ -2022,13 +2250,15 @@ async function handleSubmit() {
           if (err.response?.status === 409) {
             error.value = 'External values were modified by another user. Please reload the entity and try again.'
           } else {
-            error.value = 'Entity config saved, but failed to save external values: ' + (err instanceof Error ? err.message : 'Unknown error')
+            error.value =
+              'Entity config saved, but failed to save external values: ' +
+              (err instanceof Error ? err.message : 'Unknown error')
           }
           loading.value = false
           return
         }
       }
-      
+
       // Keep dialog open after saving in edit mode
       emit('saved', formData.value.name)
 
@@ -2056,6 +2286,8 @@ async function handleSubmitAndClose() {
 
   try {
     const entityData = buildEntityConfigFromFormData()
+    const valuesField = entityData.values
+    const shouldSaveExternalValues = typeof valuesField === 'string' && valuesField.startsWith('@load:')
 
     if (props.mode === 'create') {
       await create({
@@ -2066,15 +2298,19 @@ async function handleSubmitAndClose() {
       await update(formData.value.name, {
         entity_data: entityData,
       })
-      
+
       // Save external values if entity has @load: directive
-      if (hasExternalValues.value) {
+      if (shouldSaveExternalValues) {
         try {
           const response = await api.entities.updateValues(
             props.projectName,
             formData.value.name,
             {
-              columns: getExternalValuesUpdateColumns(formData.value.type, formData.value.columns, fixedValuesColumns.value),
+              columns: getExternalValuesUpdateColumns(
+                formData.value.type,
+                formData.value.columns,
+                fixedValuesColumns.value
+              ),
               values: formData.value.values,
             },
             externalValuesEtag.value || undefined // Optimistic locking
@@ -2088,7 +2324,9 @@ async function handleSubmitAndClose() {
           if (err.response?.status === 409) {
             error.value = 'External values were modified by another user. Please reload the entity and try again.'
           } else {
-            error.value = 'Entity config saved, but failed to save external values: ' + (err instanceof Error ? err.message : 'Unknown error')
+            error.value =
+              'Entity config saved, but failed to save external values: ' +
+              (err instanceof Error ? err.message : 'Unknown error')
           }
           loading.value = false
           return
@@ -2114,6 +2352,11 @@ function handleCancel() {
 }
 
 function handleClose() {
+  if (props.mode === 'edit' && hasPendingChanges.value) {
+    const shouldDiscard = window.confirm('You have unsaved changes. Close without saving?')
+    if (!shouldDiscard) return
+  }
+
   error.value = null
   showSaveSuccess.value = false
   if (saveSuccessTimeout) {
@@ -2138,6 +2381,8 @@ function handleMaterialized() {
         formData.value = buildFormDataFromEntity(freshEntity)
         await loadExternalValuesIfNeeded(freshEntity)
         yamlContent.value = formDataToYaml()
+        await refreshFormValidity()
+        captureInitialSnapshot()
       })
       .catch((err) => {
         console.error('Failed to reload after materialization:', err)
@@ -2162,10 +2407,12 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
     loading.value = true
     api.entities
       .get(props.projectName, props.entity.name)
-      .then((freshEntity) => {
+      .then(async (freshEntity) => {
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
+        await loadExternalValuesIfNeeded(freshEntity)
         yamlContent.value = formDataToYaml()
+        await refreshFormValidity()
       })
       .catch((err) => {
         console.error('Failed to reload after unmaterialization:', err)
@@ -2202,16 +2449,22 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
 
   // For fixed entities, strip system_id and public_id from columns
   // since they're auto-managed and will be auto-added on save
-  let columns = (entity.entity_data.columns as string[]) || []
+  const keys = normalizeChipField(entity.entity_data.keys)
+  const normalizedColumns = normalizeChipField(entity.entity_data.columns)
+  let columns = normalizedColumns
   if (entity.entity_data.type === 'fixed') {
-    const publicId = (entity.entity_data.public_id as string) || ''
-    columns = columns.filter(col => col !== 'system_id' && col !== publicId)
+    columns = entity.fixed_schema?.editable_columns || []
   }
 
   // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
   const roundTrip = extractMaterializationRoundTripState(entity.entity_data)
+  hasExternalValues.value = Boolean(roundTrip.externalValuesDirective)
   externalValuesDirective.value = roundTrip.externalValuesDirective
   materializedConfig.value = roundTrip.materializedConfig
+  if (!roundTrip.externalValuesDirective) {
+    externalValuesError.value = null
+    externalValuesEtag.value = null
+  }
 
   return {
     name: entity.name,
@@ -2219,7 +2472,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     system_id: 'system_id', // Always standardized
     public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '', // Migrate
     surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
-    keys: (entity.entity_data.keys as string[]) || [],
+    keys,
     columns: columns,
     values: roundTrip.inlineValues,
     source: (entity.entity_data.source as string) || null,
@@ -2231,9 +2484,10 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       encoding: (entity.entity_data.options as any)?.encoding || 'utf-8',
       sheet_name: (entity.entity_data.options as any)?.sheet_name || '',
       range: (entity.entity_data.options as any)?.range || '',
+      location: (entity.entity_data.options as any)?.location || 'global',
     },
     foreign_keys: (entity.entity_data.foreign_keys as any[]) || [],
-    depends_on: (entity.entity_data.depends_on as string[]) || [],
+    depends_on: normalizeChipField(entity.entity_data.depends_on),
     drop_duplicates: {
       enabled: dropDuplicates !== undefined && dropDuplicates !== null,
       columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
@@ -2257,35 +2511,36 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
  */
 async function loadExternalValuesIfNeeded(entity: EntityResponse) {
   const rawValues = entity.entity_data.values
-  
+
   // Check if entity has @load: directive
   if (typeof rawValues === 'string' && rawValues.startsWith('@load:')) {
     hasExternalValues.value = true
     externalValuesDirective.value = rawValues
     loadingExternalValues.value = true
     externalValuesError.value = null
-    
+
     try {
       console.log(`[EntityFormDialog] Loading external values for ${entity.name}: ${rawValues}`)
       const response = await api.entities.getValues(props.projectName, entity.name)
-      
+
       // Populate form data with fetched values
       formData.value.values = response.values
       if (formData.value.type === 'fixed') {
-        const publicId = formData.value.public_id
-        formData.value.columns = response.columns.filter((col) => col !== 'system_id' && col !== publicId)
+        formData.value.columns = entity.fixed_schema?.editable_columns || []
       } else {
         formData.value.columns = response.columns
       }
-      
+
       // Store etag for optimistic locking
       externalValuesEtag.value = response.etag
-      
-      console.log(`[EntityFormDialog] Loaded ${response.row_count} rows from external storage (${response.format}, etag: ${response.etag.substring(0, 8)}...)`)
+
+      console.log(
+        `[EntityFormDialog] Loaded ${response.row_count} rows from external storage (${response.format}, etag: ${response.etag.substring(0, 8)}...)`
+      )
     } catch (err) {
       externalValuesError.value = err instanceof Error ? err.message : 'Failed to load external values'
       console.error('Failed to load external values:', err)
-      
+
       // Reset to empty on error
       formData.value.values = []
       externalValuesEtag.value = null
@@ -2323,6 +2578,7 @@ function buildDefaultFormData(): FormData {
       encoding: 'utf-8',
       sheet_name: '',
       range: '',
+      location: 'global',
     },
     foreign_keys: [],
     depends_on: [],
@@ -2563,6 +2819,43 @@ function handleRejectDependency(dep: DependencySuggestion) {
 
 .system-id-field :deep(.v-field__outline) {
   opacity: 0.5;
+}
+
+.entity-dialog-card {
+  position: relative;
+}
+
+.dialog-resize-handle {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  cursor: nwse-resize;
+  z-index: 5;
+}
+
+.dialog-resize-handle::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 12px 12px;
+  border-color: transparent transparent rgba(var(--v-theme-primary), 0.55) transparent;
+}
+
+.dialog-resize-handle:hover::before {
+  border-color: transparent transparent rgba(var(--v-theme-primary), 0.8) transparent;
+}
+
+:global(body.entity-dialog-resizing) {
+  cursor: nwse-resize;
+  user-select: none;
 }
 
 /* Dialog content height management */

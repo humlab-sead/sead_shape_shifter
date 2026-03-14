@@ -51,6 +51,15 @@ class TestDirectiveValidator:
         assert not result.is_valid
         assert "must start with '@value:'" in result.error
 
+    def test_validate_directive_with_space_after_colon(self, validator):
+        """Test validation handles space after colon correctly."""
+        result = validator.validate_directive("@value: entities.site.keys")
+
+        assert result.is_valid
+        assert result.path == "entities.site.keys"
+        assert result.resolved_value == ["site_name"]
+        assert result.error is None
+
     def test_validate_directive_too_short(self, validator):
         """Test validation fails with too short path."""
         result = validator.validate_directive("@value:entities")

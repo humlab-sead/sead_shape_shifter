@@ -39,8 +39,13 @@ def unnest(entity: str, table: pd.DataFrame, table_cfg: TableConfig) -> pd.DataF
     if value_vars:
         missing_value_vars: list[str] = [col for col in value_vars if col not in table.columns]
         if len(missing_value_vars) > 0:
-            logger.debug(f"{entity}[unnesting]: Deferring unnesting, missing `value_vars` found: {missing_value_vars}")
-            return table
+            # By the time unnest runs, all extra_columns should be evaluated
+            # Missing columns at this point indicate a configuration error
+            raise ValueError(
+                f"{entity}[unnesting]: Cannot unnest entity, missing `value_vars` columns: {missing_value_vars}. "
+                f"Available columns: {sorted(table.columns.tolist())}. "
+                f"Check that value_vars columns are defined in 'columns', 'keys', 'extra_columns', or added by foreign keys."
+            )
         opts["value_vars"] = value_vars
 
     table_unnested: pd.DataFrame = pd.melt(table, **opts)

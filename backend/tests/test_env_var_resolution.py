@@ -122,14 +122,13 @@ class TestEnvironmentVariableResolution:
             config = DataSourceConfig(
                 name="test_access",
                 driver="ucanaccess",  # type: ignore
-                filename="${TEST_FILENAME}",
-                options={"ucanaccess_dir": "${TEST_DIR}", "other_param": "literal"},
+                options={"filename": "${TEST_FILENAME}", "ucanaccess_dir": "${TEST_DIR}", "other_param": "literal"},
                 **{},
             )
 
             resolved: DataSourceConfig = config.resolve_config_env_vars()
 
-            assert resolved.filename == "/path/to/file.mdb"
+            assert resolved.options["filename"] == "/path/to/file.mdb"
             assert resolved.options["ucanaccess_dir"] == "/path/to/ucanaccess"  # type: ignore
             assert resolved.options["other_param"] == "literal"  # type: ignore
         finally:

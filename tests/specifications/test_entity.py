@@ -109,6 +109,16 @@ class TestFixedEntityFieldsSpecification:
                     "public_id": "entity_id",
                     "values": [[1, None]],
                 },
+                "external_loaded_fixed": {
+                    "type": "fixed",
+                    "columns": ["system_id", "entity_id", "label"],
+                    "keys": ["label"],
+                    "public_id": "entity_id",
+                    "values": [
+                        {"system_id": 1, "entity_id": None, "label": "one"},
+                        {"system_id": 2, "entity_id": None, "label": "two"},
+                    ],
+                },
             }
         }
 
@@ -190,6 +200,15 @@ class TestFixedEntityFieldsSpecification:
         assert result is False, spec.get_report()
         assert len(spec.errors) > 0, spec.get_report()
         assert any("no columns defined" in str(e).lower() for e in spec.errors), spec.get_report()
+
+    def test_external_loaded_fixed_entity_with_dict_rows_is_valid(self, project_cfg):
+        """Resolved @load fixed values should validate when row dicts provide the configured columns."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="external_loaded_fixed")
+
+        assert result is True, spec.get_report()
+        assert len(spec.errors) == 0, spec.get_report()
 
 
 class TestSqlEntityFieldsSpecification:
@@ -278,6 +297,29 @@ class TestFixedEntitySystemIdSpecification:
 
         assert result is True
         assert len(spec.errors) == 0
+
+    def test_dict_backed_system_id_values_are_valid(self):
+        """Externally loaded fixed rows represented as dicts should validate their system_id values."""
+        project_cfg = {
+            "entities": {
+                "sample_type": {
+                    "type": "fixed",
+                    "columns": ["system_id", "sample_type_id", "type_name"],
+                    "public_id": "sample_type_id",
+                    "values": [
+                        {"system_id": 1, "sample_type_id": None, "type_name": "Soil"},
+                        {"system_id": 2, "sample_type_id": None, "type_name": "Wood"},
+                        {"system_id": 3, "sample_type_id": None, "type_name": "Sediment"},
+                    ],
+                }
+            }
+        }
+        spec = FixedEntitySystemIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample_type")
+
+        assert result is True, spec.get_report()
+        assert len(spec.errors) == 0, spec.get_report()
 
     def test_missing_system_id_column_is_valid(self):
         """Test that missing system_id column doesn't cause errors (will be auto-generated)."""
@@ -726,6 +768,8 @@ class TestPublicIdSpecification:
                 "no_id_suffix": {"public_id": "entity"},
                 "non_string_id": {"public_id": 123},
                 "no_public_id": {},
+                "source_entity": {"public_id": "site_id"},
+                "derived_conflict": {"source": "source_entity", "public_id": "site_id"},
             }
         }
 
@@ -754,6 +798,15 @@ class TestPublicIdSpecification:
         result = spec.is_satisfied_by(entity_name="non_string_id")
 
         assert result is False
+
+    def test_derived_entity_public_id_cannot_match_source_public_id(self, project_cfg):
+        """Test validation fails when derived entity reuses its source public_id."""
+        spec = PublicIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="derived_conflict")
+
+        assert result is False
+        assert any("conflicts with source entity" in str(error) for error in spec.errors)
 
 
 class TestAppendSpecification:

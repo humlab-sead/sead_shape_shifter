@@ -1,6 +1,5 @@
 """API endpoints for project management."""
 
-from datetime import datetime, timezone
 from io import StringIO
 from pathlib import Path
 from typing import Any
@@ -13,6 +12,7 @@ from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
 from backend.app.models.validation import ValidationResult
+from backend.app.services.layout_sidecar_manager import LayoutSidecarManager, get_layout_sidecar_manager
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from backend.app.services.yaml_service import YamlService, get_yaml_service
@@ -298,7 +298,7 @@ async def list_backups(name: str) -> list[BackupInfo]:
         List of backup file information
     """
     yaml_service: YamlService = get_yaml_service()
-    project_dir = settings.PROJECTS_DIR / name
+    project_dir = settings.PROJECTS_DIR / ProjectNameMapper.to_path(name)
     backups: list[Path] = yaml_service.list_backups(project_dir=project_dir)
     backup_infos: list[BackupInfo] = [
         BackupInfo(
@@ -328,7 +328,7 @@ async def restore_backup(name: str, request: RestoreBackupRequest) -> Project:
         Restored project
     """
     yaml_service: YamlService = get_yaml_service()
-    target_path: Path = settings.PROJECTS_DIR / f"{name}.yml"
+    target_path: Path = settings.PROJECTS_DIR / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
     yaml_service.restore_backup(request.backup_path, str(target_path), create_backup=True)
     restored_data: dict[str, Any] = yaml_service.load(target_path)
     stat = target_path.stat()
@@ -619,9 +619,15 @@ async def get_custom_layout(name: str) -> CustomLayoutResponse:
     """
     project_service: ProjectService = get_project_service()
     project: Project = project_service.load_project(name)
+    layout_sidecar_manager: LayoutSidecarManager = get_layout_sidecar_manager()
+    project_file = project_service.projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
 
-    # Get layout from project options
-    layout_data = project.options.get("layout", {}).get("custom", {})
+    # Primary source: sidecar file
+    layout_data = layout_sidecar_manager.load_layout(project_file)
+
+    # Backward compatibility: migrate legacy in-file layout if sidecar missing
+    if not layout_data:
+        layout_data = layout_sidecar_manager.migrate_from_project_options(project_file, project.options)
 
     # Convert to response model (skip only the _metadata key, not entities starting with _)
     layout_positions = {
@@ -657,6 +663,8 @@ async def save_custom_layout(name: str, request: SaveLayoutRequest) -> SaveLayou
     """
     project_service: ProjectService = get_project_service()
     project: Project = project_service.load_project(name)
+    layout_sidecar_manager: LayoutSidecarManager = get_layout_sidecar_manager()
+    project_file = project_service.projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
 
     # Validate layout structure
     for entity_name, pos in request.layout.items():
@@ -666,17 +674,21 @@ async def save_custom_layout(name: str, request: SaveLayoutRequest) -> SaveLayou
         if entity_name not in project.entities:
             logger.warning(f"Entity '{entity_name}' not found in project '{name}', keeping position anyway")
 
-    # Update project options
-    if "layout" not in project.options:
-        project.options["layout"] = {}
-    project.options["layout"]["custom"] = request.layout
-    project.options["layout"]["_metadata"] = {
-        "last_updated": datetime.now(timezone.utc).isoformat(),
-        "layout_version": 1,
-    }
+    # Save layout in sidecar file
+    layout_sidecar_manager.save_layout(project_file, request.layout)
 
-    # Save project (backup is created automatically by save_project)
-    project_service.save_project(project)
+    # Keep project file clean: remove legacy in-file layout if present
+    had_legacy_layout = bool(project.options.get("layout", {}).get("custom"))
+    if "layout" in project.options and "custom" in project.options["layout"]:
+        del project.options["layout"]["custom"]
+    if "layout" in project.options and "_metadata" in project.options["layout"]:
+        del project.options["layout"]["_metadata"]
+    if "layout" in project.options and not project.options["layout"]:
+        del project.options["layout"]
+
+    if had_legacy_layout:
+        # Save project only when legacy keys were removed
+        project_service.save_project(project)
 
     logger.info(f"Saved custom layout for project '{name}': {len(request.layout)} entities positioned")
 
@@ -704,24 +716,24 @@ async def clear_custom_layout(name: str) -> dict[str, str]:
     """
     project_service: ProjectService = get_project_service()
     project: Project = project_service.load_project(name)
+    layout_sidecar_manager: LayoutSidecarManager = get_layout_sidecar_manager()
+    project_file = project_service.projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
 
-    # Check if custom layout exists
-    had_layout = bool(project.options.get("layout", {}).get("custom"))
+    deleted_sidecar = layout_sidecar_manager.delete_sidecar(project_file)
 
-    # Remove custom layout
+    # Also remove legacy in-file layout if still present
+    had_legacy_layout = bool(project.options.get("layout", {}).get("custom"))
     if "layout" in project.options and "custom" in project.options["layout"]:
         del project.options["layout"]["custom"]
-        # Clean up metadata
-        if "_metadata" in project.options["layout"]:
-            del project.options["layout"]["_metadata"]
-        # Clean up empty layout dict
-        if not project.options["layout"]:
-            del project.options["layout"]
+    if "layout" in project.options and "_metadata" in project.options["layout"]:
+        del project.options["layout"]["_metadata"]
+    if "layout" in project.options and not project.options["layout"]:
+        del project.options["layout"]
 
-    if had_layout:
-        # Save project (backup is created automatically by save_project)
+    if had_legacy_layout:
         project_service.save_project(project)
 
+    if deleted_sidecar or had_legacy_layout:
         logger.info(f"Cleared custom layout for project '{name}'")
         return {"project_name": name, "message": "Custom layout cleared successfully"}
 

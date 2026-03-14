@@ -33,7 +33,7 @@ describe('dataSourcesApi', () => {
         {
           name: 'csv-file',
           driver: 'csv',
-          file_path: '/data/test.csv',
+          options: { filename: '/data/test.csv' },
         },
       ]
 
@@ -121,7 +121,7 @@ describe('dataSourcesApi', () => {
       const mockDataSource: DataSourceConfig = {
         name: 'data_source_1',
         driver: 'csv',
-        file_path: '/data/test.csv',
+        options: { filename: '/data/test.csv' },
       }
 
       vi.mocked(apiRequest).mockResolvedValue(mockDataSource)
@@ -163,8 +163,8 @@ describe('dataSourcesApi', () => {
       const input: DataSourceConfig = {
         name: 'csv-source',
         driver: 'csv',
-        file_path: '/data/import.csv',
         options: {
+          filename: '/data/import.csv',
           delimiter: ',',
           encoding: 'utf-8',
         },

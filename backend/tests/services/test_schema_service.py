@@ -92,12 +92,12 @@ class TestSchemaIntrospectionService:
     @pytest.fixture
     def access_config(self):
         """MS Access data source config."""
-        return DataSourceConfig(name="test_access", driver="ucanaccess", filename="test.mdb", **{})
+        return DataSourceConfig(name="test_access", driver="ucanaccess", options={"filename": "test.mdb"}, **{})
 
     @pytest.fixture
     def sqlite_config(self):
         """SQLite data source config."""
-        return DataSourceConfig(name="test_sqlite", driver="sqlite", filename="test.db", **{})
+        return DataSourceConfig(name="test_sqlite", driver="sqlite", options={"filename": "test.db"}, **{})
 
     @pytest.mark.asyncio
     async def test_get_tables_not_found(self, service: SchemaIntrospectionService):
@@ -115,7 +115,7 @@ class TestSchemaIntrospectionService:
     @pytest.mark.asyncio
     async def test_get_tables_unsupported_driver(self, service):
         """Should raise error for unsupported driver."""
-        csv_config = DataSourceConfig(name="test_csv", driver="csv", filename="test.csv", **{})
+        csv_config = DataSourceConfig(name="test_csv", driver="csv", options={"filename": "test.csv"}, **{})
         service.data_source_service.load_data_source = Mock(return_value=csv_config)
 
         with pytest.raises(SchemaIntrospectionError, match="not supported"):

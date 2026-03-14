@@ -16,9 +16,11 @@ from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
 from backend.app.services.project.entity_operations import EntityOperations
+from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.services.project.file_manager import FileManager
 from backend.app.services.project.project_operations import ProjectOperations
 from backend.app.services.project.project_utils import ProjectUtils
+from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
 
 
@@ -67,6 +69,7 @@ class ProjectService:
         self.projects_dir: Path = Path(projects_dir or settings.PROJECTS_DIR)
         self.specification = ProjectYamlSpecification()
         self.state: ApplicationStateManager = state or get_app_state_manager()
+        self.sidecar_manager: TaskListSidecarManager = TaskListSidecarManager(self.yaml_service)
 
         # Initialize project utilities component
         self.utils = ProjectUtils(projects_dir=self.projects_dir)
@@ -88,6 +91,7 @@ class ProjectService:
             project_lock_getter=self._get_lock,
             load_project_callback=self.load_project,
             save_project_callback=self.save_project,
+            persistence_strategy_registry=EntityPersistenceStrategyRegistry(),
         )
 
         # Initialize file manager component
@@ -182,7 +186,6 @@ class ProjectService:
             # cause lost-update race conditions.
             copy: Project = cached_project.model_copy(deep=True)
             entity_count: int = len(copy.entities or {})
-            entity_names: list[str] = sorted((copy.entities or {}).keys())
             logger.info(
                 "[{}] load_project: '{}' from CACHE (deep copy) entities={}",
                 corr,
@@ -205,6 +208,24 @@ class ProjectService:
                     message=f"Invalid project file '{name}': missing required 'entities' key",
                 )
 
+            # Load task_list from sidecar if it exists, otherwise use main file
+            sidecar_task_list = self.sidecar_manager.load_task_list(filename)
+            if sidecar_task_list:
+                # Sidecar exists: use it and remove task_list from main file data
+                data = dict(data)  # Copy to avoid mutating loaded data
+                if "task_list" in data:
+                    del data["task_list"]
+                data["task_list"] = sidecar_task_list
+                logger.debug(f"Loaded task_list from sidecar for '{name}'")
+            else:
+                # Sidecar doesn't exist: check if migration is needed (one-time)
+                data = self.sidecar_manager.migrate_task_list(filename, data)
+                # After migration, try loading from sidecar again
+                sidecar_task_list = self.sidecar_manager.load_task_list(filename)
+                if sidecar_task_list:
+                    data["task_list"] = sidecar_task_list
+                    logger.debug(f"Loaded task_list from sidecar after migration for '{name}'")
+
             project: Project = ProjectMapper.to_api_config(data, name)
 
             assert project.metadata is not None  # For mypy
@@ -218,7 +239,6 @@ class ProjectService:
             # Cache in ApplicationState for subsequent requests (multiple projects can be cached)
             self.state.activate(project)
 
-            entity_names = sorted((project.entities or {}).keys())
             logger.info("[{}] load_project: '{}' from DISK entities={}", corr, name, len(project.entities))
             return project
 
@@ -266,6 +286,9 @@ class ProjectService:
             # Convert to core dict for saving (sparse structure)
             cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(project)
 
+            # Extract task_list to save to sidecar separately
+            task_list_data = cfg_dict.pop("task_list", None)
+
             logger.info(
                 "[{}] save_project: '{}' writing entities={} names={}",
                 corr,
@@ -274,7 +297,18 @@ class ProjectService:
                 entity_names,
             )
 
+            # Save main project file (without task_list)
             self.yaml_service.save(cfg_dict, file_path, create_backup=create_backup)
+
+            # Save task_list to sidecar if present
+            if task_list_data:
+                try:
+                    sidecar_path = self.sidecar_manager.get_sidecar_path(file_path)
+                    self.yaml_service.save({"task_list": task_list_data}, sidecar_path)
+                    logger.debug(f"Saved task_list to sidecar: {sidecar_path}")
+                except Exception as e:  # noqa: PERF203 ; pylint: disable=broad-exception-caught
+                    logger.error(f"Failed to save task_list to sidecar: {e}")
+                    # Continue anyway - main project is saved
 
             # DEFENSIVE: Verify what was actually written to disk
             self._verify_save(name, entity_names, file_path, corr)
@@ -425,7 +459,9 @@ class ProjectService:
             ResourceConflictError: If target project already exists
             ProjectServiceError: If copy fails
         """
-        return self.operations.copy_project(source_name, target_name)
+        safe_source_name: str = self.utils.validate_project_name(source_name)
+        safe_target_name: str = self.utils.validate_project_name(target_name)
+        return self.operations.copy_project(safe_source_name, safe_target_name)
 
     def update_metadata(
         self,

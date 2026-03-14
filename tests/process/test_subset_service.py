@@ -61,6 +61,39 @@ def test_get_subset_resolves_extra_columns_case_insensitive() -> None:
     assert result["value_copy"].tolist() == ["foo", "bar"]
 
 
+def test_get_subset_maps_source_public_id_to_source_system_id_for_derived_entities() -> None:
+    service = SubsetService()
+    df = pd.DataFrame({"system_id": [10, 20], "property_name": ["a", "b"]})
+    entities_cfg = {
+        "site": {
+            "type": "fixed",
+            "public_id": "site_id",
+            "columns": ["property_name"],
+            "keys": [],
+        },
+        "site_property": {
+            "type": "entity",
+            "source": "site",
+            "public_id": "site_property_id",
+            "columns": ["site_id", "property_name"],
+            "keys": [],
+            "drop_duplicates": False,
+            "drop_empty_rows": False,
+            "extra_columns": {},
+            "replacements": {},
+            "check_functional_dependency": False,
+            "strict_functional_dependency": False,
+        },
+    }
+    table_cfg = TableConfig(entities_cfg=entities_cfg, entity_name="site_property")
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert list(result.columns) == ["site_id", "property_name"]
+    assert result["site_id"].tolist() == [10, 20]
+    assert "system_id" not in result.columns
+
+
 def test_get_subset_adds_constant_extra_column() -> None:
     service = SubsetService()
     df = pd.DataFrame({"id": [1, 2]})

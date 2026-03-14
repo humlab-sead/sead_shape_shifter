@@ -16,13 +16,7 @@
 
 ---
 
-### Bugs
-
-FIXME: Projects are sometimes stored with resolved values.
-FIXME: #219 Inline data source configurations raised an error.
-
 ### Tech debts:
-
 
 ### New features
 
@@ -32,17 +26,12 @@ FIXME: #219 Inline data source configurations raised an error.
  - [] TODO: #68 Add a "finally" step that removes intermediate tables and columns.
  - [] TODO: #66 Introduce a "transformations" section with more advance columnar transforms (e.g. toWSG84).
  - [] TODO: #69 Add "parent" property to entity definitions.
- - [] TODO: #67 Introduce support for string concatenation in "extra_columns".
- - [] TODO: Add capability to duplicate an existing configuration.
  - [] TODO: #108 Add tiny DSL Expression Support in extra_columns
  - [] TODO: Introduce optional support for types for entity fields
           (e.g., string, integer, date) and support type conversions in extra_columns.
  - [] TODO: Improve multiuser support (working on same project)
  - [] TODO: Add more reconciliation entity types, and non-SEAD types (e.g. Geonames, RAÄ-lämningsnummer)
- - [] TODO: NOT WORTH THE EFFORT! Improve user experience (Add new edge/relationship in dependency graph)
- - [] TODO: Improve in-system help (full User Guide, more context sensitive help)
  - [] TODO: Improve UX suggestions when editing entity (awareness of availiable tables, columns etc)
- - [] TODO: Auto-save feature in YAML editing mode (trigger after 2 seconds of inactivity)
  - [] TODO: Consider limiting "@value:" directive usage to only refer to non-directive keys.
  - [] TODO: Consnider moving specifications/base/get_entity_columns it to TableConfig
             Note that columns avaliable at a specifik FK's linking includes result columns from previous linked FKs.
@@ -100,20 +89,15 @@ Backend implementation: parse the string when it’s added to the DataFrame. If 
 Keep helper mappings simple so non-technical users can combine columns with string functions; expose more via extending the compiler (e.g., additional helpers for dates or math).
 
 
-### TODO: #124 Reconciliation editor extra_columns complaint - **Easy Fix**
-- The reconciliation editor validation is likely too strict
-- Simple fix: Update schema/validation to allow `extra_columns` property
----
-
-### TODO: Generate default reconciliation YAML from manifest - **Smart Feature**
+### TODO: Generate default reconciliation YAML from manifest 
 - Calls `/reconcile` endpoint and scaffolds YAML
 - Reconciliation system already exists with full implementation
 
-### TODO: #68 Add "finally" cleanup step - **Pipeline Feature**
+### TODO: #68 Add "finally" cleanup step 
 - Drops intermediate tables/columns after processing
 - Fits naturally after Store phase
 
-### TODO: #108 Tiny DSL for extra_columns - **HIGH VALUE but Complex**
+### TODO: #108 Tiny DSL for extra_columns 
 - Detailed spec already exists in TODO.md
 - Two-tier approach is smart: `=concat(...)` for users, `expr:...` for power users
 
@@ -132,96 +116,163 @@ Keep helper mappings simple so non-technical users can combine columns with stri
 ### TODO: Add more reconciliation entity types - **Domain-Specific**
 - Geonames, RAÄ, etc.
 
-### TODO: Improve UX suggestions when editing entity - **Context-Aware Editor**
-- Show available tables/columns from data source
-- Could integrate with existing YAML intelligence
-
-Add capability to upload Excel files (.xls, .xlsx) to the data source files directory defined by SHAPE_SHIFTER_DATA_SOURCE_FILES_DIR in the .env file. The uploaded Excel files should be accessible for use in entity configurations within the Shape Shifter application.
-
 ### TODO: Introduce entity type "file" for entities based on files,
 Type of files could be csv, excel, json, xml etc, and specified in e.g a "file_type" field.
 This would give a more plugin friendly way of adding file based entities.
 
-### TODO: #202 Improve FK editing user experience
-
-We can improve the user experience when editing FKs. Currently, thw system offers no assistance when entering local and remote FK. 
-
-I think the system could offer picklists of available local and remote columns. This picklist should include all columns from each entity that is a candidate for the FK relationship, i.e. all columns in columns, keys nd extra_columns, any columns that are generated during normalization (e.g. result of unnesting unnested columns (value id, value vars, id_vars), FK-columns and FK's extra columns etc), system_id, public_id.
-The candidate columns can be computed without doing the full normalization, by analyzing the entity definitions and their relationships.
-
-A special case is if the user wants to use a "@value"-directive to point to e.g. another YAML-key in the project. To keep it aimple "@value: entities.**local/remote-entity-name**.keys" could be added to the picklist.
-One could also for flexibility allow the user to enter arbitrary YAML-path i.e. a åath that doesn't exist in the picklist.
-If a "@value" is used, that can be the only value, and should be a string (not a list). This will be resolved at runtime to the actual column(s).
-
-The "
 ### TODO: #213 Copy SQL feature from Schema Explorer.
 Add a convenience function for copying an SQL select statement to the clipboard for selected entity in schema explorer. This is useful when a user want to create an SQL select in the entity editor based on a table in the specified data source. This could also possibly be extended to a "picker" in the entity editor that allows users to select a table from the data source and automatically generate a select statement for that table.
 
 ### TODO: Add a "Test Query" button in the entity editor.
 Should open a modal with a Monaco Editor for SQL editing, allowing users to test SQL queries against the data source directly from the entity editor. This would provide a more integrated experience for users working with SQL entities.
 
-### TODO: Save custom graph layout in separate file
+### TODO: Edit @value directive
+The "@value: dot-path" is directive that expands a key's value by replacing the directive with the value referenced by the dot-path. A dict {"a": "@value: b.c", "b": {"c": "hello"}}, will be resolved to  {"a":  "hello", "b": {"c": "hello"}}. This feature was introduced since e.g. the number of business keys for an entity can be close to 10 keys. The core layer resolves the @value directive using logic fould in #file:utility.py, so project YAML files can contain these directives, and they are expandad when the project is resolved at the API/core boundry.
+
+The current rudimentary syntax of expressions allowed in the @value-directive is stems from the need of simplifying complex compound keys which are resolved to a list of strings. This feature is useful for other use cases as well, though.
+
+THie only operator allowed/implemented is current the "+" operator, which in this syntax is a list append operation, and which always resolves to a list of strings.
 
 
-### TODO: #221 System fails to find ingesters folder
-The system currently fails to find the ingesters folder when running in Docker. Cause: the ingesters folder is not copied to the Docker image, we need to copy the ingesters folder to the Docker image in the Dockerfile, and set environment variables accordingly.
-Wouldn't the simple solution be to only have resolved path in core layer? I code think a rule if "location" in "options", "filename" = strip_filenames_path(filename). Or is that do hacky? I could think adding a  simple mechanism for adding type specific mappings. 
+```
+    1. Simple value:    "@value: path.to.value" 
+    2. Prepend:         "['a', 'b'] + @value: path.to.list"
+    3. Append:          "@value: path.to.list + ['c', 'd']"
+    4. Multiple values: "@value: path1 + @value: path2"
+    5. Chaining:        "['a'] + @value: path1 + @value: path2 + ['b']"
+```
 
-### FIXME:
+The UX currently has very limited support for edititing this kind of expression. Some support exists in the Foreign Key editor (but I'm not sure it works). It would be of very high value if we could add at least a basic support for these references for the Columns field, the Business Key field, and the remote/local fields in the Foreign Key editor.
 
+These are some requirements/fingerpointers given that we are editing the values V for (dict-) key K (e.g. editing of "columns" in an entity's YAML).
 
-We need to review how **"filename"** entity's "options" dict id handled. This value holds the filename of of the source file for file based entities (csv, xlsx).
-Currently, this file can be in two places: in a **global store** or **locally** in the project's folder.
-- The location to the global store is defined in GLOBAL_DATA_DIR, which is a path relative to the **application root**.
-- The project's local folder is the project root folder + project's path given by it's name (nested folders separated by ":")
-Note that the "filename" and "location" information is used by the file based data loaders.
+ - If the user has picked/entered only primitive values, than the V stored in the YAML, unchanged to current implementation, is a list of those values:
+     K: ["v1", "v2", "v3", ...]
+ - If the user has added a single "@value: dot.path", and noting more, than this string is stored as "K: "@value: dot.path". 
 
-Initially, we encoded the local/public location by prepending "${GLOBAL_DATA_DIR}/" to the value in "filename".
-The filename was the supposed to be resolved in the I/O-layer (read/write). This didn't work well, so it was changed to
-a more straightforward approach by adding a "location" key next to "filename" indicating storage location
-and that can take values "local" or "global". The problem is that the codebase now contains hacks in
-several places which mixes the two approaches. We don't need to store "${GLOBAL_DATA_DIR}/" anymore but
-that happens still in e.g. _resolve_file_paths_in_entity in backend/app/api/v1/endpoints/entities.py.
-The resolve logic also exists in several places. I'm also unsure if the location property 
-survives the mapping "API => core => API"
+How to deal with more complex expressions involving both primtime values and references is more open for suggestions. One way would be to store them like a list such as:
+  K: ['a', 'b'] + @value: path.to.list"
+which is equalent to:
+  K:
+    - 'a'
+    - 'b'
+    - @value: dot.path"
 
-Please review this and propose a more robust handling.  We could e.g. consider centralizing the logic to the file based loader class
-but somehow still various parts of the system need's a resolved filename.
+The system most then resolve the reference so the end result is a flattened list, i.e. use append or add depending what the reference resolved to.
 
-FIXME: Review hos "system_id" should be handled for fixed value entities. Currently, it is created by the server, and the client only display a sequence 1 to number of rows. This is very brittle. System_id is used as target columns for FKs, and if the system_id changes, the FK relationships will break. We need a more robust handling of system_id for fixed value entities. Instead the system_id should be a "concrete" value in the client, the get's auto-populated when the user adds a new row in the fixed value entity editor. The system_id should be unique and stable, and should not change when the entity is edited. The system_id must survice rows being added, removed and re-ordered. When a new row is added, the system_id can be generated by taking the max system_id in the existing rows and adding 1. When a row is removed, the system_id of the remaining rows should not change. When rows are re-ordered, the system_id should not change. This way, the FK relationships will not break when the entity is edited.
+Given the context, we should be able to constrict valid dot.path, e.g. when picking column given a source entity. We also need to add a validation that checks for "dangling" references in the project.
 
+What are your thought? How would an implementation plan look like? 
 
-### TODO: #271 Add interpolated string support in extra_columns (Phase 1) - **HIGH VALUE**
-Add support for interpolated string syntax (e.g., `"{first_name} {last_name}"`) in extra_columns to enable users to create computed columns from existing ones using simple, intuitive expressions.
+### FIXME: Store resolved bug
 
-**Key features**:
-- Intuitive `{column}` interpolation pattern
-- Multi-stage evaluation (can reference FK-added columns)
-- Null-safe with type coercion
-- Backward compatible
-
-**Implementation plan**: See [`docs/features/INTERPOLATED_EXTRA_COLUMNS_IMPLEMENTATION_PLAN.md`](docs/features/INTERPOLATED_EXTRA_COLUMNS_IMPLEMENTATION_PLAN.md)
-**Estimated effort**: 4-6 days
+We have a bug related to the recently fixes related to the "@value" directive. All "@value" directives have been resolved in the stored (on disk) file
 
 
-### TODO: Reset tab to "basic" when an entity is opened
+### FIXME: Entity not persisted ** CAN NOT REPRODUCE! ***
 
-### TODO: Improve APPEND editor
+There is new bug related to saving project/entity most likely caused by recent changes. 
 
-```yaml
-name: feature_type
+1. I open this entity in the Entity Editor:
+
+```
+name: abundance_element
 type: sql
 system_id: system_id
-keys: []
+keys:
+  - RTyp
 columns:
-  - Befundtyp
-  - Beschreibung
-public_id: feature_type_id
+  - Resttyp
+  - RTypGrup
+  - RTypNr
+public_id: abundance_element_id
 data_source: arbodat_lookup
-query: select [Befundtyp], [Beschreibung] from [Befundtypen];
-drop_duplicates: true
-check_functional_dependency: true
+query: select [RTyp], [Resttyp], [RTypGrup], [RTypNr] from [RTyp];
+foreign_keys:
+  - entity: abundance_element_group
+    local_keys:
+      - RTypGrup
+    remote_keys:
+      - RTypGrup
+depends_on:
+  - abundance_element_group
 extra_columns:
-  feature_type_name: Befundtyp
-  description: Beschreibung
+  element_name: RTyp
+  element_description: Resttyp
 ```
+
+2. Add "@value:entities.abundance.keys" to "keys". Opening YAML tab shows as expected that '@value:entities.abundance.keys' has been added to keys.
+
+```
+name: abundance_element
+type: sql
+system_id: system_id
+keys:
+  - RTyp
+  - '@value:entities.abundance.keys'
+columns:
+...
+```
+
+3. Press SAVE in entity editor
+   ==> Status message that entity has been saved successfully
+   ==> Button "SAVE CHANGES" in project details view becomes enabled. This is not expected.
+
+4. Verify entity in project detail views YAML tab shows expected values:
+
+```
+name: abundance_element
+type: sql
+system_id: system_id
+keys:
+  - RTyp
+  - '@value:entities.abundance.keys'
+columns:
+...
+```
+
+5. Verify YAML on disk
+
+### TODO: Fixes related to task status
+
+In the graph view, when changing "Color by" from "Entity Type" to "Task Status", only entities with types "Done" or "Ignored" changes color. All other entities remain colored by entity type.
+
+We have four task status values: "todo", "ongoing", "done" and "ignored". The shapeshifter.tasks.yml has keys "required_entities", "completed" and "ignored". The mapping of "todo" and "ongoing" to "required_entities" is unclear.
+
+I think we should use the keys "todo", "ongoing", "done" and "ignored" in shapeshifter.tasks.yml.
+
+The keys should have the following semantics:
+ - "todo": initial state, an entity that don't yet exists in the project file: COLOR: yellowish?
+ - "ongoing": if entity exists, but "done" or "ignored": COLOR: bluish?
+ - "ignored": entity is ignored by task system's definition of done: COLOR: greyish
+ - "done": end state, entity is finalized. COLOR: greenish
+
+With this semantics, we need to add placeholder nodes in the graph for "todo" entities.
+Possibly, also, we need to simple ways of adding/removing "todo" entities.
+Or, possibly, we could allow user to edit "shapeshifter.tasks.yml"
+
+I think these changes (and bugfixes) would increase the usability of the task feature.
+What do you think?
+
+### TODO: Consider adding a trash bin when deleteing projects (move instead of delete)
+### TODO: Change "optimistic locking" concurrency strategy
+
+When saving project YAML, the system compares client's project's version number to server side version number. If the version
+number differs, the the client's updates are discarded. We should instead use a merging strategy as the default 
+concurrency resolver. If client's project only differ
+
+### TODO: File location resolution fails if project's folder name differs from metadata.name
+
+if project not in folder "xyz" then this fails with FileLoader raising FileNotFoundError:
+
+```shapeshifter.yml
+metadata:
+  name: xyz
+  ...
+entities:
+  abc:
+    ...
+    options:
+      filename: abc.xlsx
+      location: local
+      sheet_name: Sheet1

@@ -6,6 +6,7 @@
 - Preserve the core pipeline order: Extract ➜ Filter ➜ Link ➜ Unnest ➜ Translate ➜ Store; orchestrate via `ShapeShifter` (`src/normalizer.py`) using `ProcessState`.
 - Keep backend layering clear: routers in `api/v1/endpoints/`, services in `services/`, Pydantic v2 models in `models/`, and shared settings in `core/`.
 - Build frontend features with Vue 3 `<script setup>` components, Pinia stores, composables, Axios API layer, and Monaco-based YAML editing.
+- Treat `docs/features/` as future-feature backlog, not authoritative implementation guidance. Ignore it by default for debugging, validation, and implementation unless the user explicitly asks about roadmap or planned features.
 
 ## Workflow Commands
 - Run `make install` for full setup; use `uv pip install -e ".[api]"` for Core+API or `uv pip install -e .` for Core only.

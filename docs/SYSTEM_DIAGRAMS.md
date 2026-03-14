@@ -127,7 +127,7 @@ flowchart TB
     subgraph "3 Validation Phase"
         C1[Run<br/>Validation]
         C2[Review<br/>Errors]
-        C3[Apply<br/>Auto-Fixes]
+        C3[Resolve<br/>Issues]
     end
     
     subgraph "4 Reconciliation Phase"
@@ -263,7 +263,7 @@ flowchart TB
         subgraph "Validation Tab"
             V1[Run All Validations]
             V2[Error Summary]
-            V3[Auto-Fix Suggestions]
+            V3[Issue Review]
         end
         
         subgraph "Reconciliation Tab"
@@ -454,9 +454,9 @@ flowchart TB
     
     subgraph "Results"
         R1[Error Reports]
-        R2[Auto-Fix Suggestions]
-        R3[Preview Changes]
-        R4[One-Click Apply]
+        R2[Issue Review]
+        R3[Manual Changes]
+        R4[Re-Validate]
     end
     
     V1 --> S1 & S2 & S3 & S4 & S5
@@ -578,7 +578,7 @@ mindmap
       Dependency Graph
     Validation System
       Multi-Level Checks
-      Auto-Fix Suggestions
+            Guided Remediation
       Real-Time Feedback
       Error Prevention
     Identity Reconciliation

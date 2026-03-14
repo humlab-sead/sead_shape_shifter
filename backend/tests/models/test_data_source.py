@@ -42,13 +42,12 @@ class TestDataSourceConfig:
         config = DataSourceConfig(
             name="access_db",
             driver="ucanaccess",
-            filename="./data/test.mdb",
-            options={"ucanaccess_dir": "lib/ucanaccess"},
+            options={"filename": "./data/test.mdb", "ucanaccess_dir": "lib/ucanaccess"},
             **{},
         )
         assert config.name == "access_db"
         assert config.driver == "ucanaccess"
-        assert config.effective_file_path == "./data/test.mdb"
+        assert (config.options or {})["filename"] == "./data/test.mdb"
         assert (config.options or {})["ucanaccess_dir"] == "lib/ucanaccess"
 
     def test_csv_config(self):
@@ -56,8 +55,8 @@ class TestDataSourceConfig:
         config = DataSourceConfig(
             name="csv_data",
             driver="csv",
-            filename="./data/test.csv",
             options={
+                "filename": "./data/test.csv",
                 "sep": ";",
                 "encoding": "utf-8",
             },
@@ -66,18 +65,11 @@ class TestDataSourceConfig:
 
         assert config.name == "csv_data"
         assert config.driver == "csv"
-        assert config.effective_file_path == "./data/test.csv"
 
     def test_dbname_alias(self):
         """Test dbname as alias for database."""
         config = DataSourceConfig(name="test_db", driver="postgresql", host="localhost", dbname="testdb", **{})
         assert config.effective_database == "testdb"
-
-    def test_file_path_alias(self):
-        """Test file_path as alias for filename."""
-        config = DataSourceConfig(name="csv_data", driver="csv", file_path="./data/test.csv", **{})
-
-        assert config.effective_file_path == "./data/test.csv"
 
     def test_invalid_port(self):
         """Test validation of port number."""

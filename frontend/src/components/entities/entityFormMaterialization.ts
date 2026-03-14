@@ -5,6 +5,63 @@ export interface MaterializationRoundTripState {
 }
 
 /**
+ * Fixed-entity columns in YAML already include identity columns and keys.
+ * The form edits keys separately, so strip those columns out of the editable
+ * columns array to avoid duplicating them on save.
+ */
+export function normalizeEditableFixedColumns(
+  columns: string[],
+  keys: string[],
+  publicId: string | null | undefined
+): string[] {
+  const hiddenColumns = new Set<string>(['system_id'])
+
+  if (publicId && publicId.trim().length > 0) {
+    hiddenColumns.add(publicId)
+  }
+
+  for (const key of keys) {
+    if (typeof key === 'string' && key.trim().length > 0) {
+      hiddenColumns.add(key)
+    }
+  }
+
+  return columns.filter((column) => !hiddenColumns.has(column))
+}
+
+/**
+ * Build the canonical fixed-values column order.
+ */
+export function buildFixedValuesColumns(
+  columns: string[],
+  keys: string[],
+  publicId: string | null | undefined
+): string[] {
+  const canonical: string[] = ['system_id']
+
+  if (publicId && publicId.trim().length > 0) {
+    canonical.push(publicId)
+  }
+
+  for (const key of keys) {
+    if (typeof key === 'string' && key.trim().length > 0 && !canonical.includes(key)) {
+      canonical.push(key)
+    }
+  }
+
+  for (const column of columns) {
+    if (typeof column !== 'string' || column.trim().length === 0) {
+      continue
+    }
+    if (!canonical.includes(column)) {
+      canonical.push(column)
+    }
+  }
+
+  return canonical
+}
+
+/**
  * Extract materialization fields so they can be round-tripped through form state.
  */
 export function extractMaterializationRoundTripState(entityData: Record<string, any>): MaterializationRoundTripState {

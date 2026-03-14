@@ -1,768 +1,384 @@
-# Task List Feature Proposal
+# Task Management System Review and Overhaul Proposal
 
-**Date:** January 15, 2026  
-**Status:** Proposal - Simplified Design  
-**Effort Estimate:** ~5 days  
-**Priority:** High Value / Moderate Effort
+**Date:** March 7, 2026  
+**Status:** Review + Redesign Proposal (based on implemented code)  
+**Scope:** Task model, storage, API, graph UX, and status coloring
 
 ---
 
 ## Executive Summary
 
-This proposal outlines a **simplified, graph-centric task tracking system** for Shape Shifter entities. The feature provides progress visibility and workflow guidance without enforcing work order, using visual badges on the dependency graph as the primary UI.
+Task management is already implemented and available in both backend and frontend, but it has grown in a partially inconsistent way.
 
-**Key simplifications from original spec:**
-- 3 statuses instead of 5 (done, todo, ignored)
-- Derive blocked/in-progress automatically (don't store)
-- Graph visualization only (no separate task list sidebar)
-- Use dependency graph for suggested order
-- Minimal YAML extension
+The current feature is usable for simple progress tracking:
+1. Tasks are stored in project YAML under top-level `task_list`.
+2. Status is updated through graph node right-click actions.
+3. API endpoints exist and are in production code.
 
----
+The main opportunity now is not "adding tasks" but **consolidating and simplifying what already exists**.
 
-## Value vs Effort Analysis
-
-### Value: HIGH ⭐⭐⭐⭐
-
-**Addresses real UX pain points:**
-- Progress visibility for complex projects
-- Cognitive load reduction (users don't have to remember what's done)
-- Guided workflow without enforcement
-- Especially valuable for teams and domain-specific templates
-
-### Effort: MODERATE ⚙️⚙️⚙️
-
-**Original estimate:** 6-8 days  
-**Simplified estimate:** ~5 days
-
-- Backend: 2 days (model extension, status derivation logic, API endpoints)
-- Frontend: 2 days (UI component, graph integration, status updates)
-- Testing: 1 day
-
-### ROI: Excellent ✅
-
-High value for moderate effort makes this worthwhile.
+This update proposes:
+1. A clearer status model with primary status + secondary flags.
+2. Moving task persistence from `shapeshifter.yml` into a dedicated sidecar file.
+3. Completing graph integration, including explicit "Color By" modes (`type` vs `task`).
 
 ---
 
-## Key Simplifications
+## Current State (Verified in Code)
 
-### 1. Simplify Status Model (5 → 3 States)
+### Backend and API
 
-**Problem with original proposal:**
-- Too many states: `pending`, `in_progress`, `blocked`, `ignored`, `done`
-- Storing derived states creates sync issues
+Implemented endpoints in `backend/app/api/v1/endpoints/tasks.py`:
+1. `GET /projects/{name}/tasks`
+2. `POST /projects/{name}/tasks/initialize`
+3. `POST /projects/{name}/tasks/{entity_name}/complete`
+4. `POST /projects/{name}/tasks/{entity_name}/ignore`
+5. `DELETE /projects/{name}/tasks/{entity_name}`
 
-**Simplified model:**
+Implemented service in `backend/app/services/task_service.py`:
+1. Merges stored task list state with derived validation and dependency state.
+2. Includes required-but-not-yet-created entities (`set(project.table_names) | set(project.task_list.required_entities)`).
+3. Enforces validation + preview checks before marking `done`.
 
-| Status | Meaning | Source |
-|--------|---------|--------|
-| `todo` | Not complete yet | **Derived** (not marked done) |
-| `done` | Validation passed, user confirmed | **Stored** (user action) |
-| `ignored` | Explicitly excluded | **Stored** (user action) |
+Implemented task model in `src/model.py` (`TaskList`):
+1. Stored keys are `required_entities`, `completed`, `ignored`.
+2. `reset_status()` removes from both `completed` and `ignored`.
+3. Empty task list is supported.
 
-**Derive other signals automatically:**
-- **In progress** → Entity exists but not done (derived from entity list)
-- **Blocked** → Has validation errors or dependency issues (derived from validation)
-- **Pending** → Entity doesn't exist yet (derived from entity list)
+### Frontend
 
-**Benefits:**
-- Simpler mental model
-- No status sync problems
-- Less UI clutter
-- Faster to implement
+Implemented UI in `frontend/src/components/dependencies/GraphNodeContextMenu.vue`:
+1. `Mark as Done`
+2. `Mark as Ignored`
+3. `Reset Status`
 
----
+Implemented client/store wiring:
+1. `frontend/src/composables/useTaskStatus.ts`
+2. `frontend/src/stores/taskStatus.ts`
+3. Integrated in `frontend/src/views/ProjectDetailView.vue`
 
-### 2. Streamline YAML Structure
+Task filter dropdown exists in `frontend/src/components/dependencies/TaskFilterDropdown.vue` with options:
+1. `all`
+2. `todo`
+3. `done`
+4. `ignored`
+5. `blocked`
+6. `critical`
 
-**Original proposal:**
-```yaml
-task_list:
-  mandatory_entities: [site, location, sample]
-  suggested_order: [location, site, sample]
-  status:
-    done: [location]
-    in_progress: [site]
-    pending: [sample]
-    blocked: []
-    ignored: []
-```
+### Changelog and Git History
 
-**Problems:**
-- Duplication (entity listed 2-3 times)
-- Storing derived state (`pending`, `in_progress`)
-- `mandatory_entities` and `suggested_order` overlap
-
-**Simplified proposal (Option A - Minimal):**
-```yaml
-task_list:
-  required_entities: [location, site, sample]
-  completed: [location]
-  ignored: []
-```
-
-**Simplified proposal (Option B - With Order):**
-```yaml
-task_list:
-  entities:
-    - name: location
-      required: true
-      order: 1
-    - name: site
-      required: true
-      order: 2
-    - name: sample
-      required: false
-      order: 3
-  
-  completed: [location]
-  ignored: []
-```
-
-**Recommendation:** Start with **Option A** (minimal). Let dependency graph provide suggested order automatically. Add explicit ordering later if users request it.
-
-**Benefits:**
-- Single source of truth per entity
-- Only store user intent, derive the rest
-- Easier to maintain
-- More compact
+Changelog and git history show the staged rollout:
+1. `a371814` task management + completion stats + filters.
+2. `7e64c67` and `edbbf3d` task initialization endpoint/strategies.
+3. `1c3ec0e` graph display/layout + task filter dropdown.
+4. `426c302` task actions in node context menu.
 
 ---
 
-### 3. Graph-First UI Approach
+## Current Gaps and Inconsistencies
 
-**Original proposal suggested 4 UI options:**
-- Sidebar
-- Overlay
-- Entity list enhancement
-- Dependency graph
+### 1. Styling Gap: Task classes are applied but not styled
 
-**Recommendation: Graph Integration Only (MVP)**
+`ProjectDetailView.vue` applies Cytoscape classes:
+1. `task-done`
+2. `task-ignored`
+3. `task-blocked`
+4. `task-critical`
+5. `task-ready`
 
-**Phase 1 - Visual Badges on Dependency Graph:**
+But `frontend/src/config/cytoscapeStyles.ts` has no selectors for these classes. Result: status-color behavior is partial/non-visible.
 
-Add **status badges to nodes**:
-- ✅ Green checkmark = done
-- ⚠️ Yellow warning = has validation issues
-- 🔴 Red dot = required but missing
-- ⚪ Gray = todo (exists but not done)
-- 🚫 Strikethrough = ignored
+### 2. Filter Gap: UI offers filters that logic does not apply
 
-Add **node border styling**:
-- Thick border = required entity
-- Dashed border = optional
+The dropdown includes `blocked` and `critical`, but `applyTaskFilter()` in `ProjectDetailView.vue` currently handles only:
+1. `all`
+2. `todo`
+3. `done`
+4. `ignored`
 
-**Phase 2 - If users request:**
-- Collapsible sidebar with checklist view
-- Filtering controls
+### 3. Stats Contract Drift
 
-**Why graph-first:**
-- Users already use graph for navigation
-- Non-intrusive (just enhances existing view)
-- Visual indicators are faster to scan than a list
-- Aligns with other graph-centric UX improvements (#153, #156, #157)
+Backend completion stats currently emit keys like `done`, `required_done`, `required_total`. Some frontend components expect `completed` and `completion_percentage`.
+
+### 4. Storage Location
+
+Task state is embedded in `shapeshifter.yml`. This works, but it bloats the project file and mixes workflow state with transformation design.
 
 ---
 
-### 4. Auto-Derive "Blocked" State
+## User Use Cases to Support
 
-**Don't let users manually mark entities as blocked.**
-
-**Instead, derive blocked status from:**
-1. Entity has validation errors
-2. Required dependency has validation errors
-3. Required dependency doesn't exist yet
-4. Preview generation fails
-
-**Show in UI:**
-- Tooltip on graph node: "Blocked: Site Type entity has errors"
-- Clicking shows validation details
-- Link to dependency causing the block
-
-**Benefits:**
-- Always accurate (can't be stale)
-- Less user maintenance
-- More actionable (links to actual problem)
+1. Define "definition of done" via `required_entities`, including entities not yet created.
+2. Quickly move entities between statuses from graph right-click.
+3. See clear project progress at graph level.
+4. Focus on what is blocked and what is ready next.
+5. Keep task data lightweight and separate from entity config.
+6. Toggle graph coloring by semantics:
+   `Color by Type` for structural understanding, `Color by Task` for progress understanding.
 
 ---
 
-### 5. Priority Indicators (Instead of Strict Order)
+## Proposed Status Model (Recommended)
 
-Rather than enforcing `suggested_order`, show **smart suggestions**.
+### Primary Status (stored)
 
-**Priority algorithm:**
-1. **Critical** (🔴 red flag): Required entity missing or has errors
-2. **Ready** (🟢 green flag): All dependencies done, validation passes
-3. **Waiting** (🟡 yellow): Has incomplete dependencies
-4. **Optional** (⚪ gray): Not required, no blockers
+Use four explicit, user-controlled statuses:
+1. `todo`
+2. `ongoing`
+3. `done`
+4. `ignored`
 
-**Show in graph:**
-- Node badge shows priority level
-- Tooltip explains why ("Ready: dependencies complete")
-- Filter to show only "Ready" entities
+### Secondary Flags / Properties
 
-**Benefits:**
-- More dynamic than static order
-- Adapts to user's actual workflow
-- Highlights bottlenecks automatically
+Use independent properties, not mutually exclusive statuses:
+1. `required: bool` (from required list)
+2. `flagged: bool` (manual attention marker)
 
----
+### Derived Indicators (not stored)
 
-## Revised Minimal Feature Spec (MVP)
+Compute at runtime:
+1. `blocked` (dependency or validation blockers)
+2. `critical` (required + blocked/invalid)
+3. `ready` (all prerequisites satisfied)
 
-### Backend Changes
+### Why this model
 
-**1. Add `TaskList` to project model** (`src/model.py`):
-```python
-from typing import Optional
-from pydantic import BaseModel, Field
-
-class TaskList(BaseModel):
-    """Optional task tracking for entities."""
-    required_entities: list[str] = Field(
-        default_factory=list,
-        description="Entities that must be completed"
-    )
-    completed: list[str] = Field(
-        default_factory=list,
-        description="Entities marked as done by user"
-    )
-    ignored: list[str] = Field(
-        default_factory=list,
-        description="Entities explicitly excluded from project"
-    )
-
-class ShapeShiftProject(BaseModel):
-    # ... existing fields ...
-    task_list: Optional[TaskList] = Field(
-        default=None,
-        description="Optional task progress tracking"
-    )
-```
-
-**2. Add computed endpoint** (`backend/app/api/v1/endpoints/tasks.py`):
-```python
-from fastapi import APIRouter, HTTPException
-from backend.app.services.task_service import TaskService
-
-router = APIRouter()
-
-@router.get("/projects/{name}/task-status")
-async def get_task_status(name: str):
-    """Compute full task status from project + validation state."""
-    service = TaskService()
-    return await service.compute_status(name)
-
-@router.post("/projects/{name}/tasks/{entity_name}/complete")
-async def mark_task_complete(name: str, entity_name: str):
-    """Mark entity as done (requires validation pass)."""
-    service = TaskService()
-    return await service.mark_complete(name, entity_name)
-
-@router.post("/projects/{name}/tasks/{entity_name}/ignore")
-async def ignore_task(name: str, entity_name: str):
-    """Mark entity as ignored."""
-    service = TaskService()
-    return await service.mark_ignored(name, entity_name)
-
-@router.delete("/projects/{name}/tasks/{entity_name}")
-async def reset_task(name: str, entity_name: str):
-    """Remove task status (reset to todo)."""
-    service = TaskService()
-    return await service.reset_status(name, entity_name)
-```
-
-**3. Add service** (`backend/app/services/task_service.py`):
-```python
-class TaskService:
-    async def compute_status(self, project_name: str) -> dict:
-        """
-        Compute full task status for all entities.
-        
-        Returns dict mapping entity_name to:
-        {
-            "status": "done" | "todo" | "ignored",
-            "priority": "critical" | "ready" | "waiting" | "optional",
-            "required": bool,
-            "exists": bool,
-            "validation_passed": bool,
-            "preview_available": bool,
-            "blocked_by": [entity_names],
-            "issues": [error_messages],
-        }
-        """
-        pass
-    
-    async def mark_complete(self, project_name: str, entity_name: str):
-        """Mark entity as done (validates first)."""
-        pass
-    
-    async def mark_ignored(self, project_name: str, entity_name: str):
-        """Mark entity as ignored."""
-        pass
-    
-    async def reset_status(self, project_name: str, entity_name: str):
-        """Reset to todo state."""
-        pass
-```
-
-**Validation rule:**
-- Can only mark `done` if validation passes and preview succeeds
+1. Keeps status simple and user-editable.
+2. Supports your requested `ongoing` without conflating it with blockers.
+3. Supports your requested `flagged` as orthogonal metadata that can coexist with any status.
+4. Avoids stale derived states in persisted data.
 
 ---
 
-### Frontend Changes
+## Storage Overhaul: Sidecar Task File
 
-**1. New composable** (`frontend/src/composables/useTaskStatus.ts`):
-```typescript
-export function useTaskStatus(projectName: string) {
-  const status = ref<Record<string, EntityTaskStatus>>({})
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-  
-  async function fetchStatus() {
-    // GET /api/v1/projects/{name}/task-status
-  }
-  
-  async function markComplete(entityName: string) {
-    // POST /api/v1/projects/{name}/tasks/{entity}/complete
-  }
-  
-  async function markIgnored(entityName: string) {
-    // POST /api/v1/projects/{name}/tasks/{entity}/ignore
-  }
-  
-  async function resetStatus(entityName: string) {
-    // DELETE /api/v1/projects/{name}/tasks/{entity}
-  }
-  
-  return { status, loading, error, fetchStatus, markComplete, markIgnored, resetStatus }
-}
-```
+### Recommendation
 
-**2. Enhance graph node component** (`frontend/src/components/DependencyGraph/GraphNode.vue`):
-```vue
-<template>
-  <div 
-    class="graph-node"
-    :class="{
-      'node--required': isRequired,
-      'node--done': status === 'done',
-      'node--blocked': priority === 'critical',
-      'node--ready': priority === 'ready',
-      'node--ignored': status === 'ignored'
-    }"
-  >
-    <!-- Existing node content -->
-    
-    <!-- Status badge -->
-    <v-badge
-      :icon="statusIcon"
-      :color="statusColor"
-      :title="statusTooltip"
-    />
-  </div>
-</template>
+Store task data in a separate file next to `shapeshifter.yml`.
 
-<script setup lang="ts">
-const props = defineProps<{
-  entityName: string
-  // ... other props
-}>()
+Suggested filename:
+`shapeshifter.tasks.yml`
 
-const { status } = useTaskStatus(projectName)
-
-const taskStatus = computed(() => status.value[props.entityName])
-
-const statusIcon = computed(() => {
-  switch (taskStatus.value?.status) {
-    case 'done': return 'mdi-check-circle'
-    case 'ignored': return 'mdi-cancel'
-    default: return taskStatus.value?.priority === 'critical' 
-      ? 'mdi-alert-circle' 
-      : 'mdi-circle-outline'
-  }
-})
-
-const statusColor = computed(() => {
-  if (taskStatus.value?.status === 'done') return 'success'
-  if (taskStatus.value?.status === 'ignored') return 'grey'
-  switch (taskStatus.value?.priority) {
-    case 'critical': return 'error'
-    case 'ready': return 'success'
-    case 'waiting': return 'warning'
-    default: return 'grey'
-  }
-})
-
-const statusTooltip = computed(() => {
-  const task = taskStatus.value
-  if (!task) return ''
-  
-  if (task.status === 'done') return 'Complete'
-  if (task.status === 'ignored') return 'Ignored'
-  
-  if (task.priority === 'critical') {
-    return `Critical: ${task.issues.join(', ')}`
-  }
-  if (task.priority === 'ready') {
-    return 'Ready to complete'
-  }
-  if (task.blocked_by?.length) {
-    return `Waiting for: ${task.blocked_by.join(', ')}`
-  }
-  return 'Not started'
-})
-</script>
-```
-
-**3. Add to graph context menu** (`frontend/src/components/DependencyGraph/GraphContextMenu.vue`):
-```vue
-<template>
-  <v-menu>
-    <v-list>
-      <!-- Existing items: Open, Preview, Duplicate, Delete -->
-      
-      <v-divider />
-      
-      <v-list-item
-        v-if="canMarkComplete"
-        @click="handleMarkComplete"
-        prepend-icon="mdi-check"
-      >
-        Mark as Done
-      </v-list-item>
-      
-      <v-list-item
-        v-if="taskStatus?.status === 'done'"
-        @click="handleResetStatus"
-        prepend-icon="mdi-undo"
-      >
-        Reset Status
-      </v-list-item>
-      
-      <v-list-item
-        @click="handleIgnore"
-        prepend-icon="mdi-cancel"
-      >
-        {{ taskStatus?.status === 'ignored' ? 'Unignore' : 'Ignore Entity' }}
-      </v-list-item>
-    </v-list>
-  </v-menu>
-</template>
-
-<script setup lang="ts">
-const { status, markComplete, markIgnored, resetStatus } = useTaskStatus(projectName)
-
-const taskStatus = computed(() => status.value[props.entityName])
-
-const canMarkComplete = computed(() => {
-  const task = taskStatus.value
-  return task?.status !== 'done' 
-    && task?.validation_passed 
-    && task?.preview_available
-})
-
-async function handleMarkComplete() {
-  await markComplete(props.entityName)
-  // Refresh graph
-}
-
-async function handleIgnore() {
-  if (taskStatus.value?.status === 'ignored') {
-    await resetStatus(props.entityName)
-  } else {
-    await markIgnored(props.entityName)
-  }
-  // Refresh graph
-}
-
-async function handleResetStatus() {
-  await resetStatus(props.entityName)
-  // Refresh graph
-}
-</script>
-```
-
-**4. Add graph filtering** (`frontend/src/components/DependencyGraph/DependencyGraphView.vue`):
-```vue
-<template>
-  <div class="dependency-graph-view">
-    <v-toolbar density="compact">
-      <!-- Existing controls -->
-      
-      <v-divider vertical />
-      
-      <v-btn-toggle v-model="statusFilter" multiple>
-        <v-btn value="todo" size="small">
-          <v-icon>mdi-circle-outline</v-icon> Todo
-        </v-btn>
-        <v-btn value="ready" size="small">
-          <v-icon>mdi-check-circle</v-icon> Ready
-        </v-btn>
-        <v-btn value="done" size="small">
-          <v-icon>mdi-check-circle</v-icon> Done
-        </v-btn>
-        <v-btn value="blocked" size="small">
-          <v-icon>mdi-alert-circle</v-icon> Blocked
-        </v-btn>
-      </v-btn-toggle>
-      
-      <v-switch
-        v-model="showRequiredOnly"
-        label="Required only"
-        hide-details
-      />
-    </v-toolbar>
-    
-    <GraphCanvas :entities="filteredEntities" />
-  </div>
-</template>
-
-<script setup lang="ts">
-const statusFilter = ref<string[]>([])
-const showRequiredOnly = ref(false)
-
-const filteredEntities = computed(() => {
-  let entities = props.entities
-  
-  // Filter by status
-  if (statusFilter.value.length > 0) {
-    entities = entities.filter(e => {
-      const task = status.value[e.name]
-      if (statusFilter.value.includes('ready') && task?.priority === 'ready') return true
-      if (statusFilter.value.includes('blocked') && task?.priority === 'critical') return true
-      if (statusFilter.value.includes(task?.status)) return true
-      return false
-    })
-  }
-  
-  // Filter by required
-  if (showRequiredOnly.value) {
-    entities = entities.filter(e => status.value[e.name]?.required)
-  }
-  
-  return entities
-})
-</script>
-```
-
----
-
-## What NOT to Build (Keep Simple)
-
-To maintain simplicity and avoid scope creep:
-
-❌ Separate task list sidebar (use graph instead)  
-❌ Manual "blocked" status (derive it)  
-❌ Manual "in_progress" status (derive it)  
-❌ Strict suggested_order field (use dependency graph)  
-❌ Separate mandatory_entities list (use required flag)  
-❌ Overlay/modal task list interface  
-❌ Complex task filtering UI beyond graph filters
-
----
-
-## Implementation Plan
-
-### Stage 1: Core Backend (2 days)
-
-**Tasks:**
-- [ ] Add `TaskList` model to `src/model.py`
-- [ ] Add `TaskService` in `backend/app/services/task_service.py`
-- [ ] Implement status derivation logic (compute priority, blocked_by)
-- [ ] Add API endpoints in `backend/app/api/v1/endpoints/tasks.py`
-- [ ] Add validation rule: can only mark done if validation passes
-- [ ] Unit tests for `TaskService`
-- [ ] Integration tests for task endpoints
-
-**Deliverables:**
-- API endpoints functional
-- Status computation working
-- Tests passing
-
----
-
-### Stage 2: Frontend UI (2 days)
-
-**Tasks:**
-- [ ] Create `useTaskStatus` composable
-- [ ] Add status badge component
-- [ ] Enhance graph node with status badges and styling
-- [ ] Add task actions to graph context menu
-- [ ] Add graph filtering controls
-- [ ] Integrate with existing entity store
-- [ ] Handle status updates and graph refresh
-
-**Deliverables:**
-- Visual badges on graph nodes
-- Right-click actions working
-- Filter controls functional
-
----
-
-### Stage 3: Polish & Documentation (1 day)
-
-**Tasks:**
-- [ ] Add visual transitions when marking done
-- [ ] Add helpful tooltips explaining blocked status
-- [ ] Add keyboard shortcuts (optional)
-- [ ] Update user documentation
-- [ ] Add migration guide for existing projects
-- [ ] E2E tests for complete workflow
-
-**Deliverables:**
-- Polished UX
-- Documentation complete
-- All tests passing
-
----
-
-**Total Estimate: ~5 days**
-
----
-
-## Integration with Existing Features
-
-### Synergy with Other UX Improvements:
-
-| Feature | Integration Point |
-|---------|------------------|
-| **#153 (Custom graph layout)** | Task badges enhance the custom layout |
-| **#156 (Add node button)** | Created nodes default to "todo" status |
-| **#157 (YAML sidebar)** | Could show task status at top of sidebar |
-| **Right-click menu** | Add "Mark as done" and "Ignore entity" options |
-
-### Natural Workflow:
-
-1. User opens project, sees graph with status badges
-2. Filters to "Show incomplete required entities"
-3. Double-clicks node to edit (existing overlay feature)
-4. Saves, auto-validates
-5. Right-clicks "Mark as done"
-6. Graph updates, next ready entity highlighted
-
----
-
-## Example YAML
-
-**Minimal project with task tracking:**
+Suggested schema:
 
 ```yaml
-metadata:
-  name: sead-import-2026
-  type: shapeshifter-project
-  version: 1.0
-
-task_list:
-  required_entities:
-    - location
-    - site
-    - sample
-  completed:
-    - location
-  ignored: []
+version: 1
+required_entities:
+  - location
+  - site
+  - sample
 
 entities:
   location:
-    source_data: csv
-    # ... entity config ...
-  
+    status: done
+    flagged: false
   site:
-    source_data: csv
-    depend_on: [location]
-    # ... entity config ...
+    status: ongoing
+    flagged: true
+  sample:
+    status: todo
+    flagged: false
 ```
 
-**At runtime, computed status would be:**
+### Compatibility plan
 
-```json
-{
-  "location": {
-    "status": "done",
-    "priority": "ready",
-    "required": true,
-    "exists": true,
-    "validation_passed": true,
-    "preview_available": true,
-    "blocked_by": [],
-    "issues": []
-  },
-  "site": {
-    "status": "todo",
-    "priority": "ready",
-    "required": true,
-    "exists": true,
-    "validation_passed": true,
-    "preview_available": true,
-    "blocked_by": [],
-    "issues": []
-  },
-  "sample": {
-    "status": "todo",
-    "priority": "waiting",
-    "required": true,
-    "exists": false,
-    "validation_passed": false,
-    "preview_available": false,
-    "blocked_by": ["site"],
-    "issues": ["Entity not created"]
-  }
-}
-```
+1. Read order:
+   `shapeshifter.tasks.yml` first, fallback to legacy `task_list` inside `shapeshifter.yml`.
+2. Write target:
+   new sidecar file only.
+3. Migration command/API:
+   one-time export from legacy in-file `task_list` to sidecar.
+4. Keep backward compatibility for existing projects during transition.
 
 ---
 
-## Future Enhancements (Post-MVP)
+## API Evolution Proposal
 
-**If users request additional features:**
+Current API is already available and should remain stable while introducing v2 semantics.
 
-1. **Separate task list sidebar** - Checklist view parallel to graph
-2. **Project templates** - Pre-configured task lists for common workflows
-3. **Progress statistics** - "3 of 10 entities complete (30%)"
-4. **Task history** - Track when entities were completed
-5. **Bulk actions** - "Mark all validated entities as done"
-6. **Collaboration** - Show who completed which entities
-7. **Export task report** - Generate progress report for stakeholders
+### Keep existing endpoints
+
+1. `GET /projects/{name}/tasks`
+2. `POST /projects/{name}/tasks/{entity}/complete`
+3. `POST /projects/{name}/tasks/{entity}/ignore`
+4. `DELETE /projects/{name}/tasks/{entity}`
+5. `POST /projects/{name}/tasks/initialize`
+
+### Add v2-compatible operations
+
+1. `PATCH /projects/{name}/tasks/{entity}`
+   body: `{ "status": "ongoing|todo|done|ignored", "flagged": true|false }`
+2. `PUT /projects/{name}/tasks/required`
+   body: list of required entities, including not-yet-created entities.
+3. Optional `POST /projects/{name}/tasks/bulk` for batch status updates.
+
+---
+
+## Graph UX and Node Coloring
+
+### Display Menu Additions
+
+Add in `GraphDisplayOptionsDropdown.vue`:
+1. `Color By: Type | Task`
+2. Keep both options available at all times.
+
+### Color modes
+
+1. `By Type` (current behavior): source/entity type semantics.
+2. `By Task` (new): progress/status semantics.
+
+Suggested `By Task` colors:
+1. `done`: green
+2. `ongoing`: blue
+3. `todo`: gray
+4. `ignored`: muted gray
+5. `flagged`: amber outline/accent (works with any primary status)
+6. `blocked/critical`: red border or glow (derived)
+
+### Required implementation fixes
+
+1. Add Cytoscape style selectors for `task-*` classes in `frontend/src/config/cytoscapeStyles.ts`.
+2. Make `applyTaskFilter()` implement `blocked` and `critical` cases to match UI options.
+3. Align completion stats contract (`done` vs `completed`, percentage field) across backend and frontend.
+
+---
+
+## Phased Overhaul Plan
+
+### Phase 1: Stabilize Existing Feature (1-2 days)
+
+1. Fix task class styling in Cytoscape styles.
+2. Fix `blocked`/`critical` filtering behavior.
+3. Align completion stats keys and types across API and frontend.
+4. Add tests for filter behavior and node class rendering.
+
+### Phase 2: Introduce New Status Semantics (2 days)
+
+1. Add `ongoing` status and `flagged` flag.
+2. Extend backend model/service and frontend composable/store.
+3. Add context menu actions for `Mark Ongoing` and `Toggle Flag`.
+
+### Phase 3: Externalize Storage (2 days)
+
+1. Implement `shapeshifter.tasks.yml` read/write.
+2. Add migration path from legacy in-project `task_list`.
+3. Keep compatibility with existing projects.
+
+### Phase 4: Color Mode Toggle (1 day)
+
+1. Add `Color By` option in Display menu.
+2. Implement class switching and style variants.
+3. Validate accessibility and contrast in light/dark themes.
+
+Total estimate: ~6-7 days including migration and compatibility.
+
+---
+
+## Proposed "Definition of Done" Logic
+
+Project done when all `required_entities` are either:
+1. `done`, or
+2. `ignored`
+
+This must continue supporting required entities that are not yet created at configuration time.
 
 ---
 
 ## Success Criteria
 
-**MVP is successful if:**
-
-1. ✅ Users can visually identify entity completion status in graph
-2. ✅ Users can mark entities as done/ignored via right-click menu
-3. ✅ System prevents marking incomplete entities as done
-4. ✅ Users can filter graph by status (ready, blocked, done)
-5. ✅ Blocked entities show clear explanation of what's blocking them
-6. ✅ No performance degradation on large projects (100+ entities)
-7. ✅ Feature is non-intrusive (users can ignore it completely)
+1. Required entities not yet created are first-class in task tracking.
+2. Status updates via graph context menu are fast and reliable.
+3. "Color By Task" gives immediate progress clarity without losing "Color By Type".
+4. Task storage no longer bloats `shapeshifter.yml`.
+5. Existing projects load without manual migration breaks.
+6. Filter dropdown behavior fully matches implemented filtering logic.
 
 ---
 
-## Risks & Mitigations
+## Final Recommendation
 
-| Risk | Mitigation |
-|------|-----------|
-| **Performance impact on large graphs** | Compute status only when needed, cache results |
-| **Users expect more features** | Start minimal, iterate based on feedback |
-| **Confusion about automatic status changes** | Clear tooltips and documentation |
-| **Required entities list gets stale** | Make it optional, show warnings if entities removed |
+Proceed with an incremental overhaul, not a full rewrite.
+
+Start by fixing current integration gaps, then adopt:
+1. Primary statuses: `todo`, `ongoing`, `done`, `ignored`
+2. Secondary flag: `flagged`
+3. Derived indicators: `blocked`, `critical`, `ready`
+4. Sidecar persistence: `shapeshifter.tasks.yml`
+
+This keeps the system simple, robust, and graph-friendly while directly addressing current workflow needs.
 
 ---
 
-## Conclusion
+## Phase 1 Execution Checklist (Issue-Ready)
 
-This simplified design delivers **high value with moderate effort** by:
+Use this checklist as the implementation issue for "stabilize existing feature".
 
-- Reducing status model to 3 states (done, todo, ignored)
-- Deriving priority and blocked state automatically
-- Using graph as primary UI (no separate list)
-- Leveraging existing dependency graph for ordering
-- Storing only user intent, deriving everything else
+### Scope
 
-The graph-centric approach aligns with Shape Shifter's existing UX patterns and provides immediate value without disrupting the current workflow.
+1. Make task status coloring visible in graph.
+2. Make task filters behave as advertised.
+3. Align backend/frontend completion stats contract.
+4. Add regression tests for the above.
 
-**Recommendation: Proceed with MVP implementation (~5 days)**
+### Backend Tasks
+
+1. `backend/app/models/task.py`
+   Add explicit completion stats model (or typed dict equivalent) and align field naming with frontend usage.
+2. `backend/app/services/task_service.py`
+   Update `_calculate_stats()` to emit a stable contract, including:
+   `total`, `todo`, `done`, `ignored`, `required_total`, `required_done`, `required_todo`, and `completion_percentage`.
+3. `backend/app/api/v1/endpoints/tasks.py`
+   Ensure endpoint docstrings/examples match the actual response contract.
+
+### Frontend Tasks
+
+1. `frontend/src/config/cytoscapeStyles.ts`
+   Add node style selectors for:
+   `node.task-done`, `node.task-ignored`, `node.task-blocked`, `node.task-critical`, `node.task-ready`.
+2. `frontend/src/views/ProjectDetailView.vue`
+   Update `applyTaskFilter()` to support:
+   `blocked` (has `blocked_by`) and `critical` (`priority === 'critical'`).
+3. `frontend/src/composables/useTaskStatus.ts`
+   Align `ProjectTaskStatus.completion_stats` typing with backend response.
+4. `frontend/src/stores/taskStatus.ts`
+   Verify computed fields (`completionPercentage`, `completionSummary`) use the aligned stats fields.
+5. `frontend/src/components/dependencies/TaskFilterDropdown.vue`
+   Verify counts map to aligned stats and derived filters without duplicate semantics.
+6. `frontend/src/components/dependencies/TaskCompletionStats.vue`
+   Ensure progress and percentage rendering match backend values and do not rely on mismatched field names.
+
+### Test Tasks
+
+1. `backend/tests/api/v1/test_tasks.py`
+   Add/adjust assertions for `completion_percentage` and stable completion stats keys.
+2. `backend/tests/services/test_task_service.py`
+   Add tests for stats calculation edge cases:
+   empty task list, required-but-missing entities, ignored-only entities.
+3. `frontend/src/components/dependencies/__tests__/`
+   Add or update tests for task filtering logic (`all`, `todo`, `done`, `ignored`, `blocked`, `critical`).
+4. `frontend/src/config` or graph integration tests
+   Add regression test to verify task classes map to actual style selectors.
+
+### Acceptance Criteria
+
+1. Right-click task updates visibly change node appearance in graph.
+2. Selecting `Blocked` filter hides non-blocked nodes.
+3. Selecting `Critical` filter hides non-critical nodes.
+4. Completion card and filter counts use the same stats contract.
+5. API docs/examples match real payloads.
+
+### Suggested Validation Commands
+
+1. `uv run pytest backend/tests/api/v1/test_tasks.py -v`
+2. `uv run pytest backend/tests/services/test_task_service.py -v`
+3. `cd frontend && pnpm test:run`
+4. `cd frontend && pnpm exec vue-tsc --noEmit`
+
+### Out of Scope for Phase 1
+
+1. Adding `ongoing` status.
+2. Adding `flagged` property.
+3. External task sidecar file (`shapeshifter.tasks.yml`).
+4. Display menu `Color By: Type | Task` toggle.
+
+These are handled in Phases 2-4 above.

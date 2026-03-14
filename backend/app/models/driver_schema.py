@@ -20,6 +20,7 @@ class FieldMetadataResponse(BaseModel):
     max_value: int | None = Field(None, description="Maximum value for integer fields")
     placeholder: str = Field("", description="Example value to show in UI")
     aliases: list[str] = Field(default_factory=list, description="Alternative names for the field")
+    extensions: list[str] | None = Field(None, description="Valid file extensions for file_path fields")
 
 
 class DriverSchemaResponse(BaseModel):

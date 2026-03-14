@@ -2,10 +2,10 @@
 **⚠️ NOTE:** This document contains original design notes and has been superseded by structured design documentation:
 
 - **Start here:** [README.md](./README.md) - Overview and navigation guide
-- **Identity System:** [SEAD_IDENTITY_SYSTEM.md](./SEAD_IDENTITY_SYSTEM.md) - Hybrid Integer + UUID architecture (external to Shape Shifter)
+- **SIMS:** [sims/SEAD_IDENTITY_SYSTEM.md](./sims/SEAD_IDENTITY_SYSTEM.md) - External identity management system used by the ingester via API
 - **Ingester Design:** [SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md) - Complete ingester component specification
 
-This file is kept for historical reference and context.
+This file is kept for historical reference and context. SIMS-specific design and implementation material now lives under [sims/](./sims/).
 
 ---
 

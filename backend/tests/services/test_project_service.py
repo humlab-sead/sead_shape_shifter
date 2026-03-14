@@ -9,9 +9,15 @@ import pytest
 import yaml
 
 from backend.app.core.config import settings
-from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError
+from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError, SchemaValidationError
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectMetadata
+from backend.app.services.project.entity_operations import EntityOperations
+from backend.app.services.project.entity_persistence_strategies import (
+    DefaultEntityPersistenceStrategy,
+    EntityPersistenceStrategyRegistry,
+    FixedEntityPersistenceStrategy,
+)
 from backend.app.services.project_service import (
     ProjectService,
     get_project_service,
@@ -523,6 +529,50 @@ options:
         config = service.load_project("test")
         assert "new_entity" in config.entities
 
+    def test_entity_persistence_strategy_registry_uses_fixed_strategy_for_fixed_entities(self):
+        """Fixed entities should resolve to the fixed persistence strategy."""
+        registry = EntityPersistenceStrategyRegistry()
+
+        strategy = registry.get_strategy({"type": "fixed"})
+
+        assert isinstance(strategy, FixedEntityPersistenceStrategy)
+
+    def test_entity_persistence_strategy_registry_uses_default_strategy_for_other_entities(self):
+        """Non-fixed entities should use the default persistence strategy."""
+        registry = EntityPersistenceStrategyRegistry()
+
+        strategy = registry.get_strategy({"type": "sql"})
+
+        assert isinstance(strategy, DefaultEntityPersistenceStrategy)
+
+    def test_entity_operations_uses_injected_persistence_strategy_registry(self):
+        """EntityOperations should delegate preparation to the injected registry."""
+        strategy = MagicMock()
+        strategy.prepare_for_persistence.return_value = {"type": "entity", "source": "prepared_table"}
+
+        registry = MagicMock()
+        registry.get_strategy.return_value = strategy
+
+        operations = EntityOperations(
+            project_lock_getter=lambda _project_name: MagicMock(),
+            load_project_callback=MagicMock(),
+            save_project_callback=MagicMock(),
+            persistence_strategy_registry=registry,
+        )
+
+        project = MagicMock(spec=Project)
+        project.entities = {}
+
+        entity = MagicMock(spec=Entity)
+        entity.model_dump.return_value = {"type": "entity", "source": "raw_table"}
+        entity.public_id = None
+
+        operations.add_entity(project, "sample", entity)
+
+        registry.get_strategy.assert_called_once_with({"type": "entity", "source": "raw_table", "public_id": None})
+        strategy.prepare_for_persistence.assert_called_once_with("sample", {"type": "entity", "source": "raw_table", "public_id": None})
+        assert project.entities["sample"] == {"type": "entity", "source": "prepared_table"}
+
     def test_add_entity_by_name_already_exists(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test adding duplicate entity by name raises error."""
         # New structure: project_name/shapeshifter.yml
@@ -536,6 +586,51 @@ options:
 
         with pytest.raises(ResourceConflictError):
             service.add_entity_by_name("test", "sample", {"source": "table"})
+
+    def test_add_entity_by_name_rejects_duplicate_fixed_columns(
+        self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict
+    ):
+        """Fixed entities with duplicate columns should be rejected before save."""
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "site_id",
+            "columns": ["system_id", "site_id", "Fustel", "EVNr", "Fustel"],
+            "values": [[1, None, "site-a", "224073", "site-a"]],
+        }
+
+        with pytest.raises(SchemaValidationError, match="duplicate columns"):
+            service.add_entity_by_name("test", "site", entity_data)
+
+    def test_add_entity_by_name_normalizes_fixed_columns(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Legacy fixed entities should be normalized to canonical full columns on save."""
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "site_id",
+            "keys": ["Fustel", "EVNr"],
+            "columns": ["site_type_id", "altitude"],
+            "values": "@load:materialized/site.parquet",
+        }
+
+        service.add_entity_by_name("test", "site", entity_data)
+
+        config = service.load_project("test")
+        assert config.entities["site"]["columns"] == ["system_id", "site_id", "Fustel", "EVNr", "site_type_id", "altitude"]
 
     def test_update_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test updating entity by configuration name."""
@@ -563,6 +658,28 @@ options:
 
         with pytest.raises(ResourceNotFoundError):
             service.update_entity_by_name("test", "nonexistent", {"source": "table"})
+
+    def test_update_entity_by_name_rejects_fixed_value_shape_mismatch(
+        self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict
+    ):
+        """Fixed entities with mismatched row widths should be rejected before save."""
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "sample_id",
+            "columns": ["system_id", "sample_id", "name", "value"],
+            "values": [[1, None, "sample-a"]],
+        }
+
+        with pytest.raises(SchemaValidationError, match="mismatched number of columns and values"):
+            service.update_entity_by_name("test", "sample", entity_data)
 
     def test_delete_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test deleting entity by configuration name."""
@@ -848,7 +965,7 @@ options: {}
         result = service.copy_project("category/source_project", "category/target_project")
 
         assert result.metadata
-        assert result.metadata.name == "category/target_project"
+        assert result.metadata.name == "category:target_project"
         assert (service.projects_dir / "category" / "target_project" / "shapeshifter.yml").exists()
 
     # update_metadata tests
@@ -921,8 +1038,13 @@ options: {}
 
     def test_validate_project_name_absolute_path(self, service: ProjectService):
         """Test absolute paths with slash are rejected."""
-        with pytest.raises(BadRequestError, match="use ':' for nested projects"):
+        with pytest.raises(BadRequestError, match="absolute path"):
             service._validate_project_name("/absolute/path")
+
+    def test_validate_project_name_slash_normalized(self, service: ProjectService):
+        """Test slash separators are normalized to colon separators."""
+        result = service._validate_project_name("category/sub/project")
+        assert result == "category:sub:project"
 
     def test_validate_project_name_strips_whitespace(self, service: ProjectService):
         """Test that leading/trailing whitespace is stripped."""
@@ -1011,3 +1133,208 @@ options: {}
         # Should return path relative to projects_dir
         assert "test_project" in result
         assert "data.xlsx" in result
+
+
+class TestProjectServiceSidecarIntegration:
+    """Integration tests for task list sidecar support."""
+
+    @pytest.fixture
+    def simple_service(self, tmp_path: Path, monkeypatch):
+        """Create ProjectService with temporary directory."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        return ProjectService()
+
+    @pytest.fixture
+    def project_with_task_list_in_main(self, tmp_path: Path):
+        """Create a project with task_list in main file using current task states."""
+        project_dir = tmp_path / "old_project"
+        project_dir.mkdir()
+        config_path = project_dir / "shapeshifter.yml"
+        content = """
+metadata:
+  type: shapeshifter-project
+  name: old_project
+  description: Project with task_list in main file
+
+entities:
+  sample:
+    type: entity
+    keys: [sample_id]
+    columns: [name, value]
+
+task_list:
+  todo: [sample]
+  done: []
+  ongoing: []
+  ignored: []
+"""
+        config_path.write_text(content)
+        return config_path
+
+    def test_load_project_with_task_list_in_main_file(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
+        """Test loading project with task_list in main file (backward compatibility)."""
+        project = simple_service.load_project("old_project")
+
+        assert project is not None
+        assert "entities" in project.model_dump()
+        assert project.model_dump().get("task_list") is not None
+
+    def test_save_project_moves_task_list_to_sidecar(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
+        """Test that saving project moves task_list to sidecar file."""
+        project_dir = project_with_task_list_in_main.parent
+        sidecar_file = project_dir / "shapeshifter.tasks.yml"
+
+        # Load project (has task_list in main)
+        project = simple_service.load_project("old_project")
+        task_list_data = project.model_dump().get("task_list")
+
+        # Save project
+        simple_service.save_project(project)
+
+        # Verify sidecar was created
+        assert sidecar_file.exists()
+
+        # Verify sidecar contains task_list
+        sidecar_content = yaml.safe_load(sidecar_file.read_text())
+        assert "task_list" in sidecar_content
+        assert sidecar_content["task_list"] == task_list_data
+
+    def test_reloading_project_uses_sidecar_after_migration(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
+        """Test that reloading project after migration uses sidecar file."""
+        project_dir = project_with_task_list_in_main.parent
+
+        # First load and save (triggers migration)
+        project1 = simple_service.load_project("old_project")
+        task_list_data1 = project1.task_list or {}
+        simple_service.save_project(project1)
+
+        # Second load should get task_list from sidecar
+        project2 = simple_service.load_project("old_project")
+        task_list_data2 = project2.task_list or {}
+
+        assert task_list_data1 == task_list_data2
+        sidecar_file = project_dir / "shapeshifter.tasks.yml"
+        assert sidecar_file.exists()
+
+    def test_sidecar_file_structure(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
+        """Test that sidecar file has correct structure."""
+        project_dir = project_with_task_list_in_main.parent
+        sidecar_file = project_dir / "shapeshifter.tasks.yml"
+
+        # Load and save to create sidecar
+        project = simple_service.load_project("old_project")
+        simple_service.save_project(project)
+
+        # Verify sidecar structure
+        sidecar_content = yaml.safe_load(sidecar_file.read_text())
+        assert "task_list" in sidecar_content
+        assert isinstance(sidecar_content["task_list"], dict)
+        assert sidecar_content["task_list"] == {"todo": ["sample"]}
+
+    def test_main_file_without_task_list_after_migration(self, simple_service: ProjectService, project_with_task_list_in_main: Path):
+        """Test that task_list is removed from main file after migration."""
+        main_file = project_with_task_list_in_main
+
+        # Load and save to trigger migration
+        project = simple_service.load_project("old_project")
+        simple_service.save_project(project)
+
+        # Check main file
+        main_content = yaml.safe_load(main_file.read_text())
+        assert "task_list" not in main_content
+        assert "entities" in main_content
+        assert "metadata" in main_content
+
+    def test_load_project_with_existing_sidecar(self, simple_service: ProjectService, tmp_path: Path):
+        """Test loading project that already has sidecar file."""
+        # Create project with both main and sidecar files
+        project_dir = tmp_path / "new_project"
+        project_dir.mkdir()
+        main_file = project_dir / "shapeshifter.yml"
+        sidecar_file = project_dir / "shapeshifter.tasks.yml"
+
+        # Main file (no task_list)
+        main_content = """
+metadata:
+  type: shapeshifter-project
+  name: new_project
+  description: Project with separate sidecar
+
+entities:
+  sample:
+    type: entity
+    keys: [sample_id]
+    columns: [name, value]
+"""
+        main_file.write_text(main_content)
+
+        # Sidecar file (has task_list)
+        sidecar_content = """
+task_list:
+  todo: []
+  ongoing: []
+  done: [sample]
+  ignored: []
+"""
+        sidecar_file.write_text(sidecar_content)
+
+        # Load project
+        project = simple_service.load_project("new_project")
+
+        # Verify task_list loaded from sidecar
+        task_list = project.model_dump().get("task_list")
+        assert task_list is not None
+        assert "sample" in task_list.get("done", [])
+
+    def test_modify_and_save_task_list(self, simple_service: ProjectService, tmp_path: Path):
+        """Test modifying task_list and saving preserves changes in sidecar."""
+        # Create project with sidecar
+        project_dir = tmp_path / "test_project"
+        project_dir.mkdir()
+        main_file = project_dir / "shapeshifter.yml"
+        sidecar_file = project_dir / "shapeshifter.tasks.yml"
+
+        main_content = """
+metadata:
+    type: shapeshifter-project
+    name: test_project
+    description: Test
+
+entities:
+    entity1:
+        type: entity
+        keys: [id]
+        columns: [name]
+"""
+        main_file.write_text(main_content)
+
+        sidecar_content = """
+task_list:
+    todo: [entity1]
+    ongoing: []
+    done: []
+    ignored: []
+"""
+        sidecar_file.write_text(sidecar_content)
+
+        # Load project
+        project1 = simple_service.load_project("test_project")
+
+        # Modify task_list in loaded project directly
+        if project1.task_list is None:
+            project1.task_list = {}
+        if "done" not in project1.task_list:
+            project1.task_list["done"] = []
+        if "entity1" not in project1.task_list["done"]:
+            project1.task_list["done"].append("entity1")
+        if "todo" in project1.task_list and "entity1" in project1.task_list["todo"]:
+            project1.task_list["todo"].remove("entity1")
+
+        # Save modified project
+        simple_service.save_project(project1)
+
+        # Reload and verify changes persisted
+        project2 = simple_service.load_project("test_project")
+        task_list2 = project2.task_list or {}
+
+        assert "entity1" in task_list2.get("done", [])

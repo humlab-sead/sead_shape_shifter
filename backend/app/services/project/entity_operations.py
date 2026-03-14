@@ -8,6 +8,7 @@ from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project
+from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 
 if TYPE_CHECKING:
     pass
@@ -25,6 +26,7 @@ class EntityOperations:
         project_lock_getter,  # Callable[[str], threading.Lock]
         load_project_callback,  # Callable[[str], Project]
         save_project_callback,  # Callable[[Project], Project]
+        persistence_strategy_registry: EntityPersistenceStrategyRegistry | None = None,
     ):
         """Initialize entity operations.
 
@@ -32,10 +34,12 @@ class EntityOperations:
             project_lock_getter: Function to get per-project lock
             load_project_callback: Function to load project by name
             save_project_callback: Function to save project
+            persistence_strategy_registry: Registry for type-specific persistence strategies
         """
         self._get_lock = project_lock_getter
         self._load_project = load_project_callback
         self._save_project = save_project_callback
+        self._persistence_strategy_registry = persistence_strategy_registry or EntityPersistenceStrategyRegistry()
 
     @staticmethod
     def _serialize_entity(entity: Entity) -> dict[str, Any]:
@@ -62,6 +66,11 @@ class EntityOperations:
 
         return entity_dict
 
+    def _prepare_entity_for_persistence(self, entity_name: str, entity_data: dict[str, Any]) -> dict[str, Any]:
+        """Apply the configured persistence strategy for the entity type."""
+        strategy = self._persistence_strategy_registry.get_strategy(entity_data)
+        return strategy.prepare_for_persistence(entity_name, entity_data)
+
     # Object-based entity operations (work on Project instances)
 
     def add_entity(self, project: Project, entity_name: str, entity: Entity) -> Project:
@@ -82,7 +91,8 @@ class EntityOperations:
         if entity_name in project.entities:
             raise ResourceConflictError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists")
 
-        project.entities[entity_name] = self._serialize_entity(entity)
+        entity_dict = self._prepare_entity_for_persistence(entity_name, self._serialize_entity(entity))
+        project.entities[entity_name] = entity_dict
         logger.debug(f"Added entity '{entity_name}'")
         return project
 
@@ -104,7 +114,8 @@ class EntityOperations:
         if entity_name not in project.entities:
             raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
 
-        project.entities[entity_name] = self._serialize_entity(entity)
+        entity_dict = self._prepare_entity_for_persistence(entity_name, self._serialize_entity(entity))
+        project.entities[entity_name] = entity_dict
         logger.debug(f"Updated entity '{entity_name}'")
         return project
 
@@ -193,6 +204,8 @@ class EntityOperations:
                     resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists"
                 )
 
+            entity_data = self._prepare_entity_for_persistence(entity_name, entity_data)
+
             # Use the model's add_entity method to ensure proper handling
             project.add_entity(entity_name, entity_data)
 
@@ -251,6 +264,8 @@ class EntityOperations:
             # If not in incoming data, keep existing value (even if None)
             if "public_id" not in entity_data and "public_id" in project.entities[entity_name]:
                 entity_data["public_id"] = project.entities[entity_name]["public_id"]
+
+            entity_data = self._prepare_entity_for_persistence(entity_name, entity_data)
 
             # Use the model's add_entity method to ensure proper handling
             project.add_entity(entity_name, entity_data)
