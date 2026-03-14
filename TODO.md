@@ -260,3 +260,19 @@ What do you think?
 When saving project YAML, the system compares client's project's version number to server side version number. If the version
 number differs, the the client's updates are discarded. We should instead use a merging strategy as the default 
 concurrency resolver. If client's project only differ
+
+### TODO: File location resolution fails if project's folder name differs from metadata.name
+
+if project not in folder "xyz" then this fails with FileLoader raising FileNotFoundError:
+
+```shapeshifter.yml
+metadata:
+  name: xyz
+  ...
+entities:
+  abc:
+    ...
+    options:
+      filename: abc.xlsx
+      location: local
+      sheet_name: Sheet1
