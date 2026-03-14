@@ -96,6 +96,32 @@ class TestDependencyGraphAnalysis:
         # FK edges go from child to parent (child references parent)
         assert any(e["source"] == "child" and e["target"] == "parent" for e in fk_edges)
 
+    def test_dependency_graph_includes_todo_placeholders_from_task_list(self):
+        """Sidecar-backed task_list todo entries should appear as placeholder graph nodes."""
+        project = Project(
+            entities={
+                "existing": {
+                    "type": "fixed",
+                    "values": [],
+                },
+            },
+            options={},
+            task_list={
+                "todo": ["planned_entity"],
+            },
+        )
+
+        service = DependencyService()
+        graph = service.analyze_dependencies(project)
+
+        node_names = {node["name"] for node in graph["nodes"]}
+
+        assert "existing" in node_names
+        assert "planned_entity" in node_names
+
+        placeholder = next(node for node in graph["nodes"] if node["name"] == "planned_entity")
+        assert placeholder["depends_on"] == []
+
 
 class TestSourceNodeExtraction:
     """Tests for source node extraction from file and SQL entities."""
