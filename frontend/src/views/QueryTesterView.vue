@@ -21,7 +21,7 @@
               <v-icon class="mr-2">mdi-code-tags</v-icon>
               SQL Editor
             </v-tab>
-            <v-tab value="builder">
+            <v-tab value="builder" disabled>
               <v-icon class="mr-2">mdi-database-cog</v-icon>
               Visual Builder
             </v-tab>
@@ -44,7 +44,9 @@
             <!-- Visual Builder Tab -->
             <v-window-item value="builder">
               <div class="pa-4">
-                <QueryBuilder @use-query="handleUseQuery" />
+                <v-alert type="info" variant="tonal">
+                  Visual Builder is temporarily unavailable.
+                </v-alert>
               </div>
             </v-window-item>
           </v-window>
@@ -97,24 +99,6 @@
                     </v-list-item>
                   </v-list>
                 </v-col>
-
-                <v-col cols="12">
-                  <h3 class="text-h6 mb-2 mt-4">Example Queries</h3>
-                  <v-list density="compact">
-                    <v-list-item
-                      v-for="example in exampleQueries"
-                      :key="example.title"
-                      @click="loadExample(example.query)"
-                      class="cursor-pointer"
-                    >
-                      <template #prepend>
-                        <v-icon>mdi-code-tags</v-icon>
-                      </template>
-                      <v-list-item-title>{{ example.title }}</v-list-item-title>
-                      <v-list-item-subtitle>{{ example.description }}</v-list-item-subtitle>
-                    </v-list-item>
-                  </v-list>
-                </v-col>
               </v-row>
             </v-expansion-panel-text>
           </v-expansion-panel>
@@ -136,7 +120,6 @@
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import QueryEditor from '@/components/query/QueryEditor.vue'
-import QueryBuilder from '@/components/query/QueryBuilder.vue'
 import QueryResults from '@/components/query/QueryResults.vue'
 import type { QueryResult } from '@/types/query'
 
