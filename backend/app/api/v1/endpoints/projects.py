@@ -298,7 +298,7 @@ async def list_backups(name: str) -> list[BackupInfo]:
         List of backup file information
     """
     yaml_service: YamlService = get_yaml_service()
-    project_dir = settings.PROJECTS_DIR / name
+    project_dir = settings.PROJECTS_DIR / ProjectNameMapper.to_path(name)
     backups: list[Path] = yaml_service.list_backups(project_dir=project_dir)
     backup_infos: list[BackupInfo] = [
         BackupInfo(
@@ -328,7 +328,7 @@ async def restore_backup(name: str, request: RestoreBackupRequest) -> Project:
         Restored project
     """
     yaml_service: YamlService = get_yaml_service()
-    target_path: Path = settings.PROJECTS_DIR / f"{name}.yml"
+    target_path: Path = settings.PROJECTS_DIR / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
     yaml_service.restore_backup(request.backup_path, str(target_path), create_backup=True)
     restored_data: dict[str, Any] = yaml_service.load(target_path)
     stat = target_path.stat()
