@@ -64,13 +64,17 @@ class TestCreateFixedTable:
             await FixedLoader(data_source=None).load(entity, table_cfg)
 
     @pytest.mark.asyncio
-    async def test_raises_when_zero_values(self):
-        """Test that await FixedLoader(data_source=None).load raises ValueError when no values defined."""
+    async def test_returns_empty_dataframe_when_zero_values(self):
+        """Test that an empty values list produces an empty fixed table."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "keys": [], "public_id": "entity_id", "columns": ["col1"], "values": []}}
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
-        assert await FixedLoader(data_source=None).load(entity, table_cfg) is not None
+        result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
+
+        assert result.empty
+        assert "col1" in result.columns
+        assert "system_id" in result.columns
 
     @pytest.mark.asyncio
     async def test_raises_when_empty_columns(self):

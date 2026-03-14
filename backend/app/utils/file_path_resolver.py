@@ -22,6 +22,7 @@ from loguru import logger
 
 from backend.app.core.config import Settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
+from src.path_resolution import resolve_managed_file_path
 
 
 class FilePathResolver:
@@ -73,7 +74,11 @@ class FilePathResolver:
             raise ValueError(f"Invalid location: {location}. Must be 'global' or 'local'")
 
         if location == "global":
-            resolved_path = self.settings.global_data_dir / filename
+            resolved_path = resolve_managed_file_path(
+                filename,
+                location="global",
+                global_root=self.settings.global_data_dir,
+            )
             logger.debug(f"Resolved global file: {filename} -> {resolved_path}")
             return resolved_path
 
@@ -82,8 +87,12 @@ class FilePathResolver:
                 raise ValueError(f"project_name required for local file resolution: {filename}")
 
             # Convert project name (e.g., "dendro:sites") to path ("dendro/sites")
-            project_path = ProjectNameMapper.to_path(project_name)
-            resolved_path = self.settings.projects_root / project_path / filename
+            project_path: str = ProjectNameMapper.to_path(project_name)
+            resolved_path: Path = resolve_managed_file_path(
+                filename,
+                location="local",
+                local_root=self.settings.projects_root / project_path,
+            )
             logger.debug(f"Resolved local file: {filename} ({project_name}) -> {resolved_path}")
             return resolved_path
 

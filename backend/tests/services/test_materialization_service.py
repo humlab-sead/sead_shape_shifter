@@ -12,6 +12,7 @@ from backend.app.services.materialization_service import (
     MaterializationError,
     MaterializationService,
 )
+from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.services.project_service import ProjectService
 from src.model import MaterializationConfig, ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
@@ -263,6 +264,29 @@ class TestMaterializeEntity:
                     assert not result.success
                     assert "not found in normalization results" in result.errors[0]
 
+    def test_normalize_materialized_dataframe_uses_injected_fixed_strategy(self, mock_project_service, mock_table_config):
+        """MaterializationService should use the injected strategy registry for fixed normalization."""
+        strategy = MagicMock()
+        expected = pd.DataFrame({"system_id": [1], "location_id": [10], "location_name": ["A"]})
+        strategy.normalize_materialized_dataframe.return_value = expected
+
+        registry = MagicMock(spec=EntityPersistenceStrategyRegistry)
+        registry.get_strategy_for_type.return_value = strategy
+
+        service = MaterializationService(mock_project_service, persistence_strategy_registry=registry)
+        source = pd.DataFrame({"location_name": ["A"]})
+
+        result = service._normalize_materialized_dataframe(mock_table_config, source)
+
+        registry.get_strategy_for_type.assert_called_once_with("fixed")
+        strategy.normalize_materialized_dataframe.assert_called_once_with(
+            "location",
+            source,
+            "location_id",
+            ["location_name"],
+        )
+        assert result is expected
+
     @pytest.mark.asyncio
     async def test_materialize_storage_failure(
         self, materialization_service, mock_project_service, mock_api_project, mock_core_project, mock_table_config, sample_dataframe
@@ -412,8 +436,8 @@ class TestCreateMaterializedEntity:
             assert result["type"] == "fixed"
             assert result["public_id"] == "location_id"
             assert result["keys"] == ["location_name"]
-            assert result["columns"] == ["location_id", "location_name", "country_code"]
-            assert result["values"] == values_inline
+            assert result["columns"] == ["system_id", "location_id", "location_name", "country_code"]
+            assert result["values"] == [[1, 1, "Norway", "NO"], [2, 2, "Sweden", "SE"], [3, 3, "Denmark", "DK"]]
             assert result["materialized"]["enabled"] is True
             assert "source_state" in result["materialized"]
             assert result["materialized"]["materialized_at"] == "2026-03-05T12:00:00"
@@ -433,9 +457,11 @@ class TestCreateMaterializedEntity:
             columns=["system_id", "name", "name", "_merge_indicator_remote", "location_id"],
         )
 
-        result = materialization_service._create_materialized_entity(mock_table_config, df, "@load:test-project/materialized/location.parquet")
+        result = materialization_service._create_materialized_entity(
+            mock_table_config, df, "@load:test-project/materialized/location.parquet"
+        )
 
-        assert result["columns"] == ["system_id", "name", "location_id"]
+        assert result["columns"] == ["system_id", "location_id", "location_name", "name"]
 
     def test_create_materialized_entity_empty_saved_state(self, materialization_service, sample_dataframe):
         """Test creating materialized entity when saved_state is empty."""

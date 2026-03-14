@@ -1115,7 +1115,6 @@ const sheetOptionsLoading = ref(false)
 const columnsOptions = ref<string[]>([])
 const columnsLoading = ref(false)
 const directivePaths = ref<string[]>([])
-const fixedStoredColumnOrder = ref<string[]>([])
 
 function findSelectedFileInfo(filename: string, location?: 'global' | 'local'): FileInfo | undefined {
   return availableProjectFiles.value.find((file) => file.name === filename && file.location === location)
@@ -1139,8 +1138,7 @@ const fixedValuesColumns = computed(() => {
   return buildFixedValuesColumns(
     formData.value.columns || [],
     formData.value.keys || [],
-    formData.value.public_id,
-    fixedStoredColumnOrder.value
+    formData.value.public_id
   )
 })
 
@@ -2046,8 +2044,6 @@ function yamlToFormData(yamlString: string): boolean {
     const publicId = data.public_id || data.surrogate_id || ''
     const normalizedColumns = normalizeChipField(data.columns)
 
-    fixedStoredColumnOrder.value = (data.type || 'entity') === 'fixed' ? normalizedColumns : []
-
     // Keep non-inline values/materialization metadata from YAML edits.
     const roundTrip = extractMaterializationRoundTripState(data)
     externalValuesDirective.value = roundTrip.externalValuesDirective
@@ -2457,11 +2453,8 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   const normalizedColumns = normalizeChipField(entity.entity_data.columns)
   let columns = normalizedColumns
   if (entity.entity_data.type === 'fixed') {
-    const publicId = (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || ''
-    columns = normalizeEditableFixedColumns(columns, keys, publicId)
+    columns = entity.fixed_schema?.editable_columns || []
   }
-
-  fixedStoredColumnOrder.value = entity.entity_data.type === 'fixed' ? normalizedColumns : []
 
   // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
   const roundTrip = extractMaterializationRoundTripState(entity.entity_data)
@@ -2533,8 +2526,7 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
       // Populate form data with fetched values
       formData.value.values = response.values
       if (formData.value.type === 'fixed') {
-        const publicId = formData.value.public_id
-        formData.value.columns = response.columns.filter((col) => col !== 'system_id' && col !== publicId)
+        formData.value.columns = entity.fixed_schema?.editable_columns || []
       } else {
         formData.value.columns = response.columns
       }
