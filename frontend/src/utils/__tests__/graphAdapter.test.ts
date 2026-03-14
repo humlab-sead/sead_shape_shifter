@@ -112,6 +112,19 @@ describe('graphAdapter', () => {
       expect(elements[0]?.classes).not.toContain('hide-label')
     })
 
+    it('should mark materialized nodes with a materialized class', () => {
+      const graph: DependencyGraph = {
+        nodes: [{ name: 'entity1', depends_on: [], depth: 0, materialized: true }],
+        edges: [],
+        has_cycles: false,
+        cycles: [],
+        topological_order: ['entity1'],
+      }
+
+      const elements = toCytoscapeElements(graph)
+      expect(elements[0]?.classes).toContain('materialized')
+    })
+
     it('should highlight cycle nodes when highlightCycles is true', () => {
       const graph: DependencyGraph = {
         nodes: [
