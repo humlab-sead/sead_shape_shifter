@@ -78,16 +78,21 @@ RUN if [ "$SOURCE" = "workdir" ]; then \
 ARG NODE_VERSION
 FROM node:${NODE_VERSION}-alpine AS frontend-builder
 
-# Copy codebase from source resolver
-COPY --from=source-resolver /source /app
-
 WORKDIR /app/frontend
 
 # Install pnpm
 RUN npm install -g pnpm@9
 
+# Copy dependency manifests first so application source edits do not invalidate
+# the pnpm install layer.
+COPY --from=source-resolver /source/frontend/package.json ./package.json
+COPY --from=source-resolver /source/frontend/pnpm-lock.yaml ./pnpm-lock.yaml
+
 # Install dependencies
 RUN pnpm install --frozen-lockfile
+
+# Copy frontend source after dependencies are installed.
+COPY --from=source-resolver /source/frontend ./
 
 # Build-time environment variables for Vite
 ARG VITE_API_BASE_URL
@@ -111,19 +116,20 @@ RUN pnpm run build:skip-check
 ARG PYTHON_VERSION
 FROM python:${PYTHON_VERSION}-slim AS python-builder
 
-# Copy codebase from source resolver
-COPY --from=source-resolver /source /app
-
 WORKDIR /app
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
 # Install uv for fast Python package installation
 RUN pip install --no-cache-dir uv
 
-# Create empty uv.lock if it doesn't exist (optional)
-RUN touch uv.lock || true
+# Copy dependency metadata first so normal source edits do not force a full
+# Python dependency reinstall.
+COPY --from=source-resolver /source/pyproject.toml ./pyproject.toml
+COPY --from=source-resolver /source/uv.lock ./uv.lock
+COPY --from=source-resolver /source/README.md ./README.md
 
-# Install Python dependencies (core + api)
-RUN uv pip install --system --no-cache -e ".[api]"
+# Install only locked runtime dependencies into a dedicated virtual environment.
+RUN uv sync --frozen --no-dev --extra api --no-install-project
 
 
 # ------------------------------------------------------------------------------
@@ -154,10 +160,8 @@ RUN GROUP_NAME=$(getent group ${USER_GID} | cut -d: -f1) && \
     fi && \
     useradd --uid ${USER_UID} -g ${USER_GID} --home-dir=/app --shell=/bin/bash shapeshifter
 
-# Copy Python packages from builder
-ARG PYTHON_VERSION
-COPY --from=python-builder /usr/local/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
-COPY --from=python-builder /usr/local/bin /usr/local/bin
+# Copy the dedicated Python environment from builder
+COPY --from=python-builder /opt/venv /opt/venv
 
 # Copy application source from source resolver
 COPY --from=source-resolver /source/src ./src/
@@ -172,13 +176,14 @@ COPY lib/ ./lib/
 # Copy built frontend from frontend-builder
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Create required directories and set ownership for ALL files
+# Create only the writable runtime directories with the correct ownership.
 RUN mkdir -p /app/projects /app/logs /app/output /app/backups /app/tmp && \
-    chown -R ${USER_UID}:${USER_GID} /app && \
-    chmod -R u+w /app
+    chown ${USER_UID}:${USER_GID} /app/projects /app/logs /app/output /app/backups /app/tmp && \
+    chmod 775 /app/projects /app/logs /app/output /app/backups /app/tmp
 
 # Set environment variables
-ENV PYTHONPATH=/app \
+ENV PATH=/opt/venv/bin:$PATH \
+    PYTHONPATH=/app \
     PYTHONUNBUFFERED=1 \
     ENVIRONMENT=production \
     PROJECTS_DIR=/app/projects \
