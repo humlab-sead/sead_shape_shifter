@@ -276,3 +276,7 @@ entities:
       filename: abc.xlsx
       location: local
       sheet_name: Sheet1
+
+TODO: Mark as Todo shouldn't exist (right menu click)
+TODO: Create Todo not implemented
+TODO: Mat. nodes has no indicators
