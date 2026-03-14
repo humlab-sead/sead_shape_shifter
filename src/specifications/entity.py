@@ -186,15 +186,19 @@ class FixedEntitySystemIdSpecification(ProjectSpecification):
             return True
 
         columns: list[str] = table.safe_columns
-        values: list[list[Any]] = table.safe_values
+        raw_values: list[Any] | None = table.values if isinstance(table.values, list) else None
 
         # Check if system_id column exists
         if "system_id" not in columns:
             # system_id is optional, but if missing it will be auto-generated
             return True
 
-        system_id_index = columns.index("system_id")
-        system_id_values = [row[system_id_index] for row in values]
+        if raw_values and all(isinstance(row, dict) for row in raw_values):
+            system_id_values = [row.get("system_id") for row in raw_values]
+        else:
+            values: list[list[Any]] = table.safe_values
+            system_id_index = columns.index("system_id")
+            system_id_values = [row[system_id_index] for row in values]
 
         # Validate: No null/None values
         null_count = sum(

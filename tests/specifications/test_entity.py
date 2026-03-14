@@ -298,6 +298,29 @@ class TestFixedEntitySystemIdSpecification:
         assert result is True
         assert len(spec.errors) == 0
 
+    def test_dict_backed_system_id_values_are_valid(self):
+        """Externally loaded fixed rows represented as dicts should validate their system_id values."""
+        project_cfg = {
+            "entities": {
+                "sample_type": {
+                    "type": "fixed",
+                    "columns": ["system_id", "sample_type_id", "type_name"],
+                    "public_id": "sample_type_id",
+                    "values": [
+                        {"system_id": 1, "sample_type_id": None, "type_name": "Soil"},
+                        {"system_id": 2, "sample_type_id": None, "type_name": "Wood"},
+                        {"system_id": 3, "sample_type_id": None, "type_name": "Sediment"},
+                    ],
+                }
+            }
+        }
+        spec = FixedEntitySystemIdSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample_type")
+
+        assert result is True, spec.get_report()
+        assert len(spec.errors) == 0, spec.get_report()
+
     def test_missing_system_id_column_is_valid(self):
         """Test that missing system_id column doesn't cause errors (will be auto-generated)."""
         project_cfg = {
