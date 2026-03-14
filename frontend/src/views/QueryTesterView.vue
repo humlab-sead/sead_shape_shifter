@@ -140,43 +140,6 @@ const snackbar = ref({
 const initialQuery = ref((route.query.query as string) || '')
 const initialDataSource = ref((route.query.dataSource as string) || '')
 
-// Example queries
-const exampleQueries = [
-  {
-    title: 'Select all rows',
-    description: 'Retrieve all columns from a table',
-    query: 'SELECT * FROM table_name LIMIT 100',
-  },
-  {
-    title: 'Filter with WHERE',
-    description: 'Select rows matching a condition',
-    query: 'SELECT * FROM table_name WHERE column_name = value',
-  },
-  {
-    title: 'Join tables',
-    description: 'Combine data from multiple tables',
-    query: `SELECT t1.*, t2.column
-FROM table1 t1
-JOIN table2 t2 ON t1.id = t2.foreign_id`,
-  },
-  {
-    title: 'Aggregate with GROUP BY',
-    description: 'Count or sum values by group',
-    query: `SELECT category, COUNT(*) as count
-FROM table_name
-GROUP BY category
-ORDER BY count DESC`,
-  },
-  {
-    title: 'Date filtering',
-    description: 'Filter by date range',
-    query: `SELECT *
-FROM table_name
-WHERE created_at >= '2024-01-01'
-  AND created_at < '2024-02-01'`,
-  },
-]
-
 // Methods
 function handleQueryResult(result: QueryResult) {
   queryResult.value = result
@@ -194,30 +157,6 @@ function handleQueryError(error: string) {
     message: error,
     color: 'error',
   }
-}
-
-function handleUseQuery(sql: string, dataSource: string) {
-  // Switch to editor tab and populate with generated SQL
-  activeTab.value = 'editor'
-  initialQuery.value = sql
-  initialDataSource.value = dataSource
-  editorKey.value++ // Force re-render
-
-  // Scroll to top
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-
-  // Show success message
-  snackbar.value = {
-    show: true,
-    message: 'SQL query loaded into editor. Click "Execute Query" to run it.',
-    color: 'success',
-  }
-}
-
-function loadExample(query: string) {
-  initialQuery.value = query
-  editorKey.value++ // Force re-render
-  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 </script>
 
