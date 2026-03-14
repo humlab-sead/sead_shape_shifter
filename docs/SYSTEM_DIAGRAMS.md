@@ -566,41 +566,251 @@ gantt
 ```mermaid
 mindmap
   root((Shape Shifter))
-    Project Management
-      YAML Configuration
-      Automatic Backups
-      Version Control
-      Template Support
-    Entity Management
-      Visual Forms
-      Relationship Mapping
-      Preview Data
-      Dependency Graph
-    Validation System
-      Multi-Level Checks
-            Guided Remediation
-      Real-Time Feedback
-      Error Prevention
-    Identity Reconciliation
-      Auto-Matching
-      Confidence Scoring
-      Review Interface
-      Reusable Mappings
-    Data Integration
-      Multiple Sources
-      Schema Introspection
-      Query Testing
-      Foreign Key Validation
-    Dispatch System
-      Target Configuration
-      SEAD Integration
-      File Export
-      Status Tracking
+        Project Workspace
+            Projects View
+                Search and sorting
+                Create, copy, delete
+                Quick validation
+            Project Safety
+                Session awareness
+                Version-checked saves
+                Automatic backups
+                Refresh and restore
+            Configuration Surfaces
+                YAML-first project config
+                Raw YAML editor
+                Metadata tab
+                Files tab
+                Data Sources tab
+        Entity Modeling
+            Supported Entity Types
+                Derived entities
+                SQL entities
+                Fixed values
+                CSV and Excel sources
+            Entity Editor
+                Form mode
+                Split preview mode
+                Preview-only mode
+                Per-entity YAML tab
+            Identity System
+                system_id
+                Business keys
+                public_id
+            Transformation Tools
+                Foreign keys
+                Filters
+                Unnest
+                Append
+                Extra columns
+                Replace rules
+        Graph and Navigation
+            Interactive dependency graph
+            Source visibility
+            Task status tracking
+            Quick actions and notes
+            Layout controls
+            PNG export
+        Validation System
+            YAML validation
+            Data validation
+                Sample mode
+                Complete mode
+                Configurable sample size
+            Validator coverage
+                Column exists
+                Natural key uniqueness
+                Non-empty result
+            Results workflow
+                Grouped issues
+                Copyable results
+                Guided remediation
+        Reconciliation
+            OpenRefine protocol services
+            Reconciliation specs
+            Auto-reconcile
+            Confidence scoring
+            Review grid
+            Reusable mappings
+        Execution and Dispatch
+            Execute dialog
+            Export formats
+                Excel
+                ZIP CSV
+                Folder CSV
+                Database targets
+            Run validation before execute
+            Translation and FK export options
+            Dispatch tab
+            Ingester configuration
+            SEAD delivery workflows
+        Data Integration
+            Shared data sources
+            Schema introspection
+            Query testing
+            Project-local uploads
+            Entity previews
+            Dependency-aware caching
+        Platform Qualities
+            Declarative pipelines
+            Reproducible transformations
+            Extensible registries
+            Multi-user protection
+            Auditability and provenance
 ```
 
 ---
 
-## 12. User Personas & Use Cases
+## 12. Use Case Feature Map
+
+```mermaid
+flowchart TB
+    GOAL[User Goals in Shape Shifter]
+
+    GOAL --> MP
+    GOAL --> CPS
+    GOAL --> EE
+    GOAL --> ED
+    GOAL --> VCD
+    GOAL --> RV
+    GOAL --> EXD
+
+    subgraph ManageProjects[Manage Projects]
+        direction TB
+        MP[Project lifecycle]
+        MP1[Create project]
+        MP2[Open, copy, delete project]
+        MP3[Save changes]
+        MP4[Refresh project]
+        MP5[Restore backup]
+        MP6[Review session status]
+        MP --> MP1
+        MP --> MP2
+        MP --> MP3
+        MP --> MP4
+        MP --> MP5
+        MP --> MP6
+    end
+
+    subgraph ConfigureProjectStructure[Configure Project Structure]
+        direction TB
+        CPS[Project setup]
+        CPS1[Edit project YAML]
+        CPS2[Edit metadata]
+        CPS3[Upload project files]
+        CPS4[Connect shared data sources]
+        CPS5[Create entity from source table]
+        CPS --> CPS1
+        CPS --> CPS2
+        CPS --> CPS3
+        CPS --> CPS4
+        CPS4 --> CPS5
+    end
+
+    subgraph EditEntity[Edit Entity]
+        direction TB
+        EE[Entity editing]
+        EE1[Define entity type]
+        EE2[Configure source entity or data source]
+        EE3[Select file, sheet, range, delimiter]
+        EE4[Define identity fields]
+        EE5[Specify transformations]
+        EE6[Edit raw entity YAML]
+        EE7[Preview entity output]
+        EE --> EE1
+        EE --> EE2
+        EE --> EE3
+        EE --> EE4
+        EE --> EE5
+        EE --> EE6
+        EE --> EE7
+
+        EE4 --> EE41[Set business keys]
+        EE4 --> EE42[Set public_id]
+        EE4 --> EE43[Keep system_id managed]
+
+        EE5 --> EE51[Specify foreign keys]
+        EE5 --> EE52[Specify filters]
+        EE5 --> EE53[Specify Unnest]
+        EE5 --> EE54[Specify append]
+        EE5 --> EE55[Specify extra columns]
+        EE5 --> EE56[Specify replace rules]
+    end
+
+    subgraph ExploreDependencies[Explore Dependencies]
+        direction TB
+        ED[Dependency exploration]
+        ED1[View graph layout]
+        ED2[Inspect source visibility]
+        ED3[Review task status]
+        ED4[Open notes and quick actions]
+        ED5[Export graph image]
+        ED --> ED1
+        ED --> ED2
+        ED --> ED3
+        ED --> ED4
+        ED --> ED5
+    end
+
+    subgraph ValidateConfigurationAndData[Validate Configuration and Data]
+        direction TB
+        VCD[Validation workflow]
+        VCD1[Run YAML validation]
+        VCD2[Run sample data validation]
+        VCD3[Run complete data validation]
+        VCD4[Tune sample size]
+        VCD5[Review grouped issues]
+        VCD6[Copy validation results]
+        VCD --> VCD1
+        VCD --> VCD2
+        VCD --> VCD3
+        VCD --> VCD4
+        VCD --> VCD5
+        VCD --> VCD6
+    end
+
+    subgraph ReconcileValues[Reconcile Values]
+        direction TB
+        RV[Reconciliation workflow]
+        RV1[Configure reconciliation]
+        RV2[Edit reconciliation YAML]
+        RV3[Run auto-reconcile]
+        RV4[Review confidence-ranked matches]
+        RV5[Accept, adjust, or reject mappings]
+        RV6[Save reusable mappings]
+        RV --> RV1
+        RV --> RV2
+        RV --> RV3
+        RV --> RV4
+        RV --> RV5
+        RV --> RV6
+    end
+
+    subgraph ExecuteAndDispatch[Execute and Dispatch]
+        direction TB
+        EXD[Delivery workflow]
+        EXD1[Select output format]
+        EXD2[Set file, folder, or database target]
+        EXD3[Run validation before execute]
+        EXD4[Apply translations]
+        EXD5[Drop foreign key columns]
+        EXD6[Download result file]
+        EXD7[Dispatch via ingester config]
+        EXD8[Deliver to SEAD workflow]
+        EXD --> EXD1
+        EXD --> EXD2
+        EXD --> EXD3
+        EXD --> EXD4
+        EXD --> EXD5
+        EXD --> EXD6
+        EXD --> EXD7
+        EXD --> EXD8
+    end
+```
+
+---
+
+## 13. User Personas & Use Cases
 
 ```mermaid
 flowchart LR
@@ -639,7 +849,7 @@ flowchart LR
 
 ---
 
-## 13. Technology Stack
+## 14. Technology Stack
 
 ```mermaid
 flowchart TB
@@ -688,7 +898,7 @@ flowchart TB
 
 ---
 
-## 14. Deployment Architecture
+## 15. Deployment Architecture
 
 ```mermaid
 flowchart TB
@@ -734,7 +944,7 @@ flowchart TB
 
 ---
 
-## 15. Registry Pattern (Extensibility)
+## 16. Registry Pattern (Extensibility)
 
 ```mermaid
 flowchart TB
@@ -783,5 +993,5 @@ flowchart TB
 ---
 
 **Document Version:** 1.0  
-**Last Updated:** January 12, 2026  
+**Last Updated:** March 14, 2026  
 **Purpose:** Visual documentation of Shape Shifter system architecture and workflows
