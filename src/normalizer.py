@@ -13,9 +13,10 @@ from loguru import logger
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService
 from src.loaders import DataLoader
-from src.loaders.base_loader import DataLoaders
+from src.loaders.base_loader import DataLoaders, LoaderType
 from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
+from src.path_resolution import resolve_managed_file_path
 from src.process_state import ProcessState
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.transforms.extra_columns import ExtraColumnEvaluator
@@ -57,11 +58,36 @@ class ShapeShifter:
 
         return None
 
+    def _resolve_project_local_file_options(self, table_cfg: TableConfig, loader: DataLoader) -> None:
+        """Resolve `location: local` file paths relative to the project file directory."""
+        if loader.loader_type() != LoaderType.FILE:
+            return
+
+        project_filename: str | None = self.project.filename
+        if not project_filename:
+            return
+
+        options: dict[str, Any] = dict(table_cfg.options or {})
+        filename: str | None = options.get("filename")
+        location: str | None = options.get("location")
+
+        if location != "local" or not isinstance(filename, str) or not filename.strip():
+            return
+
+        file_path = Path(filename)
+        if file_path.is_absolute():
+            return
+
+        project_dir = Path(project_filename).resolve().parent
+        options["filename"] = str(resolve_managed_file_path(filename, location="local", local_root=project_dir))
+        table_cfg.entity_cfg["options"] = options
+
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
         logger.trace(f"Resolving source for entity '{table_cfg.entity_name}'")
         loader: DataLoader | None = self.resolve_loader(table_cfg=table_cfg)
         if loader:
+            self._resolve_project_local_file_options(table_cfg, loader)
             logger.trace(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
 
