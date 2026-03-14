@@ -132,8 +132,8 @@ describe('graphAdapter', () => {
           { name: 'entity2', depends_on: ['entity1'], depth: 1 },
         ],
         edges: [
-          ['entity1', 'entity2'],
-          ['entity2', 'entity1'],
+          { source: 'entity1', target: 'entity2' },
+          { source: 'entity2', target: 'entity1' },
         ],
         has_cycles: true,
         cycles: [['entity1', 'entity2']],
