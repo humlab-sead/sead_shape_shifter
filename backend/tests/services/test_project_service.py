@@ -12,12 +12,12 @@ from backend.app.core.config import settings
 from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError, SchemaValidationError
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectMetadata
+from backend.app.services.project.entity_operations import EntityOperations
 from backend.app.services.project.entity_persistence_strategies import (
     DefaultEntityPersistenceStrategy,
     EntityPersistenceStrategyRegistry,
     FixedEntityPersistenceStrategy,
 )
-from backend.app.services.project.entity_operations import EntityOperations
 from backend.app.services.project_service import (
     ProjectService,
     get_project_service,

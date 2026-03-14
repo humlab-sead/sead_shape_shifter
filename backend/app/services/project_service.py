@@ -15,8 +15,8 @@ from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
-from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.services.project.entity_operations import EntityOperations
+from backend.app.services.project.entity_persistence_strategies import EntityPersistenceStrategyRegistry
 from backend.app.services.project.file_manager import FileManager
 from backend.app.services.project.project_operations import ProjectOperations
 from backend.app.services.project.project_utils import ProjectUtils
