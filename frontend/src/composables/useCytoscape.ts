@@ -9,9 +9,11 @@ import cytoscape, { type Core, type LayoutOptions } from 'cytoscape'
 import dagre from 'cytoscape-dagre'
 // @ts-expect-error - No type definitions available
 import coseBilkent from 'cytoscape-cose-bilkent'
-import { getCytoscapeStyles } from '@/config/cytoscapeStyles'
+import { DEFAULT_NODE_LABEL_FONT_SIZE_PX, getCytoscapeStyles } from '@/config/cytoscapeStyles'
 import { toCytoscapeElements, getLayoutConfig } from '@/utils/graphAdapter'
 import type { CustomGraphLayout, DependencyGraph } from '@/types'
+
+const SOURCE_NODE_LABEL_FONT_SCALE = 0.9
 
 // Register layouts
 cytoscape.use(dagre)
@@ -47,6 +49,11 @@ export interface UseCytoscapeOptions {
    * Whether to show edge labels
    */
   showEdgeLabels?: Ref<boolean>
+
+  /**
+   * Node label font size in pixels
+   */
+  nodeLabelFontSize?: Ref<number>
 
   /**
    * Whether to show foreign key edges
@@ -114,6 +121,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     customPositions = ref(null),
     showNodeLabels = ref(true),
     showEdgeLabels = ref(true),
+    nodeLabelFontSize = ref(DEFAULT_NODE_LABEL_FONT_SIZE_PX),
     showForeignKeyEdges = ref(true),
     showProvidesEdges = ref(true),
     highlightCycles = ref(false),
@@ -135,6 +143,13 @@ export function useCytoscape(options: UseCytoscapeOptions) {
   let singleClickTimeout: number | null = null
   const CLICK_DELAY = 250 // milliseconds
 
+  function getStyleOptions() {
+    return {
+      nodeFontSizePx: nodeLabelFontSize.value,
+      sourceNodeFontSizePx: Math.max(1, Math.round(nodeLabelFontSize.value * SOURCE_NODE_LABEL_FONT_SCALE)),
+    }
+  }
+
   /**
    * Initialize Cytoscape instance
    */
@@ -145,7 +160,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
       cy.value = cytoscape({
         container: container.value,
         elements: [],
-        style: getCytoscapeStyles(isDark.value),
+        style: getCytoscapeStyles(isDark.value, getStyleOptions()),
         minZoom: 0.3,
         maxZoom: 3,
         // Use default wheelSensitivity (1.0) for cross-platform consistency
@@ -354,7 +369,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
   function updateStyles() {
     if (!cy.value) return
 
-    cy.value.style(getCytoscapeStyles(isDark.value))
+    cy.value.style(getCytoscapeStyles(isDark.value, getStyleOptions()))
   }
 
   /**
@@ -552,6 +567,10 @@ export function useCytoscape(options: UseCytoscapeOptions) {
 
   // Watch for theme changes
   watch(isDark, () => {
+    updateStyles()
+  })
+
+  watch(nodeLabelFontSize, () => {
     updateStyles()
   })
 
