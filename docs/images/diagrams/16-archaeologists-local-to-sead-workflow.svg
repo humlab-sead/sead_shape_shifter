@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbff"/>
+      <stop offset="100%" stop-color="#eef4f8"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#355c7d"/>
+    </marker>
+    <style>
+      .title { font: 700 42px Arial, sans-serif; fill: #16324f; }
+      .subtitle { font: 500 22px Arial, sans-serif; fill: #49657f; }
+      .label { font: 700 24px Arial, sans-serif; fill: #16324f; }
+      .body { font: 500 20px Arial, sans-serif; fill: #29465f; }
+      .small { font: 500 18px Arial, sans-serif; fill: #48627a; }
+      .box { fill: #ffffff; stroke: #b9cad9; stroke-width: 2; rx: 24; }
+      .accentA { fill: #d9ecff; stroke: #7aa7d9; stroke-width: 2; rx: 24; }
+      .accentB { fill: #e5f6e8; stroke: #86bf91; stroke-width: 2; rx: 24; }
+      .accentC { fill: #fff0d9; stroke: #d8aa58; stroke-width: 2; rx: 24; }
+      .arrow { stroke: #355c7d; stroke-width: 6; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <text x="90" y="100" class="title">From Local Research Data to SEAD-Ready Structure</text>
+  <text x="90" y="142" class="subtitle">A simple view of the Shape Shifter workflow for archaeologists</text>
+
+  <rect x="90" y="240" width="360" height="330" class="accentA"/>
+  <text x="120" y="295" class="label">Local Research Data</text>
+  <text x="120" y="345" class="body">• spreadsheets</text>
+  <text x="120" y="385" class="body">• local databases</text>
+  <text x="120" y="425" class="body">• project exports</text>
+  <text x="120" y="465" class="body">• provider-specific names</text>
+  <text x="120" y="525" class="small">Correct information, but often in the wrong shape</text>
+
+  <rect x="620" y="180" width="360" height="450" class="accentB"/>
+  <text x="650" y="235" class="label">Shape Shifter</text>
+  <text x="650" y="290" class="body">1. define a reusable project</text>
+  <text x="650" y="340" class="body">2. model entities and relationships</text>
+  <text x="650" y="390" class="body">3. preview and validate</text>
+  <text x="650" y="440" class="body">4. reconcile identities</text>
+  <text x="650" y="490" class="body">5. execute the workflow</text>
+  <text x="650" y="550" class="small">A managed workflow instead of one-off data wrangling</text>
+
+  <rect x="1150" y="240" width="360" height="330" class="accentC"/>
+  <text x="1180" y="295" class="label">SEAD-Ready Output</text>
+  <text x="1180" y="345" class="body">• clear structure</text>
+  <text x="1180" y="385" class="body">• explicit relationships</text>
+  <text x="1180" y="425" class="body">• stable identifiers</text>
+  <text x="1180" y="465" class="body">• documented transformation</text>
+  <text x="1180" y="525" class="small">Ready for export, review, or dispatch</text>
+
+  <path d="M450 405 C525 405, 545 405, 620 405" class="arrow"/>
+  <path d="M980 405 C1055 405, 1075 405, 1150 405" class="arrow"/>
+</svg>

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f9fbfd"/>
+      <stop offset="100%" stop-color="#edf2f6"/>
+    </linearGradient>
+    <style>
+      .title { font: 700 42px Arial, sans-serif; fill: #17324b; }
+      .subtitle { font: 500 22px Arial, sans-serif; fill: #4a667f; }
+      .label { font: 700 24px Arial, sans-serif; fill: #17324b; }
+      .body { font: 500 20px Arial, sans-serif; fill: #29465f; }
+      .small { font: 500 18px Arial, sans-serif; fill: #49657d; }
+      .left { fill: #fdeaea; stroke: #d99999; stroke-width: 2; rx: 24; }
+      .right { fill: #eaf6ea; stroke: #8ec08d; stroke-width: 2; rx: 24; }
+      .center { fill: #ffffff; stroke: #bfd0de; stroke-width: 2; rx: 24; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <text x="90" y="100" class="title">From One-Off Cleanup to Reusable Workflow</text>
+  <text x="90" y="142" class="subtitle">The practical benefit is not just automation, but repeatability and traceability</text>
+
+  <rect x="100" y="220" width="420" height="520" class="left"/>
+  <text x="135" y="280" class="label">Without a managed workflow</text>
+  <text x="135" y="350" class="body">• knowledge stays in scripts</text>
+  <text x="135" y="395" class="body">  or spreadsheets</text>
+  <text x="135" y="450" class="body">• repeated deliveries mean</text>
+  <text x="135" y="495" class="body">  repeated effort</text>
+  <text x="135" y="550" class="body">• identity choices are hard</text>
+  <text x="135" y="595" class="body">  to trace later</text>
+  <text x="135" y="650" class="body">• handover between people</text>
+  <text x="135" y="695" class="body">  is fragile</text>
+
+  <rect x="590" y="280" width="420" height="400" class="center"/>
+  <text x="625" y="340" class="label">Shape Shifter Project</text>
+  <text x="625" y="410" class="body">Reusable configuration</text>
+  <text x="625" y="460" class="body">Validation and preview</text>
+  <text x="625" y="510" class="body">Reconciliation decisions</text>
+  <text x="625" y="560" class="body">Execution and export workflow</text>
+  <text x="625" y="620" class="small">One project can be reviewed, reused, and shared</text>
+
+  <rect x="1080" y="220" width="420" height="520" class="right"/>
+  <text x="1115" y="280" class="label">With a managed workflow</text>
+  <text x="1115" y="350" class="body">• transformation logic is explicit</text>
+  <text x="1115" y="405" class="body">• the same process can be reused</text>
+  <text x="1115" y="460" class="body">• review happens before ingest</text>
+  <text x="1115" y="515" class="body">• decisions remain visible over time</text>
+  <text x="1115" y="570" class="body">• handover becomes easier</text>
+  <text x="1115" y="625" class="body">• provenance is easier to explain</text>
+</svg>
