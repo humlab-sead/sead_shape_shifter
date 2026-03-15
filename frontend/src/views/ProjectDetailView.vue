@@ -370,6 +370,32 @@
                     <v-icon>mdi-refresh</v-icon>
                     <v-tooltip activator="parent" location="left">Reset View</v-tooltip>
                   </v-btn>
+
+                  <v-btn
+                    icon
+                    size="small"
+                    class="graph-fab"
+                    :disabled="nodeLabelFontSize <= MIN_NODE_LABEL_FONT_SIZE"
+                    @click="handleDecreaseNodeLabelFontSize"
+                  >
+                    <v-icon>mdi-format-font-size-decrease</v-icon>
+                    <v-tooltip activator="parent" location="left">
+                      Decrease Label Size ({{ nodeLabelFontSize }}px)
+                    </v-tooltip>
+                  </v-btn>
+
+                  <v-btn
+                    icon
+                    size="small"
+                    class="graph-fab"
+                    :disabled="nodeLabelFontSize >= MAX_NODE_LABEL_FONT_SIZE"
+                    @click="handleIncreaseNodeLabelFontSize"
+                  >
+                    <v-icon>mdi-format-font-size-increase</v-icon>
+                    <v-tooltip activator="parent" location="left">
+                      Increase Label Size ({{ nodeLabelFontSize }}px)
+                    </v-tooltip>
+                  </v-btn>
                   
                   <v-divider class="my-1" />
                   
@@ -982,14 +1008,33 @@ const contextMenuEntity = ref<string | null>(null)
 const currentTaskFilter = ref<TaskFilter>('all')
 const defaultColorByMode: GraphColorByMode = 'task'
 const colorByMode = ref<GraphColorByMode>(defaultColorByMode)
+const DEFAULT_NODE_LABEL_FONT_SIZE = 30
+const MIN_NODE_LABEL_FONT_SIZE = 12
+const MAX_NODE_LABEL_FONT_SIZE = 48
+const NODE_LABEL_FONT_SIZE_STEP = 2
+const nodeLabelFontSize = ref(DEFAULT_NODE_LABEL_FONT_SIZE)
 const colorByOptions = [
   { title: 'Task Status', value: 'task' as const },
   { title: 'Entity Type', value: 'type' as const },
 ]
 const colorByStorageKey = computed(() => `shapeshifter.graph.colorBy.${projectName.value || 'default'}`)
+const nodeLabelFontSizeStorageKey = computed(() => `shapeshifter.graph.nodeLabelFontSize.${projectName.value || 'default'}`)
 
 function getSavedColorByMode(savedMode: string | null): GraphColorByMode {
   return savedMode === 'type' ? 'type' : defaultColorByMode
+}
+
+function clampNodeLabelFontSize(value: number): number {
+  return Math.min(MAX_NODE_LABEL_FONT_SIZE, Math.max(MIN_NODE_LABEL_FONT_SIZE, value))
+}
+
+function getSavedNodeLabelFontSize(savedValue: string | null): number {
+  const parsedValue = Number(savedValue)
+  if (!Number.isFinite(parsedValue)) {
+    return DEFAULT_NODE_LABEL_FONT_SIZE
+  }
+
+  return clampNodeLabelFontSize(Math.round(parsedValue))
 }
 
 const rawYamlContent = ref<string | null>(null)
@@ -1120,6 +1165,7 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
   customPositions: customLayout,
   showNodeLabels: computed(() => displayOptions.value.nodeLabels),
   showEdgeLabels: computed(() => displayOptions.value.edgeLabels),
+  nodeLabelFontSize,
   showForeignKeyEdges: computed(() => displayOptions.value.showForeignKeyEdges),
   showProvidesEdges: computed(() => displayOptions.value.showProvidesEdges),
   highlightCycles,
@@ -1945,6 +1991,14 @@ function handleResetView() {
   reset()
 }
 
+function handleIncreaseNodeLabelFontSize() {
+  nodeLabelFontSize.value = clampNodeLabelFontSize(nodeLabelFontSize.value + NODE_LABEL_FONT_SIZE_STEP)
+}
+
+function handleDecreaseNodeLabelFontSize() {
+  nodeLabelFontSize.value = clampNodeLabelFontSize(nodeLabelFontSize.value - NODE_LABEL_FONT_SIZE_STEP)
+}
+
 async function syncGraphViewState() {
   if (activeTab.value !== 'dependencies') {
     return
@@ -2179,6 +2233,7 @@ onMounted(async () => {
 
   try {
     colorByMode.value = getSavedColorByMode(window.localStorage.getItem(colorByStorageKey.value))
+    nodeLabelFontSize.value = getSavedNodeLabelFontSize(window.localStorage.getItem(nodeLabelFontSizeStorageKey.value))
 
     console.debug(`ProjectDetailView: Initializing for project "${projectName.value}"`)
     
@@ -2213,7 +2268,8 @@ watch(
     // Avoid re-loading on initial mount (onMounted handles that)
     if (!oldName) return
 
-    colorByMode.value = getSavedColorByMode(window.localStorage.getItem(colorByStorageKey.value))
+  colorByMode.value = getSavedColorByMode(window.localStorage.getItem(colorByStorageKey.value))
+  nodeLabelFontSize.value = getSavedNodeLabelFontSize(window.localStorage.getItem(nodeLabelFontSizeStorageKey.value))
     
     console.debug(`ProjectDetailView: Project changed from "${oldName}" to "${newName}"`)
     
@@ -2317,6 +2373,13 @@ watch(
   (mode) => {
     window.localStorage.setItem(colorByStorageKey.value, mode)
     applyTaskStatusToNodes()
+  }
+)
+
+watch(
+  () => nodeLabelFontSize.value,
+  (fontSize) => {
+    window.localStorage.setItem(nodeLabelFontSizeStorageKey.value, String(fontSize))
   }
 )
 
