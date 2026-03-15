@@ -88,6 +88,12 @@ These are the primary system documentation files:
   - Mapping and matching strategies
   - API integration
 
+### Design Proposals
+
+- **[other/AI_PROJECT_ADVISOR_PROPOSAL.md](other/AI_PROJECT_ADVISOR_PROPOSAL.md)**
+  - Proposal for a grounded project advisor with Shape Shifter and SEAD/SIMS knowledge
+  - Scope, architecture, context model, safety boundaries, and phased delivery
+
 ## Archived Documentation
 
 Historical implementation notes and feature-specific documentation have been moved to [archive/](archive/) including:
