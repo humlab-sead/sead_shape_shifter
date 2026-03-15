@@ -943,6 +943,8 @@ const savingLayout = ref(false)
 const displayOptions = ref<GraphDisplayOptions>({
   nodeLabels: true,
   edgeLabels: true,
+  showForeignKeyEdges: true,
+  showProvidesEdges: true,
   showSources: false,
   showSourceEntities: false,
 })
@@ -1117,6 +1119,8 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
   customPositions: customLayout,
   showNodeLabels: computed(() => displayOptions.value.nodeLabels),
   showEdgeLabels: computed(() => displayOptions.value.edgeLabels),
+  showForeignKeyEdges: computed(() => displayOptions.value.showForeignKeyEdges),
+  showProvidesEdges: computed(() => displayOptions.value.showProvidesEdges),
   highlightCycles,
   showSources: computed(() => displayOptions.value.showSources),
   showSourceEntities: computed(() => displayOptions.value.showSourceEntities),

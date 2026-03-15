@@ -278,6 +278,53 @@ describe('graphAdapter', () => {
       expect(edges[0]?.data.id).toBe('edge-entity1-entity2-0')
       expect(edges[1]?.data.id).toBe('edge-entity1-entity2-1')
     })
+
+    it('should hide foreign key edges when disabled', () => {
+      const graph: DependencyGraph = {
+        nodes: [
+          { name: 'parent', depends_on: [], depth: 0 },
+          { name: 'child', depends_on: ['parent'], depth: 1 },
+        ],
+        edges: [
+          { source: 'parent', target: 'child', type: 'provides', label: 'provides' },
+          { source: 'child', target: 'parent', local_keys: ['parent_id'], remote_keys: ['id'], label: 'parent_id → id' },
+        ],
+        has_cycles: false,
+        cycles: [],
+        topological_order: ['parent', 'child'],
+      }
+
+      const elements = toCytoscapeElements(graph, { showForeignKeyEdges: false })
+      const edges = elements.filter((element) => element.data.source !== undefined)
+
+      expect(edges).toHaveLength(1)
+      expect(edges[0]?.data.label).toBe('provides')
+    })
+
+    it('should hide provides edges when disabled, including source provides edges', () => {
+      const graph: DependencyGraph = {
+        nodes: [{ name: 'entity1', depends_on: [], depth: 0 }],
+        edges: [{ source: 'source:db', target: 'entity1', type: 'provides', label: 'provides' }],
+        source_nodes: [{ name: 'source:db', source_type: 'postgresql', type: 'datasource' }],
+        source_edges: [
+          { source: 'source:db', target: 'entity1', label: 'provides', via_source_entity: false },
+          { source: 'source:db', target: 'table:db:entity1', label: 'contains', via_source_entity: true },
+        ],
+        has_cycles: false,
+        cycles: [],
+        topological_order: ['entity1'],
+      }
+
+      const elements = toCytoscapeElements(graph, {
+        showProvidesEdges: false,
+        showSources: true,
+        showSourceEntities: true,
+      })
+      const edges = elements.filter((element) => element.data.source !== undefined)
+
+      expect(edges).toHaveLength(1)
+      expect(edges[0]?.data.label).toBe('contains')
+    })
   })
 
   describe('getLayoutConfig', () => {

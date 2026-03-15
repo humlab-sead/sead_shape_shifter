@@ -48,6 +48,28 @@
         <v-list-item-title>Edge Labels</v-list-item-title>
       </v-list-item>
 
+      <v-list-item @click="toggleOption('showForeignKeyEdges')">
+        <template #prepend>
+          <v-checkbox-btn
+            :model-value="options.showForeignKeyEdges"
+            hide-details
+            density="compact"
+          />
+        </template>
+        <v-list-item-title>FK-Link Edges</v-list-item-title>
+      </v-list-item>
+
+      <v-list-item @click="toggleOption('showProvidesEdges')">
+        <template #prepend>
+          <v-checkbox-btn
+            :model-value="options.showProvidesEdges"
+            hide-details
+            density="compact"
+          />
+        </template>
+        <v-list-item-title>Provides Edges</v-list-item-title>
+      </v-list-item>
+
       <v-divider class="my-2" />
 
       <!-- Show Sources (databases, files) -->
@@ -95,6 +117,8 @@ import { computed } from 'vue'
 export interface GraphDisplayOptions {
   nodeLabels: boolean
   edgeLabels: boolean
+  showForeignKeyEdges: boolean
+  showProvidesEdges: boolean
   showSources: boolean  // Show top-level sources (databases, files)
   showSourceEntities: boolean  // Show intermediate source entities (tables, sheets)
 }
@@ -110,13 +134,20 @@ const emit = defineEmits<{
 }>()
 
 const hasActiveOptions = computed(() => {
-  return props.options.nodeLabels || props.options.edgeLabels || props.options.showSources || props.options.showSourceEntities
+  return props.options.nodeLabels
+    || props.options.edgeLabels
+    || props.options.showForeignKeyEdges
+    || props.options.showProvidesEdges
+    || props.options.showSources
+    || props.options.showSourceEntities
 })
 
 const activeOptionsCount = computed(() => {
   let count = 0
   if (props.options.nodeLabels) count++
   if (props.options.edgeLabels) count++
+  if (props.options.showForeignKeyEdges) count++
+  if (props.options.showProvidesEdges) count++
   if (props.options.showSources) count++
   if (props.options.showSourceEntities) count++
   return count
@@ -132,6 +163,8 @@ function resetToDefaults() {
   emit('update:options', {
     nodeLabels: true,
     edgeLabels: true,
+    showForeignKeyEdges: true,
+    showProvidesEdges: true,
     showSources: false,
     showSourceEntities: false,
   })

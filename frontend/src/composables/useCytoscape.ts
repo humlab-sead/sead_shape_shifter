@@ -49,6 +49,16 @@ export interface UseCytoscapeOptions {
   showEdgeLabels?: Ref<boolean>
 
   /**
+   * Whether to show foreign key edges
+   */
+  showForeignKeyEdges?: Ref<boolean>
+
+  /**
+   * Whether to show provides edges
+   */
+  showProvidesEdges?: Ref<boolean>
+
+  /**
    * Whether to highlight cycle nodes/edges
    */
   highlightCycles?: Ref<boolean>
@@ -104,6 +114,8 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     customPositions = ref(null),
     showNodeLabels = ref(true),
     showEdgeLabels = ref(true),
+    showForeignKeyEdges = ref(true),
+    showProvidesEdges = ref(true),
     highlightCycles = ref(false),
     showSources = ref(false),
     showSourceEntities = ref(false),
@@ -236,6 +248,8 @@ export function useCytoscape(options: UseCytoscapeOptions) {
       cycles: cycles.value,
       showNodeLabels: showNodeLabels.value,
       showEdgeLabels: showEdgeLabels.value,
+      showForeignKeyEdges: showForeignKeyEdges.value,
+      showProvidesEdges: showProvidesEdges.value,
       highlightCycles: highlightCycles.value,
       showSources: showSources.value,
       showSourceEntities: showSourceEntities.value,
@@ -515,6 +529,11 @@ export function useCytoscape(options: UseCytoscapeOptions) {
 
   // Watch for edge label visibility changes
   watch(showEdgeLabels, () => {
+    updateElements()
+    applyLayout(false) // Re-apply layout without animation
+  })
+
+  watch([showForeignKeyEdges, showProvidesEdges], () => {
     updateElements()
     applyLayout(false) // Re-apply layout without animation
   })
