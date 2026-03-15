@@ -219,7 +219,7 @@
                 
                 <!-- Stats Overlay (top-left) -->
                 <div class="graph-stats-overlay">
-                  <v-card variant="flat" class="stats-card">
+                  <v-card variant="flat" class="stats-card stats-card--summary">
                     <v-card-text class="pa-2">
                       <!-- Task Completion -->
                       <div v-if="taskStatusStore.taskStatus" class="mb-2">
@@ -268,13 +268,21 @@
                           {{ depStatistics.edgeCount }}
                         </v-chip>
                       </div>
-                      
+                    </v-card-text>
+                  </v-card>
+
+                  <v-card
+                    v-if="colorByMode === 'task' || colorByMode === 'type'"
+                    variant="flat"
+                    class="stats-card stats-card--legend"
+                  >
+                    <v-card-text class="pa-2">
                       <!-- Task Status Legend -->
                       <div v-if="colorByMode === 'task'" class="text-caption text-medium-emphasis">
                         <div class="mb-1" style="font-size: 10px; font-weight: 500;">Task Status</div>
                         <div class="d-flex align-center gap-1 mb-1">
                           <div style="width: 10px; height: 10px; background-color: #FDD835; border-radius: 50%;" />
-                          <span style="font-size: 10px;">&nbsp;Todo (not created)</span>
+                          <span style="font-size: 10px;">&nbsp;Todo</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
                           <div style="width: 10px; height: 10px; background-color: #2196F3; border-radius: 50%;" />
@@ -2375,7 +2383,10 @@ function applyTaskFilter() {
   top: 16px;
   left: 16px;
   z-index: 10;
-  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .stats-card {
@@ -2384,6 +2395,16 @@ function applyTaskFilter() {
   box-shadow: none;
   border: none;
   border-radius: 8px;
+}
+
+.stats-card--summary {
+  width: 280px;
+  max-width: calc(100vw - 32px);
+}
+
+.stats-card--legend {
+  width: fit-content;
+  max-width: calc(100vw - 32px);
 }
 
 .graph-fab-container {
