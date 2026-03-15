@@ -22,6 +22,16 @@ export interface GraphAdapterOptions {
   showEdgeLabels?: boolean
 
   /**
+   * Whether to show foreign key edges
+   */
+  showForeignKeyEdges?: boolean
+
+  /**
+   * Whether to show provides edges
+   */
+  showProvidesEdges?: boolean
+
+  /**
    * Whether to highlight cycle nodes and edges
    */
   highlightCycles?: boolean
@@ -80,6 +90,8 @@ export function toCytoscapeElements(
     cycles = [], 
     showNodeLabels = true, 
     showEdgeLabels = true, 
+    showForeignKeyEdges = true,
+    showProvidesEdges = true,
     highlightCycles = false, 
     showSources = false,
     showSourceEntities = false 
@@ -179,7 +191,22 @@ export function toCytoscapeElements(
     : []
 
   // Convert edges
-  const edges: ElementDefinition[] = graph.edges.map((edge, index) => {
+  const edges: ElementDefinition[] = graph.edges
+    .filter((edge) => {
+      const isProvidesEdge = edge.type === 'provides'
+      const isForeignKeyEdge = edge.type === 'foreign_key' || ('local_keys' in edge && 'remote_keys' in edge)
+
+      if (isProvidesEdge && !showProvidesEdges) {
+        return false
+      }
+
+      if (isForeignKeyEdge && !showForeignKeyEdges) {
+        return false
+      }
+
+      return true
+    })
+    .map((edge, index) => {
     const classes: string[] = []
     const isProvidesEdge = edge.type === 'provides'
 
@@ -210,6 +237,12 @@ export function toCytoscapeElements(
   const sourceEdges: ElementDefinition[] = showAnySourceContent && graph.source_edges
     ? graph.source_edges
         .filter((edge) => {
+          const isProvidesEdge = edge.type === 'provides' || edge.label === 'provides'
+
+          if (isProvidesEdge && !showProvidesEdges) {
+            return false
+          }
+
           const viaSourceEntity = edge.via_source_entity === true
           
           // Rule 1: Both checked - show all edges
