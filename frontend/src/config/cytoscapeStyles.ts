@@ -35,7 +35,7 @@ const baseStyles: StylesheetCSS[] = [
       'text-valign': 'bottom',
       'text-halign': 'center',
       'text-margin-y': 8,
-      'font-size': '20px',
+      'font-size': '30px',
       'font-family': 'Roboto, sans-serif',
       color: '#333',
       'overlay-padding': 6,
@@ -128,7 +128,7 @@ const baseStyles: StylesheetCSS[] = [
       'background-opacity': 0.9,
       'border-width': 2,
       'border-style': 'solid',
-      'font-size': '18px',
+      'font-size': '27px',
     },
   },
 

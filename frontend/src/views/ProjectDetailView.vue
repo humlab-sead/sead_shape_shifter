@@ -232,7 +232,7 @@
                             />
                           </v-col>
                           <v-col>
-                            <div class="text-caption">
+                            <div class="text-caption task-completion-summary">
                               <span class="font-weight-medium">{{ taskStats.done }}</span>
                               <span class="text-medium-emphasis"> of </span>
                               <span class="font-weight-medium">{{ taskStats.total }}</span>
@@ -241,6 +241,7 @@
                           </v-col>
                           <v-col cols="auto" class="ml-2">
                             <v-chip
+                              class="task-completion-chip"
                               :color="completionColor"
                               size="x-small"
                               variant="flat"
@@ -2422,6 +2423,17 @@ function applyTaskFilter() {
 .stats-card--legend {
   width: fit-content;
   max-width: calc(100vw - 32px);
+}
+
+.task-completion-summary {
+  font-size: 1.125rem;
+  line-height: 1.2;
+}
+
+.task-completion-chip {
+  min-width: 2.1rem;
+  padding-inline: 0.25rem;
+  justify-content: center;
 }
 
 .graph-fab-container {
