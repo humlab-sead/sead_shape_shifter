@@ -1944,6 +1944,18 @@ function handleResetView() {
   reset()
 }
 
+async function syncGraphViewState() {
+  if (activeTab.value !== 'dependencies') {
+    return
+  }
+
+  await nextTick()
+  renderGraph()
+  await nextTick()
+  applyTaskStatusToNodes()
+  applyTaskFilter()
+}
+
 function handleExportPNG() {
   const png = exportPNG()
   if (png) {
@@ -2226,6 +2238,10 @@ watch(activeTab, async (newTab) => {
   if (newTab === 'yaml' && rawYamlContent.value === null) {
     await handleLoadYaml()
   }
+
+  if (newTab === 'dependencies') {
+    await syncGraphViewState()
+  }
   
   // Update route query to enable context-sensitive help
   const currentTab = route.query.tab
@@ -2283,10 +2299,7 @@ watch(
 watch(
   () => dependencyGraph.value,
   async () => {
-    // Wait for graph to render, then apply task status
-    await nextTick()
-    applyTaskStatusToNodes()
-    applyTaskFilter()
+    await syncGraphViewState()
   }
 )
 
