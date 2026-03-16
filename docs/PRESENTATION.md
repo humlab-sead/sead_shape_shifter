@@ -618,7 +618,7 @@ It is a platform with extension points that are already part of the running arch
 
 ## What This Changes for Teams
 
-Shape Shifter moves work from ad hoc transformation toward managed transformation.
+Shape Shifter moves work from ad hoc transformation toward **managed** transformation.
 
 Benefits for data providers and project teams:
 
