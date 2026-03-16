@@ -2494,9 +2494,18 @@ function applyTaskFilter() {
 }
 
 .task-completion-chip {
-  min-width: 2.1rem;
-  padding-inline: 0.25rem;
+  width: 1.75rem;
+  min-width: 1.75rem;
+  max-width: 1.75rem;
+  padding-inline: 0;
   justify-content: center;
+}
+
+.task-completion-chip :deep(.v-chip__content) {
+  width: 100%;
+  justify-content: center;
+  padding: 0;
+  font-size: 0.625rem;
 }
 
 .graph-fab-container {
