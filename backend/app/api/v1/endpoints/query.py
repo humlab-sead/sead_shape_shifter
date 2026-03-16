@@ -4,10 +4,10 @@ Query execution API endpoints.
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.api.dependencies import get_data_source_service, get_project_service
+from backend.app.api.dependencies import get_data_source_service
 from backend.app.models.query import QueryExecution, QueryIntrospection, QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
-from backend.app.services.project_service import ProjectService
+from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
 
 router = APIRouter()
