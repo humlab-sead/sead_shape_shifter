@@ -29,21 +29,6 @@ def get_data_source_service() -> Generator[services.DataSourceService, None, Non
         pass
 
 
-def get_project_service() -> Generator[services.ProjectService, None, None]:
-    """
-    Get ProjectService instance.
-
-    Creates service for managing project files.
-    Used as FastAPI dependency for project-related endpoints.
-    """
-    service = services.ProjectService()
-    try:
-        yield service
-    finally:
-        # Cleanup if needed
-        pass
-
-
 def get_schema_service() -> Generator[services.SchemaIntrospectionService, None, None]:
     """
     Get SchemaIntrospectionService instance.
