@@ -332,50 +332,90 @@
                       </v-row>
                     </div>
 
-                    <!-- Columns (for entity/fixed types) -->
+                    <!-- Columns (for entity/fixed types) with Depends On -->
                     <div class="form-row" v-if="formData.type === 'entity' || formData.type === 'fixed' || isFileType">
-                      <v-combobox
-                        v-model="formData.columns"
-                        :items="availableColumns"
-                        label="Columns"
-                        variant="outlined"
-                        multiple
-                        chips
-                        closable-chips
-                        persistent-placeholder
-                        :rules="formData.type === 'fixed' ? columnsRules : []"
-                      >
-                        <template #message>
-                          <span class="text-caption" v-if="formData.type === 'fixed'">
-                            Additional columns beyond system_id/public_id (which are auto-added to saved config)
-                          </span>
-                          <span class="text-caption" v-else-if="formData.type === 'entity'">
-                            Select from source columns or add new names (type to filter suggestions)
-                          </span>
-                          <span class="text-caption" v-else-if="isExcelType">
-                            Select from sheet columns (auto-detected from file)
-                          </span>
-                          <span class="text-caption" v-else>Column names to extract or create</span>
-                        </template>
-                      </v-combobox>
+                      <v-row no-gutters>
+                        <v-col cols="8" class="pr-2">
+                          <v-combobox
+                            v-model="formData.columns"
+                            :items="availableColumns"
+                            label="Columns"
+                            variant="outlined"
+                            multiple
+                            chips
+                            closable-chips
+                            persistent-placeholder
+                            :rules="formData.type === 'fixed' ? columnsRules : []"
+                          >
+                            <template #message>
+                              <span class="text-caption" v-if="formData.type === 'fixed'">
+                                Additional columns beyond system_id/public_id (which are auto-added to saved config)
+                              </span>
+                              <span class="text-caption" v-else-if="formData.type === 'entity'">
+                                Select from source columns or add new names (type to filter suggestions)
+                              </span>
+                              <span class="text-caption" v-else-if="isExcelType">
+                                Select from sheet columns (auto-detected from file)
+                              </span>
+                              <span class="text-caption" v-else>Column names to extract or create</span>
+                            </template>
+                          </v-combobox>
+                        </v-col>
+                        <v-col cols="4" class="pl-2">
+                          <v-combobox
+                            v-model="formData.depends_on"
+                            label="Depends On"
+                            :items="availableSourceEntities"
+                            variant="outlined"
+                            multiple
+                            chips
+                            closable-chips
+                            persistent-placeholder
+                          >
+                            <template #message>
+                              <span class="text-caption">Entities processed before this one</span>
+                            </template>
+                          </v-combobox>
+                        </v-col>
+                      </v-row>
                     </div>
 
-                    <!-- Detected Columns (for sql type, readonly display) -->
+                    <!-- Detected Columns (for sql type, readonly display) with Depends On -->
                     <div class="form-row" v-if="formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading)">
-                      <v-combobox
-                        :model-value="columnsOptions"
-                        label="Detected Columns"
-                        variant="outlined"
-                        multiple
-                        chips
-                        readonly
-                        :loading="columnsLoading"
-                        persistent-placeholder
-                      >
-                        <template #message>
-                          <span class="text-caption">Columns detected from your SQL query (auto-updated on query changes)</span>
-                        </template>
-                      </v-combobox>
+                      <v-row no-gutters>
+                        <v-col cols="8" class="pr-2">
+                          <v-combobox
+                            :model-value="columnsOptions"
+                            label="Detected Columns"
+                            variant="outlined"
+                            multiple
+                            chips
+                            readonly
+                            :loading="columnsLoading"
+                            persistent-placeholder
+                          >
+                            <template #message>
+                              <span class="text-caption">Columns detected from your SQL query (auto-updated on query changes)</span>
+                            </template>
+                          </v-combobox>
+                        </v-col>
+                        <v-col cols="4" class="pl-2">
+                          <v-combobox
+                            v-model="formData.depends_on"
+                            label="Depends On"
+                            :items="availableSourceEntities"
+                            variant="outlined"
+                            multiple
+                            chips
+                            closable-chips
+                            persistent-placeholder
+                          >
+                            <template #message>
+                              <span class="text-caption">Entities processed before this one</span>
+                            </template>
+                          </v-combobox>
+                        </v-col>
+                      </v-row>
                     </div>
 
                     <!-- Fixed Values Grid (only for fixed type) -->
@@ -443,8 +483,8 @@
                       </v-alert>
                     </div>
 
-                    <!-- Depends On -->
-                    <div class="form-row">
+                    <!-- Depends On (standalone when no columns field is shown) -->
+                    <div class="form-row" v-if="formData.type !== 'entity' && formData.type !== 'fixed' && !isFileType && !(formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading))">
                       <v-combobox
                         v-model="formData.depends_on"
                         label="Depends On"
