@@ -86,7 +86,7 @@
             <v-row dense class="mb-2">
               <v-col cols="12" md="5">
                 <v-combobox
-                  v-model="fk.local_keys"
+                  :model-value="fk.local_keys"
                   label="Local Keys"
                   chips
                   multiple
@@ -99,7 +99,7 @@
                   :error="localKeyErrors[index] !== undefined"
                   :messages="localKeyErrors[index]"
                   @focus="loadLocalColumns(index)"
-                  @update:model-value="validateLocalKeys(index)"
+                  @update:model-value="handleLocalKeysUpdate(index, $event)"
                 >
                   <template v-slot:item="{ item, props: itemProps }">
                     <v-list-item v-bind="itemProps">
@@ -120,7 +120,7 @@
 
               <v-col cols="12" md="5">
                 <v-combobox
-                  v-model="fk.remote_keys"
+                  :model-value="fk.remote_keys"
                   label="Remote Keys"
                   chips
                   multiple
@@ -133,7 +133,7 @@
                   :error="remoteKeyErrors[index] !== undefined"
                   :messages="remoteKeyErrors[index]"
                   @focus="loadRemoteColumns(index)"
-                  @update:model-value="validateRemoteKeys(index)"
+                  @update:model-value="handleRemoteKeysUpdate(index, $event)"
                 >
                   <template v-slot:item="{ item, props: itemProps }">
                     <v-list-item v-bind="itemProps">
@@ -264,6 +264,7 @@ import type { ForeignKeyConfig } from '@/types'
 import ForeignKeyTester from './ForeignKeyTester.vue'
 import { useColumnIntrospection } from '@/composables/useColumnIntrospection'
 import { useDirectiveValidation } from '@/composables/useDirectiveValidation'
+import { normalizeForeignKeyKeys } from './foreignKeyEditorUtils'
 
 interface Props {
   modelValue: ForeignKeyConfig[]
@@ -285,27 +286,13 @@ const emit = defineEmits<{
 }>()
 
 /**
- * Normalize keys array to always contain strings.
+ * Normalize keys array to always contain unique strings.
  * Handles case where v-combobox might store objects instead of string values.
  * Scalar strings are wrapped in a single-element array so they appear as a
  * removable chip in the combobox.
  */
 function normalizeKeysArray(keys: any): string[] {
-  if (!Array.isArray(keys)) {
-    if (typeof keys === 'string') {
-      const trimmed = keys.trim()
-      return trimmed.length > 0 ? [trimmed] : []
-    }
-    return []
-  }
-
-  return keys
-    .map((key) => {
-      if (typeof key === 'string') return key
-      if (typeof key === 'object' && key !== null && 'value' in key) return key.value
-      return String(key)
-    })
-    .filter((k) => k && k.trim().length > 0)
+  return normalizeForeignKeyKeys(keys)
 }
 
 function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
@@ -419,6 +406,22 @@ async function validateRemoteKeys(fkIndex: number) {
   } else {
     remoteKeyErrors.value[fkIndex] = undefined
   }
+}
+
+async function handleLocalKeysUpdate(fkIndex: number, value: unknown) {
+  const fk = foreignKeys.value[fkIndex]
+  if (!fk) return
+
+  fk.local_keys = normalizeKeysArray(value)
+  await validateLocalKeys(fkIndex)
+}
+
+async function handleRemoteKeysUpdate(fkIndex: number, value: unknown) {
+  const fk = foreignKeys.value[fkIndex]
+  if (!fk) return
+
+  fk.remote_keys = normalizeKeysArray(value)
+  await validateRemoteKeys(fkIndex)
 }
 
 /**
