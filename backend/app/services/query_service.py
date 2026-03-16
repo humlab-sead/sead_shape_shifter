@@ -169,15 +169,19 @@ class QueryService:
         except Exception as e:
             raise QueryExecutionError(message=f"Query execution failed: {str(e)}", data_source=data_source_name, query=query) from e
 
-    async def introspect_query_columns(self, data_source_name: str, query: str) -> list[str]:
+    async def introspect_query_columns(
+        self, data_source_name: str, query: str, project_name: str | None = None, project_service=None
+    ) -> list[str]:
         """
         Introspect column names from a SQL query without fetching data.
 
         Executes the query with LIMIT 0 to get only column metadata.
 
         Args:
-            data_source_name: Name of the data source
+            data_source_name: Name of the data source (or key from project's data_sources)
             query: SQL query to introspect
+            project_name: Optional project name to resolve data source from project context
+            project_service: Optional project service for resolving data sources from projects
 
         Returns:
             List of column names that would be returned by the query
@@ -191,8 +195,44 @@ class QueryService:
         if not validation.is_valid:
             raise QuerySecurityError(message="Query contains prohibited operations", query=query, violations=validation.errors)
 
-        # Load data source configuration
-        ds_cfg: api.DataSourceConfig | None = self.data_source_service.load_data_source(data_source_name)
+        # Resolve data source configuration
+        ds_cfg: api.DataSourceConfig | None = None
+        
+        if project_name and project_service:
+            # Resolve from project context
+            from backend.app.mappers.project_mapper import ProjectMapper
+            
+            api_project = project_service.load_project(project_name)
+            if not api_project:
+                raise QueryExecutionError(message=f"Project '{project_name}' not found", data_source=data_source_name)
+            
+            core_project = ProjectMapper.to_core(api_project)
+            
+            # Look up data source from project configuration
+            if data_source_name not in core_project.cfg.get("data_sources", {}):
+                raise QueryExecutionError(
+                    message=f"Data source '{data_source_name}' not found in project '{project_name}'",
+                    data_source=data_source_name
+                )
+            
+            ds_value = core_project.cfg["data_sources"][data_source_name]
+            
+            # ds_value is already resolved (no @include directives) thanks to ProjectMapper.to_core()
+            if isinstance(ds_value, dict):
+                # Inline data source configuration
+                ds_cfg = api.DataSourceConfig(name=data_source_name, **ds_value)
+            elif isinstance(ds_value, str):
+                # Should be a filename - load from global data sources
+                ds_cfg = self.data_source_service.load_data_source(ds_value)
+            else:
+                raise QueryExecutionError(
+                    message=f"Invalid data source configuration for '{data_source_name}' in project '{project_name}'",
+                    data_source=data_source_name
+                )
+        else:
+            # Load from global data sources directory (backward compatibility)
+            ds_cfg = self.data_source_service.load_data_source(data_source_name)
+        
         if ds_cfg is None:
             raise QueryExecutionError(message=f"Data source '{data_source_name}' not found", data_source=data_source_name)
 
