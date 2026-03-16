@@ -40,6 +40,7 @@ declare module 'vue' {
     LogViewerOverlay: typeof import('./components/LogViewerOverlay.vue')['default']
     MaterializeDialog: typeof import('./components/entities/MaterializeDialog.vue')['default']
     MetadataEditor: typeof import('./components/MetadataEditor.vue')['default']
+    MonacoTextEditor: typeof import('./components/common/MonacoTextEditor.vue')['default']
     NodeLegend: typeof import('./components/dependencies/NodeLegend.vue')['default']
     PreviewError: typeof import('./components/entities/PreviewError.vue')['default']
     PreviewFixesModal: typeof import('./components/validation/PreviewFixesModal.vue')['default']
