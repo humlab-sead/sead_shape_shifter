@@ -197,35 +197,33 @@ class QueryService:
 
         # Resolve data source configuration
         ds_cfg: api.DataSourceConfig | None = None
-        
+
         if project_name and project_service:
             # Resolve from project context
             from backend.app.mappers.project_mapper import ProjectMapper
-            
+
             api_project = project_service.load_project(project_name)
             if not api_project:
                 raise QueryExecutionError(message=f"Project '{project_name}' not found", data_source=data_source_name)
-            
+
             # Check if data source key exists in project's data_sources
             if data_source_name not in api_project.data_sources:
                 raise QueryExecutionError(
-                    message=f"Data source '{data_source_name}' not found in project '{project_name}'",
-                    data_source=data_source_name
+                    message=f"Data source '{data_source_name}' not found in project '{project_name}'", data_source=data_source_name
                 )
-            
+
             # Convert to core to resolve @include directives
             core_project = ProjectMapper.to_core(api_project)
-            
+
             # Get the resolved data source value from core project
             # In core, data_sources are under cfg['options']['data_sources']
             ds_value = core_project.cfg.get("options", {}).get("data_sources", {}).get(data_source_name)
-            
+
             if ds_value is None:
                 raise QueryExecutionError(
-                    message=f"Data source '{data_source_name}' not found in resolved project '{project_name}'",
-                    data_source=data_source_name
+                    message=f"Data source '{data_source_name}' not found in resolved project '{project_name}'", data_source=data_source_name
                 )
-            
+
             # ds_value is already resolved (no @include directives) thanks to ProjectMapper.to_core()
             if isinstance(ds_value, dict):
                 # Inline data source configuration
@@ -236,12 +234,12 @@ class QueryService:
             else:
                 raise QueryExecutionError(
                     message=f"Invalid data source configuration for '{data_source_name}' in project '{project_name}'",
-                    data_source=data_source_name
+                    data_source=data_source_name,
                 )
         else:
             # Load from global data sources directory (backward compatibility)
             ds_cfg = self.data_source_service.load_data_source(data_source_name)
-        
+
         if ds_cfg is None:
             raise QueryExecutionError(message=f"Data source '{data_source_name}' not found", data_source=data_source_name)
 
@@ -254,14 +252,14 @@ class QueryService:
             # Execute query with LIMIT 0 to get only column structure
             limited_query = loader.inject_limit(query, 0)
             df: pd.DataFrame = await asyncio.wait_for(loader.read_sql(limited_query), timeout=10)
-            
+
             # Return column names
             columns: list[str] = df.columns.tolist()
             return columns
 
         except asyncio.TimeoutError as e:
             raise QueryExecutionError(
-                message=f"Column introspection timed out after 10 seconds", data_source=data_source_name, query=query
+                message="Column introspection timed out after 10 seconds", data_source=data_source_name, query=query
             ) from e
         except Exception as e:
             raise QueryExecutionError(message=f"Column introspection failed: {str(e)}", data_source=data_source_name, query=query) from e
