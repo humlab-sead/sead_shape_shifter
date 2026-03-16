@@ -741,13 +741,7 @@ class TestColumnIntrospection:
     def mock_ds_config(self) -> DataSourceConfig:
         """Mock data source configuration."""
         return DataSourceConfig(
-            name="test_db",
-            driver="postgresql",
-            host="localhost",
-            port=5432,
-            database="testdb",
-            username="testuser",
-            **{}
+            name="test_db", driver="postgresql", host="localhost", port=5432, database="testdb", username="testuser", **{}
         )
 
     @pytest.mark.asyncio
@@ -772,10 +766,7 @@ class TestColumnIntrospection:
             mock_mapper.return_value = Mock()
 
             query = "SELECT * FROM users"
-            columns = await self.service.introspect_query_columns(
-                data_source_name="test_db",
-                query=query
-            )
+            columns = await self.service.introspect_query_columns(data_source_name="test_db", query=query)
 
             # Verify results
             assert isinstance(columns, list)
@@ -850,10 +841,7 @@ class TestColumnIntrospection:
         self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
 
         with pytest.raises(QuerySecurityError) as exc_info:
-            await self.service.introspect_query_columns(
-                data_source_name="test_db",
-                query="DELETE FROM users"
-            )
+            await self.service.introspect_query_columns(data_source_name="test_db", query="DELETE FROM users")
 
         error = exc_info.value
         assert "prohibited operations" in error.message.lower()
@@ -865,10 +853,7 @@ class TestColumnIntrospection:
         self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
 
         with pytest.raises(QuerySecurityError):
-            await self.service.introspect_query_columns(
-                data_source_name="test_db",
-                query="INSERT INTO users (name) VALUES ('test')"
-            )
+            await self.service.introspect_query_columns(data_source_name="test_db", query="INSERT INTO users (name) VALUES ('test')")
 
     @pytest.mark.asyncio
     async def test_introspect_query_columns_data_source_not_found(self):
@@ -876,10 +861,7 @@ class TestColumnIntrospection:
         self.mock_ds_service.load_data_source = Mock(return_value=None)
 
         with pytest.raises(QueryExecutionError) as exc_info:
-            await self.service.introspect_query_columns(
-                data_source_name="nonexistent_db",
-                query="SELECT * FROM users"
-            )
+            await self.service.introspect_query_columns(data_source_name="nonexistent_db", query="SELECT * FROM users")
 
         assert "not found" in exc_info.value.message.lower()
         assert "nonexistent_db" in exc_info.value.message
@@ -901,10 +883,7 @@ class TestColumnIntrospection:
             mock_mapper.return_value = Mock()
 
             with pytest.raises(QueryExecutionError) as exc_info:
-                await self.service.introspect_query_columns(
-                    data_source_name="test_db",
-                    query="SELECT * FROM nonexistent_table"
-                )
+                await self.service.introspect_query_columns(data_source_name="test_db", query="SELECT * FROM nonexistent_table")
 
             error = exc_info.value
             assert "introspection failed" in error.message.lower()
@@ -927,10 +906,7 @@ class TestColumnIntrospection:
             mock_mapper.return_value = Mock()
 
             with pytest.raises(QueryExecutionError) as exc_info:
-                await self.service.introspect_query_columns(
-                    data_source_name="test_db",
-                    query="SELECT * FROM slow_table"
-                )
+                await self.service.introspect_query_columns(data_source_name="test_db", query="SELECT * FROM slow_table")
 
             error = exc_info.value
             assert "timed out" in error.message.lower()
