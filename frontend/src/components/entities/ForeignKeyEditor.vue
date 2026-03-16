@@ -90,6 +90,7 @@
                   label="Local Keys"
                   chips
                   multiple
+                  clear-on-select
                   variant="outlined"
                   density="compact"
                   :items="localColumnItems[index]"
@@ -124,6 +125,7 @@
                   label="Remote Keys"
                   chips
                   multiple
+                  clear-on-select
                   variant="outlined"
                   density="compact"
                   :items="remoteColumnItems[index]"
