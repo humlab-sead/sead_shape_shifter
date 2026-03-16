@@ -1663,7 +1663,7 @@ async function fetchSqlColumns() {
   }
 
   try {
-    const columns = await queryApi.introspectQueryColumns(dataSource, query)
+    const columns = await queryApi.introspectQueryColumns(dataSource, query, props.projectName)
     columnsOptions.value = columns
     
     // Auto-populate columns if not already set
