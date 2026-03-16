@@ -8,7 +8,7 @@
 
 ## Summary
 
-Shape Shifter currently has optimistic locking at the project level. That is appropriate for whole-project save flows, but it is too coarse for the dominant editing pattern in the UI, where a user opens, edits, and saves one entity at a time.
+Shape Shifter currently has optimistic locking at the project level. That is appropriate for whole-project save flows, but it is too coarse for the most frequent use case in the UI, where a user opens, edits, and saves one entity at a time.
 
 This feature introduces entity-level optimistic locking for entity configuration updates. The mechanism should be based on a fingerprint of the logical entity content, not on the project cache and not on raw YAML text.
 
