@@ -96,7 +96,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
         columns: list[str] = table.safe_columns
         raw_values: list[Any] | None = table.values if isinstance(table.values, list) else None
-        dict_rows = raw_values is not None and all(isinstance(row, dict) for row in raw_values)
+        dict_rows = raw_values is not None and len(raw_values) > 0 and all(isinstance(row, dict) for row in raw_values)
         values: list[Any] = raw_values if dict_rows and raw_values is not None else table.safe_values
 
         if dict_rows:
@@ -186,6 +186,8 @@ class FixedEntitySystemIdSpecification(ProjectSpecification):
             return True
 
         columns: list[str] = table.safe_columns
+        raw_values: list[Any] | None = table.values if isinstance(table.values, list) else None
+        dict_rows = raw_values is not None and len(raw_values) > 0 and all(isinstance(row, dict) for row in raw_values)
         values: list[list[Any]] = table.safe_values
 
         # Check if system_id column exists
@@ -193,8 +195,11 @@ class FixedEntitySystemIdSpecification(ProjectSpecification):
             # system_id is optional, but if missing it will be auto-generated
             return True
 
-        system_id_index = columns.index("system_id")
-        system_id_values = [row[system_id_index] for row in values]
+        if dict_rows and raw_values is not None:
+            system_id_values = [row.get("system_id") for row in raw_values]
+        else:
+            system_id_index = columns.index("system_id")
+            system_id_values = [row[system_id_index] for row in values]
 
         # Validate: No null/None values
         null_count = sum(
