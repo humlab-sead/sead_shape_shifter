@@ -34,3 +34,9 @@ class QueryExecution(BaseModel):
     query: str = Field(..., description="SQL query to execute", min_length=1)
     limit: int = Field(default=100, description="Maximum number of rows to return", ge=1, le=10000)
     timeout: int = Field(default=30, description="Query timeout in seconds", ge=1, le=300)
+
+
+class QueryIntrospection(BaseModel):
+    """Request to introspect query columns."""
+
+    query: str = Field(..., description="SQL query to introspect", min_length=1)

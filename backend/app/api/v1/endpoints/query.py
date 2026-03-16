@@ -5,7 +5,7 @@ Query execution API endpoints.
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.api.dependencies import get_data_source_service
-from backend.app.models.query import QueryExecution, QueryResult, QueryValidation
+from backend.app.models.query import QueryExecution, QueryIntrospection, QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
 
@@ -157,14 +157,14 @@ async def validate_query(
     },
 )
 async def introspect_query_columns(
-    data_source_name: str, execution: QueryExecution, query_service: QueryService = Depends(get_query_service)
+    data_source_name: str, introspection: QueryIntrospection, query_service: QueryService = Depends(get_query_service)
 ) -> dict:
     """
     Introspect column names from a SQL query.
 
     Args:
         data_source_name: Name of the data source to query
-        execution: Query execution parameters (only query field is used)
+        introspection: Query introspection parameters (only query field is used)
         query_service: Query service instance
 
     Returns:
@@ -176,7 +176,7 @@ async def introspect_query_columns(
     try:
         columns: list[str] = await query_service.introspect_query_columns(
             data_source_name=data_source_name,
-            query=execution.query,
+            query=introspection.query,
         )
         return {"columns": columns}
     except QuerySecurityError as e:
