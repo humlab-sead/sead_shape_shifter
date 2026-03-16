@@ -86,33 +86,20 @@
             <v-row dense class="mb-2">
               <v-col cols="12" md="5">
                 <v-combobox
-                  :model-value="fk.local_keys"
+                  v-model="fk.local_keys"
                   label="Local Keys"
-                  chips
                   multiple
-                  clear-on-select
+                  chips
+                  closable-chips
+                  persistent-placeholder
                   variant="outlined"
                   density="compact"
                   :items="localColumnItems[index]"
-                  item-title="value"
-                  item-value="value"
-                  :return-object="false"
                   :error="localKeyErrors[index] !== undefined"
                   :messages="localKeyErrors[index]"
                   @focus="loadLocalColumns(index)"
                   @update:model-value="handleLocalKeysUpdate(index, $event)"
-                >
-                  <template v-slot:item="{ item, props: itemProps }">
-                    <v-list-item v-bind="itemProps">
-                      <template v-slot:title>
-                        {{ item.raw.value }}
-                      </template>
-                      <template v-slot:subtitle>
-                        <span class="text-caption text-grey">{{ item.raw.category }}</span>
-                      </template>
-                    </v-list-item>
-                  </template>
-                </v-combobox>
+                />
               </v-col>
 
               <v-col cols="12" md="2" class="d-flex align-center justify-center">
@@ -121,33 +108,20 @@
 
               <v-col cols="12" md="5">
                 <v-combobox
-                  :model-value="fk.remote_keys"
+                  v-model="fk.remote_keys"
                   label="Remote Keys"
-                  chips
                   multiple
-                  clear-on-select
+                  chips
+                  closable-chips
+                  persistent-placeholder
                   variant="outlined"
                   density="compact"
                   :items="remoteColumnItems[index]"
-                  item-title="value"
-                  item-value="value"
-                  :return-object="false"
                   :error="remoteKeyErrors[index] !== undefined"
                   :messages="remoteKeyErrors[index]"
                   @focus="loadRemoteColumns(index)"
                   @update:model-value="handleRemoteKeysUpdate(index, $event)"
-                >
-                  <template v-slot:item="{ item, props: itemProps }">
-                    <v-list-item v-bind="itemProps">
-                      <template v-slot:title>
-                        {{ item.raw.value }}
-                      </template>
-                      <template v-slot:subtitle>
-                        <span class="text-caption text-grey">{{ item.raw.category }}</span>
-                      </template>
-                    </v-list-item>
-                  </template>
-                </v-combobox>
+                />
               </v-col>
             </v-row>
 
@@ -191,22 +165,10 @@
                               variant="outlined"
                               density="compact"
                               :items="remoteColumnItems[index]"
-                              item-value="value"
                               hide-details
                               @focus="loadRemoteColumns(index)"
                               @update:model-value="updateExtraColumn(index, colIndex, extraCol.local, extraCol.remote)"
-                            >
-                              <template v-slot:item="{ item, props: itemProps }">
-                                <v-list-item v-bind="itemProps">
-                                  <template v-slot:title>
-                                    {{ item.raw.value }}
-                                  </template>
-                                  <template v-slot:subtitle>
-                                    <span class="text-caption text-grey">{{ item.raw.category }}</span>
-                                  </template>
-                                </v-list-item>
-                              </template>
-                            </v-combobox>
+                            />
                           </v-col>
                           <v-col cols="1" class="d-flex align-center">
                             <v-btn
@@ -323,8 +285,8 @@ const { validateDirective, getValidDirectives, isDirective } = useDirectiveValid
 const columnCache = ref<Map<string, Array<{ value: string; category: string }>>>(new Map())
 
 // Items for comboboxes (indexed by FK index)
-const localColumnItems = ref<Array<Array<{ title: string; value: string; category: string }>>>([])
-const remoteColumnItems = ref<Array<Array<{ title: string; value: string; category: string }>>>([])
+const localColumnItems = ref<string[][]>([])
+const remoteColumnItems = ref<string[][]>([])
 
 // Validation errors for directive values (indexed by FK index)
 const localKeyErrors = ref<Array<string | undefined>>([])
@@ -489,10 +451,7 @@ async function loadLocalColumns(fkIndex: number) {
   // Combine all suggestions, avoiding duplicates
   const allDirectives = [...new Set([...directives, ...columnDirectives])]
 
-  localColumnItems.value[fkIndex] = [
-    ...suggestions.map((s) => ({ title: s.value, value: s.value, category: s.category })),
-    ...allDirectives.map((d) => ({ title: d, value: d, category: 'directive' })),
-  ]
+  localColumnItems.value[fkIndex] = [...new Set([...suggestions.map((s) => s.value), ...allDirectives])]
 }
 
 /**
@@ -515,10 +474,7 @@ async function loadRemoteColumns(fkIndex: number) {
     getColumnSuggestions(fk.entity),
     getValidDirectives(props.projectName),
   ])
-  remoteColumnItems.value[fkIndex] = [
-    ...suggestions.map((s) => ({ title: s.value, value: s.value, category: s.category })),
-    ...directives.map((d) => ({ title: d, value: d, category: 'directive' })),
-  ]
+  remoteColumnItems.value[fkIndex] = [...new Set([...suggestions.map((s) => s.value), ...directives])]
 }
 
 // Watch for entity changes to reload remote columns
