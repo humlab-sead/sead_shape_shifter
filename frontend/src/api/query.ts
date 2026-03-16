@@ -28,7 +28,7 @@ export const queryApi = {
   async introspectQueryColumns(dataSourceName: string, query: string): Promise<string[]> {
     const response = await apiClient.post<{ columns: string[] }>(
       `/data-sources/${dataSourceName}/query/columns`,
-      { query, limit: 0, timeout: 10 }
+      { query }
     )
     return response.data.columns
   },
