@@ -102,7 +102,7 @@
                 >
                   <template v-slot:chip="{ item, props: chipProps }">
                     <v-chip v-bind="chipProps" size="x-small" closable>
-                      {{ item.value }}
+                      {{ typeof item === 'object' && item.value ? item.value : item }}
                     </v-chip>
                   </template>
                   <template v-slot:item="{ item, props: itemProps }">
@@ -139,8 +139,8 @@
                   @update:model-value="validateRemoteKeys(index)"
                 >
                   <template v-slot:chip="{ item, props: chipProps }">
-                    <v-chip v-bind="chipProps" size="x-small" closable>
-                      {{ item.value }}
+                    <v-chip v-bind="chipProps" size="x-small" closable">
+                      {{ typeof item === 'object' && item.value ? item.value : item }}
                     </v-chip>
                   </template>
                   <template v-slot:item="{ item, props: itemProps }">
