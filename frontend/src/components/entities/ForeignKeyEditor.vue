@@ -93,6 +93,7 @@
                   variant="outlined"
                   density="compact"
                   :items="localColumnItems[index]"
+                  item-title="value"
                   item-value="value"
                   :return-object="false"
                   :error="localKeyErrors[index] !== undefined"
@@ -100,11 +101,6 @@
                   @focus="loadLocalColumns(index)"
                   @update:model-value="validateLocalKeys(index)"
                 >
-                  <template v-slot:chip="{ item, props: chipProps }">
-                    <v-chip v-bind="chipProps" size="x-small" closable>
-                      {{ typeof item === 'object' && item.value ? item.value : item }}
-                    </v-chip>
-                  </template>
                   <template v-slot:item="{ item, props: itemProps }">
                     <v-list-item v-bind="itemProps">
                       <template v-slot:title>
@@ -131,6 +127,7 @@
                   variant="outlined"
                   density="compact"
                   :items="remoteColumnItems[index]"
+                  item-title="value"
                   item-value="value"
                   :return-object="false"
                   :error="remoteKeyErrors[index] !== undefined"
@@ -138,11 +135,6 @@
                   @focus="loadRemoteColumns(index)"
                   @update:model-value="validateRemoteKeys(index)"
                 >
-                  <template v-slot:chip="{ item, props: chipProps }">
-                    <v-chip v-bind="chipProps" size="x-small" closable>
-                      {{ typeof item === 'object' && item.value ? item.value : item }}
-                    </v-chip>
-                  </template>
                   <template v-slot:item="{ item, props: itemProps }">
                     <v-list-item v-bind="itemProps">
                       <template v-slot:title>
