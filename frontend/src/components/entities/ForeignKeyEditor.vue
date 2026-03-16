@@ -139,7 +139,7 @@
                   @update:model-value="validateRemoteKeys(index)"
                 >
                   <template v-slot:chip="{ item, props: chipProps }">
-                    <v-chip v-bind="chipProps" size="x-small" closable">
+                    <v-chip v-bind="chipProps" size="x-small" closable>
                       {{ typeof item === 'object' && item.value ? item.value : item }}
                     </v-chip>
                   </template>
