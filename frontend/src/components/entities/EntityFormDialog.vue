@@ -536,6 +536,24 @@
                       />
                     </div>
 
+                    <!-- Detected Columns (for sql type, readonly display) -->
+                    <div class="form-row" v-if="formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading)">
+                      <v-combobox
+                        :model-value="columnsOptions"
+                        label="Detected Columns"
+                        variant="outlined"
+                        multiple
+                        chips
+                        readonly
+                        :loading="columnsLoading"
+                        persistent-placeholder
+                      >
+                        <template #message>
+                          <span class="text-caption">Columns detected from your SQL query (auto-updated on query changes)</span>
+                        </template>
+                      </v-combobox>
+                    </div>
+
                     <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
                       {{ error }}
                     </v-alert>
