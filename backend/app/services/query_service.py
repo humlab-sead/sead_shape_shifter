@@ -206,16 +206,25 @@ class QueryService:
             if not api_project:
                 raise QueryExecutionError(message=f"Project '{project_name}' not found", data_source=data_source_name)
             
-            core_project = ProjectMapper.to_core(api_project)
-            
-            # Look up data source from project configuration
-            if data_source_name not in core_project.cfg.get("data_sources", {}):
+            # Check if data source key exists in project's data_sources
+            if data_source_name not in api_project.data_sources:
                 raise QueryExecutionError(
                     message=f"Data source '{data_source_name}' not found in project '{project_name}'",
                     data_source=data_source_name
                 )
             
-            ds_value = core_project.cfg["data_sources"][data_source_name]
+            # Convert to core to resolve @include directives
+            core_project = ProjectMapper.to_core(api_project)
+            
+            # Get the resolved data source value from core project
+            # In core, data_sources are under cfg['options']['data_sources']
+            ds_value = core_project.cfg.get("options", {}).get("data_sources", {}).get(data_source_name)
+            
+            if ds_value is None:
+                raise QueryExecutionError(
+                    message=f"Data source '{data_source_name}' not found in resolved project '{project_name}'",
+                    data_source=data_source_name
+                )
             
             # ds_value is already resolved (no @include directives) thanks to ProjectMapper.to_core()
             if isinstance(ds_value, dict):
