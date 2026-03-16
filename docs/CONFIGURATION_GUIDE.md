@@ -1214,7 +1214,7 @@ foreign_keys:
 
 ##### `allow_null_keys`
 - **Type**: `bool`
-- **Default**: `true`
+- **Default**: `false`
 - **Description**: Whether to allow null values in key columns
 - **Example**:
   ```yaml
@@ -1445,7 +1445,7 @@ foreign_keys:
 
 **`allow_null_keys`**
 - **Type**: `bool`
-- **Default**: `true`
+- **Default**: `false`
 - **Description**: Allow NULL/NaN values in foreign key columns
   - `false`: Raise error if local foreign key contains nulls
   - `true`: Allow null foreign keys (treated as unmatched)

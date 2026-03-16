@@ -184,7 +184,7 @@ def test_link_foreign_key_uses_merge_with_null_safety(monkeypatch: pytest.Monkey
     linker = ForeignKeyLinker(project=project, table_store={"local": local_df, "remote": remote_df})
     linked_df = linker.link_foreign_key(local_df, fk_cfg, remote_df)
 
-    assert captured["allow_null_keys"] is True
+    assert captured["allow_null_keys"] is False
     assert captured["opts"] == {"how": "left", "suffixes": ("", "_remote"), "left_on": ["remote_code"], "right_on": ["remote_code"]}
     assert linked_df["remote_id"].tolist() == [7]
 

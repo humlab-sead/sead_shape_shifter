@@ -65,6 +65,20 @@
                       />
 
                       <v-checkbox
+                        v-model="fk.constraints.allow_unmatched_left"
+                        label="Allow Unmatched Left"
+                        density="compact"
+                        hide-details
+                      />
+
+                      <v-checkbox
+                        v-model="fk.constraints.allow_unmatched_right"
+                        label="Allow Unmatched Right"
+                        density="compact"
+                        hide-details
+                      />
+
+                      <v-checkbox
                         v-model="fk.constraints.require_unique_left"
                         label="Require Unique Left"
                         density="compact"
@@ -72,8 +86,26 @@
                       />
 
                       <v-checkbox
+                        v-model="fk.constraints.require_unique_right"
+                        label="Require Unique Right"
+                        density="compact"
+                        hide-details
+                      />
+
+                      <v-checkbox
                         v-model="fk.constraints.allow_null_keys"
                         label="Allow Null Keys"
+                        density="compact"
+                        hide-details
+                      />
+
+                      <div class="text-caption text-grey-darken-1 mb-1">
+                        New joins default to disallow null keys. Enable this only for intentionally optional relationships.
+                      </div>
+
+                      <v-checkbox
+                        v-model="fk.constraints.allow_row_decrease"
+                        label="Allow Row Decrease"
                         density="compact"
                         hide-details
                       />
@@ -224,7 +256,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { ForeignKeyConfig } from '@/types'
+import type { ForeignKeyConfig, ForeignKeyConstraints } from '@/types'
 import ForeignKeyTester from './ForeignKeyTester.vue'
 import { useColumnIntrospection } from '@/composables/useColumnIntrospection'
 import { useDirectiveValidation } from '@/composables/useDirectiveValidation'
@@ -259,16 +291,24 @@ function normalizeKeysArray(keys: any): string[] {
   return normalizeForeignKeyKeys(keys)
 }
 
+function createDefaultConstraints(overrides?: ForeignKeyConstraints | null): ForeignKeyConstraints {
+  return {
+    cardinality: 'many_to_one',
+    allow_unmatched_right: true,
+    require_unique_left: false,
+    require_unique_right: false,
+    allow_null_keys: false,
+    allow_row_decrease: true,
+    ...overrides,
+  }
+}
+
 function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
   return {
     ...fk,
     local_keys: normalizeKeysArray(fk.local_keys),
     remote_keys: normalizeKeysArray(fk.remote_keys),
-    constraints: fk.constraints || {
-      cardinality: 'many_to_one',
-      require_unique_left: false,
-      allow_null_keys: false,
-    },
+    constraints: createDefaultConstraints(fk.constraints),
     extra_columns: fk.extra_columns
       ? Array.isArray(fk.extra_columns)
         ? [...fk.extra_columns]
@@ -536,11 +576,7 @@ function handleAddForeignKey() {
     local_keys: [],
     remote_keys: [],
     how: 'inner',
-    constraints: {
-      cardinality: 'many_to_one',
-      require_unique_left: false,
-      allow_null_keys: false,
-    },
+    constraints: createDefaultConstraints(),
   })
 }
 
