@@ -356,16 +356,16 @@ async function validateLocalKeys(fkIndex: number) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
 
-  // Normalize keys to strings
-  fk.local_keys = normalizeKeysArray(fk.local_keys)
+  // Get normalized keys without mutating the original array
+  const normalizedKeys = normalizeKeysArray(fk.local_keys)
 
-  if (!fk.local_keys || fk.local_keys.length === 0) {
+  if (!normalizedKeys || normalizedKeys.length === 0) {
     localKeyErrors.value[fkIndex] = undefined
     return
   }
 
   // Check if any key is a directive
-  const directiveKey = fk.local_keys.find((key) => isDirective(key))
+  const directiveKey = normalizedKeys.find((key) => isDirective(key))
   if (!directiveKey) {
     localKeyErrors.value[fkIndex] = undefined
     return
@@ -396,16 +396,16 @@ async function validateRemoteKeys(fkIndex: number) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
 
-  // Normalize keys to strings
-  fk.remote_keys = normalizeKeysArray(fk.remote_keys)
+  // Get normalized keys without mutating the original array
+  const normalizedKeys = normalizeKeysArray(fk.remote_keys)
 
-  if (!fk.remote_keys || fk.remote_keys.length === 0) {
+  if (!normalizedKeys || normalizedKeys.length === 0) {
     remoteKeyErrors.value[fkIndex] = undefined
     return
   }
 
   // Check if any key is a directive
-  const directiveKey = fk.remote_keys.find((key) => isDirective(key))
+  const directiveKey = normalizedKeys.find((key) => isDirective(key))
   if (!directiveKey) {
     remoteKeyErrors.value[fkIndex] = undefined
     return
