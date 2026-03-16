@@ -23,7 +23,7 @@ class ForeignKeyConstraints(BaseModel):
     allow_row_decrease: bool | None = None
     require_unique_left: bool = False
     require_unique_right: bool = False
-    allow_null_keys: bool = True
+    allow_null_keys: bool = False
 
     @property
     def has_constraints(self) -> bool:
@@ -36,7 +36,7 @@ class ForeignKeyConstraints(BaseModel):
                 self.allow_row_decrease is not None,
                 self.require_unique_left,
                 self.require_unique_right,
-                not self.allow_null_keys,
+                self.allow_null_keys,
             ]
         )
 
