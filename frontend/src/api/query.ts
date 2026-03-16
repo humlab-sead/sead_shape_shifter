@@ -22,4 +22,15 @@ export const queryApi = {
     return response.data
   },
 
+  /**
+   * Introspect column names from a SQL query.
+   */
+  async introspectQueryColumns(dataSourceName: string, query: string): Promise<string[]> {
+    const response = await apiClient.post<{ columns: string[] }>(
+      `/data-sources/${dataSourceName}/query/columns`,
+      { query, limit: 0, timeout: 10 }
+    )
+    return response.data.columns
+  },
+
 }

@@ -169,6 +169,54 @@ class QueryService:
         except Exception as e:
             raise QueryExecutionError(message=f"Query execution failed: {str(e)}", data_source=data_source_name, query=query) from e
 
+    async def introspect_query_columns(self, data_source_name: str, query: str) -> list[str]:
+        """
+        Introspect column names from a SQL query without fetching data.
+
+        Executes the query with LIMIT 0 to get only column metadata.
+
+        Args:
+            data_source_name: Name of the data source
+            query: SQL query to introspect
+
+        Returns:
+            List of column names that would be returned by the query
+
+        Raises:
+            QuerySecurityError: If query contains destructive operations
+            QueryExecutionError: If query execution fails
+        """
+        # Validate query for safety
+        validation: QueryValidation = self.validate_query(query, data_source_name)
+        if not validation.is_valid:
+            raise QuerySecurityError(message="Query contains prohibited operations", query=query, violations=validation.errors)
+
+        # Load data source configuration
+        ds_cfg: api.DataSourceConfig | None = self.data_source_service.load_data_source(data_source_name)
+        if ds_cfg is None:
+            raise QueryExecutionError(message=f"Data source '{data_source_name}' not found", data_source=data_source_name)
+
+        # Convert to core config and get loader
+        core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_cfg)
+        loader_cls: type[SqlLoader] = DataLoaders.get(core_config.driver)
+        loader: SqlLoader = loader_cls(data_source=core_config)
+
+        try:
+            # Execute query with LIMIT 0 to get only column structure
+            limited_query = loader.inject_limit(query, 0)
+            df: pd.DataFrame = await asyncio.wait_for(loader.read_sql(limited_query), timeout=10)
+            
+            # Return column names
+            columns: list[str] = df.columns.tolist()
+            return columns
+
+        except asyncio.TimeoutError as e:
+            raise QueryExecutionError(
+                message=f"Column introspection timed out after 10 seconds", data_source=data_source_name, query=query
+            ) from e
+        except Exception as e:
+            raise QueryExecutionError(message=f"Column introspection failed: {str(e)}", data_source=data_source_name, query=query) from e
+
     def _get_statement_type(self, statement: Statement) -> Optional[str]:
         """Extract the statement type (SELECT, INSERT, etc.) from parsed SQL."""
         for token in statement.tokens:

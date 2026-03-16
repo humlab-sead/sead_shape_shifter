@@ -834,6 +834,7 @@ import UnmaterializeDialog from './UnmaterializeDialog.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
+import { queryApi } from '@/api/query'
 import {
   buildFixedValuesColumns,
   applyMaterializationRoundTripToFixedEntity,
@@ -1630,6 +1631,36 @@ function hydrateColumnsFromSource() {
   })
 }
 
+async function fetchSqlColumns() {
+  columnsLoading.value = true
+  columnsOptions.value = []
+
+  const dataSource = formData.value.data_source
+  const query = formData.value.query
+
+  if (formData.value.type !== 'sql' || !dataSource || !query) {
+    columnsLoading.value = false
+    return
+  }
+
+  try {
+    const columns = await queryApi.introspectQueryColumns(dataSource, query)
+    columnsOptions.value = columns
+    
+    // Auto-populate columns if not already set
+    if (!formData.value.columns || formData.value.columns.length === 0) {
+      formData.value.columns = [...columns]
+    }
+  } catch (err: any) {
+    console.error('Failed to introspect SQL query columns', err)
+    const message = err.response?.data?.detail || err.message || 'Unknown error'
+    showError(`Failed to introspect SQL columns: ${message}`)
+    columnsOptions.value = []
+  } finally {
+    columnsLoading.value = false
+  }
+}
+
 function getFileExtensions(): string[] {
   if (formData.value.type === 'csv') return ['csv']
   if (formData.value.type === 'xlsx') return ['xlsx', 'xls']
@@ -1779,6 +1810,36 @@ watch(
       columnsOptions.value = []
     }
   }
+)
+
+// Watch for SQL entity data_source or query changes to fetch columns
+watch(
+  () => [formData.value.data_source, formData.value.query] as const,
+  async ([newDataSource, newQuery], [oldDataSource, oldQuery]) => {
+    if (formData.value.type !== 'sql') return
+
+    // Only fetch if both data_source and query are set, and at least one changed
+    if (newDataSource && newQuery && (newDataSource !== oldDataSource || newQuery !== oldQuery)) {
+      // Debounce query changes to avoid excessive API calls while typing
+      if (newQuery !== oldQuery) {
+        // Wait a bit after query stops changing
+        await new Promise(resolve => setTimeout(resolve, 500))
+        // Check if query is still the same (not changed during timeout)
+        if (formData.value.query === newQuery) {
+          await fetchSqlColumns()
+        }
+      } else {
+        // Data source changed, fetch immediately
+        await fetchSqlColumns()
+      }
+    }
+
+    // Clear columns when data_source or query is cleared
+    if (!newDataSource || !newQuery) {
+      columnsOptions.value = []
+    }
+  },
+  { deep: true }
 )
 
 // Watch columns to automatically remove forbidden values for fixed entities

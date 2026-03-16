@@ -126,3 +126,63 @@ async def validate_query(
         QueryValidation with validation results
     """
     return query_service.validate_query(execution.query, data_source_name)
+
+
+@router.post(
+    "/data-sources/{data_source_name}/query/columns",
+    response_model=dict,
+    summary="Introspect SQL query columns",
+    description="""
+    Introspect column names from a SQL query without fetching all data.
+
+    Executes the query with LIMIT 0 (or equivalent) to get column metadata only.
+    Useful for populating column dropdowns in the UI.
+
+    Returns column names that would be returned by the query.
+    """,
+    responses={
+        200: {
+            "description": "Column introspection successful",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "columns": ["id", "name", "created_at"],
+                    }
+                }
+            },
+        },
+        400: {"description": "Invalid query (syntax error or security violation)"},
+        404: {"description": "Data source not found"},
+        500: {"description": "Query execution failed"},
+    },
+)
+async def introspect_query_columns(
+    data_source_name: str, execution: QueryExecution, query_service: QueryService = Depends(get_query_service)
+) -> dict:
+    """
+    Introspect column names from a SQL query.
+
+    Args:
+        data_source_name: Name of the data source to query
+        execution: Query execution parameters (only query field is used)
+        query_service: Query service instance
+
+    Returns:
+        Dictionary with 'columns' key containing list of column names
+
+    Raises:
+        HTTPException: If query is invalid or execution fails
+    """
+    try:
+        columns: list[str] = await query_service.introspect_query_columns(
+            data_source_name=data_source_name,
+            query=execution.query,
+        )
+        return {"columns": columns}
+    except QuerySecurityError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except QueryExecutionError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e
+
