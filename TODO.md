@@ -277,6 +277,22 @@ entities:
       location: local
       sheet_name: Sheet1
 
-TODO: Mark as Todo shouldn't exist (right menu click)
-TODO: Create Todo not implemented
-TODO: Mat. nodes has no indicators
+### Buggar
+
+site_location, och site_property har varningen "returns no data" där motsvarande SQL-frågor ger resultat när de körs i query tester (utan semikolon)  
+site_natural_region har samma varning, men där ska ingen data vara så det är ok
+
+Samma tre entities har också samma error "Local foreign key columns not found in data: EVNr, Fustel", vilket jag gissar är relaterat till varningen ovan.
+
+18 entities har varningen (här för abundance): Could not validate entity: ShapeShift failed for abundance: You are trying to merge on str and int64 columns for key 'Fustel'. If you wish to proceed you should use pd.concat
+
+T.ex. abundance har ej Fustel, så det är oklart för mig var felet uppstår.
+
+Har du några idéer tankar kring vad jag kan göra åt dessa fel? Jag kollar också på relative ages/relative dating. I relative dating får jag också  felet när jag försöker göra en preview: InternalServerError
+
+ShapeShift failed for relative_dating: You are trying to merge on str and int64 columns for key 'Fustel'. If you wish to proceed you should use pd.concat
+
+Suggestions:
+
+- Check server logs for details
+- Verify your request parameters are valid
