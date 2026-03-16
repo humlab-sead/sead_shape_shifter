@@ -687,7 +687,7 @@ class UCanAccessSqlLoader(SqlLoader):
             return sql
         if not sql_lower.startswith("select"):
             return sql
-        return f"select top {limit} {sql_lower[6:].strip()};"
+        return f"select top {limit} {sql_lower[6:].strip().rstrip(';')};"
 
     def read_sql_sync(self, sql: str) -> pd.DataFrame:
         with self.connection() as conn:
