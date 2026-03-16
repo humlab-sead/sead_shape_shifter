@@ -727,3 +727,293 @@ class TestQueryService:
         parsed = sqlparse.parse("SELECT * FROM users")[0]
         has_where = service._has_where_clause(parsed)
         assert has_where is False
+
+
+class TestColumnIntrospection:
+    """Test column introspection functionality."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.mock_ds_service = Mock()
+        self.service = QueryService(self.mock_ds_service)
+
+    @pytest.fixture
+    def mock_ds_config(self) -> DataSourceConfig:
+        """Mock data source configuration."""
+        return DataSourceConfig(
+            name="test_db",
+            driver="postgresql",
+            host="localhost",
+            port=5432,
+            database="testdb",
+            username="testuser",
+            **{}
+        )
+
+    @pytest.mark.asyncio
+    async def test_introspect_query_columns_success(self, mock_ds_config):
+        """Should introspect columns from SELECT query."""
+        # Mock data source service
+        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
+
+        # Mock DataFrame with expected columns
+        test_df = pd.DataFrame(columns=["id", "name", "email", "created_at"])
+
+        # Mock the loader
+        with (
+            patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+            patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
+        ):
+            mock_loader = Mock()
+            mock_loader.inject_limit = Mock(return_value="SELECT * FROM users LIMIT 0")
+            mock_loader.read_sql = AsyncMock(return_value=test_df)
+            mock_loader_cls = Mock(return_value=mock_loader)
+            mock_get_loader.return_value = mock_loader_cls
+            mock_mapper.return_value = Mock()
+
+            query = "SELECT * FROM users"
+            columns = await self.service.introspect_query_columns(
+                data_source_name="test_db",
+                query=query
+            )
+
+            # Verify results
+            assert isinstance(columns, list)
+            assert len(columns) == 4
+            assert "id" in columns
+            assert "name" in columns
+            assert "email" in columns
+            assert "created_at" in columns
+
+            # Verify LIMIT 0 was applied
+            mock_loader.inject_limit.assert_called_once_with(query, 0)
+            mock_loader.read_sql.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_introspect_query_columns_with_aliases(self, mock_ds_config):
+        """Should introspect columns with aliases."""
+        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
+
+        # DataFrame with aliased columns
+        test_df = pd.DataFrame(columns=["user_id", "full_name", "order_count"])
+
+        with (
+            patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+            patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
+        ):
+            mock_loader = Mock()
+            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.read_sql = AsyncMock(return_value=test_df)
+            mock_loader_cls = Mock(return_value=mock_loader)
+            mock_get_loader.return_value = mock_loader_cls
+            mock_mapper.return_value = Mock()
+
+            query = "SELECT id AS user_id, name AS full_name, COUNT(*) AS order_count FROM users"
+            columns = await self.service.introspect_query_columns("test_db", query)
+
+            assert columns == ["user_id", "full_name", "order_count"]
+
+    @pytest.mark.asyncio
+    async def test_introspect_query_columns_complex_query(self, mock_ds_config):
+        """Should introspect columns from complex JOIN query."""
+        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
+
+        test_df = pd.DataFrame(columns=["user_id", "user_name", "order_id", "order_total"])
+
+        with (
+            patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+            patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
+        ):
+            mock_loader = Mock()
+            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.read_sql = AsyncMock(return_value=test_df)
+            mock_loader_cls = Mock(return_value=mock_loader)
+            mock_get_loader.return_value = mock_loader_cls
+            mock_mapper.return_value = Mock()
+
+            query = """
+                SELECT u.id AS user_id, u.name AS user_name, 
+                       o.id AS order_id, o.total AS order_total
+                FROM users u
+                JOIN orders o ON u.id = o.user_id
+                WHERE u.active = true
+            """
+            columns = await self.service.introspect_query_columns("test_db", query)
+
+            assert len(columns) == 4
+            assert "user_id" in columns
+            assert "order_total" in columns
+
+    @pytest.mark.asyncio
+    async def test_introspect_query_columns_rejects_destructive(self, mock_ds_config):
+        """Should reject destructive queries during introspection."""
+        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
+
+        with pytest.raises(QuerySecurityError) as exc_info:
+            await self.service.introspect_query_columns(
+                data_source_name="test_db",
+                query="DELETE FROM users"
+            )
+
+        error = exc_info.value
+        assert "prohibited operations" in error.message.lower()
+        assert "DELETE" in error.context["violations"][0]
+
+    @pytest.mark.asyncio
+    async def test_introspect_query_columns_rejects_insert(self, mock_ds_config):
+        """Should reject INSERT queries during introspection."""
+        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
+
+        with pytest.raises(QuerySecurityError):
+            await self.service.introspect_query_columns(
+                data_source_name="test_db",
+                query="INSERT INTO users (name) VALUES ('test')"
+            )
+
+    @pytest.mark.asyncio
+    async def test_introspect_query_columns_data_source_not_found(self):
+        """Should raise error when data source doesn't exist."""
+        self.mock_ds_service.load_data_source = Mock(return_value=None)
+
+        with pytest.raises(QueryExecutionError) as exc_info:
+            await self.service.introspect_query_columns(
+                data_source_name="nonexistent_db",
+                query="SELECT * FROM users"
+            )
+
+        assert "not found" in exc_info.value.message.lower()
+        assert "nonexistent_db" in exc_info.value.message
+
+    @pytest.mark.asyncio
+    async def test_introspect_query_columns_execution_error(self, mock_ds_config):
+        """Should handle query execution errors gracefully."""
+        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
+
+        with (
+            patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+            patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
+        ):
+            mock_loader = Mock()
+            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.read_sql = AsyncMock(side_effect=Exception("Table 'users' doesn't exist"))
+            mock_loader_cls = Mock(return_value=mock_loader)
+            mock_get_loader.return_value = mock_loader_cls
+            mock_mapper.return_value = Mock()
+
+            with pytest.raises(QueryExecutionError) as exc_info:
+                await self.service.introspect_query_columns(
+                    data_source_name="test_db",
+                    query="SELECT * FROM nonexistent_table"
+                )
+
+            error = exc_info.value
+            assert "introspection failed" in error.message.lower()
+            assert "doesn't exist" in error.message.lower()
+
+    @pytest.mark.asyncio
+    async def test_introspect_query_columns_timeout(self, mock_ds_config):
+        """Should handle timeout during column introspection."""
+        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
+
+        with (
+            patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+            patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
+        ):
+            mock_loader = Mock()
+            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.read_sql = AsyncMock(side_effect=asyncio.TimeoutError())
+            mock_loader_cls = Mock(return_value=mock_loader)
+            mock_get_loader.return_value = mock_loader_cls
+            mock_mapper.return_value = Mock()
+
+            with pytest.raises(QueryExecutionError) as exc_info:
+                await self.service.introspect_query_columns(
+                    data_source_name="test_db",
+                    query="SELECT * FROM slow_table"
+                )
+
+            error = exc_info.value
+            assert "timed out" in error.message.lower()
+            assert "10 seconds" in error.message.lower()
+
+    @pytest.mark.asyncio
+    async def test_introspect_query_columns_empty_result(self, mock_ds_config):
+        """Should return columns even when result set is empty."""
+        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
+
+        # DataFrame with columns but no rows
+        test_df = pd.DataFrame(columns=["id", "name", "email"])
+
+        with (
+            patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+            patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
+        ):
+            mock_loader = Mock()
+            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.read_sql = AsyncMock(return_value=test_df)
+            mock_loader_cls = Mock(return_value=mock_loader)
+            mock_get_loader.return_value = mock_loader_cls
+            mock_mapper.return_value = Mock()
+
+            query = "SELECT id, name, email FROM users WHERE 1=0"
+            columns = await self.service.introspect_query_columns("test_db", query)
+
+            assert len(columns) == 3
+            assert columns == ["id", "name", "email"]
+
+    @pytest.mark.asyncio
+    async def test_introspect_query_columns_preserves_order(self, mock_ds_config):
+        """Should preserve column order from query."""
+        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
+
+        # Specific column order
+        test_df = pd.DataFrame(columns=["email", "name", "id", "created_at"])
+
+        with (
+            patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+            patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
+        ):
+            mock_loader = Mock()
+            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.read_sql = AsyncMock(return_value=test_df)
+            mock_loader_cls = Mock(return_value=mock_loader)
+            mock_get_loader.return_value = mock_loader_cls
+            mock_mapper.return_value = Mock()
+
+            query = "SELECT email, name, id, created_at FROM users"
+            columns = await self.service.introspect_query_columns("test_db", query)
+
+            assert columns == ["email", "name", "id", "created_at"]
+
+    @pytest.mark.asyncio
+    async def test_introspect_query_columns_with_aggregates(self, mock_ds_config):
+        """Should introspect columns with aggregate functions."""
+        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
+
+        test_df = pd.DataFrame(columns=["country", "total_users", "avg_age", "max_orders"])
+
+        with (
+            patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+            patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
+        ):
+            mock_loader = Mock()
+            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.read_sql = AsyncMock(return_value=test_df)
+            mock_loader_cls = Mock(return_value=mock_loader)
+            mock_get_loader.return_value = mock_loader_cls
+            mock_mapper.return_value = Mock()
+
+            query = """
+                SELECT country, 
+                       COUNT(*) AS total_users,
+                       AVG(age) AS avg_age,
+                       MAX(orders) AS max_orders
+                FROM users
+                GROUP BY country
+            """
+            columns = await self.service.introspect_query_columns("test_db", query)
+
+            assert len(columns) == 4
+            assert "total_users" in columns
+            assert "avg_age" in columns
+            assert "max_orders" in columns

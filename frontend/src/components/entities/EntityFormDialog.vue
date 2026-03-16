@@ -359,6 +359,25 @@
                         </template>
                       </v-combobox>
                     </div>
+
+                    <!-- Detected Columns (for sql type, readonly display) -->
+                    <div class="form-row" v-if="formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading)">
+                      <v-combobox
+                        :model-value="columnsOptions"
+                        label="Detected Columns"
+                        variant="outlined"
+                        multiple
+                        chips
+                        readonly
+                        :loading="columnsLoading"
+                        persistent-placeholder
+                      >
+                        <template #message>
+                          <span class="text-caption">Columns detected from your SQL query (auto-updated on query changes)</span>
+                        </template>
+                      </v-combobox>
+                    </div>
+
                     <!-- Fixed Values Grid (only for fixed type) -->
                     <div class="form-row" v-if="formData.type === 'fixed'">
                       <!-- External Values Status Badge -->
@@ -534,24 +553,6 @@
                         help-text="SQL query to execute against the selected data source"
                         :error="formValid === false && !formData.query ? 'SQL query is required' : ''"
                       />
-                    </div>
-
-                    <!-- Detected Columns (for sql type, readonly display) -->
-                    <div class="form-row" v-if="formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading)">
-                      <v-combobox
-                        :model-value="columnsOptions"
-                        label="Detected Columns"
-                        variant="outlined"
-                        multiple
-                        chips
-                        readonly
-                        :loading="columnsLoading"
-                        persistent-placeholder
-                      >
-                        <template #message>
-                          <span class="text-caption">Columns detected from your SQL query (auto-updated on query changes)</span>
-                        </template>
-                      </v-combobox>
                     </div>
 
                     <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
