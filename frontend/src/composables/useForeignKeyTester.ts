@@ -3,6 +3,8 @@
  */
 import { ref, computed } from 'vue'
 import { apiClient } from '@/api/client'
+import type { FormattedError } from '@/types'
+import { formatErrorMessage } from '@/utils/errors'
 
 export interface JoinStatistics {
   total_rows: number
@@ -43,7 +45,7 @@ export interface JoinTestResult {
 
 export function useForeignKeyTester() {
   const loading = ref(false)
-  const error = ref<string | null>(null)
+  const error = ref<FormattedError | null>(null)
   const testResult = ref<JoinTestResult | null>(null)
 
   /**
@@ -71,8 +73,7 @@ export function useForeignKeyTester() {
       testResult.value = response.data
       return response.data
     } catch (err: any) {
-      const message = err.response?.data?.detail || err.message || 'Failed to test foreign key'
-      error.value = message
+      error.value = formatErrorMessage(err)
       console.error('Foreign key test error:', err)
       return null
     } finally {

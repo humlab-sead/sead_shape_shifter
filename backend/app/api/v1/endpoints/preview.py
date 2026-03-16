@@ -5,7 +5,7 @@ from typing import Any, NoReturn, Optional
 from fastapi import APIRouter, Body, Depends, Path, Query
 from loguru import logger
 
-from backend.app.exceptions import ValidationError
+from backend.app.exceptions import ConstraintViolationError, ValidationError
 from backend.app.models.join_test import JoinTestResult
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.project_service import ProjectService
@@ -14,22 +14,9 @@ from backend.app.services.validate_fk_service import ValidateForeignKeyService
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.exceptions import FunctionalDependencyError
+from src.specifications.constraints import ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation
 
 router = APIRouter()
-
-
-def _find_fd_error(error: BaseException) -> FunctionalDependencyError | None:
-    """Find wrapped FunctionalDependencyError in exception cause/context chain."""
-    seen: set[int] = set()
-    current: BaseException | None = error
-
-    while current is not None and id(current) not in seen:
-        seen.add(id(current))
-        if isinstance(current, FunctionalDependencyError):
-            return current
-        current = current.__cause__ or current.__context__
-
-    return None
 
 
 def _raise_fd_validation_error(error: FunctionalDependencyError, entity_name: str) -> NoReturn:
@@ -49,6 +36,51 @@ def _raise_fd_validation_error(error: FunctionalDependencyError, entity_name: st
             "validation": "functional_dependency",
             "determinant_columns": error.determinant_columns,
             "details": error.details,
+        },
+        recoverable=True,
+    ) from error
+
+
+def _raise_fk_constraint_validation_error(error: ForeignKeyConstraintViolation, entity_name: str) -> NoReturn:
+    """Raise a structured ConstraintViolationError for FK constraint failures."""
+    message = str(error)
+
+    if isinstance(error, ForeignKeyNullConstraintViolation):
+        raise ConstraintViolationError(
+            message=(
+                f"Validation failed for {error.local_entity} -> {error.remote_entity}: "
+                f"null values found in {error.key_side} key '{error.key_column}'."
+            ),
+            constraint_type="allow_null_keys",
+            entity=error.local_entity,
+            tips=[
+                f"Check column '{error.key_column}' in the {error.key_side} entity for null values.",
+                "Clean or filter null values before linking.",
+                "If this relationship is intentionally optional, enable 'Allow Null Keys' in the foreign key constraints.",
+            ],
+            context={
+                "entity": error.local_entity,
+                "remote_entity": error.remote_entity,
+                "key_side": error.key_side,
+                "key_column": error.key_column,
+                "constraint": "allow_null_keys",
+                "source_entity": entity_name,
+            },
+            recoverable=True,
+        ) from error
+
+    raise ConstraintViolationError(
+        message=message,
+        constraint_type="foreign_key",
+        entity=entity_name,
+        tips=[
+            "Review the foreign key constraint details shown above.",
+            "Check the local and remote key columns for invalid or missing values.",
+            "If the relationship is intentionally optional, enable 'Allow Null Keys' in the foreign key constraints.",
+        ],
+        context={
+            "entity": entity_name,
+            "constraint": "foreign_key",
         },
         recoverable=True,
     ) from error
@@ -117,11 +149,8 @@ async def preview_entity(
         return result
     except FunctionalDependencyError as e:
         _raise_fd_validation_error(e, entity_name)
-    except RuntimeError as e:
-        fd_error = _find_fd_error(e)
-        if fd_error is not None:
-            _raise_fd_validation_error(fd_error, entity_name)
-        raise
+    except (ForeignKeyNullConstraintViolation, ForeignKeyConstraintViolation) as e:
+        _raise_fk_constraint_validation_error(e, entity_name)
     except ValueError as e:
         logger.warning(f"Preview request failed: {e}")
         raise NotFoundError(str(e)) from e
@@ -158,11 +187,8 @@ async def get_entity_sample(
         return result
     except FunctionalDependencyError as e:
         _raise_fd_validation_error(e, entity_name)
-    except RuntimeError as e:
-        fd_error = _find_fd_error(e)
-        if fd_error is not None:
-            _raise_fd_validation_error(fd_error, entity_name)
-        raise
+    except (ForeignKeyNullConstraintViolation, ForeignKeyConstraintViolation) as e:
+        _raise_fk_constraint_validation_error(e, entity_name)
     except ValueError as e:
         logger.warning(f"Sample request failed: {e}")
         raise NotFoundError(str(e)) from e
@@ -237,6 +263,10 @@ async def test_foreign_key_join(
             project_name=project_name, entity_name=entity_name, foreign_key_index=fk_index, sample_size=sample_size
         )
         return result
+    except FunctionalDependencyError as e:
+        _raise_fd_validation_error(e, entity_name)
+    except (ForeignKeyNullConstraintViolation, ForeignKeyConstraintViolation) as e:
+        _raise_fk_constraint_validation_error(e, entity_name)
     except ValueError as e:
         logger.error(f"Join test validation error: {e}")
         raise BadRequestError(str(e)) from e
