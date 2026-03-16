@@ -90,9 +90,14 @@ These are the primary system documentation files:
 
 ### Design Proposals
 
-- **[other/AI_PROJECT_ADVISOR_PROPOSAL.md](other/AI_PROJECT_ADVISOR_PROPOSAL.md)**
-  - Proposal for a grounded project advisor with Shape Shifter and SEAD/SIMS knowledge
+- **[proposals/AI_PROJECT_ADVISOR_PROPOSAL.md](other/AI_PROJECT_ADVISOR_PROPOSAL.md)**
+  - Proposal for a project advisor with Shape Shifter and SEAD/SIMS knowledge
   - Scope, architecture, context model, safety boundaries, and phased delivery
+
+- **[proposals/ENTITY_LEVEL_LOCKING.md](other/AI_PROJECT_ADVISOR_PROPOSAL.md)**
+  - Shape Shifter currently has optimistic locking at the project level for the entire project.
+  - The most frequent use case in the UI, is where a user opens, edits, and saves one entity at a time.
+  - This proposal introduces optimistic locking at an entity level increasing collaborative work.
 
 ## Archived Documentation
 
