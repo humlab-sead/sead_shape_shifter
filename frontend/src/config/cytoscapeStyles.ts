@@ -10,14 +10,30 @@ export interface CytoscapeStyleConfig {
   dark: StylesheetCSS[]
 }
 
+export interface CytoscapeStyleOptions {
+  nodeFontSizePx?: number
+  sourceNodeFontSizePx?: number
+}
+
+export const DEFAULT_NODE_LABEL_FONT_SIZE_PX = 30
+const DEFAULT_SOURCE_NODE_LABEL_FONT_SIZE_PX = 27
+
 const NOTE_DOT_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(
   '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE svg><svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="16" fill="#0F172A"/><circle cx="50" cy="50" r="12.5" fill="#FFFFFF"/></svg>'
+)}`
+
+const MATERIALIZED_BADGE_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(
+  '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE svg><svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="76" cy="24" r="16" fill="#4CAF50"/><circle cx="76" cy="24" r="9" fill="#E8F5E9"/></svg>'
 )}`
 
 /**
  * Base styles that work for both light and dark themes
  */
-const baseStyles: StylesheetCSS[] = [
+function createBaseStyles(options: CytoscapeStyleOptions = {}): StylesheetCSS[] {
+  const nodeFontSizePx = options.nodeFontSizePx ?? DEFAULT_NODE_LABEL_FONT_SIZE_PX
+  const sourceNodeFontSizePx = options.sourceNodeFontSizePx ?? DEFAULT_SOURCE_NODE_LABEL_FONT_SIZE_PX
+
+  return [
   // Node styles
   {
     selector: 'node',
@@ -31,7 +47,7 @@ const baseStyles: StylesheetCSS[] = [
       'text-valign': 'bottom',
       'text-halign': 'center',
       'text-margin-y': 8,
-      'font-size': '20px',
+      'font-size': `${nodeFontSizePx}px`,
       'font-family': 'Roboto, sans-serif',
       color: '#333',
       'overlay-padding': 6,
@@ -124,7 +140,7 @@ const baseStyles: StylesheetCSS[] = [
       'background-opacity': 0.9,
       'border-width': 2,
       'border-style': 'solid',
-      'font-size': '18px',
+      'font-size': `${sourceNodeFontSizePx}px`,
     },
   },
 
@@ -262,6 +278,16 @@ const baseStyles: StylesheetCSS[] = [
       'border-width': 4,
       'border-color': '#4CAF50', // Green = stable/cached
       'background-opacity': 0.85, // Slightly transparent
+      'background-image': MATERIALIZED_BADGE_SVG,
+      'background-image-opacity': 1,
+      'background-width': '100%',
+      'background-height': '100%',
+      'background-width-relative-to': 'inner',
+      'background-height-relative-to': 'inner',
+      'background-position-x': '50%',
+      'background-position-y': '50%',
+      'background-fit': 'none',
+      'background-repeat': 'no-repeat',
     },
   },
 
@@ -393,7 +419,8 @@ const baseStyles: StylesheetCSS[] = [
       'target-arrow-color': '#FFA726',
     },
   },
-]
+  ]
+}
 
 /**
  * Light theme specific styles
@@ -436,7 +463,8 @@ const darkThemeStyles: StylesheetCSS[] = [
 /**
  * Get styles for the current theme
  */
-export function getCytoscapeStyles(isDark: boolean = false): StylesheetCSS[] {
+export function getCytoscapeStyles(isDark: boolean = false, options: CytoscapeStyleOptions = {}): StylesheetCSS[] {
+  const baseStyles = createBaseStyles(options)
   return [...baseStyles, ...(isDark ? darkThemeStyles : lightThemeStyles)]
 }
 
@@ -444,6 +472,6 @@ export function getCytoscapeStyles(isDark: boolean = false): StylesheetCSS[] {
  * Export combined config for convenience
  */
 export const cytoscapeStyleConfig: CytoscapeStyleConfig = {
-  light: [...baseStyles, ...lightThemeStyles],
-  dark: [...baseStyles, ...darkThemeStyles],
+  light: [...createBaseStyles(), ...lightThemeStyles],
+  dark: [...createBaseStyles(), ...darkThemeStyles],
 }

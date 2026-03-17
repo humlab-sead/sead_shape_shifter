@@ -39,6 +39,38 @@ describe('Enhanced Error Parsing', () => {
       expect(result.recoverable).toBe(true)
     })
 
+    it('should parse structured constraint violations for FK null keys', () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: {
+          data: {
+            error_type: 'ConstraintViolationError',
+            message: "Validation failed for site_location -> location: null values found in remote key 'location_name'.",
+            tips: [
+              "Check column 'location_name' in the remote entity for null values.",
+              'Clean or filter null values before linking.',
+              "If this relationship is intentionally optional, enable 'Allow Null Keys' in the foreign key constraints.",
+            ],
+            context: {
+              entity: 'site_location',
+              remote_entity: 'location',
+              key_side: 'remote',
+              key_column: 'location_name',
+            },
+            recoverable: true,
+          },
+        },
+      }
+
+      const result = formatErrorMessage(axiosError)
+
+      expect(result.message).toContain("Validation failed for site_location -> location")
+      expect(result.errorType).toBe('ConstraintViolationError')
+      expect(result.tips).toHaveLength(3)
+      expect(result.context?.key_column).toBe('location_name')
+      expect(result.recoverable).toBe(true)
+    })
+
     it('should parse CircularDependencyError with cycle info', () => {
       const axiosError = {
         isAxiosError: true,

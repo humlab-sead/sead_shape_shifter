@@ -59,9 +59,9 @@ class TestForeignKeyConstraints:
         assert constraints.require_unique_right is True
 
     def test_allow_null_keys_default(self):
-        """Test allow_null_keys defaults to True."""
+        """Test allow_null_keys defaults to False."""
         constraints = ForeignKeyConstraints(data={})
-        assert constraints.allow_null_keys is True
+        assert constraints.allow_null_keys is False
 
     def test_allow_null_keys_false(self):
         """Test allow_null_keys set to False."""

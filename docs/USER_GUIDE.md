@@ -84,10 +84,8 @@ From there you can:
 
 - Search and sort projects.
 - Create a new project.
-- Open an existing project.
-- Copy an existing project.
+- Open, copy or delete an existing project.
 - Run quick validation from the project list.
-- Delete a project.
 
 ### Create a New Project
 
@@ -113,14 +111,9 @@ The project detail screen includes:
 
 ### Concurrent Editing and Save Protection
 
-When a project is open, the editor starts a session for it. If another session is editing the same project, the session banner shows a warning. Saves use version checks, so a save can be rejected if another user changed the project first.
+When a project is open, the editor starts a session for it. If another session is editing the same project, the session banner shows a warning. Saves use version checks, so a save can be rejected if another user changed the project since you last saved or opened it.
 
-If that happens:
-
-1. Refresh the project.
-2. Review the latest YAML or form state.
-3. Re-apply your changes.
-4. Save again.
+If that happens you need to refresh the project, review the latest YAML or form state, re-apply your changes, and save again.
 
 ---
 
@@ -130,31 +123,26 @@ If that happens:
 
 The current project editor is organized into tabs:
 
-| Tab | Purpose |
-|-----|---------|
-| **Entities** | Create, search, filter, edit, and delete entities |
-| **Graph** | Visualize dependencies, sources, task status, and open quick editing tools |
-| **Reconcile** | Configure reconciliation specs, edit reconciliation YAML, and review suggested matches |
-| **Validate** | Run YAML validation and data validation, review issues, and copy results |
-| **Dispatch** | Send processed data to a configured target system using ingester settings |
+| Tab              | Purpose                                                                                      |
+|------------------|----------------------------------------------------------------------------------------------|
+| **Entities**     | Create, search, filter, edit, and delete entities                                            |
+| **Graph**        | Visualize dependencies, sources, task status, and open quick editing tools                   |
+| **Reconcile**    | Configure reconciliation specs, edit reconciliation YAML, and review suggested matches       |
+| **Validate**     | Run YAML validation and data validation, review issues, and copy results                     |
+| **Dispatch**     | Send processed data to a configured target system using ingester settings                    |
 | **Data Sources** | Connect shared data-source definitions to the project and create entities from source tables |
-| **Metadata** | Edit description, version, and default entity |
-| **Files** | Upload project-local CSV and Excel files |
-| **YAML** | Edit the complete project YAML directly |
+| **Metadata**     | Edit description, version, and default entity                                                |
+| **Files**        | Upload project-local CSV and Excel files                                                     |
+| **YAML**         | Edit the complete project YAML directly                                                      |
 
 ### Header Actions
 
-**Execute**
-: Opens the execution dialog for exporting normalized data.
-
-**Backups**
-: Opens a list of available project backups and lets you restore one.
-
-**Refresh**
-: Reloads the current project from disk.
-
-**Save Changes**
-: Saves the current project after version checks.
+| Button       | Purpose                                                             |
+|--------------|---------------------------------------------------------------------|
+| Execute      | Opens the execution dialog for exporting normalized data.           |
+| Backups      | Opens a list of available project backups and lets you restore one. |
+| Refresh      | Reloads the current project from disk.                              |
+| Save Changes | Saves the current project after version checks.                     |
 
 ### Graph Tab
 
@@ -182,14 +170,9 @@ These tabs support project setup around the entities themselves:
 
 ### YAML Tab
 
-Use the **YAML** tab when you need full control over the project file.
+Use the **YAML** tab is a power-user editing feature when you need full control over the project file.
 
-The YAML editor supports:
-
-- syntax-aware editing
-- reload from disk
-- explicit save
-- validation while you edit
+The YAML editor supports, syntax-aware editing, reload from disk, explicit save and some validation while you edit.
 
 Use it for bulk edits, advanced directive usage, or cases where the form editor does not expose a setting directly.
 
@@ -201,13 +184,7 @@ Use it for bulk edits, advanced directive usage, or cases where the form editor 
 
 The **Entities** tab now uses a searchable list rather than the older left-hand entity tree.
 
-You can:
-
-- search entities by name
-- filter entities by type
-- add a new entity
-- open an entity for editing
-- delete an entity
+You can search entities by name, filter by type, and open or delete an entity.
 
 Entity rows may also show extra badges such as:
 
@@ -218,12 +195,15 @@ Entity rows may also show extra badges such as:
 
 The current editor supports these main entity types:
 
-- `entity` for derived entities
-- `sql` for query-based entities
-- `fixed` for inline static values
-- `csv` for delimited files
-- `xlsx` for spreadsheet loading
-- `openpyxl` for Excel loading with range support
+
+| Type       | Data Source       | Description                                                            |
+|------------|-------------------|------------------------------------------------------------------------|
+| `entity`   | another entity    | derived entities get their data from another configured entity.        |
+| `sql`      | database          | for query-based entities that reads data from en external data source. |
+| `fixed`    | inline            | for manually added static values (also frozen dynamic entities)        |
+| `csv`      | CSV/TSV file      | for loading data from delimited files                                  |
+| `xlsx`     | Excel spreadsheet | for loading Excel spreadsheet using Pandas                             |
+| `openpyxl` | Excel spreadsheet | for loading Excel spreadsheet with range support                       |
 
 ### Entity Editor Modes
 

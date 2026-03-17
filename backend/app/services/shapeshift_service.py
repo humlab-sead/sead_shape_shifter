@@ -17,7 +17,7 @@ from backend.app.utils.caches import ShapeShiftCache, ShapeShiftProjectCache
 from src.exceptions import FunctionalDependencyError
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
-from src.specifications.constraints import ValidationIssue
+from src.specifications.constraints import ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation, ValidationIssue
 
 
 class ShapeShiftService:
@@ -188,7 +188,7 @@ class ShapeShiftService:
 
             return shapeshifter.table_store, validation_issues
 
-        except FunctionalDependencyError:
+        except (FunctionalDependencyError, ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation):
             raise
 
         except Exception as e:
@@ -241,7 +241,7 @@ class ShapeShiftService:
 
             return shapeshifter.table_store, validation_issues
 
-        except FunctionalDependencyError:
+        except (FunctionalDependencyError, ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation):
             raise
 
         except Exception as e:

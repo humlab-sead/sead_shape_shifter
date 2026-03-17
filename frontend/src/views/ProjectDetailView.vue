@@ -219,7 +219,7 @@
                 
                 <!-- Stats Overlay (top-left) -->
                 <div class="graph-stats-overlay">
-                  <v-card variant="flat" class="stats-card">
+                  <v-card variant="flat" class="stats-card stats-card--summary">
                     <v-card-text class="pa-2">
                       <!-- Task Completion -->
                       <div v-if="taskStatusStore.taskStatus" class="mb-2">
@@ -232,7 +232,7 @@
                             />
                           </v-col>
                           <v-col>
-                            <div class="text-caption">
+                            <div class="text-caption task-completion-summary">
                               <span class="font-weight-medium">{{ taskStats.done }}</span>
                               <span class="text-medium-emphasis"> of </span>
                               <span class="font-weight-medium">{{ taskStats.total }}</span>
@@ -241,6 +241,7 @@
                           </v-col>
                           <v-col cols="auto" class="ml-2">
                             <v-chip
+                              class="task-completion-chip"
                               :color="completionColor"
                               size="x-small"
                               variant="flat"
@@ -268,13 +269,21 @@
                           {{ depStatistics.edgeCount }}
                         </v-chip>
                       </div>
-                      
+                    </v-card-text>
+                  </v-card>
+
+                  <v-card
+                    v-if="colorByMode === 'task' || colorByMode === 'type'"
+                    variant="flat"
+                    class="stats-card stats-card--legend"
+                  >
+                    <v-card-text class="pa-2">
                       <!-- Task Status Legend -->
                       <div v-if="colorByMode === 'task'" class="text-caption text-medium-emphasis">
                         <div class="mb-1" style="font-size: 10px; font-weight: 500;">Task Status</div>
                         <div class="d-flex align-center gap-1 mb-1">
                           <div style="width: 10px; height: 10px; background-color: #FDD835; border-radius: 50%;" />
-                          <span style="font-size: 10px;">&nbsp;Todo (not created)</span>
+                          <span style="font-size: 10px;">&nbsp;Todo</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
                           <div style="width: 10px; height: 10px; background-color: #2196F3; border-radius: 50%;" />
@@ -361,6 +370,32 @@
                     <v-icon>mdi-refresh</v-icon>
                     <v-tooltip activator="parent" location="left">Reset View</v-tooltip>
                   </v-btn>
+
+                  <v-btn
+                    icon
+                    size="small"
+                    class="graph-fab"
+                    :disabled="nodeLabelFontSize <= MIN_NODE_LABEL_FONT_SIZE"
+                    @click="handleDecreaseNodeLabelFontSize"
+                  >
+                    <v-icon>mdi-format-font-size-decrease</v-icon>
+                    <v-tooltip activator="parent" location="left">
+                      Decrease Label Size ({{ nodeLabelFontSize }}px)
+                    </v-tooltip>
+                  </v-btn>
+
+                  <v-btn
+                    icon
+                    size="small"
+                    class="graph-fab"
+                    :disabled="nodeLabelFontSize >= MAX_NODE_LABEL_FONT_SIZE"
+                    @click="handleIncreaseNodeLabelFontSize"
+                  >
+                    <v-icon>mdi-format-font-size-increase</v-icon>
+                    <v-tooltip activator="parent" location="left">
+                      Increase Label Size ({{ nodeLabelFontSize }}px)
+                    </v-tooltip>
+                  </v-btn>
                   
                   <v-divider class="my-1" />
                   
@@ -405,7 +440,6 @@
               @mark-complete="handleMarkComplete"
               @mark-ignored="handleMarkIgnored"
               @mark-ongoing="handleMarkOngoing"
-              @mark-todo="handleMarkTodo"
               @reset-status="handleResetStatus"
               @edit-note="handleEditNote"
               @remove-note="handleRemoveNote"
@@ -718,6 +752,51 @@
       @cancel="handleCancelPreview"
     />
 
+    <v-dialog v-model="showCreateTodoDialog" max-width="560">
+      <v-card>
+        <v-card-title>Add Todo Entity</v-card-title>
+        <v-card-text>
+          <v-alert v-if="createTodoError" type="error" variant="tonal" class="mb-4">
+            {{ createTodoError }}
+          </v-alert>
+
+          <v-text-field
+            v-model="createTodoEntityName"
+            label="Entity name"
+            placeholder="sample_type"
+            hint="Use a new snake_case name for a planned entity."
+            persistent-hint
+            :error="createTodoEntityName.trim().length > 0 && !isCreateTodoNameValid"
+            :error-messages="createTodoNameError ? [createTodoNameError] : []"
+            :disabled="createTodoSaving"
+            @keydown.enter.prevent="handleSubmitCreateTodo"
+          />
+
+          <v-textarea
+            v-model="createTodoNote"
+            label="Optional task note"
+            placeholder="Add context about why this entity is planned or still missing."
+            rows="4"
+            auto-grow
+            :disabled="createTodoSaving"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" :disabled="createTodoSaving" @click="closeCreateTodoDialog">Cancel</v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="createTodoSaving"
+            :disabled="!canSubmitCreateTodo"
+            @click="handleSubmitCreateTodo"
+          >
+            Add Todo Entity
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Execute Dialog -->
     <execute-dialog
       v-model="showExecuteDialog"
@@ -872,10 +951,15 @@ const showExecuteDialog = ref(false)
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
 const showPreviewModal = ref(false)
+const showCreateTodoDialog = ref(false)
 const fixPreview = ref<any>(null)
 const fixPreviewLoading = ref(false)
 const fixPreviewError = ref<string | null>(null)
 const entityToEdit = ref<string | null>(null)
+const createTodoEntityName = ref('')
+const createTodoNote = ref('')
+const createTodoSaving = ref(false)
+const createTodoError = ref<string | null>(null)
 
 // Graph state
 const graphContainer = ref<HTMLElement | null>(null)
@@ -886,6 +970,8 @@ const savingLayout = ref(false)
 const displayOptions = ref<GraphDisplayOptions>({
   nodeLabels: true,
   edgeLabels: true,
+  showForeignKeyEdges: true,
+  showProvidesEdges: true,
   showSources: false,
   showSourceEntities: false,
 })
@@ -922,14 +1008,33 @@ const contextMenuEntity = ref<string | null>(null)
 const currentTaskFilter = ref<TaskFilter>('all')
 const defaultColorByMode: GraphColorByMode = 'task'
 const colorByMode = ref<GraphColorByMode>(defaultColorByMode)
+const DEFAULT_NODE_LABEL_FONT_SIZE = 30
+const MIN_NODE_LABEL_FONT_SIZE = 12
+const MAX_NODE_LABEL_FONT_SIZE = 48
+const NODE_LABEL_FONT_SIZE_STEP = 2
+const nodeLabelFontSize = ref(DEFAULT_NODE_LABEL_FONT_SIZE)
 const colorByOptions = [
   { title: 'Task Status', value: 'task' as const },
   { title: 'Entity Type', value: 'type' as const },
 ]
 const colorByStorageKey = computed(() => `shapeshifter.graph.colorBy.${projectName.value || 'default'}`)
+const nodeLabelFontSizeStorageKey = computed(() => `shapeshifter.graph.nodeLabelFontSize.${projectName.value || 'default'}`)
 
 function getSavedColorByMode(savedMode: string | null): GraphColorByMode {
   return savedMode === 'type' ? 'type' : defaultColorByMode
+}
+
+function clampNodeLabelFontSize(value: number): number {
+  return Math.min(MAX_NODE_LABEL_FONT_SIZE, Math.max(MIN_NODE_LABEL_FONT_SIZE, value))
+}
+
+function getSavedNodeLabelFontSize(savedValue: string | null): number {
+  const parsedValue = Number(savedValue)
+  if (!Number.isFinite(parsedValue)) {
+    return DEFAULT_NODE_LABEL_FONT_SIZE
+  }
+
+  return clampNodeLabelFontSize(Math.round(parsedValue))
 }
 
 const rawYamlContent = ref<string | null>(null)
@@ -998,6 +1103,28 @@ const entityStore = useEntityStore()
 const projectStore = useProjectStore()
 const taskStatusStore = useTaskStatusStore()
 
+const normalizedCreateTodoName = computed(() => createTodoEntityName.value.trim())
+
+const createTodoNameError = computed(() => {
+  const entityName = normalizedCreateTodoName.value
+
+  if (!entityName) return 'Entity name is required'
+  if (!/^[a-z][a-z0-9_]*$/.test(entityName)) {
+    return 'Entity name must be snake_case and start with a lowercase letter'
+  }
+  if (entityNames.value.includes(entityName)) {
+    return 'An entity with this name already exists in the project'
+  }
+  if (taskStatusStore.getEntityStatus(entityName)) {
+    return 'This entity name is already present in the task list'
+  }
+
+  return null
+})
+
+const isCreateTodoNameValid = computed(() => createTodoNameError.value === null)
+const canSubmitCreateTodo = computed(() => !createTodoSaving.value && isCreateTodoNameValid.value)
+
 // Task completion stats
 const taskStats = computed(() => {
   if (!taskStatusStore.taskStatus) {
@@ -1038,6 +1165,9 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
   customPositions: customLayout,
   showNodeLabels: computed(() => displayOptions.value.nodeLabels),
   showEdgeLabels: computed(() => displayOptions.value.edgeLabels),
+  nodeLabelFontSize,
+  showForeignKeyEdges: computed(() => displayOptions.value.showForeignKeyEdges),
+  showProvidesEdges: computed(() => displayOptions.value.showProvidesEdges),
   highlightCycles,
   showSources: computed(() => displayOptions.value.showSources),
   showSourceEntities: computed(() => displayOptions.value.showSourceEntities),
@@ -1652,22 +1782,6 @@ async function handleMarkOngoing(entityName: string) {
   }
 }
 
-async function handleMarkTodo(entityName: string) {
-  try {
-    const success = await taskStatusStore.markTodo(entityName)
-    if (success) {
-      successMessage.value = `Entity "${entityName}" marked as todo`
-      showSuccessSnackbar.value = true
-      // Refresh graph to show updated badges
-      applyTaskStatusToNodes()
-    }
-  } catch (err) {
-    console.error('Failed to mark entity as todo:', err)
-    successMessage.value = err instanceof Error ? err.message : 'Failed to mark entity as todo'
-    showSuccessSnackbar.value = true
-  }
-}
-
 async function handleResetStatus(entityName: string) {
   try {
     const success = await taskStatusStore.resetStatus(entityName)
@@ -1705,16 +1819,56 @@ async function handleInitializeTaskList() {
   }
 }
 
+function closeCreateTodoDialog() {
+  showCreateTodoDialog.value = false
+  createTodoEntityName.value = ''
+  createTodoNote.value = ''
+  createTodoError.value = null
+}
+
 function handleCreateTodoEntity() {
-  // Open entity creation dialog/form
-  // For now, just show a message - this would typically open a dialog
-  successMessage.value = 'Create Todo Entity dialog - to be implemented'
-  showSuccessSnackbar.value = true
-  // TODO: Implement entity creation dialog that:
-  // 1. Prompts for entity name
-  // 2. Creates minimal entity config
-  // 3. Automatically marks it as todo
-  // 4. Opens in editor
+  createTodoError.value = null
+  showCreateTodoDialog.value = true
+}
+
+async function handleSubmitCreateTodo() {
+  const entityName = normalizedCreateTodoName.value
+
+  if (!canSubmitCreateTodo.value || !entityName) {
+    createTodoError.value = createTodoNameError.value
+    return
+  }
+
+  createTodoSaving.value = true
+  createTodoError.value = null
+
+  try {
+    const success = await taskStatusStore.markTodo(entityName)
+    if (!success) {
+      throw new Error(taskStatusStore.error || `Failed to add todo entity "${entityName}"`)
+    }
+
+    const noteText = createTodoNote.value.trim()
+    if (noteText) {
+      await api.tasks.setNote(projectName.value, entityName, noteText)
+    }
+
+    await taskStatusStore.refresh()
+    await fetchDependencies(projectName.value)
+    await nextTick()
+    applyTaskStatusToNodes()
+
+    successMessage.value = noteText
+      ? `Todo entity "${entityName}" added with note`
+      : `Todo entity "${entityName}" added`
+    showSuccessSnackbar.value = true
+    closeCreateTodoDialog()
+  } catch (err) {
+    console.error('Failed to create todo entity:', err)
+    createTodoError.value = err instanceof Error ? err.message : 'Failed to create todo entity'
+  } finally {
+    createTodoSaving.value = false
+  }
 }
 
 function clearActiveDrawerError() {
@@ -1835,6 +1989,26 @@ function handleZoomOut() {
 
 function handleResetView() {
   reset()
+}
+
+function handleIncreaseNodeLabelFontSize() {
+  nodeLabelFontSize.value = clampNodeLabelFontSize(nodeLabelFontSize.value + NODE_LABEL_FONT_SIZE_STEP)
+}
+
+function handleDecreaseNodeLabelFontSize() {
+  nodeLabelFontSize.value = clampNodeLabelFontSize(nodeLabelFontSize.value - NODE_LABEL_FONT_SIZE_STEP)
+}
+
+async function syncGraphViewState() {
+  if (activeTab.value !== 'dependencies') {
+    return
+  }
+
+  await nextTick()
+  renderGraph()
+  await nextTick()
+  applyTaskStatusToNodes()
+  applyTaskFilter()
 }
 
 function handleExportPNG() {
@@ -2059,6 +2233,7 @@ onMounted(async () => {
 
   try {
     colorByMode.value = getSavedColorByMode(window.localStorage.getItem(colorByStorageKey.value))
+    nodeLabelFontSize.value = getSavedNodeLabelFontSize(window.localStorage.getItem(nodeLabelFontSizeStorageKey.value))
 
     console.debug(`ProjectDetailView: Initializing for project "${projectName.value}"`)
     
@@ -2093,7 +2268,8 @@ watch(
     // Avoid re-loading on initial mount (onMounted handles that)
     if (!oldName) return
 
-    colorByMode.value = getSavedColorByMode(window.localStorage.getItem(colorByStorageKey.value))
+  colorByMode.value = getSavedColorByMode(window.localStorage.getItem(colorByStorageKey.value))
+  nodeLabelFontSize.value = getSavedNodeLabelFontSize(window.localStorage.getItem(nodeLabelFontSizeStorageKey.value))
     
     console.debug(`ProjectDetailView: Project changed from "${oldName}" to "${newName}"`)
     
@@ -2118,6 +2294,10 @@ watch(
 watch(activeTab, async (newTab) => {
   if (newTab === 'yaml' && rawYamlContent.value === null) {
     await handleLoadYaml()
+  }
+
+  if (newTab === 'dependencies') {
+    await syncGraphViewState()
   }
   
   // Update route query to enable context-sensitive help
@@ -2176,10 +2356,7 @@ watch(
 watch(
   () => dependencyGraph.value,
   async () => {
-    // Wait for graph to render, then apply task status
-    await nextTick()
-    applyTaskStatusToNodes()
-    applyTaskFilter()
+    await syncGraphViewState()
   }
 )
 
@@ -2196,6 +2373,13 @@ watch(
   (mode) => {
     window.localStorage.setItem(colorByStorageKey.value, mode)
     applyTaskStatusToNodes()
+  }
+)
+
+watch(
+  () => nodeLabelFontSize.value,
+  (fontSize) => {
+    window.localStorage.setItem(nodeLabelFontSizeStorageKey.value, String(fontSize))
   }
 )
 
@@ -2280,7 +2464,10 @@ function applyTaskFilter() {
   top: 16px;
   left: 16px;
   z-index: 10;
-  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .stats-card {
@@ -2289,6 +2476,36 @@ function applyTaskFilter() {
   box-shadow: none;
   border: none;
   border-radius: 8px;
+}
+
+.stats-card--summary {
+  width: 280px;
+  max-width: calc(100vw - 32px);
+}
+
+.stats-card--legend {
+  width: fit-content;
+  max-width: calc(100vw - 32px);
+}
+
+.task-completion-summary {
+  font-size: 1.125rem;
+  line-height: 1.2;
+}
+
+.task-completion-chip {
+  width: 1.75rem;
+  min-width: 1.75rem;
+  max-width: 1.75rem;
+  padding-inline: 0;
+  justify-content: center;
+}
+
+.task-completion-chip :deep(.v-chip__content) {
+  width: 100%;
+  justify-content: center;
+  padding: 0;
+  font-size: 0.625rem;
 }
 
 .graph-fab-container {

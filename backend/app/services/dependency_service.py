@@ -144,7 +144,12 @@ class DependencyService:
         """
         try:
             project = ShapeShiftProject(
-                cfg={"entities": api_project.entities, "options": api_project.options}, filename=api_project.filename or ""
+                cfg={
+                    "entities": api_project.entities,
+                    "options": api_project.options,
+                    "task_list": api_project.task_list or {},
+                },
+                filename=api_project.filename or "",
             )
         except Exception as e:
             raise DataIntegrityError(message=f"Failed to initialize project: {e}") from e

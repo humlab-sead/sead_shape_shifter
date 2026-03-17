@@ -271,7 +271,7 @@
           "type": "boolean"
         },
         "allow_null_keys": {
-          "default": true,
+          "default": false,
           "title": "Allow Null Keys",
           "type": "boolean"
         }

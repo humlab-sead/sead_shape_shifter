@@ -17,7 +17,7 @@ class TestForeignKeyConstraints:
     def test_default_values(self):
         """Test default constraint values."""
         constraints = ForeignKeyConstraints()
-        assert constraints.allow_null_keys is True
+        assert constraints.allow_null_keys is False
         assert constraints.require_unique_left is False
         assert constraints.require_unique_right is False
 

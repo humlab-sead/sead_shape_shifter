@@ -215,8 +215,17 @@
         </div>
 
         <!-- Error -->
-        <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
-          {{ error }}
+        <v-alert v-if="error" :type="errorAlertType" variant="tonal" class="mb-4">
+          <v-alert-title>{{ errorAlertTitle }}</v-alert-title>
+          <div>{{ error.message }}</div>
+          <div v-if="error.detail" class="text-body-2 mt-1">
+            {{ error.detail }}
+          </div>
+          <ul v-if="error.tips?.length" class="pl-4 mt-2 mb-0">
+            <li v-for="(tip, index) in error.tips" :key="index" class="text-body-2 mb-1">
+              {{ tip }}
+            </li>
+          </ul>
         </v-alert>
       </v-card-text>
 
@@ -231,7 +240,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useForeignKeyTester } from '@/composables/useForeignKeyTester'
 
 interface ForeignKey {
@@ -271,6 +280,19 @@ const {
 const runTest = async () => {
   await testForeignKey(props.projectName, props.entityName, props.foreignKeyIndex, sampleSize.value)
 }
+
+const errorAlertType = computed(() => {
+  if (!error.value) return 'error'
+  return error.value.recoverable ? 'warning' : 'error'
+})
+
+const errorAlertTitle = computed(() => {
+  if (!error.value) return 'Error'
+  if (error.value.errorType === 'ConstraintViolationError' || error.value.recoverable) {
+    return 'Validation Failed'
+  }
+  return 'Error'
+})
 </script>
 
 <style scoped>

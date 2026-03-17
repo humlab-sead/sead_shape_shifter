@@ -276,3 +276,70 @@ entities:
       filename: abc.xlsx
       location: local
       sheet_name: Sheet1
+
+### Buggar
+
+site_location, och site_property har varningen "returns no data" där motsvarande SQL-frågor ger resultat när de körs i query tester (utan semikolon)  
+site_natural_region har samma varning, men där ska ingen data vara så det är ok
+
+Samma tre entities har också samma error "Local foreign key columns not found in data: EVNr, Fustel", vilket jag gissar är relaterat till varningen ovan.
+
+18 entities har varningen (här för abundance): Could not validate entity: ShapeShift failed for abundance: You are trying to merge on str and int64 columns for key 'Fustel'. If you wish to proceed you should use pd.concat
+
+T.ex. abundance har ej Fustel, så det är oklart för mig var felet uppstår.
+
+Har du några idéer tankar kring vad jag kan göra åt dessa fel? Jag kollar också på relative ages/relative dating. I relative dating får jag också  felet när jag försöker göra en preview: InternalServerError
+
+ShapeShift failed for relative_dating: You are trying to merge on str and int64 columns for key 'Fustel'. If you wish to proceed you should use pd.concat
+
+Suggestions:
+
+- Check server logs for details
+- Verify your request parameters are valid
+name: site_location
+type: sql
+system_id: system_id
+keys:
+  - Fustel
+  - EVNr
+columns: '@value: entities.site.keys + @value: entities.location.columns'
+public_id: site_location_id
+data_source: arbodat_data
+query: |
+  select distinct [Fustel], [EVNr], [Ort], [Kreis], [Land], [Staat], [FlurStr] from [Projekte];
+foreign_keys:
+  - entity: site
+    local_keys:
+      - Fustel
+      - EVNr
+    remote_keys:
+      - EVNr
+      - Fustel
+    constraints:
+      cardinality: many_to_one
+      require_unique_left: false
+      allow_null_keys: true
+  - entity: location
+    local_keys:
+      - location_type
+      - location_name
+    remote_keys:
+      - location_type
+      - location_name
+    constraints:
+      cardinality: many_to_one
+      require_unique_left: false
+      allow_null_keys: true
+drop_duplicates: true
+check_functional_dependency: true
+unnest:
+  id_vars:
+    - Fustel
+    - EVNr
+  value_vars:
+    - Ort
+    - Kreis
+    - Land
+    - Staat
+  var_name: location_type
+  value_name: location_name
