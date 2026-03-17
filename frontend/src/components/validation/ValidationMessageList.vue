@@ -22,7 +22,16 @@
         <v-chip v-if="message.category" size="x-small" variant="outlined" prepend-icon="mdi-tag" class="mr-1">
           {{ message.category }}
         </v-chip>
-        <v-chip v-if="message.entity" size="x-small" variant="outlined" prepend-icon="mdi-cube" class="mr-1">
+        <v-chip
+          v-if="message.entity"
+          size="x-small"
+          color="primary"
+          variant="outlined"
+          prepend-icon="mdi-cube"
+          append-icon="mdi-open-in-new"
+          class="mr-1 validation-entity-chip"
+          @click="handleOpenEntity(message.entity)"
+        >
           {{ message.entity }}
         </v-chip>
         <v-chip v-if="message.field" size="x-small" variant="outlined" prepend-icon="mdi-table-column" class="mr-1">
@@ -63,9 +72,23 @@ interface Props {
   emptyMessage?: string
 }
 
+interface Emits {
+  (e: 'open-entity', entityName: string): void
+}
+
 withDefaults(defineProps<Props>(), {
   emptyMessage: 'No messages',
 })
+
+const emit = defineEmits<Emits>()
+
+function handleOpenEntity(entityName: string | null | undefined) {
+  if (!entityName) {
+    return
+  }
+
+  emit('open-entity', entityName)
+}
 
 function getPriorityColor(priority: ValidationPriority): string {
   const colors: Record<ValidationPriority, string> = {
@@ -77,3 +100,9 @@ function getPriorityColor(priority: ValidationPriority): string {
   return colors[priority] || 'grey'
 }
 </script>
+
+<style scoped>
+.validation-entity-chip {
+  cursor: pointer;
+}
+</style>
