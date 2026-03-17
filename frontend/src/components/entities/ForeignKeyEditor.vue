@@ -8,6 +8,22 @@
     <v-divider />
 
     <v-card-text class="pa-2">
+      <v-alert
+        v-if="foreignKeys.length > 0"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mb-3 text-caption"
+      >
+        <strong>Foreign Keys</strong> link this entity to other entities through matching column values.
+        <ul class="mt-2 mb-0 pl-4">
+          <li>Compound keys are matched by position: local item N maps to remote item N</li>
+          <li>Join types control how unmatched rows are handled (inner/left/right/outer)</li>
+          <li>Constraints validate the relationship (cardinality, uniqueness, null handling)</li>
+          <li>Extra columns pull additional fields from the remote entity during the join</li>
+        </ul>
+      </v-alert>
+
       <v-expansion-panels v-if="foreignKeys.length > 0" variant="accordion" density="compact">
         <v-expansion-panel v-for="(fk, index) in foreignKeys" :key="index">
           <v-expansion-panel-title class="py-2">
@@ -157,47 +173,6 @@
               </v-col>
             </v-row>
 
-            <v-row v-if="getKeyPairRows(fk).length > 0" dense class="mb-2">
-              <v-col cols="12">
-                <v-sheet border rounded class="pa-2 bg-grey-lighten-5">
-                  <div class="text-caption text-grey-darken-1 mb-2">
-                    Compound keys are matched by position: local item N maps to remote item N.
-                  </div>
-
-                  <div
-                    v-for="pair in getKeyPairRows(fk)"
-                    :key="`${index}-${pair.index}`"
-                    class="d-flex align-center flex-wrap ga-2 mb-1"
-                  >
-                    <v-chip size="x-small" variant="tonal" color="primary">{{ pair.index }}</v-chip>
-                    <v-chip
-                      size="small"
-                      variant="outlined"
-                      :color="pair.local ? undefined : 'warning'"
-                    >
-                      {{ pair.local || 'Missing local key' }}
-                    </v-chip>
-                    <v-icon icon="mdi-arrow-right" size="x-small" />
-                    <v-chip
-                      size="small"
-                      variant="outlined"
-                      :color="pair.remote ? undefined : 'warning'"
-                    >
-                      {{ pair.remote || 'Missing remote key' }}
-                    </v-chip>
-                  </div>
-
-                  <div v-if="hasKeyCountMismatch(fk)" class="text-caption text-warning mt-2">
-                    Local and remote key counts differ. Unpaired rows will not map correctly.
-                  </div>
-
-                  <div v-if="hasSuspiciousKeyReorder(fk)" class="text-caption text-warning mt-1">
-                    The same key names appear on both sides in a different order. Check that each row maps to the intended partner.
-                  </div>
-                </v-sheet>
-              </v-col>
-            </v-row>
-
             <!-- Extra Columns Section -->
             <v-row dense class="mb-2">
               <v-col cols="12">
@@ -302,12 +277,6 @@ import ForeignKeyTester from './ForeignKeyTester.vue'
 import { useColumnIntrospection } from '@/composables/useColumnIntrospection'
 import { useDirectiveValidation } from '@/composables/useDirectiveValidation'
 import { normalizeForeignKeyKeys } from './foreignKeyEditorUtils'
-import {
-  buildForeignKeySummary,
-  getKeyPairRows,
-  hasKeyCountMismatch,
-  hasSuspiciousKeyReorder,
-} from './foreignKeyPreviewUtils'
 
 interface Props {
   modelValue: ForeignKeyConfig[]
@@ -594,7 +563,27 @@ const cardinalityTypes = [
 
 function getForeignKeyLabel(fk: ForeignKeyConfig): string {
   const entity = fk.entity || 'Unnamed Entity'
-  return buildForeignKeySummary(fk, entity)
+
+  // Normalize keys to strings (handle both string[] and object arrays)
+  const normalizeKeys = (keys: any): string => {
+    if (!keys) return '?'
+    if (!Array.isArray(keys)) return '?'
+    if (keys.length === 0) return '?'
+
+    // Map objects to their value property, or keep strings as-is
+    const stringKeys = keys.map((key) => {
+      if (typeof key === 'string') return key
+      if (typeof key === 'object' && key !== null && 'value' in key) return key.value
+      return String(key)
+    })
+
+    return stringKeys.join(', ')
+  }
+
+  const localKeys = normalizeKeys(fk.local_keys)
+  const remoteKeys = normalizeKeys(fk.remote_keys)
+
+  return `${entity}: ${localKeys} → ${remoteKeys}`
 }
 
 function handleAddForeignKey() {
