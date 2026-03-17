@@ -125,7 +125,12 @@
         <v-window v-model="activeTab" class="mt-4">
           <!-- Entities Tab -->
           <v-window-item value="entities">
-            <entity-list-card :project-name="projectName" :entity-to-edit="entityToEdit" @entity-updated="handleEntityUpdated" />
+            <entity-list-card
+              :project-name="projectName"
+              :entity-to-edit="entityToEdit"
+              @entity-updated="handleEntityUpdated"
+              @entity-edit-request-consumed="handleEntityEditRequestConsumed"
+            />
           </v-window-item>
 
           <!-- Dependencies Tab -->
@@ -1434,6 +1439,12 @@ function handleEditEntity(entityName: string) {
   activeTab.value = 'entities'
   showDetailsDrawer.value = false
   entityToEdit.value = entityName
+}
+
+function handleEntityEditRequestConsumed(entityName: string) {
+  if (entityToEdit.value === entityName) {
+    entityToEdit.value = null
+  }
 }
 
 async function handleOverlayEntitySaved() {

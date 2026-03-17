@@ -171,6 +171,7 @@ interface Props {
 
 interface Emits {
   (e: 'entity-updated'): void
+  (e: 'entity-edit-request-consumed', entityName: string): void
 }
 
 const props = defineProps<Props>()
@@ -181,17 +182,34 @@ const { entities, loading, error, remove } = useEntities({
   autoFetch: true,
 })
 
-// Watch for external edit requests
+const pendingEntityToEdit = ref<string | null>(null)
+
 watch(
   () => props.entityToEdit,
   (entityName) => {
-    if (entityName) {
-      const entity = entities.value?.find((e) => e.name === entityName)
-      if (entity) {
-        handleEditEntity(entity)
-      }
+    pendingEntityToEdit.value = entityName ?? null
+  },
+  { immediate: true }
+)
+
+// Resolve edit requests once the requested entity is available in the loaded list.
+watch(
+  [pendingEntityToEdit, entities],
+  ([entityName]) => {
+    if (!entityName) {
+      return
     }
-  }
+
+    const entity = entities.value.find((entry) => entry.name === entityName)
+    if (!entity) {
+      return
+    }
+
+    handleEditEntity(entity)
+    pendingEntityToEdit.value = null
+    emit('entity-edit-request-consumed', entityName)
+  },
+  { immediate: true }
 )
 
 // Local state
