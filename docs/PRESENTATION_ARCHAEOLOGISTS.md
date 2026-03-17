@@ -21,27 +21,15 @@ March 2026
 
 ---
 
-## What This Talk Covers
-
-1. Why data preparation is difficult
-2. What Shape Shifter does
-3. What the workflow looks like
-4. How validation and reconciliation help
-5. Why this matters in practice
-
----
-
 ## The Usual Problem
 
 Archaeological data often starts life in:
-
 - spreadsheets
 - local databases
 - project-specific exports
 - naming conventions that make sense locally
 
 But SEAD needs:
-
 - clear structure
 - explicit relationships
 - stable identifiers
@@ -69,7 +57,6 @@ Shape Shifter is foremost a **workflow engine** for transforming data from a sou
 The workflow os driven by reusable configuration and supported by an interactive editor.
 
 In practical terms, it aids in:
-
 - describing a transformation once
 - validating it
 - previewing the result
@@ -80,7 +67,6 @@ In practical terms, it aids in:
 ## The Main Idea
 
 You create a reusable project that describes:
-
 - where the data comes from
 - how it should be reshaped
 - how records relate to each other
@@ -89,15 +75,12 @@ You create a reusable project that describes:
 
 ---
 
-## Typical Workflow
+## Typical REPL workflow
 
 ```text
 Open or create a project
   -> connect files or data sources
-  -> define entities
-    -> define properties
-    -> define transformations
-    -> define relationships
+  -> define entities (properties, transformations, relationsships)
   -> preview and validate
   -> reconcile important identities
   -> execute the workflow and export or dispatch the result
@@ -107,7 +90,7 @@ Open or create a project
 
 ## What Users See
 
-The current workspace includes tabs for:
+The workspace includes tabs for:
 
 | Tab          | Description                  |
 |--------------|------------------------------|
