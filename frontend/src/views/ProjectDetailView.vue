@@ -610,6 +610,7 @@
               :available-entities="entityNames"
               @validate="handleValidate"
               @validate-data="handleDataValidate"
+              @open-entity="handleOpenValidationEntity"
               @apply-fix="handleApplyFix"
               @apply-all-fixes="handleApplyAllFixes"
             />
@@ -1439,6 +1440,10 @@ function handleEditEntity(entityName: string) {
   activeTab.value = 'entities'
   showDetailsDrawer.value = false
   entityToEdit.value = entityName
+}
+
+function handleOpenValidationEntity(entityName: string) {
+  handleEditEntity(entityName)
 }
 
 function handleEntityEditRequestConsumed(entityName: string) {
