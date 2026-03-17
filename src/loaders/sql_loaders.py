@@ -682,12 +682,14 @@ class UCanAccessSqlLoader(SqlLoader):
 
     def inject_limit(self, sql: str, limit: int) -> str:
         """Add top clause to SQL query if not already present."""
-        sql_lower: str = sql.lower().strip()
+        sql_stripped = sql.strip()
+        sql_lower: str = sql_stripped.lower()
         if " top " in sql_lower:
             return sql
         if not sql_lower.startswith("select"):
             return sql
-        return f"select top {limit} {sql_lower[6:].strip().rstrip(';')};"
+        # Preserve original case by operating on sql_stripped, not sql_lower
+        return f"select top {limit} {sql_stripped[6:].strip().rstrip(';')};"
 
     def read_sql_sync(self, sql: str) -> pd.DataFrame:
         with self.connection() as conn:
