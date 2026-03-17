@@ -9,6 +9,13 @@ export default mergeConfig(
       environment: 'jsdom',
       exclude: [...configDefaults.exclude, 'e2e/**'],
       root: fileURLToPath(new URL('./', import.meta.url)),
+      server: {
+        deps: {
+          // Vuetify and icon packages import CSS from node_modules.
+          // Inline them so Vite transforms those imports during Vitest runs.
+          inline: ['vuetify', '@mdi/font'],
+        },
+      },
       coverage: {
         provider: 'v8',
         reporter: ['text', 'json', 'html'],

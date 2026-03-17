@@ -21,7 +21,7 @@ vi.mock('@/composables', () => ({
 const EntityFormDialogStub = {
   name: 'EntityFormDialog',
   props: ['modelValue', 'entity'],
-  template: '<div class="entity-form-dialog-stub" :data-open="String(modelValue)" :data-entity="entity?.name || \"\"" />',
+  template: `<div class="entity-form-dialog-stub" :data-open="String(modelValue)" :data-entity="entity?.name || ''" />`,
 }
 
 const DeleteConfirmationDialogStub = {
@@ -53,6 +53,7 @@ describe('EntityListCard', () => {
         entityToEdit: 'sample_type',
       },
       global: {
+        renderStubDefaultSlot: true,
         stubs: {
           EntityFormDialog: EntityFormDialogStub,
           DeleteConfirmationDialog: DeleteConfirmationDialogStub,
@@ -75,6 +76,7 @@ describe('EntityListCard', () => {
         entityToEdit: 'sample_type',
       },
       global: {
+        renderStubDefaultSlot: true,
         stubs: {
           EntityFormDialog: EntityFormDialogStub,
           DeleteConfirmationDialog: DeleteConfirmationDialogStub,
@@ -104,6 +106,7 @@ describe('EntityListCard', () => {
         entityToEdit: 'sample_type',
       },
       global: {
+        renderStubDefaultSlot: true,
         stubs: {
           EntityFormDialog: EntityFormDialogStub,
           DeleteConfirmationDialog: DeleteConfirmationDialogStub,

@@ -182,6 +182,18 @@ const { entities, loading, error, remove } = useEntities({
   autoFetch: true,
 })
 
+// Local state
+const searchQuery = ref('')
+const filterType = ref<string | null>(null)
+const showFormDialog = ref(false)
+const showCreateDialog = ref(false)
+const showDeleteDialog = ref(false)
+const selectedEntity = ref<EntityResponse | null>(null)
+const entityToDelete = ref<EntityResponse | null>(null)
+const dialogMode = ref<'create' | 'edit'>('create')
+const showSuccessSnackbar = ref(false)
+const successMessage = ref('')
+
 const pendingEntityToEdit = ref<string | null>(null)
 
 watch(
@@ -211,18 +223,6 @@ watch(
   },
   { immediate: true }
 )
-
-// Local state
-const searchQuery = ref('')
-const filterType = ref<string | null>(null)
-const showFormDialog = ref(false)
-const showCreateDialog = ref(false)
-const showDeleteDialog = ref(false)
-const selectedEntity = ref<EntityResponse | null>(null)
-const entityToDelete = ref<EntityResponse | null>(null)
-const dialogMode = ref<'create' | 'edit'>('create')
-const showSuccessSnackbar = ref(false)
-const successMessage = ref('')
 
 // Computed
 const entityTypes = computed(() => {
