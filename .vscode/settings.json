@@ -155,17 +155,26 @@
             "8084": { "onAutoForward": "ignore" },
             "8484": { "onAutoForward": "ignore" },
             "8485": { "onAutoForward": "ignore" },
+    },
+    "peacock.remoteColor": "#445740",
+    "cSpell.words": [
+        "arbodat",
+        "Marp",
+        "shapeshifter"
+    ],
+    "chat.tools.terminal.autoApprove": {
+        "git add": true,
+        "git commit": true
+    },
+    "sqlfluff.dialect": "postgres",
+    "sqlfluff.codeActions.excludeRules.global": false,
+    "markdownlint.config": {
+        "MD007": false,
+        "MD032": false,
+        "MD013": {
+            "line_length": -1
         },
-        "peacock.remoteColor": "#445740",
-        "cSpell.words": [
-            "arbodat",
-            "Marp",
-            "shapeshifter"
-        ],
-        "chat.tools.terminal.autoApprove": {
-            "git add": true,
-            "git commit": true
-        },
-        "sqlfluff.dialect": "postgres",
-        "sqlfluff.codeActions.excludeRules.global": false
+        "MD024": false,
+        "MD029": false,
+    }
 }
