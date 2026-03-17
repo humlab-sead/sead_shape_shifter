@@ -1,3 +1,60 @@
+# [1.24.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.23.0...v1.24.0) (2026-03-17)
+
+
+### Bug Fixes
+
+* **vscode:** add "Marp" to cSpell words list ([d1b5cb7](https://github.com/humlab-sead/sead_shape_shifter/commit/d1b5cb7e9025e90b0a104ba990010df8afae5ce0))
+* **ForeignKeyEditor:** add clear-on-select functionality to local and remote keys comboboxes ([a0beee1](https://github.com/humlab-sead/sead_shape_shifter/commit/a0beee183a24de11ede2aa9447897704839e318c))
+* **api:** add missing get_project_service dependency function ([5e067a3](https://github.com/humlab-sead/sead_shape_shifter/commit/5e067a38b3fffc5bc8bbb13fbe3465f19643da06))
+* **todos:** add missing TODO items for implementation and cleanup ([cdd0173](https://github.com/humlab-sead/sead_shape_shifter/commit/cdd01732f3634fac014e7359847160a1a4a0c5c4))
+* **validation:** align fk constraint defaults ([8aa3323](https://github.com/humlab-sead/sead_shape_shifter/commit/8aa332316b15a72f685df69c8f8043d73bb88ec0)), closes [#348](https://github.com/humlab-sead/sead_shape_shifter/issues/348)
+* **frontend:** clarify compound fk mapping ([4603616](https://github.com/humlab-sead/sead_shape_shifter/commit/460361684c71f60614730bb8ec776c5fce5425b3))
+* **api:** column introspection fails with limit validation error ([2744b71](https://github.com/humlab-sead/sead_shape_shifter/commit/2744b71908d86371069c6bf0390b23c29aec732a)), closes [#346](https://github.com/humlab-sead/sead_shape_shifter/issues/346)
+* **docs:** correct file paths for design proposals in README ([31b27ed](https://github.com/humlab-sead/sead_shape_shifter/commit/31b27ed64feaa95d7cdffff7ea75c617102f0fd8))
+* **docs:** correct links in design proposals and add FK null key default behavior proposal ([4d4188d](https://github.com/humlab-sead/sead_shape_shifter/commit/4d4188dfbdfadd94c2847a3c0389fe7f0e399ab9))
+* **ForeignKeyEditor:** correct syntax error in v-chip component ([ee590d2](https://github.com/humlab-sead/sead_shape_shifter/commit/ee590d258d3022ac07d31fd2253ddcf50186286d))
+* **query:** correctly resolve data sources from project options ([b5f4d5b](https://github.com/humlab-sead/sead_shape_shifter/commit/b5f4d5b6ef69f0ec2e0ee6bc6c6185985304e43c))
+* **TODO:** document SQL query warnings and entity validation errors ([62da1c6](https://github.com/humlab-sead/sead_shape_shifter/commit/62da1c61ed4f31b5c31f2d116b1c05425cfab099))
+* **docs:** emphasize 'managed' transformation in presentation ([672d463](https://github.com/humlab-sead/sead_shape_shifter/commit/672d46377d2f49e6b9eab6f66c345dc09736157a))
+* **sql:** enable unnest column selection for SQL entities ([9dbd309](https://github.com/humlab-sead/sead_shape_shifter/commit/9dbd3094a2f343977c7496794b0b5feaf1e81f6a)), closes [#345](https://github.com/humlab-sead/sead_shape_shifter/issues/345)
+* **frontend:** enhance stats card layout and update legend text ([d1894e7](https://github.com/humlab-sead/sead_shape_shifter/commit/d1894e767af6717f8d7cd47a8c75d23757fbd00d))
+* **entity:** ensure raw_values is not empty before processing in FixedEntityFieldsSpecification ([1f00e01](https://github.com/humlab-sead/sead_shape_shifter/commit/1f00e0105d1f02857abd44edb5b8074287592a6b))
+* **ForeignKeyEditor:** handle object type in chip display for selected items ([db31bdb](https://github.com/humlab-sead/sead_shape_shifter/commit/db31bdb72640e1907d7471800547da6c863119a4))
+* **validation:** improve fk constraint errors ([7ce337e](https://github.com/humlab-sead/sead_shape_shifter/commit/7ce337e54506d5a0152700f42def2e55c57f48e8)), closes [#349](https://github.com/humlab-sead/sead_shape_shifter/issues/349)
+* **entity:** improve validation for raw values in FixedEntityFieldsSpecification ([9881700](https://github.com/humlab-sead/sead_shape_shifter/commit/9881700284888da023c81dfc151ba437cd43f165))
+* **backend:** include sidecar todo nodes in graph ([a1eaab5](https://github.com/humlab-sead/sead_shape_shifter/commit/a1eaab50edde5ebf4e2faf6e5c098b795889a2fd)), closes [#339](https://github.com/humlab-sead/sead_shape_shifter/issues/339)
+* **frontend:** prevent foreign key duplication in ForeignKeyEditor ([3aff925](https://github.com/humlab-sead/sead_shape_shifter/commit/3aff925e1514d3423955cf7d60c0136f4be47747)), closes [#344](https://github.com/humlab-sead/sead_shape_shifter/issues/344)
+* **frontend:** remove todo action from graph menu ([4889d4c](https://github.com/humlab-sead/sead_shape_shifter/commit/4889d4ccbebc25b76a9ce3e9a5b94c4b6ef09020)), closes [#337](https://github.com/humlab-sead/sead_shape_shifter/issues/337)
+* **loader:** remove trailing semicolon from SQL query in UCanAccessSqlLoader ([1350eae](https://github.com/humlab-sead/sead_shape_shifter/commit/1350eaecf235b9996d1305938e899578298ba162))
+* **frontend:** restore materialized graph marker ([21535e2](https://github.com/humlab-sead/sead_shape_shifter/commit/21535e2d10a4ea50ad9e50968b71b5a841735b90)), closes [#336](https://github.com/humlab-sead/sead_shape_shifter/issues/336)
+* **docs:** serve help from canonical docs directory ([086ca05](https://github.com/humlab-sead/sead_shape_shifter/commit/086ca05bac7ffa778b06799a975eb3f93b571a8a)), closes [#334](https://github.com/humlab-sead/sead_shape_shifter/issues/334)
+* **frontend:** sync graph color mode on open ([286aa6e](https://github.com/humlab-sead/sead_shape_shifter/commit/286aa6e7426e814b8cbeba18476fc767a2970f39)), closes [#341](https://github.com/humlab-sead/sead_shape_shifter/issues/341)
+* **tests:** update edge representation in graphAdapter tests ([91b201a](https://github.com/humlab-sead/sead_shape_shifter/commit/91b201a610fb71311ea26b4853720f14d07fcce3))
+* **frontend:** update font sizes in cytoscape styles and enhance task completion summary styling ([93e9230](https://github.com/humlab-sead/sead_shape_shifter/commit/93e9230e2037f71e8c90ffd45e45d8b0ff4ac7c9))
+* **docs:** update USER_GUIDE with project management actions and YAML tab details ([f6146bc](https://github.com/humlab-sead/sead_shape_shifter/commit/f6146bc2d602ee6b0a37f3b1c4f21e88cd3497ba))
+* **ForeignKeyEditor:** update v-combobox bindings and implement key normalization functions ([a9b734f](https://github.com/humlab-sead/sead_shape_shifter/commit/a9b734ffcb0dc1604eecfc7663c0431a662ffc65))
+* **ForeignKeyEditor:** update v-combobox components to use v-model and simplify item structure ([ffec5e6](https://github.com/humlab-sead/sead_shape_shifter/commit/ffec5e65b06ffbd475b43d25e0f4f59fbfd3c9e1))
+* **ForeignKeyEditor:** update v-combobox to use item-title for better display ([82f159b](https://github.com/humlab-sead/sead_shape_shifter/commit/82f159bdcb44eb6af1e43fcc2eae8e27c67626cf))
+* **frontend:** use safe help section lookup ([0ecd891](https://github.com/humlab-sead/sead_shape_shifter/commit/0ecd8915c81e3695b06a57377506160720c72377))
+
+
+### Features
+
+* **frontend:** add graph edge visibility toggles ([946691e](https://github.com/humlab-sead/sead_shape_shifter/commit/946691eae7bf1953dc9a1e8b70ec9d75dea86520)), closes [#340](https://github.com/humlab-sead/sead_shape_shifter/issues/340)
+* **frontend:** add graph label size controls ([508cd4e](https://github.com/humlab-sead/sead_shape_shifter/commit/508cd4e3a5b762072f78dc80f3057842611fb64b)), closes [#342](https://github.com/humlab-sead/sead_shape_shifter/issues/342)
+* **frontend:** add graph todo entity dialog ([49c0cbd](https://github.com/humlab-sead/sead_shape_shifter/commit/49c0cbdeae870c07145ace2b5d7d0cdd034d8f49)), closes [#338](https://github.com/humlab-sead/sead_shape_shifter/issues/338)
+* **docs:** add graph view image for enhanced documentation ([377ade7](https://github.com/humlab-sead/sead_shape_shifter/commit/377ade74db4ac80bbfe685b40b697bbb34a61b0b))
+* **ForeignKeyEditor:** add informational alert for foreign key relationships and normalize key display ([edb6a54](https://github.com/humlab-sead/sead_shape_shifter/commit/edb6a546c3ea402b2e9082ed96ff907cb7ffae72))
+* **components:** add MonacoTextEditor to GlobalComponents interface ([2e81bec](https://github.com/humlab-sead/sead_shape_shifter/commit/2e81becc71ceca8bb8087bdfd6c92076c5c90c08))
+* **AI Project Advisor:** add proposal for a grounded advisory workflow in Shape Shifter ([3fb1b35](https://github.com/humlab-sead/sead_shape_shifter/commit/3fb1b35289c5ed32a8ca883c6d58d316fba99168))
+* **docs:** add proposal for foreign key null-key default behavior ([2eab339](https://github.com/humlab-sead/sead_shape_shifter/commit/2eab33910f273c1fa0e54e82e7d28acb936bfbdf))
+* **sql:** add readonly detected columns display for SQL entities ([1f58989](https://github.com/humlab-sead/sead_shape_shifter/commit/1f589891ac7d25d3d47ee9e6d5e04c46235cb87e))
+* **ui:** add readonly display for detected columns in SQL form ([b203714](https://github.com/humlab-sead/sead_shape_shifter/commit/b203714c6a25fc0801936003c1173f98d4c2e24e))
+* **TODO:** add site_location entity with foreign key constraints and query ([8897f90](https://github.com/humlab-sead/sead_shape_shifter/commit/8897f907ce6ed5769f6d7b10fabdebc7995546c3))
+* **EntityFormDialog:** enhance column selection with 'Depends On' functionality ([61eeef4](https://github.com/humlab-sead/sead_shape_shifter/commit/61eeef489d1074337878e1aa2f2b9e3af5e89e48))
+* **docs:** enhance SYSTEM_DIAGRAMS with detailed project features and workflows ([d13a1f7](https://github.com/humlab-sead/sead_shape_shifter/commit/d13a1f7066cba643193ab695d6ca1b93a197d016))
+* **query:** support project-scoped data sources in column introspection ([81ec230](https://github.com/humlab-sead/sead_shape_shifter/commit/81ec230fc23cca468d9c4f04d911ad693aaf0f8c)), closes [#347](https://github.com/humlab-sead/sead_shape_shifter/issues/347)
+
 # [1.23.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.22.0...v1.23.0) (2026-03-14)
 
 
