@@ -695,8 +695,8 @@ class UCanAccessSqlLoader(SqlLoader):
         with self.connection() as conn:
             with self._cursor(conn) as cursor:
                 cursor.execute(sql)
-                # Convert Java String column names to Python strings
-                columns = [str(desc[0]) for desc in cursor.description] if cursor.description else []
+                # Convert Java String column names to Python strings and strip MS Access brackets
+                columns = [str(desc[0]).strip('[]') for desc in cursor.description] if cursor.description else []
                 rows = cursor.fetchall()
                 df = pd.DataFrame(rows, columns=columns)
 
