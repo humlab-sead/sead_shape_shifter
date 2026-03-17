@@ -53,7 +53,7 @@ deploy-shell:
 #   - docker-build          : Build from local context (default, for development)
 #   - docker-build-github   : Build from GitHub $(GIT_REF) (CI/CD, with cache invalidation)
 #   - docker-build-tag TAG=v1.0.0 : Build from specific tag/branch (production)
-################################################################################
+################################################################################guard-user guard-docker-files-exists
 
 update-deploy-scripts: guard-user
 	@./rsync-to-sead-tools
@@ -62,7 +62,7 @@ update-deploy-scripts: guard-user
 docker-build: guard-user guard-docker-files-exists docker-build-github
 
 .PHONY: docker-build-github
-docker-build-github: guard-user guard-docker-files-exists
+docker-build-github: 
 	@pushd $(DEPLOY_DIR) \
 		&& ./build.sh --git-ref $(GIT_REF) --user-uid $(USER_UID) --user-gid $(USER_GID) --git-repo $(GIT_REPO) \
 		&& popd

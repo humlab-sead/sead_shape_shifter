@@ -7,7 +7,6 @@ can reuse the same path-joining semantics without crossing layer boundaries.
 from pathlib import Path
 from typing import Literal
 
-
 FileLocation = Literal["global", "local"]
 
 

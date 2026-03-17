@@ -88,6 +88,21 @@ These are the primary system documentation files:
   - Mapping and matching strategies
   - API integration
 
+### Design Proposals
+
+- **[proposals/AI_PROJECT_ADVISOR_PROPOSAL.md](proposals/AI_PROJECT_ADVISOR_PROPOSAL.md)**
+  - Proposal for a project advisor with Shape Shifter and SEAD/SIMS knowledge
+  - Scope, architecture, context model, safety boundaries, and phased delivery
+
+- **[proposals/ENTITY_LEVEL_LOCKING.md](proposals/ENTITY_LEVEL_LOCKING.md)**
+  - Shape Shifter currently has optimistic locking at the project level for the entire project.
+  - The most frequent use case in the UI, is where a user opens, edits, and saves one entity at a time.
+  - This proposal introduces optimistic locking at an entity level increasing collaborative work.
+
+- **[proposals/FK_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/FK_NULL_KEY_DEFAULT_BEHAVIOR.md)**
+  - Compares two design options for null handling in alternative-key foreign key joins.
+  - Recommends a default behavior where missing alternative keys leave the FK unresolved instead of raising.
+
 ## Archived Documentation
 
 Historical implementation notes and feature-specific documentation have been moved to [archive/](archive/) including:

@@ -94,8 +94,8 @@ onMounted(async () => {
 function scrollToSection(sectionId: string) {
   if (!contentRef.value) return
 
-  const heading = contentRef.value.querySelector(`#${sectionId}`)
-  if (heading) {
+  const heading = document.getElementById(sectionId)
+  if (heading && contentRef.value.contains(heading)) {
     heading.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 }

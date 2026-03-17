@@ -5,8 +5,9 @@ Query execution API endpoints.
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.api.dependencies import get_data_source_service
-from backend.app.models.query import QueryExecution, QueryResult, QueryValidation
+from backend.app.models.query import QueryExecution, QueryIntrospection, QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
+from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
 
 router = APIRouter()
@@ -126,3 +127,70 @@ async def validate_query(
         QueryValidation with validation results
     """
     return query_service.validate_query(execution.query, data_source_name)
+
+
+@router.post(
+    "/data-sources/{data_source_name}/query/columns",
+    response_model=dict,
+    summary="Introspect SQL query columns",
+    description="""
+    Introspect column names from a SQL query without fetching all data.
+
+    Executes the query with LIMIT 0 (or equivalent) to get column metadata only.
+    Useful for populating column dropdowns in the UI.
+
+    Returns column names that would be returned by the query.
+    """,
+    responses={
+        200: {
+            "description": "Column introspection successful",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "columns": ["id", "name", "created_at"],
+                    }
+                }
+            },
+        },
+        400: {"description": "Invalid query (syntax error or security violation)"},
+        404: {"description": "Data source not found"},
+        500: {"description": "Query execution failed"},
+    },
+)
+async def introspect_query_columns(
+    data_source_name: str,
+    introspection: QueryIntrospection,
+    project_name: str | None = None,
+    query_service: QueryService = Depends(get_query_service),
+    project_service: ProjectService = Depends(get_project_service),
+) -> dict:
+    """
+    Introspect column names from a SQL query.
+
+    Args:
+        data_source_name: Name of the data source (or key from project's data_sources)
+        introspection: Query introspection parameters (only query field is used)
+        project_name: Optional project name to resolve data_source_name from project context
+        query_service: Query service instance
+        project_service: Project service instance
+
+    Returns:
+        Dictionary with 'columns' key containing list of column names
+
+    Raises:
+        HTTPException: If query is invalid or execution fails
+    """
+    try:
+        columns: list[str] = await query_service.introspect_query_columns(
+            data_source_name=data_source_name,
+            query=introspection.query,
+            project_name=project_name,
+            project_service=project_service,
+        )
+        return {"columns": columns}
+    except QuerySecurityError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except QueryExecutionError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e

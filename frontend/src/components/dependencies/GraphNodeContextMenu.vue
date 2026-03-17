@@ -75,18 +75,6 @@
           </v-tooltip>
         </v-list-item>
         
-        <!-- Mark as Todo -->
-        <v-list-item
-          :disabled="taskStatus.status === 'todo'"
-          prepend-icon="mdi-playlist-check"
-          title="Mark as Todo"
-          @click="handleMarkTodo"
-        >
-          <v-tooltip activator="parent" location="right">
-            Mark as planned for creation
-          </v-tooltip>
-        </v-list-item>
-        
         <!-- Reset Status -->
         <v-list-item
           :disabled="taskStatus.status === 'todo'"
@@ -148,7 +136,6 @@ interface Emits {
   (e: 'mark-complete', entityName: string): void
   (e: 'mark-ignored', entityName: string): void
   (e: 'mark-ongoing', entityName: string): void
-  (e: 'mark-todo', entityName: string): void
   (e: 'reset-status', entityName: string): void
   (e: 'edit-note', entityName: string): void
   (e: 'remove-note', entityName: string): void
@@ -240,13 +227,6 @@ function handleMarkIgnored() {
 function handleMarkOngoing() {
   if (props.entityName) {
     emit('mark-ongoing', props.entityName)
-  }
-  isOpen.value = false
-}
-
-function handleMarkTodo() {
-  if (props.entityName) {
-    emit('mark-todo', props.entityName)
   }
   isOpen.value = false
 }

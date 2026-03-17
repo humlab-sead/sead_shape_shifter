@@ -15,6 +15,17 @@ class ForeignKeyConstraintViolation(Exception):
     """Raised when a foreign key constraint is violated."""
 
 
+class ForeignKeyNullConstraintViolation(ForeignKeyConstraintViolation):
+    """Raised when null values are present in a foreign key column but not allowed."""
+
+    def __init__(self, *, local_entity: str, remote_entity: str, key_side: str, key_column: str) -> None:
+        self.local_entity = local_entity
+        self.remote_entity = remote_entity
+        self.key_side = key_side
+        self.key_column = key_column
+        super().__init__(f"{local_entity} -> {remote_entity}: Null values found in {key_side} key '{key_column}' (allow_null_keys=False)")
+
+
 @dataclass
 class ValidationIssue:
     """Represents a validation issue found during constraint checking."""
@@ -131,11 +142,29 @@ class NullKeyValidator(ConstraintValidator):
     def validate(self, context: ValidationContext) -> None:
         for col in self.fk.local_keys:
             if context.local_df[col].isnull().any():
-                self.handle_violation(f"Null values found in local key '{col}' (allow_null_keys=False)")
+                if self.raise_on_violation:
+                    raise ForeignKeyNullConstraintViolation(
+                        local_entity=self.entity_name,
+                        remote_entity=self.fk.remote_entity,
+                        key_side="local",
+                        key_column=col,
+                    )
+                logger.error(
+                    f"{self.entity_name} -> {self.fk.remote_entity}: Null values found in local key '{col}' (allow_null_keys=False)"
+                )
         if context.remote_df is not None:
             for col in self.fk.remote_keys:
                 if context.remote_df[col].isnull().any():
-                    self.handle_violation(f"Null values found in remote key '{col}' (allow_null_keys=False)")
+                    if self.raise_on_violation:
+                        raise ForeignKeyNullConstraintViolation(
+                            local_entity=self.entity_name,
+                            remote_entity=self.fk.remote_entity,
+                            key_side="remote",
+                            key_column=col,
+                        )
+                    logger.error(
+                        f"{self.entity_name} -> {self.fk.remote_entity}: Null values found in remote key '{col}' (allow_null_keys=False)"
+                    )
 
 
 @Validators.register(key="require_unique_left", stage="pre-merge")

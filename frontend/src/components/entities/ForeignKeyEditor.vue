@@ -8,6 +8,22 @@
     <v-divider />
 
     <v-card-text class="pa-2">
+      <v-alert
+        v-if="foreignKeys.length > 0"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mb-3 text-caption"
+      >
+        <strong>Foreign Keys</strong> link this entity to other entities through matching column values.
+        <ul class="mt-2 mb-0 pl-4">
+          <li>Compound keys are matched by position: local item N maps to remote item N</li>
+          <li>Join types control how unmatched rows are handled (inner/left/right/outer)</li>
+          <li>Constraints validate the relationship (cardinality, uniqueness, null handling)</li>
+          <li>Extra columns pull additional fields from the remote entity during the join</li>
+        </ul>
+      </v-alert>
+
       <v-expansion-panels v-if="foreignKeys.length > 0" variant="accordion" density="compact">
         <v-expansion-panel v-for="(fk, index) in foreignKeys" :key="index">
           <v-expansion-panel-title class="py-2">
@@ -65,6 +81,20 @@
                       />
 
                       <v-checkbox
+                        v-model="fk.constraints.allow_unmatched_left"
+                        label="Allow Unmatched Left"
+                        density="compact"
+                        hide-details
+                      />
+
+                      <v-checkbox
+                        v-model="fk.constraints.allow_unmatched_right"
+                        label="Allow Unmatched Right"
+                        density="compact"
+                        hide-details
+                      />
+
+                      <v-checkbox
                         v-model="fk.constraints.require_unique_left"
                         label="Require Unique Left"
                         density="compact"
@@ -72,8 +102,26 @@
                       />
 
                       <v-checkbox
+                        v-model="fk.constraints.require_unique_right"
+                        label="Require Unique Right"
+                        density="compact"
+                        hide-details
+                      />
+
+                      <v-checkbox
                         v-model="fk.constraints.allow_null_keys"
                         label="Allow Null Keys"
+                        density="compact"
+                        hide-details
+                      />
+
+                      <div class="text-caption text-grey-darken-1 mb-1">
+                        New joins default to disallow null keys. Enable this only for intentionally optional relationships.
+                      </div>
+
+                      <v-checkbox
+                        v-model="fk.constraints.allow_row_decrease"
+                        label="Allow Row Decrease"
                         density="compact"
                         hide-details
                       />
@@ -88,34 +136,18 @@
                 <v-combobox
                   v-model="fk.local_keys"
                   label="Local Keys"
-                  chips
                   multiple
+                  chips
+                  closable-chips
+                  persistent-placeholder
                   variant="outlined"
                   density="compact"
                   :items="localColumnItems[index]"
-                  item-value="value"
-                  :return-object="false"
                   :error="localKeyErrors[index] !== undefined"
                   :messages="localKeyErrors[index]"
                   @focus="loadLocalColumns(index)"
-                  @update:model-value="validateLocalKeys(index)"
-                >
-                  <template v-slot:chip="{ item, props: chipProps }">
-                    <v-chip v-bind="chipProps" size="x-small" closable>
-                      {{ item.value }}
-                    </v-chip>
-                  </template>
-                  <template v-slot:item="{ item, props: itemProps }">
-                    <v-list-item v-bind="itemProps">
-                      <template v-slot:title>
-                        {{ item.raw.value }}
-                      </template>
-                      <template v-slot:subtitle>
-                        <span class="text-caption text-grey">{{ item.raw.category }}</span>
-                      </template>
-                    </v-list-item>
-                  </template>
-                </v-combobox>
+                  @update:model-value="handleLocalKeysUpdate(index, $event)"
+                />
               </v-col>
 
               <v-col cols="12" md="2" class="d-flex align-center justify-center">
@@ -126,34 +158,18 @@
                 <v-combobox
                   v-model="fk.remote_keys"
                   label="Remote Keys"
-                  chips
                   multiple
+                  chips
+                  closable-chips
+                  persistent-placeholder
                   variant="outlined"
                   density="compact"
                   :items="remoteColumnItems[index]"
-                  item-value="value"
-                  :return-object="false"
                   :error="remoteKeyErrors[index] !== undefined"
                   :messages="remoteKeyErrors[index]"
                   @focus="loadRemoteColumns(index)"
-                  @update:model-value="validateRemoteKeys(index)"
-                >
-                  <template v-slot:chip="{ item, props: chipProps }">
-                    <v-chip v-bind="chipProps" size="x-small" closable>
-                      {{ item.value }}
-                    </v-chip>
-                  </template>
-                  <template v-slot:item="{ item, props: itemProps }">
-                    <v-list-item v-bind="itemProps">
-                      <template v-slot:title>
-                        {{ item.raw.value }}
-                      </template>
-                      <template v-slot:subtitle>
-                        <span class="text-caption text-grey">{{ item.raw.category }}</span>
-                      </template>
-                    </v-list-item>
-                  </template>
-                </v-combobox>
+                  @update:model-value="handleRemoteKeysUpdate(index, $event)"
+                />
               </v-col>
             </v-row>
 
@@ -197,22 +213,10 @@
                               variant="outlined"
                               density="compact"
                               :items="remoteColumnItems[index]"
-                              item-value="value"
                               hide-details
                               @focus="loadRemoteColumns(index)"
                               @update:model-value="updateExtraColumn(index, colIndex, extraCol.local, extraCol.remote)"
-                            >
-                              <template v-slot:item="{ item, props: itemProps }">
-                                <v-list-item v-bind="itemProps">
-                                  <template v-slot:title>
-                                    {{ item.raw.value }}
-                                  </template>
-                                  <template v-slot:subtitle>
-                                    <span class="text-caption text-grey">{{ item.raw.category }}</span>
-                                  </template>
-                                </v-list-item>
-                              </template>
-                            </v-combobox>
+                            />
                           </v-col>
                           <v-col cols="1" class="d-flex align-center">
                             <v-btn
@@ -268,10 +272,11 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { ForeignKeyConfig } from '@/types'
+import type { ForeignKeyConfig, ForeignKeyConstraints } from '@/types'
 import ForeignKeyTester from './ForeignKeyTester.vue'
 import { useColumnIntrospection } from '@/composables/useColumnIntrospection'
 import { useDirectiveValidation } from '@/composables/useDirectiveValidation'
+import { normalizeForeignKeyKeys } from './foreignKeyEditorUtils'
 
 interface Props {
   modelValue: ForeignKeyConfig[]
@@ -293,27 +298,25 @@ const emit = defineEmits<{
 }>()
 
 /**
- * Normalize keys array to always contain strings.
+ * Normalize keys array to always contain unique strings.
  * Handles case where v-combobox might store objects instead of string values.
  * Scalar strings are wrapped in a single-element array so they appear as a
  * removable chip in the combobox.
  */
 function normalizeKeysArray(keys: any): string[] {
-  if (!Array.isArray(keys)) {
-    if (typeof keys === 'string') {
-      const trimmed = keys.trim()
-      return trimmed.length > 0 ? [trimmed] : []
-    }
-    return []
-  }
+  return normalizeForeignKeyKeys(keys)
+}
 
-  return keys
-    .map((key) => {
-      if (typeof key === 'string') return key
-      if (typeof key === 'object' && key !== null && 'value' in key) return key.value
-      return String(key)
-    })
-    .filter((k) => k && k.trim().length > 0)
+function createDefaultConstraints(overrides?: ForeignKeyConstraints | null): ForeignKeyConstraints {
+  return {
+    cardinality: 'many_to_one',
+    allow_unmatched_right: true,
+    require_unique_left: false,
+    require_unique_right: false,
+    allow_null_keys: false,
+    allow_row_decrease: true,
+    ...overrides,
+  }
 }
 
 function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
@@ -321,11 +324,7 @@ function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
     ...fk,
     local_keys: normalizeKeysArray(fk.local_keys),
     remote_keys: normalizeKeysArray(fk.remote_keys),
-    constraints: fk.constraints || {
-      cardinality: 'many_to_one',
-      require_unique_left: false,
-      allow_null_keys: false,
-    },
+    constraints: createDefaultConstraints(fk.constraints),
     extra_columns: fk.extra_columns
       ? Array.isArray(fk.extra_columns)
         ? [...fk.extra_columns]
@@ -342,8 +341,8 @@ const { validateDirective, getValidDirectives, isDirective } = useDirectiveValid
 const columnCache = ref<Map<string, Array<{ value: string; category: string }>>>(new Map())
 
 // Items for comboboxes (indexed by FK index)
-const localColumnItems = ref<Array<Array<{ title: string; value: string; category: string }>>>([])
-const remoteColumnItems = ref<Array<Array<{ title: string; value: string; category: string }>>>([])
+const localColumnItems = ref<string[][]>([])
+const remoteColumnItems = ref<string[][]>([])
 
 // Validation errors for directive values (indexed by FK index)
 const localKeyErrors = ref<Array<string | undefined>>([])
@@ -356,16 +355,16 @@ async function validateLocalKeys(fkIndex: number) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
 
-  // Normalize keys to strings
-  fk.local_keys = normalizeKeysArray(fk.local_keys)
+  // Get normalized keys without mutating the original array
+  const normalizedKeys = normalizeKeysArray(fk.local_keys)
 
-  if (!fk.local_keys || fk.local_keys.length === 0) {
+  if (!normalizedKeys || normalizedKeys.length === 0) {
     localKeyErrors.value[fkIndex] = undefined
     return
   }
 
   // Check if any key is a directive
-  const directiveKey = fk.local_keys.find((key) => isDirective(key))
+  const directiveKey = normalizedKeys.find((key) => isDirective(key))
   if (!directiveKey) {
     localKeyErrors.value[fkIndex] = undefined
     return
@@ -396,16 +395,16 @@ async function validateRemoteKeys(fkIndex: number) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
 
-  // Normalize keys to strings
-  fk.remote_keys = normalizeKeysArray(fk.remote_keys)
+  // Get normalized keys without mutating the original array
+  const normalizedKeys = normalizeKeysArray(fk.remote_keys)
 
-  if (!fk.remote_keys || fk.remote_keys.length === 0) {
+  if (!normalizedKeys || normalizedKeys.length === 0) {
     remoteKeyErrors.value[fkIndex] = undefined
     return
   }
 
   // Check if any key is a directive
-  const directiveKey = fk.remote_keys.find((key) => isDirective(key))
+  const directiveKey = normalizedKeys.find((key) => isDirective(key))
   if (!directiveKey) {
     remoteKeyErrors.value[fkIndex] = undefined
     return
@@ -427,6 +426,22 @@ async function validateRemoteKeys(fkIndex: number) {
   } else {
     remoteKeyErrors.value[fkIndex] = undefined
   }
+}
+
+async function handleLocalKeysUpdate(fkIndex: number, value: unknown) {
+  const fk = foreignKeys.value[fkIndex]
+  if (!fk) return
+
+  fk.local_keys = normalizeKeysArray(value)
+  await validateLocalKeys(fkIndex)
+}
+
+async function handleRemoteKeysUpdate(fkIndex: number, value: unknown) {
+  const fk = foreignKeys.value[fkIndex]
+  if (!fk) return
+
+  fk.remote_keys = normalizeKeysArray(value)
+  await validateRemoteKeys(fkIndex)
 }
 
 /**
@@ -492,10 +507,7 @@ async function loadLocalColumns(fkIndex: number) {
   // Combine all suggestions, avoiding duplicates
   const allDirectives = [...new Set([...directives, ...columnDirectives])]
 
-  localColumnItems.value[fkIndex] = [
-    ...suggestions.map((s) => ({ title: s.value, value: s.value, category: s.category })),
-    ...allDirectives.map((d) => ({ title: d, value: d, category: 'directive' })),
-  ]
+  localColumnItems.value[fkIndex] = [...new Set([...suggestions.map((s) => s.value), ...allDirectives])]
 }
 
 /**
@@ -518,10 +530,7 @@ async function loadRemoteColumns(fkIndex: number) {
     getColumnSuggestions(fk.entity),
     getValidDirectives(props.projectName),
   ])
-  remoteColumnItems.value[fkIndex] = [
-    ...suggestions.map((s) => ({ title: s.value, value: s.value, category: s.category })),
-    ...directives.map((d) => ({ title: d, value: d, category: 'directive' })),
-  ]
+  remoteColumnItems.value[fkIndex] = [...new Set([...suggestions.map((s) => s.value), ...directives])]
 }
 
 // Watch for entity changes to reload remote columns
@@ -583,11 +592,7 @@ function handleAddForeignKey() {
     local_keys: [],
     remote_keys: [],
     how: 'inner',
-    constraints: {
-      cardinality: 'many_to_one',
-      require_unique_left: false,
-      allow_null_keys: false,
-    },
+    constraints: createDefaultConstraints(),
   })
 }
 

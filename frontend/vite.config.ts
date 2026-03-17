@@ -56,6 +56,11 @@ export default defineConfig({
         secure: false, // Allow self-signed certificates in dev
         ws: true, // WebSocket support
       },
+      '/docs': {
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:8013',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })

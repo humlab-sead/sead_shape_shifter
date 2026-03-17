@@ -31,43 +31,80 @@ ARG USER_UID=1002
 ARG USER_GID=33
 
 # ------------------------------------------------------------------------------
-# Stage 0: Resolve Codebase Source
+# Stage 0a: Resolve Frontend Source
 # ------------------------------------------------------------------------------
 ARG ALPINE_VERSION
-FROM alpine:${ALPINE_VERSION} AS source-resolver
+FROM alpine:${ALPINE_VERSION} AS frontend-source
 
 ARG SOURCE=workdir
 ARG GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git
 ARG GIT_REF=main
-# Cache bust arg - set to commit SHA or timestamp to invalidate cache when branch updates
-# Example: --build-arg CACHE_BUST=$(git rev-parse HEAD)
-# Example: --build-arg CACHE_BUST=$(date +%s)
 ARG CACHE_BUST=1
 
 WORKDIR /source
 
 # Clone from GitHub or use local context based on SOURCE argument
-# Split into separate paths for better cache utilization
 RUN if [ "$SOURCE" = "github" ]; then \
-        echo "Cloning from GitHub: ${GIT_REPO} (ref: ${GIT_REF})..."; \
+        echo "Cloning frontend from GitHub: ${GIT_REPO} (ref: ${GIT_REF})..."; \
         echo "Cache bust value: ${CACHE_BUST}"; \
         apk add --no-cache git && \
         git clone --depth 1 --branch "${GIT_REF}" "${GIT_REPO}" /source && \
         cd /source && \
         echo "Cloned commit: $(git rev-parse HEAD)"; \
     else \
-        echo "Preparing for local context copy..."; \
+        echo "Preparing for frontend local context copy..."; \
+        mkdir -p /source/frontend; \
+    fi
+
+# Copy only frontend-related files from local context
+COPY frontend/ /source-context/frontend/
+RUN if [ "$SOURCE" = "workdir" ]; then \
+        echo "Using local frontend context"; \
+        cp -r /source-context/frontend/* /source/frontend/ 2>/dev/null || true; \
+    else \
+        echo "Using GitHub clone for frontend (ignoring build context)"; \
+    fi && \
+    rm -rf /source-context
+
+# ------------------------------------------------------------------------------
+# Stage 0b: Resolve Backend Source
+# ------------------------------------------------------------------------------
+FROM alpine:${ALPINE_VERSION} AS backend-source
+
+ARG SOURCE=workdir
+ARG GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git
+ARG GIT_REF=main
+ARG CACHE_BUST=1
+
+WORKDIR /source
+
+# Clone from GitHub or use local context based on SOURCE argument
+RUN if [ "$SOURCE" = "github" ]; then \
+        echo "Cloning backend from GitHub: ${GIT_REPO} (ref: ${GIT_REF})..."; \
+        echo "Cache bust value: ${CACHE_BUST}"; \
+        apk add --no-cache git && \
+        git clone --depth 1 --branch "${GIT_REF}" "${GIT_REPO}" /source && \
+        cd /source && \
+        echo "Cloned commit: $(git rev-parse HEAD)"; \
+    else \
+        echo "Preparing for backend local context copy..."; \
         mkdir -p /source; \
     fi
 
-# Copy local context when SOURCE=workdir
-# When SOURCE=github, this will copy whatever is in the build context (should be empty/minimal)
-COPY . /source-context/
+# Copy only backend-related files from local context
+COPY src/ /source-context/src/
+COPY backend/ /source-context/backend/
+COPY ingesters/ /source-context/ingesters/
+COPY scripts/ /source-context/scripts/
+COPY docs/ /source-context/docs/
+COPY pyproject.toml /source-context/
+COPY uv.lock /source-context/
+COPY README.md /source-context/
 RUN if [ "$SOURCE" = "workdir" ]; then \
-        echo "Using local context"; \
+        echo "Using local backend context"; \
         cp -r /source-context/* /source/ 2>/dev/null || true; \
     else \
-        echo "Using GitHub clone (ignoring build context)"; \
+        echo "Using GitHub clone for backend (ignoring build context)"; \
     fi && \
     rm -rf /source-context
 
@@ -78,16 +115,21 @@ RUN if [ "$SOURCE" = "workdir" ]; then \
 ARG NODE_VERSION
 FROM node:${NODE_VERSION}-alpine AS frontend-builder
 
-# Copy codebase from source resolver
-COPY --from=source-resolver /source /app
-
 WORKDIR /app/frontend
 
 # Install pnpm
 RUN npm install -g pnpm@9
 
+# Copy dependency manifests first so application source edits do not invalidate
+# the pnpm install layer.
+COPY --from=frontend-source /source/frontend/package.json ./package.json
+COPY --from=frontend-source /source/frontend/pnpm-lock.yaml ./pnpm-lock.yaml
+
 # Install dependencies
 RUN pnpm install --frozen-lockfile
+
+# Copy frontend source after dependencies are installed.
+COPY --from=frontend-source /source/frontend ./
 
 # Build-time environment variables for Vite
 ARG VITE_API_BASE_URL
@@ -111,19 +153,20 @@ RUN pnpm run build:skip-check
 ARG PYTHON_VERSION
 FROM python:${PYTHON_VERSION}-slim AS python-builder
 
-# Copy codebase from source resolver
-COPY --from=source-resolver /source /app
-
 WORKDIR /app
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
 # Install uv for fast Python package installation
 RUN pip install --no-cache-dir uv
 
-# Create empty uv.lock if it doesn't exist (optional)
-RUN touch uv.lock || true
+# Copy dependency metadata first so normal source edits do not force a full
+# Python dependency reinstall.
+COPY --from=backend-source /source/pyproject.toml ./pyproject.toml
+COPY --from=backend-source /source/uv.lock ./uv.lock
+COPY --from=backend-source /source/README.md ./README.md
 
-# Install Python dependencies (core + api)
-RUN uv pip install --system --no-cache -e ".[api]"
+# Install only locked runtime dependencies into a dedicated virtual environment.
+RUN uv sync --frozen --no-dev --extra api --no-install-project
 
 
 # ------------------------------------------------------------------------------
@@ -154,16 +197,15 @@ RUN GROUP_NAME=$(getent group ${USER_GID} | cut -d: -f1) && \
     fi && \
     useradd --uid ${USER_UID} -g ${USER_GID} --home-dir=/app --shell=/bin/bash shapeshifter
 
-# Copy Python packages from builder
-ARG PYTHON_VERSION
-COPY --from=python-builder /usr/local/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
-COPY --from=python-builder /usr/local/bin /usr/local/bin
+# Copy the dedicated Python environment from builder
+COPY --from=python-builder /opt/venv /opt/venv
 
-# Copy application source from source resolver
-COPY --from=source-resolver /source/src ./src/
-COPY --from=source-resolver /source/backend ./backend/
-COPY --from=source-resolver /source/scripts ./scripts/
-COPY --from=source-resolver /source/ingesters ./ingesters/
+# Copy application source from backend source resolver
+COPY --from=backend-source /source/src ./src/
+COPY --from=backend-source /source/backend ./backend/
+COPY --from=backend-source /source/docs ./docs/
+COPY --from=backend-source /source/scripts ./scripts/
+COPY --from=backend-source /source/ingesters ./ingesters/
 
 # Copy lib directory from build context (not in git, must be provided separately)
 COPY lib/ ./lib/
@@ -171,13 +213,14 @@ COPY lib/ ./lib/
 # Copy built frontend from frontend-builder
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Create required directories and set ownership for ALL files
+# Create only the writable runtime directories with the correct ownership.
 RUN mkdir -p /app/projects /app/logs /app/output /app/backups /app/tmp && \
-    chown -R ${USER_UID}:${USER_GID} /app && \
-    chmod -R u+w /app
+    chown ${USER_UID}:${USER_GID} /app/projects /app/logs /app/output /app/backups /app/tmp && \
+    chmod 775 /app/projects /app/logs /app/output /app/backups /app/tmp
 
 # Set environment variables
-ENV PYTHONPATH=/app \
+ENV PATH=/opt/venv/bin:$PATH \
+    PYTHONPATH=/app \
     PYTHONUNBUFFERED=1 \
     ENVIRONMENT=production \
     PROJECTS_DIR=/app/projects \

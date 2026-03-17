@@ -10,6 +10,7 @@ import pytest
 from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.shapeshift_service import PreviewResultBuilder, ShapeShiftCache, ShapeShiftService
 from src.model import ShapeShiftProject, TableConfig
+from src.specifications.constraints import ForeignKeyNullConstraintViolation
 
 # pylint: disable=redefined-outer-name, attribute-defined-outside-init
 
@@ -550,6 +551,33 @@ class TestShapeShiftService:
             mock_shifter.return_value = mock_shapeshifter
 
             with pytest.raises(RuntimeError, match="ShapeShift failed"):
+                await shapeshift_service.preview_entity("test_project", "test_entity", limit=10)
+
+    @pytest.mark.asyncio
+    async def test_preview_entity_propagates_fk_constraint_violation(
+        self, shapeshift_service: ShapeShiftService, sample_entity_config: TableConfig
+    ):
+        """Test preview preserves typed FK constraint violations for endpoint mapping."""
+        mock_shapeshifter = MagicMock()
+        mock_shapeshifter.normalize = AsyncMock(
+            side_effect=ForeignKeyNullConstraintViolation(
+                local_entity="site_location",
+                remote_entity="location",
+                key_side="remote",
+                key_column="location_name",
+            )
+        )
+
+        mock_shapeshift_project = MagicMock()
+        mock_shapeshift_project.tables = {"test_entity": sample_entity_config}
+
+        with (
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
+            patch.object(shapeshift_service.project_cache, "get_project", return_value=mock_shapeshift_project),
+        ):
+            mock_shifter.return_value = mock_shapeshifter
+
+            with pytest.raises(ForeignKeyNullConstraintViolation, match="location_name"):
                 await shapeshift_service.preview_entity("test_project", "test_entity", limit=10)
 
     @pytest.mark.asyncio

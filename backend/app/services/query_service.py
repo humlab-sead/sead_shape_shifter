@@ -169,6 +169,101 @@ class QueryService:
         except Exception as e:
             raise QueryExecutionError(message=f"Query execution failed: {str(e)}", data_source=data_source_name, query=query) from e
 
+    async def introspect_query_columns(
+        self, data_source_name: str, query: str, project_name: str | None = None, project_service=None
+    ) -> list[str]:
+        """
+        Introspect column names from a SQL query without fetching data.
+
+        Executes the query with LIMIT 0 to get only column metadata.
+
+        Args:
+            data_source_name: Name of the data source (or key from project's data_sources)
+            query: SQL query to introspect
+            project_name: Optional project name to resolve data source from project context
+            project_service: Optional project service for resolving data sources from projects
+
+        Returns:
+            List of column names that would be returned by the query
+
+        Raises:
+            QuerySecurityError: If query contains destructive operations
+            QueryExecutionError: If query execution fails
+        """
+        # Validate query for safety
+        validation: QueryValidation = self.validate_query(query, data_source_name)
+        if not validation.is_valid:
+            raise QuerySecurityError(message="Query contains prohibited operations", query=query, violations=validation.errors)
+
+        # Resolve data source configuration
+        ds_cfg: api.DataSourceConfig | None = None
+
+        if project_name and project_service:
+            # Resolve from project context
+            from backend.app.mappers.project_mapper import ProjectMapper
+
+            api_project = project_service.load_project(project_name)
+            if not api_project:
+                raise QueryExecutionError(message=f"Project '{project_name}' not found", data_source=data_source_name)
+
+            # Check if data source key exists in project's data_sources
+            if data_source_name not in api_project.data_sources:
+                raise QueryExecutionError(
+                    message=f"Data source '{data_source_name}' not found in project '{project_name}'", data_source=data_source_name
+                )
+
+            # Convert to core to resolve @include directives
+            core_project = ProjectMapper.to_core(api_project)
+
+            # Get the resolved data source value from core project
+            # In core, data_sources are under cfg['options']['data_sources']
+            ds_value = core_project.cfg.get("options", {}).get("data_sources", {}).get(data_source_name)
+
+            if ds_value is None:
+                raise QueryExecutionError(
+                    message=f"Data source '{data_source_name}' not found in resolved project '{project_name}'", data_source=data_source_name
+                )
+
+            # ds_value is already resolved (no @include directives) thanks to ProjectMapper.to_core()
+            if isinstance(ds_value, dict):
+                # Inline data source configuration
+                ds_cfg = api.DataSourceConfig(name=data_source_name, **ds_value)
+            elif isinstance(ds_value, str):
+                # Should be a filename - load from global data sources
+                ds_cfg = self.data_source_service.load_data_source(ds_value)
+            else:
+                raise QueryExecutionError(
+                    message=f"Invalid data source configuration for '{data_source_name}' in project '{project_name}'",
+                    data_source=data_source_name,
+                )
+        else:
+            # Load from global data sources directory (backward compatibility)
+            ds_cfg = self.data_source_service.load_data_source(data_source_name)
+
+        if ds_cfg is None:
+            raise QueryExecutionError(message=f"Data source '{data_source_name}' not found", data_source=data_source_name)
+
+        # Convert to core config and get loader
+        core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_cfg)
+        loader_cls: type[SqlLoader] = DataLoaders.get(core_config.driver)
+        loader: SqlLoader = loader_cls(data_source=core_config)
+
+        try:
+            # Execute query with LIMIT 0 to get only column structure
+            limited_query = loader.inject_limit(query, 0)
+            df: pd.DataFrame = await asyncio.wait_for(loader.read_sql(limited_query), timeout=10)
+
+            # Return column names
+            columns: list[str] = df.columns.tolist()
+            return columns
+
+        except asyncio.TimeoutError as e:
+            raise QueryExecutionError(
+                message="Column introspection timed out after 10 seconds", data_source=data_source_name, query=query
+            ) from e
+        except Exception as e:
+            raise QueryExecutionError(message=f"Column introspection failed: {str(e)}", data_source=data_source_name, query=query) from e
+
     def _get_statement_type(self, statement: Statement) -> Optional[str]:
         """Extract the statement type (SELECT, INSERT, etc.) from parsed SQL."""
         for token in statement.tokens:

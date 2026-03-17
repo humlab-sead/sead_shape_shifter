@@ -3,7 +3,7 @@
     <v-switch v-model="unnestEnabled" label="Enable Unnest" density="compact" hide-details class="mb-4" />
 
     <template v-if="unnestEnabled">
-      <v-select
+      <v-combobox
         v-model="unnest.id_vars"
         :items="availableColumns"
         label="ID Variables"
@@ -16,7 +16,7 @@
         class="mb-4"
       />
 
-      <v-select
+      <v-combobox
         v-model="unnest.value_vars"
         :items="availableColumns"
         label="Value Variables"
