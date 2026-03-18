@@ -1351,17 +1351,12 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
     return keys
   }
 
-  const serializedColumns = formData.value.type === 'fixed' ? fixedValuesColumns.value : serializeKeysField(formData.value.columns)
-
   const entityData: Record<string, unknown> = {
     type: formData.value.type,
     keys: serializeKeysField(formData.value.keys),
-  }
-
-  // SQL columns are detected from the query and shown separately in the form.
-  // Keeping them out of the saved config avoids false dirty states and loader overrides.
-  if (formData.value.type !== 'sql') {
-    entityData.columns = serializedColumns
+    // For fixed entities, explicitly include system_id and public_id in columns list
+    // This ensures the columns match the fixedValuesColumns order used by the grid
+    columns: formData.value.type === 'fixed' ? fixedValuesColumns.value : serializeKeysField(formData.value.columns),
   }
 
   // Always include public_id (even if null) to prevent field from being omitted
@@ -1710,6 +1705,11 @@ async function fetchSqlColumns() {
   try {
     const columns = await queryApi.introspectQueryColumns(dataSource, query, props.projectName)
     columnsOptions.value = columns
+
+    // Auto-populate columns if not already set
+    if (!formData.value.columns || formData.value.columns.length === 0) {
+      formData.value.columns = [...columns]
+    }
   } catch (err: any) {
     console.error('Failed to introspect SQL query columns', err)
     const message = err.response?.data?.detail || err.message || 'Unknown error'
@@ -2574,8 +2574,6 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   let columns = normalizedColumns
   if (entity.entity_data.type === 'fixed') {
     columns = entity.fixed_schema?.editable_columns || []
-  } else if (entity.entity_data.type === 'sql') {
-    columns = []
   }
 
   // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
