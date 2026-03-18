@@ -1,0 +1,4 @@
+driver: ucanaccess
+options:
+  filename: ${GLOBAL_DATA_DIR}/Digidiggie_v7_kbw.accdb
+  ucanaccess_dir: lib/ucanaccess
