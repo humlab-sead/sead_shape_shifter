@@ -1,0 +1,4 @@
+driver: ucanaccess
+options:
+  filename: ${GLOBAL_DATA_DIR}/ArchBotDaten.mdb
+  ucanaccess_dir: lib/ucanaccess
