@@ -134,7 +134,9 @@ class SqlLoader(DataLoader):
         if auto_detect_columns:
 
             if table_cfg.columns:
-                logger.warning("Auto-detect columns is enabled, but found configured columns. Overriding configured columns.")
+                logger.info(
+                    f"[{table_cfg.entity_name}] Auto-detect columns is enabled; ignoring configured columns in favor of query result metadata."
+                )
 
             missing_keys: list[str] = [k for k in table_cfg.keys if k not in data.columns]
 
