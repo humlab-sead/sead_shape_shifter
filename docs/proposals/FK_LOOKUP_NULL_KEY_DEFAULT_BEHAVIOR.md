@@ -35,6 +35,15 @@ The recommended decision is:
 2. treat broader explicit policy design as future work,
 3. proceed only if the implementation explicitly separates validation policy from merge semantics and treats the change as a behavioral compatibility change.
 
+### Resolved Decisions
+
+The following implementation decisions are considered settled for this proposal:
+
+1. The Phase 1 proposal is approved as the source of truth for implementation.
+2. Explicit behavior is preferred over implicit behavior, so the implementation must preserve a clear strict-override path rather than relying on heuristics alone.
+3. The structural definition of the targeted lookup-style case is accepted as the implementation boundary.
+4. Non-lookup joins remain on the current strict path and are out of scope for this default change.
+
 ## Scope
 
 This proposal is in scope for:
@@ -173,13 +182,13 @@ That means the system currently cannot distinguish:
 1. the user explicitly set `allow_null_keys: false`, and
 2. the user omitted the field and accepted the default.
 
-If the implementation needs to preserve an explicit strict override, it will need one of these:
+Because this proposal preserves an explicit strict override, the implementation will need one of these:
 
 1. make `allow_null_keys` tri-state internally (`None | true | false`),
 2. preserve whether the field was present in YAML/API input, or
 3. introduce a clearer explicit policy field later.
 
-Without that distinction, this behavior remains more implicit because every `false` looks the same at runtime.
+Without that distinction, the implementation would violate the decision to prefer explicit behavior over implicit behavior.
 
 ### What Does Not Change Under This Proposal
 
@@ -203,7 +212,7 @@ To preserve flexibility for non-lookup joins, the following should remain on the
 
 ## Future Work
 
-A future proposal may introduce an explicit missing-key policy field if broader user-facing control is needed.
+A future proposal may introduce an explicit missing-key policy field if broader user-facing control is needed. See [docs/proposals/FK_NULL_KEY_POLICY_MODEL.md](docs/proposals/FK_NULL_KEY_POLICY_MODEL.md).
 
 That future work is intentionally not specified here. The only constraint this proposal places on future work is that this implementation should not foreclose a later explicit policy model.
 
@@ -256,8 +265,8 @@ If this proposal is approved, the implementation should explicitly cover these w
 
 ### Configuration and Model Semantics
 
-1. Decide whether explicit `allow_null_keys: false` must remain a strict override.
-2. If yes, add an internal distinction between omitted and explicit `false`, or document why that distinction is deferred.
+1. Preserve explicit `allow_null_keys: false` as a strict override.
+2. Add an internal distinction between omitted and explicit `false`.
 3. Document the exact structural criteria that define the special-case alternative-key lookup behavior.
 
 ### Frontend and UX
@@ -279,7 +288,7 @@ If this proposal is approved, the implementation should explicitly cover these w
 2. Add tests proving null does not match null in the merge path.
 3. Add tests confirming strict behavior still applies outside the targeted case.
 4. Add tests for left join preservation versus inner join row loss.
-5. Add tests for any explicit override behavior if omitted vs explicit `false` is distinguished.
+5. Add tests for explicit strict override behavior versus omitted default behavior.
 6. Add tests showing non-lookup joins are unaffected by the new default.
 
 ## Suggested Issue Breakdown

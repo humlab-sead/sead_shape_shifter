@@ -4,7 +4,12 @@ import pandas as pd
 import pytest
 
 from src.model import ForeignKeyConfig, ShapeShiftProject
-from src.specifications.constraints import ForeignKeyConstraintValidator, ForeignKeyConstraintViolation, Validators
+from src.specifications.constraints import (
+    ForeignKeyConstraintValidator,
+    ForeignKeyConstraintViolation,
+    ForeignKeyRuntimeOptions,
+    Validators,
+)
 
 
 def build_fk(*, local_entity: str = "orders", remote_entity: str = "customers", constraints: dict | None = None) -> ForeignKeyConfig:
@@ -79,3 +84,38 @@ def test_post_merge_cardinality_and_unmatched_checks():
             linked_df=linked_df,
             merge_indicator_col="_merge_indicator_customers",
         )
+
+
+def test_lookup_runtime_options_skip_strict_null_validation_for_targeted_case():
+    """Lookup-style runtime options should bypass strict null-key validation."""
+    cfg = {
+        "entities": {
+            "orders": {
+                "columns": ["order_id", "customer_code"],
+                "foreign_keys": [
+                    {
+                        "entity": "customers",
+                        "local_keys": ["customer_code"],
+                        "remote_keys": ["customer_code"],
+                        "how": "left",
+                        "constraints": {"cardinality": "many_to_one"},
+                    }
+                ],
+            },
+            "customers": {
+                "columns": ["customer_code"],
+                "public_id": "customer_id",
+            },
+        }
+    }
+    fk = ShapeShiftProject(cfg=cfg).get_table("orders").foreign_keys[0]
+    validator = ForeignKeyConstraintValidator(
+        entity_name="orders",
+        fk=fk,
+        runtime_options=ForeignKeyRuntimeOptions(enforce_strict_null_keys=False, use_null_safe_merge=True),
+    )
+
+    local_df = pd.DataFrame({"order_id": [1, 2], "customer_code": ["A", None]})
+    remote_df = pd.DataFrame({"customer_code": ["A", None]})
+
+    validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
