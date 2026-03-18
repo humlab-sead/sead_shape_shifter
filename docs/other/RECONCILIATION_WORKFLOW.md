@@ -96,6 +96,7 @@ The system automatically validates each specification against the actual entity 
 - Check the tooltip on error icons for specific details
 
 **Via CLI:**
+
 ```bash
 # View reconciliation configuration
 cat projects/my_project.yml | grep -A 20 "reconciliation:"
@@ -110,6 +111,7 @@ Auto-reconciliation queries the SEAD service for all unique values in your data 
 ### 2.1 Check Service Health
 
 **Via CLI:**
+
 ```bash
 # Check if reconciliation service is online
 curl http://localhost:8000/reconcile
