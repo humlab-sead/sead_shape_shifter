@@ -135,7 +135,8 @@ class SqlLoader(DataLoader):
 
             if table_cfg.columns:
                 logger.info(
-                    f"[{table_cfg.entity_name}] Auto-detect columns is enabled; ignoring configured columns in favor of query result metadata."
+                    f"[{table_cfg.entity_name}] Auto-detect columns is enabled; "
+                    "ignoring configured columns in favor of query result metadata."
                 )
 
             missing_keys: list[str] = [k for k in table_cfg.keys if k not in data.columns]
@@ -698,7 +699,7 @@ class UCanAccessSqlLoader(SqlLoader):
             with self._cursor(conn) as cursor:
                 cursor.execute(sql)
                 # Convert Java String column names to Python strings and strip MS Access brackets
-                columns = [str(desc[0]).strip('[]') for desc in cursor.description] if cursor.description else []
+                columns = [str(desc[0]).strip("[]") for desc in cursor.description] if cursor.description else []
                 rows = cursor.fetchall()
                 df = pd.DataFrame(rows, columns=columns)
 
