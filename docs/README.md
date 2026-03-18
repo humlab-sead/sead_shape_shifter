@@ -103,6 +103,10 @@ These are the primary system documentation files:
   - Defines the Phase 1 lookup-join default for null handling in alternative-key foreign key joins.
   - Recommends leaving the FK unresolved instead of raising when lookup-style joins have missing alternative keys.
 
+- **[proposals/FK_NULL_KEY_POLICY_MODEL.md](proposals/FK_NULL_KEY_POLICY_MODEL.md)**
+  - Placeholder for a future Phase 2 proposal about an explicit missing-key policy model.
+  - Outlines the open design questions for a broader user-facing null-key strategy.
+
 ## Archived Documentation
 
 Historical implementation notes and feature-specific documentation have been moved to [archive/](archive/) including:
