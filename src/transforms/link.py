@@ -6,8 +6,29 @@ from loguru import logger
 from src.model import ForeignKeyConfig, ForeignKeyMergeSetup, ShapeShiftProject, TableConfig
 from src.process_state import DeferredLinkingTracker
 from src.specifications import ForeignKeyDataSpecification
-from src.specifications.constraints import ForeignKeyConstraintValidator
+from src.specifications.constraints import ForeignKeyConstraintValidator, ForeignKeyRuntimeOptions
 from src.transforms.utility import merge_with_null_safety
+
+
+def _is_lookup_fk_enrichment(fk: ForeignKeyConfig, remote_cfg: TableConfig) -> bool:
+    if fk.how != "left":
+        return False
+
+    identity_key_sets: list[list[str]] = [[remote_cfg.system_id]]
+    if remote_cfg.public_id:
+        identity_key_sets.append([remote_cfg.public_id])
+
+    return fk.remote_keys not in identity_key_sets
+
+
+def _resolve_fk_runtime_options(fk: ForeignKeyConfig, remote_cfg: TableConfig) -> ForeignKeyRuntimeOptions:
+    if fk.constraints.allow_null_keys_is_explicit:
+        return ForeignKeyRuntimeOptions.from_constraints(fk.constraints)
+
+    if _is_lookup_fk_enrichment(fk, remote_cfg):
+        return ForeignKeyRuntimeOptions(enforce_strict_null_keys=False, use_null_safe_merge=True)
+
+    return ForeignKeyRuntimeOptions.from_constraints(fk.constraints)
 
 
 class ForeignKeyLinker:
@@ -38,14 +59,17 @@ class ForeignKeyLinker:
             ForeignKeyConstraintViolation: If any constraints are violated
         """
 
-        validator: ForeignKeyConstraintValidator = ForeignKeyConstraintValidator(fk.local_entity, fk).validate_before_merge(
-            local_df, remote_df
-        )
+        remote_cfg: TableConfig = self.project.get_table(entity_name=fk.remote_entity)
+        runtime_options: ForeignKeyRuntimeOptions = _resolve_fk_runtime_options(fk, remote_cfg)
+
+        validator: ForeignKeyConstraintValidator = ForeignKeyConstraintValidator(
+            fk.local_entity,
+            fk,
+            runtime_options=runtime_options,
+        ).validate_before_merge(local_df, remote_df)
 
         # Store validator to collect issues later
         self.validators.append(validator)
-
-        remote_cfg: TableConfig = self.project.get_table(entity_name=fk.remote_entity)
 
         link_setup: ForeignKeyMergeSetup = fk.generate_link_setup(remote_df.columns.tolist(), remote_cfg)
 
@@ -65,6 +89,7 @@ class ForeignKeyLinker:
             local_df=local_df,
             remote_df=remote_df,
             allow_null_keys=fk.constraints.allow_null_keys,
+            use_null_safe_merge=runtime_options.use_null_safe_merge,
             **opts,
         )
 
