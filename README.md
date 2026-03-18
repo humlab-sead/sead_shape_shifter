@@ -338,7 +338,7 @@ foreign_keys:
       require_unique_right: true    # Parent keys must be unique
       
       # Null handling
-      allow_null_keys: false        # No null foreign keys
+      allow_null_keys: false        # Explicit strict override for missing key parts
       
       # Row limits
       allow_row_decrease: false     # Prevent data loss
@@ -349,7 +349,9 @@ foreign_keys:
 - **Cardinality**: `one_to_one`, `many_to_one`, `one_to_many`, `many_to_many`
 - **Match Requirements**: Control which rows require matching records
 - **Uniqueness**: Enforce key uniqueness on either side of the relationship
-- **Null Handling**: Configure tolerance for null key values
+- **Null Handling**: Omit `allow_null_keys` to use the lookup-style `left` join default, or set it explicitly for strict/optional behavior
+
+For lookup-style `left` joins that resolve a remote identity from alternative keys, missing local key parts are treated as unresolved links by default: the row is kept, the foreign key stays empty, and missing values never match missing values.
 - **Row Count**: Prevent unexpected data loss during linking
 
 Constraint violations generate detailed error messages identifying the specific entity and constraint that failed.

@@ -39,7 +39,7 @@ describe('Enhanced Error Parsing', () => {
       expect(result.recoverable).toBe(true)
     })
 
-    it('should parse structured constraint violations for FK null keys', () => {
+    it('should parse structured constraint violations for FK missing-key guidance', () => {
       const axiosError = {
         isAxiosError: true,
         response: {
@@ -64,9 +64,10 @@ describe('Enhanced Error Parsing', () => {
 
       const result = formatErrorMessage(axiosError)
 
-      expect(result.message).toContain("Validation failed for site_location -> location")
+      expect(result.message).toContain("missing values found in remote key 'location_name'")
       expect(result.errorType).toBe('ConstraintViolationError')
       expect(result.tips).toHaveLength(3)
+      expect(result.tips![2]).toContain("Allow Missing Join Keys")
       expect(result.context?.key_column).toBe('location_name')
       expect(result.recoverable).toBe(true)
     })
