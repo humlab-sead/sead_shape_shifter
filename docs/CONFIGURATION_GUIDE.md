@@ -1215,11 +1215,15 @@ foreign_keys:
 ##### `allow_null_keys`
 - **Type**: `bool`
 - **Default**: `false`
-- **Description**: Whether to allow null values in key columns
+- **Description**: Explicitly control whether missing values in foreign key key columns are tolerated
+- **Behavior**:
+  - `false`: Strict override. Raise on missing key parts before merge.
+  - `true`: Tolerate missing key parts explicitly.
+  - omitted: Use the runtime default for the join shape. For lookup-style `left` joins on alternative keys, missing local key parts are treated as unresolved links rather than hard errors.
 - **Example**:
   ```yaml
   constraints:
-    allow_null_keys: false
+    allow_null_keys: true
   ```
 
 #### Row Count Constraints
@@ -1446,11 +1450,13 @@ foreign_keys:
 **`allow_null_keys`**
 - **Type**: `bool`
 - **Default**: `false`
-- **Description**: Allow NULL/NaN values in foreign key columns
-  - `false`: Raise error if local foreign key contains nulls
-  - `true`: Allow null foreign keys (treated as unmatched)
+- **Description**: Explicitly control whether missing key parts are tolerated in foreign key columns
+  - `false`: Raise error if the foreign key contains missing key parts
+  - `true`: Allow missing foreign key parts explicitly
+  - omitted: Use the runtime default for the join shape
+- **Lookup-style `left` join default**: When omitted on a lookup-style `left` join that resolves a remote identity from alternative keys, missing local key parts are treated as unresolved links. The row is kept, the FK stays empty, and missing values never match missing values.
 - **Interaction**: When `false` + `allow_unmatched_left: false`, ensures all rows have valid non-null foreign keys
-- **Use case**: Enforce mandatory relationships, detect missing reference data
+- **Use case**: Enforce mandatory relationships, detect missing reference data, or preserve an explicit strict override
 
 ```yaml
 # Every sample MUST have a non-null type
@@ -1463,6 +1469,30 @@ foreign_keys:
       allow_null_keys: false          # No null types allowed
       allow_unmatched_left: false     # And type must exist
 ```
+
+##### Lookup-Style `left` Join Default
+
+If a foreign key uses a `left` join and alternative business keys to resolve a remote identity, omitting `allow_null_keys` uses the lookup-style default:
+
+1. missing local key parts do not raise by default,
+2. missing values never match missing values,
+3. the local row is preserved,
+4. the resolved foreign key remains empty.
+
+```yaml
+site:
+  depends_on: [location]
+  foreign_keys:
+    - entity: location
+      local_keys: [country_code, location_name]
+      remote_keys: [country_code, location_name]
+      how: left
+      constraints:
+        cardinality: many_to_one
+        require_unique_right: true
+```
+
+If a row in `site` has `location_name: null`, Shape Shifter keeps the row and leaves the resolved `location_id` empty instead of treating the missing key part as a successful match.
 
 ##### Row Validation Constraints
 
@@ -1531,11 +1561,10 @@ site:
       constraints:
         cardinality: many_to_one
         allow_unmatched_left: true   # Sites can lack location
-        allow_null_keys: true        # NULL location_id is OK
         require_unique_right: true   # But valid locations must be unique
 ```
 
-**Result**: Sites without matching locations are kept with a warning showing which location_ids were not found.
+**Result**: Sites without matching locations are kept with a warning showing which location_ids were not found. For lookup-style `left` joins on alternative keys, omitting `allow_null_keys` also keeps rows with missing key parts unresolved by default.
 
 ##### Strict One-to-One Relationship
 
@@ -1680,7 +1709,8 @@ ForeignKeyConstraintViolation: Sample linking violation:
 ```
 ForeignKeyConstraintViolation: Sample foreign key validation failed:
 - 5 rows have NULL values in foreign key column 'type_id'
-- Set allow_null_keys: true to permit null foreign keys
+- Set allow_null_keys: true to tolerate missing join keys explicitly
+- For lookup-style left joins, omit allow_null_keys to keep unresolved rows by default
 ```
 
 **Row Decrease Violation:**

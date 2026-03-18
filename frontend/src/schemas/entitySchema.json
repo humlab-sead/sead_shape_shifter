@@ -272,7 +272,8 @@
         },
         "allow_null_keys": {
           "default": false,
-          "title": "Allow Null Keys",
+          "description": "When enabled, missing join keys are tolerated explicitly. For lookup-style left joins, leaving this unset uses the default unresolved-link behavior.",
+          "title": "Allow Missing Join Keys",
           "type": "boolean"
         }
       },

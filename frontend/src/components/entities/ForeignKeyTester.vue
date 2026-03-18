@@ -103,7 +103,7 @@
                   </div>
                 </v-col>
                 <v-col cols="6">
-                  <div class="text-caption text-grey">Null Keys</div>
+                  <div class="text-caption text-grey">Rows With Missing Join Keys</div>
                   <div class="text-subtitle-1" :class="testResult.statistics.null_key_rows > 0 ? 'text-warning' : ''">
                     {{ testResult.statistics.null_key_rows }}
                   </div>

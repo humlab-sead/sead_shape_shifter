@@ -110,13 +110,13 @@
 
                       <v-checkbox
                         v-model="fk.constraints.allow_null_keys"
-                        label="Allow Null Keys"
+                        label="Allow Missing Join Keys"
                         density="compact"
                         hide-details
                       />
 
                       <div class="text-caption text-grey-darken-1 mb-1">
-                        New joins default to disallow null keys. Enable this only for intentionally optional relationships.
+                        {{ getNullKeyHelpText(fk) }}
                       </div>
 
                       <v-checkbox
@@ -313,7 +313,6 @@ function createDefaultConstraints(overrides?: ForeignKeyConstraints | null): For
     allow_unmatched_right: true,
     require_unique_left: false,
     require_unique_right: false,
-    allow_null_keys: false,
     allow_row_decrease: true,
     ...overrides,
   }
@@ -584,6 +583,14 @@ function getForeignKeyLabel(fk: ForeignKeyConfig): string {
   const remoteKeys = normalizeKeys(fk.remote_keys)
 
   return `${entity}: ${localKeys} → ${remoteKeys}`
+}
+
+function getNullKeyHelpText(fk: ForeignKeyConfig): string {
+  if (fk.how === 'left') {
+    return 'Leave this unchecked to use the default behavior. Lookup-style left joins keep rows with missing join keys and leave the foreign key unresolved. Enable this only when missing join keys should be tolerated explicitly.'
+  }
+
+  return 'Leave this unchecked for strict validation. The unresolved-link default only applies to lookup-style left joins. Enable this only when missing join keys should be tolerated explicitly.'
 }
 
 function handleAddForeignKey() {
