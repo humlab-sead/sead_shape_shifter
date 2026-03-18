@@ -527,7 +527,7 @@ class TestQueryService:
 
         slow_loader = AsyncMock()
         slow_loader.read_sql = slow_read_sql
-        slow_loader.inject_limit = MagicMock(side_effect=lambda q, l: q)  # noqa: E741
+        slow_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)  # noqa: E741
 
         with (
             patch("backend.app.services.query_service.DataSourceService") as mock_ds,
@@ -552,7 +552,7 @@ class TestQueryService:
         query = "SELECT * FROM users"
         error_loader = AsyncMock()
         error_loader.read_sql = AsyncMock(side_effect=RuntimeError("Database error"))
-        error_loader.inject_limit = MagicMock(side_effect=lambda q, l: q)  # noqa: E741
+        error_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)  # noqa: E741
 
         with (
             patch("backend.app.services.query_service.DataSourceService") as mock_ds,
@@ -793,7 +793,7 @@ class TestColumnIntrospection:
             patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
         ):
             mock_loader = Mock()
-            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.inject_limit = Mock(side_effect=lambda q, p: f"{q} LIMIT {p}")
             mock_loader.read_sql = AsyncMock(return_value=test_df)
             mock_loader_cls = Mock(return_value=mock_loader)
             mock_get_loader.return_value = mock_loader_cls
@@ -816,14 +816,14 @@ class TestColumnIntrospection:
             patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
         ):
             mock_loader = Mock()
-            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.inject_limit = Mock(side_effect=lambda q, p: f"{q} LIMIT {p}")
             mock_loader.read_sql = AsyncMock(return_value=test_df)
             mock_loader_cls = Mock(return_value=mock_loader)
             mock_get_loader.return_value = mock_loader_cls
             mock_mapper.return_value = Mock()
 
             query = """
-                SELECT u.id AS user_id, u.name AS user_name, 
+                SELECT u.id AS user_id, u.name AS user_name,
                        o.id AS order_id, o.total AS order_total
                 FROM users u
                 JOIN orders o ON u.id = o.user_id
@@ -876,7 +876,7 @@ class TestColumnIntrospection:
             patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
         ):
             mock_loader = Mock()
-            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.inject_limit = Mock(side_effect=lambda q, p: f"{q} LIMIT {p}")
             mock_loader.read_sql = AsyncMock(side_effect=Exception("Table 'users' doesn't exist"))
             mock_loader_cls = Mock(return_value=mock_loader)
             mock_get_loader.return_value = mock_loader_cls
@@ -899,7 +899,7 @@ class TestColumnIntrospection:
             patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
         ):
             mock_loader = Mock()
-            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.inject_limit = Mock(side_effect=lambda q, p: f"{q} LIMIT {p}")
             mock_loader.read_sql = AsyncMock(side_effect=asyncio.TimeoutError())
             mock_loader_cls = Mock(return_value=mock_loader)
             mock_get_loader.return_value = mock_loader_cls
@@ -925,7 +925,7 @@ class TestColumnIntrospection:
             patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
         ):
             mock_loader = Mock()
-            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.inject_limit = Mock(side_effect=lambda q, p: f"{q} LIMIT {p}")
             mock_loader.read_sql = AsyncMock(return_value=test_df)
             mock_loader_cls = Mock(return_value=mock_loader)
             mock_get_loader.return_value = mock_loader_cls
@@ -950,7 +950,7 @@ class TestColumnIntrospection:
             patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
         ):
             mock_loader = Mock()
-            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.inject_limit = Mock(side_effect=lambda q, p: f"{q} LIMIT {p}")
             mock_loader.read_sql = AsyncMock(return_value=test_df)
             mock_loader_cls = Mock(return_value=mock_loader)
             mock_get_loader.return_value = mock_loader_cls
@@ -973,14 +973,14 @@ class TestColumnIntrospection:
             patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
         ):
             mock_loader = Mock()
-            mock_loader.inject_limit = Mock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.inject_limit = Mock(side_effect=lambda q, p: f"{q} LIMIT {p}")
             mock_loader.read_sql = AsyncMock(return_value=test_df)
             mock_loader_cls = Mock(return_value=mock_loader)
             mock_get_loader.return_value = mock_loader_cls
             mock_mapper.return_value = Mock()
 
             query = """
-                SELECT country, 
+                SELECT country,
                        COUNT(*) AS total_users,
                        AVG(age) AS avg_age,
                        MAX(orders) AS max_orders
