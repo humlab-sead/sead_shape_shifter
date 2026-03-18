@@ -1,4 +1,4 @@
-# Foreign Key Null-Key Default Behavior
+# Lookup FK Null-Key Default Behavior
 
 ## Status
 
@@ -17,39 +17,40 @@ The core reason for this change is not null handling in general. It is to align 
 2. do not invent a match,
 3. leave the FK unresolved.
 
-This proposal is best understood as a phased approach rather than two mutually exclusive directions:
+This proposal covers only the narrow runtime and UX change needed for that lookup-style enrichment case.
 
-1. **Phase 1**: keep the current model shape but change the default behavior for a narrow alternative-key lookup case.
-2. **Phase 2**: if broader control is needed later, introduce an explicit missing-key policy in the FK model.
+Broader user-facing null-key policy design is intentionally out of scope for this document and can be proposed later if this narrower change proves insufficient.
 
-In both phases, `NULL` / `NaN` must be treated with SQL-like semantics: null never equals null.
+`NULL` / `NaN` must be treated with SQL-like semantics: null never equals null.
 
 ## Decision Summary
 
-The key decision is not really whether to choose one path forever. It is whether to:
+The decision in this proposal is whether to fix the immediate lookup-join default problem with a narrow behavioral change now.
 
-1. solve the immediate lookup-join default problem with a narrow behavioral change first, and
-2. defer a more explicit policy model until there is a demonstrated need for broader null-handling control.
+This proposal does **not** decide the long-term user-facing policy model for all null-key handling cases.
 
-My recommendation is a phased approach:
+The recommended decision is:
 
-1. **Phase 1** implements the narrower runtime-only step so the immediate behavior problem is fixed first.
-2. **Phase 2** remains available as the cleaner long-term policy model if broader control is needed later.
+1. approve the narrow Phase 1 behavior change for lookup-style FK enrichment joins,
+2. treat broader explicit policy design as future work,
+3. proceed only if the implementation explicitly separates validation policy from merge semantics and treats the change as a behavioral compatibility change.
 
-Phase 1 should only proceed if the implementation explicitly separates validation policy from merge semantics and treats the change as a behavioral compatibility change.
+## Scope
 
-## Phase Comparison
+This proposal is in scope for:
 
-| Dimension                 | Phase 1: Narrow Default Change | Phase 2: Explicit Policy |
-|---------------------------|--------------------------------|--------------------------|
-| Config shape              | Keep existing FK shape         | New FK policy field      |
-| User clarity              | Medium                         | High                     |
-| Implementation cost       | Lower                          | Higher                   |
-| Schema/API churn          | Lower                          | Higher                   |
-| Behavioral implicitness   | Higher                         | Low                      |
-| Migration complexity      | Medium                         | Higher                   |
-| Fit for immediate problem | Best near-term fit             | Good                     |
-| Long-term extensibility   | Limited but acceptable         | Best                     |
+1. lookup-style FK enrichment joins that use alternative keys to resolve a remote identity,
+2. the narrow default behavior change for that case,
+3. the runtime, validation, documentation, and frontend wording changes needed to support that behavior.
+
+## Out Of Scope
+
+This proposal is not in scope for:
+
+1. a new general-purpose FK policy field,
+2. a final user-facing model for all missing-key strategies,
+3. changing the default behavior for all foreign key joins,
+4. designing the full long-term replacement for `allow_null_keys`.
 
 ## Problem
 
@@ -92,7 +93,7 @@ This is consistent with relational null semantics and easy to explain in the man
 
 "Missing alternative key values mean the foreign key cannot be resolved, so the row is kept and the foreign key remains empty."
 
-## Phase 1: Keep `allow_null_keys`, Change the Default for Alternative-Key FK Lookup
+## Proposal
 
 Keep the current model shape, but redefine the default behavior for alternative-key FK lookup so missing key values mean "unresolved link" rather than "error".
 
@@ -106,8 +107,8 @@ The user-facing explanation would become:
 - The local row is preserved.
 - The resolved FK stays null.
 - Remote rows with incomplete alternative keys do not participate as valid matches.
-- `allow_null_keys` remains available for advanced or legacy cases, but is no longer the primary concept in documentation.
-- This default changes only for the targeted lookup-style FK enrichment case. Non-lookup joins remain on the current strict path unless explicitly configured otherwise.
+- `allow_null_keys` remains in the current model, but this proposal does not attempt to redefine it into a complete long-term policy model.
+- This default changes only for the targeted lookup-style FK enrichment case. Non-lookup joins remain on the current strict path.
 
 ### Implementation Impact
 
@@ -120,7 +121,7 @@ The user-facing explanation would become:
 
 ### Implementation Invariant
 
-If Phase 1 is adopted, the following must hold together:
+If this proposal is adopted, the following must hold together:
 
 1. null local key values are not raised as hard errors in the targeted case,
 2. null local key values never match null remote key values,
@@ -131,7 +132,7 @@ Changing validation alone is insufficient. The merge path and post-merge expecta
 
 ### Exact Definition of the Special Case
 
-If Phase 1 is adopted, the "alternative-key FK lookup" case should be recognized structurally, not heuristically.
+The "alternative-key FK lookup" case should be recognized structurally, not heuristically.
 
 The recommended definition is:
 
@@ -172,17 +173,17 @@ That means the system currently cannot distinguish:
 1. the user explicitly set `allow_null_keys: false`, and
 2. the user omitted the field and accepted the default.
 
-If Phase 1 needs to preserve an explicit strict override, the implementation will need one of these:
+If the implementation needs to preserve an explicit strict override, it will need one of these:
 
 1. make `allow_null_keys` tri-state internally (`None | true | false`),
 2. preserve whether the field was present in YAML/API input, or
 3. introduce a clearer explicit policy field later.
 
-Without that distinction, Phase 1 becomes more implicit because every `false` looks the same at runtime.
+Without that distinction, this behavior remains more implicit because every `false` looks the same at runtime.
 
-### What Does Not Change Under Phase 1
+### What Does Not Change Under This Proposal
 
-To preserve flexibility for non-lookup joins, the following should remain on the current strict behavior unless explicitly configured otherwise:
+To preserve flexibility for non-lookup joins, the following should remain on the current strict behavior:
 
 1. `inner` joins,
 2. joins that act primarily as filtering joins rather than FK enrichment,
@@ -194,45 +195,19 @@ To preserve flexibility for non-lookup joins, the following should remain on the
 - Minimal schema and API churn.
 - Lower implementation cost.
 - No YAML field migration is required immediately.
-- More implicit than Phase 2.
+- More implicit than a future explicit policy model.
 - Behavior depends on join context rather than only on the configuration text.
 - Requires a precise definition of when an FK counts as an "alternative-key lookup" case.
 - This is still a behavioral default change for existing configurations that currently rely on `allow_null_keys: false` meaning both strict validation and plain merge behavior.
 - Frontend defaults and help text currently reinforce the strict interpretation, so UI copy and examples would need to change together with the runtime.
 
-## Phase 2: Explicit Missing-Key Policy
+## Future Work
 
-Replace the boolean-focused mental model with an explicit FK policy such as:
+A future proposal may introduce an explicit missing-key policy field if broader user-facing control is needed.
 
-```yaml
-constraints:
-  missing_key_behavior: error | no_match | drop_row
-```
+That future work is intentionally not specified here. The only constraint this proposal places on future work is that this implementation should not foreclose a later explicit policy model.
 
-### What Changes
-
-- `error`: current strict behavior; null key values are validation failures.
-- `no_match`: null key values do not match anything; the row is preserved and the FK remains unresolved.
-- `drop_row`: rows with incomplete join keys are excluded from the merge input.
-
-### Implementation Impact
-
-- Add a new constraint field in core, backend API models, frontend types, and schema.
-- Update pre-merge validation in [src/specifications/constraints.py](src/specifications/constraints.py).
-- Potentially update merge and link behavior in [src/transforms/utility.py](src/transforms/utility.py) and [src/transforms/link.py](src/transforms/link.py).
-- Replace or supplement the `allow_null_keys` checkbox in the FK editor with a clearer control.
-- Update YAML docs, examples, and validation messages.
-
-### Review Considerations
-
-- Explicit and easy to document.
-- Better long-term model if multiple null-handling strategies are needed.
-- Avoids hiding policy behind an implementation-focused boolean.
-- Larger model and API change.
-- Requires compatibility/migration decisions for existing YAML.
-- More frontend, backend, and documentation work.
-
-## Key Semantic Rule for Both Phases
+## Key Semantic Rule
 
 `NULL` / `NaN` should not match `NULL` / `NaN`.
 
@@ -245,20 +220,19 @@ This aligns with SQL semantics and avoids false matches in compound keys.
 
 ## Recommendation
 
-Adopt the phased approach.
+Adopt this Phase 1 proposal.
 
 ### Why
 
 - The immediate user problem is about default behavior and terminology, not lack of expressive power.
-- Phase 1 can fix the common lookup-enrichment case with smaller surface-area change than a full policy redesign.
+- This change can fix the common lookup-enrichment case with smaller surface-area change than a full policy redesign.
 - The current merge helper contains the building blocks for null-safe matching behavior, but they are not sufficient on their own because they are still tied to `allow_null_keys`.
-- Phase 2 remains available as the cleaner and more explicit long-term model if broader null-handling control is needed later.
 - The special case can be defined narrowly enough to avoid turning the behavior into vague "magic".
 - Non-lookup joins can keep the current strict semantics, preserving flexibility where users really do want nulls to fail fast.
 
 ### Reviewer Decision Criteria
 
-Approve Phase 1 only if the implementation plan commits to all of the following:
+Approve this proposal only if the implementation plan commits to all of the following:
 
 1. null-tolerant validation does not imply null-to-null matching,
 2. the targeted case is defined structurally and testably,
@@ -269,7 +243,7 @@ Approve Phase 1 only if the implementation plan commits to all of the following:
 
 ## Implementation Checklist
 
-If Phase 1 is approved, the implementation should explicitly cover these work items:
+If this proposal is approved, the implementation should explicitly cover these work items:
 
 ### Core Runtime
 
@@ -278,7 +252,7 @@ If Phase 1 is approved, the implementation should explicitly cover these work it
 3. Update [src/transforms/utility.py](src/transforms/utility.py) so null-safe merge behavior can be enabled independently of `allow_null_keys`.
 4. Confirm [src/transforms/link.py](src/transforms/link.py) preserves unresolved rows only in the intended left-join enrichment case.
 5. Ensure null local keys never match null remote keys in compound joins.
-6. Ensure non-lookup joins are unchanged unless explicitly configured otherwise.
+6. Ensure non-lookup joins are unchanged.
 
 ### Configuration and Model Semantics
 
@@ -324,11 +298,11 @@ If this proposal moves forward, the work can be split into a small set of review
 
 **Primary files**:
 
-- [docs/proposals/FK_NULL_KEY_DEFAULT_BEHAVIOR.md](docs/proposals/FK_NULL_KEY_DEFAULT_BEHAVIOR.md)
+- [docs/proposals/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](docs/proposals/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)
 - [src/model.py](src/model.py)
 - [backend/app/models/entity.py](backend/app/models/entity.py)
 
-### Issue 2: Implement Phase 1 core FK null-key behavior (#353)
+### Issue 2: Implement core FK null-key behavior (#353)
 
 **Goal**: make the runtime behave as `no_match` for the approved special case without allowing null-to-null matches.
 
@@ -344,7 +318,7 @@ If this proposal moves forward, the work can be split into a small set of review
 - [src/transforms/utility.py](src/transforms/utility.py)
 - [src/transforms/link.py](src/transforms/link.py)
 
-### Issue 3: Add regression coverage for Phase 1 FK null-key behavior (#356)
+### Issue 3: Add regression coverage for FK null-key behavior (#356)
 
 **Goal**: prevent regressions in validation, merge semantics, and join behavior.
 
@@ -409,7 +383,7 @@ If this proposal moves forward, the work can be split into a small set of review
 
 ### Compatibility Note
 
-Phase 1 does not change the YAML shape, but it does change the meaning of the current default behavior.
+This proposal does not change the YAML shape, but it does change the meaning of the current default behavior.
 
 Today:
 
@@ -417,7 +391,7 @@ Today:
 2. new frontend FK editors initialize `allow_null_keys: false`,
 3. UI text explains this as a strict default.
 
-So this phase should be treated as a behavioral compatibility change, not as a purely internal implementation refinement.
+So this proposal should be treated as a behavioral compatibility change, not as a purely internal implementation refinement.
 
 ## Recommended Near-Term Behavior
 
