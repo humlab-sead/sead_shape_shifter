@@ -3,9 +3,6 @@
 ## Table of Contents
 
 1. [System Requirements](#system-requirements)
-2. [Installation & Setup](#installation--setup)
-3. [Performance Features](#performance-features)
-4. [Validation Caching](#validation-caching)
 5. [Keyboard Shortcuts](#keyboard-shortcuts)
 6. [Tips & Best Practices](#tips--best-practices)
 7. [Troubleshooting](#troubleshooting)
@@ -29,357 +26,45 @@
 - Internet Explorer (any version)
 - Browsers older than 2 years
 
-### Hardware Requirements
-
-**Minimum:**
-- Dual-core CPU (2.0 GHz)
-- 4GB RAM
-- 1280x720 display
-- 500MB free disk space
-
-**Recommended:**
-- Quad-core CPU (2.5 GHz+)
-- 8GB RAM
-- 1920x1080 display
-- 2GB free disk space
-
-**For Large Projects (>50 entities):**
-- 16GB RAM recommended
-- SSD storage
-- Modern GPU for rendering
-
-### Network Requirements
-
-- Backend server connectivity required
-- Minimum 1 Mbps connection
-- Low latency recommended (<100ms)
-- Data source network access as configured
-
----
-
-## Installation & Setup
-
-### Starting the Backend Server
-
-```bash
-cd backend
-uv run uvicorn app.main:app --reload
-```
-
-**Default Port:** 8012  
-**Health Check:** http://localhost:8012/api/v1/health
-
-### Starting the Frontend
-
-```bash
-cd frontend
-npm run dev
-# or
-pnpm dev
-```
-
-**Default Port:** 5173  
-**URL:** http://localhost:5173
-
-### Environment Configuration
-
-Create `.env` file in project root:
-
-```env
-# Backend
-API_HOST=localhost
-API_PORT=8012
-DATABASE_URL=postgresql://user:pass@localhost/db
-
-# Frontend
-VITE_API_BASE_URL=http://localhost:8012
-```
-
-### Verifying Installation
-
-1. Backend health check: `curl http://localhost:8012/api/v1/health`
-2. Frontend loads: Open http://localhost:5173
-3. Project list visible: Check projects dropdown
-4. Validation works: Load project and click "Validate All"
-
----
-
-## Performance Features
-
-### Feature Overview
-
-| Feature | Benefit | Impact |
-|---------|---------|--------|
-| Validation Caching | 97% faster repeat validations | Instant results |
-| Contextual Tooltips | Learn features in-context | Reduced learning curve |
-| Loading Skeleton | Clear loading feedback | Better perceived performance |
-| Success Animations | Clear action confirmation | Professional polish |
-| Debounced Validation | Smooth typing | No lag while editing |
-
-### 1. Validation Result Caching
-
-**What It Does:**
-Caches validation results for 5 minutes, making repeat validations nearly instant.
-
-**How It Works:**
-
-First validation:
-```
-Click "Validate" → API call (200ms) → Cache result (5 min)
-```
-
-Subsequent validations:
-```
-Click "Validate" → Return cached (5ms) → 40x faster!
-```
-
-**Cache Behavior:**
-
-✅ **Cache Used When:**
-- Same configuration
-- Same validation type
-- Within 5-minute window
-- No modifications made
-
-❌ **Cache Cleared When:**
-- 5 minutes elapsed
-- Project modified
-- Page refreshed
-- Different config opened
-
-**Benefits:**
-- 70% reduction in API calls
-- Faster iterative workflow
-- Reduced server load
-- Better offline resilience
-
-### 2. Contextual Tooltips
-
-**What It Does:**
-Shows helpful information when hovering over buttons and controls.
-
-**Available Tooltips:**
-
-**Validation Panel:**
-- "Validate All" → "Validate entire configuration against all rules"
-- "Structural" tab → "Check configuration file structure and syntax"
-- "Data" tab → "Validate against actual data sources"
-- "Validate Entity" → "Validate only selected entity"
-
-**How to Use:**
-1. Hover over any button
-2. Wait 500ms for tooltip
-3. Read contextual help
-4. Move away to dismiss
-
-### 3. Loading Skeleton Animation
-
-**What It Does:**
-Shows animated placeholder while validation runs.
-
-**Visual Design:**
-- Realistic content layout
-- Pulsing animation
-- Professional appearance
-- Smooth transition to results
-
-**When It Appears:**
-- Validation taking > 100ms
-- Backend processing
-- Network latency
-- Data source access
-
-### 4. Success Animations
-
-**What It Does:**
-Smoothly animates success messages for clear feedback.
-
-**Animation Details:**
-- Scale from 80% to 100%
-- 300ms duration
-- Smooth easing curve
-- GPU-accelerated
-
-**When You'll See It:**
-- Project saved
-- Entity created
-- Settings updated
-- Validation completes successfully
-
-### 5. Debounced Validation
-
-**What It Does:**
-Delays automatic validation while typing to avoid interrupting workflow.
-
-**How It Works:**
-
-Without debouncing:
-```
-Type "e" → Validate
-Type "n" → Validate
-Type "t" → Validate
-...
-= 6 validations, choppy typing
-```
-
-With debouncing:
-```
-Type "entity"
-Wait 500ms
-→ Single validation
-= Smooth typing!
-```
-
-**Settings:**
-- **Delay:** 500ms after last keystroke
-- **Applies to:** YAML editor changes
-- **Bypassed for:** Manual validation clicks
-
-### Performance Metrics
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Repeat Validation | 200ms | 5ms | 97% faster |
-| Typing Lag | Frequent | None | Eliminated |
-| API Calls (editing) | Many | Few | 70% less |
-| Perceived Speed | Slow | Fast | Much better |
-
-**Memory Overhead:** < 100KB total
-
----
-
-## Validation Caching
-
-### How Validation Cache Works
-
-Shape Shifter implements a three-tier cache validation system:
-
-**Tier 1: TTL Check**
-- Cache expires after 5 minutes
-- Simple timestamp comparison
-- Fastest invalidation method
-
-**Tier 2: Project Version Check**
-- Detects if project file modified
-- Compares last modification time
-- Invalidates if project changed
-
-**Tier 3: Entity Hash Check**
-- Uses xxhash.xxh64 for fast hashing
-- Detects entity-level changes
-- Most granular cache validation
-
-### Cache Storage
-
-**Location:** Browser localStorage  
-**Key Format:** `validation_cache_{project_name}_{validation_type}`  
-**Size Limit:** 5MB total (browser dependent)
-
-**Stored Data:**
-```javascript
-{
-  timestamp: 1704302400000,
-  projectVersion: "20250114_140000",
-  entityHashes: {
-    entity1: "abc123...",
-    entity2: "def456..."
-  },
-  results: [...validation results...]
-}
-```
-
-### Cache Invalidation Strategy
-
-**Automatic Invalidation:**
-- Project file saved → Clear cache
-- Entity added/removed → Clear cache
-- Foreign key modified → Clear cache
-- Data source changed → Clear cache
-- 5 minutes elapsed → Clear cache
-
-**Manual Invalidation:**
-- Refresh browser page → Clear all caches
-- Click "Clear Cache" in settings → Clear project cache
-- Logout/login → Clear all caches
-
-### Cache Performance
-
-**Benefits:**
-- **First validation:** 200-500ms (API call)
-- **Cached validation:** 5-10ms (97% faster)
-- **Network calls reduced:** 70% fewer API requests
-- **Server load reduced:** Significant reduction during iterative editing
-
-**Tradeoffs:**
-- **Stale data risk:** Changes in data sources not detected until cache expires
-- **Storage overhead:** ~100KB per project
-- **Complexity:** Three-tier validation adds code complexity
-
-**Best Practice:** Let cache expire naturally (5 min). Only manually clear if you suspect stale data.
-
----
-
 ## Keyboard Shortcuts
 
 ### Global Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl/Cmd + S` | Save project |
+| Shortcut       | Action                 |
+|----------------|------------------------|
+| `Ctrl/Cmd + S` | Save project           |
 | `Ctrl/Cmd + V` | Validate configuration |
-| `Ctrl/Cmd + E` | Execute workflow |
-| `Ctrl/Cmd + O` | Open project |
-| `Ctrl/Cmd + N` | New project |
-| `Escape` | Close dialog |
+| `Ctrl/Cmd + E` | Execute workflow       |
+| `Ctrl/Cmd + O` | Open project           |
+| `Ctrl/Cmd + N` | New project            |
+| `Escape`       | Close dialog           |
 
 ### Editor Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl/Cmd + F` | Find in file |
-| `Ctrl/Cmd + H` | Find and replace |
-| `Ctrl/Cmd + Z` | Undo |
-| `Ctrl/Cmd + Shift + Z` | Redo |
-| `Ctrl/Cmd + /` | Toggle comment |
-| `Ctrl/Cmd + D` | Duplicate line |
-| `Alt + Up/Down` | Move line up/down |
-| `Ctrl/Cmd + Space` | Auto-complete |
+| Shortcut               | Action            |
+|------------------------|-------------------|
+| `Ctrl/Cmd + F`         | Find in file      |
+| `Ctrl/Cmd + H`         | Find and replace  |
+| `Ctrl/Cmd + Z`         | Undo              |
+| `Ctrl/Cmd + Shift + Z` | Redo              |
+| `Ctrl/Cmd + /`         | Toggle comment    |
+| `Ctrl/Cmd + D`         | Duplicate line    |
+| `Alt + Up/Down`        | Move line up/down |
+| `Ctrl/Cmd + Space`     | Auto-complete     |
 
 ### Validation Panel Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl/Cmd + P` | Preview fix |
-| `Ctrl/Cmd + A` | Apply fix |
-| `/` | Focus search box |
-| `Arrow Up/Down` | Navigate issues |
-| `Enter` | Show issue details |
+| Shortcut        | Action             |
+|-----------------|--------------------|
+| `Ctrl/Cmd + P`  | Preview fix        |
+| `Ctrl/Cmd + A`  | Apply fix          |
+| `/`             | Focus search box   |
+| `Arrow Up/Down` | Navigate issues    |
+| `Enter`         | Show issue details |
 
 ---
 
 ## Tips & Best Practices
-
-### Workflow Tips
-
-**1. Start with Validation**
-- Always validate before processing
-- Fix errors top-down (by severity)
-- Revalidate after each fix
-
-**2. Use Entity Tree for Navigation**
-- Click entities to jump to definitions
-- Understand dependency relationships
-- Check impact before deleting
-
-**3. Leverage Caching**
-- Validate frequently without worry
-- Iterate quickly on changes
-- Trust automatic cache invalidation
-
-**4. Learn Keyboard Shortcuts**
-- Speed up common operations
-- Reduce mouse usage
-- More efficient editing
 
 ### Project Best Practices
 
@@ -416,33 +101,6 @@ Shape Shifter implements a three-tier cache validation system:
 - ✅ Avoid circular dependencies
 - ✅ Document complex dependencies
 - ✅ Test processing order
-
-### Validation Best Practices
-
-**Regular Validation:**
-- Validate after editing
-- Validate before processing
-- Validate when data changes
-
-**Error Resolution:**
-- Start with errors (red)
-- Then warnings (yellow)
-- Finally info items (blue)
-- Don't ignore warnings
-
-### Performance Best Practices
-
-**Editor Usage:**
-- Let debouncing work (don't wait)
-- Use keyboard shortcuts
-- Collapse unused entity trees
-- Close unused tabs
-
-**Validation:**
-- Use entity-level validation when possible
-- Leverage caching
-- Don't spam validate button
-- Clear old cache if needed
 
 ### Collaboration Best Practices
 

@@ -99,9 +99,9 @@ These are the primary system documentation files:
   - The most frequent use case in the UI, is where a user opens, edits, and saves one entity at a time.
   - This proposal introduces optimistic locking at an entity level increasing collaborative work.
 
-- **[proposals/FK_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/FK_NULL_KEY_DEFAULT_BEHAVIOR.md)**
-  - Compares two design options for null handling in alternative-key foreign key joins.
-  - Recommends a default behavior where missing alternative keys leave the FK unresolved instead of raising.
+- **[proposals/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)**
+  - Defines the Phase 1 lookup-join default for null handling in alternative-key foreign key joins.
+  - Recommends leaving the FK unresolved instead of raising when lookup-style joins have missing alternative keys.
 
 ## Archived Documentation
 
