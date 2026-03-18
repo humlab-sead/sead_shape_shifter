@@ -68,6 +68,16 @@ class TestForeignKeyConstraints:
         constraints = ForeignKeyConstraints(data={"allow_null_keys": False})
         assert constraints.allow_null_keys is False
 
+    def test_allow_null_keys_explicit_presence(self):
+        """Test explicit presence of allow_null_keys can be distinguished from omission."""
+        explicit_false = ForeignKeyConstraints(data={"allow_null_keys": False})
+        explicit_true = ForeignKeyConstraints(data={"allow_null_keys": True})
+        omitted = ForeignKeyConstraints(data={})
+
+        assert explicit_false.allow_null_keys_is_explicit is True
+        assert explicit_true.allow_null_keys_is_explicit is True
+        assert omitted.allow_null_keys_is_explicit is False
+
     def test_multiple_constraints(self):
         """Test multiple constraints together."""
         constraints = ForeignKeyConstraints(

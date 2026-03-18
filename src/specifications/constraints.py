@@ -48,13 +48,35 @@ class ValidationContext:
     merge_indicator_col: str | None = None
 
 
+@dataclass(frozen=True)
+class ForeignKeyRuntimeOptions:
+    """Resolved runtime behavior for foreign-key null handling."""
+
+    enforce_strict_null_keys: bool = True
+    use_null_safe_merge: bool = False
+
+    @classmethod
+    def from_constraints(cls, constraints: ForeignKeyConstraints) -> "ForeignKeyRuntimeOptions":
+        return cls(
+            enforce_strict_null_keys=not constraints.allow_null_keys,
+            use_null_safe_merge=constraints.allow_null_keys,
+        )
+
+
 class ConstraintValidator(ABC):
     """Base class for constraint validators."""
 
-    def __init__(self, entity_name: str, fk: ForeignKeyConfig, constraints: ForeignKeyConstraints) -> None:
+    def __init__(
+        self,
+        entity_name: str,
+        fk: ForeignKeyConfig,
+        constraints: ForeignKeyConstraints,
+        runtime_options: ForeignKeyRuntimeOptions | None = None,
+    ) -> None:
         self.entity_name: str = entity_name
         self.fk: ForeignKeyConfig = fk
         self.constraints: ForeignKeyConstraints = constraints
+        self.runtime_options: ForeignKeyRuntimeOptions = runtime_options or ForeignKeyRuntimeOptions.from_constraints(constraints)
         self.raise_on_violation: bool = True
 
     def handle_violation(self, message: str) -> None:
@@ -137,7 +159,7 @@ class NullKeyValidator(ConstraintValidator):
     """Validates that keys don't contain null values if not allowed."""
 
     def is_applicable(self) -> bool:
-        return not self.constraints.allow_null_keys
+        return self.runtime_options.enforce_strict_null_keys
 
     def validate(self, context: ValidationContext) -> None:
         for col in self.fk.local_keys:
@@ -288,10 +310,16 @@ class UnmatchedRightValidator(ConstraintValidator):
 class ForeignKeyConstraintValidator:
     """Orchestrates validation of foreign key constraints during and after merging."""
 
-    def __init__(self, entity_name: str, fk: ForeignKeyConfig) -> None:
+    def __init__(
+        self,
+        entity_name: str,
+        fk: ForeignKeyConfig,
+        runtime_options: ForeignKeyRuntimeOptions | None = None,
+    ) -> None:
         self.entity_name: str = entity_name
         self.fk: ForeignKeyConfig = fk
         self.constraints: ForeignKeyConstraints = fk.constraints
+        self.runtime_options: ForeignKeyRuntimeOptions = runtime_options or ForeignKeyRuntimeOptions.from_constraints(self.constraints)
         self.merge_indicator_col: str | None = None
         self.size_before_merge: tuple[int, int] = (0, 0)
         self.size_after_merge: tuple[int, int] = (0, 0)
@@ -304,7 +332,7 @@ class ForeignKeyConstraintValidator:
 
         context = ValidationContext(local_df=local_df, remote_df=remote_df)
         for validator_cls in Validators.get_validators_for_stage("pre-merge"):
-            validator: ConstraintValidator = validator_cls(self.entity_name, self.fk, self.constraints)
+            validator: ConstraintValidator = validator_cls(self.entity_name, self.fk, self.constraints, self.runtime_options)
             if validator.is_applicable():
                 validator.validate(context)
 
@@ -332,7 +360,7 @@ class ForeignKeyConstraintValidator:
 
         context = ValidationContext(local_df=local_df, remote_df=remote_df, linked_df=linked_df)
         for validator_cls in Validators.get_validators_for_stage("post-merge"):
-            validator: ConstraintValidator = validator_cls(self.entity_name, self.fk, self.constraints)
+            validator: ConstraintValidator = validator_cls(self.entity_name, self.fk, self.constraints, self.runtime_options)
             if validator.is_applicable():
                 validator.validate(context)
 
@@ -340,7 +368,7 @@ class ForeignKeyConstraintValidator:
             local_df=local_df, remote_df=remote_df, linked_df=linked_df, merge_indicator_col=merge_indicator_col
         )
         for validator_cls in Validators.get_validators_for_stage("post-merge-match"):
-            validator: ConstraintValidator = validator_cls(self.entity_name, self.fk, self.constraints)
+            validator: ConstraintValidator = validator_cls(self.entity_name, self.fk, self.constraints, self.runtime_options)
             if validator.is_applicable():
                 if merge_indicator_col and merge_indicator_col in linked_df.columns:
                     validator.validate(match_context)
