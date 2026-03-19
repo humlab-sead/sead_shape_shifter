@@ -288,6 +288,10 @@ entities:
           require_unique_right: true
 
 options:
+
+Identity note:
+- `system_id` is an internal Shape Shifter identity. For non-fixed entities, do not import it from SQL or spreadsheets and do not list it in `columns`.
+- `public_id` is different: it may come from the source when the source genuinely provides that identifier, or it may be populated later for export/reconciliation.
   data_sources:
     locations_csv:
       type: csv

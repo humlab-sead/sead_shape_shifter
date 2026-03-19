@@ -516,8 +516,8 @@ class TestSqlLoaderCore:
         return DummySqlLoader(data_source=Mock())
 
     @pytest.mark.asyncio
-    async def test_load_auto_detects_columns_and_adds_system_id(self, monkeypatch: pytest.MonkeyPatch):
-        """SqlLoader.load should infer columns when configured and append system_id."""
+    async def test_load_auto_detects_columns_without_mutating_config_and_adds_system_id(self, monkeypatch: pytest.MonkeyPatch):
+        """Auto-detect bootstrap should use query metadata without mutating stored columns."""
         loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
 
         sample_df = pd.DataFrame({"col_a": [1, 2], "col_b": ["x", "y"]})
@@ -540,9 +540,145 @@ class TestSqlLoaderCore:
 
         result: pd.DataFrame = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
 
-        assert list(table_cfg.columns) == ["col_a", "col_b"]
+        assert list(table_cfg.columns) == []
         assert list(result.columns) == ["system_id", "col_a", "col_b"]
         assert result["system_id"].tolist() == [1, 2]
+
+    @pytest.mark.asyncio
+    async def test_load_auto_detect_rejects_missing_stored_schema_columns(self, monkeypatch: pytest.MonkeyPatch):
+        """Auto-detect mode should fail when the query result no longer satisfies the stored schema."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
+
+        sample_df = pd.DataFrame({"col_a": [1, 2], "col_b": ["x", "y"]})
+        monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "select * from t",
+                    "keys": [],
+                    "columns": ["col_a", "col_c"],
+                    "auto_detect_columns": True,
+                    "check_column_names": True,
+                    "public_id": "sql_id",
+                }
+            },
+            entity_name="sql_entity",
+        )
+
+        with pytest.raises(ValueError, match="Auto-detected SQL columns do not satisfy stored schema"):
+            await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
+
+    @pytest.mark.asyncio
+    async def test_load_auto_detect_accepts_detected_superset_of_stored_schema(self, monkeypatch: pytest.MonkeyPatch):
+        """Auto-detect mode should succeed when detected columns satisfy stored columns and keys."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
+
+        sample_df = pd.DataFrame({"col_a": [1, 2], "col_b": ["x", "y"], "col_extra": [True, False]})
+        monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "select * from t",
+                    "keys": ["col_a"],
+                    "columns": ["col_b"],
+                    "auto_detect_columns": True,
+                    "check_column_names": True,
+                    "public_id": "sql_id",
+                }
+            },
+            entity_name="sql_entity",
+        )
+
+        result: pd.DataFrame = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
+
+        assert list(table_cfg.columns) == ["col_b"]
+        assert list(result.columns) == ["system_id", "col_a", "col_b", "col_extra"]
+
+    @pytest.mark.asyncio
+    async def test_load_auto_detect_ignores_derived_identity_and_extra_columns(self, monkeypatch: pytest.MonkeyPatch):
+        """Auto-detect mode should validate only query-backed stored columns."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
+
+        sample_df = pd.DataFrame({"PCODE": ["a", "b"], "BNam": ["x", "y"], "Fam": ["f1", "f2"]})
+        monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "select * from t",
+                    "keys": ["PCODE"],
+                    "columns": ["taxon_id", "PCODE", "BNam", "Fam"],
+                    "extra_columns": {"system_id": None, "species": "BNam", "author_id": None},
+                    "auto_detect_columns": True,
+                    "check_column_names": True,
+                    "public_id": "taxon_id",
+                }
+            },
+            entity_name="sql_entity",
+        )
+
+        result: pd.DataFrame = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
+
+        assert list(table_cfg.columns) == ["taxon_id", "PCODE", "BNam", "Fam"]
+        assert list(result.columns) == ["system_id", "PCODE", "BNam", "Fam"]
+
+    @pytest.mark.asyncio
+    async def test_load_skips_column_validation_when_disabled(self, monkeypatch: pytest.MonkeyPatch):
+        """check_column_names=false should bypass SQL metadata validation."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
+
+        sample_df = pd.DataFrame({"BotBest": [], "C2": []})
+        monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "select * from t",
+                    "keys": [],
+                    "columns": ["contact_name", "contact_type"],
+                    "auto_detect_columns": True,
+                    "check_column_names": False,
+                    "public_id": "contact_id",
+                }
+            },
+            entity_name="sql_entity",
+        )
+
+        result: pd.DataFrame = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
+
+        assert list(result.columns) == ["system_id", "BotBest", "C2"]
+
+    @pytest.mark.asyncio
+    async def test_load_manual_mode_rejects_query_result_length_mismatch(self, monkeypatch: pytest.MonkeyPatch):
+        """Manual mode should still validate detected query result length at runtime."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
+
+        sample_df = pd.DataFrame({"col_a": [1], "col_b": [2]})
+        monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "select * from t",
+                    "keys": ["col_a"],
+                    "columns": ["col_a"],
+                    "auto_detect_columns": False,
+                    "check_column_names": True,
+                    "public_id": "contact_id",
+                }
+            },
+            entity_name="sql_entity",
+        )
+
+        with pytest.raises(ValueError, match="Configured columns length"):
+            await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
 
     @pytest.mark.asyncio
     async def test_load_rejects_non_sql_entity(self):

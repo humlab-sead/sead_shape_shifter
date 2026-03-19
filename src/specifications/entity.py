@@ -163,6 +163,73 @@ class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="sql_column_configuration")
+class SqlColumnConfigurationSpecification(ProjectSpecification):
+    """Validates SQL column configuration that can be checked without executing the query."""
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        self.clear()
+
+        table: TableConfig = self.get_entity(entity_name)
+        if table.type != "sql":
+            return True
+
+        entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
+        raw_columns = entity_cfg.get("columns") or []
+        configured_columns: list[str] = table.safe_columns
+        auto_detect_columns: bool = True if table.auto_detect_columns is None else bool(table.auto_detect_columns)
+
+        if isinstance(raw_columns, list) and len(raw_columns) != len(set(raw_columns)):
+            self.add_error(
+                f"Entity '{entity_name}': configured columns contain duplicates, which is not allowed.",
+                entity=entity_name,
+                field="columns",
+            )
+
+        if not auto_detect_columns and not configured_columns:
+            self.add_error(
+                f"Entity '{entity_name}': no columns specified in configuration, and auto-detect is disabled.",
+                entity=entity_name,
+                field="columns",
+            )
+
+        if not auto_detect_columns:
+            missing_keys: list[str] = [key for key in table.keys if key not in configured_columns]
+            if missing_keys:
+                self.add_error(
+                    f"Entity '{entity_name}': key column(s) {missing_keys} must be included in the specified columns when auto-detect is disabled.",
+                    entity=entity_name,
+                    field="columns",
+                )
+
+        return not self.has_errors()
+
+
+@ENTITY_SPECIFICATION.register(key="non_fixed_identity_columns")
+class NonFixedIdentityColumnsSpecification(ProjectSpecification):
+    """Validates that non-fixed entities do not declare derived system_id columns in `columns`."""
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        self.clear()
+
+        table: TableConfig = self.get_entity(entity_name)
+        if table.type == "fixed":
+            return True
+
+        configured_columns: set[str] = set(table.safe_columns)
+        forbidden_columns: list[str] = sorted(configured_columns & {table.system_id})
+
+        if forbidden_columns:
+            self.add_error(
+                f"Entity '{entity_name}': non-fixed entities must not include derived system_id columns in 'columns': {forbidden_columns}. "
+                "These columns are added later in the pipeline.",
+                entity=entity_name,
+                field="columns",
+            )
+
+        return not self.has_errors()
+
+
 @ENTITY_SPECIFICATION.register(key="fixed_entity_system_id")
 class FixedEntitySystemIdSpecification(ProjectSpecification):
     """Validates system_id integrity for fixed entities.
