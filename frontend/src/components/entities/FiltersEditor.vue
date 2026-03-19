@@ -77,7 +77,25 @@
 
     <v-alert type="info" variant="tonal" density="comfortable" class="mt-4">
       <div class="text-body-2 font-weight-medium mb-2">Filter "stages" follow the normalization flow:</div>
-      <svg width="1100" height="320" viewBox="0 0 1100 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Horizontal processing flow with filter hook markers">
+      <ol class="sr-only">
+        <li>extract</li>
+        <li>filter - after extract</li>
+        <li>deduplicate</li>
+        <li>link</li>
+        <li>filter - after link</li>
+        <li>unnest</li>
+        <li>filter - after unnest</li>
+        <li>relink</li>
+        <li>later cleanup</li>
+      </ol>
+      <div class="filter-flow-diagram" aria-hidden="true">
+        <svg
+          viewBox="0 0 1100 320"
+          xmlns="http://www.w3.org/2000/svg"
+          role="img"
+          aria-label="Horizontal processing flow with filter hook markers"
+          preserveAspectRatio="xMidYMid meet"
+        >
         <defs>
           <!-- Smaller arrowheads -->
           <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
@@ -174,7 +192,8 @@
         <line class="hook" x1="195" y1="118" x2="195" y2="178"/>
         <line class="hook" x1="555" y1="118" x2="555" y2="178"/>
         <line class="hook" x1="725" y1="118" x2="725" y2="178"/>
-      </svg>
+        </svg>
+      </div>
       <div class="text-body-2">
         Use <strong>Extract</strong> for source columns, <strong>After Link</strong> for linked columns, and
         <strong>After Unnest</strong> for columns created by unnesting such as <code>value_name</code>.
@@ -316,3 +335,30 @@ watch(
   { deep: true }
 )
 </script>
+
+<style scoped>
+.filter-flow-diagram {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.filter-flow-diagram svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 640px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+</style>
