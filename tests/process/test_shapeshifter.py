@@ -674,6 +674,56 @@ class TestShapeShifter:
         assert "system_id" in normalizer.table_store["site_property"].columns
         assert "site_property_id" in normalizer.table_store["site_property"].columns
 
+    @pytest.mark.asyncio
+    async def test_normalize_applies_after_unnest_filters(self):
+        """Filters staged after unnest should see generated var/value columns."""
+        survey_df = pd.DataFrame(
+            {
+                "ph": [7.1, 8.2],
+                "loi": [10.0, 11.0],
+                "cond": [120.0, 130.0],
+            }
+        )
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "measurement": {
+                        "type": "entity",
+                        "source": "survey",
+                        "columns": ["ph", "loi", "cond"],
+                        "unnest": {
+                            "value_vars": ["ph", "loi", "cond"],
+                            "var_name": "value_name",
+                            "value_name": "value",
+                        },
+                        "filters": [
+                            {
+                                "type": "query",
+                                "stage": "after_unnest",
+                                "query": "value_name in ['ph', 'loi']",
+                            }
+                        ],
+                    }
+                }
+            }
+        )
+
+        normalizer = ShapeShifter(project=project, default_entity="survey", table_store={"survey": survey_df})
+
+        await normalizer.normalize()
+
+        result = normalizer.table_store["measurement"][["value_name", "value"]].copy()
+        result = result.sort_values(["value_name", "value"]).reset_index(drop=True)
+
+        expected = pd.DataFrame(
+            {
+                "value_name": ["loi", "loi", "ph", "ph"],
+                "value": [10.0, 11.0, 7.1, 8.2],
+            }
+        )
+
+        pd.testing.assert_frame_equal(result, expected)
+
     def test_unnest_all(self, survey_only_config: ShapeShiftProject):
         """Test unnesting all entities."""
         df = pd.DataFrame({"col1": [1, 2]})

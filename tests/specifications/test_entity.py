@@ -10,6 +10,7 @@ from src.specifications.entity import (
     EntityFieldsSpecification,
     EntityReferencesExistSpecification,
     EntitySpecification,
+    FilterSpecification,
     FixedEntityFieldsSpecification,
     FixedEntitySystemIdSpecification,
     ForeignKeySpecification,
@@ -1033,6 +1034,113 @@ class TestAppendSpecification:
         result = spec.is_satisfied_by(entity_name="invalid_mode")
 
         assert result is False
+
+
+class TestFilterSpecification:
+    """Tests for staged filter validation."""
+
+    @pytest.fixture
+    def project_cfg(self):
+        return {
+            "entities": {
+                "allowed_measurements": {"type": "entity", "keys": ["value_name"], "columns": ["value_name"]},
+                "measurement": {
+                    "type": "entity",
+                    "columns": ["ph", "loi", "cond"],
+                    "unnest": {
+                        "value_vars": ["ph", "loi", "cond"],
+                        "var_name": "value_name",
+                        "value_name": "value",
+                    },
+                    "filters": [],
+                },
+            }
+        }
+
+    def test_valid_exists_in_after_unnest_filter(self, project_cfg):
+        spec = FilterSpecification(project_cfg)
+        project_cfg["entities"]["measurement"]["filters"] = [
+            {
+                "type": "exists_in",
+                "stage": "after_unnest",
+                "column": "value_name",
+                "other_entity": "allowed_measurements",
+                "other_column": "value_name",
+            }
+        ]
+
+        result = spec.is_satisfied_by(entity_name="measurement")
+
+        assert result is True
+        assert len(spec.errors) == 0
+
+    def test_invalid_filter_stage(self, project_cfg):
+        spec = FilterSpecification(project_cfg)
+        project_cfg["entities"]["measurement"]["filters"] = [{"type": "query", "stage": "postprocess", "query": "value > 0"}]
+
+        result = spec.is_satisfied_by(entity_name="measurement")
+
+        assert result is False
+        assert any("Invalid filter stage" in str(error) for error in spec.errors)
+
+    def test_extract_stage_cannot_reference_unnested_column(self, project_cfg):
+        spec = FilterSpecification(project_cfg)
+        project_cfg["entities"]["measurement"]["filters"] = [
+            {
+                "type": "exists_in",
+                "stage": "extract",
+                "column": "value_name",
+                "other_entity": "allowed_measurements",
+                "other_column": "value_name",
+            }
+        ]
+
+        result = spec.is_satisfied_by(entity_name="measurement")
+
+        assert result is False
+        assert any("not available at stage 'extract'" in str(error) for error in spec.errors)
+
+    def test_nonexistent_other_entity(self, project_cfg):
+        spec = FilterSpecification(project_cfg)
+        project_cfg["entities"]["measurement"]["filters"] = [
+            {
+                "type": "exists_in",
+                "stage": "after_unnest",
+                "column": "value_name",
+                "other_entity": "missing_entity",
+            }
+        ]
+
+        result = spec.is_satisfied_by(entity_name="measurement")
+
+        assert result is False
+        assert any("non-existent entity 'missing_entity'" in str(error) for error in spec.errors)
+
+    def test_missing_other_column_in_reference_entity(self, project_cfg):
+        spec = FilterSpecification(project_cfg)
+        project_cfg["entities"]["measurement"]["filters"] = [
+            {
+                "type": "exists_in",
+                "stage": "after_unnest",
+                "column": "value_name",
+                "other_entity": "allowed_measurements",
+                "other_column": "missing_column",
+            }
+        ]
+
+        result = spec.is_satisfied_by(entity_name="measurement")
+
+        assert result is False
+        assert any("other_column 'missing_column' not found" in str(error) for error in spec.errors)
+
+    def test_query_filter_does_not_parse_query_columns(self, project_cfg):
+        spec = FilterSpecification(project_cfg)
+        project_cfg["entities"]["measurement"]["filters"] = [{"type": "query", "stage": "after_unnest", "query": "missing_column == 'ph'"}]
+
+        result = spec.is_satisfied_by(entity_name="measurement")
+
+        assert result is True
+        assert len(spec.errors) == 0
 
 
 class TestDependsOnSpecification:

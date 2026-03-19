@@ -3072,7 +3072,7 @@ This comprehensive validation system helps catch configuration errors early, pro
 
 ## Data Filters
 
-Filters provide post-load data filtering capabilities. They are applied after data extraction but before foreign key linking and other transformations.
+Filters provide staged data filtering capabilities. By default, filters run after data extraction and before foreign key linking and unnesting, but they can also be deferred to later execution stages.
 
 ### Filter Project
 
@@ -3082,7 +3082,34 @@ Filters are configured in the `filters` property of an entity as a list of filte
 entity_name:
   filters:
     - type: filter_type
+      stage: extract  # Optional: extract | after_link | after_unnest
       # filter-specific parameters
+```
+
+### Filter Stages
+
+Each filter may optionally declare a `stage`.
+
+- `extract`: Runs immediately after extraction. This is the default if `stage` is omitted.
+- `after_link`: Runs after the first foreign key link pass and deferred `extra_columns` re-evaluation.
+- `after_unnest`: Runs after unnesting, relinking, and deferred `extra_columns` re-evaluation.
+
+Use later stages when a filter depends on columns that do not exist immediately after extraction.
+
+Examples:
+
+```yaml
+measurements:
+  columns: [sample_id, ph, loi, conductivity]
+  unnest:
+    id_vars: [sample_id]
+    value_vars: [ph, loi, conductivity]
+    var_name: value_name
+    value_name: value
+  filters:
+    - type: query
+      stage: after_unnest
+      query: "value_name in ['ph', 'loi']"
 ```
 
 ### Available Filter Types
@@ -3093,6 +3120,7 @@ Keeps only rows where a column's value exists in another entity's column. This i
 
 **Parameters**:
 - `type`: `"exists_in"` (required)
+- `stage`: Optional execution stage (`extract`, `after_link`, or `after_unnest`)
 - `column`: Local column name to filter (required)
 - `other_entity`: Name of entity to check values against (required)
 - `other_column`: Column name in other entity (optional, defaults to same as `column`)
@@ -3126,14 +3154,20 @@ taxa:
 - Reduce data size by filtering based on dependent entities
 
 **Execution Order**:
-1. Filter is applied after data extraction
-2. Filter can reference entities that appear earlier in dependency order
-3. Filter is applied before foreign key linking for the entity
+1. Filter is applied at the configured stage
+2. If `stage` is omitted, it runs at `extract`
+3. Filters can reference entities that appear earlier in dependency order
+4. Later stages are useful when filtering on columns added by linking or unnesting
 
 **Error Handling**:
 - Raises error if `other_entity` does not exist in data store
 - Raises error if `column` or `other_column` is missing
 - Logs warning if no rows match filter criteria
+
+**Validation Notes**:
+- Shape Shifter validates filter stage values
+- `exists_in` filters validate explicit column references against the selected stage
+- `query` filters still use pandas query syntax at runtime; Phase 1 does not parse query expressions during validation
 
 ### Custom Filter Development
 

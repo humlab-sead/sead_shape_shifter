@@ -5,6 +5,7 @@
 export type Cardinality = 'one_to_one' | 'many_to_one' | 'one_to_many' | 'many_to_many'
 export type JoinType = 'left' | 'inner' | 'outer' | 'right' | 'cross'
 export type EntityType = 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
+export type FilterStage = 'extract' | 'after_link' | 'after_unnest'
 
 export interface EntityFileOptions {
   filename?: string | null
@@ -43,6 +44,7 @@ export interface UnnestConfig {
 }
 
 export interface FilterConfig {
+  stage?: FilterStage | null
   type: string
   entity?: string | null
   column?: string | null

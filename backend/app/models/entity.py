@@ -71,7 +71,12 @@ class ForeignKeyConfig(BaseModel):
 
 
 class FilterConfig(BaseModel):
-    """Configuration for post-extraction filters."""
+    """Configuration for staged entity filters."""
+
+    stage: Literal["extract", "after_link", "after_unnest"] | None = Field(
+        default=None,
+        description="Execution stage for this filter; omitted means the legacy extract-stage default",
+    )
 
     type: str = Field(..., description="Filter type (e.g., 'exists_in')")
     entity: str | None = Field(default=None, description="Related entity for filter")
@@ -124,7 +129,7 @@ class Entity(BaseModel):
     extra_columns: dict[str, Any] = Field(default_factory=dict, description="Additional computed columns")
     foreign_keys: list[ForeignKeyConfig] = Field(default_factory=list, description="Foreign key relationships")
     unnest: UnnestConfig | None = Field(default=None, description="Unnest configuration")
-    filters: list[FilterConfig] = Field(default_factory=list, description="Post-extraction filters")
+    filters: list[FilterConfig] = Field(default_factory=list, description="Entity filters with optional staged execution")
     append: list[AppendConfig] = Field(default_factory=list, description="Data to append")
     depends_on: list[str] = Field(default_factory=list, description="Processing dependencies")
     drop_duplicates: bool | list[str] = Field(default=False, description="Drop duplicate rows")
