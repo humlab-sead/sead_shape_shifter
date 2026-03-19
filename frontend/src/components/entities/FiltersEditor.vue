@@ -1,24 +1,5 @@
 <template>
   <div class="pa-4">
-    <v-alert type="info" variant="tonal" density="comfortable" class="mb-4">
-      <div class="text-body-2 font-weight-medium mb-2">Filter stages follow the normalization flow:</div>
-      <ol class="text-body-2 pl-5 mb-2">
-        <li>extract</li>
-        <li>filter - after extract</li>
-        <li>deduplicate</li>
-        <li>link</li>
-        <li>filter - after link</li>
-        <li>unnest</li>
-        <li>filter - after unnest</li>
-        <li>relink</li>
-        <li>later cleanup</li>
-      </ol>
-      <div class="text-body-2">
-        Use <strong>Extract</strong> for source columns, <strong>After Link</strong> for linked columns, and
-        <strong>After Unnest</strong> for columns created by unnesting such as <code>value_name</code>.
-      </div>
-    </v-alert>
-
     <v-list>
       <v-list-item v-for="(filter, index) in filters" :key="index" class="px-0 mb-2">
         <v-card variant="outlined">
@@ -93,6 +74,112 @@
     </v-list>
 
     <v-btn variant="outlined" prepend-icon="mdi-plus" size="small" block @click="handleAddFilter">Add Filter</v-btn>
+
+    <v-alert type="info" variant="tonal" density="comfortable" class="mt-4">
+      <div class="text-body-2 font-weight-medium mb-2">Filter "stages" follow the normalization flow:</div>
+      <svg width="1100" height="320" viewBox="0 0 1100 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Horizontal processing flow with filter hook markers">
+        <defs>
+          <!-- Smaller arrowheads -->
+          <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <path d="M 0 0 L 7 3.5 L 0 7 z" fill="#667085"/>
+          </marker>
+
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000000" flood-opacity="0.12"/>
+          </filter>
+
+          <style>
+            .bg {
+              fill: #f8fafc;
+            }
+            .node {
+              fill: #ffffff;
+              stroke: #cbd5e1;
+              stroke-width: 1.5;
+              filter: url(#shadow);
+            }
+            .nodeText {
+              font: 600 16px Inter, Segoe UI, Roboto, Arial, sans-serif;
+              fill: #1e293b;
+              text-anchor: middle;
+              dominant-baseline: middle;
+            }
+            .flow {
+              stroke: #667085;
+              stroke-width: 2.2;
+              fill: none;
+              marker-end: url(#arrow);
+            }
+            .hook {
+              stroke: #0f766e;
+              stroke-width: 2;
+              fill: none;
+              marker-end: url(#arrow);
+            }
+            .hookText {
+              font: 600 14px Inter, Segoe UI, Roboto, Arial, sans-serif;
+              fill: #0f766e;
+              text-anchor: middle;
+            }
+            .title {
+              font: 700 24px Inter, Segoe UI, Roboto, Arial, sans-serif;
+              fill: #0f172a;
+              text-anchor: middle;
+            }
+            .subtitle {
+              font: 400 13px Inter, Segoe UI, Roboto, Arial, sans-serif;
+              fill: #64748b;
+              text-anchor: middle;
+            }
+          </style>
+        </defs>
+
+        <rect class="bg" x="0" y="0" width="1100" height="320" rx="24"/>
+
+        <text x="550" y="36" class="title">Processing Flow</text>
+        <text x="550" y="58" class="subtitle">Filter hooks point to transitions in the main pipeline</text>
+
+        <!-- Main nodes -->
+        <rect class="node" x="40"  y="180" width="130" height="52" rx="16"/>
+        <text class="nodeText" x="105" y="206">extract</text>
+
+        <rect class="node" x="220" y="180" width="150" height="52" rx="16"/>
+        <text class="nodeText" x="295" y="206">deduplicate</text>
+
+        <rect class="node" x="420" y="180" width="110" height="52" rx="16"/>
+        <text class="nodeText" x="475" y="206">link</text>
+
+        <rect class="node" x="580" y="180" width="120" height="52" rx="16"/>
+        <text class="nodeText" x="640" y="206">unnest</text>
+
+        <rect class="node" x="750" y="180" width="110" height="52" rx="16"/>
+        <text class="nodeText" x="805" y="206">relink</text>
+
+        <rect class="node" x="910" y="180" width="130" height="52" rx="16"/>
+        <text class="nodeText" x="975" y="206">cleanup</text>
+
+        <!-- Main flow arrows -->
+        <line class="flow" x1="170" y1="206" x2="220" y2="206"/>
+        <line class="flow" x1="370" y1="206" x2="420" y2="206"/>
+        <line class="flow" x1="530" y1="206" x2="580" y2="206"/>
+        <line class="flow" x1="700" y1="206" x2="750" y2="206"/>
+        <line class="flow" x1="860" y1="206" x2="910" y2="206"/>
+
+        <!-- Hook labels -->
+        <text class="hookText" x="195" y="105">after extract</text>
+        <text class="hookText" x="555" y="105">after link</text>
+        <text class="hookText" x="725" y="105">after unnest</text>
+
+        <!-- Hook arrows -->
+        <line class="hook" x1="195" y1="118" x2="195" y2="178"/>
+        <line class="hook" x1="555" y1="118" x2="555" y2="178"/>
+        <line class="hook" x1="725" y1="118" x2="725" y2="178"/>
+      </svg>
+      <div class="text-body-2">
+        Use <strong>Extract</strong> for source columns, <strong>After Link</strong> for linked columns, and
+        <strong>After Unnest</strong> for columns created by unnesting such as <code>value_name</code>.
+      </div>
+    </v-alert>
   </div>
 </template>
 
@@ -120,9 +207,9 @@ const { loadFilterSchemas, getFilterSchema, getFilterTypes } = useFilterSchema()
 const filters = ref<FilterConfig[]>(props.modelValue || [])
 const filterTypes = ref<Array<{ title: string; value: string }>>([])
 const stageOptions: Array<{ title: string; value: FilterStage }> = [
-  { title: 'Extract (after extract)', value: 'extract' },
-  { title: 'After Link (after link)', value: 'after_link' },
-  { title: 'After Unnest (after unnest)', value: 'after_unnest' },
+  { title: 'After Extract', value: 'extract' },
+  { title: 'After Link', value: 'after_link' },
+  { title: 'After Unnest', value: 'after_unnest' },
 ]
 
 // Validation rule
