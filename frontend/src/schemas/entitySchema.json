@@ -63,8 +63,26 @@
       "type": "object"
     },
     "FilterConfig": {
-      "description": "Configuration for post-extraction filters.",
+      "description": "Configuration for staged entity filters.",
       "properties": {
+        "stage": {
+          "anyOf": [
+            {
+              "enum": [
+                "extract",
+                "after_link",
+                "after_unnest"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Execution stage for this filter; omitted means the legacy extract-stage default",
+          "title": "Stage"
+        },
         "type": {
           "description": "Filter type (e.g., 'exists_in')",
           "title": "Type",
@@ -474,7 +492,7 @@
       "description": "Unnest configuration"
     },
     "filters": {
-      "description": "Post-extraction filters",
+      "description": "Entity filters with optional staged execution",
       "items": {
         "$ref": "#/$defs/FilterConfig"
       },
