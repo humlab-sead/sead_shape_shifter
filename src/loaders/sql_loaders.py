@@ -155,7 +155,8 @@ class SqlLoader(DataLoader):
                 if missing_columns:
                     raise ValueError(
                         f"[{table_cfg.entity_name}] Auto-detected SQL columns do not satisfy stored schema. "
-                        f"Stored columns: {configured_columns}. Query-backed columns: {source_backed_columns}. Keys: {sorted(table_cfg.keys)}. "
+                        f"Stored columns: {configured_columns}. Query-backed columns: {source_backed_columns}. "
+                        f"Keys: {sorted(table_cfg.keys)}. "
                         f"Missing from detected columns: {missing_columns}. Detected columns: {detected_columns}. "
                         "Sync the entity columns before executing the workflow."
                     )
