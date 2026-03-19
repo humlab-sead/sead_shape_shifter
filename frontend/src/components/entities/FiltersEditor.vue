@@ -109,9 +109,6 @@
 
         <rect class="bg" x="0" y="0" width="1100" height="320" rx="24"/>
 
-        <text x="550" y="36" class="title">Processing Flow</text>
-        <text x="550" y="58" class="subtitle">Filter hooks point to transitions in the main pipeline</text>
-
         <!-- Main nodes -->
         <rect class="node" x="40"  y="180" width="130" height="52" rx="16"/>
         <text class="nodeText" x="105" y="206">extract</text>
@@ -340,18 +337,6 @@ watch(
 .filter-flow-diagram .hookText {
   font: 600 14px Inter, Segoe UI, Roboto, Arial, sans-serif;
   fill: #0f766e;
-  text-anchor: middle;
-}
-
-.filter-flow-diagram .title {
-  font: 700 24px Inter, Segoe UI, Roboto, Arial, sans-serif;
-  fill: #0f172a;
-  text-anchor: middle;
-}
-
-.filter-flow-diagram .subtitle {
-  font: 400 13px Inter, Segoe UI, Roboto, Arial, sans-serif;
-  fill: #64748b;
   text-anchor: middle;
 }
 
