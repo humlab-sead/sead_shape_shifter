@@ -540,7 +540,7 @@ class TestSqlLoaderCore:
 
         result: pd.DataFrame = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
 
-        assert list(table_cfg.columns) == []
+        assert not list(table_cfg.columns)
         assert list(result.columns) == ["system_id", "col_a", "col_b"]
         assert result["system_id"].tolist() == [1, 2]
 
