@@ -76,7 +76,7 @@
     <v-btn variant="outlined" prepend-icon="mdi-plus" size="small" block @click="handleAddFilter">Add Filter</v-btn>
 
     <v-alert type="info" variant="tonal" density="comfortable" class="mt-4">
-      <div class="text-body-2 font-weight-medium mb-2">Filter "stages" follow the normalization flow:</div>
+      <div class="text-body-2 font-weight-medium mb-2">Filter "stages" follow this processing pipeline:</div>
       <ol class="sr-only">
         <li>extract</li>
         <li>filter - after extract</li>
