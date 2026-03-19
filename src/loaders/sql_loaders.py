@@ -127,27 +127,47 @@ class SqlLoader(DataLoader):
 
     def _validate_columns(self, table_cfg: TableConfig, data: pd.DataFrame, auto_detect_columns: bool) -> None:
 
+        if not table_cfg.check_column_names:
+            logger.info(f"[{table_cfg.entity_name}] Column name validation disabled; skipping SQL column validation.")
+            return
+
         if table_cfg.unnest:
             logger.warning(f"[{table_cfg.entity_name}] NOT IMPLEMENTED VALIDATION: Unnesting of SQL data, skipping column validation.")
             return
 
+        detected_columns: list[str] = list(data.columns)
+
         if auto_detect_columns:
 
-            if table_cfg.columns:
-                logger.info(
-                    f"[{table_cfg.entity_name}] Auto-detect columns is enabled; "
-                    "ignoring configured columns in favor of query result metadata."
-                )
-
-            missing_keys: list[str] = [k for k in table_cfg.keys if k not in data.columns]
+            missing_keys: list[str] = [k for k in table_cfg.keys if k not in detected_columns]
 
             if missing_keys:
-                raise ValueError(f"Auto-detect columns is enabled, but key column(s) {missing_keys} are missing in the data.")
+                raise ValueError(
+                    f"[{table_cfg.entity_name}] Auto-detect columns is enabled, but key column(s) {missing_keys} are missing in the data."
+                )
+
+            configured_columns: list[str] = table_cfg.safe_columns
+            if configured_columns:
+                derived_columns: set[str] = set(table_cfg.identity_columns) | set(table_cfg.extra_column_names)
+                source_backed_columns: list[str] = [column for column in configured_columns if column not in derived_columns]
+                required_columns: list[str] = list(dict.fromkeys([*source_backed_columns, *sorted(table_cfg.keys)]))
+                missing_columns: list[str] = [column for column in required_columns if column not in detected_columns]
+                if missing_columns:
+                    raise ValueError(
+                        f"[{table_cfg.entity_name}] Auto-detected SQL columns do not satisfy stored schema. "
+                        f"Stored columns: {configured_columns}. Query-backed columns: {source_backed_columns}. Keys: {sorted(table_cfg.keys)}. "
+                        f"Missing from detected columns: {missing_columns}. Detected columns: {detected_columns}. "
+                        "Sync the entity columns before executing the workflow."
+                    )
+
+                logger.info(f"[{table_cfg.entity_name}] Auto-detect columns confirmed query result satisfies stored schema.")
+            else:
+                logger.info(
+                    f"[{table_cfg.entity_name}] Auto-detect columns bootstrap mode: "
+                    "using query result metadata because no stored columns are configured."
+                )
 
             return
-
-        if not table_cfg.columns:
-            raise ValueError(f"[{table_cfg.entity_name}] No columns specified in configuration, and auto-detect is disabled.")
 
         if len(table_cfg.columns) != len(data.columns):
             raise ValueError(
@@ -155,18 +175,8 @@ class SqlLoader(DataLoader):
                 f"query result columns length ({len(data.columns)})."
             )
 
-        if len(set(table_cfg.columns)) != len(table_cfg.columns):
-            raise ValueError(f"[{table_cfg.entity_name}] Configured columns contain duplicates, which is not allowed.")
-
-        missing_keys: list[str] = [k for k in table_cfg.keys if k not in table_cfg.columns]
-        if missing_keys:
-            raise ValueError(
-                f"Key column(s) {missing_keys} must be included in the specified columns for entity '{table_cfg.entity_name}'."
-            )
-
         # Note: In manual mode we rename by position (data.columns = table_cfg.columns).
-        # We only need to ensure counts match (validated above) and that required key columns
-        # are included in the configured names.
+        # We only need to ensure counts match here. Config-only checks live in EntitySpecification.
 
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         """Load SQL data entity based on configuration.
@@ -186,9 +196,10 @@ class SqlLoader(DataLoader):
         self._validate_columns(table_cfg, data, auto_detect_columns)
 
         if auto_detect_columns:
-            table_cfg.columns = list(data.columns)
+            effective_columns: list[str] = table_cfg.safe_columns or list(data.columns)
         else:
-            data.columns = table_cfg.columns
+            effective_columns = table_cfg.safe_columns
+            data.columns = effective_columns
 
         if table_cfg.system_id and table_cfg.system_id not in data.columns:
             data = add_system_id(data, table_cfg.system_id)

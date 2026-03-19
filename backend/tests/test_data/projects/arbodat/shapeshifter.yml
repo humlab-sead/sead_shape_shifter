@@ -652,7 +652,6 @@ entities:
       notes:
       dating_uncertainty_id:
   sample:
-    type: sql
     source:
     public_id: physical_sample_id
     keys: [Projekt, Befu, ProbNr]
@@ -961,7 +960,6 @@ entities:
     public_id: taxon_id
     keys: [PCODE]
     columns:
-    - taxon_id
     - PCODE
     - BNam
     - Name_E

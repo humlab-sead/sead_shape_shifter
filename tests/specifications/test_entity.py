@@ -13,7 +13,9 @@ from src.specifications.entity import (
     FixedEntityFieldsSpecification,
     FixedEntitySystemIdSpecification,
     ForeignKeySpecification,
+    NonFixedIdentityColumnsSpecification,
     PublicIdSpecification,
+    SqlColumnConfigurationSpecification,
     SqlEntityFieldsSpecification,
     UnnestSpecification,
 )
@@ -247,6 +249,159 @@ class TestSqlEntityFieldsSpecification:
 
         assert result is False
         assert len(spec.errors) > 0
+
+
+class TestSqlColumnConfigurationSpecification:
+    """Tests for SQL config-only column validation."""
+
+    def test_manual_sql_requires_columns_when_auto_detect_disabled(self):
+        project_cfg = {
+            "entities": {
+                "sql_entity": {
+                    "type": "sql",
+                    "columns": [],
+                    "keys": [],
+                    "data_source": "db1",
+                    "query": "SELECT * FROM table",
+                    "auto_detect_columns": False,
+                }
+            }
+        }
+
+        spec = SqlColumnConfigurationSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sql_entity")
+
+        assert result is False
+        assert any("auto-detect is disabled" in str(e) for e in spec.errors)
+
+    def test_sql_rejects_duplicate_configured_columns(self):
+        project_cfg = {
+            "entities": {
+                "sql_entity": {
+                    "type": "sql",
+                    "columns": ["col_a", "col_a"],
+                    "keys": [],
+                    "data_source": "db1",
+                    "query": "SELECT * FROM table",
+                }
+            }
+        }
+
+        spec = SqlColumnConfigurationSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sql_entity")
+
+        assert result is False
+        assert any("contain duplicates" in str(e) for e in spec.errors)
+
+    def test_manual_sql_requires_keys_in_columns(self):
+        project_cfg = {
+            "entities": {
+                "sql_entity": {
+                    "type": "sql",
+                    "columns": ["col_a"],
+                    "keys": ["key_col"],
+                    "data_source": "db1",
+                    "query": "SELECT * FROM table",
+                    "auto_detect_columns": False,
+                }
+            }
+        }
+
+        spec = SqlColumnConfigurationSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sql_entity")
+
+        assert result is False
+        assert any("must be included in the specified columns" in str(e) for e in spec.errors)
+
+    def test_auto_detect_sql_allows_keys_outside_configured_columns(self):
+        project_cfg = {
+            "entities": {
+                "sql_entity": {
+                    "type": "sql",
+                    "columns": ["payload_col"],
+                    "keys": ["key_col"],
+                    "data_source": "db1",
+                    "query": "SELECT * FROM table",
+                    "auto_detect_columns": True,
+                }
+            }
+        }
+
+        spec = SqlColumnConfigurationSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sql_entity")
+
+        assert result is True
+        assert len(spec.errors) == 0
+
+
+class TestNonFixedIdentityColumnsSpecification:
+    """Tests for NonFixedIdentityColumnsSpecification."""
+
+    def test_sql_entity_rejects_system_id_in_columns(self):
+        project_cfg = {
+            "entities": {
+                "sample": {
+                    "type": "sql",
+                    "columns": ["system_id", "sample_code"],
+                    "keys": ["sample_code"],
+                    "public_id": "sample_id",
+                    "data_source": "db1",
+                    "query": "SELECT sample_code FROM sample",
+                }
+            }
+        }
+
+        spec = NonFixedIdentityColumnsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample")
+
+        assert result is False
+        assert any("derived system_id columns" in str(e) for e in spec.errors)
+
+    def test_sql_entity_allows_public_id_in_columns(self):
+        project_cfg = {
+            "entities": {
+                "method_group": {
+                    "type": "sql",
+                    "columns": ["method_group_id", "group_name"],
+                    "keys": ["method_group_id"],
+                    "public_id": "method_group_id",
+                    "data_source": "db1",
+                    "query": "SELECT method_group_id, group_name FROM method_groups",
+                }
+            }
+        }
+
+        spec = NonFixedIdentityColumnsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="method_group")
+
+        assert result is True
+        assert len(spec.errors) == 0
+
+    def test_fixed_entity_allows_identity_columns(self):
+        project_cfg = {
+            "entities": {
+                "sample_type": {
+                    "type": "fixed",
+                    "columns": ["system_id", "sample_type_id", "type_name"],
+                    "keys": ["type_name"],
+                    "public_id": "sample_type_id",
+                    "values": [[1, None, "soil"]],
+                }
+            }
+        }
+
+        spec = NonFixedIdentityColumnsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample_type")
+
+        assert result is True
+        assert len(spec.errors) == 0
 
 
 class TestFixedEntitySystemIdSpecification:

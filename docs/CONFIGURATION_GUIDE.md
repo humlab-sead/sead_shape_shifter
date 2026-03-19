@@ -212,6 +212,7 @@ This architecture separates concerns between:
 - **Type**: `string` (always "system_id")
 - **Required**: Automatically managed by system
 - **Description**: Standardized name for auto-incrementing integer IDs (1, 2, 3...). This column is always added automatically during data loading and is used for internal processing. When data is exported, this column is renamed based on the entity's `public_id` setting.
+- **Import Rule**: For non-fixed entities (`sql`, `csv`, `xlsx`, `openpyxl`, `entity`), `system_id` is an internal Shape Shifter identity and should not be imported from source data or listed in `columns`. The main exception is `type: fixed`, where explicit `system_id` values may be preserved intentionally.
 - **Behavior**:
   - Added automatically by all loaders (SQL, fixed, file)
   - Always numbered sequentially starting from 1
@@ -234,6 +235,7 @@ This architecture separates concerns between:
   2. **Column Values**: Holds mapped external IDs from `mappings.yml` (local business key → SEAD ID)
   
   Additionally, `public_id` determines FK column names in child entities to avoid `system_id` collision.
+- **Import Rule**: Unlike `system_id`, `public_id` may be source-backed when the source actually provides that identifier. If the source does not provide it, the column is still part of the target schema and may be added or populated later in the pipeline.
   
 - **FK Linking Process**:
   ```
