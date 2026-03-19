@@ -105,51 +105,6 @@
           <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000000" flood-opacity="0.12"/>
           </filter>
-
-          <style>
-            .bg {
-              fill: #f8fafc;
-            }
-            .node {
-              fill: #ffffff;
-              stroke: #cbd5e1;
-              stroke-width: 1.5;
-              filter: url(#shadow);
-            }
-            .nodeText {
-              font: 600 16px Inter, Segoe UI, Roboto, Arial, sans-serif;
-              fill: #1e293b;
-              text-anchor: middle;
-              dominant-baseline: middle;
-            }
-            .flow {
-              stroke: #667085;
-              stroke-width: 2.2;
-              fill: none;
-              marker-end: url(#arrow);
-            }
-            .hook {
-              stroke: #0f766e;
-              stroke-width: 2;
-              fill: none;
-              marker-end: url(#arrow);
-            }
-            .hookText {
-              font: 600 14px Inter, Segoe UI, Roboto, Arial, sans-serif;
-              fill: #0f766e;
-              text-anchor: middle;
-            }
-            .title {
-              font: 700 24px Inter, Segoe UI, Roboto, Arial, sans-serif;
-              fill: #0f172a;
-              text-anchor: middle;
-            }
-            .subtitle {
-              font: 400 13px Inter, Segoe UI, Roboto, Arial, sans-serif;
-              fill: #64748b;
-              text-anchor: middle;
-            }
-          </style>
         </defs>
 
         <rect class="bg" x="0" y="0" width="1100" height="320" rx="24"/>
@@ -348,6 +303,56 @@ watch(
   width: 100%;
   height: auto;
   min-width: 640px;
+}
+
+.filter-flow-diagram .bg {
+  fill: #f8fafc;
+}
+
+.filter-flow-diagram .node {
+  fill: #ffffff;
+  stroke: #cbd5e1;
+  stroke-width: 1.5;
+  filter: url(#shadow);
+}
+
+.filter-flow-diagram .nodeText {
+  font: 600 16px Inter, Segoe UI, Roboto, Arial, sans-serif;
+  fill: #1e293b;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.filter-flow-diagram .flow {
+  stroke: #667085;
+  stroke-width: 2.2;
+  fill: none;
+  marker-end: url(#arrow);
+}
+
+.filter-flow-diagram .hook {
+  stroke: #0f766e;
+  stroke-width: 2;
+  fill: none;
+  marker-end: url(#arrow);
+}
+
+.filter-flow-diagram .hookText {
+  font: 600 14px Inter, Segoe UI, Roboto, Arial, sans-serif;
+  fill: #0f766e;
+  text-anchor: middle;
+}
+
+.filter-flow-diagram .title {
+  font: 700 24px Inter, Segoe UI, Roboto, Arial, sans-serif;
+  fill: #0f172a;
+  text-anchor: middle;
+}
+
+.filter-flow-diagram .subtitle {
+  font: 400 13px Inter, Segoe UI, Roboto, Arial, sans-serif;
+  fill: #64748b;
+  text-anchor: middle;
 }
 
 .sr-only {
