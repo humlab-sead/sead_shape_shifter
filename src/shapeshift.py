@@ -79,7 +79,7 @@ def main(
 if __name__ == "__main__":
     main()
 
-    # PYTHONPATH=. python src/arbodat/survey2excel.py  --sep ";" --translate --config-file
+    # PYTHONPATH=. python src/arbodat/shapeshift.py  --sep ";" --translate --config-file
     # src/arbodat/config.yml src/arbodat/arbodat_mal_elena_input.csv output.xlsx
 
     # from click.testing import CliRunner
