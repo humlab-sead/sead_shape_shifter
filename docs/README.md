@@ -119,6 +119,10 @@ These are the primary system documentation files:
   - Placeholder for a future Phase 2 proposal about an explicit missing-key policy model.
   - Outlines the open design questions for a broader user-facing null-key strategy.
 
+- **[proposals/VUETIFY_4_MIGRATION_RESUME_PLAN.md](proposals/VUETIFY_4_MIGRATION_RESUME_PLAN.md)**
+  - Records the current Vuetify 4 migration findings, including what is safe and unsafe to pre-apply.
+  - Captures the resume plan, affected files, and recommended execution order for the eventual frontend upgrade.
+
 ### What's New
 
 - **[whats-new/README.md](whats-new/README.md)**
