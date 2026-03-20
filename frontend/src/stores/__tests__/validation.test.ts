@@ -288,7 +288,7 @@ describe('useValidationStore', () => {
           { name: 'entity1', depends_on: [], depth: 0 },
           { name: 'entity2', depends_on: ['entity1'], depth: 1 },
         ],
-        edges: [['entity1', 'entity2']] as [string, string][],
+        edges: [{ source: 'entity1', target: 'entity2' }],
         has_cycles: false,
         cycles: [],
         topological_order: ['entity1', 'entity2'],
