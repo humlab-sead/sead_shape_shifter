@@ -123,6 +123,10 @@ These are the primary system documentation files:
   - Records the current Vuetify 4 migration findings, including what is safe and unsafe to pre-apply.
   - Captures the resume plan, affected files, and recommended execution order for the eventual frontend upgrade.
 
+- **[proposals/RAW_SOURCE_DATA_EXPLORER_PROPOSAL.md](proposals/RAW_SOURCE_DATA_EXPLORER_PROPOSAL.md)**
+  - Proposes evolving Schema Explorer into a stronger raw source data investigation tool.
+  - Recommends a phased path from AG Grid-based loaded-row preview to larger fetches, server-driven exploration, and column profiling.
+
 ### What's New
 
 - **[whats-new/README.md](whats-new/README.md)**
