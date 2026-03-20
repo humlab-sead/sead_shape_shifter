@@ -3,25 +3,6 @@ SHELL := /bin/bash
 BACKEND_PORT ?= 8013
 FRONTEND_PORT ?= 5173
 
-.PHONY: csv excel
-excel:
-	@export PYTHONPATH=. && python src/arbodat/survey2excel.py \ 
-		--env-file ./projects/.env \
-		--sep ";" \
-		--mode excel \
-		--config-file ./projects/arbodat.yml \
-		./projects/arbodat_mal_elena_input.csv \
-		tmp/arbodat.xlsx
-
-csv:
-	@export PYTHONPATH=. && python src/arbodat/survey2excel.py \ 
-		--env-file ./projects/.env \
-		--sep ';' \
-		--mode csv \
-		--config-file ./projects/arbodat.yml \
-		./projects/arbodat_mal_elena_input.csv \
-		tmp/arbodat
-
 .PHONY: install
 install:
 	@uv venv
