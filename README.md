@@ -105,11 +105,6 @@ uv is a high-performance Python package installer and resolver:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-**Windows:**
-```powershell
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
 **Via pip (alternative):**
 ```bash
 pip install uv
