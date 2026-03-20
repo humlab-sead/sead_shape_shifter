@@ -12,7 +12,7 @@
     <v-row>
       <!-- Left Panel: Table Selector with Embedded Details -->
       <v-col cols="12" md="3">
-        <SchemaTreeView :auto-load="true" @table-selected="onTableSelected">
+        <SchemaTreeView ref="schemaTree" :auto-load="true" @table-selected="onTableSelected">
           <template #details>
             <TableDetailsPanel
               ref="detailsPanel"
@@ -157,6 +157,7 @@ const refreshing = ref(false)
 const showHelp = ref(false)
 
 // Refs to child components
+const schemaTree = ref<InstanceType<typeof SchemaTreeView> | null>(null)
 const detailsPanel = ref<InstanceType<typeof TableDetailsPanel> | null>(null)
 const previewTable = ref<InstanceType<typeof DataPreviewTable> | null>(null)
 
@@ -176,7 +177,11 @@ async function refreshAll() {
     // Invalidate cache
     await dataSourceStore.invalidateSchemaCache(selectedDataSource.value)
 
-    // Reload everything
+    // Reload table list from the selector's current data source/schema state.
+    // This prevents the select list from collapsing to only the currently selected table.
+    await schemaTree.value?.loadTables()
+
+    // Reload table-specific panels if a table is selected.
     if (selectedTable.value) {
       await Promise.all([detailsPanel.value?.refreshSchema(), previewTable.value?.refreshData()])
     }
