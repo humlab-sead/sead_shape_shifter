@@ -1,15 +1,14 @@
 task_list:
+  todo: [analysis_entity_ages]
   ongoing:
   - abundance_modification
   - abundance_property
   - contact
   - coordinate_system
-  - cultural_group
   - dataset_contacts
   - dataset_submission
   - dataset_submission_type
   - dating
-  - dating_period
   - feature_property
   - identification_level
   - master_dataset
@@ -26,7 +25,6 @@ task_list:
   - contact_type
   - dataset
   - archaeological_period
-  - chronological_period
   - feature_property_type
   - coordinate_method_dimension
   - sample_description_type
@@ -62,3 +60,8 @@ task_list:
   - taxa_use_categories
   - _project_contact
   - _pcodes
+  - cultural_group
+  - dating_period
+  - chronological_period
+notes:
+  dating_period: This is entity that is ignored since it fills no purpose. ArchDat dating are instead stored in "relative_dating". The pilot has no chronology dating, nor any entry in Datierung.
