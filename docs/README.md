@@ -94,6 +94,11 @@ These are the primary system documentation files:
   - Proposal for a project advisor with Shape Shifter and SEAD/SIMS knowledge
   - Scope, architecture, context model, safety boundaries, and phased delivery
 
+- **[proposals/QUERY_FILTER_ENGINE_SELECTION.md](proposals/QUERY_FILTER_ENGINE_SELECTION.md)**
+  - Proposes adding an explicit `engine` field to `type: query` filters for advanced pandas query behavior
+  - Recommends `engine: python` over prefix forms like `query: "python:..."`
+
+- **[proposals/USER_FACING_RELEASE_NOTES_STRATEGY.md](proposals/USER_FACING_RELEASE_NOTES_STRATEGY.md)**
 - **[proposals/ENTITY_LEVEL_LOCKING.md](proposals/ENTITY_LEVEL_LOCKING.md)**
   - Shape Shifter currently has optimistic locking at the project level for the entire project.
   - The most frequent use case in the UI, is where a user opens, edits, and saves one entity at a time.
