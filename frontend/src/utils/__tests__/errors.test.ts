@@ -45,11 +45,11 @@ describe('Enhanced Error Parsing', () => {
         response: {
           data: {
             error_type: 'ConstraintViolationError',
-            message: "Validation failed for site_location -> location: null values found in remote key 'location_name'.",
+            message: "Validation failed for site_location -> location: missing values found in remote key 'location_name'.",
             tips: [
-              "Check column 'location_name' in the remote entity for null values.",
-              'Clean or filter null values before linking.',
-              "If this relationship is intentionally optional, enable 'Allow Null Keys' in the foreign key constraints.",
+              "Check column 'location_name' in the remote entity for missing values.",
+              'Clean or filter missing values before linking.',
+              "If this relationship is intentionally optional, enable 'Allow missing Join Keys' in the foreign key constraints.",
             ],
             context: {
               entity: 'site_location',
