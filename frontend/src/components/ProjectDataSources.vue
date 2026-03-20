@@ -184,6 +184,13 @@ import { useProjectStore } from '@/stores/project'
 import { useDataSourceStore } from '@/stores/data-source'
 import CreateEntityFromTableDialog from '@/components/entities/CreateEntityFromTableDialog.vue'
 
+type ProjectDataSourceReference = string | Record<string, unknown>
+
+interface ConnectedSourceDetails {
+  driver: string
+  host: string | null
+}
+
 const props = defineProps<{
   projectName: string
 }>()
@@ -198,7 +205,7 @@ const dataSourceStore = useDataSourceStore()
 // State
 const loading = ref(false)
 const error = ref<string | null>(null)
-const connectedSourcesData = ref<Record<string, string>>({})
+const connectedSourcesData = ref<Record<string, ProjectDataSourceReference>>({})
 const showConnectDialog = ref(false)
 const showDisconnectDialog = ref(false)
 const disconnectingSource = ref<string | null>(null)
@@ -210,23 +217,42 @@ const connectError = ref<string | null>(null)
 const showCreateEntityDialog = ref(false)
 const createEntityDataSource = ref<string>('')
 
+function getInlineSourceDetails(config: Record<string, unknown>): ConnectedSourceDetails {
+  const options = typeof config.options === 'object' && config.options !== null
+    ? (config.options as Record<string, unknown>)
+    : null
+
+  const driver = typeof config.driver === 'string' ? config.driver : 'unknown'
+  const host = typeof config.host === 'string'
+    ? config.host
+    : typeof options?.host === 'string'
+      ? options.host
+      : null
+
+  return { driver, host }
+}
+
 // Computed
 const connectedSources = computed(() => {
   return Object.entries(connectedSourcesData.value).map(([name, reference]) => {
-    // Parse @include reference to get filename
-    const filename = reference.replace('@include:', '').trim()
-    const sourceName = filename.replace('.yml', '')
+    if (typeof reference === 'string') {
+      const filename = reference.replace('@include:', '').trim()
+      const sourceName = filename.replace('.yml', '')
+      const details = dataSourceStore.dataSources.find((ds) => ds.name === sourceName)
 
-    // Try to find details from loaded data sources
-    const details = dataSourceStore.dataSources.find(
-      (ds) => ds.name === sourceName
-    )
+      return {
+        name,
+        reference,
+        filename,
+        details: details || null,
+      }
+    }
 
     return {
       name,
-      reference,
-      filename,
-      details: details || null,
+      reference: 'Inline configuration',
+      filename: null,
+      details: getInlineSourceDetails(reference),
     }
   })
 })
