@@ -232,12 +232,23 @@ function getInlineSourceDetails(config: Record<string, unknown>): ConnectedSourc
   return { driver, host }
 }
 
+function getIncludePath(reference: string): string {
+  const includeMatch = reference.match(/^@include:\s*(.+)$/)
+  return (includeMatch?.[1] || reference).trim()
+}
+
+function getSourceNameFromReference(reference: string): string {
+  const includePath = getIncludePath(reference)
+  const baseName = includePath.split('/').pop() || includePath
+  return baseName.replace(/\.yml$/, '')
+}
+
 // Computed
 const connectedSources = computed(() => {
   return Object.entries(connectedSourcesData.value).map(([name, reference]) => {
     if (typeof reference === 'string') {
-      const filename = reference.replace('@include:', '').trim()
-      const sourceName = filename.replace('.yml', '')
+      const filename = getIncludePath(reference)
+      const sourceName = getSourceNameFromReference(reference)
       const details = dataSourceStore.dataSources.find((ds) => ds.name === sourceName)
 
       return {
