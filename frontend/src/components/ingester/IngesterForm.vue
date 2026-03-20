@@ -268,10 +268,7 @@ watch(ignoreColumnsText, (newValue) => {
 // Update selected ingester in store when changed
 watch(selectedIngesterKey, (key) => {
   if (key) {
-    const ingester = availableIngesters.value.find(i => i.key === key)
-    if (ingester) {
-      ingesterStore.selectIngester(ingester)
-    }
+    ingesterStore.selectIngester(key)
   }
 })
 
@@ -345,7 +342,10 @@ onMounted(async () => {
   
   // Auto-select first ingester if only one is available
   if (availableIngesters.value.length === 1) {
-    selectedIngesterKey.value = availableIngesters.value[0].key
+    const firstIngester = availableIngesters.value[0]
+    if (firstIngester) {
+      selectedIngesterKey.value = firstIngester.key
+    }
   }
   
   // Fetch data sources

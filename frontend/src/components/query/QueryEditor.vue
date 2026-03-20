@@ -133,9 +133,9 @@
       </v-row>
 
       <!-- Error Display -->
-      <!-- @ts-ignore -->
       <ErrorAlert
         v-if="error"
+        :message="error.message"
         v-bind="errorProps"
         closable
         show-context

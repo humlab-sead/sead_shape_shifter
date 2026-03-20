@@ -258,7 +258,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
 import schemaApi from '@/api/schema'
 import type { TableSchema, TypeMapping } from '@/types/schema'
@@ -380,6 +380,7 @@ onBeforeUnmount(() => {
 defineExpose({
   loadSchema,
   refreshSchema,
+  loadTypeMappings,
 })
 </script>
 

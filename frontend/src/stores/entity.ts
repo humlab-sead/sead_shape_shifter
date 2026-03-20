@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
-import { useProjectStore } from '@/stores'
 import type { EntityResponse, EntityCreateRequest, EntityUpdateRequest } from '@/api/entities'
 
 export const useEntityStore = defineStore('entity', () => {
@@ -18,9 +17,6 @@ export const useEntityStore = defineStore('entity', () => {
   const overlayEntityName = ref<string | null>(null)
   const overlayInitialTab = ref<'form' | 'yaml'>('form')
 
-  // Cross-store access
-  const projectStore = useProjectStore()
-
   // Diagnostic logging helper for state sync debugging
   function logState(action: string, details: Record<string, unknown> = {}) {
     console.info(`[EntityStore] ${action}`, {
@@ -30,13 +26,6 @@ export const useEntityStore = defineStore('entity', () => {
       entityNames: entities.value.map(e => e.name),
       timestamp: new Date().toISOString(),
     })
-  }
-
-  // Refresh project from disk to ensure in-memory state matches saved state
-  async function refreshProjectState(projectName: string) {
-    if (projectStore.selectedProject?.metadata?.name === projectName) {
-      await projectStore.refreshProject(projectName)
-    }
   }
 
   // Getters
@@ -97,7 +86,7 @@ export const useEntityStore = defineStore('entity', () => {
     }
   }
 
-  async function selectEntity(projectName: string, entityName: string) {
+  async function selectEntity(_projectName: string, entityName: string) {
     loading.value = true
     error.value = null
     try {
