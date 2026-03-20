@@ -166,6 +166,17 @@
         "git add": true,
         "git commit": true
     },
+    "mcp": {
+        "servers": {
+            "vuetify-mcp": {
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "@vuetify/mcp"
+                ]
+            }
+        }
+    },
     "sqlfluff.dialect": "postgres",
     "sqlfluff.codeActions.excludeRules.global": false,
     "markdownlint.config": {
