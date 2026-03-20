@@ -12,6 +12,7 @@ footer: 'SEAD Development Team | March 2026'
 <!-- _paginate: false -->
 
 # Shape Shifter
+
 ## Short Overview for Archaeologists
 
 From local research data to SEAD-ready structure
