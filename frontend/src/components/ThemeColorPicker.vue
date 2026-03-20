@@ -80,7 +80,7 @@ const hasCustomColors = computed(() => {
 })
 
 function getColorValue(key: keyof CustomThemeColors): string {
-  return localColors.value[key] || theme.vuetifyTheme.current.value.colors[key]
+  return localColors.value[key] ?? theme.vuetifyTheme.current.value.colors[key] ?? '#000000'
 }
 
 function isCustomized(key: keyof CustomThemeColors): boolean {

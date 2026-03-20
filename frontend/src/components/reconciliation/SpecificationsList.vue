@@ -242,7 +242,6 @@
 import { ref, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useReconciliationStore } from '@/stores/reconciliation'
-import { useProjectStore } from '@/stores/project'
 import { useNotification } from '@/composables/useNotification'
 import type { EntityResolutionListItem } from '@/types/reconciliation'
 import SpecificationEditor from './SpecificationEditor.vue'
@@ -261,7 +260,6 @@ const reconciliationStore = useReconciliationStore()
 const { specifications, loadingSpecs, specsError } = storeToRefs(reconciliationStore)
 
 const { success, error: showError } = useNotification()
-const projectStore = useProjectStore()
 
 // State
 const editorDialog = ref(false)
