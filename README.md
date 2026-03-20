@@ -231,22 +231,22 @@ Process data transformations using the CLI:
 
 ```bash
 # Basic transformation to Excel
-python src/survey2excel.py output.xlsx \
+python src/shapeshift.py output.xlsx \
   --project projects/my_project.yml \
   --mode xlsx
 
 # Transform with validation
-python src/survey2excel.py output.xlsx \
+python src/shapeshift.py output.xlsx \
   --project projects/my_project.yml \
   --validate-then-exit
 
 # Export to CSV
-python src/survey2excel.py output/ \
+python src/shapeshift.py output/ \
   --project projects/my_project.yml \
   --mode csv
 
 # With environment variables
-python src/survey2excel.py output.xlsx \
+python src/shapeshift.py output.xlsx \
   --project projects/my_project.yml \
   --env-file projects/.env \
   --mode xlsx
