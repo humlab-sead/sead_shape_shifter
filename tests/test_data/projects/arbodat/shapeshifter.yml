@@ -660,6 +660,9 @@ entities:
     depends_on: [location_type]
     drop_duplicates: [location_type, location_name]
     check_functional_dependency: true
+    filters:
+    - type: query
+      query: "location_name.notna() and location_name != '' and location_name != '2017/9030'"
     unnest:
       value_vars: '@value: entities.location.columns'
       var_name: location_type
@@ -1027,7 +1030,14 @@ entities:
     type: sql
     public_id: site_location_id
     keys: []
-    columns: '@value: entities.site.keys + @value: entities.location.columns'
+    columns:
+    - Fustel
+    - EVNr
+    - Ort
+    - Kreis
+    - Land
+    - Staat
+    - FlurStr
     foreign_keys:
     - entity: site
       local_keys: [Fustel, EVNr]
@@ -1434,16 +1444,6 @@ entities:
     keys: []
     columns: [analysis_entity_id, cf]
     foreign_keys:
-    - entity: abundance
-      local_keys: [analysis_entity_id]
-      remote_keys: [system_id]
-      constraints:
-        cardinality: many_to_one
-        allow_unmatched_right: true
-        require_unique_left: false
-        require_unique_right: false
-        allow_null_keys: false
-        allow_row_decrease: true
     - entity: identification_level
       local_keys: [cf]
       remote_keys: [arbodat_value]
@@ -1540,7 +1540,6 @@ entities:
     public_id: ecocode_id
     keys: []
     columns: [Ökogruppe, Ökogruppe_u, PCODE]
-    drop_empty_rows: [Ökogruppe]
     foreign_keys:
     - entity: ecocode_definition
       local_keys: [Ökogruppe]
@@ -1548,10 +1547,11 @@ entities:
       how: left
       constraints:
         cardinality: many_to_one
-        allow_unmatched_right: true
+        allow_unmatched_right: false
         require_unique_left: false
         require_unique_right: false
         allow_row_decrease: true
+        allow_null_keys: true
         allow_unmatched_left: true
     - entity: taxa
       local_keys: [PCODE]
