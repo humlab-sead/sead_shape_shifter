@@ -90,7 +90,7 @@
       </ol>
       <div class="filter-flow-diagram" aria-hidden="true">
         <svg
-          viewBox="0 0 1100 320"
+          viewBox="0 0 1100 220"
           xmlns="http://www.w3.org/2000/svg"
           role="img"
           aria-label="Horizontal processing flow with filter hook markers"
@@ -107,43 +107,43 @@
           </filter>
         </defs>
 
-        <rect class="bg" x="0" y="0" width="1100" height="320" rx="24"/>
+        <rect class="bg" x="0" y="0" width="1100" height="220" rx="24"/>
 
         <!-- Main nodes -->
-        <rect class="node" x="40"  y="180" width="130" height="52" rx="16"/>
-        <text class="nodeText" x="105" y="206">extract</text>
+        <rect class="node" x="40"  y="120" width="130" height="44" rx="14"/>
+        <text class="nodeText" x="105" y="142">extract</text>
 
-        <rect class="node" x="220" y="180" width="150" height="52" rx="16"/>
-        <text class="nodeText" x="295" y="206">deduplicate</text>
+        <rect class="node" x="220" y="120" width="150" height="44" rx="14"/>
+        <text class="nodeText" x="295" y="142">deduplicate</text>
 
-        <rect class="node" x="420" y="180" width="110" height="52" rx="16"/>
-        <text class="nodeText" x="475" y="206">link</text>
+        <rect class="node" x="420" y="120" width="110" height="44" rx="14"/>
+        <text class="nodeText" x="475" y="142">link</text>
 
-        <rect class="node" x="580" y="180" width="120" height="52" rx="16"/>
-        <text class="nodeText" x="640" y="206">unnest</text>
+        <rect class="node" x="580" y="120" width="120" height="44" rx="14"/>
+        <text class="nodeText" x="640" y="142">unnest</text>
 
-        <rect class="node" x="750" y="180" width="110" height="52" rx="16"/>
-        <text class="nodeText" x="805" y="206">relink</text>
+        <rect class="node" x="750" y="120" width="110" height="44" rx="14"/>
+        <text class="nodeText" x="805" y="142">relink</text>
 
-        <rect class="node" x="910" y="180" width="130" height="52" rx="16"/>
-        <text class="nodeText" x="975" y="206">cleanup</text>
+        <rect class="node" x="910" y="120" width="130" height="44" rx="14"/>
+        <text class="nodeText" x="975" y="142">cleanup</text>
 
         <!-- Main flow arrows -->
-        <line class="flow" x1="170" y1="206" x2="220" y2="206"/>
-        <line class="flow" x1="370" y1="206" x2="420" y2="206"/>
-        <line class="flow" x1="530" y1="206" x2="580" y2="206"/>
-        <line class="flow" x1="700" y1="206" x2="750" y2="206"/>
-        <line class="flow" x1="860" y1="206" x2="910" y2="206"/>
+        <line class="flow" x1="170" y1="142" x2="220" y2="142"/>
+        <line class="flow" x1="370" y1="142" x2="420" y2="142"/>
+        <line class="flow" x1="530" y1="142" x2="580" y2="142"/>
+        <line class="flow" x1="700" y1="142" x2="750" y2="142"/>
+        <line class="flow" x1="860" y1="142" x2="910" y2="142"/>
 
         <!-- Hook labels -->
-        <text class="hookText" x="195" y="105">after extract</text>
-        <text class="hookText" x="555" y="105">after link</text>
-        <text class="hookText" x="725" y="105">after unnest</text>
+        <text class="hookText" x="195" y="52">after extract</text>
+        <text class="hookText" x="555" y="52">after link</text>
+        <text class="hookText" x="725" y="52">after unnest</text>
 
         <!-- Hook arrows -->
-        <line class="hook" x1="195" y1="118" x2="195" y2="178"/>
-        <line class="hook" x1="555" y1="118" x2="555" y2="178"/>
-        <line class="hook" x1="725" y1="118" x2="725" y2="178"/>
+        <line class="hook" x1="195" y1="64" x2="195" y2="118"/>
+        <line class="hook" x1="555" y1="64" x2="555" y2="118"/>
+        <line class="hook" x1="725" y1="64" x2="725" y2="118"/>
         </svg>
       </div>
       <div class="text-body-2">
@@ -314,7 +314,7 @@ watch(
 }
 
 .filter-flow-diagram .nodeText {
-  font: 600 16px Inter, Segoe UI, Roboto, Arial, sans-serif;
+  font: 600 15px Inter, Segoe UI, Roboto, Arial, sans-serif;
   fill: #1e293b;
   text-anchor: middle;
   dominant-baseline: middle;
@@ -335,7 +335,7 @@ watch(
 }
 
 .filter-flow-diagram .hookText {
-  font: 600 14px Inter, Segoe UI, Roboto, Arial, sans-serif;
+  font: 600 13px Inter, Segoe UI, Roboto, Arial, sans-serif;
   fill: #0f766e;
   text-anchor: middle;
 }
