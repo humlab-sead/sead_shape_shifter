@@ -465,10 +465,9 @@ entities:
     query: "select distinct\n  [Projekt],\n  [Befu],\n  [ProbNr],\n  [Unterprobe],\n  [Labornummer],\n  [Material],\n  [Methode],\n  [Waldkante],\n  [C14-Alter BP],\n  [Standardab C14],\n  [C14 cal],\n  [Dendroalter],\n  [Alter andere],\n  [13C PDB-Wert],\n  [Standardab 13C PDB],\n  [pMC-Wert],\n  [Standardab PMC],\n  [Anmerkungen]\nfrom [Datierung] ;\n"
   dating_period:
     type: sql
-    source:
     public_id: dating_period_id
     keys: '@value: entities.sample.keys'
-    columns: "@value: entities.sample.keys + ['ChronoDat', 'ArchDat']"
+    columns: [Projekt, Befu, ProbNr, ChronoDat, ArchDat]
     foreign_keys:
     - entity: sample
       local_keys: '@value: entities.sample.keys'
@@ -662,7 +661,8 @@ entities:
     check_functional_dependency: true
     filters:
     - type: query
-      query: "location_name.notna() and location_name != '' and location_name != '2017/9030'"
+      query: location_name.notna() and location_name != '' and location_name != '2017/9030'
+      stage: after_unnest
     unnest:
       value_vars: '@value: entities.location.columns'
       var_name: location_type
@@ -886,7 +886,7 @@ entities:
       var_name: coordinate_type
       value_name: coordinate_value
     data_source: arbodat_data
-    query: select [Projekt], [Befu], [ProbNr], [KoordX], [KoordY], [KoordZ], [TiefeBis], [TiefeVon], [Prob_üNN] from [Proben] ;
+    query: "select [Projekt], [Befu], [ProbNr], [KoordX], [KoordY], [KoordZ], [TiefeBis], [TiefeVon], [Prob_üNN]\r\nfrom [Proben]\r\nwhere [Proben].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015');"
   sample_description_type:
     type: fixed
     source:
