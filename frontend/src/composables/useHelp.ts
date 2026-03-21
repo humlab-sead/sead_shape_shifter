@@ -54,13 +54,17 @@ export function renderHelpMarkdown(markdown: string, docPath: string): string {
     breaks: false,
   })
 
-  const defaultHeadingRenderer = md.renderer.rules.heading_open || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options))
+  const defaultHeadingRenderer = md.renderer.rules.heading_open || ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
 
-  const defaultLinkRenderer = md.renderer.rules.link_open || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options))
+  const defaultLinkRenderer = md.renderer.rules.link_open || ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
 
   md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
     const token = tokens[idx]
     const inlineToken = tokens[idx + 1]
+
+    if (!token) {
+      return ''
+    }
 
     if (inlineToken?.type === 'inline' && inlineToken.content) {
       token.attrSet('id', slugifyHeading(inlineToken.content))
@@ -71,11 +75,16 @@ export function renderHelpMarkdown(markdown: string, docPath: string): string {
 
   md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
     const token = tokens[idx]
+
+    if (!token) {
+      return ''
+    }
+
     const hrefIndex = token.attrIndex('href')
 
     if (hrefIndex >= 0) {
       const normalizedHref = resolveHelpHref(token.attrs?.[hrefIndex]?.[1] ?? '', docPath)
-      token.attrs![hrefIndex][1] = normalizedHref
+      token.attrSet('href', normalizedHref)
 
       if (ABSOLUTE_LINK_PATTERN.test(normalizedHref)) {
         token.attrSet('target', '_blank')
