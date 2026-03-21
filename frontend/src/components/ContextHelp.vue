@@ -186,6 +186,15 @@ const helpContentMap: Record<string, HelpContent> = {
       'Use this to debug query issues',
       'Check column names and data'
     ]
+  },
+  'whats-new': {
+    title: 'What\'s New',
+    description: 'Browse recent user-facing updates and workflow improvements.',
+    tips: [
+      'Open the latest release first for the most relevant changes.',
+      'Use this archive to scan feature additions, improvements, and fixes by version.',
+      'The home page and startup dialog both link back here if you dismiss them.'
+    ]
   }
 }
 

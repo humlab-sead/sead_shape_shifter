@@ -63,6 +63,17 @@
           value="query-tester"
           :to="{ name: 'query-tester' }"
         />
+
+        <v-list-item title="What's New" value="whats-new" :to="{ name: 'whats-new' }">
+          <template #prepend>
+            <v-badge :model-value="hasUnreadWhatsNew" color="primary" dot floating offset-x="2" offset-y="8">
+              <v-icon icon="mdi-new-box" />
+            </v-badge>
+          </template>
+          <template v-if="hasUnreadWhatsNew && !rail" #append>
+            <v-chip size="x-small" color="primary" variant="flat">New</v-chip>
+          </template>
+        </v-list-item>
       </v-list>
 
       <!-- Context-Sensitive Help -->
@@ -160,7 +171,7 @@
                 <v-icon :icon="cmd.icon" />
               </template>
               <v-list-item-title>{{ cmd.title }}</v-list-item-title>
-              <template #append>
+              <template v-if="cmd.shortcut" #append>
                 <v-chip size="small" variant="outlined">
                   {{ cmd.shortcut }}
                 </v-chip>
@@ -209,6 +220,46 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog v-model="showWhatsNewDialog" max-width="720">
+      <v-card v-if="latestWhatsNewNote">
+        <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
+          <div class="d-flex align-center">
+            <v-icon class="mr-3" color="primary">mdi-new-box</v-icon>
+            <div>
+              <div>What's New in v{{ latestWhatsNewNote.version }}</div>
+              <div v-if="latestWhatsNewNote.date" class="text-caption text-medium-emphasis mt-1">
+                {{ latestWhatsNewNote.date }}
+              </div>
+            </div>
+          </div>
+          <v-chip size="small" color="primary" variant="outlined">New in this release</v-chip>
+        </v-card-title>
+        <v-card-text>
+          <div class="text-body-2 text-medium-emphasis mb-4">
+            Recent user-visible improvements are available. You can always reopen these notes from the navigation menu.
+          </div>
+
+          <v-list bg-color="transparent" class="pa-0" density="comfortable">
+            <v-list-item
+              v-for="highlight in latestWhatsNewNote.highlights.slice(0, 5)"
+              :key="highlight"
+              class="px-0"
+            >
+              <template #prepend>
+                <v-icon color="primary" size="small">mdi-sparkles</v-icon>
+              </template>
+              <v-list-item-title class="dialog-highlight">{{ highlight }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="dismissWhatsNewDialog">Dismiss</v-btn>
+          <v-btn color="primary" variant="flat" @click="openWhatsNewArchive">View Full Notes</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
       <template #actions>
@@ -246,6 +297,7 @@ import { useTheme } from '@/composables/useTheme'
 import { useSettings } from '@/composables/useSettings'
 import { useNotification } from '@/composables/useNotification'
 import { useProjectStore } from '@/stores'
+import { useWhatsNew } from '@/composables/useWhatsNew'
 import ContextHelp from '@/components/ContextHelp.vue'
 import LogViewerOverlay from '@/components/LogViewerOverlay.vue'
 
@@ -262,8 +314,16 @@ const sidebarWidth = ref(280) // Default width
 const isResizing = ref(false)
 const showCommandPalette = ref(false)
 const showHelpDialog = ref(false)
+const showWhatsNewDialog = ref(false)
 const commandSearch = ref('')
 const showLogViewer = ref(false)
+const whatsNewStorageKey = 'whatsNew:lastSeenVersion'
+const acknowledgedWhatsNewVersion = ref<string | null>(null)
+
+const { latestNote: latestWhatsNewNote, latestVersion: latestWhatsNewVersion, loadLatestNote } = useWhatsNew()
+const hasUnreadWhatsNew = computed(() => {
+  return Boolean(latestWhatsNewVersion.value && latestWhatsNewVersion.value !== acknowledgedWhatsNewVersion.value)
+})
 
 const currentProject = computed(() => route.params.name as string | undefined)
 interface Breadcrumb {
@@ -292,6 +352,8 @@ const breadcrumbs = computed<Breadcrumb[]>(() => {
     crumbs.push({ title: 'Validation', disabled: true })
   } else if (route.name === 'settings') {
     crumbs.push({ title: 'Settings', disabled: true })
+  } else if (route.name === 'whats-new') {
+    crumbs.push({ title: "What's New", disabled: true })
   }
 
   return crumbs
@@ -321,6 +383,13 @@ const commands = ref<Command[]>([
     action: () => router.push('/projects'),
   },
   {
+    id: 'goto-whats-new',
+    title: "Open What's New",
+    icon: 'mdi-new-box',
+    shortcut: '',
+    action: () => router.push('/whats-new'),
+  },
+  {
     id: 'open-logs',
     title: 'Open Log Viewer',
     icon: 'mdi-console-line',
@@ -343,6 +412,26 @@ function executeCommand(cmd: Command) {
 
 function handleNewProject() {
   router.push('/projects')
+}
+
+function acknowledgeLatestWhatsNew() {
+  if (!latestWhatsNewVersion.value) {
+    return
+  }
+
+  acknowledgedWhatsNewVersion.value = latestWhatsNewVersion.value
+  localStorage.setItem(whatsNewStorageKey, latestWhatsNewVersion.value)
+}
+
+function dismissWhatsNewDialog() {
+  acknowledgeLatestWhatsNew()
+  showWhatsNewDialog.value = false
+}
+
+function openWhatsNewArchive() {
+  acknowledgeLatestWhatsNew()
+  showWhatsNewDialog.value = false
+  router.push('/whats-new')
 }
 
 async function handleRefresh() {
@@ -417,6 +506,7 @@ function handleKeydown(event: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
+  acknowledgedWhatsNewVersion.value = localStorage.getItem(whatsNewStorageKey)
   
   // Load saved sidebar width
   const savedWidth = localStorage.getItem('sidebarWidth')
@@ -433,6 +523,20 @@ onMounted(() => {
   } else {
     drawer.value = false
   }
+
+  void loadLatestNote()
+    .then((note) => {
+      if (!note) {
+        return
+      }
+
+      if (acknowledgedWhatsNewVersion.value !== note.version) {
+        showWhatsNewDialog.value = true
+      }
+    })
+    .catch((loadError) => {
+      console.error('Failed to load latest release note:', loadError)
+    })
 })
 
 onUnmounted(() => {
@@ -463,6 +567,10 @@ watch(
 
 .cursor-pointer {
   cursor: pointer;
+}
+
+.dialog-highlight {
+  white-space: normal;
 }
 
 .resize-handle {
