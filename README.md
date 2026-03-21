@@ -105,11 +105,6 @@ uv is a high-performance Python package installer and resolver:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-**Windows:**
-```powershell
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
 **Via pip (alternative):**
 ```bash
 pip install uv
@@ -131,7 +126,7 @@ cd sead_shape_shifter
 
 #### 3. Install Python Dependencies
 
-Shape Shifter uses a unified virtual environment for the core library, backend API, and development tools:
+Shape Shifter uses a single virtual environment for the core library, backend API, and development tools:
 
 ```bash
 # Full installation (recommended for development)
@@ -144,11 +139,6 @@ uv pip install -e .
 # Core + API (no development tools)
 uv pip install -e ".[api]"
 ```
-
-The unified environment provides:
-- Single virtual environment at `.venv/` for all Python components
-- Consistent dependency versions across core and API
-- Simplified development workflow without multiple environment management
 
 #### 4. Install UCanAccess (MS Access Support)
 
@@ -236,22 +226,22 @@ Process data transformations using the CLI:
 
 ```bash
 # Basic transformation to Excel
-python src/survey2excel.py output.xlsx \
+python src/shapeshift.py output.xlsx \
   --project projects/my_project.yml \
   --mode xlsx
 
 # Transform with validation
-python src/survey2excel.py output.xlsx \
+python src/shapeshift.py output.xlsx \
   --project projects/my_project.yml \
   --validate-then-exit
 
 # Export to CSV
-python src/survey2excel.py output/ \
+python src/shapeshift.py output/ \
   --project projects/my_project.yml \
   --mode csv
 
 # With environment variables
-python src/survey2excel.py output.xlsx \
+python src/shapeshift.py output.xlsx \
   --project projects/my_project.yml \
   --env-file projects/.env \
   --mode xlsx
@@ -288,6 +278,10 @@ entities:
           require_unique_right: true
 
 options:
+
+Identity note:
+- `system_id` is an internal Shape Shifter identity. For non-fixed entities, do not import it from SQL or spreadsheets and do not list it in `columns`.
+- `public_id` is different: it may come from the source when the source genuinely provides that identifier, or it may be populated later for export/reconciliation.
   data_sources:
     locations_csv:
       type: csv
@@ -338,7 +332,7 @@ foreign_keys:
       require_unique_right: true    # Parent keys must be unique
       
       # Null handling
-      allow_null_keys: false        # No null foreign keys
+      allow_null_keys: false        # Explicit strict override for missing key parts
       
       # Row limits
       allow_row_decrease: false     # Prevent data loss
@@ -349,7 +343,9 @@ foreign_keys:
 - **Cardinality**: `one_to_one`, `many_to_one`, `one_to_many`, `many_to_many`
 - **Match Requirements**: Control which rows require matching records
 - **Uniqueness**: Enforce key uniqueness on either side of the relationship
-- **Null Handling**: Configure tolerance for null key values
+- **Null Handling**: Omit `allow_null_keys` to use the lookup-style `left` join default, or set it explicitly for strict/optional behavior
+
+For lookup-style `left` joins that resolve a remote identity from alternative keys, missing local key parts are treated as unresolved links by default: the row is kept, the foreign key stays empty, and missing values never match missing values.
 - **Row Count**: Prevent unexpected data loss during linking
 
 Constraint violations generate detailed error messages identifying the specific entity and constraint that failed.

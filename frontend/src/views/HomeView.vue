@@ -32,8 +32,8 @@
                 </v-list-item>
               </v-list>
             </v-col>
-            <v-col cols="12" md="6" class="d-flex justify-end align-start">
-              <v-card variant="plain" class="mt-n4">
+            <v-col cols="12" md="6" class="d-flex flex-column align-stretch home-side-cards ga-4">
+              <v-card variant="plain">
                 <v-card-title class="pt-0">Backend Status</v-card-title>
                 <v-card-text>
                   <v-chip
@@ -46,6 +46,31 @@
                     <div><strong>Version:</strong> {{ healthStatus.version }}</div>
                     <div><strong>Environment:</strong> {{ healthStatus.environment }}</div>
                   </div>
+                </v-card-text>
+              </v-card>
+
+              <v-card v-if="latestNote" variant="tonal" color="primary" class="latest-update-card">
+                <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
+                  <div class="d-flex align-center">
+                    <v-icon class="mr-2">mdi-new-box</v-icon>
+                    Latest Update
+                  </div>
+                  <v-chip size="small" variant="outlined">v{{ latestNote.version }}</v-chip>
+                </v-card-title>
+                <v-card-text>
+                  <div v-if="latestNote.date" class="text-caption text-medium-emphasis mb-2">{{ latestNote.date }}</div>
+                  <div class="text-body-2 mb-3">{{ latestNote.highlights[0] || 'Recent workflow and UI improvements are available.' }}</div>
+                  <v-list bg-color="transparent" density="compact" class="pa-0 mb-2">
+                    <v-list-item v-for="highlight in latestNote.highlights.slice(1, 3)" :key="highlight" class="px-0">
+                      <template #prepend>
+                        <v-icon size="small" color="primary">mdi-chevron-right</v-icon>
+                      </template>
+                      <v-list-item-title class="text-body-2 home-highlight">{{ highlight }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                  <v-btn variant="outlined" size="small" :to="{ name: 'whats-new' }">
+                    View What's New
+                  </v-btn>
                 </v-card-text>
               </v-card>
             </v-col>
@@ -73,6 +98,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import seadLogo from '@/assets/images/SEAD-logo-subtext.svg'
+import { useWhatsNew } from '@/composables/useWhatsNew'
 
 const navItems = [
   {
@@ -93,6 +119,12 @@ const navItems = [
     icon: 'mdi-cog',
     to: { name: 'settings' },
   },
+  {
+    title: "What's New",
+    description: 'See the latest user-facing changes',
+    icon: 'mdi-new-box',
+    to: { name: 'whats-new' },
+  },
 ]
 
 const healthStatus = ref({
@@ -101,7 +133,15 @@ const healthStatus = ref({
   environment: '',
 })
 
+const { latestNote, loadLatestNote } = useWhatsNew()
+
 onMounted(async () => {
+  try {
+    await loadLatestNote()
+  } catch (loadError) {
+    console.error('Failed to load latest release note:', loadError)
+  }
+
   try {
     const response = await axios.get('/api/v1/health')
     healthStatus.value = {
@@ -126,6 +166,18 @@ onMounted(async () => {
 
 .flex-grow-1 {
   flex: 1 1 auto;
+}
+
+.home-side-cards {
+  min-height: 100%;
+}
+
+.latest-update-card {
+  border: 1px solid rgba(var(--v-theme-primary), 0.18);
+}
+
+.home-highlight {
+  white-space: normal;
 }
 
 .sead-footer-logo {

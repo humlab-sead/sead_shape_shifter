@@ -65,6 +65,7 @@
         <li><strong>Constants:</strong> <code>"literal_value"</code> or <code>123</code> - Set fixed values</li>
         <li><strong>Null values:</strong> Leave empty for null</li>
       </ul>
+      DSL formulas starting with <code>=</code> are also supported, for example <code>=concat(upper(code), '-', trim(name))</code>.
       Template strings are null-safe and can reference FK columns added during linking.
     </v-alert>
   </div>

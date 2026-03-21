@@ -22,7 +22,7 @@
     <!-- Schema Details -->
     <div v-else>
       <!-- Columns -->
-      <v-card variant="outlined">
+      <v-card variant="outlined" class="column-section-card">
         <v-card-title class="text-subtitle-1">
           <v-icon icon="mdi-table-column" size="small" class="mr-2" />
           Columns ({{ tableSchema.columns.length }})
@@ -30,49 +30,51 @@
 
         <v-divider />
 
-        <v-list density="compact">
-          <v-list-item v-for="column in tableSchema?.columns ?? []" :key="column.name" class="column-item">
-            <template #prepend>
-              <v-icon :icon="getColumnIcon(column)" :color="getColumnColor(column)" size="small" />
-            </template>
+        <div class="column-list-scroll">
+          <v-list density="compact" class="column-list">
+            <v-list-item v-for="column in tableSchema?.columns ?? []" :key="column.name" class="column-item" density="compact">
+              <template #prepend>
+                <v-icon :icon="getColumnIcon(column)" :color="getColumnColor(column)" size="small" />
+              </template>
 
-            <v-list-item-title class="d-flex align-center flex-wrap">
-              <span class="font-weight-medium">{{ column.name }}</span>
-              <span class="text-monospace text-caption ml-2 text-grey">{{ formatDataType(column) }}</span>
-              <v-chip v-if="column.default" size="x-small" variant="outlined" class="ml-2 mr-1">
-                default: {{ column.default }}
-              </v-chip>
-              <v-chip v-if="column.comment" size="x-small" variant="text" class="ml-1">
-                {{ column.comment }}
-              </v-chip>
-            </v-list-item-title>
-
-            <v-list-item-subtitle>
-              <!-- Type Mapping Suggestion -->
-              <div v-if="showTypeMappings && typeMappings[column.name]" class="mt-2">
-                <v-chip
-                  size="small"
-                  :color="getConfidenceColor(typeMappings[column.name]?.confidence ?? 0)"
-                  variant="flat"
-                  class="mr-1"
-                >
-                  <v-icon icon="mdi-arrow-right-thin" size="small" class="mr-1" />
-                  {{ typeMappings[column.name]?.suggested_type }}
-                  <v-tooltip activator="parent" location="bottom">
-                    {{ typeMappings[column.name]?.reason }}
-                    <br />Confidence: {{ ((typeMappings[column.name]?.confidence ?? 0) * 100).toFixed(0) }}%
-                  </v-tooltip>
+              <v-list-item-title class="column-item-title d-flex align-center flex-wrap">
+                <span class="font-weight-medium">{{ column.name }}</span>
+                <span class="text-monospace text-caption ml-2 text-grey">{{ formatDataType(column) }}</span>
+                <v-chip v-if="column.default" size="x-small" variant="outlined" class="ml-2 mr-1">
+                  default: {{ column.default }}
                 </v-chip>
-                <span
-                  v-if="(typeMappings[column.name]?.alternatives?.length ?? 0) > 0"
-                  class="text-caption text-grey"
-                >
-                  or {{ typeMappings[column.name]?.alternatives?.join(', ') }}
-                </span>
-              </div>
-            </v-list-item-subtitle>
-          </v-list-item>
-        </v-list>
+                <v-chip v-if="column.comment" size="x-small" variant="text" class="ml-1">
+                  {{ column.comment }}
+                </v-chip>
+              </v-list-item-title>
+
+              <v-list-item-subtitle class="column-item-subtitle">
+                <!-- Type Mapping Suggestion -->
+                <div v-if="showTypeMappings && typeMappings[column.name]" class="mt-1">
+                  <v-chip
+                    size="small"
+                    :color="getConfidenceColor(typeMappings[column.name]?.confidence ?? 0)"
+                    variant="flat"
+                    class="mr-1"
+                  >
+                    <v-icon icon="mdi-arrow-right-thin" size="small" class="mr-1" />
+                    {{ typeMappings[column.name]?.suggested_type }}
+                    <v-tooltip activator="parent" location="bottom">
+                      {{ typeMappings[column.name]?.reason }}
+                      <br />Confidence: {{ ((typeMappings[column.name]?.confidence ?? 0) * 100).toFixed(0) }}%
+                    </v-tooltip>
+                  </v-chip>
+                  <span
+                    v-if="(typeMappings[column.name]?.alternatives?.length ?? 0) > 0"
+                    class="text-caption text-grey"
+                  >
+                    or {{ typeMappings[column.name]?.alternatives?.join(', ') }}
+                  </span>
+                </div>
+              </v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+        </div>
       </v-card>
 
       <!-- Foreign Keys -->
@@ -156,7 +158,7 @@
       <!-- Schema Details -->
       <div v-else>
         <!-- Columns -->
-        <v-card variant="outlined">
+        <v-card variant="outlined" class="column-section-card">
           <v-card-title class="text-subtitle-1">
             <v-icon icon="mdi-table-column" size="small" class="mr-2" />
             Columns ({{ tableSchema.columns.length }})
@@ -164,49 +166,51 @@
 
           <v-divider />
 
-          <v-list density="compact">
-            <v-list-item v-for="column in tableSchema?.columns ?? []" :key="column.name" class="column-item">
-              <template #prepend>
-                <v-icon :icon="getColumnIcon(column)" :color="getColumnColor(column)" size="small" />
-              </template>
+          <div class="column-list-scroll">
+            <v-list density="compact" class="column-list">
+              <v-list-item v-for="column in tableSchema?.columns ?? []" :key="column.name" class="column-item" density="compact">
+                <template #prepend>
+                  <v-icon :icon="getColumnIcon(column)" :color="getColumnColor(column)" size="small" />
+                </template>
 
-              <v-list-item-title class="d-flex align-center flex-wrap">
-                <span class="font-weight-medium">{{ column.name }}</span>
-                <span class="text-monospace text-caption ml-2 text-grey">{{ formatDataType(column) }}</span>
-                <v-chip v-if="column.default" size="x-small" variant="outlined" class="ml-2 mr-1">
-                  default: {{ column.default }}
-                </v-chip>
-                <v-chip v-if="column.comment" size="x-small" variant="text" class="ml-1">
-                  {{ column.comment }}
-                </v-chip>
-              </v-list-item-title>
-
-              <v-list-item-subtitle>
-                <!-- Type Mapping Suggestion -->
-                <div v-if="showTypeMappings && typeMappings[column.name]" class="mt-2">
-                  <v-chip
-                    size="small"
-                    :color="getConfidenceColor(typeMappings[column.name]?.confidence ?? 0)"
-                    variant="flat"
-                    class="mr-1"
-                  >
-                    <v-icon icon="mdi-arrow-right-thin" size="small" class="mr-1" />
-                    {{ typeMappings[column.name]?.suggested_type }}
-                    <v-tooltip activator="parent" location="bottom">
-                      {{ typeMappings[column.name]?.reason }}
-                      <br />Confidence: {{ ((typeMappings[column.name]?.confidence ?? 0) * 100).toFixed(0) }}%
-                    </v-tooltip>
+                <v-list-item-title class="column-item-title d-flex align-center flex-wrap">
+                  <span class="font-weight-medium">{{ column.name }}</span>
+                  <span class="text-monospace text-caption ml-2 text-grey">{{ formatDataType(column) }}</span>
+                  <v-chip v-if="column.default" size="x-small" variant="outlined" class="ml-2 mr-1">
+                    default: {{ column.default }}
                   </v-chip>
-                  <span
-                    v-if="(typeMappings[column.name]?.alternatives?.length ?? 0) > 0"
-                    class="text-caption text-grey"
-                  >
-                    or {{ typeMappings[column.name]?.alternatives?.join(', ') }}
-                  </span>
-                </div>
-              </v-list-item-subtitle>
-            </v-list-item>
-          </v-list>
+                  <v-chip v-if="column.comment" size="x-small" variant="text" class="ml-1">
+                    {{ column.comment }}
+                  </v-chip>
+                </v-list-item-title>
+
+                <v-list-item-subtitle class="column-item-subtitle">
+                  <!-- Type Mapping Suggestion -->
+                  <div v-if="showTypeMappings && typeMappings[column.name]" class="mt-1">
+                    <v-chip
+                      size="small"
+                      :color="getConfidenceColor(typeMappings[column.name]?.confidence ?? 0)"
+                      variant="flat"
+                      class="mr-1"
+                    >
+                      <v-icon icon="mdi-arrow-right-thin" size="small" class="mr-1" />
+                      {{ typeMappings[column.name]?.suggested_type }}
+                      <v-tooltip activator="parent" location="bottom">
+                        {{ typeMappings[column.name]?.reason }}
+                        <br />Confidence: {{ ((typeMappings[column.name]?.confidence ?? 0) * 100).toFixed(0) }}%
+                      </v-tooltip>
+                    </v-chip>
+                    <span
+                      v-if="(typeMappings[column.name]?.alternatives?.length ?? 0) > 0"
+                      class="text-caption text-grey"
+                    >
+                      or {{ typeMappings[column.name]?.alternatives?.join(', ') }}
+                    </span>
+                  </div>
+                </v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </div>
         </v-card>
 
         <!-- Foreign Keys -->
@@ -258,7 +262,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
 import schemaApi from '@/api/schema'
 import type { TableSchema, TypeMapping } from '@/types/schema'
@@ -380,10 +384,25 @@ onBeforeUnmount(() => {
 defineExpose({
   loadSchema,
   refreshSchema,
+  loadTypeMappings,
 })
 </script>
 
 <style scoped>
+.column-section-card {
+  overflow: hidden;
+}
+
+.column-list-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.column-list {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 .column-item {
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
@@ -392,8 +411,30 @@ defineExpose({
   border-bottom: none;
 }
 
+.column-item :deep(.v-list-item__prepend) {
+  align-self: flex-start;
+  margin-right: 8px;
+  padding-top: 2px;
+}
+
+.column-item :deep(.v-list-item__content) {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.column-item-title {
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.column-item-subtitle {
+  margin-top: 2px;
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
 .text-monospace {
   font-family: 'Courier New', monospace;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 </style>

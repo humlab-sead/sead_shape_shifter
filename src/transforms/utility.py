@@ -64,6 +64,7 @@ def merge_with_null_safety(
     local_df: pd.DataFrame,
     remote_df: pd.DataFrame,
     allow_null_keys: bool = False,
+    use_null_safe_merge: bool | None = None,
     **opts,
 ) -> pd.DataFrame:
     """Perform a merge that treats nulls in merge keys as non-matching values.
@@ -84,8 +85,10 @@ def merge_with_null_safety(
     left_on: list[str] = list(opts.get("left_on") or [])
     right_on: list[str] = list(opts.get("right_on") or [])
     how: str = opts.get("how", "inner")
+    if use_null_safe_merge is None:
+        use_null_safe_merge = allow_null_keys
 
-    if how == "cross" or not allow_null_keys or not left_on or not right_on:
+    if how == "cross" or not use_null_safe_merge or not left_on or not right_on:
         return pd.merge(local_df, remote_df, **opts)
 
     if len(left_on) != len(right_on):

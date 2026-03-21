@@ -1,6 +1,6 @@
 /**
  * Filter schema types for dynamic filter configuration.
- * 
+ *
  * These types mirror the backend FilterSchema models and enable
  * type-safe filter configuration throughout the application.
  */
@@ -8,6 +8,8 @@
 export type FilterFieldType = 'string' | 'boolean' | 'entity' | 'column'
 
 export type OptionsSource = 'entities' | 'columns'
+
+export type FilterStage = 'extract' | 'after_link' | 'after_unnest'
 
 /**
  * Metadata for a single filter configuration field.
@@ -37,6 +39,7 @@ export interface FilterSchema {
  * Type is required, all other fields are dynamic based on the filter schema.
  */
 export interface FilterConfig {
+  stage?: FilterStage | null
   type: string
   [key: string]: any
 }

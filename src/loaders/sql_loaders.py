@@ -125,26 +125,56 @@ class SqlLoader(DataLoader):
     def options(self) -> dict[str, Any]:
         return self.data_source.options if self.data_source else {}
 
+    def normalize_query_metadata(  # pylint: disable=unused-argument
+        self, table_cfg: TableConfig, data: pd.DataFrame, auto_detect_columns: bool
+    ) -> pd.DataFrame:
+        """Allow loaders to repair vendor-specific metadata quirks before validation."""
+        return data
+
     def _validate_columns(self, table_cfg: TableConfig, data: pd.DataFrame, auto_detect_columns: bool) -> None:
+
+        if not table_cfg.check_column_names:
+            logger.info(f"[{table_cfg.entity_name}] Column name validation disabled; skipping SQL column validation.")
+            return
 
         if table_cfg.unnest:
             logger.warning(f"[{table_cfg.entity_name}] NOT IMPLEMENTED VALIDATION: Unnesting of SQL data, skipping column validation.")
             return
 
+        detected_columns: list[str] = list(data.columns)
+
         if auto_detect_columns:
 
-            if table_cfg.columns:
-                logger.warning("Auto-detect columns is enabled, but found configured columns. Overriding configured columns.")
-
-            missing_keys: list[str] = [k for k in table_cfg.keys if k not in data.columns]
+            missing_keys: list[str] = [k for k in table_cfg.keys if k not in detected_columns]
 
             if missing_keys:
-                raise ValueError(f"Auto-detect columns is enabled, but key column(s) {missing_keys} are missing in the data.")
+                raise ValueError(
+                    f"[{table_cfg.entity_name}] Auto-detect columns is enabled, but key column(s) {missing_keys} are missing in the data."
+                )
+
+            configured_columns: list[str] = table_cfg.safe_columns
+            if configured_columns:
+                derived_columns: set[str] = set(table_cfg.identity_columns) | set(table_cfg.extra_column_names)
+                source_backed_columns: list[str] = [column for column in configured_columns if column not in derived_columns]
+                required_columns: list[str] = list(dict.fromkeys([*source_backed_columns, *sorted(table_cfg.keys)]))
+                missing_columns: list[str] = [column for column in required_columns if column not in detected_columns]
+                if missing_columns:
+                    raise ValueError(
+                        f"[{table_cfg.entity_name}] Auto-detected SQL columns do not satisfy stored schema. "
+                        f"Stored columns: {configured_columns}. Query-backed columns: {source_backed_columns}. "
+                        f"Keys: {sorted(table_cfg.keys)}. "
+                        f"Missing from detected columns: {missing_columns}. Detected columns: {detected_columns}. "
+                        "Sync the entity columns before executing the workflow."
+                    )
+
+                logger.info(f"[{table_cfg.entity_name}] Auto-detect columns confirmed query result satisfies stored schema.")
+            else:
+                logger.info(
+                    f"[{table_cfg.entity_name}] Auto-detect columns bootstrap mode: "
+                    "using query result metadata because no stored columns are configured."
+                )
 
             return
-
-        if not table_cfg.columns:
-            raise ValueError(f"[{table_cfg.entity_name}] No columns specified in configuration, and auto-detect is disabled.")
 
         if len(table_cfg.columns) != len(data.columns):
             raise ValueError(
@@ -152,18 +182,8 @@ class SqlLoader(DataLoader):
                 f"query result columns length ({len(data.columns)})."
             )
 
-        if len(set(table_cfg.columns)) != len(table_cfg.columns):
-            raise ValueError(f"[{table_cfg.entity_name}] Configured columns contain duplicates, which is not allowed.")
-
-        missing_keys: list[str] = [k for k in table_cfg.keys if k not in table_cfg.columns]
-        if missing_keys:
-            raise ValueError(
-                f"Key column(s) {missing_keys} must be included in the specified columns for entity '{table_cfg.entity_name}'."
-            )
-
         # Note: In manual mode we rename by position (data.columns = table_cfg.columns).
-        # We only need to ensure counts match (validated above) and that required key columns
-        # are included in the configured names.
+        # We only need to ensure counts match here. Config-only checks live in EntitySpecification.
 
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         """Load SQL data entity based on configuration.
@@ -180,12 +200,15 @@ class SqlLoader(DataLoader):
         if table_cfg.auto_detect_columns is not None:
             auto_detect_columns = bool(table_cfg.auto_detect_columns)
 
+        data = self.normalize_query_metadata(table_cfg, data, auto_detect_columns)
+
         self._validate_columns(table_cfg, data, auto_detect_columns)
 
         if auto_detect_columns:
-            table_cfg.columns = list(data.columns)
+            effective_columns: list[str] = table_cfg.safe_columns or list(data.columns)
         else:
-            data.columns = table_cfg.columns
+            effective_columns = table_cfg.safe_columns
+            data.columns = effective_columns
 
         if table_cfg.system_id and table_cfg.system_id not in data.columns:
             data = add_system_id(data, table_cfg.system_id)
@@ -677,32 +700,82 @@ class UCanAccessSqlLoader(SqlLoader):
             raise ValueError("Data source configuration is required for UCanAccessSqlLoader")
         return f"jdbc:ucanaccess://{self.filename}"
 
+    @staticmethod
+    def _configured_query_columns(table_cfg: TableConfig) -> list[str]:
+        """Return the expected raw query column order from stored keys and query-backed columns."""
+        ordered_keys: list[str] = list(table_cfg.entity_cfg.get("keys", []) or [])
+        derived_columns: set[str] = set(table_cfg.identity_columns) | set(table_cfg.extra_column_names)
+        source_backed_columns: list[str] = [
+            column for column in table_cfg.safe_columns if column not in derived_columns and column not in ordered_keys
+        ]
+        return ordered_keys + source_backed_columns
+
+    def _canonicalize_access_column_names(self, table_cfg: TableConfig, data: pd.DataFrame) -> pd.DataFrame:
+        """Normalize Access result metadata to configured casing when names match ignoring case."""
+        configured_query_columns: list[str] = self._configured_query_columns(table_cfg)
+        if not configured_query_columns:
+            return data
+
+        configured_by_normalized_name: dict[str, str] = {column.casefold(): column for column in configured_query_columns}
+        normalized_columns: list[str] = [str(column).casefold() for column in data.columns]
+        renamed_columns: list[str] = [
+            configured_by_normalized_name.get(column, str(original)) for original, column in zip(data.columns, normalized_columns)
+        ]
+
+        if list(data.columns) == renamed_columns:
+            return data
+
+        renamed: pd.DataFrame = data.copy()
+        renamed.columns = renamed_columns
+        return renamed
+
+    def normalize_query_metadata(self, table_cfg: TableConfig, data: pd.DataFrame, auto_detect_columns: bool) -> pd.DataFrame:
+        """Repair UCanAccess alias casing before validation."""
+        if not auto_detect_columns:
+            return data
+
+        return self._canonicalize_access_column_names(table_cfg, data)
+
     async def read_sql(self, sql: str) -> pd.DataFrame:
         return self.read_sql_sync(sql)
 
     def inject_limit(self, sql: str, limit: int) -> str:
         """Add top clause to SQL query if not already present."""
-        sql_lower: str = sql.lower().strip()
+        sql_stripped = sql.strip()
+        sql_lower: str = sql_stripped.lower()
         if " top " in sql_lower:
             return sql
         if not sql_lower.startswith("select"):
             return sql
-        return f"select top {limit} {sql_lower[6:].strip().rstrip(';')};"
+        # Preserve original case by operating on sql_stripped, not sql_lower
+        return f"select top {limit} {sql_stripped[6:].strip().rstrip(';')};"
+
+    @staticmethod
+    def _result_columns_from_cursor(cursor: Any) -> list[str]:
+        """Prefer JDBC column labels over JayDeBeApi description names for query aliases."""
+        metadata = getattr(cursor, "_meta", None)
+        if metadata is not None:
+            try:
+                return [str(metadata.getColumnLabel(col)).strip("[]") for col in range(1, metadata.getColumnCount() + 1)]
+            except Exception as error:  # pragma: no cover - defensive fallback ; pylint: disable=broad-except
+                logger.debug(f"Falling back to cursor.description for Access column names: {error}")
+
+        return [str(desc[0]).strip("[]") for desc in cursor.description] if cursor.description else []
 
     def read_sql_sync(self, sql: str) -> pd.DataFrame:
         with self.connection() as conn:
             with self._cursor(conn) as cursor:
                 cursor.execute(sql)
-                # Convert Java String column names to Python strings
-                columns = [str(desc[0]) for desc in cursor.description] if cursor.description else []
+                columns = self._result_columns_from_cursor(cursor)
                 rows = cursor.fetchall()
                 df = pd.DataFrame(rows, columns=columns)
 
                 # Convert all Java String objects in the DataFrame to Python strings
                 # JPype 1.6.0 no longer auto-converts Java Strings
-                for col in df.columns:
-                    if df[col].dtype == object:
-                        df[col] = df[col].apply(lambda x: str(x) if x is not None else x)
+                for index in range(len(df.columns)):
+                    series = df.iloc[:, index]
+                    if series.dtype == object:
+                        df.iloc[:, index] = series.apply(lambda value: str(value) if value is not None else value)
 
                 return df
 
@@ -809,7 +882,7 @@ class UCanAccessSqlLoader(SqlLoader):
 
     async def get_table_schema(self, table_name: str, **kwargs) -> CoreSchema.TableSchema:  # pylint: disable=unused-argument
         with self.connection() as conn:
-            meta = conn.jconn.getMetaData()
+            meta: jpype.JClass = conn.jconn.getMetaData()
             primary_keys: list[str] = self._get_primary_keys(meta, table_name)
             columns: list[CoreSchema.ColumnMetadata] = self._get_columns(meta, table_name)
             row_count: int | None = await self.get_table_row_count(table_name, None)
@@ -823,8 +896,8 @@ class UCanAccessSqlLoader(SqlLoader):
                 indexes=[],
             )
 
-    def _get_tables(self, meta, **kwargs) -> dict[str, CoreSchema.TableMetadata]:  # pylint: disable=unused-argument
-        rs = meta.getTables(None, None, "%", ["TABLE"])
+    def _get_tables(self, meta: jpype.JClass, **kwargs) -> dict[str, CoreSchema.TableMetadata]:  # pylint: disable=unused-argument
+        rs: jpype.JClass = meta.getTables(None, None, "%", ["TABLE"])
         try:
             tables: dict[str, CoreSchema.TableMetadata] = {}
             while rs.next():
@@ -832,7 +905,7 @@ class UCanAccessSqlLoader(SqlLoader):
                 if table_name.startswith("MSys") or table_name.startswith("~"):
                     continue
                 # Convert Java strings to Python strings
-                comment = rs.getString("REMARKS")
+                comment: jpype.JClass = rs.getString("REMARKS")
                 tables[table_name] = CoreSchema.TableMetadata(
                     name=table_name, schema=None, comment=str(comment) if comment else None, row_count=0
                 )
@@ -840,7 +913,7 @@ class UCanAccessSqlLoader(SqlLoader):
             rs.close()
         return tables
 
-    def _get_columns(self, meta, table_name: str) -> list[CoreSchema.ColumnMetadata]:
+    def _get_columns(self, meta: jpype.JClass, table_name: str) -> list[CoreSchema.ColumnMetadata]:
         rs = meta.getColumns(None, None, table_name, "%")
         try:
             columns: list[CoreSchema.ColumnMetadata] = []
@@ -849,8 +922,8 @@ class UCanAccessSqlLoader(SqlLoader):
                 # Convert Java strings to Python strings
                 column_name = str(rs.getString("COLUMN_NAME"))
                 data_type = str(rs.getString("TYPE_NAME"))
-                column_def = rs.getString("COLUMN_DEF")
-                default = str(column_def) if column_def else None
+                column_def: jpype.JClass = rs.getString("COLUMN_DEF")
+                default: str | None = str(column_def) if column_def else None
 
                 columns.append(
                     CoreSchema.ColumnMetadata(
@@ -866,7 +939,7 @@ class UCanAccessSqlLoader(SqlLoader):
             rs.close()
         return columns
 
-    def _get_primary_keys(self, meta, table_name: str) -> list[str]:
+    def _get_primary_keys(self, meta: jpype.JClass, table_name: str) -> list[str]:
         """
         Return primary key column names in correct order.
         """

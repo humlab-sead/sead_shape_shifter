@@ -126,3 +126,4 @@ output/*.xlsx
 **/test-results
 sead-tools
 docs/projects
+tests/test_data/projects/arbodat/backups

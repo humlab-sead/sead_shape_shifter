@@ -20,11 +20,11 @@ def test_raise_fk_constraint_validation_error_formats_null_key_violation() -> No
         _raise_fk_constraint_validation_error(error, "site_location")
 
     exc = exc_info.value
-    assert exc.message == "Validation failed for site_location -> location: null values found in remote key 'location_name'."
+    assert exc.message == "Validation failed for site_location -> location: missing values found in remote key 'location_name'."
     assert exc.context["key_column"] == "location_name"
     assert exc.context["key_side"] == "remote"
     assert exc.recoverable is True
-    assert any("Allow Null Keys" in tip for tip in exc.tips)
+    assert any("Allow missing Join Keys" in tip for tip in exc.tips)
 
 
 def test_raise_fk_constraint_validation_error_preserves_generic_fk_violation() -> None:

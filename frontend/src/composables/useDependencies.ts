@@ -74,12 +74,18 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
       },
     }))
 
-    const edges: GraphEdge[] = dependencyGraph.value.edges.map(([source, target]) => ({
-      id: `${source}-${target}`,
-      source,
-      target,
-      type: 'dependency' as const,
-      data: {},
+    const edges: GraphEdge[] = dependencyGraph.value.edges.map((edge) => ({
+      id: `${edge.source}-${edge.target}`,
+      source: edge.source,
+      target: edge.target,
+      type: edge.type ?? 'dependency',
+      label: edge.label,
+      data: {
+        local_keys: edge.local_keys,
+        remote_keys: edge.remote_keys,
+        frozen: edge.frozen,
+        via_source_entity: edge.via_source_entity,
+      },
     }))
 
     return {

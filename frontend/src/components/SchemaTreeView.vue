@@ -241,6 +241,11 @@ onMounted(async () => {
     selectedDataSourceName.value = databaseSources.value[0]?.name ?? null
   }
 })
+
+defineExpose({
+  loadTables,
+  refreshTables,
+})
 </script>
 
 <style scoped>

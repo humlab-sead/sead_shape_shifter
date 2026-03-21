@@ -50,6 +50,7 @@ class TestProjectMapperNestedModels:
             ),
             filters=[
                 FilterConfig(
+                    stage="after_unnest",
                     type="exists_in",
                     entity="other",
                     column="key",
@@ -99,6 +100,7 @@ class TestProjectMapperNestedModels:
         filter_cfg = entity_dict["filters"][0]
         assert isinstance(filter_cfg, dict), f"FilterConfig should be dict, got {type(filter_cfg)}"
         assert filter_cfg["type"] == "exists_in"
+        assert filter_cfg["stage"] == "after_unnest"
 
         # Check append
         assert "append" in entity_dict

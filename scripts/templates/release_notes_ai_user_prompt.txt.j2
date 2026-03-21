@@ -1,0 +1,33 @@
+Create a draft user-facing release note in exactly this structure:
+
+# What's New in v{{ version }}
+
+Date: {{ formatted_date }}
+
+## Highlights
+- ...
+
+## New Features
+- ...
+
+## Improvements
+- ...
+
+## Fixes
+- ...
+
+## Upgrade Notes
+- ...
+
+## Learn More
+- Technical changelog: CHANGELOG.md
+- GitHub release: {{ release_url }}
+- Relevant docs: docs/USER_GUIDE.md
+
+Use the technical changelog data below as source material. Prefer the clearest user-facing items and omit internal noise.
+
+Technical changelog input:
+{{ technical_input }}
+
+Heuristic draft for reference only:
+{{ heuristic_draft }}

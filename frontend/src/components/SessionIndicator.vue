@@ -52,7 +52,7 @@ interface Props {
   projectName: string
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 
 const { hasActiveSession, isModified, version, concurrentEditWarning, otherActiveSessions } = useSession()
 

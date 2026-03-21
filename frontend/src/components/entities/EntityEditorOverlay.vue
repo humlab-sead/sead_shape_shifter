@@ -1,7 +1,7 @@
 <template>
   <v-overlay v-model="isOpen" class="entity-editor-overlay" persistent :scrim="true" @click:outside="handleClose">
     <transition name="slide-from-right">
-      <v-card v-if="isOpen" class="overlay-panel" :style="overlayPanelStyle" elevation="24">
+      <v-card v-if="isOpen" class="overlay-panel" :style="overlayPanelStyle" elevation="5">
         <v-toolbar color="primary" density="compact">
           <v-toolbar-title>
             <v-icon icon="mdi-pencil" class="mr-2" />

@@ -82,6 +82,14 @@ const routes: RouteRecordRaw[] = [
       title: 'Help',
     },
   },
+  {
+    path: '/whats-new',
+    name: 'whats-new',
+    component: () => import('@/views/WhatsNewView.vue'),
+    meta: {
+      title: "What's New",
+    },
+  },
 ]
 
 const router = createRouter({

@@ -49,14 +49,14 @@ def _raise_fk_constraint_validation_error(error: ForeignKeyConstraintViolation, 
         raise ConstraintViolationError(
             message=(
                 f"Validation failed for {error.local_entity} -> {error.remote_entity}: "
-                f"null values found in {error.key_side} key '{error.key_column}'."
+                f"missing values found in {error.key_side} key '{error.key_column}'."
             ),
             constraint_type="allow_null_keys",
             entity=error.local_entity,
             tips=[
-                f"Check column '{error.key_column}' in the {error.key_side} entity for null values.",
-                "Clean or filter null values before linking.",
-                "If this relationship is intentionally optional, enable 'Allow Null Keys' in the foreign key constraints.",
+                f"Check column '{error.key_column}' in the {error.key_side} entity for missing values.",
+                "Clean or filter missing values before linking.",
+                "If this relationship is intentionally optional, enable 'Allow missing Join Keys' in the foreign key constraints.",
             ],
             context={
                 "entity": error.local_entity,
@@ -76,7 +76,7 @@ def _raise_fk_constraint_validation_error(error: ForeignKeyConstraintViolation, 
         tips=[
             "Review the foreign key constraint details shown above.",
             "Check the local and remote key columns for invalid or missing values.",
-            "If the relationship is intentionally optional, enable 'Allow Null Keys' in the foreign key constraints.",
+            "If the relationship is intentionally optional, enable 'Allow missing Join Keys' in the foreign key constraints.",
         ],
         context={
             "entity": entity_name,

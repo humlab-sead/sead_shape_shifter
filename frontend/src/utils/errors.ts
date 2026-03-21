@@ -6,6 +6,18 @@
 import type { AxiosError } from 'axios'
 import type { StructuredError, FormattedError } from '@/types'
 
+function normalizeForeignKeyLanguage(text: string | undefined): string | undefined {
+  if (!text) {
+    return text
+  }
+
+  return text
+    .replace(/Allow Null Keys/g, 'Allow Missing Join Keys')
+    .replace(/null values found in/gi, 'missing values found in')
+    .replace(/null keys/gi, 'missing join keys')
+    .replace(/null key/gi, 'missing join key')
+}
+
 /**
  * Type guard to check if error response is a structured error
  */
@@ -39,9 +51,9 @@ function extractErrorDetails(error: any): FormattedError {
     // **Priority 1: Structured domain exception format**
     if (isStructuredError(data)) {
       return {
-        message: data.message,
+        message: normalizeForeignKeyLanguage(data.message) ?? data.message,
         errorType: data.error_type,
-        tips: data.tips,
+        tips: data.tips?.map((tip) => normalizeForeignKeyLanguage(tip) ?? tip),
         context: data.context,
         recoverable: data.recoverable,
       }
@@ -53,7 +65,7 @@ function extractErrorDetails(error: any): FormattedError {
 
       // Split by newlines to separate main error from tips
       const lines = fullDetail.split('\n\n')
-      message = lines[0]
+      message = normalizeForeignKeyLanguage(lines[0]) ?? lines[0]
 
       // Extract tips if present (legacy format)
       if (lines.length > 1) {
@@ -63,8 +75,9 @@ function extractErrorDetails(error: any): FormattedError {
             .split('\n')
             .map((line: string) => line.trim())
             .filter((line: string) => line && line !== 'Tip:')
+            .map((line: string) => normalizeForeignKeyLanguage(line) ?? line)
         } else {
-          detail = tipsSection
+          detail = normalizeForeignKeyLanguage(tipsSection)
         }
       }
     }
@@ -74,10 +87,10 @@ function extractErrorDetails(error: any): FormattedError {
       errorType = data.error_type
     }
     if (data.message && typeof data.message === 'string' && !detail) {
-      detail = data.message
+      detail = normalizeForeignKeyLanguage(data.message)
     }
     if (data.error && typeof data.error === 'string' && !detail) {
-      detail = data.error
+      detail = normalizeForeignKeyLanguage(data.error)
     }
   }
 
@@ -109,14 +122,14 @@ export function formatErrorMessage(error: unknown): FormattedError {
   // Handle regular Error objects
   if (error instanceof Error) {
     return {
-      message: error.message,
+      message: normalizeForeignKeyLanguage(error.message) ?? error.message,
     }
   }
 
   // Handle string errors
   if (typeof error === 'string') {
     return {
-      message: error,
+      message: normalizeForeignKeyLanguage(error) ?? error,
     }
   }
 

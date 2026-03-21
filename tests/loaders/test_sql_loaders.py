@@ -296,6 +296,73 @@ class TestUCanAccessLoader:
         """Create UCanAccessSqlLoader instance."""
         return UCanAccessSqlLoader(data_source=access_config)
 
+    def test_read_sql_sync_handles_duplicate_column_names(self, loader):
+        """read_sql_sync should handle duplicate column names without treating a selection as a DataFrame."""
+
+        class JavaStringMock:
+            def __init__(self, value: str) -> None:
+                self.value = value
+
+            def __str__(self) -> str:
+                return self.value
+
+        mock_cursor = Mock()
+        mock_cursor.description = [("ArchDat",), ("ArchDat",)]
+        mock_cursor.fetchall.return_value = [
+            (JavaStringMock("left"), JavaStringMock("right")),
+            (JavaStringMock("north"), JavaStringMock("south")),
+        ]
+
+        mock_connection = Mock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        with patch.object(loader, "connection") as patched_connection:
+            patched_connection.return_value.__enter__.return_value = mock_connection
+            patched_connection.return_value.__exit__.return_value = None
+
+            result = loader.read_sql_sync("SELECT [ArchDat], [ArchDat] FROM [Example]")
+
+        assert list(result.columns) == ["ArchDat", "ArchDat"]
+        assert result.iloc[:, 0].tolist() == ["left", "north"]
+        assert result.iloc[:, 1].tolist() == ["right", "south"]
+        assert result.iloc[:, 0].dtype == object
+        assert result.iloc[:, 1].dtype == object
+        mock_cursor.close.assert_called_once()
+
+    def test_read_sql_sync_prefers_column_labels_from_jdbc_metadata(self, loader):
+        """read_sql_sync should prefer JDBC column labels when query aliases differ from source names."""
+
+        class JavaStringMock:
+            def __init__(self, value: str) -> None:
+                self.value = value
+
+            def __str__(self) -> str:
+                return self.value
+
+        mock_meta = Mock()
+        mock_meta.getColumnCount.return_value = 3
+        mock_meta.getColumnLabel.side_effect = ["analysis_entity_type", "analysis_entity_value", "ArchDat"]
+
+        mock_cursor = Mock()
+        mock_cursor._meta = mock_meta
+        mock_cursor.description = [("ANALYSIS_ENTITY_TYPE",), ("ArchDat",), ("ArchDat",)]
+        mock_cursor.fetchall.return_value = [
+            (JavaStringMock("relative_dating"), JavaStringMock("BZ"), JavaStringMock("BZ")),
+        ]
+
+        mock_connection = Mock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        with patch.object(loader, "connection") as patched_connection:
+            patched_connection.return_value.__enter__.return_value = mock_connection
+            patched_connection.return_value.__exit__.return_value = None
+
+            result = loader.read_sql_sync("SELECT ...")
+
+        assert list(result.columns) == ["analysis_entity_type", "analysis_entity_value", "ArchDat"]
+        assert result.iloc[0].tolist() == ["relative_dating", "BZ", "BZ"]
+        mock_cursor.close.assert_called_once()
+
     @pytest.mark.asyncio
     async def test_get_tables(self, loader):
         """Should get tables from MS Access database."""
@@ -434,6 +501,103 @@ class TestUCanAccessLoader:
             assert "system_id" in result.columns
 
     @pytest.mark.asyncio
+    async def test_load_rejects_duplicate_detected_columns_without_labels(self, loader):
+        """Access loader should fail schema validation when detected columns still contain duplicate source names."""
+        sample_df = pd.DataFrame(
+            [["18_0025", "P16", "18_0025_0003", "relative_dating", "BZ", None, None, None, None, None, "BZ"]],
+            columns=[
+                "Projekt",
+                "Befu",
+                "ProbNr",
+                "ANALYSIS_ENTITY_TYPE",
+                "ArchDat",
+                "PCODE",
+                "FRAKTION",
+                "CF",
+                "RTYP",
+                "ZUST",
+                "ArchDat",
+            ],
+        )
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "analysis_entity_relative_dating": {
+                    "type": "sql",
+                    "query": "select ...",
+                    "keys": ["Projekt", "Befu", "ProbNr", "analysis_entity_type", "analysis_entity_value"],
+                    "columns": ["PCODE", "Fraktion", "cf", "RTyp", "Zust", "ArchDat"],
+                    "auto_detect_columns": True,
+                    "check_column_names": True,
+                    "public_id": "analysis_entity_id",
+                }
+            },
+            entity_name="analysis_entity_relative_dating",
+        )
+
+        with patch.object(loader, "read_sql", new_callable=AsyncMock) as mock_read_sql:
+            mock_read_sql.return_value = sample_df
+
+            with pytest.raises(ValueError, match=r"key column\(s\) \['analysis_entity_value'\] are missing in the data"):
+                await loader.load("analysis_entity_relative_dating", table_cfg)
+
+    @pytest.mark.asyncio
+    async def test_load_normalizes_access_alias_casing_without_reordering(self, loader):
+        """Access loader should preserve query order while restoring configured alias casing."""
+        sample_df = pd.DataFrame(
+            [["18_0025", "P16", "18_0025_0003", "AECYN", "ORG 0,5", "-", "Sa/Fr", "vk", "abundance", "AECYN|ORG 0,5|-|Sa/Fr|vk", None]],
+            columns=[
+                "Projekt",
+                "Befu",
+                "ProbNr",
+                "PCODE",
+                "Fraktion",
+                "cf",
+                "RTyp",
+                "Zust",
+                "ANALYSIS_ENTITY_TYPE",
+                "ANALYSIS_ENTITY_VALUE",
+                "ARCHDAT",
+            ],
+        )
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "analysis_entity": {
+                    "type": "sql",
+                    "query": "select ...",
+                    "keys": ["Projekt", "Befu", "ProbNr", "analysis_entity_type", "analysis_entity_value"],
+                    "columns": ["PCODE", "Fraktion", "cf", "RTyp", "Zust", "ArchDat"],
+                    "auto_detect_columns": True,
+                    "check_column_names": True,
+                    "public_id": "analysis_entity_id",
+                }
+            },
+            entity_name="analysis_entity",
+        )
+
+        with patch.object(loader, "read_sql", new_callable=AsyncMock) as mock_read_sql:
+            mock_read_sql.return_value = sample_df
+
+            result = await loader.load("analysis_entity", table_cfg)
+
+        assert result.columns.tolist()[1:] == [
+            "Projekt",
+            "Befu",
+            "ProbNr",
+            "PCODE",
+            "Fraktion",
+            "cf",
+            "RTyp",
+            "Zust",
+            "analysis_entity_type",
+            "analysis_entity_value",
+            "ArchDat",
+        ]
+        assert result["analysis_entity_type"].tolist() == ["abundance"]
+        assert result["analysis_entity_value"].tolist() == ["AECYN|ORG 0,5|-|Sa/Fr|vk"]
+
+    @pytest.mark.asyncio
     async def test_get_tables_filters_system_tables(self, loader):
         """Should filter out MS Access system tables."""
         # Mock the _get_tables method to return both user and system tables
@@ -516,8 +680,8 @@ class TestSqlLoaderCore:
         return DummySqlLoader(data_source=Mock())
 
     @pytest.mark.asyncio
-    async def test_load_auto_detects_columns_and_adds_system_id(self, monkeypatch: pytest.MonkeyPatch):
-        """SqlLoader.load should infer columns when configured and append system_id."""
+    async def test_load_auto_detects_columns_without_mutating_config_and_adds_system_id(self, monkeypatch: pytest.MonkeyPatch):
+        """Auto-detect bootstrap should use query metadata without mutating stored columns."""
         loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
 
         sample_df = pd.DataFrame({"col_a": [1, 2], "col_b": ["x", "y"]})
@@ -540,9 +704,145 @@ class TestSqlLoaderCore:
 
         result: pd.DataFrame = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
 
-        assert list(table_cfg.columns) == ["col_a", "col_b"]
+        assert not list(table_cfg.columns)
         assert list(result.columns) == ["system_id", "col_a", "col_b"]
         assert result["system_id"].tolist() == [1, 2]
+
+    @pytest.mark.asyncio
+    async def test_load_auto_detect_rejects_missing_stored_schema_columns(self, monkeypatch: pytest.MonkeyPatch):
+        """Auto-detect mode should fail when the query result no longer satisfies the stored schema."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
+
+        sample_df = pd.DataFrame({"col_a": [1, 2], "col_b": ["x", "y"]})
+        monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "select * from t",
+                    "keys": [],
+                    "columns": ["col_a", "col_c"],
+                    "auto_detect_columns": True,
+                    "check_column_names": True,
+                    "public_id": "sql_id",
+                }
+            },
+            entity_name="sql_entity",
+        )
+
+        with pytest.raises(ValueError, match="Auto-detected SQL columns do not satisfy stored schema"):
+            await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
+
+    @pytest.mark.asyncio
+    async def test_load_auto_detect_accepts_detected_superset_of_stored_schema(self, monkeypatch: pytest.MonkeyPatch):
+        """Auto-detect mode should succeed when detected columns satisfy stored columns and keys."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
+
+        sample_df = pd.DataFrame({"col_a": [1, 2], "col_b": ["x", "y"], "col_extra": [True, False]})
+        monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "select * from t",
+                    "keys": ["col_a"],
+                    "columns": ["col_b"],
+                    "auto_detect_columns": True,
+                    "check_column_names": True,
+                    "public_id": "sql_id",
+                }
+            },
+            entity_name="sql_entity",
+        )
+
+        result: pd.DataFrame = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
+
+        assert list(table_cfg.columns) == ["col_b"]
+        assert list(result.columns) == ["system_id", "col_a", "col_b", "col_extra"]
+
+    @pytest.mark.asyncio
+    async def test_load_auto_detect_ignores_derived_identity_and_extra_columns(self, monkeypatch: pytest.MonkeyPatch):
+        """Auto-detect mode should validate only query-backed stored columns."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
+
+        sample_df = pd.DataFrame({"PCODE": ["a", "b"], "BNam": ["x", "y"], "Fam": ["f1", "f2"]})
+        monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "select * from t",
+                    "keys": ["PCODE"],
+                    "columns": ["taxon_id", "PCODE", "BNam", "Fam"],
+                    "extra_columns": {"system_id": None, "species": "BNam", "author_id": None},
+                    "auto_detect_columns": True,
+                    "check_column_names": True,
+                    "public_id": "taxon_id",
+                }
+            },
+            entity_name="sql_entity",
+        )
+
+        result: pd.DataFrame = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
+
+        assert list(table_cfg.columns) == ["taxon_id", "PCODE", "BNam", "Fam"]
+        assert list(result.columns) == ["system_id", "PCODE", "BNam", "Fam"]
+
+    @pytest.mark.asyncio
+    async def test_load_skips_column_validation_when_disabled(self, monkeypatch: pytest.MonkeyPatch):
+        """check_column_names=false should bypass SQL metadata validation."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
+
+        sample_df = pd.DataFrame({"BotBest": [], "C2": []})
+        monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "select * from t",
+                    "keys": [],
+                    "columns": ["contact_name", "contact_type"],
+                    "auto_detect_columns": True,
+                    "check_column_names": False,
+                    "public_id": "contact_id",
+                }
+            },
+            entity_name="sql_entity",
+        )
+
+        result: pd.DataFrame = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
+
+        assert list(result.columns) == ["system_id", "BotBest", "C2"]
+
+    @pytest.mark.asyncio
+    async def test_load_manual_mode_rejects_query_result_length_mismatch(self, monkeypatch: pytest.MonkeyPatch):
+        """Manual mode should still validate detected query result length at runtime."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
+
+        sample_df = pd.DataFrame({"col_a": [1], "col_b": [2]})
+        monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "select * from t",
+                    "keys": ["col_a"],
+                    "columns": ["col_a"],
+                    "auto_detect_columns": False,
+                    "check_column_names": True,
+                    "public_id": "contact_id",
+                }
+            },
+            entity_name="sql_entity",
+        )
+
+        with pytest.raises(ValueError, match="Configured columns length"):
+            await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
 
     @pytest.mark.asyncio
     async def test_load_rejects_non_sql_entity(self):

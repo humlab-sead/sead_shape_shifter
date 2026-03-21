@@ -395,7 +395,7 @@
                             persistent-placeholder
                           >
                             <template #message>
-                              <span class="text-caption">Columns detected from your SQL query (auto-updated on query changes)</span>
+                              <span class="text-caption">Columns detected from your SQL query. Saved with the entity when you save.</span>
                             </template>
                           </v-combobox>
                         </v-col>
@@ -416,6 +416,37 @@
                           </v-combobox>
                         </v-col>
                       </v-row>
+
+                      <v-alert
+                        v-if="sqlColumnSyncPending"
+                        type="warning"
+                        variant="tonal"
+                        density="compact"
+                        class="mt-2"
+                      >
+                        Detected SQL columns are not stored on this entity yet. Save is enabled so they can be persisted.
+                      </v-alert>
+
+                      <v-alert
+                        v-else-if="sqlColumnMismatch"
+                        type="info"
+                        variant="tonal"
+                        density="compact"
+                        class="mt-2"
+                      >
+                        <div class="d-flex align-center justify-space-between ga-2 flex-wrap">
+                          <span>Stored columns differ from the current query result. They will remain unchanged until you explicitly replace them.</span>
+                          <v-btn
+                            size="small"
+                            variant="outlined"
+                            color="info"
+                            :disabled="columnsLoading || detectedSqlColumns.length === 0"
+                            @click="applyDetectedSqlColumns"
+                          >
+                            Use detected columns
+                          </v-btn>
+                        </div>
+                      </v-alert>
                     </div>
 
                     <!-- Fixed Values Grid (only for fixed type) -->
@@ -608,7 +639,7 @@
                   :available-entities="availableSourceEntities"
                   :project-name="projectName"
                   :entity-name="formData.name"
-                  :entity-columns="formData.columns"
+                   :entity-columns="effectiveEntityColumns"
                   :is-entity-saved="mode === 'edit'"
                   @update:model-value="handleForeignKeysUpdate"
                 />
@@ -1332,11 +1363,35 @@ function startDialogResize(event: MouseEvent) {
   window.addEventListener('mouseup', onMouseUp)
 }
 
-function buildEntityConfigFromFormData(): Record<string, unknown> {
+interface BuildEntityConfigOptions {
+  includeDerivedSqlColumns?: boolean
+}
+
+function getSqlColumnsForPersistence(includeDerivedSqlColumns = false): string[] {
+  const configuredColumns = normalizeChipField(formData.value.columns)
+
+  if (configuredColumns.length > 0 || !includeDerivedSqlColumns) {
+    return configuredColumns
+  }
+
+  return [...columnsOptions.value]
+}
+
+function syncDetectedSqlColumnsToFormData() {
+  if (formData.value.type !== 'sql' || formData.value.columns.length > 0 || columnsOptions.value.length === 0) {
+    return
+  }
+
+  formData.value.columns = [...columnsOptions.value]
+}
+
+function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): Record<string, unknown> {
   /**
    * Convert form data to entity config format.
    * Shared by both handleSubmit and refreshPreview to ensure consistency.
    */
+  const { includeDerivedSqlColumns = false } = options
+
 
   /**
    * Serialize a keys/columns array back to YAML form.
@@ -1351,12 +1406,16 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
     return keys
   }
 
+  const effectiveColumns = formData.value.type === 'sql'
+    ? getSqlColumnsForPersistence(includeDerivedSqlColumns)
+    : formData.value.columns
+
   const entityData: Record<string, unknown> = {
     type: formData.value.type,
     keys: serializeKeysField(formData.value.keys),
     // For fixed entities, explicitly include system_id and public_id in columns list
     // This ensures the columns match the fixedValuesColumns order used by the grid
-    columns: formData.value.type === 'fixed' ? fixedValuesColumns.value : serializeKeysField(formData.value.columns),
+    columns: formData.value.type === 'fixed' ? fixedValuesColumns.value : serializeKeysField(effectiveColumns),
   }
 
   // Always include public_id (even if null) to prevent field from being omitted
@@ -1519,7 +1578,7 @@ async function refreshPreview() {
   previewError.value = null
 
   // Convert form data to entity config format (same as handleSubmit)
-  const entityConfig = buildEntityConfigFromFormData()
+  const entityConfig = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
 
   // Pass converted entity config to preview unsaved changes
   await previewEntity(props.projectName, formData.value.name, previewLimit.value, entityConfig)
@@ -1705,11 +1764,7 @@ async function fetchSqlColumns() {
   try {
     const columns = await queryApi.introspectQueryColumns(dataSource, query, props.projectName)
     columnsOptions.value = columns
-    
-    // Auto-populate columns if not already set
-    if (!formData.value.columns || formData.value.columns.length === 0) {
-      formData.value.columns = [...columns]
-    }
+
   } catch (err: any) {
     console.error('Failed to introspect SQL query columns', err)
     const message = err.response?.data?.detail || err.message || 'Unknown error'
@@ -1733,7 +1788,7 @@ watch(
   () => {
     if (autoRefreshEnabled.value && viewMode.value !== 'form' && canPreview.value) {
       // Convert form data to entity config before previewing
-      const entityConfig = buildEntityConfigFromFormData()
+      const entityConfig = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
       debouncedPreviewEntity(props.projectName, formData.value.name, 100, entityConfig)
     }
   },
@@ -2033,6 +2088,47 @@ const availableColumns = computed(() => {
   return [...cols, ...directives.filter((d) => !cols.includes(d))]
 })
 
+const effectiveEntityColumns = computed(() => {
+  if (formData.value.type === 'sql') {
+    const configuredColumns = normalizeChipField(formData.value.columns)
+    if (configuredColumns.length > 0) {
+      return configuredColumns
+    }
+
+    return [...columnsOptions.value]
+  }
+
+  return normalizeChipField(formData.value.columns)
+})
+
+const storedSqlColumns = computed(() => {
+  if (formData.value.type !== 'sql') {
+    return []
+  }
+
+  return normalizeChipField(formData.value.columns)
+})
+
+const detectedSqlColumns = computed(() => {
+  if (formData.value.type !== 'sql') {
+    return []
+  }
+
+  return normalizeChipField(columnsOptions.value)
+})
+
+const sqlColumnSyncPending = computed(() => {
+  return formData.value.type === 'sql' && detectedSqlColumns.value.length > 0 && storedSqlColumns.value.length === 0
+})
+
+const sqlColumnMismatch = computed(() => {
+  if (formData.value.type !== 'sql' || detectedSqlColumns.value.length === 0 || storedSqlColumns.value.length === 0) {
+    return false
+  }
+
+  return JSON.stringify(storedSqlColumns.value) !== JSON.stringify(detectedSqlColumns.value)
+})
+
 const sourceReferenceColumn = computed(() => {
   if (formData.value.type !== 'entity' || !formData.value.source) return null
 
@@ -2050,7 +2146,7 @@ const sourceReferenceColumn = computed(() => {
 
 const availableColumnsForUnnest = computed(() => {
   const keys = formData.value.keys || []
-  const columns = formData.value.columns || []
+  const columns = effectiveEntityColumns.value
   const options = columnsOptions.value.length > 0 ? columnsOptions.value : columns
   const extraColumnNames = Object.keys(formData.value.advanced.extra_columns || {})
   const combined = Array.from(new Set([...keys, ...options, ...extraColumnNames]))
@@ -2058,7 +2154,7 @@ const availableColumnsForUnnest = computed(() => {
 })
 
 const availableColumnsForReplacements = computed(() => {
-  const columns = formData.value.columns || []
+  const columns = effectiveEntityColumns.value
   const extraColumnNames = Object.keys(formData.value.advanced.extra_columns || {})
   const combined = Array.from(new Set([...columns, ...extraColumnNames]))
   return combined.filter((c) => c && c !== 'system_id')
@@ -2270,6 +2366,14 @@ async function handleForeignKeysUpdate(value: any[]) {
   formValid.value = result?.valid ?? formValid.value
 }
 
+function applyDetectedSqlColumns() {
+  if (formData.value.type !== 'sql' || detectedSqlColumns.value.length === 0) {
+    return
+  }
+
+  formData.value.columns = [...detectedSqlColumns.value]
+}
+
 async function refreshFormValidity() {
   await nextTick()
   const result = await formRef.value?.validate()
@@ -2307,7 +2411,7 @@ function refreshDirtyState() {
 
 const isSaveDisabled = computed(() => {
   if (!formValid.value) return true
-  if (props.mode === 'edit') return !hasPendingChanges.value
+  if (props.mode === 'edit') return !hasPendingChanges.value && !sqlColumnSyncPending.value
   return false
 })
 
@@ -2323,7 +2427,7 @@ async function handleSubmit() {
 
   try {
     // Use shared function to build entity config
-    const entityData = buildEntityConfigFromFormData()
+    const entityData = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
     const valuesField = entityData.values
     const shouldSaveExternalValues = typeof valuesField === 'string' && valuesField.startsWith('@load:')
 
@@ -2332,6 +2436,7 @@ async function handleSubmit() {
         name: formData.value.name,
         entity_data: entityData,
       })
+      syncDetectedSqlColumnsToFormData()
       emit('saved', formData.value.name)
       // Keep dialog open after creating (user can choose "Save & Close" if they want to close)
       // Show success indicator
@@ -2380,6 +2485,7 @@ async function handleSubmit() {
       }
 
       // Keep dialog open after saving in edit mode
+      syncDetectedSqlColumnsToFormData()
       emit('saved', formData.value.name)
 
       captureInitialSnapshot()
@@ -2405,7 +2511,7 @@ async function handleSubmitAndClose() {
   error.value = null
 
   try {
-    const entityData = buildEntityConfigFromFormData()
+    const entityData = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
     const valuesField = entityData.values
     const shouldSaveExternalValues = typeof valuesField === 'string' && valuesField.startsWith('@load:')
 
@@ -2454,6 +2560,8 @@ async function handleSubmitAndClose() {
       }
     }
 
+    syncDetectedSqlColumnsToFormData()
+
     if (props.mode === 'edit') {
       captureInitialSnapshot()
     }
@@ -2472,7 +2580,7 @@ function handleCancel() {
 }
 
 function handleClose() {
-  if (props.mode === 'edit' && hasPendingChanges.value) {
+  if (props.mode === 'edit' && (hasPendingChanges.value || sqlColumnSyncPending.value)) {
     const shouldDiscard = window.confirm('You have unsaved changes. Close without saving?')
     if (!shouldDiscard) return
   }
@@ -2851,7 +2959,7 @@ watchEffect(() => {
     return
   }
 
-  if (props.mode === 'create' && formData.value.name && formData.value.columns.length > 0) {
+  if (props.mode === 'create' && formData.value.name && effectiveEntityColumns.value.length > 0) {
     // Clear existing timeout
     if (suggestionTimeout) {
       clearTimeout(suggestionTimeout)
@@ -2868,13 +2976,13 @@ watchEffect(() => {
         // Add current entity being created
         allEntities.push({
           name: formData.value.name,
-          columns: formData.value.columns,
+          columns: effectiveEntityColumns.value,
         })
 
         const result = await getSuggestionsForEntity(
           {
             name: formData.value.name,
-            columns: formData.value.columns,
+            columns: effectiveEntityColumns.value,
           },
           allEntities
         )

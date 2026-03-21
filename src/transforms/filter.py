@@ -15,15 +15,34 @@ class FilterRegistry(Registry):
 
 Filters = FilterRegistry()  # pylint: disable=invalid-name
 
+VALID_FILTER_STAGES: tuple[str, ...] = ("extract", "after_link", "after_unnest")
+
+
+def normalize_filter_stage(filter_cfg: dict[str, Any]) -> str:
+    """Resolve a filter stage, defaulting to the legacy extract timing."""
+    stage = filter_cfg.get("stage") or "extract"
+
+    if stage not in VALID_FILTER_STAGES:
+        raise ValueError(f"Invalid filter stage: {stage!r}. Expected one of {VALID_FILTER_STAGES}")
+
+    return stage
+
 
 def apply_filters(
     name: str,
     df: pd.DataFrame,
     cfg: TableConfig,
     data_store: dict[str, pd.DataFrame],
+    stage: str = "extract",
 ) -> pd.DataFrame:
-    """Apply post-load filters defined in the entity config."""
+    """Apply filters defined in the entity config for a specific execution stage."""
+    if stage not in VALID_FILTER_STAGES:
+        raise ValueError(f"Invalid filter stage: {stage!r}. Expected one of {VALID_FILTER_STAGES}")
+
     for f in cfg.filters:
+        if normalize_filter_stage(f) != stage:
+            continue
+
         ftype = f.get("type")
         if not ftype:
             logger.warning(f"Filter for entity {name!r} missing 'type' field")

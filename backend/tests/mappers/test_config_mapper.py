@@ -368,7 +368,7 @@ class TestApiEntityToDict:
                     constraints=ForeignKeyConstraints(require_unique_left=True),
                 )
             ],
-            filters=[FilterConfig(type="exists_in", entity="sites", column="site_id", remote_column="site_id")],
+            filters=[FilterConfig(stage="after_link", type="exists_in", entity="sites", column="site_id", remote_column="site_id")],
             unnest=UnnestConfig(id_vars=["id"], value_vars=["name"], var_name="field", value_name="value"),
             append=[AppendConfig(type="fixed", values=[["value"]])],
             drop_duplicates=False,
@@ -382,6 +382,7 @@ class TestApiEntityToDict:
         assert isinstance(result["foreign_keys"][0], dict)
         assert result["foreign_keys"][0]["constraints"]["require_unique_left"] is True
         assert isinstance(result["filters"][0], dict)
+        assert result["filters"][0]["stage"] == "after_link"
         assert isinstance(result["unnest"], dict)
         assert isinstance(result["append"][0], dict)
         assert "drop_duplicates" not in result

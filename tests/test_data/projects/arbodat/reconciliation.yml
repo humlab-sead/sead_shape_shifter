@@ -1,0 +1,112 @@
+version: '2.0'
+service_url: http://localhost:8000
+entities:
+  site:
+    site_name:
+      property_mappings:
+        latitude: latitude_dd
+        longitude: longitude_dd
+        country: ''
+        national_id: national_site_identifier
+        place_name: ''
+      remote:
+        service_type: site
+        columns: []
+      auto_accept_threshold: 0.5
+      review_threshold: 0.4
+      mapping:
+      - source_value: Göteborg 342
+        sead_id: 4420
+        confidence: 0.6923
+        notes: 'Auto-matched: Goteborg'
+        will_not_match: false
+        created_by: system
+        last_modified: '2026-01-09T12:42:53.375229+00:00'
+  taxa:
+    species:
+      property_mappings:
+        genus: ''
+        family: Fam
+        scientific_name: BNam
+      remote:
+        service_type: taxon
+        columns: []
+      auto_accept_threshold: 0.9
+      review_threshold: 0.65
+      mapping: []
+  location:
+    location_name:
+      property_mappings:
+        place_name: location_name
+      remote:
+        service_type: location
+        columns: []
+      auto_accept_threshold: 0.92
+      review_threshold: 0.75
+      mapping:
+      - source_value: Göteborg
+        sead_id: 1544
+        confidence: 1.0
+        notes: 'Auto-matched: Goteborg'
+        will_not_match: false
+        created_by: system
+        last_modified: '2026-01-09T15:57:41.385463+00:00'
+      - source_value: Göteborgs stad
+        sead_id: 5548
+        confidence: 1.0
+        notes: 'Auto-matched: Göteborgs stad'
+        will_not_match: false
+        created_by: system
+        last_modified: '2026-01-09T15:57:41.385591+00:00'
+      - source_value: Västra Götaland
+        sead_id: 4586
+        confidence: 1.0
+        notes: 'Auto-matched: Västra Götaland'
+        will_not_match: false
+        created_by: system
+        last_modified: '2026-01-09T15:57:41.385690+00:00'
+      - source_value: Bohuslän
+        sead_id: 910
+        confidence: 1.0
+        notes: 'Auto-matched: Bohuslän'
+        will_not_match: false
+        created_by: system
+        last_modified: '2026-01-09T15:57:41.385781+00:00'
+      - source_value: Norway
+        sead_id: 162
+        confidence: 1.0
+        notes: 'Auto-matched: Norway'
+        will_not_match: false
+        created_by: system
+        last_modified: '2026-01-09T15:57:41.385866+00:00'
+      - source_value: Sweden
+        sead_id: 205
+        confidence: 1.0
+        notes: 'Auto-matched: Sweden'
+        will_not_match: false
+        created_by: system
+        last_modified: '2026-01-09T15:57:41.385952+00:00'
+  method:
+    method_name:
+      property_mappings:
+        method_abbreviation: arbodat_code
+      remote:
+        service_type: method
+        columns: []
+      auto_accept_threshold: 0.95
+      review_threshold: 0.75
+      mapping:
+      - source_value: Local or unknown grid
+        sead_id: 105
+        confidence: 1.0
+        notes: 'Auto-matched: Local or unknown grid'
+        will_not_match: false
+        created_by: system
+        last_modified: '2026-01-09T11:51:22.065744+00:00'
+      - source_value: Altitude above sea level
+        sead_id: 76
+        confidence: 1.0
+        notes: 'Auto-matched: Altitude above sea level'
+        will_not_match: false
+        created_by: system
+        last_modified: '2026-01-09T11:51:22.065836+00:00'

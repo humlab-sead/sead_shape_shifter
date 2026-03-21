@@ -2,6 +2,8 @@
 
 End-to-end tests for the Shape Shifter frontend application using Playwright.
 
+Playwright e2e tests are currently disabled. Existing specs are marked skipped and retained for future re-enablement.
+
 ## Overview
 
 These tests verify critical user workflows and ensure the application works correctly from a user's perspective.
