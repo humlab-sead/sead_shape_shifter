@@ -145,6 +145,10 @@ These are the primary system documentation files:
   - Proposes stage-aware filter execution so filters can run after linking or unnesting when needed.
   - Preserves the current default early-filter behavior while adding explicit later pipeline stages.
 
+- **[proposals/done/MATERIALIZED_DEPENDENCY_VISUALIZATION.md](proposals/done/MATERIALIZED_DEPENDENCY_VISUALIZATION.md)**
+  - Documents the implemented dependency-graph support for showing frozen historical source dependencies on materialized fixed entities.
+  - Covers the backend extractor, frozen edge metadata, Cytoscape styling, and validation coverage.
+
 - **[other/DSL_EXTENSIBILITY_GUIDE.md](other/DSL_EXTENSIBILITY_GUIDE.md)**
   - Extension guide for adding new expression types or functions to the tiny DSL after the initial implementation.
   - Covers AST, parser, validator, evaluator, and backend update points.
