@@ -111,7 +111,9 @@ These are the primary system documentation files:
   - The most frequent use case in the UI, is where a user opens, edits, and saves one entity at a time.
   - This proposal introduces optimistic locking at an entity level increasing collaborative work.
 
-- **[proposals/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)**
+### Done Proposals
+
+- **[proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)**
   - Defines the Phase 1 lookup-join default for null handling in alternative-key foreign key joins.
   - Recommends leaving the FK unresolved instead of raising when lookup-style joins have missing alternative keys.
 
@@ -131,13 +133,21 @@ These are the primary system documentation files:
   - Proposes new modeling ergonomics for complex target-schema scenarios such as merged parent entities, lookup/fact pairs, and branch-aware downstream entities.
   - Recommends computed columns, branch-scoped consumers, target-aware validation, and comment-preserving YAML saves as the highest-value improvements.
 
-- **[proposals/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md](proposals/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md)**
+- **[proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md](proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md)**
   - Proposes a small, safe DSL layered on top of `extra_columns` for lightweight derived-value transforms.
   - Positions the feature relative to `translate`, `replacements`, and Proposal 3 in the complex-entity ergonomics work.
 
-- **[proposals/TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md](proposals/TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md)**
+- **[proposals/done/TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md](proposals/done/TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md)**
   - Companion technical design sketch for implementing the tiny DSL in `extra_columns`.
   - Describes proposed classes, function signatures, parser shape, pandas execution model, and test strategy.
+
+- **[proposals/done/STAGED_FILTER_EXECUTION.md](proposals/done/STAGED_FILTER_EXECUTION.md)**
+  - Proposes stage-aware filter execution so filters can run after linking or unnesting when needed.
+  - Preserves the current default early-filter behavior while adding explicit later pipeline stages.
+
+- **[other/DSL_EXTENSIBILITY_GUIDE.md](other/DSL_EXTENSIBILITY_GUIDE.md)**
+  - Extension guide for adding new expression types or functions to the tiny DSL after the initial implementation.
+  - Covers AST, parser, validator, evaluator, and backend update points.
 
 ### What's New
 

@@ -3,14 +3,14 @@
 ## Status
 
 - Future proposal / not yet approved
-- Scope: possible Phase 2 follow-up to [FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)
+- Scope: possible Phase 2 follow-up to [FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)
 - Goal: decide whether Shape Shifter needs an explicit user-facing policy model for missing foreign-key join values
 
 ## Purpose
 
 This document is a placeholder for a possible future proposal.
 
-It exists to separate the broader policy-design discussion from the current Phase 1 lookup-join behavior change in [FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md).
+It exists to separate the broader policy-design discussion from the current Phase 1 lookup-join behavior change in [FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md).
 
 No implementation is proposed here yet.
 
