@@ -99,12 +99,8 @@ These are the primary system documentation files:
   - Recommends `engine: python` over prefix forms like `query: "python:..."`
 
 - **[proposals/USER_FACING_RELEASE_NOTES_STRATEGY.md](proposals/USER_FACING_RELEASE_NOTES_STRATEGY.md)**
-  - Recommends keeping the technical `CHANGELOG.md` while adding user-facing release notes
-  - Describes a split between technical history, curated user notes, and stable documentation
-
-- **[proposals/SEMANTIC_RELEASE_USER_FACING_NOTES.md](proposals/SEMANTIC_RELEASE_USER_FACING_NOTES.md)**
-  - Proposes how semantic-release can continue generating technical notes while GitHub Releases carry a shorter user-facing summary
-  - Outlines a low-risk workflow using curated release content and links to the full changelog
+  - Recommends keeping the technical `CHANGELOG.md` while adding curated user-facing release notes
+  - Covers both the documentation strategy and the semantic-release workflow for publishing shorter GitHub Release summaries
 
 - **[proposals/ENTITY_LEVEL_LOCKING.md](proposals/ENTITY_LEVEL_LOCKING.md)**
   - Shape Shifter currently has optimistic locking at the project level for the entire project.
