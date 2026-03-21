@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
@@ -9,9 +10,9 @@ from pydantic import BaseModel
 
 router = APIRouter()
 
-WHATS_NEW_DIR = Path(__file__).resolve().parents[5] / "docs" / "whats-new"
-VERSION_FILE_PATTERN = re.compile(r"^v(?P<version>\d+\.\d+\.\d+)\.md$")
-VERSION_VALUE_PATTERN = re.compile(r"^\d+\.\d+\.\d+$")
+WHATS_NEW_DIR: Path = Path(__file__).resolve().parents[5] / "docs" / "whats-new"
+VERSION_FILE_PATTERN: re.Pattern = re.compile(r"^v(?P<version>\d+\.\d+\.\d+)\.md$")
+VERSION_VALUE_PATTERN: re.Pattern = re.compile(r"^\d+\.\d+\.\d+$")
 
 
 class WhatsNewManifestItem(BaseModel):
@@ -30,17 +31,17 @@ class WhatsNewManifestResponse(BaseModel):
     items: list[WhatsNewManifestItem]
 
 
-def _version_key(version: str) -> tuple[int, int, int]:
+def _version_key(version: str) -> tuple[int, ...]:
     return tuple(int(part) for part in version.split("."))
 
 
 def _extract_metadata(note_path: Path) -> WhatsNewManifestItem:
-    markdown = note_path.read_text(encoding="utf-8")
-    version_match = VERSION_FILE_PATTERN.match(note_path.name)
-    version = version_match.group("version") if version_match else note_path.stem.removeprefix("v")
+    markdown: str = note_path.read_text(encoding="utf-8")
+    version_match: re.Match[str] | None = VERSION_FILE_PATTERN.match(note_path.name)
+    version: str | Any = version_match.group("version") if version_match else note_path.stem.removeprefix("v")
 
-    title = re.search(r"^#\s+(.+)$", markdown, re.MULTILINE)
-    release_date = re.search(r"^Date:\s+(.+)$", markdown, re.MULTILINE)
+    title: re.Match[str] | None = re.search(r"^#\s+(.+)$", markdown, re.MULTILINE)
+    release_date: re.Match[str] | None = re.search(r"^Date:\s+(.+)$", markdown, re.MULTILINE)
 
     return WhatsNewManifestItem(
         version=version,
@@ -54,7 +55,7 @@ def _build_manifest() -> WhatsNewManifestResponse:
     if not WHATS_NEW_DIR.exists() or not WHATS_NEW_DIR.is_dir():
         return WhatsNewManifestResponse(latest_version=None, items=[])
 
-    note_paths = [path for path in WHATS_NEW_DIR.iterdir() if path.is_file() and VERSION_FILE_PATTERN.match(path.name)]
+    note_paths: list[Path] = [path for path in WHATS_NEW_DIR.iterdir() if path.is_file() and VERSION_FILE_PATTERN.match(path.name)]
     items = sorted((_extract_metadata(path) for path in note_paths), key=lambda item: _version_key(item.version), reverse=True)
 
     return WhatsNewManifestResponse(
