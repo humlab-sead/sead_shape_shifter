@@ -207,7 +207,7 @@ Selected columns:
 
 ## Proposal Alignment
 
-From [TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md](TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md):
+From [TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md](../proposals/done/TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md):
 
 > Use a small hand-written recursive-descent parser.
 > 
