@@ -64,6 +64,14 @@ These are the primary system documentation files:
   - Troubleshooting and debugging
   - Contributing guidelines
 
+- **[PROPOSAL_WRITING_GUIDE.md](PROPOSAL_WRITING_GUIDE.md)**
+  - Rules for writing short, problem-focused design proposals
+  - Keeps proposal documents precise, concrete, and decision-oriented
+
+- **[templates/PROPOSAL_TEMPLATE.md](templates/PROPOSAL_TEMPLATE.md)**
+  - Default template for new design proposals
+  - Provides a lean structure with optional sections for more complex decisions
+
 ### Testing
 
 - **[TESTING_GUIDE.md](TESTING_GUIDE.md)** (3,800+ lines)
@@ -102,7 +110,11 @@ These are the primary system documentation files:
   - Recommends keeping the technical `CHANGELOG.md` while adding curated user-facing release notes
   - Covers both the documentation strategy and the semantic-release workflow for publishing shorter GitHub Release summaries
 
-- **[proposals/ENTITY_LEVEL_LOCKING.md](proposals/ENTITY_LEVEL_LOCKING.md)**
+- **[proposals/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](proposals/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md)**
+  - Splits out the remaining derived-value follow-through work from the broader complex-entity ergonomics proposal.
+  - Focuses on validation, preview visibility, editor guidance, examples, and a concrete implementation checklist around the existing `extra_columns` baseline.
+
+- **[proposals/ENTITY_EDITOR_OPTIMISTIC_LOCKING.md](proposals/ENTITY_EDITOR_OPTIMISTIC_LOCKING.md)**
   - Shape Shifter currently has optimistic locking at the project level for the entire project.
   - The most frequent use case in the UI, is where a user opens, edits, and saves one entity at a time.
   - This proposal introduces optimistic locking at an entity level increasing collaborative work.
@@ -127,7 +139,7 @@ These are the primary system documentation files:
 
 - **[proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md](proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md)**
   - Proposes new modeling ergonomics for complex target-schema scenarios such as merged parent entities, lookup/fact pairs, and branch-aware downstream entities.
-  - Recommends computed columns, branch-scoped consumers, target-aware validation, and comment-preserving YAML saves as the highest-value improvements.
+  - Recommends merged-parent modeling, branch-scoped consumers, target-aware validation, and comment-preserving YAML saves as the highest-value improvements, with derived-value follow-through tracked separately.
 
 - **[proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md](proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md)**
   - Proposes a small, safe DSL layered on top of `extra_columns` for lightweight derived-value transforms.

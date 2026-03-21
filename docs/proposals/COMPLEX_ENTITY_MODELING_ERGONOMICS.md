@@ -135,57 +135,13 @@ That distinction is still implicit. When it is not expressed directly, it is eas
 - The lookup link is described once, declaratively
 - The same model can later support coverage checks such as “all raw fact values must be resolvable in the lookup”
 
-## Proposal 3: Derived-Value Ergonomics On Top Of The Current Baseline
+## Proposal 3: Derived-Value Ergonomics Follow-Through
 
-Clarify derived-value support around what already exists, rather than treating derived values as the missing primitive.
+Derived-value ergonomics is now tracked separately in [DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md).
 
-The current baseline is:
+This umbrella proposal now treats derived values as supporting infrastructure rather than as one of the main unresolved modeling primitives. The remaining derived-value work is mostly about validation, preview visibility, editor guidance, and examples around the current `extra_columns` baseline.
 
-- `extra_columns` is the cross-entity derived-value feature
-- interpolation is already suitable for many synthetic identifiers and branch markers
-- formula expressions already cover many lightweight transforms that previously pushed authors toward SQL-specific workarounds
-
-Illustrative shape:
-
-```yaml
-extra_columns:
-  analysis_entity_type: abundance
-  analysis_entity_value: "=concat(PCODE, '|', Fraktion, '|', cf, '|', RTyp, '|', Zust)"
-  analysis_entity_label: "{PCODE}|{Fraktion}"
-```
-
-### Why
-
-This changes the role of Proposal 3.
-
-The central question is no longer “how do we add derived-value support?” The more useful questions are:
-
-- how do we make the current capability discoverable and easy to choose correctly
-- how do we validate interpolations and formulas in a way that is visible during authoring and preview
-- how do we avoid introducing a second, overlapping feature unless the current baseline proves insufficient
-
-In other words, derived-value ergonomics is now mostly a documentation, validation, preview, and authoring-support problem, not primarily a missing modeling primitive.
-
-### Expected Behavior
-
-- `extra_columns` remains the default place for lightweight derived values across all entity types
-- Authors can mix copied columns, interpolated strings, formulas, and constants in the same block
-- Validation surfaces missing references and formula errors early
-- Preview makes derived columns visible enough that authors do not need to infer behavior indirectly
-- Any future richer feature should complement `extra_columns`, not replace or duplicate it
-
-### Suggested Scope
-
-Short term:
-
-- treat current `extra_columns` support as the recommended solution for branch markers, synthetic labels, and synthetic identifiers
-- improve validation and preview support for derived columns, especially when referenced columns arrive later in the pipeline
-- improve examples and guidance so authors can tell when a column copy, interpolation, or formula is the best fit
-
-Medium term:
-
-- evaluate whether there are concrete modeling cases that still remain awkward even with the current baseline
-- only if those cases are real and recurring, consider whether a separate SQL-oriented `computed_columns` feature is justified at all
+For the purposes of this document, the key point is simple: complex-entity modeling should assume that branch markers, synthetic labels, and lightweight synthetic identifiers can be handled through the existing derived-value path, while the harder remaining problems are branch topology, fact-versus-lookup intent, and branch-scoped consumers.
 
 ## Proposal 4: Branch-Scoped Consumers
 
@@ -340,7 +296,7 @@ These three improvements would remove most of the remaining friction seen in the
 - branch-scoped consumers remove downstream cleanup filters for mixed parent entities
 - explicit fact-to-lookup mapping reduces semantic confusion between lookup tables and fact tables
 
-Derived-value ergonomics is no longer in the top three because the current `extra_columns` baseline already covers a substantial part of that earlier gap. The remaining work there is follow-through and polish, not a missing primary modeling construct.
+Derived-value ergonomics is no longer in the top three because the current `extra_columns` baseline already covers a substantial part of that earlier gap. The remaining work there is follow-through and polish, tracked separately in [DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md), not a missing primary modeling construct.
 
 ## Implementation Strategy
 
@@ -348,8 +304,8 @@ The delivery order below is organized by implementation risk, not only by concep
 
 ### Phase 1: Low-Risk Ergonomic Follow-Through
 
-- **Proposal 3: Derived-Value Ergonomics On Top Of The Current Baseline**
-  Dependency: none. This is follow-through on the current baseline and can proceed independently.
+- **Derived-value ergonomics follow-through**
+  Dependency: none. This is tracked separately in [DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md) and can proceed independently.
 - **Proposal 8: Comment-Preserving Save Path**
   Dependency: none. This is operationally independent from the modeling proposals and can ship on its own.
 - **Proposal 6: Target-Schema-Aware Validation**
@@ -358,7 +314,7 @@ The delivery order below is organized by implementation risk, not only by concep
 ### Phase 2: Branch-Aware Modeling Helpers
 
 - **Proposal 4: Branch-Scoped Consumers**
-  Dependency: depends conceptually on Proposal 3 for authoring clarity around branch markers and derived discriminator columns, but does not require any new derived-value feature to exist first.
+  Dependency: depends conceptually on the derived-value follow-through work for authoring clarity around branch markers and derived discriminator columns, but does not require any new derived-value feature to exist first.
 - **Proposal 5: Schema-Aware Append for Heterogeneous Branches**
   Dependency: independent of Proposal 4 at the implementation level, but the two proposals reinforce each other. Proposal 5 should preferably land before Proposal 1 so branch behavior can be validated in a lighter-weight form first.
 - **Proposal 6: Target-Schema-Aware Validation**
