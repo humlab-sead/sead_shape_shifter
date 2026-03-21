@@ -780,6 +780,26 @@ def test_split_extra_columns_case_insensitive() -> None:
     assert constant_cols == {"const": "not_in_df"}
 
 
+def test_collect_source_dependencies_includes_interpolation_refs() -> None:
+    """Interpolation dependencies should be extracted from source even if not selected explicitly."""
+    evaluator = ExtraColumnEvaluator()
+    df = pd.DataFrame({"first": ["Ada"], "last": ["Lovelace"]})
+
+    dependencies = evaluator.collect_source_dependencies(df, {"fullname": "{first} {last}"})
+
+    assert dependencies == {"first", "last"}
+
+
+def test_collect_source_dependencies_includes_dsl_refs() -> None:
+    """DSL dependencies should be extracted from source even if not selected explicitly."""
+    evaluator = ExtraColumnEvaluator()
+    df = pd.DataFrame({"first": ["Ada"], "last": ["Lovelace"]})
+
+    dependencies = evaluator.collect_source_dependencies(df, {"fullname": "=concat(first, ' ', last)"})
+
+    assert dependencies == {"first", "last"}
+
+
 def test_check_if_missing_requested_columns_raises_by_default() -> None:
     """Test _check_if_missing_requested_columns raises ValueError by default."""
     service = SubsetService()
@@ -968,8 +988,44 @@ def test_get_subset_interpolation_defers_missing_column() -> None:
 
     # Column with missing dependency should be deferred (not added)
     assert "bad" not in result.columns
-    # Source column should be present
-    assert "a" in result.columns
+
+
+def test_get_subset_interpolation_extracts_helper_columns() -> None:
+    """Interpolation should pull required source columns before evaluating extra_columns."""
+    service = SubsetService()
+    df = pd.DataFrame({"first": ["Ada"], "last": ["Lovelace"]})
+    table_cfg = build_table_config(columns=["first"], extra_columns={"fullname": "{first} {last}"})
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert list(result.columns) == ["first", "fullname"]
+    assert result["fullname"].tolist() == ["Ada Lovelace"]
+    assert "last" not in result.columns
+
+
+def test_get_subset_dsl_extracts_helper_columns() -> None:
+    """DSL formulas should pull required source columns before evaluating extra_columns."""
+    service = SubsetService()
+    df = pd.DataFrame({"first": ["Ada"], "last": ["Lovelace"]})
+    table_cfg = build_table_config(columns=["first"], extra_columns={"fullname": "=concat(first, ' ', last)"})
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert list(result.columns) == ["first", "fullname"]
+    assert result["fullname"].tolist() == ["Ada Lovelace"]
+    assert "last" not in result.columns
+
+
+def test_get_subset_preserves_escaped_equals_literal() -> None:
+    """Escaped leading '=' literals should remain constants during extraction."""
+    service = SubsetService()
+    df = pd.DataFrame({"first": ["Ada"]})
+    table_cfg = build_table_config(columns=["first"], extra_columns={"formula_text": "==concat(first, last)"})
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert list(result.columns) == ["first", "formula_text"]
+    assert result["formula_text"].tolist() == ["=concat(first, last)"]
 
 
 def test_get_subset_defers_columns_with_missing_dependencies() -> None:

@@ -296,6 +296,73 @@ class TestUCanAccessLoader:
         """Create UCanAccessSqlLoader instance."""
         return UCanAccessSqlLoader(data_source=access_config)
 
+    def test_read_sql_sync_handles_duplicate_column_names(self, loader):
+        """read_sql_sync should handle duplicate column names without treating a selection as a DataFrame."""
+
+        class JavaStringMock:
+            def __init__(self, value: str) -> None:
+                self.value = value
+
+            def __str__(self) -> str:
+                return self.value
+
+        mock_cursor = Mock()
+        mock_cursor.description = [("ArchDat",), ("ArchDat",)]
+        mock_cursor.fetchall.return_value = [
+            (JavaStringMock("left"), JavaStringMock("right")),
+            (JavaStringMock("north"), JavaStringMock("south")),
+        ]
+
+        mock_connection = Mock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        with patch.object(loader, "connection") as patched_connection:
+            patched_connection.return_value.__enter__.return_value = mock_connection
+            patched_connection.return_value.__exit__.return_value = None
+
+            result = loader.read_sql_sync("SELECT [ArchDat], [ArchDat] FROM [Example]")
+
+        assert list(result.columns) == ["ArchDat", "ArchDat"]
+        assert result.iloc[:, 0].tolist() == ["left", "north"]
+        assert result.iloc[:, 1].tolist() == ["right", "south"]
+        assert result.iloc[:, 0].dtype == object
+        assert result.iloc[:, 1].dtype == object
+        mock_cursor.close.assert_called_once()
+
+    def test_read_sql_sync_prefers_column_labels_from_jdbc_metadata(self, loader):
+        """read_sql_sync should prefer JDBC column labels when query aliases differ from source names."""
+
+        class JavaStringMock:
+            def __init__(self, value: str) -> None:
+                self.value = value
+
+            def __str__(self) -> str:
+                return self.value
+
+        mock_meta = Mock()
+        mock_meta.getColumnCount.return_value = 3
+        mock_meta.getColumnLabel.side_effect = ["analysis_entity_type", "analysis_entity_value", "ArchDat"]
+
+        mock_cursor = Mock()
+        mock_cursor._meta = mock_meta
+        mock_cursor.description = [("ANALYSIS_ENTITY_TYPE",), ("ArchDat",), ("ArchDat",)]
+        mock_cursor.fetchall.return_value = [
+            (JavaStringMock("relative_dating"), JavaStringMock("BZ"), JavaStringMock("BZ")),
+        ]
+
+        mock_connection = Mock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        with patch.object(loader, "connection") as patched_connection:
+            patched_connection.return_value.__enter__.return_value = mock_connection
+            patched_connection.return_value.__exit__.return_value = None
+
+            result = loader.read_sql_sync("SELECT ...")
+
+        assert list(result.columns) == ["analysis_entity_type", "analysis_entity_value", "ArchDat"]
+        assert result.iloc[0].tolist() == ["relative_dating", "BZ", "BZ"]
+        mock_cursor.close.assert_called_once()
+
     @pytest.mark.asyncio
     async def test_get_tables(self, loader):
         """Should get tables from MS Access database."""
@@ -432,6 +499,103 @@ class TestUCanAccessLoader:
             assert "ProductID" in result.columns
             assert "ProductName" in result.columns
             assert "system_id" in result.columns
+
+    @pytest.mark.asyncio
+    async def test_load_rejects_duplicate_detected_columns_without_labels(self, loader):
+        """Access loader should fail schema validation when detected columns still contain duplicate source names."""
+        sample_df = pd.DataFrame(
+            [["18_0025", "P16", "18_0025_0003", "relative_dating", "BZ", None, None, None, None, None, "BZ"]],
+            columns=[
+                "Projekt",
+                "Befu",
+                "ProbNr",
+                "ANALYSIS_ENTITY_TYPE",
+                "ArchDat",
+                "PCODE",
+                "FRAKTION",
+                "CF",
+                "RTYP",
+                "ZUST",
+                "ArchDat",
+            ],
+        )
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "analysis_entity_relative_dating": {
+                    "type": "sql",
+                    "query": "select ...",
+                    "keys": ["Projekt", "Befu", "ProbNr", "analysis_entity_type", "analysis_entity_value"],
+                    "columns": ["PCODE", "Fraktion", "cf", "RTyp", "Zust", "ArchDat"],
+                    "auto_detect_columns": True,
+                    "check_column_names": True,
+                    "public_id": "analysis_entity_id",
+                }
+            },
+            entity_name="analysis_entity_relative_dating",
+        )
+
+        with patch.object(loader, "read_sql", new_callable=AsyncMock) as mock_read_sql:
+            mock_read_sql.return_value = sample_df
+
+            with pytest.raises(ValueError, match=r"key column\(s\) \['analysis_entity_value'\] are missing in the data"):
+                await loader.load("analysis_entity_relative_dating", table_cfg)
+
+    @pytest.mark.asyncio
+    async def test_load_normalizes_access_alias_casing_without_reordering(self, loader):
+        """Access loader should preserve query order while restoring configured alias casing."""
+        sample_df = pd.DataFrame(
+            [["18_0025", "P16", "18_0025_0003", "AECYN", "ORG 0,5", "-", "Sa/Fr", "vk", "abundance", "AECYN|ORG 0,5|-|Sa/Fr|vk", None]],
+            columns=[
+                "Projekt",
+                "Befu",
+                "ProbNr",
+                "PCODE",
+                "Fraktion",
+                "cf",
+                "RTyp",
+                "Zust",
+                "ANALYSIS_ENTITY_TYPE",
+                "ANALYSIS_ENTITY_VALUE",
+                "ARCHDAT",
+            ],
+        )
+
+        table_cfg = TableConfig(
+            entities_cfg={
+                "analysis_entity": {
+                    "type": "sql",
+                    "query": "select ...",
+                    "keys": ["Projekt", "Befu", "ProbNr", "analysis_entity_type", "analysis_entity_value"],
+                    "columns": ["PCODE", "Fraktion", "cf", "RTyp", "Zust", "ArchDat"],
+                    "auto_detect_columns": True,
+                    "check_column_names": True,
+                    "public_id": "analysis_entity_id",
+                }
+            },
+            entity_name="analysis_entity",
+        )
+
+        with patch.object(loader, "read_sql", new_callable=AsyncMock) as mock_read_sql:
+            mock_read_sql.return_value = sample_df
+
+            result = await loader.load("analysis_entity", table_cfg)
+
+        assert result.columns.tolist()[1:] == [
+            "Projekt",
+            "Befu",
+            "ProbNr",
+            "PCODE",
+            "Fraktion",
+            "cf",
+            "RTyp",
+            "Zust",
+            "analysis_entity_type",
+            "analysis_entity_value",
+            "ArchDat",
+        ]
+        assert result["analysis_entity_type"].tolist() == ["abundance"]
+        assert result["analysis_entity_value"].tolist() == ["AECYN|ORG 0,5|-|Sa/Fr|vk"]
 
     @pytest.mark.asyncio
     async def test_get_tables_filters_system_tables(self, loader):

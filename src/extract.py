@@ -139,11 +139,15 @@ class SubsetService:
         extra_columns = extra_columns or {}
 
         selected_aliases: dict[str, str] = {alias: source_col for alias, source_col in column_aliases.items() if alias in columns}
-        extra_source_columns, _ = self.extra_col_evaluator.split_extra_columns(source, extra_columns, case_sensitive=False)
+        extra_source_dependencies: set[str] = self.extra_col_evaluator.collect_source_dependencies(
+            source,
+            extra_columns,
+            case_sensitive=False,
+        )
 
         # Columns we need to read from source to build the result
         required_source_cols: set[str] = {selected_aliases.get(column_name, column_name) for column_name in columns} | set(
-            extra_source_columns.values()
+            extra_source_dependencies
         )
 
         self._check_if_missing_requested_columns(source, entity_name, raise_if_missing, required_source_cols)
@@ -171,7 +175,7 @@ class SubsetService:
                 logger.trace(f"{entity_name}[extract]: Deferred extra_columns evaluation for: {list(deferred.keys())}")
 
         # Drop helper source columns that weren't explicitly requested
-        helper_cols: set[str] = (set(extra_source_columns.values()) | set(selected_aliases.values())) - set(columns)
+        helper_cols: set[str] = (extra_source_dependencies | set(selected_aliases.values())) - set(columns)
         if helper_cols:
             result = result.drop(columns=list(helper_cols))
 
