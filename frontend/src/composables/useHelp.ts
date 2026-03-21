@@ -26,13 +26,17 @@ export function useHelp() {
     error.value = null
 
     try {
-      const response = await fetch(`/docs/${docName}.md`)
+      const response = await fetch(`/api/v1/help-docs/${docName}`)
       
       if (!response.ok) {
         throw new Error(`Failed to load ${docName}.md: ${response.statusText}`)
       }
 
       const markdown = await response.text()
+      if (markdown.startsWith('<!DOCTYPE html>')) {
+        throw new Error(`Received HTML instead of markdown for ${docName}.md`)
+      }
+
       renderedContent.value = md.render(markdown)
     } catch (err: any) {
       error.value = err.message || 'Failed to load help documentation'

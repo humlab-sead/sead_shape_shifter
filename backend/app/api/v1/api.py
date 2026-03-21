@@ -10,6 +10,7 @@ from backend.app.api.v1.endpoints import (
     execute,
     filters,
     health,
+    help_docs,
     ingesters,
     logs,
     materialization,
@@ -29,6 +30,7 @@ api_router = APIRouter()
 
 # Include endpoint routers
 api_router.include_router(health.router, tags=["health"])
+api_router.include_router(help_docs.router, tags=["help-docs"])
 api_router.include_router(sessions.router, tags=["sessions"])
 api_router.include_router(projects.router, tags=["projects"])
 api_router.include_router(entities.router, tags=["entities"])
