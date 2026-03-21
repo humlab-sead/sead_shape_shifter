@@ -23,7 +23,13 @@ Shape Shifter exists to solve a common data-integration problem: data provider's
 
 ### What Is the Impedance Mismatch?
 
-The __impedance mismatch__ is the gap between how the data provider's source data is organized and how the SEAD system expects to receive it. A data provider might store values in flat files, repeated columns, informal names, or local business keys, while the SEAD expects normalized entities, stable identifiers, explicit foreign keys, and has it's own controlled vocabularies. Shape Shifter bridges that gap by letting you define how data should be extracted, restructured, linked, validated, and exported into a format that can be ingested by SEAD.
+The __impedance mismatch__ is the gap between how the data provider's source data is organized and how the SEAD system expects to receive it. A data provider might store values in flat files, repeated columns, informal names, or local business keys, while the SEAD expects normalized entities, stable identifiers, explicit foreign keys, and has it's own controlled vocabularies.
+
+<img src="./images/impedence_mismatch.png" alt="Impedance Mismatch" width="600">
+
+Shape Shifter bridges that gap by letting you define how data should be extracted, restructured, linked, validated, and exported into a format that can be ingested by SEAD.
+
+<img src="./images/impedence_mismatch_workflow.png" alt="Typical Workflow" width="600">
 
 ### What Is Reconciliation?
 
@@ -71,6 +77,10 @@ aspect of an entity resembles a SQL query or an SQL UDF.
 4. Reconcile values if the project uses reconciliation.
 5. Execute the workflow to export normalized data.
 6. Optionally dispatch the processed data to an external target system.
+
+---
+
+<img src="./images/typical_workflow.png" alt="" width="700"/>
 
 ---
 
