@@ -29,7 +29,7 @@ class WhatsNewManifestResponse(BaseModel):
 
 
 def _version_key(version: str) -> tuple[int, int, int]:
-    return tuple(int(part) for part in version.split('.'))
+    return tuple(int(part) for part in version.split("."))
 
 
 def _extract_metadata(note_path: Path) -> WhatsNewManifestItem:
@@ -52,11 +52,7 @@ def _build_manifest() -> WhatsNewManifestResponse:
     if not WHATS_NEW_DIR.exists() or not WHATS_NEW_DIR.is_dir():
         return WhatsNewManifestResponse(latest_version=None, items=[])
 
-    note_paths = [
-        path
-        for path in WHATS_NEW_DIR.iterdir()
-        if path.is_file() and VERSION_FILE_PATTERN.match(path.name)
-    ]
+    note_paths = [path for path in WHATS_NEW_DIR.iterdir() if path.is_file() and VERSION_FILE_PATTERN.match(path.name)]
     items = sorted((_extract_metadata(path) for path in note_paths), key=lambda item: _version_key(item.version), reverse=True)
 
     return WhatsNewManifestResponse(
