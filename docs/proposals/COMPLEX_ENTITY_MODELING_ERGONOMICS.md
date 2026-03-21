@@ -2,18 +2,35 @@
 
 ## Summary
 
-This proposal captures feature additions and feature changes that would make complex target-schema modeling easier in Shape Shifter, especially scenarios where:
+This proposal captures the remaining feature additions and feature changes that would make complex target-schema modeling easier in Shape Shifter, especially scenarios where:
 
 - one target concept is a shared parent across multiple branches
 - one branch produces fact rows
 - another entity is a lookup referenced by the fact rows
-- current `append` support is powerful enough to express the model, but only through synthetic columns and downstream cleanup rules
+- current `append` support is powerful enough to express the model, but still requires synthetic columns, branch-specific cleanup, and implicit modeling intent
 
 The Arbodat `analysis_entity` / `relative_dating` / `relative_ages` scenario is the motivating example.
 
+The document has been updated to reflect the current baseline: derived branch markers, synthetic labels, and synthetic identifiers can already be expressed directly in `extra_columns` using interpolation and formula expressions. That means the main remaining ergonomics gap is no longer derived-value creation itself. The harder problem is expressing branch topology, fact-versus-lookup intent, and branch-scoped consumers in a way that is obvious in YAML and easy to validate.
+
+## Current Baseline
+
+Shape Shifter already provides a useful cross-entity derived-value facility in `extra_columns`.
+
+Today authors can use `extra_columns` to define:
+
+- direct column copies
+- constant values
+- interpolated strings such as `"{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}"`
+- formula expressions for lightweight transforms when interpolation is not enough
+
+That materially changes the framing of this proposal.
+
+The Arbodat-style workaround no longer needs to be described primarily as a missing derived-value feature. Many of the synthetic branch markers and identity columns that previously felt like SQL-only workarounds can now be modeled directly in configuration. The remaining friction is centered on declaration of modeling intent rather than on the ability to compute a value.
+
 ## Problem
 
-Shape Shifter can currently express complex target models, but certain patterns are awkward to author and easy to get wrong.
+Shape Shifter can currently express complex target models, but certain patterns are still awkward to author and easy to get wrong.
 
 In the Arbodat relative-dating case, the desired target model is:
 
@@ -21,13 +38,13 @@ In the Arbodat relative-dating case, the desired target model is:
 - `relative_ages` as a lookup table
 - `relative_dating` as a fact table referencing both the shared parent and the lookup
 
-The current feature set required the project to use a workaround pattern:
+The current feature set can model this, but the configuration still tends to require a workaround pattern:
 
-- create a staging entity for one branch
+- create one or more staging entities for individual branches
 - use `append` to merge branch rows into a single parent entity
-- invent synthetic discriminator and identity columns such as `analysis_entity_type` and `analysis_entity_value`
+- invent branch discriminator and branch-local identity columns mainly to satisfy merge behavior
 - add defensive filters in downstream entities that only make sense for one branch
-- encode some identity logic inside SQL rather than in configuration-level transformations
+- encode branch intent only indirectly through naming, filters, and foreign-key structure
 
 This works, but it has costs:
 
@@ -41,7 +58,7 @@ This works, but it has costs:
 
 - Make shared-parent multi-branch models easier to declare
 - Make fact versus lookup intent explicit in configuration
-- Reduce the need for synthetic identity columns created only to satisfy `append`
+- Reduce the need for branch discriminator and identity columns whose only purpose is to satisfy `append`
 - Reduce downstream cleanup rules caused by branch mixing
 - Improve readability and maintainability of complex YAML projects
 - Preserve explanatory comments when YAML is edited and saved
@@ -51,6 +68,7 @@ This works, but it has costs:
 - Replace the existing `append` mechanism
 - Add target-system-specific hardcoding into the core normalization pipeline
 - Remove the ability to model these patterns with existing generic primitives
+- Introduce a second derived-value system that duplicates what `extra_columns` already covers well
 
 ## Proposal 1: First-Class Merged Parent Entities
 
@@ -72,18 +90,18 @@ analysis_entity:
 
 ### Why
 
-Today the model has to simulate this through generic `append` and synthetic columns. A first-class merged parent would:
+Today the model has to simulate this through generic `append` plus author-managed branch markers and branch-local identity logic. A first-class merged parent would:
 
 - make branch structure explicit
 - allow validation per branch before merge
-- allow the merged entity to expose a stable parent identity without custom SQL concatenation tricks
+- allow the merged entity to expose a stable parent identity without relying on implicit append conventions
 - better communicate author intent in the YAML itself
 
 ### Expected Behavior
 
 - Each branch produces rows independently
 - Shape Shifter validates branch-local keys and schema before merge
-- Branch identity is retained as metadata or an explicit branch discriminator
+- Branch identity is retained as metadata or as an explicit branch discriminator
 - The merged parent gets one public ID space after concatenation
 
 ## Proposal 2: Explicit Fact-to-Lookup Mapping
@@ -104,12 +122,12 @@ relative_dating:
 
 ### Why
 
-The difficult part in the relative-dating scenario was that:
+The difficult part in the relative-dating scenario was not only row production. It was also the semantic distinction that:
 
 - `relative_ages` is the lookup
 - `relative_dating` is the fact table
 
-That distinction is currently implicit. When it is not expressed explicitly, it is easy to model the fact entity as if it were the lookup itself.
+That distinction is still implicit. When it is not expressed directly, it is easy to model the fact entity as if it were the lookup itself, or to reuse lookup-style identifiers in the wrong place.
 
 ### Expected Behavior
 
@@ -117,75 +135,57 @@ That distinction is currently implicit. When it is not expressed explicitly, it 
 - The lookup link is described once, declaratively
 - The same model can later support coverage checks such as “all raw fact values must be resolvable in the lookup”
 
-## Proposal 3: Better Derived-Value Ergonomics
+## Proposal 3: Derived-Value Ergonomics On Top Of The Current Baseline
 
-Clarify and extend derived-value support without conflating two different concepts:
+Clarify derived-value support around what already exists, rather than treating derived values as the missing primitive.
 
-- `extra_columns` is already a cross-entity feature and works for any entity type
-- a future `computed_columns` feature, if introduced, would more naturally be SQL-specific
+The current baseline is:
 
-Today, Shape Shifter already supports useful derived-column behavior through interpolated `extra_columns`, for example building a synthetic key such as:
-
-```yaml
-extra_columns:
-  analysis_entity_type: abundance
-  analysis_entity_value: "{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}"
-```
-
-That means the exact Arbodat workaround did not strictly require a brand-new feature. However, the current capability is under-documented, limited in expression power, and easy to overlook because it is described under `extra_columns` rather than as an explicit derived-value facility.
+- `extra_columns` is the cross-entity derived-value feature
+- interpolation is already suitable for many synthetic identifiers and branch markers
+- formula expressions already cover many lightweight transforms that previously pushed authors toward SQL-specific workarounds
 
 Illustrative shape:
 
 ```yaml
 extra_columns:
   analysis_entity_type: abundance
-  analysis_entity_value: "{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}"
-```
-
-Possible future SQL-specific extension:
-
-```yaml
-computed_columns:
-  analysis_entity_type: "'abundance'"
-  analysis_entity_value: concat_ws('|', PCODE, Fraktion, cf, RTyp, Zust)
+  analysis_entity_value: "=concat(PCODE, '|', Fraktion, '|', cf, '|', RTyp, '|', Zust)"
+  analysis_entity_label: "{PCODE}|{Fraktion}"
 ```
 
 ### Why
 
-This would likely provide the highest immediate value with relatively low conceptual cost.
+This changes the role of Proposal 3.
 
-The goal is not to replace `extra_columns`. The immediate need is to make its current interpolation support explicit and documented. A separate SQL-only `computed_columns` feature would only make sense later if richer SQL-expression ergonomics are needed.
+The central question is no longer “how do we add derived-value support?” The more useful questions are:
 
-It would:
+- how do we make the current capability discoverable and easy to choose correctly
+- how do we validate interpolations and formulas in a way that is visible during authoring and preview
+- how do we avoid introducing a second, overlapping feature unless the current baseline proves insufficient
 
-- reduce SQL-specific identity hacks
-- preserve the simple interpolation use case that already works today
-- preserve a cross-entity derived-value mechanism that works across `sql`, `entity`, `fixed`, `csv`, and Excel-backed entities
-- make derived identity and branch markers easier to read and validate
-- reduce repetition across staging entities
-
-It would also address the current gap between implementation and documentation: the code supports interpolated `extra_columns`, but the configuration guide previously described `extra_columns` mainly as copy-or-constant behavior.
+In other words, derived-value ergonomics is now mostly a documentation, validation, preview, and authoring-support problem, not primarily a missing modeling primitive.
 
 ### Expected Behavior
 
-- Simple interpolation should remain supported
-- Interpolated `extra_columns` should remain available for all entity types
-- If a SQL-only `computed_columns` feature is later added, it should run after source extraction but before foreign keys and append/merge operations that depend on it
-- SQL expressions should support a limited, explicit transformation vocabulary rather than arbitrary code execution
-- Authors should be able to choose between lightweight cross-entity interpolation and richer SQL-specific derived expressions without unnecessary duplication
+- `extra_columns` remains the default place for lightweight derived values across all entity types
+- Authors can mix copied columns, interpolated strings, formulas, and constants in the same block
+- Validation surfaces missing references and formula errors early
+- Preview makes derived columns visible enough that authors do not need to infer behavior indirectly
+- Any future richer feature should complement `extra_columns`, not replace or duplicate it
 
 ### Suggested Scope
 
 Short term:
 
-- document interpolated `extra_columns` as a supported pattern
-- treat it as the recommended current solution for simple synthetic identifiers and branch markers
+- treat current `extra_columns` support as the recommended solution for branch markers, synthetic labels, and synthetic identifiers
+- improve validation and preview support for derived columns, especially when referenced columns arrive later in the pipeline
+- improve examples and guidance so authors can tell when a column copy, interpolation, or formula is the best fit
 
 Medium term:
 
-- improve validation and preview support for interpolated `extra_columns`
-- decide whether a separate SQL-only `computed_columns` feature is needed at all
-- if needed, add richer SQL-expression support such as concatenation helpers, trimming, null coalescing, and basic conditional logic
+- evaluate whether there are concrete modeling cases that still remain awkward even with the current baseline
+- only if those cases are real and recurring, consider whether a separate SQL-oriented `computed_columns` feature is justified at all
 
 ## Proposal 4: Branch-Scoped Consumers
 
@@ -326,39 +326,54 @@ Templates would reduce repetition and keep the pattern consistent across project
 
 ## Prioritized Recommendations
 
-If only a few improvements are pursued, the recommended order is:
+If only a few improvements are pursued next, the recommended order is:
 
-1. better derived-value ergonomics
-2. first-class merged parent entities
-3. branch-scoped consumers
+1. first-class merged parent entities
+2. branch-scoped consumers
+3. explicit fact-to-lookup mapping
 
 ### Why these first
 
-These three features would remove most of the friction seen in the Arbodat relative-dating scenario:
+These three improvements would remove most of the remaining friction seen in the Arbodat relative-dating scenario:
 
-- better derived-value ergonomics remove most SQL hacks for synthetic identities while building on the interpolation support that already exists today
 - merged parent entities remove the need to simulate branch structure through generic append alone
 - branch-scoped consumers remove downstream cleanup filters for mixed parent entities
+- explicit fact-to-lookup mapping reduces semantic confusion between lookup tables and fact tables
+
+Derived-value ergonomics is no longer in the top three because the current `extra_columns` baseline already covers a substantial part of that earlier gap. The remaining work there is follow-through and polish, not a missing primary modeling construct.
 
 ## Implementation Strategy
 
-### Phase 1: Low-Risk Ergonomics
+The delivery order below is organized by implementation risk, not only by conceptual value.
 
-- Document interpolated `extra_columns` as the current supported derived-value pattern
-- Improve validation, discoverability, and preview support for interpolated `extra_columns`
-- Add comment-preserving YAML save behavior
-- Add new validations around likely lookup/fact confusion
+### Phase 1: Low-Risk Ergonomic Follow-Through
 
-### Phase 2: Branch-Aware Modeling
+- **Proposal 3: Derived-Value Ergonomics On Top Of The Current Baseline**
+  Dependency: none. This is follow-through on the current baseline and can proceed independently.
+- **Proposal 8: Comment-Preserving Save Path**
+  Dependency: none. This is operationally independent from the modeling proposals and can ship on its own.
+- **Proposal 6: Target-Schema-Aware Validation**
+  Dependency: starts with no hard dependency, but Phase 1 should scope the first rules around the current baseline and obvious lookup-versus-fact confusion. Later validation rules should expand after Proposal 4 and Proposal 5 clarify branch-aware intent.
 
-- Add branch-scoped consumer support
-- Add schema-aware append helpers for heterogeneous branches
+### Phase 2: Branch-Aware Modeling Helpers
+
+- **Proposal 4: Branch-Scoped Consumers**
+  Dependency: depends conceptually on Proposal 3 for authoring clarity around branch markers and derived discriminator columns, but does not require any new derived-value feature to exist first.
+- **Proposal 5: Schema-Aware Append for Heterogeneous Branches**
+  Dependency: independent of Proposal 4 at the implementation level, but the two proposals reinforce each other. Proposal 5 should preferably land before Proposal 1 so branch behavior can be validated in a lighter-weight form first.
+- **Proposal 6: Target-Schema-Aware Validation**
+  Dependency: expanded Phase 2 rules should build on Proposal 4 and Proposal 5 so the validator can reason about branch-scoped consumption, mixed-parent entities, and append-driven branch structure with less guesswork.
 
 ### Phase 3: First-Class Modeling Constructs
 
-- Add merged parent entities
-- Add explicit fact-to-lookup mapping
-- Consider derived lookup helpers and/or template support
+- **Proposal 1: First-Class Merged Parent Entities**
+  Dependency: should build on lessons from Proposal 5 and, ideally, Proposal 4. Schema-aware append and branch-scoped consumers provide the lower-risk proving ground for branch semantics before introducing a first-class merged entity type.
+- **Proposal 2: Explicit Fact-to-Lookup Mapping**
+  Dependency: benefits from Proposal 6, because validation is the main mechanism that turns declarative fact-to-lookup intent into actionable guidance. It does not strictly depend on Proposal 1, but the two proposals complement each other in shared-parent fact models.
+- **Proposal 7: Derived Lookup Helpers**
+  Dependency: should follow Proposal 2, because lookup derivation or lookup coverage checks are clearer once explicit fact-to-lookup relationships exist.
+- **Proposal 9: Reusable Entity Macros or Templates**
+  Dependency: should come last. It depends on the stabilization of Proposal 1, Proposal 2, Proposal 4, and Proposal 5; otherwise it risks freezing patterns that are still changing.
 
 ## Benefits
 
@@ -366,16 +381,25 @@ These three features would remove most of the friction seen in the Arbodat relat
 - Fewer configuration workarounds
 - Better validation quality for semantic modeling mistakes
 - Better readability for authors working directly in YAML
+- Better alignment between declared YAML structure and actual modeling intent
 - More maintainable projects over time
 
 ## Risks
 
 - Higher conceptual surface area if too many new modeling primitives are added at once
-- Potential overlap between enhanced `append` and first-class merged-parent features
-- Need for clear ordering semantics between source extraction, computed columns, append/merge, foreign keys, and unnest
+- Potential overlap between enhanced `append`, merged-parent entities, and template features
+- Need for clear ordering semantics between `extra_columns`, append or merge operations, foreign keys, and unnest
+- Risk of introducing overlapping abstractions before simpler branch-aware helpers have been validated in real projects
 
 ## Recommendation
 
-Start with better derived-column ergonomics, branch-aware downstream filtering/consumption, and comment-preserving saves.
+Focus the next round of ergonomics work on making branch structure and fact-versus-lookup intent explicit.
 
-Those changes have the best ratio of implementation cost to user value, and they would materially simplify scenarios like Arbodat relative dating even before larger modeling constructs are introduced.
+The best next investments are:
+
+- branch-aware consumption
+- clearer merged-parent modeling
+- stronger semantic validation
+- comment-preserving save behavior
+
+Those changes would materially simplify scenarios like Arbodat relative dating without reopening the already-addressed question of how lightweight derived values should be authored.
