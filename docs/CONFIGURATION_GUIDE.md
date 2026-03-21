@@ -212,6 +212,7 @@ This architecture separates concerns between:
 - **Type**: `string` (always "system_id")
 - **Required**: Automatically managed by system
 - **Description**: Standardized name for auto-incrementing integer IDs (1, 2, 3...). This column is always added automatically during data loading and is used for internal processing. When data is exported, this column is renamed based on the entity's `public_id` setting.
+- **Import Rule**: For non-fixed entities (`sql`, `csv`, `xlsx`, `openpyxl`, `entity`), `system_id` is an internal Shape Shifter identity and should not be imported from source data or listed in `columns`. The main exception is `type: fixed`, where explicit `system_id` values may be preserved intentionally.
 - **Behavior**:
   - Added automatically by all loaders (SQL, fixed, file)
   - Always numbered sequentially starting from 1
@@ -234,6 +235,7 @@ This architecture separates concerns between:
   2. **Column Values**: Holds mapped external IDs from `mappings.yml` (local business key → SEAD ID)
   
   Additionally, `public_id` determines FK column names in child entities to avoid `system_id` collision.
+- **Import Rule**: Unlike `system_id`, `public_id` may be source-backed when the source actually provides that identifier. If the source does not provide it, the column is still part of the target schema and may be added or populated later in the pipeline.
   
 - **FK Linking Process**:
   ```
@@ -622,32 +624,64 @@ entities:
 - **Required**: No
 - **Description**: Additional columns to add to the entity. Keys are new column names. Values can be:
   - A source column name (string) - copies that column
+  - An interpolated string using `{column_name}` placeholders - derives a value from one or more columns
+  - A formula expression starting with `=` - evaluates a DSL expression for string transformations
   - Any other value - creates a constant column with that value
+  - Applies to any entity type, not only SQL-backed entities
 - **Example**:
   ```yaml
   extra_columns:
     # Copy BefuTyp column to new column
     feature_type_name: "BefuTyp"
+    # Build a derived string from multiple source columns
+    analysis_entity_value: "{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}"
+    # DSL formula for uppercase initials
+    initials: "=concat(upper(substr(first_name, 0, 1)), upper(substr(last_name, 0, 1)))"
+    # DSL formula with coalesce for null handling
+    display_name: "=coalesce(preferred_name, concat(first_name, ' ', last_name))"
     # Create constant null column
     feature_type_description: null
     # Create constant value column
     dataset_type_id: 4
   ```
+- **DSL Formula Syntax** (formula expressions starting with `=`):
+  - **Grammar**: `=function(arg1, arg2, ...)` where args can be column names, literals, or nested function calls
+  - **Escaping**: Use `==literal` to store a string constant that must start with `=`; it is unescaped to `=literal`
+  - **Available Functions**:
+    - `concat(...)` - Concatenate arguments as strings (null-safe, treats nulls as empty strings)
+    - `upper(str)` - Convert to uppercase
+    - `lower(str)` - Convert to lowercase
+    - `trim(str)` - Remove leading/trailing whitespace
+    - `substr(str, start, length)` - Extract substring (0-indexed)
+    - `coalesce(...)` - Return first non-null value
+  - **Literals**: String literals (`"text"` or `'text'`), integers (`42`, `-10`), booleans (`true`, `false`), null (`null`)
+  - **Security**: No arbitrary code execution - only whitelisted functions, bounded complexity (max depth 20, max 500 nodes)
+  - **Type Handling**: All functions operate on pandas Series for vectorized evaluation
+  - **Implementation**: See `src/transforms/dsl.py` for parser and evaluator
 - **Validation Rules**:
   - **Type**: Must be `dict` if provided (error if not)
   - **Keys**: Must be valid Python identifiers / column names (suggested validation)
-  - **Values**: Can be any type (string for column reference, or literal value)
+  - **Values**: Can be any type (string for column reference, interpolated string, formula, or literal value)
+  - **Formula Syntax**: Formulas starting with `=` must follow DSL grammar (parse errors reported with line/column)
+  - **Formula Validation**: Referenced columns must exist at evaluation time, functions must be whitelisted
 - **Common Issues**:
   - Duplicate column names (conflicts with existing columns)
   - Referenced source columns don't exist
+  - Interpolated strings reference columns that are not yet available until later pipeline stages
   - Invalid column name characters
+  - Formula syntax errors (missing parentheses, unknown functions, etc.)
 - **Suggested Additional Validation**:
   - Error if extra_column name conflicts with existing columns or keys
   - Warn if referenced source column doesn't exist
+  - Warn if interpolated placeholders reference missing columns that can never be resolved
   - Validate column names follow naming conventions
-    # Create constant value column
-    default_status: "active"
-  ```
+  - Parse and validate formula syntax when `extra_columns` are evaluated during extraction, preview, or normalization
+
+- **Notes**:
+  - Interpolated strings are null-safe: null values are converted to empty strings during interpolation
+  - Formula expressions are null-safe: string functions propagate nulls, `coalesce` selects first non-null
+  - Interpolated `extra_columns` may be deferred and re-evaluated later if referenced columns are added by foreign-key linking or unnesting
+  - Formula expressions are evaluated after data extraction, so referenced columns must exist in source or be added earlier
 
 ---
 
@@ -1215,11 +1249,15 @@ foreign_keys:
 ##### `allow_null_keys`
 - **Type**: `bool`
 - **Default**: `false`
-- **Description**: Whether to allow null values in key columns
+- **Description**: Explicitly control whether missing values in foreign key key columns are tolerated
+- **Behavior**:
+  - `false`: Strict override. Raise on missing key parts before merge.
+  - `true`: Tolerate missing key parts explicitly.
+  - omitted: Use the runtime default for the join shape. For lookup-style `left` joins on alternative keys, missing local key parts are treated as unresolved links rather than hard errors.
 - **Example**:
   ```yaml
   constraints:
-    allow_null_keys: false
+    allow_null_keys: true
   ```
 
 #### Row Count Constraints
@@ -1446,11 +1484,13 @@ foreign_keys:
 **`allow_null_keys`**
 - **Type**: `bool`
 - **Default**: `false`
-- **Description**: Allow NULL/NaN values in foreign key columns
-  - `false`: Raise error if local foreign key contains nulls
-  - `true`: Allow null foreign keys (treated as unmatched)
+- **Description**: Explicitly control whether missing key parts are tolerated in foreign key columns
+  - `false`: Raise error if the foreign key contains missing key parts
+  - `true`: Allow missing foreign key parts explicitly
+  - omitted: Use the runtime default for the join shape
+- **Lookup-style `left` join default**: When omitted on a lookup-style `left` join that resolves a remote identity from alternative keys, missing local key parts are treated as unresolved links. The row is kept, the FK stays empty, and missing values never match missing values.
 - **Interaction**: When `false` + `allow_unmatched_left: false`, ensures all rows have valid non-null foreign keys
-- **Use case**: Enforce mandatory relationships, detect missing reference data
+- **Use case**: Enforce mandatory relationships, detect missing reference data, or preserve an explicit strict override
 
 ```yaml
 # Every sample MUST have a non-null type
@@ -1463,6 +1503,30 @@ foreign_keys:
       allow_null_keys: false          # No null types allowed
       allow_unmatched_left: false     # And type must exist
 ```
+
+##### Lookup-Style `left` Join Default
+
+If a foreign key uses a `left` join and alternative business keys to resolve a remote identity, omitting `allow_null_keys` uses the lookup-style default:
+
+1. missing local key parts do not raise by default,
+2. missing values never match missing values,
+3. the local row is preserved,
+4. the resolved foreign key remains empty.
+
+```yaml
+site:
+  depends_on: [location]
+  foreign_keys:
+    - entity: location
+      local_keys: [country_code, location_name]
+      remote_keys: [country_code, location_name]
+      how: left
+      constraints:
+        cardinality: many_to_one
+        require_unique_right: true
+```
+
+If a row in `site` has `location_name: null`, Shape Shifter keeps the row and leaves the resolved `location_id` empty instead of treating the missing key part as a successful match.
 
 ##### Row Validation Constraints
 
@@ -1531,11 +1595,10 @@ site:
       constraints:
         cardinality: many_to_one
         allow_unmatched_left: true   # Sites can lack location
-        allow_null_keys: true        # NULL location_id is OK
         require_unique_right: true   # But valid locations must be unique
 ```
 
-**Result**: Sites without matching locations are kept with a warning showing which location_ids were not found.
+**Result**: Sites without matching locations are kept with a warning showing which location_ids were not found. For lookup-style `left` joins on alternative keys, omitting `allow_null_keys` also keeps rows with missing key parts unresolved by default.
 
 ##### Strict One-to-One Relationship
 
@@ -1680,7 +1743,8 @@ ForeignKeyConstraintViolation: Sample linking violation:
 ```
 ForeignKeyConstraintViolation: Sample foreign key validation failed:
 - 5 rows have NULL values in foreign key column 'type_id'
-- Set allow_null_keys: true to permit null foreign keys
+- Set allow_null_keys: true to tolerate missing join keys explicitly
+- For lookup-style left joins, omit allow_null_keys to keep unresolved rows by default
 ```
 
 **Row Decrease Violation:**
@@ -3040,7 +3104,7 @@ This comprehensive validation system helps catch configuration errors early, pro
 
 ## Data Filters
 
-Filters provide post-load data filtering capabilities. They are applied after data extraction but before foreign key linking and other transformations.
+Filters provide staged data filtering capabilities. By default, filters run after data extraction and before foreign key linking and unnesting, but they can also be deferred to later execution stages.
 
 ### Filter Project
 
@@ -3050,7 +3114,34 @@ Filters are configured in the `filters` property of an entity as a list of filte
 entity_name:
   filters:
     - type: filter_type
+      stage: extract  # Optional: extract | after_link | after_unnest
       # filter-specific parameters
+```
+
+### Filter Stages
+
+Each filter may optionally declare a `stage`.
+
+- `extract`: Runs immediately after extraction. This is the default if `stage` is omitted.
+- `after_link`: Runs after the first foreign key link pass and deferred `extra_columns` re-evaluation.
+- `after_unnest`: Runs after unnesting, relinking, and deferred `extra_columns` re-evaluation.
+
+Use later stages when a filter depends on columns that do not exist immediately after extraction.
+
+Examples:
+
+```yaml
+measurements:
+  columns: [sample_id, ph, loi, conductivity]
+  unnest:
+    id_vars: [sample_id]
+    value_vars: [ph, loi, conductivity]
+    var_name: value_name
+    value_name: value
+  filters:
+    - type: query
+      stage: after_unnest
+      query: "value_name in ['ph', 'loi']"
 ```
 
 ### Available Filter Types
@@ -3061,6 +3152,7 @@ Keeps only rows where a column's value exists in another entity's column. This i
 
 **Parameters**:
 - `type`: `"exists_in"` (required)
+- `stage`: Optional execution stage (`extract`, `after_link`, or `after_unnest`)
 - `column`: Local column name to filter (required)
 - `other_entity`: Name of entity to check values against (required)
 - `other_column`: Column name in other entity (optional, defaults to same as `column`)
@@ -3094,14 +3186,20 @@ taxa:
 - Reduce data size by filtering based on dependent entities
 
 **Execution Order**:
-1. Filter is applied after data extraction
-2. Filter can reference entities that appear earlier in dependency order
-3. Filter is applied before foreign key linking for the entity
+1. Filter is applied at the configured stage
+2. If `stage` is omitted, it runs at `extract`
+3. Filters can reference entities that appear earlier in dependency order
+4. Later stages are useful when filtering on columns added by linking or unnesting
 
 **Error Handling**:
 - Raises error if `other_entity` does not exist in data store
 - Raises error if `column` or `other_column` is missing
 - Logs warning if no rows match filter criteria
+
+**Validation Notes**:
+- Shape Shifter validates filter stage values
+- `exists_in` filters validate explicit column references against the selected stage
+- `query` filters still use pandas query syntax at runtime; Phase 1 does not parse query expressions during validation
 
 ### Custom Filter Development
 

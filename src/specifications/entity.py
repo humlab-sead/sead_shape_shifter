@@ -3,6 +3,7 @@
 from typing import Any
 
 from src.model import TableConfig
+from src.transforms.filter import Filters, normalize_filter_stage
 from src.utility import Registry, dotget
 
 from .base import ProjectSpecification
@@ -160,6 +161,74 @@ class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
         """Check that fields are for the SQL entity."""
         super().is_satisfied_by(entity_name=entity_name, **kwargs)
         self.check_fields(entity_name, ["data_source", "query"], "not_empty_string/E")
+        return not self.has_errors()
+
+
+@ENTITY_SPECIFICATION.register(key="sql_column_configuration")
+class SqlColumnConfigurationSpecification(ProjectSpecification):
+    """Validates SQL column configuration that can be checked without executing the query."""
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        self.clear()
+
+        table: TableConfig = self.get_entity(entity_name)
+        if table.type != "sql":
+            return True
+
+        entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
+        raw_columns = entity_cfg.get("columns") or []
+        configured_columns: list[str] = table.safe_columns
+        auto_detect_columns: bool = True if table.auto_detect_columns is None else bool(table.auto_detect_columns)
+
+        if isinstance(raw_columns, list) and len(raw_columns) != len(set(raw_columns)):
+            self.add_error(
+                f"Entity '{entity_name}': configured columns contain duplicates, which is not allowed.",
+                entity=entity_name,
+                field="columns",
+            )
+
+        if not auto_detect_columns and not configured_columns:
+            self.add_error(
+                f"Entity '{entity_name}': no columns specified in configuration, and auto-detect is disabled.",
+                entity=entity_name,
+                field="columns",
+            )
+
+        if not auto_detect_columns:
+            missing_keys: list[str] = [key for key in table.keys if key not in configured_columns]
+            if missing_keys:
+                self.add_error(
+                    f"Entity '{entity_name}': key column(s) {missing_keys} must be included in the "
+                    "specified columns when auto-detect is disabled.",
+                    entity=entity_name,
+                    field="columns",
+                )
+
+        return not self.has_errors()
+
+
+@ENTITY_SPECIFICATION.register(key="non_fixed_identity_columns")
+class NonFixedIdentityColumnsSpecification(ProjectSpecification):
+    """Validates that non-fixed entities do not declare derived system_id columns in `columns`."""
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        self.clear()
+
+        table: TableConfig = self.get_entity(entity_name)
+        if table.type == "fixed":
+            return True
+
+        configured_columns: set[str] = set(table.safe_columns)
+        forbidden_columns: list[str] = sorted(configured_columns & {table.system_id})
+
+        if forbidden_columns:
+            self.add_error(
+                f"Entity '{entity_name}': non-fixed entities must not include derived system_id columns in 'columns': {forbidden_columns}. "
+                "These columns are added later in the pipeline.",
+                entity=entity_name,
+                field="columns",
+            )
+
         return not self.has_errors()
 
 
@@ -672,6 +741,120 @@ class EntityReferencesExistSpecification(ProjectSpecification):
                     f"Entity '{entity_name}': references non-existent entity '{remote_entity}' in foreign key",
                     entity=entity_name,
                 )
+
+
+@ENTITY_SPECIFICATION.register(key="filters")
+class FilterSpecification(ProjectSpecification):
+    """Validates staged filter configuration and basic stage-aware column availability."""
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        self.clear()
+
+        entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
+        filters: list[dict[str, Any]] | None = entity_cfg.get("filters")
+        if not filters:
+            return True
+
+        if not isinstance(filters, list):
+            self.add_error("filters must be a list", entity=entity_name, field="filters")
+            return False
+
+        for idx, filter_cfg in enumerate(filters):
+            filter_id = f"Entity '{entity_name}', filter #{idx + 1}"
+
+            if not isinstance(filter_cfg, dict):
+                self.add_error(f"{filter_id}: must be a mapping", entity=entity_name, field=f"filters[{idx}]")
+                continue
+
+            filter_type = filter_cfg.get("type")
+            if not filter_type:
+                self.add_error(f"{filter_id}: missing required 'type' field", entity=entity_name, field=f"filters[{idx}].type")
+                continue
+
+            if Filters.get(filter_type) is None:
+                self.add_error(
+                    f"{filter_id}: unknown filter type '{filter_type}'",
+                    entity=entity_name,
+                    field=f"filters[{idx}].type",
+                )
+                continue
+
+            try:
+                stage = normalize_filter_stage(filter_cfg)
+            except ValueError as exc:
+                self.add_error(str(exc), entity=entity_name, field=f"filters[{idx}].stage")
+                continue
+
+            available_local_columns = self._get_filter_stage_columns(entity_name, stage)
+            explicit_local_column = filter_cfg.get("column")
+            if filter_type != "query" and isinstance(explicit_local_column, str) and explicit_local_column not in available_local_columns:
+                self.add_error(
+                    f"{filter_id}: column '{explicit_local_column}' is not available at stage '{stage}'. "
+                    f"Available columns: {sorted(available_local_columns)}.",
+                    entity=entity_name,
+                    field=f"filters[{idx}].column",
+                )
+
+            if filter_type == "exists_in":
+                self._validate_exists_in_filter(entity_name, idx, filter_cfg, stage)
+
+        return not self.has_errors()
+
+    def _validate_exists_in_filter(self, entity_name: str, idx: int, filter_cfg: dict[str, Any], stage: str) -> None:
+        filter_id = f"Entity '{entity_name}', filter #{idx + 1}"
+        column = filter_cfg.get("column")
+        other_entity = filter_cfg.get("other_entity") or filter_cfg.get("entity")
+        other_column = filter_cfg.get("other_column") or filter_cfg.get("remote_column") or column
+
+        if not isinstance(column, str) or not column:
+            self.add_error(
+                f"{filter_id}: exists_in filter requires 'column'",
+                entity=entity_name,
+                field=f"filters[{idx}].column",
+            )
+            return
+
+        if not isinstance(other_entity, str) or not other_entity:
+            self.add_error(
+                f"{filter_id}: exists_in filter requires 'other_entity'",
+                entity=entity_name,
+                field=f"filters[{idx}].other_entity",
+            )
+            return
+
+        if not self.entity_exists(other_entity):
+            self.add_error(
+                f"{filter_id}: references non-existent entity '{other_entity}'",
+                entity=entity_name,
+                field=f"filters[{idx}].other_entity",
+            )
+            return
+
+        available_local_columns = self._get_filter_stage_columns(entity_name, stage)
+        if column not in available_local_columns:
+            self.add_error(
+                f"{filter_id}: column '{column}' is not available at stage '{stage}'. "
+                f"Available columns: {sorted(available_local_columns)}.",
+                entity=entity_name,
+                field=f"filters[{idx}].column",
+            )
+
+        if isinstance(other_column, str) and other_column:
+            available_remote_columns = self.get_entity_columns(other_entity)
+            if other_column not in available_remote_columns:
+                self.add_error(
+                    f"{filter_id}: other_column '{other_column}' not found in entity '{other_entity}'. "
+                    f"Available columns: {sorted(available_remote_columns)}.",
+                    entity=entity_name,
+                    field=f"filters[{idx}].other_column",
+                )
+
+    def _get_filter_stage_columns(self, entity_name: str, stage: str) -> set[str]:
+        if stage == "extract":
+            return self.get_entity_columns(entity_name, exclude_types={"unnest", "foreign_keys"})
+        if stage == "after_link":
+            return self.get_entity_columns(entity_name, exclude_types={"unnest"})
+        return self.get_entity_columns(entity_name)
 
 
 @ENTITY_SPECIFICATION.register(key="materialization")

@@ -35,7 +35,8 @@ export const useIngesterStore = defineStore('ingester', () => {
       ingesters.value = await ingesterApi.listIngesters()
       // Auto-select first ingester if available
       if (ingesters.value.length > 0 && !selectedIngester.value) {
-        selectedIngester.value = ingesters.value[0]
+        const firstIngester = ingesters.value[0] ?? null
+        selectedIngester.value = firstIngester
       }
     } catch (e: any) {
       error.value = e.message || 'Failed to fetch ingesters'

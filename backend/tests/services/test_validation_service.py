@@ -168,6 +168,25 @@ class TestValidationServiceErrors:
         assert result.error_count > 0
         assert any("does not match" in e.message.lower() for e in result.errors)
 
+    def test_invalid_filter_stage_is_reported(self, validation_service):
+        """Stage-aware filter validation should surface invalid stage values."""
+        config = {
+            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "entities": {
+                "sample": {
+                    "type": "entity",
+                    "keys": ["sample_id"],
+                    "columns": ["value"],
+                    "filters": [{"type": "query", "stage": "postprocess", "query": "value > 0"}],
+                }
+            },
+        }
+
+        result = validation_service.validate_project(config)
+
+        assert result.is_valid is False
+        assert any("invalid filter stage" in e.message.lower() for e in result.errors)
+
 
 class TestValidationServiceEntity:
     """Tests for entity-specific validation."""

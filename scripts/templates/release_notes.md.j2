@@ -1,0 +1,45 @@
+# What's New in v{{ version }}
+
+Date: {{ formatted_date }}
+
+## Highlights
+
+{% for item in highlights -%}
+- {{ item }}
+{% else -%}
+- Draft summary pending review.
+{% endfor %}
+
+## New Features
+
+{% for item in features -%}
+- {{ item }}
+{% else -%}
+- No major new end-user features were detected in the generated notes.
+{% endfor %}
+
+## Improvements
+
+{% for item in improvements -%}
+- {{ item }}
+{% else -%}
+- Review the technical changelog for additional usability and workflow improvements.
+{% endfor %}
+
+## Fixes
+
+{% for item in fixes -%}
+- {{ item }}
+{% else -%}
+- Review the technical changelog for the full list of fixes in this release.
+{% endfor %}
+
+## Upgrade Notes
+
+- Draft only: review whether this release changes recommended workflows, configuration, or upgrade steps.
+
+## Learn More
+
+- Technical changelog: CHANGELOG.md
+- GitHub release: {{ release_url }}
+- Relevant docs: docs/USER_GUIDE.md

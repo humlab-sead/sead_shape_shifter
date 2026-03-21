@@ -133,17 +133,18 @@
             <validation-message-list
               :messages="allMessages"
               :empty-message="'No validation issues found. Project looks good!'"
+              @open-entity="handleOpenEntity"
             />
           </v-window-item>
 
           <!-- Errors Only -->
           <v-window-item value="errors">
-            <validation-message-list :messages="errors" :empty-message="'No errors found'" />
+            <validation-message-list :messages="errors" :empty-message="'No errors found'" @open-entity="handleOpenEntity" />
           </v-window-item>
 
           <!-- Warnings Only -->
           <v-window-item value="warnings">
-            <validation-message-list :messages="warnings" :empty-message="'No warnings found'" />
+            <validation-message-list :messages="warnings" :empty-message="'No warnings found'" @open-entity="handleOpenEntity" />
           </v-window-item>
 
           <!-- By Category -->
@@ -164,7 +165,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="structuralIssues" />
+                  <validation-message-list :messages="structuralIssues" @open-entity="handleOpenEntity" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
@@ -183,7 +184,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="dataIssues" />
+                  <validation-message-list :messages="dataIssues" @open-entity="handleOpenEntity" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
@@ -202,7 +203,7 @@
                   </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <validation-message-list :messages="performanceIssues" />
+                  <validation-message-list :messages="performanceIssues" @open-entity="handleOpenEntity" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
@@ -237,6 +238,7 @@ interface ValidationConfig {
 interface Emits {
   (e: 'validate'): void
   (e: 'validate-data', config?: ValidationConfig): void
+  (e: 'open-entity', entityName: string): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -303,6 +305,10 @@ const performanceErrors = computed(() => {
 function handleDataValidationRun(config: ValidationConfig) {
   showDataConfig.value = false
   emit('validate-data', config)
+}
+
+function handleOpenEntity(entityName: string) {
+  emit('open-entity', entityName)
 }
 
 async function copyToClipboard() {

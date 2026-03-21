@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from src.model import TableConfig
-from src.transforms.filter import ExistsInFilter, Filters, QueryFilter, apply_filters
+from src.transforms.filter import VALID_FILTER_STAGES, ExistsInFilter, Filters, QueryFilter, apply_filters
 
 
 class TestQueryFilter:
@@ -393,6 +393,44 @@ class TestApplyFilters:
         expected = pd.DataFrame({"id": [3, 4], "value": [30, 40]}, index=[2, 3])
         pd.testing.assert_frame_equal(result, expected)
 
+    def test_apply_filters_only_runs_filters_for_requested_stage(self):
+        """Filters with a different stage should be skipped."""
+        df = pd.DataFrame({"id": [1, 2, 3], "value": [10, 20, 30]})
+        entities_cfg = {
+            "test": {
+                "filters": [
+                    {"type": "query", "query": "value >= 20"},
+                    {"type": "query", "stage": "after_unnest", "query": "id == 3"},
+                ]
+            }
+        }
+        cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
+
+        result = apply_filters("test", df, cfg, {}, stage="extract")
+
+        expected = pd.DataFrame({"id": [2, 3], "value": [20, 30]}, index=[1, 2])
+        pd.testing.assert_frame_equal(result, expected)
+
+    def test_apply_filters_after_unnest_stage(self):
+        """Later-stage filters should run when their stage is selected."""
+        df = pd.DataFrame({"value_name": ["ph", "loi", "cond"], "value": [7.1, 9.2, 123]})
+        entities_cfg = {"test": {"filters": [{"type": "query", "stage": "after_unnest", "query": "value_name in ['ph', 'loi']"}]}}
+        cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
+
+        result = apply_filters("test", df, cfg, {}, stage="after_unnest")
+
+        expected = pd.DataFrame({"value_name": ["ph", "loi"], "value": [7.1, 9.2]}, index=[0, 1])
+        pd.testing.assert_frame_equal(result, expected)
+
+    def test_apply_filters_invalid_stage_raises_error(self):
+        """Unknown stages should fail clearly."""
+        df = pd.DataFrame({"id": [1]})
+        entities_cfg = {"test": {"filters": [{"type": "query", "query": "id == 1"}]}}
+        cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
+
+        with pytest.raises(ValueError, match="Invalid filter stage"):
+            apply_filters("test", df, cfg, {}, stage="postprocess")
+
 
 class TestFilterRegistry:
     """Tests for filter registry."""
@@ -412,3 +450,7 @@ class TestFilterRegistry:
         keys = set(Filters.items.keys())
         assert "query" in keys
         assert "exists_in" in keys
+
+    def test_valid_filter_stages(self):
+        """Document the supported execution stages."""
+        assert VALID_FILTER_STAGES == ("extract", "after_link", "after_unnest")

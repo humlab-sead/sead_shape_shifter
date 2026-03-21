@@ -10,16 +10,46 @@
     </v-card-title>
 
     <v-card-text>
-      <!-- Data Source Selector -->
-      <v-select
-        v-model="selectedDataSource"
-        :items="dataSourceNames"
-        label="Data Source"
-        prepend-icon="mdi-database"
-        density="comfortable"
-        class="mb-4"
-        :disabled="executing"
-      />
+      <v-row class="mb-4" align="center">
+        <v-col cols="12" md="5" lg="4">
+          <v-select
+            v-model="selectedDataSource"
+            :items="dataSourceNames"
+            label="Data Source"
+            prepend-icon="mdi-database"
+            density="comfortable"
+            hide-details
+            :disabled="executing"
+          />
+        </v-col>
+
+        <v-col cols="12" md="7" lg="8" class="d-flex flex-wrap gap-2 justify-md-end">
+          <v-btn
+            color="primary"
+            :loading="executing"
+            :disabled="!selectedDataSource || !query || executing"
+            @click="executeQuery"
+          >
+            <v-icon start>mdi-play</v-icon>
+            Execute Query
+          </v-btn>
+
+          <v-btn
+            variant="outlined"
+            :loading="validating"
+            :disabled="!selectedDataSource || !query || validating"
+            @click="validateQueryOnly"
+          >
+            <v-icon start>mdi-check-circle-outline</v-icon>
+            Validate
+          </v-btn>
+
+          <v-btn variant="text" :disabled="!query" @click="clearQuery">
+            <v-icon start>mdi-close</v-icon>
+            Clear
+          </v-btn>
+        </v-col>
+      </v-row>
 
       <!-- SQL Editor -->
       <div class="sql-editor-container mb-4">
@@ -52,7 +82,7 @@
       </v-alert>
 
       <v-alert
-        v-if="validation && validation.warnings.length > 0"
+        v-if="visibleWarnings.length > 0"
         type="warning"
         variant="tonal"
         density="compact"
@@ -60,59 +90,11 @@
       >
         <div class="text-subtitle-2 mb-2">Warnings:</div>
         <ul class="pl-4">
-          <li v-for="(warning, idx) in validation.warnings" :key="idx">
+          <li v-for="(warning, idx) in visibleWarnings" :key="idx">
             {{ warning }}
           </li>
         </ul>
       </v-alert>
-
-      <!-- Query Info -->
-      <v-row v-if="validation && validation.statement_type" class="mb-4">
-        <v-col cols="12" md="6">
-          <v-chip size="small" label>
-            <v-icon start size="small">mdi-code-braces</v-icon>
-            {{ validation.statement_type }}
-          </v-chip>
-        </v-col>
-        <v-col v-if="validation.tables.length > 0" cols="12" md="6">
-          <v-chip v-for="table in validation.tables" :key="table" size="small" class="mr-1" label>
-            <v-icon start size="small">mdi-table</v-icon>
-            {{ table }}
-          </v-chip>
-        </v-col>
-      </v-row>
-
-      <!-- Action Buttons -->
-      <v-row>
-        <v-col cols="12" class="d-flex gap-2">
-          <v-btn
-            color="primary"
-            :loading="executing"
-            :disabled="!selectedDataSource || !query || executing"
-            @click="executeQuery"
-          >
-            <v-icon start>mdi-play</v-icon>
-            Execute Query
-          </v-btn>
-
-          <v-btn
-            variant="outlined"
-            :loading="validating"
-            :disabled="!selectedDataSource || !query || validating"
-            @click="validateQueryOnly"
-          >
-            <v-icon start>mdi-check-circle-outline</v-icon>
-            Validate
-          </v-btn>
-
-          <v-spacer />
-
-          <v-btn variant="text" :disabled="!query" @click="clearQuery">
-            <v-icon start>mdi-close</v-icon>
-            Clear
-          </v-btn>
-        </v-col>
-      </v-row>
 
       <!-- Execution Stats -->
       <v-row v-if="lastResult" class="mt-2">
@@ -121,10 +103,9 @@
             <div class="d-flex align-center">
               <v-icon start>mdi-check-circle</v-icon>
               <span>
-                Query executed successfully in {{ lastResult.execution_time_ms }}ms • {{ lastResult.row_count }}
-                {{ lastResult.row_count === 1 ? 'row' : 'rows' }}
+                Query executed successfully in {{ lastResult.execution_time_ms }}ms
                 <span v-if="lastResult.is_truncated" class="text-warning">
-                  (truncated at {{ lastResult.row_count }} rows)
+                  • results truncated at {{ lastResult.row_count }} rows
                 </span>
               </span>
             </div>
@@ -133,9 +114,9 @@
       </v-row>
 
       <!-- Error Display -->
-      <!-- @ts-ignore -->
       <ErrorAlert
         v-if="error"
+        :message="error.message"
         v-bind="errorProps"
         closable
         show-context
@@ -147,7 +128,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { useDataSourceStore } from '@/stores/data-source'
 import { queryApi } from '@/api/query'
@@ -180,9 +161,21 @@ const validation = ref<QueryValidation | null>(null)
 const lastResult = ref<QueryResult | null>(null)
 const executing = ref(false)
 const validating = ref(false)
+const showManualWarnings = ref(false)
 
 // Computed
 const dataSourceNames = computed(() => dataSourceStore.dataSources.map((ds) => ds.name))
+const visibleWarnings = computed(() => {
+  if (!validation.value) return []
+
+  return validation.value.warnings.filter((warning) => {
+    if (showManualWarnings.value) {
+      return true
+    }
+
+    return !/where clause/i.test(warning)
+  })
+})
 
 // Monaco editor configuration
 const editorOptions = computed(() => ({
@@ -231,8 +224,8 @@ async function executeQuery() {
     lastResult.value = result
     emit('result', result)
 
-    // Auto-validate on successful execution
-    await validateQueryOnly()
+    // Auto-validate on successful execution, but keep advisory WHERE warnings hidden.
+    await runValidation(false)
   } catch (err: any) {
     handleError(err)
     emit('error', err.response?.data?.message || err.message || 'Query execution failed')
@@ -241,7 +234,7 @@ async function executeQuery() {
   }
 }
 
-async function validateQueryOnly() {
+async function runValidation(showWarnings: boolean) {
   if (!selectedDataSource.value || !query.value) return
 
   validating.value = true
@@ -249,6 +242,7 @@ async function validateQueryOnly() {
 
   try {
     validation.value = await queryApi.validateQuery(selectedDataSource.value, { query: query.value })
+    showManualWarnings.value = showWarnings
   } catch (err: any) {
     handleError(err)
   } finally {
@@ -256,13 +250,22 @@ async function validateQueryOnly() {
   }
 }
 
+async function validateQueryOnly() {
+  await runValidation(true)
+}
+
 
 function clearQuery() {
   query.value = ''
   validation.value = null
   lastResult.value = null
+  showManualWarnings.value = false
   clearError()
 }
+
+watch([query, selectedDataSource], () => {
+  showManualWarnings.value = false
+})
 
 // Load data sources on mount
 onMounted(async () => {

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import jpype
 import pandas as pd
@@ -10,6 +11,18 @@ from src.model import DataSourceConfig
 UCANACCESS_HOME = os.path.abspath("lib/ucanaccess")
 ARBODAT_DATA_MDB = os.path.abspath("./data/shared/shared-data/ArchBotDaten.mdb")
 ARBODAT_LOOKUP_MDB = os.path.abspath("./data/shared/shared-data/ArchBotStrukDat.mdb")
+
+RELATIVE_DATING_DEBUG_QUERY = """select [Projekt], [Befu], [ProbNr],
+    'relative_dating' as [analysis_entity_type],
+    [ArchDat] as [analysis_entity_value],
+    null as [PCODE],
+    null as [Fraktion],
+    null as [cf],
+    null as [RTyp],
+    null as [Zust],
+    [ArchDat]
+from [Proben]
+where [ArchDat] is not null and [ArchDat] <> '';"""
 
 DATA_SOURCE_CONFIG = DataSourceConfig(
     cfg={
@@ -56,3 +69,34 @@ def test_can_load_ucanaccess_queries() -> None:
     for query in conn.getDbIO().getQueries():
         print(query.getName())
         print(query.toSQLString())
+
+
+@pytest.mark.manual
+@pytest.mark.debug
+@pytest.mark.skipif(not Path(ARBODAT_DATA_MDB).exists(), reason="Requires tests/test_data/shared/shared-data/ArchBotDaten.mdb")
+def test_debug_relative_dating_query_against_real_arbodat_data(capsys: pytest.CaptureFixture[str]) -> None:
+    """Temporary debug harness for inspecting raw Access metadata and columns."""
+    data_source_config = DataSourceConfig(
+        cfg={
+            "options": {
+                "filename": ARBODAT_DATA_MDB,
+                "ucanaccess_dir": UCANACCESS_HOME,
+            },
+            "driver": "ucanaccess",
+        },
+        name="ucanaccess_debug_archbotdaten",
+    )
+    loader = UCanAccessSqlLoader(data_source_config)
+
+    result = loader.read_sql_sync(RELATIVE_DATING_DEBUG_QUERY)
+
+    print("query:")
+    print(RELATIVE_DATING_DEBUG_QUERY)
+    print("columns:", result.columns.tolist())
+    print("duplicated:", result.columns.duplicated().tolist())
+    print("head:")
+    print(result.head(10).to_string(index=False))
+
+    captured = capsys.readouterr()
+    assert result.shape[1] == 11
+    assert "columns:" in captured.out

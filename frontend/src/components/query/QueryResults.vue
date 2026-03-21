@@ -27,10 +27,6 @@
         <v-row class="mb-3">
           <v-col cols="12" class="d-flex align-center gap-4">
             <v-chip size="small" label>
-              <v-icon start size="small">mdi-table-row</v-icon>
-              {{ result.row_count }} {{ result.row_count === 1 ? 'row' : 'rows' }}
-            </v-chip>
-            <v-chip size="small" label>
               <v-icon start size="small">mdi-table-column</v-icon>
               {{ result.columns.length }} {{ result.columns.length === 1 ? 'column' : 'columns' }}
             </v-chip>
@@ -68,7 +64,9 @@
           <!-- Footer with pagination -->
           <template #bottom>
             <div class="d-flex align-center justify-space-between pa-3">
-              <div class="text-caption text-grey">Showing {{ startRow }}-{{ endRow }} of {{ result.row_count }}</div>
+              <div class="text-caption text-grey">
+                {{ result.row_count }} {{ result.row_count === 1 ? 'row' : 'rows' }} total • Showing {{ startRow }}-{{ endRow }}
+              </div>
               <v-pagination v-model="page" :length="totalPages" :total-visible="7" size="small" />
               <v-select
                 v-model="itemsPerPage"

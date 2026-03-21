@@ -94,14 +94,68 @@ These are the primary system documentation files:
   - Proposal for a project advisor with Shape Shifter and SEAD/SIMS knowledge
   - Scope, architecture, context model, safety boundaries, and phased delivery
 
+- **[proposals/QUERY_FILTER_ENGINE_SELECTION.md](proposals/QUERY_FILTER_ENGINE_SELECTION.md)**
+  - Proposes adding an explicit `engine` field to `type: query` filters for advanced pandas query behavior
+  - Recommends `engine: python` over prefix forms like `query: "python:..."`
+
+- **[proposals/USER_FACING_RELEASE_NOTES_STRATEGY.md](proposals/USER_FACING_RELEASE_NOTES_STRATEGY.md)**
+  - Recommends keeping the technical `CHANGELOG.md` while adding curated user-facing release notes
+  - Covers both the documentation strategy and the semantic-release workflow for publishing shorter GitHub Release summaries
+
 - **[proposals/ENTITY_LEVEL_LOCKING.md](proposals/ENTITY_LEVEL_LOCKING.md)**
   - Shape Shifter currently has optimistic locking at the project level for the entire project.
   - The most frequent use case in the UI, is where a user opens, edits, and saves one entity at a time.
   - This proposal introduces optimistic locking at an entity level increasing collaborative work.
 
-- **[proposals/FK_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/FK_NULL_KEY_DEFAULT_BEHAVIOR.md)**
-  - Compares two design options for null handling in alternative-key foreign key joins.
-  - Recommends a default behavior where missing alternative keys leave the FK unresolved instead of raising.
+### Done Proposals
+
+- **[proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)**
+  - Defines the Phase 1 lookup-join default for null handling in alternative-key foreign key joins.
+  - Recommends leaving the FK unresolved instead of raising when lookup-style joins have missing alternative keys.
+
+- **[proposals/FK_NULL_KEY_POLICY_MODEL.md](proposals/FK_NULL_KEY_POLICY_MODEL.md)**
+  - Placeholder for a future Phase 2 proposal about an explicit missing-key policy model.
+  - Outlines the open design questions for a broader user-facing null-key strategy.
+
+- **[proposals/VUETIFY_4_MIGRATION_RESUME_PLAN.md](proposals/VUETIFY_4_MIGRATION_RESUME_PLAN.md)**
+  - Records the current Vuetify 4 migration findings, including what is safe and unsafe to pre-apply.
+  - Captures the resume plan, affected files, and recommended execution order for the eventual frontend upgrade.
+
+- **[proposals/RAW_SOURCE_DATA_EXPLORER_PROPOSAL.md](proposals/RAW_SOURCE_DATA_EXPLORER_PROPOSAL.md)**
+  - Proposes evolving Schema Explorer into a stronger raw source data investigation tool.
+  - Recommends a phased path from AG Grid-based loaded-row preview to larger fetches, server-driven exploration, and column profiling.
+
+- **[proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md](proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md)**
+  - Proposes new modeling ergonomics for complex target-schema scenarios such as merged parent entities, lookup/fact pairs, and branch-aware downstream entities.
+  - Recommends computed columns, branch-scoped consumers, target-aware validation, and comment-preserving YAML saves as the highest-value improvements.
+
+- **[proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md](proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md)**
+  - Proposes a small, safe DSL layered on top of `extra_columns` for lightweight derived-value transforms.
+  - Positions the feature relative to `translate`, `replacements`, and Proposal 3 in the complex-entity ergonomics work.
+
+- **[proposals/done/TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md](proposals/done/TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md)**
+  - Companion technical design sketch for implementing the tiny DSL in `extra_columns`.
+  - Describes proposed classes, function signatures, parser shape, pandas execution model, and test strategy.
+
+- **[proposals/done/STAGED_FILTER_EXECUTION.md](proposals/done/STAGED_FILTER_EXECUTION.md)**
+  - Proposes stage-aware filter execution so filters can run after linking or unnesting when needed.
+  - Preserves the current default early-filter behavior while adding explicit later pipeline stages.
+
+- **[proposals/done/MATERIALIZED_DEPENDENCY_VISUALIZATION.md](proposals/done/MATERIALIZED_DEPENDENCY_VISUALIZATION.md)**
+  - Documents the implemented dependency-graph support for showing frozen historical source dependencies on materialized fixed entities.
+  - Covers the backend extractor, frozen edge metadata, Cytoscape styling, and validation coverage.
+
+- **[other/DSL_EXTENSIBILITY_GUIDE.md](other/DSL_EXTENSIBILITY_GUIDE.md)**
+  - Extension guide for adding new expression types or functions to the tiny DSL after the initial implementation.
+  - Covers AST, parser, validator, evaluator, and backend update points.
+
+### What's New
+
+- **[whats-new/README.md](whats-new/README.md)**
+  - User-facing release notes index and publishing guidance
+
+- **[whats-new/TEMPLATE.md](whats-new/TEMPLATE.md)**
+  - Reusable template for concise, non-technical release summaries
 
 ## Archived Documentation
 
@@ -124,7 +178,7 @@ Previously consolidated source documents are available in the [archive/](archive
 
 ## Quick Navigation
 
-### I want to...
+### I want to
 
 **Use Shape Shifter:**
 - Start here: [USER_GUIDE.md](USER_GUIDE.md)

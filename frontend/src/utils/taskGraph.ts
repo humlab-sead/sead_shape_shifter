@@ -37,6 +37,7 @@ export function shouldShowNodeForTaskFilter(status: EntityTaskStatus | undefined
 /**
  * Compute task status classes applied to graph nodes.
  * Only one primary status class is applied, while `task-flagged` can be combined.
+ * Derived states like blocked/critical/ready take precedence over the default todo state.
  */
 export function getTaskStatusNodeClasses(status: EntityTaskStatus | undefined): string[] {
   if (!status) {
@@ -51,14 +52,14 @@ export function getTaskStatusNodeClasses(status: EntityTaskStatus | undefined): 
     classes.push('task-ignored')
   } else if (status.status === 'ongoing') {
     classes.push('task-ongoing')
-  } else if (status.status === 'todo') {
-    classes.push('task-todo')
   } else if ((status.blocked_by?.length ?? 0) > 0) {
     classes.push('task-blocked')
   } else if (status.priority === 'critical') {
     classes.push('task-critical')
   } else if (status.priority === 'ready') {
     classes.push('task-ready')
+  } else if (status.status === 'todo') {
+    classes.push('task-todo')
   }
 
   if (status.flagged === true) {

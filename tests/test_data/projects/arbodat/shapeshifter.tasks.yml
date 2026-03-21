@@ -1,0 +1,67 @@
+task_list:
+  todo: [analysis_entity_ages]
+  ongoing:
+  - abundance_modification
+  - abundance_property
+  - contact
+  - coordinate_system
+  - dataset_contacts
+  - dataset_submission
+  - dataset_submission_type
+  - dating
+  - feature_property
+  - identification_level
+  - master_dataset
+  - method_group
+  - relative_dating
+  - sample_coordinate
+  - sample_description
+  - site_location
+  - site_natural_region
+  - site_property
+  - modification_type
+  - abundance
+  - abundance_property_type
+  - contact_type
+  - dataset
+  - archaeological_period
+  - feature_property_type
+  - coordinate_method_dimension
+  - sample_description_type
+  - location
+  - natural_region
+  - site_property_type
+  - abundance_element
+  - analysis_entity
+  - epoch
+  - dimension
+  - location_type
+  - natural_region_group
+  - abundance_element_group
+  - method
+  - taxa
+  - sample
+  - sample_type
+  - sample_group
+  - feature
+  - feature_type
+  - project
+  - site
+  - site_type
+  - site_type_group
+  done: [sample_description_type, contact_type, dataset_contacts]
+  ignored:
+  - taxa_briemle_characteristics
+  - taxa_ecological_behaviour
+  - taxa_oberdorfer_characteristics
+  - taxa_dominance
+  - taxa_plant_sociological_behaviour
+  - taxa_persistence
+  - taxa_use_categories
+  - _project_contact
+  - _pcodes
+  - cultural_group
+  - dating_period
+  - chronological_period
+notes:
+  dating_period: This is entity that is ignored since it fills no purpose. ArchDat dating are instead stored in "relative_dating". The pilot has no chronology dating, nor any entry in Datierung.

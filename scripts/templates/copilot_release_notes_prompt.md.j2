@@ -1,0 +1,45 @@
+# Copilot CLI Prompt For v{{ version }}
+
+Use this repo as context and update the existing draft file in place.
+
+Files to read first:
+- {{ draft_path }}
+- {{ template_path }}
+
+Task:
+- Rewrite {{ draft_path }} into a concise user-facing release note for Shape Shifter.
+- Keep the same markdown heading structure already present in the draft.
+- Use the template as the style reference, not the technical changelog style.
+
+Audience:
+- normal users
+- evaluators
+- stakeholders
+
+Priorities:
+- visible new capabilities
+- user-visible fixes
+- workflow or usability improvements
+- upgrade notes if users need to verify anything
+
+Do not include:
+- commit hashes
+- issue numbers
+- PR numbers
+- internal refactors
+- test-only, CI, docs-only, TODO, proposal, or maintenance work
+- filenames unless truly useful to the reader
+
+Editing rules:
+- write in plain language
+- keep it short and scannable
+- prefer grouped summaries over long bullet dumps
+- if there are no special upgrade steps, say so briefly
+
+Use the filtered user-visible source material below rather than the raw technical changelog.
+
+Filtered source material for v{{ version }}:
+
+```md
+{{ filtered_context }}
+```

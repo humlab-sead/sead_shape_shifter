@@ -200,7 +200,7 @@ class QueryService:
 
         if project_name and project_service:
             # Resolve from project context
-            from backend.app.mappers.project_mapper import ProjectMapper
+            from backend.app.mappers.project_mapper import ProjectMapper  # pylint: disable=import-outside-toplevel
 
             api_project = project_service.load_project(project_name)
             if not api_project:

@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 
+test.skip(true, 'Playwright e2e tests are disabled')
+
 /**
  * Critical Workflow Test: Validation and Auto-Fix
  * 

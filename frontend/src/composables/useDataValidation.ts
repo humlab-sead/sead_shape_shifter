@@ -5,14 +5,6 @@ import { ref, computed } from 'vue'
 import { apiClient } from '@/api/client'
 import type { ValidationResult, ValidationError } from '@/types/validation'
 
-// Cache for validation results with 5-minute TTL
-interface CacheEntry {
-  result: ValidationResult
-  timestamp: number
-}
-const validationCache = new Map<string, CacheEntry>()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
-
 export function useDataValidation() {
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -77,15 +69,6 @@ export function useDataValidation() {
     entityNames?: string[],
     validationMode: 'sample' | 'complete' = 'sample'
   ): Promise<ValidationResult | null> {
-    // Check cache first
-    const cacheKey = `${projectName}:${entityNames?.join(',') || 'all'}:${validationMode}`
-    const cached = validationCache.get(cacheKey)
-
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      result.value = cached.result
-      return cached.result
-    }
-
     loading.value = true
     error.value = null
     result.value = null
@@ -101,12 +84,6 @@ export function useDataValidation() {
       })
 
       result.value = response.data
-
-      // Update cache
-      validationCache.set(cacheKey, {
-        result: response.data,
-        timestamp: Date.now(),
-      })
 
       return response.data
     } catch (err) {
@@ -169,13 +146,6 @@ export function useDataValidation() {
     }
   }
 
-  /**
-   * Clear validation cache (useful for testing and forcing refresh)
-   */
-  function clearCache() {
-    validationCache.clear()
-  }
-
   return {
     // State
     loading,
@@ -195,6 +165,5 @@ export function useDataValidation() {
     clearResults,
     previewFixes,
     applyFixes,
-    clearCache,
   }
 }

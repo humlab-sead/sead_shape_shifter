@@ -154,7 +154,7 @@ class ShapeShifter:
             data: pd.DataFrame = await self.get_subset(subset_service, entity, table_cfg)
 
             if table_cfg.filters:
-                data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store)
+                data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store, stage="extract")
 
             delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
             # Apply post-concatenation deduplication if append_mode is "distinct"
@@ -170,11 +170,29 @@ class ShapeShifter:
             # Re-evaluate deferred extra_columns after FK linking (in case they reference FK-added columns)
             self._evaluate_deferred_extra_columns(entity)
 
+            if table_cfg.filters:
+                self.table_store[entity] = apply_filters(
+                    name=entity,
+                    df=self.table_store[entity],
+                    cfg=table_cfg,
+                    data_store=self.table_store,
+                    stage="after_link",
+                )
+
             if table_cfg.unnest:
                 self.unnest_entity(entity=entity)
                 self.linker.link_entity(entity_name=entity)
                 # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
                 self._evaluate_deferred_extra_columns(entity)
+
+                if table_cfg.filters:
+                    self.table_store[entity] = apply_filters(
+                        name=entity,
+                        df=self.table_store[entity],
+                        cfg=table_cfg,
+                        data_store=self.table_store,
+                        stage="after_unnest",
+                    )
 
             if delay_drop_duplicates and table_cfg.drop_duplicates:
                 self.table_store[entity] = self.drop_duplicates(entity, table_cfg, self.table_store[entity])

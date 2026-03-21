@@ -2,6 +2,44 @@
 
 This directory contains CLI scripts for Shape Shifter workflows.
 
+## Release Notes Drafting
+
+The `prepare_copilot_release_notes.py` script prepares a user-facing release-notes draft for refinement with Copilot CLI.
+The underlying `generate_user_release_notes.py` script also supports local `.env` loading for AI-related variables when they are not already exported.
+Release-note bodies, Copilot prompts, and AI prompts are rendered from Jinja2 templates under `scripts/templates/`.
+
+## `prepare_copilot_release_notes.py`
+
+### Usage
+
+```bash
+python3 scripts/prepare_copilot_release_notes.py --version 1.24.0
+
+# List versions available in CHANGELOG.md
+python3 scripts/prepare_copilot_release_notes.py --list-versions
+```
+
+## `generate_user_release_notes.py`
+
+```bash
+# List versions available in CHANGELOG.md
+python3 scripts/generate_user_release_notes.py --list-versions
+```
+
+### What It Does
+
+- Generates a heuristic draft release note file using `generate_user_release_notes.py --force-heuristic`
+- Writes the draft by default to `docs/whats-new/vX.Y.Z.md`
+- Writes a ready-to-paste Copilot CLI prompt by default to `tmp/copilot-release-notes-vX.Y.Z.prompt.md`
+- Uses a filtered user-visible summary as prompt context instead of the full raw changelog section
+- Prints that prompt to stdout so it can be pasted directly into Copilot CLI
+
+### Optional Arguments
+
+- `--draft-output`: Custom path for the generated draft markdown file
+- `--prompt-output`: Custom path for the generated Copilot prompt file
+- `--list-versions`: Print release versions available in `CHANGELOG.md` and exit
+
 ## Auto-Reconcile Script
 
 The `auto_reconcile.py` script runs the entity reconciliation workflow from the command line.

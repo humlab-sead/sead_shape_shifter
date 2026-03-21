@@ -178,7 +178,7 @@ class DataValidationOrchestrator:
             # Run basic validators
             issues.extend(NonEmptyResultValidator.validate(df, entity_name))
 
-            if not df.empty:
+            if df.empty:
                 return issues  # Skip further validation if no data to validate
 
             # Validate columns
