@@ -11,6 +11,11 @@ entities:
     public_id: abundance_id
     keys: '@value: entities.analysis_entity.keys'
     columns:
+    - PCODE
+    - Fraktion
+    - cf
+    - RTyp
+    - Zust
     - rAnzahl
     - rGewicht
     - geschätzt
@@ -47,7 +52,7 @@ entities:
     extra_columns:
       abundance: FAnzahl
     data_source: arbodat_data
-    query: select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust], [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl], [FFragmente], [FGewicht], [EDatProb], [AnmFrakt] from [Details];
+    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       'abundance' as [analysis_entity_type],\n       Nz([PCODE],'') & '|' & Nz([Fraktion],'') & '|' & Nz([cf],'') & '|' & Nz([RTyp],'') & '|' & Nz([Zust],'') as [analysis_entity_value],\n       [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl], [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]\nfrom [Details];"
   abundance_element:
     type: fixed
     public_id: abundance_element_id
@@ -188,6 +193,27 @@ entities:
     - [8, null, extrapolated_weight, Extrapolated weight, FGewicht]
     - [9, null, entry_date, Entry date, EDatProb]
     - [10, null, note, Note, AnmFrakt]
+  _analysis_entity_relative_dating:
+    type: sql
+    source:
+    public_id: analysis_entity_id
+    keys:
+    - Projekt
+    - Befu
+    - ProbNr
+    - analysis_entity_type
+    - analysis_entity_value
+    columns:
+    - PCODE
+    - Fraktion
+    - cf
+    - RTyp
+    - Zust
+    - ArchDat
+    depends_on: []
+    drop_duplicates: true
+    data_source: arbodat_data
+    query: "select [Projekt], [Befu], [ProbNr],\n       'relative_dating' as [analysis_entity_type],\n       [ArchDat] as [analysis_entity_value],\n       null as [PCODE],\n       null as [Fraktion],\n       null as [cf],\n       null as [RTyp],\n       null as [Zust],\n       [ArchDat]\nfrom [Proben]\nwhere [ArchDat] is not null and [ArchDat] <> '';"
   analysis_entity:
     type: sql
     source:
@@ -196,12 +222,15 @@ entities:
     - Projekt
     - Befu
     - ProbNr
+    - analysis_entity_type
+    - analysis_entity_value
+    columns:
     - PCODE
     - Fraktion
     - cf
     - RTyp
     - Zust
-    columns: []
+    - ArchDat
     foreign_keys:
     - entity: sample
       local_keys: [Projekt, Befu, ProbNr]
@@ -223,7 +252,7 @@ entities:
         allow_unmatched_right: true
         require_unique_left: false
         require_unique_right: false
-        allow_null_keys: false
+        allow_null_keys: true
         allow_row_decrease: true
         allow_unmatched_left: false
     - entity: method
@@ -238,9 +267,13 @@ entities:
         allow_null_keys: true
         allow_row_decrease: true
         allow_unmatched_left: false
-    depends_on: [method, taxa, sample]
+    depends_on: [method, taxa, sample, _analysis_entity_relative_dating]
+    append:
+    - source: _analysis_entity_relative_dating
+      columns: [PCODE, Fraktion, cf, RTyp, Zust, ArchDat]
+    append_mode: distinct
     data_source: arbodat_data
-    query: select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust] from [Details];
+    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       'abundance' as [analysis_entity_type],\n       Nz([PCODE],'') & '|' & Nz([Fraktion],'') & '|' & Nz([cf],'') & '|' & Nz([RTyp],'') & '|' & Nz([Zust],'') as [analysis_entity_value],\n       null as [ArchDat]\nfrom [Details];"
   archaeological_period:
     type: sql
     source:
@@ -377,6 +410,7 @@ entities:
       remote_keys: [master_set_id]
     depends_on: [method, project]
     drop_duplicates: true
+    drop_empty_rows: [Fraktion]
     extra_columns:
       dataset_type_id:
       dataset_name: method_name
@@ -785,14 +819,29 @@ entities:
     query: "select distinct [Projekt], [Fustel] from [Projekte] where [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015')\n"
   relative_dating:
     type: entity
-    source: sample
-    public_id: relative_age_id
-    keys: [Projekt, Befu, ProbNr]
-    columns: [Projekt, Befu, ProbNr, ArchDat]
-    depends_on: [sample]
+    source: _analysis_entity_relative_dating
+    public_id: relative_date_id
+    keys: '@value: entities.analysis_entity.keys'
+    columns: [ArchDat, analysis_entity_type, analysis_entity_value]
+    foreign_keys:
+    - entity: analysis_entity
+      local_keys: '@value: entities.analysis_entity.keys'
+      remote_keys: '@value: entities.analysis_entity.keys'
+      constraints:
+        allow_unmatched_left: false
+        allow_null_keys: false
+        cardinality: many-to-one
+    - entity: relative_ages
+      local_keys: [ArchDat]
+      remote_keys: [archdat]
+      how: left
+      constraints:
+        allow_unmatched_left: false
+        allow_null_keys: false
+        cardinality: many-to-one
+    depends_on: [analysis_entity, relative_ages]
     drop_duplicates: true
     extra_columns:
-      relative_age_id:
       method_id:
       notes:
       dating_uncertainty_id:
@@ -1407,7 +1456,7 @@ entities:
   relative_ages:
     type: openpyxl
     public_id: relative_age_id
-    keys: []
+    keys: [archdat]
     columns:
     - relative_age_id
     - relative_age_name
@@ -1459,7 +1508,7 @@ entities:
     check_functional_dependency: false
     filters:
     - type: query
-      query: cf != '-'
+      query: cf.notna() and cf != '' and cf != '-'
   modification_type:
     type: fixed
     public_id: modification_type_id

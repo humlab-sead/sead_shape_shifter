@@ -624,32 +624,64 @@ entities:
 - **Required**: No
 - **Description**: Additional columns to add to the entity. Keys are new column names. Values can be:
   - A source column name (string) - copies that column
+  - An interpolated string using `{column_name}` placeholders - derives a value from one or more columns
+  - A formula expression starting with `=` - evaluates a DSL expression for string transformations
   - Any other value - creates a constant column with that value
+  - Applies to any entity type, not only SQL-backed entities
 - **Example**:
   ```yaml
   extra_columns:
     # Copy BefuTyp column to new column
     feature_type_name: "BefuTyp"
+    # Build a derived string from multiple source columns
+    analysis_entity_value: "{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}"
+    # DSL formula for uppercase initials
+    initials: "=concat(upper(substr(first_name, 0, 1)), upper(substr(last_name, 0, 1)))"
+    # DSL formula with coalesce for null handling
+    display_name: "=coalesce(preferred_name, concat(first_name, ' ', last_name))"
     # Create constant null column
     feature_type_description: null
     # Create constant value column
     dataset_type_id: 4
   ```
+- **DSL Formula Syntax** (formula expressions starting with `=`):
+  - **Grammar**: `=function(arg1, arg2, ...)` where args can be column names, literals, or nested function calls
+  - **Escaping**: Use `==literal` to store a string constant that must start with `=`; it is unescaped to `=literal`
+  - **Available Functions**:
+    - `concat(...)` - Concatenate arguments as strings (null-safe, treats nulls as empty strings)
+    - `upper(str)` - Convert to uppercase
+    - `lower(str)` - Convert to lowercase
+    - `trim(str)` - Remove leading/trailing whitespace
+    - `substr(str, start, length)` - Extract substring (0-indexed)
+    - `coalesce(...)` - Return first non-null value
+  - **Literals**: String literals (`"text"` or `'text'`), integers (`42`, `-10`), booleans (`true`, `false`), null (`null`)
+  - **Security**: No arbitrary code execution - only whitelisted functions, bounded complexity (max depth 20, max 500 nodes)
+  - **Type Handling**: All functions operate on pandas Series for vectorized evaluation
+  - **Implementation**: See `src/transforms/dsl.py` for parser and evaluator
 - **Validation Rules**:
   - **Type**: Must be `dict` if provided (error if not)
   - **Keys**: Must be valid Python identifiers / column names (suggested validation)
-  - **Values**: Can be any type (string for column reference, or literal value)
+  - **Values**: Can be any type (string for column reference, interpolated string, formula, or literal value)
+  - **Formula Syntax**: Formulas starting with `=` must follow DSL grammar (parse errors reported with line/column)
+  - **Formula Validation**: Referenced columns must exist at evaluation time, functions must be whitelisted
 - **Common Issues**:
   - Duplicate column names (conflicts with existing columns)
   - Referenced source columns don't exist
+  - Interpolated strings reference columns that are not yet available until later pipeline stages
   - Invalid column name characters
+  - Formula syntax errors (missing parentheses, unknown functions, etc.)
 - **Suggested Additional Validation**:
   - Error if extra_column name conflicts with existing columns or keys
   - Warn if referenced source column doesn't exist
+  - Warn if interpolated placeholders reference missing columns that can never be resolved
   - Validate column names follow naming conventions
-    # Create constant value column
-    default_status: "active"
-  ```
+  - Parse and validate formula syntax when `extra_columns` are evaluated during extraction, preview, or normalization
+
+- **Notes**:
+  - Interpolated strings are null-safe: null values are converted to empty strings during interpolation
+  - Formula expressions are null-safe: string functions propagate nulls, `coalesce` selects first non-null
+  - Interpolated `extra_columns` may be deferred and re-evaluated later if referenced columns are added by foreign-key linking or unnesting
+  - Formula expressions are evaluated after data extraction, so referenced columns must exist in source or be added earlier
 
 ---
 

@@ -127,6 +127,18 @@ These are the primary system documentation files:
   - Proposes evolving Schema Explorer into a stronger raw source data investigation tool.
   - Recommends a phased path from AG Grid-based loaded-row preview to larger fetches, server-driven exploration, and column profiling.
 
+- **[proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md](proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md)**
+  - Proposes new modeling ergonomics for complex target-schema scenarios such as merged parent entities, lookup/fact pairs, and branch-aware downstream entities.
+  - Recommends computed columns, branch-scoped consumers, target-aware validation, and comment-preserving YAML saves as the highest-value improvements.
+
+- **[proposals/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md](proposals/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md)**
+  - Proposes a small, safe DSL layered on top of `extra_columns` for lightweight derived-value transforms.
+  - Positions the feature relative to `translate`, `replacements`, and Proposal 3 in the complex-entity ergonomics work.
+
+- **[proposals/TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md](proposals/TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md)**
+  - Companion technical design sketch for implementing the tiny DSL in `extra_columns`.
+  - Describes proposed classes, function signatures, parser shape, pandas execution model, and test strategy.
+
 ### What's New
 
 - **[whats-new/README.md](whats-new/README.md)**
