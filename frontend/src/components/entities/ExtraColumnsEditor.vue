@@ -58,14 +58,8 @@
       density="compact"
       class="mt-3 text-caption"
     >
-      <strong>Extra columns</strong> allow you to add new columns to the output entity using:
-      <ul class="mt-2 mb-0 pl-4">
-        <li><strong>Template strings:</strong> <code>"{first_name} {last_name}"</code> - Combine multiple columns</li>
-        <li><strong>Column copy:</strong> <code>existing_column</code> - Copy values from a source column</li>
-        <li><strong>Constants:</strong> <code>"literal_value"</code> or <code>123</code> - Set fixed values</li>
-        <li><strong>Null values:</strong> Leave empty for null</li>
-      </ul>
-      Template strings are null-safe and can reference FK columns added during linking.
+      <strong>Extra columns</strong> support direct column copies, template strings like <code>"{first_name} {last_name}"</code>, constants, and DSL formulas like <code>=concat(upper(code), '-', trim(name))</code>.
+      Leave empty for null; template strings are null-safe and can reference FK columns added during linking.
     </v-alert>
   </div>
 </template>
