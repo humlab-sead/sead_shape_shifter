@@ -46,6 +46,20 @@ class TestInterpolationDetection:
         assert not ExtraColumnEvaluator.is_interpolated_string("{123invalid}")
 
 
+class TestDslFormulaDetection:
+    """Test DSL formula detection and literal escaping."""
+
+    def test_detects_dsl_formula(self):
+        """Single leading '=' indicates a DSL formula."""
+        assert ExtraColumnEvaluator.is_dsl_formula("=concat(first, last)")
+
+    def test_doubled_prefix_escapes_formula_marker(self):
+        """Double leading '=' is treated as a literal string, not a DSL formula."""
+        assert not ExtraColumnEvaluator.is_dsl_formula("==literal")
+        assert ExtraColumnEvaluator.is_escaped_equals_literal("==literal")
+        assert ExtraColumnEvaluator.unescape_equals_literal("==literal") == "=literal"
+
+
 class TestDependencyExtraction:
     """Test extract_column_dependencies() column name extraction."""
 
@@ -193,6 +207,16 @@ class TestExtraColumnsEvaluation:
 
         assert "const" in result.columns
         assert result["const"].tolist() == ["literal", "literal"]
+        assert len(deferred) == 0
+
+    def test_escaped_equals_string_constant(self):
+        """Escaped strings starting with '=' remain string constants."""
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"a": [1, 2]})
+        result, deferred = evaluator.evaluate_extra_columns(df, {"const": "==not_a_formula"}, "test")
+
+        assert "const" in result.columns
+        assert result["const"].tolist() == ["=not_a_formula", "=not_a_formula"]
         assert len(deferred) == 0
 
     def test_column_copy(self):

@@ -724,6 +724,105 @@ class TestShapeShifter:
 
         pd.testing.assert_frame_equal(result, expected)
 
+    @pytest.mark.asyncio
+    async def test_normalize_evaluates_deferred_formula_after_fk_linking(self):
+        """Deferred DSL formulas should resolve after FK linking adds referenced columns."""
+        survey_df = pd.DataFrame({"country_code": ["SE", "NO"]})
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "country": {
+                        "type": "fixed",
+                        "public_id": "country_id",
+                        "keys": ["country_code"],
+                        "columns": ["country_code", "country_name"],
+                        "values": [["SE", "Sweden"], ["NO", "Norway"]],
+                    },
+                    "site": {
+                        "type": "entity",
+                        "columns": ["country_code"],
+                        "depends_on": ["country"],
+                        "foreign_keys": [
+                            {
+                                "entity": "country",
+                                "local_keys": ["country_code"],
+                                "remote_keys": ["country_code"],
+                                "extra_columns": {"country_name": "country_name"},
+                            }
+                        ],
+                        "extra_columns": {
+                            "country_label": "=concat(country_name, ' / ', country_code)",
+                        },
+                    },
+                }
+            }
+        )
+
+        normalizer = ShapeShifter(project=project, default_entity="survey", table_store={"survey": survey_df})
+
+        await normalizer.normalize()
+
+        result = normalizer.table_store["site"][["country_code", "country_name", "country_label"]].copy()
+        result = result.sort_values("country_code").reset_index(drop=True)
+
+        expected = pd.DataFrame(
+            {
+                "country_code": ["NO", "SE"],
+                "country_name": ["Norway", "Sweden"],
+                "country_label": ["Norway / NO", "Sweden / SE"],
+            }
+        )
+        expected["country_label"] = expected["country_label"].astype("string")
+
+        pd.testing.assert_frame_equal(result, expected)
+
+    @pytest.mark.asyncio
+    async def test_normalize_evaluates_deferred_formula_after_unnesting(self):
+        """Deferred DSL formulas should resolve after unnesting creates referenced columns."""
+        survey_df = pd.DataFrame(
+            {
+                "material": ["peat", "clay"],
+                "texture": ["fibrous", "dense"],
+            }
+        )
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "measurement": {
+                        "type": "entity",
+                        "source": "survey",
+                        "columns": ["material", "texture"],
+                        "extra_columns": {
+                            "label": "=concat(value_name, ': ', value)",
+                        },
+                        "unnest": {
+                            "value_vars": ["material", "texture"],
+                            "var_name": "value_name",
+                            "value_name": "value",
+                        },
+                    }
+                }
+            }
+        )
+
+        normalizer = ShapeShifter(project=project, default_entity="survey", table_store={"survey": survey_df})
+
+        await normalizer.normalize()
+
+        result = normalizer.table_store["measurement"][["value_name", "value", "label"]].copy()
+        result = result.sort_values(["value_name", "value"]).reset_index(drop=True)
+
+        expected = pd.DataFrame(
+            {
+                "value_name": ["material", "material", "texture", "texture"],
+                "value": ["clay", "peat", "dense", "fibrous"],
+                "label": ["material: clay", "material: peat", "texture: dense", "texture: fibrous"],
+            }
+        )
+        expected["label"] = expected["label"].astype("string")
+
+        pd.testing.assert_frame_equal(result, expected)
+
     def test_unnest_all(self, survey_only_config: ShapeShiftProject):
         """Test unnesting all entities."""
         df = pd.DataFrame({"col1": [1, 2]})
