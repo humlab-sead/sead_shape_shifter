@@ -31,9 +31,42 @@ Do not use this directory for:
 ## Suggested Workflow
 
 1. Let semantic-release continue generating `CHANGELOG.md`.
-2. Write or refine a short user-facing summary for the release.
-3. Publish the same summary in GitHub Releases.
-4. If useful, store the summary here for long-term documentation access.
+2. Let the release automation generate a draft `docs/whats-new/vX.Y.Z.md` summary from the new changelog section.
+3. Review and refine that draft into a user-facing summary for the release.
+4. Let the automation use that draft as the GitHub Release body, then refine it if needed.
+5. If useful, keep the reviewed summary here for long-term documentation access.
+
+The current automation hook lives in `.releaserc.json` and runs `scripts/generate_user_release_notes.py` after semantic-release publishes. When `RELEASE_NOTES_API_KEY` is configured, the script uses an OpenAI-compatible chat endpoint to draft the summary; otherwise it falls back to the built-in heuristic summary generator. When `gh` is available, it also updates the matching GitHub Release body from the generated draft.
+
+Optional AI mode environment variables:
+
+- `RELEASE_NOTES_API_KEY` or `OPENAI_API_KEY`
+- `RELEASE_NOTES_API_URL` for a custom OpenAI-compatible endpoint
+- `RELEASE_NOTES_MODEL` to override the default model
+- `RELEASE_NOTES_API_TIMEOUT` to adjust request timeout in seconds
+
+For local runs, the script also checks the repo root `.env` file and loads those variables if they are not already exported in your shell. Exported environment variables still win.
+
+## Copilot CLI Drafting
+
+If you prefer Copilot CLI for the human-in-the-loop drafting step, use:
+
+```bash
+python3 scripts/prepare_copilot_release_notes.py --version X.Y.Z
+
+# List versions available in CHANGELOG.md
+python3 scripts/prepare_copilot_release_notes.py --list-versions
+```
+
+This does two things:
+
+1. Generates a heuristic draft release note file.
+2. Prints and saves a ready-to-paste Copilot CLI prompt with filtered, user-visible changelog context.
+
+By default it writes:
+
+- `docs/whats-new/vX.Y.Z.md`
+- `tmp/copilot-release-notes-vX.Y.Z.prompt.md`
 
 ## Writing Guidelines
 

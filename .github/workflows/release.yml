@@ -35,3 +35,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: semantic-release
+
+      - name: Upload draft user-facing release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: user-facing-release-notes
+          path: docs/whats-new/v*.md
+          if-no-files-found: ignore
