@@ -103,16 +103,16 @@ function getOrLoadManifest(): Promise<WhatsNewManifestResponse> {
 }
 
 async function fetchNote(version: string): Promise<WhatsNewNote> {
-  const manifest = await getOrLoadManifest()
-  const item = manifest.items.find((entry) => entry.version === version)
-  const notePath = item?.path ?? `/docs/whats-new/v${version}.md`
-
-  const response = await fetch(notePath)
+  const response = await fetch(`/api/v1/whats-new/${version}/content`)
   if (!response.ok) {
     throw new Error(`Failed to load release notes for v${version}: ${response.statusText}`)
   }
 
   const markdown = await response.text()
+  if (markdown.startsWith('<!DOCTYPE html>')) {
+    throw new Error(`Received HTML instead of markdown for release note v${version}`)
+  }
+
   return parseNote(markdown, version)
 }
 

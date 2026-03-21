@@ -3,13 +3,15 @@
 import re
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 router = APIRouter()
 
 WHATS_NEW_DIR = Path(__file__).resolve().parents[5] / "docs" / "whats-new"
 VERSION_FILE_PATTERN = re.compile(r"^v(?P<version>\d+\.\d+\.\d+)\.md$")
+VERSION_VALUE_PATTERN = re.compile(r"^\d+\.\d+\.\d+$")
 
 
 class WhatsNewManifestItem(BaseModel):
@@ -65,3 +67,16 @@ def _build_manifest() -> WhatsNewManifestResponse:
 async def get_whats_new_manifest() -> WhatsNewManifestResponse:
     """Return metadata for available what's-new markdown files."""
     return _build_manifest()
+
+
+@router.get("/whats-new/{version}/content", response_class=PlainTextResponse)
+async def get_whats_new_content(version: str) -> PlainTextResponse:
+    """Return the markdown content for a specific what's-new note."""
+    if not VERSION_VALUE_PATTERN.fullmatch(version):
+        raise HTTPException(status_code=400, detail="Invalid release version")
+
+    note_path = WHATS_NEW_DIR / f"v{version}.md"
+    if not note_path.exists() or not note_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Release note not found: v{version}.md")
+
+    return PlainTextResponse(note_path.read_text(encoding="utf-8"), media_type="text/markdown")
