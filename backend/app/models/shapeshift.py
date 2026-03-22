@@ -20,6 +20,8 @@ class ColumnInfo(BaseModel):
     data_type: str
     nullable: bool = True
     is_key: bool = False  # True if part of keys or public_id
+    is_derived: bool = False
+    derived_from: Optional[str] = None
 
 
 class PreviewResult(BaseModel):
@@ -32,10 +34,10 @@ class PreviewResult(BaseModel):
     estimated_total_rows: Optional[int] = None  # Actual row count if available
     execution_time_ms: int
     has_dependencies: bool = False
-    dependencies_loaded: list[str] = []
+    dependencies_loaded: list[str] = Field(default_factory=list)
     cache_hit: bool = False
     row_count: int = 0
-    validation_issues: list[dict[str, Any]] = []  # Validation issues from linking
+    validation_issues: list[dict[str, Any]] = Field(default_factory=list)  # Validation issues from preview processing
 
 
 class EntityPreviewError(BaseModel):

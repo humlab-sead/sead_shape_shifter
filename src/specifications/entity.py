@@ -3,6 +3,8 @@
 from typing import Any
 
 from src.model import TableConfig
+from src.transforms.dsl import FormulaEngine, extract_column_references
+from src.transforms.extra_columns import ExtraColumnEvaluator
 from src.transforms.filter import Filters, normalize_filter_stage
 from src.utility import Registry, dotget
 
@@ -516,6 +518,154 @@ class PublicIdSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="extra_columns_expressions")
+class ExtraColumnsExpressionSpecification(ProjectSpecification):
+    """Preflight validation for entity-level extra_columns expressions.
+
+    This validates expression syntax and impossible references before runtime while
+    tolerating references that may resolve later through prior extra_columns,
+    foreign-key linking, or unnesting.
+    """
+
+    def __init__(self, project_cfg: dict[str, Any]) -> None:
+        super().__init__(project_cfg)
+        self.formula_engine = FormulaEngine()
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that extra_columns expressions are structurally valid."""
+        self.clear()
+
+        entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
+        extra_columns: Any = entity_cfg.get("extra_columns")
+
+        if extra_columns is None:
+            return True
+
+        if not isinstance(extra_columns, dict):
+            self.add_error(
+                "'extra_columns' must be a dictionary mapping new column names to expressions or constants.",
+                entity=entity_name,
+                field="extra_columns",
+            )
+            return False
+
+        current_available: set[str] = self.get_entity_columns(entity_name, include_types={"columns", "keys"})
+        eventual_available: set[str] = self.get_entity_columns(entity_name, include_types={"columns", "keys", "foreign_keys", "unnest"})
+        eventual_available.update(extra_columns.keys())
+
+        for new_col, value in extra_columns.items():
+            field_name = f"extra_columns.{new_col}"
+
+            if not isinstance(value, str):
+                current_available.add(new_col)
+                continue
+
+            if ExtraColumnEvaluator.is_escaped_equals_literal(value):
+                current_available.add(new_col)
+                continue
+
+            if ExtraColumnEvaluator.is_dsl_formula(value):
+                self._validate_formula_expression(entity_name, field_name, new_col, value, current_available, eventual_available)
+                current_available.add(new_col)
+                continue
+
+            if ExtraColumnEvaluator.is_interpolated_string(value):
+                self._validate_interpolated_expression(entity_name, field_name, new_col, value, current_available, eventual_available)
+                current_available.add(new_col)
+                continue
+
+            current_available.add(new_col)
+
+        return not self.has_errors()
+
+    def _validate_formula_expression(
+        self,
+        entity_name: str,
+        field_name: str,
+        new_col: str,
+        expression: str,
+        current_available: set[str],
+        eventual_available: set[str],
+    ) -> None:
+        try:
+            ast = self.formula_engine.parse(expression)
+        except Exception as exc:
+            self.add_error(
+                f"Invalid formula for extra_columns '{new_col}': {exc}. Expression: {expression!r}",
+                entity=entity_name,
+                field=field_name,
+                expression=expression,
+            )
+            return
+
+        references: set[str] = extract_column_references(ast)
+        impossible: list[str] = sorted(reference for reference in references if reference not in eventual_available)
+
+        if impossible:
+            self.add_error(
+                f"Formula for extra_columns '{new_col}' references columns that are never available in this entity: {impossible}. "
+                f"Expression: {expression!r}",
+                entity=entity_name,
+                field=field_name,
+                expression=expression,
+            )
+            return
+
+        stage_order = sorted(reference for reference in references if reference not in current_available)
+        if stage_order:
+            self.add_warning(
+                f"Formula for extra_columns '{new_col}' depends on columns not available at initial extraction time: {stage_order}. "
+                f"This will rely on deferred evaluation after prior extra_columns, foreign keys, or unnesting. "
+                f"Expression: {expression!r}",
+                entity=entity_name,
+                field=field_name,
+                expression=expression,
+            )
+
+        try:
+            self.formula_engine.validate(ast, eventual_available)
+        except Exception as exc:
+            self.add_error(
+                f"Invalid formula for extra_columns '{new_col}': {exc}. Expression: {expression!r}",
+                entity=entity_name,
+                field=field_name,
+                expression=expression,
+            )
+
+    def _validate_interpolated_expression(
+        self,
+        entity_name: str,
+        field_name: str,
+        new_col: str,
+        expression: str,
+        current_available: set[str],
+        eventual_available: set[str],
+    ) -> None:
+        references = ExtraColumnEvaluator.extract_column_dependencies(expression)
+        impossible = sorted(reference for reference in references if reference not in eventual_available)
+
+        if impossible:
+            self.add_error(
+                f"Interpolated extra_columns '{new_col}' references columns that are never available in this entity: {impossible}. "
+                f"Expression: {expression!r}",
+                entity=entity_name,
+                field=field_name,
+                expression=expression,
+            )
+            return
+
+        stage_order = sorted(reference for reference in references if reference not in current_available)
+        if stage_order:
+            self.add_warning(
+                f"Interpolated extra_columns '{new_col}' depends on columns not available at initial extraction time: {stage_order}. "
+                f"This will rely on deferred evaluation after prior extra_columns, foreign keys, or unnesting. "
+                f"Expression: {expression!r}",
+                entity=entity_name,
+                field=field_name,
+                expression=expression,
+            )
+
+
 @ENTITY_SPECIFICATION.register(key="extra_columns_conflicts")
 class ExtraColumnsConflictsSpecification(ProjectSpecification):
     """Validates that extra_columns don't conflict with existing columns.
@@ -541,15 +691,20 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
         existing_columns: set[str] = set(
             table_cfg.get_columns(include_keys=True, include_fks=False, include_extra=False, include_unnest=True)
         )
+        existing_columns.add(table_cfg.system_id)
+        if table_cfg.public_id:
+            existing_columns.add(table_cfg.public_id)
 
         conflicts: set[str] = set(table_cfg.extra_columns.keys()) & existing_columns
 
         if conflicts:
             for conflict in sorted(conflicts):
-                self.add_warning(
-                    f"Column '{conflict}' already exists in entity '{entity_name}'. " f"The extra_columns value will be skipped.",
+                self.add_error(
+                    f"extra_columns '{conflict}' conflicts with an existing result column in entity '{entity_name}'. "
+                    "Rename the derived column instead of overriding source, key, ID, FK, or unnest output columns.",
                     entity=entity_name,
                     field="extra_columns",
+                    expression=table_cfg.extra_columns.get(conflict),
                 )
 
         return not self.has_errors()

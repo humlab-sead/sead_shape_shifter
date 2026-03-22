@@ -137,7 +137,7 @@ That distinction is still implicit. When it is not expressed directly, it is eas
 
 ## Proposal 3: Derived-Value Ergonomics Follow-Through
 
-Derived-value ergonomics is now tracked separately in [DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md).
+Derived-value ergonomics was tracked separately in [done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md) and is now complete.
 
 This umbrella proposal now treats derived values as supporting infrastructure rather than as one of the main unresolved modeling primitives. The remaining derived-value work is mostly about validation, preview visibility, editor guidance, and examples around the current `extra_columns` baseline.
 
@@ -296,7 +296,7 @@ These three improvements would remove most of the remaining friction seen in the
 - branch-scoped consumers remove downstream cleanup filters for mixed parent entities
 - explicit fact-to-lookup mapping reduces semantic confusion between lookup tables and fact tables
 
-Derived-value ergonomics is no longer in the top three because the current `extra_columns` baseline already covers a substantial part of that earlier gap. The remaining work there is follow-through and polish, tracked separately in [DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md), not a missing primary modeling construct.
+Derived-value ergonomics is no longer in the top three because the current `extra_columns` baseline already covers a substantial part of that earlier gap. The follow-through work is complete and recorded in [done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md), not a missing primary modeling construct.
 
 ## Implementation Strategy
 
@@ -305,7 +305,7 @@ The delivery order below is organized by implementation risk, not only by concep
 ### Phase 1: Low-Risk Ergonomic Follow-Through
 
 - **Derived-value ergonomics follow-through**
-  Dependency: none. This is tracked separately in [DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md) and can proceed independently.
+  Dependency: none. This is complete and documented in [done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md).
 - **Proposal 8: Comment-Preserving Save Path**
   Dependency: none. This is operationally independent from the modeling proposals and can ship on its own.
 - **Proposal 6: Target-Schema-Aware Validation**

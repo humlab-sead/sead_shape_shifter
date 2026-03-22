@@ -14,6 +14,7 @@ from backend.app.services.shapeshift_service import ShapeShiftService
 from src.configuration.config import Config
 from src.model import ShapeShiftProject
 from src.specifications import CompositeProjectSpecification, SpecificationIssue
+from src.validation_messages import format_validation_message_with_context
 from src.validators.data_validators import ValidationIssue
 
 if TYPE_CHECKING:
@@ -184,11 +185,22 @@ class ValidationService:
 
     def _map_issue(self, issue: SpecificationIssue) -> ValidationError:
         """Parse error message to extract entity and field information."""
+        field_name = issue.entity_field or issue.column_name
+        message = issue.message
+
+        if field_name and field_name.startswith("extra_columns"):
+            message = format_validation_message_with_context(
+                message=message,
+                entity=issue.entity_name,
+                field=field_name,
+                expression=issue.kwargs.get("expression"),
+            )
+
         return ValidationError(
             severity=issue.severity,  # type: ignore[arg-type]
             entity=issue.entity_name,
-            field=issue.entity_field or issue.column_name,
-            message=issue.message,
+            field=field_name,
+            message=message,
             code=", ".join(str(v) for k, v in issue.kwargs.items()),
         )
 
