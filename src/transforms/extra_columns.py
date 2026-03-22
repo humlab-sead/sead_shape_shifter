@@ -443,16 +443,55 @@ class ExtraColumnEvaluator:
         Returns:
             True if all extra_columns evaluated, False otherwise
         """
-        if not extra_columns:
-            return True
+        unresolved_columns = self.get_unresolved_extra_columns(df, extra_columns)
 
-        missing_columns = [col for col in extra_columns.keys() if col not in df.columns]
+        if unresolved_columns:
+            formatted = []
+            for column_name, details in unresolved_columns.items():
+                missing_dependencies = details.get("missing_dependencies", [])
+                if missing_dependencies:
+                    formatted.append(f"{column_name} (missing: {missing_dependencies})")
+                else:
+                    formatted.append(column_name)
 
-        if missing_columns:
-            logger.warning(f"{entity_name}[extra_columns]: Unresolved columns after normalization: {missing_columns}")
+            logger.warning(f"{entity_name}[extra_columns]: Unresolved columns after normalization: {formatted}")
             return False
 
         return True
+
+    def get_unresolved_extra_columns(self, df: pd.DataFrame, extra_columns: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        """Return configured extra_columns that are still unresolved after normalization."""
+        if not extra_columns:
+            return {}
+
+        unresolved: dict[str, dict[str, Any]] = {}
+
+        for column_name, expression in extra_columns.items():
+            if column_name in df.columns:
+                continue
+
+            missing_dependencies: list[str] = []
+
+            if isinstance(expression, str):
+                if self.is_dsl_formula(expression):
+                    try:
+                        ast = self.formula_engine.parse(expression)
+                        missing_dependencies = sorted(
+                            reference for reference in extract_column_references(ast) if reference not in df.columns
+                        )
+                    except Exception:
+                        missing_dependencies = []
+                elif self.is_interpolated_string(expression):
+                    missing_dependencies = sorted(
+                        reference for reference in self.extract_column_dependencies(expression) if reference not in df.columns
+                    )
+
+            unresolved[column_name] = {
+                "expression": expression,
+                "missing_dependencies": missing_dependencies,
+            }
+
+        return unresolved
 
     @staticmethod
     def split_extra_columns(

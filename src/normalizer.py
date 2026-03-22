@@ -46,6 +46,7 @@ class ShapeShifter:
         self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
         self.extra_col_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
+        self.unresolved_extra_columns: dict[str, dict[str, dict[str, Any]]] = {}
 
     def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
         """Resolve the DataLoader, if any, for the given TableConfig."""
@@ -212,6 +213,16 @@ class ShapeShifter:
 
             # Verify extra_columns were evaluated for this entity
             if table_cfg.extra_columns:
+                unresolved_extra_columns = self.extra_col_evaluator.get_unresolved_extra_columns(
+                    self.table_store[entity],
+                    table_cfg.extra_columns,
+                )
+
+                if unresolved_extra_columns:
+                    self.unresolved_extra_columns[entity] = unresolved_extra_columns
+                else:
+                    self.unresolved_extra_columns.pop(entity, None)
+
                 self.extra_col_evaluator.verify_extra_columns(self.table_store[entity], table_cfg.extra_columns, entity)
 
         if self.linker.deferred_tracker.deferred:

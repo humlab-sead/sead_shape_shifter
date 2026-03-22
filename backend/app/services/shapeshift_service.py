@@ -1,6 +1,7 @@
 """Service for previewing entity data with transformations."""
 
 import contextlib
+import itertools
 import time
 from typing import Any
 
@@ -18,6 +19,7 @@ from src.exceptions import FunctionalDependencyError
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.specifications.constraints import ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation, ValidationIssue
+from src.validation_messages import format_validation_message_with_context
 
 
 class ShapeShiftService:
@@ -265,21 +267,48 @@ class ShapeShiftService:
 
         # Access the linker's validators to collect issues
         # The linker stores validators that have been run during linking
-        if hasattr(shapeshifter.linker, "validators"):
-            for validator in shapeshifter.linker.validators:
-                if hasattr(validator, "issues"):
-                    for issue in validator.issues:
-                        if isinstance(issue, ValidationIssue):
-                            all_issues.append(
-                                {
-                                    "type": issue.issue_type,
-                                    "severity": issue.severity,
-                                    "local_entity": issue.local_entity,
-                                    "remote_entity": issue.remote_entity,
-                                    "message": issue.message,
-                                    "metadata": issue.metadata,
-                                }
-                            )
+        linker_issues = itertools.chain.from_iterable(getattr(validator, "issues", []) for validator in shapeshifter.linker.validators)
+
+        for issue in linker_issues:
+            if isinstance(issue, ValidationIssue):
+                all_issues.append(
+                    {
+                        "type": issue.issue_type,
+                        "severity": issue.severity,
+                        "local_entity": issue.local_entity,
+                        "remote_entity": issue.remote_entity,
+                        "message": issue.message,
+                        "metadata": issue.metadata,
+                    }
+                )
+
+        for entity_name, unresolved_columns in shapeshifter.unresolved_extra_columns.items():
+            for column_name, details in sorted(unresolved_columns.items()):
+                missing_dependencies = details.get("missing_dependencies", [])
+                expression = details.get("expression")
+                field_name: str = f"extra_columns.{column_name}"
+
+                message: str = f"Derived column '{column_name}' could not be resolved during preview"
+                if missing_dependencies:
+                    message = f"{message} because these referenced columns are still missing: " f"{', '.join(missing_dependencies)}"
+                message = format_validation_message_with_context(
+                    message=message, entity=entity_name, field=field_name, expression=expression
+                )
+
+                all_issues.append(
+                    {
+                        "type": "extra_column_unresolved",
+                        "severity": "error",
+                        "local_entity": entity_name,
+                        "remote_entity": None,
+                        "message": message,
+                        "metadata": {
+                            "field": field_name,
+                            "expression": expression,
+                            "missing_dependencies": missing_dependencies,
+                        },
+                    }
+                )
 
         return all_issues
 
@@ -396,6 +425,18 @@ class PreviewResultBuilder:
         preview_df: pd.DataFrame = table_store[entity_name].head(limit) if limit is not None else table_store[entity_name]
 
         key_columns: set[str] = entity_cfg.get_key_columns()
+        existing_result_columns: set[str] = set(
+            entity_cfg.get_columns(include_keys=True, include_fks=False, include_extra=False, include_unnest=True)
+        )
+        existing_result_columns.add(entity_cfg.system_id)
+        if entity_cfg.public_id:
+            existing_result_columns.add(entity_cfg.public_id)
+
+        derived_columns: set[str] = {
+            column_name
+            for column_name in (entity_cfg.extra_columns or {}).keys()
+            if column_name not in existing_result_columns and column_name in preview_df.columns
+        }
 
         columns: list[ColumnInfo] = [
             ColumnInfo(
@@ -403,6 +444,8 @@ class PreviewResultBuilder:
                 data_type=friendly_dtype(preview_df[col_name].dtype),
                 nullable=bool(preview_df[col_name].isnull().any()),
                 is_key=col_name in key_columns,
+                is_derived=col_name in derived_columns,
+                derived_from="extra_columns" if col_name in derived_columns else None,
             )
             for col_name in preview_df.columns
         ]

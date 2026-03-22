@@ -9,6 +9,8 @@ from typing import Any
 
 import pandas as pd
 
+from src.validation_messages import format_validation_message_with_context
+
 
 @dataclass
 class ValidationIssue:
@@ -189,6 +191,56 @@ class NonEmptyResultValidator:
                 auto_fixable=False,
             )
         ]
+
+
+class UnresolvedExtraColumnsValidator:
+    """Validate unresolved extra_columns left after full normalization."""
+
+    @staticmethod
+    def validate(unresolved_extra_columns: dict[str, dict[str, Any]], entity_name: str) -> list[ValidationIssue]:
+        """Convert unresolved extra_columns metadata into structured validation issues."""
+        if not unresolved_extra_columns:
+            return []
+
+        issues: list[ValidationIssue] = []
+
+        for column_name, details in sorted(unresolved_extra_columns.items()):
+            expression = details.get("expression")
+            missing_dependencies = details.get("missing_dependencies", [])
+            field_name = f"extra_columns.{column_name}"
+
+            if missing_dependencies:
+                base_message = (
+                    f"extra_columns '{column_name}' could not be resolved after normalization because "
+                    f"these referenced columns are still missing: {', '.join(missing_dependencies)}"
+                )
+                suggestion = "Reference only columns available after all transformations, or add the missing source/FK/unnest columns."
+            else:
+                base_message = f"extra_columns '{column_name}' could not be resolved after normalization"
+                suggestion = "Check the expression and ensure its dependencies are available during normalization."
+
+            message = format_validation_message_with_context(
+                message=base_message,
+                entity=entity_name,
+                field=field_name,
+                expression=expression,
+            )
+
+            issues.append(
+                ValidationIssue(
+                    severity="error",
+                    entity=entity_name,
+                    field=field_name,
+                    message=message,
+                    code="EXTRA_COLUMN_UNRESOLVED",
+                    suggestion=suggestion,
+                    category="data",
+                    priority="high",
+                    auto_fixable=False,
+                )
+            )
+
+        return issues
 
 
 class DuplicateKeysValidator:

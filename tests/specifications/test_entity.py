@@ -10,6 +10,8 @@ from src.specifications.entity import (
     EntityFieldsSpecification,
     EntityReferencesExistSpecification,
     EntitySpecification,
+    ExtraColumnsConflictsSpecification,
+    ExtraColumnsExpressionSpecification,
     FilterSpecification,
     FixedEntityFieldsSpecification,
     FixedEntitySystemIdSpecification,
@@ -963,6 +965,162 @@ class TestPublicIdSpecification:
 
         assert result is False
         assert any("conflicts with source entity" in str(error) for error in spec.errors)
+
+
+class TestExtraColumnsExpressionSpecification:
+    """Tests for entity-level extra_columns preflight validation."""
+
+    @pytest.fixture
+    def project_cfg(self):
+        return {
+            "entities": {
+                "valid": {
+                    "type": "entity",
+                    "columns": ["first", "last", "name"],
+                    "keys": ["name"],
+                    "extra_columns": {
+                        "label": "{first} {last}",
+                        "display": "=concat(first, ' ', last)",
+                        "kind": "specimen",
+                    },
+                },
+                "invalid_type": {
+                    "type": "entity",
+                    "columns": ["name"],
+                    "keys": ["name"],
+                    "extra_columns": ["bad"],
+                },
+                "missing_interpolation": {
+                    "type": "entity",
+                    "columns": ["first"],
+                    "keys": ["first"],
+                    "extra_columns": {"label": "{first}-{missing}"},
+                },
+                "invalid_formula": {
+                    "type": "entity",
+                    "columns": ["first"],
+                    "keys": ["first"],
+                    "extra_columns": {"display": "=unknown_func(first)"},
+                },
+                "stage_order": {
+                    "type": "entity",
+                    "columns": ["first"],
+                    "keys": ["first"],
+                    "extra_columns": {
+                        "display": "{full_name}",
+                        "full_name": "{first}-sample",
+                    },
+                },
+                "mixed": {
+                    "type": "entity",
+                    "columns": ["first", "last"],
+                    "keys": ["first"],
+                    "extra_columns": {
+                        "valid_label": "{first} {last}",
+                        "bad_label": "{first} {missing}",
+                        "bad_formula": "=unknown_func(first)",
+                    },
+                },
+            }
+        }
+
+    def test_valid_extra_columns(self, project_cfg):
+        spec = ExtraColumnsExpressionSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="valid")
+
+        assert result is True, spec.get_report()
+        assert len(spec.errors) == 0
+        assert len(spec.warnings) == 0
+
+    def test_invalid_extra_columns_type(self, project_cfg):
+        spec = ExtraColumnsExpressionSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="invalid_type")
+
+        assert result is False
+        assert any("must be a dictionary" in str(error) for error in spec.errors)
+
+    def test_missing_interpolation_reference_fails_preflight(self, project_cfg):
+        spec = ExtraColumnsExpressionSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="missing_interpolation")
+
+        assert result is False
+        assert any("never available" in str(error) and "missing" in str(error) for error in spec.errors)
+
+    def test_invalid_formula_fails_preflight(self, project_cfg):
+        spec = ExtraColumnsExpressionSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="invalid_formula")
+
+        assert result is False
+        assert any("Invalid formula" in str(error) and "unknown_func" in str(error) for error in spec.errors)
+
+    def test_stage_order_reference_warns_but_does_not_fail(self, project_cfg):
+        spec = ExtraColumnsExpressionSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="stage_order")
+
+        assert result is True, spec.get_report()
+        assert len(spec.errors) == 0
+        assert any("deferred evaluation" in str(warning) and "full_name" in str(warning) for warning in spec.warnings)
+
+    def test_entity_specification_includes_extra_columns_preflight(self, project_cfg):
+        spec = EntitySpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="mixed")
+
+        assert result is False
+        assert any("bad_label" in str(error) and "missing" in str(error) for error in spec.errors)
+        assert any("bad_formula" in str(error) and "unknown_func" in str(error) for error in spec.errors)
+
+
+class TestExtraColumnsConflictsSpecification:
+    """Tests for extra_columns conflict validation."""
+
+    def test_conflict_with_existing_column_is_error(self):
+        project_cfg = {
+            "entities": {
+                "sample": {
+                    "type": "entity",
+                    "columns": ["sample_code", "sample_name"],
+                    "keys": ["sample_code"],
+                    "extra_columns": {
+                        "sample_name": "sample_code",
+                    },
+                }
+            }
+        }
+
+        spec = ExtraColumnsConflictsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample")
+
+        assert result is False
+        assert len(spec.errors) == 1
+        assert "conflicts with an existing result column" in spec.errors[0].message
+
+    def test_entity_specification_fails_on_system_id_conflict(self):
+        project_cfg = {
+            "entities": {
+                "sample": {
+                    "type": "entity",
+                    "columns": ["sample_code"],
+                    "keys": ["sample_code"],
+                    "extra_columns": {
+                        "system_id": "sample_code",
+                    },
+                }
+            }
+        }
+
+        spec = EntitySpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="sample")
+
+        assert result is False
+        assert any("extra_columns 'system_id' conflicts" in issue.message for issue in spec.errors)
 
 
 class TestAppendSpecification:

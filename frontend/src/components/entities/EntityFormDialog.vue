@@ -658,7 +658,11 @@
               </v-window-item>
 
               <v-window-item value="extra_columns">
-                <extra-columns-editor v-model="formData.advanced.extra_columns" />
+                <extra-columns-editor
+                  v-model="formData.advanced.extra_columns"
+                  :available-columns="extraColumnsAvailableColumns"
+                  :reserved-names="extraColumnsReservedNames"
+                />
               </v-window-item>
 
               <v-window-item value="replacements">
@@ -2158,6 +2162,25 @@ const availableColumnsForReplacements = computed(() => {
   const extraColumnNames = Object.keys(formData.value.advanced.extra_columns || {})
   const combined = Array.from(new Set([...columns, ...extraColumnNames]))
   return combined.filter((c) => c && c !== 'system_id')
+})
+
+const extraColumnsAvailableColumns = computed(() => {
+  const sourceColumns = effectiveEntityColumns.value
+  const sourcePublicId = sourceReferenceColumn.value ? [sourceReferenceColumn.value] : []
+  return Array.from(new Set([...sourceColumns, ...sourcePublicId])).filter(Boolean)
+})
+
+const extraColumnsReservedNames = computed(() => {
+  const names = [
+    'system_id',
+    formData.value.public_id,
+    ...(formData.value.columns || []),
+    ...(formData.value.keys || []),
+    formData.value.advanced.unnest?.var_name,
+    formData.value.advanced.unnest?.value_name,
+  ]
+
+  return Array.from(new Set(names.map((name) => String(name || '').trim()).filter(Boolean)))
 })
 
 // const getFileExtensionHint = computed(() => {

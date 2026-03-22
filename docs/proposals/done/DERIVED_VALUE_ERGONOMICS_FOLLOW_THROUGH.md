@@ -38,7 +38,7 @@ In practice this means the core mechanism exists, but the authoring experience i
 - Reframe this as a new SQL-oriented computation system by default
 - Solve branch topology, merged-parent semantics, or fact-versus-lookup intent in this proposal
 
-Those broader modeling concerns remain in [COMPLEX_ENTITY_MODELING_ERGONOMICS.md](COMPLEX_ENTITY_MODELING_ERGONOMICS.md).
+Those broader modeling concerns remain in [../COMPLEX_ENTITY_MODELING_ERGONOMICS.md](../COMPLEX_ENTITY_MODELING_ERGONOMICS.md).
 
 ## Expected Outcome
 
@@ -140,7 +140,7 @@ What was re-evaluated:
 - current real-world `extra_columns` usage in Arbodat-style test projects
 - current documentation and examples for copy, constant, interpolation, and formula patterns
 - implemented validation, preview, and editor support added through Phases 1 to 4
-- adjacent proposal work in [COMPLEX_ENTITY_MODELING_ERGONOMICS.md](COMPLEX_ENTITY_MODELING_ERGONOMICS.md)
+- adjacent proposal work in [../COMPLEX_ENTITY_MODELING_ERGONOMICS.md](../COMPLEX_ENTITY_MODELING_ERGONOMICS.md)
 
 What now appears sufficient:
 
@@ -159,7 +159,7 @@ What does not currently justify a second derived-value feature:
 Documented remaining gap:
 
 - a strong recurring gap for value derivation itself was not found
-- where authoring still feels awkward, the problem belongs to broader modeling ergonomics tracked in [COMPLEX_ENTITY_MODELING_ERGONOMICS.md](COMPLEX_ENTITY_MODELING_ERGONOMICS.md), especially around explicit branch structure and branch-scoped consumers
+- where authoring still feels awkward, the problem belongs to broader modeling ergonomics tracked in [../COMPLEX_ENTITY_MODELING_ERGONOMICS.md](../COMPLEX_ENTITY_MODELING_ERGONOMICS.md), especially around explicit branch structure and branch-scoped consumers
 
 Conclusion:
 
@@ -177,6 +177,6 @@ This proposal should be considered complete when:
 
 ## Relationship To Other Proposals
 
-- This proposal is a supporting ergonomics proposal for [COMPLEX_ENTITY_MODELING_ERGONOMICS.md](COMPLEX_ENTITY_MODELING_ERGONOMICS.md).
+- This proposal is a supporting ergonomics proposal for [../COMPLEX_ENTITY_MODELING_ERGONOMICS.md](../COMPLEX_ENTITY_MODELING_ERGONOMICS.md).
 - It should land before or alongside branch-aware modeling improvements where those improvements depend on authors creating branch markers or synthetic identifiers cleanly.
 - It does not replace the broader complex-entity proposal; it narrows one part of that work into a more actionable follow-through track.

@@ -823,6 +823,34 @@ class TestShapeShifter:
 
         pd.testing.assert_frame_equal(result, expected)
 
+    @pytest.mark.asyncio
+    async def test_normalize_tracks_unresolved_deferred_extra_columns(self):
+        """Unresolved deferred extra_columns should be tracked for later validation reporting."""
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "sample": {
+                        "type": "fixed",
+                        "public_id": "sample_id",
+                        "keys": ["sample_name"],
+                        "columns": ["sample_name"],
+                        "values": [["Soil"]],
+                        "extra_columns": {
+                            "sample_label": "=concat(sample_name, ' / ', country_name)",
+                        },
+                    }
+                }
+            }
+        )
+
+        normalizer = ShapeShifter(project=project)
+
+        await normalizer.normalize()
+
+        assert "sample" in normalizer.unresolved_extra_columns
+        assert normalizer.unresolved_extra_columns["sample"]["sample_label"]["expression"] == "=concat(sample_name, ' / ', country_name)"
+        assert normalizer.unresolved_extra_columns["sample"]["sample_label"]["missing_dependencies"] == ["country_name"]
+
     def test_unnest_all(self, survey_only_config: ShapeShiftProject):
         """Test unnesting all entities."""
         df = pd.DataFrame({"col1": [1, 2]})

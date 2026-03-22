@@ -110,10 +110,6 @@ These are the primary system documentation files:
   - Recommends keeping the technical `CHANGELOG.md` while adding curated user-facing release notes
   - Covers both the documentation strategy and the semantic-release workflow for publishing shorter GitHub Release summaries
 
-- **[proposals/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](proposals/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md)**
-  - Splits out the remaining derived-value follow-through work from the broader complex-entity ergonomics proposal.
-  - Focuses on validation, preview visibility, editor guidance, examples, and a concrete implementation checklist around the existing `extra_columns` baseline.
-
 - **[proposals/ENTITY_EDITOR_OPTIMISTIC_LOCKING.md](proposals/ENTITY_EDITOR_OPTIMISTIC_LOCKING.md)**
   - Shape Shifter currently has optimistic locking at the project level for the entire project.
   - The most frequent use case in the UI, is where a user opens, edits, and saves one entity at a time.
@@ -124,6 +120,10 @@ These are the primary system documentation files:
 - **[proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)**
   - Defines the Phase 1 lookup-join default for null handling in alternative-key foreign key joins.
   - Recommends leaving the FK unresolved instead of raising when lookup-style joins have missing alternative keys.
+
+- **[proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md)**
+  - Records the completed derived-value follow-through work around `extra_columns`.
+  - Concludes that the current `extra_columns` plus DSL path is sufficient for lightweight derived values and closes the question of a second overlapping derived-value feature for now.
 
 - **[proposals/FK_NULL_KEY_POLICY_MODEL.md](proposals/FK_NULL_KEY_POLICY_MODEL.md)**
   - Placeholder for a future Phase 2 proposal about an explicit missing-key policy model.

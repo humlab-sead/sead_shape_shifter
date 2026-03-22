@@ -223,6 +223,34 @@ class TestShapeShiftService:
             with pytest.raises(ValueError, match="Entity 'nonexistent' not found"):
                 await shapeshift_service.preview_entity("test_project", "nonexistent", 50)
 
+    def test_collect_validation_issues_includes_unresolved_extra_columns(self, shapeshift_service: ShapeShiftService):
+        """Preview issue collection should include unresolved derived columns."""
+
+        class DummyLinker:
+            validators: list = []
+
+        class DummyShapeShifter:
+            linker = DummyLinker()
+            unresolved_extra_columns = {
+                "users": {
+                    "display_name": {
+                        "expression": "=concat(first_name, ' ', missing_last_name)",
+                        "missing_dependencies": ["missing_last_name"],
+                    }
+                }
+            }
+
+        issues = shapeshift_service._collect_validation_issues(DummyShapeShifter())
+
+        assert len(issues) == 1
+        assert issues[0]["type"] == "extra_column_unresolved"
+        assert issues[0]["severity"] == "error"
+        assert issues[0]["local_entity"] == "users"
+        assert "Entity 'users', field 'extra_columns.display_name':" in issues[0]["message"]
+        assert "missing_last_name" in issues[0]["message"]
+        assert "=concat(first_name, ' ', missing_last_name)" in issues[0]["message"]
+        assert issues[0]["metadata"]["field"] == "extra_columns.display_name"
+
     @pytest.mark.asyncio
     async def test_preview_entity_entity_not_found(self, shapeshift_service: ShapeShiftService, project_service: MagicMock):
         """Test preview with non-existent entity raises error."""
@@ -369,6 +397,129 @@ class TestShapeShiftService:
 
             assert result.has_dependencies is True
             assert "users" in result.dependencies_loaded
+
+    @pytest.mark.asyncio
+    async def test_preview_marks_derived_column_resolved_after_fk_linking(self, shapeshift_service: ShapeShiftService):
+        """Preview should mark extra_columns as derived even when they resolve after FK linking."""
+        project = ShapeShiftProject(
+            cfg={
+                "metadata": {"name": "test_project"},
+                "entities": {
+                    "country": {
+                        "type": "fixed",
+                        "public_id": "country_id",
+                        "keys": ["country_code"],
+                        "columns": ["country_code", "country_name"],
+                        "values": [["SE", "Sweden"], ["NO", "Norway"]],
+                    },
+                    "site": {
+                        "type": "entity",
+                        "columns": ["country_code"],
+                        "keys": ["country_code"],
+                        "depends_on": ["country"],
+                        "foreign_keys": [
+                            {
+                                "entity": "country",
+                                "local_keys": ["country_code"],
+                                "remote_keys": ["country_code"],
+                                "extra_columns": {"country_name": "country_name"},
+                            }
+                        ],
+                        "extra_columns": {
+                            "country_label": "=concat(country_name, ' / ', country_code)",
+                        },
+                    },
+                },
+            },
+            filename="test-project.yml",
+        )
+
+        site_df = pd.DataFrame(
+            {
+                "country_code": ["SE", "NO"],
+                "country_name": ["Sweden", "Norway"],
+                "country_label": ["Sweden / SE", "Norway / NO"],
+            }
+        )
+
+        mock_normalizer = MagicMock()
+        mock_normalizer.normalize = AsyncMock()
+        mock_normalizer.table_store = {"site": site_df, "country": pd.DataFrame()}
+        mock_normalizer.unresolved_extra_columns = {}
+        mock_normalizer.linker.validators = []
+
+        with (
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
+            patch.object(shapeshift_service.project_cache, "get_project", return_value=project),
+        ):
+            mock_shifter.return_value = mock_normalizer
+
+            result = await shapeshift_service.preview_entity("test_project", "site", 50)
+
+            derived_column = next(column for column in result.columns if column.name == "country_label")
+            assert derived_column.is_derived is True
+            assert derived_column.derived_from == "extra_columns"
+            assert result.validation_issues == []
+
+    @pytest.mark.asyncio
+    async def test_preview_marks_derived_column_resolved_after_unnesting(self, shapeshift_service: ShapeShiftService):
+        """Preview should mark extra_columns as derived when they resolve after unnesting."""
+        project = ShapeShiftProject(
+            cfg={
+                "metadata": {"name": "test_project"},
+                "entities": {
+                    "survey": {
+                        "type": "fixed",
+                        "public_id": "survey_id",
+                        "keys": ["material"],
+                        "columns": ["material", "texture"],
+                        "values": [["peat", "fibrous"]],
+                    },
+                    "measurement": {
+                        "type": "entity",
+                        "source": "survey",
+                        "columns": ["material", "texture"],
+                        "keys": ["material"],
+                        "unnest": {
+                            "value_vars": ["material", "texture"],
+                            "var_name": "value_name",
+                            "value_name": "value",
+                        },
+                        "extra_columns": {
+                            "label": "=concat(value_name, ': ', value)",
+                        },
+                    },
+                },
+            },
+            filename="test-project.yml",
+        )
+
+        measurement_df = pd.DataFrame(
+            {
+                "value_name": ["material", "texture"],
+                "value": ["peat", "fibrous"],
+                "label": ["material: peat", "texture: fibrous"],
+            }
+        )
+
+        mock_normalizer = MagicMock()
+        mock_normalizer.normalize = AsyncMock()
+        mock_normalizer.table_store = {"measurement": measurement_df}
+        mock_normalizer.unresolved_extra_columns = {}
+        mock_normalizer.linker.validators = []
+
+        with (
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
+            patch.object(shapeshift_service.project_cache, "get_project", return_value=project),
+        ):
+            mock_shifter.return_value = mock_normalizer
+
+            result = await shapeshift_service.preview_entity("test_project", "measurement", 50)
+
+            derived_column = next(column for column in result.columns if column.name == "label")
+            assert derived_column.is_derived is True
+            assert derived_column.derived_from == "extra_columns"
+            assert result.validation_issues == []
 
     @pytest.mark.asyncio
     async def test_preview_caching(
@@ -843,3 +994,42 @@ class TestPreviewBuilder:
 
         # Check dependencies - users has no dependencies
         assert result.has_dependencies is False
+
+    def test_build_preview_result_marks_extra_columns_as_derived(self):
+        """Preview columns produced by entity extra_columns should be marked as derived."""
+        table_store = {
+            "specimens": pd.DataFrame(
+                {
+                    "specimen_code": ["A1", "B2"],
+                    "specimen_label": ["A1 / sample", "B2 / sample"],
+                }
+            )
+        }
+        cfg = {
+            "specimens": {
+                "type": "entity",
+                "columns": ["specimen_code"],
+                "keys": ["specimen_code"],
+                "extra_columns": {
+                    "specimen_label": "=concat(specimen_code, ' / sample')",
+                },
+            }
+        }
+        entity_cfg = TableConfig(entities_cfg=cfg, entity_name="specimens")
+
+        builder = PreviewResultBuilder()
+        result = builder.build(
+            entity_name="specimens",
+            entity_cfg=entity_cfg,
+            table_store=table_store,
+            limit=50,
+            cache_hit=False,
+        )
+
+        code_column = next(column for column in result.columns if column.name == "specimen_code")
+        label_column = next(column for column in result.columns if column.name == "specimen_label")
+
+        assert code_column.is_derived is False
+        assert code_column.derived_from is None
+        assert label_column.is_derived is True
+        assert label_column.derived_from == "extra_columns"

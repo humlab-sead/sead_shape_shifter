@@ -26,6 +26,7 @@ from src.validators.data_validators import (
     ForeignKeyIntegrityValidator,
     NaturalKeyUniquenessValidator,
     NonEmptyResultValidator,
+    UnresolvedExtraColumnsValidator,
     ValidationIssue,
 )
 
@@ -37,6 +38,10 @@ class DataFetchStrategy(ABC):
     async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
         """Fetch data for an entity."""
         pass
+
+    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:
+        """Return strategy-specific validation issues for an entity."""
+        return []
 
 
 class PreviewDataFetchStrategy(DataFetchStrategy):
@@ -83,6 +88,15 @@ class FullDataFetchStrategy(DataFetchStrategy):
             return pd.DataFrame()
 
         return normalizer.table_store[entity_name]
+
+    async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:
+        """Return validation issues discovered only after full normalization."""
+        normalizer = self._normalizer_cache.get(project_name)
+        if normalizer is None:
+            return []
+
+        unresolved_extra_columns = normalizer.unresolved_extra_columns.get(entity_name, {})
+        return UnresolvedExtraColumnsValidator.validate(unresolved_extra_columns, entity_name)
 
 
 class TableStoreDataFetchStrategy(DataFetchStrategy):
@@ -174,6 +188,8 @@ class DataValidationOrchestrator:
         try:
             # Fetch data using injected strategy
             df: pd.DataFrame = await self.fetch_strategy.fetch(project_name, entity_name)
+
+            issues.extend(await self.fetch_strategy.get_additional_issues(project_name, entity_name))
 
             # Run basic validators
             issues.extend(NonEmptyResultValidator.validate(df, entity_name))
