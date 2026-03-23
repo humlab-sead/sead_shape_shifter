@@ -51,8 +51,10 @@ entities:
     depends_on: [analysis_entity]
     extra_columns:
       abundance: FAnzahl
+      analysis_entity_type: abundance
+      analysis_entity_value: "{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}"
     data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       'abundance' as [analysis_entity_type],\n       Nz([PCODE],'') & '|' & Nz([Fraktion],'') & '|' & Nz([cf],'') & '|' & Nz([RTyp],'') & '|' & Nz([Zust],'') as [analysis_entity_value],\n       [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl], [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]\nfrom [Details];"
+    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl], [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]\nfrom [Details];"
   abundance_element:
     type: fixed
     public_id: abundance_element_id
@@ -270,7 +272,7 @@ entities:
     depends_on: [method, taxa, sample, _analysis_entity_relative_dating]
     append:
     - source: _analysis_entity_relative_dating
-      columns: [PCODE, Fraktion, cf, RTyp, Zust, ArchDat]
+      columns: [PCODE, Fraktion, cf, RTyp, Zust, ArchDat, analysis_entity_type, analysis_entity_value]
     append_mode: distinct
     data_source: arbodat_data
     query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       'abundance' as [analysis_entity_type],\n       Nz([PCODE],'') & '|' & Nz([Fraktion],'') & '|' & Nz([cf],'') & '|' & Nz([RTyp],'') & '|' & Nz([Zust],'') as [analysis_entity_value],\n       null as [ArchDat]\nfrom [Details];"
