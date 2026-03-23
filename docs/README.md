@@ -64,6 +64,14 @@ These are the primary system documentation files:
   - Troubleshooting and debugging
   - Contributing guidelines
 
+- **[PROPOSAL_WRITING_GUIDE.md](PROPOSAL_WRITING_GUIDE.md)**
+  - Rules for writing short, problem-focused design proposals
+  - Keeps proposal documents precise, concrete, and decision-oriented
+
+- **[templates/PROPOSAL_TEMPLATE.md](templates/PROPOSAL_TEMPLATE.md)**
+  - Default template for new design proposals
+  - Provides a lean structure with optional sections for more complex decisions
+
 ### Testing
 
 - **[TESTING_GUIDE.md](TESTING_GUIDE.md)** (3,800+ lines)
@@ -102,7 +110,7 @@ These are the primary system documentation files:
   - Recommends keeping the technical `CHANGELOG.md` while adding curated user-facing release notes
   - Covers both the documentation strategy and the semantic-release workflow for publishing shorter GitHub Release summaries
 
-- **[proposals/ENTITY_LEVEL_LOCKING.md](proposals/ENTITY_LEVEL_LOCKING.md)**
+- **[proposals/ENTITY_EDITOR_OPTIMISTIC_LOCKING.md](proposals/ENTITY_EDITOR_OPTIMISTIC_LOCKING.md)**
   - Shape Shifter currently has optimistic locking at the project level for the entire project.
   - The most frequent use case in the UI, is where a user opens, edits, and saves one entity at a time.
   - This proposal introduces optimistic locking at an entity level increasing collaborative work.
@@ -112,6 +120,10 @@ These are the primary system documentation files:
 - **[proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)**
   - Defines the Phase 1 lookup-join default for null handling in alternative-key foreign key joins.
   - Recommends leaving the FK unresolved instead of raising when lookup-style joins have missing alternative keys.
+
+- **[proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md)**
+  - Records the completed derived-value follow-through work around `extra_columns`.
+  - Concludes that the current `extra_columns` plus DSL path is sufficient for lightweight derived values and closes the question of a second overlapping derived-value feature for now.
 
 - **[proposals/FK_NULL_KEY_POLICY_MODEL.md](proposals/FK_NULL_KEY_POLICY_MODEL.md)**
   - Placeholder for a future Phase 2 proposal about an explicit missing-key policy model.
@@ -127,7 +139,19 @@ These are the primary system documentation files:
 
 - **[proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md](proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md)**
   - Proposes new modeling ergonomics for complex target-schema scenarios such as merged parent entities, lookup/fact pairs, and branch-aware downstream entities.
-  - Recommends computed columns, branch-scoped consumers, target-aware validation, and comment-preserving YAML saves as the highest-value improvements.
+  - Recommends merged-parent modeling, branch-scoped consumers, and explicit fact-to-lookup intent as the highest-value modeling improvements, with related supporting proposals split out separately.
+
+- **[proposals/COMMENT_PRESERVING_SAVE_PATH.md](proposals/COMMENT_PRESERVING_SAVE_PATH.md)**
+  - Proposes preserving YAML comments across ordinary project saves so local modeling rationale is not lost during editor round trips.
+  - Recommends a comment-preserving persistence path instead of treating a generic entity-level `note` field as a substitute.
+
+- **[proposals/BOUNDARY_BASED_PROJECT_PERSISTENCE.md](proposals/BOUNDARY_BASED_PROJECT_PERSISTENCE.md)**
+  - Proposes explicit persistence boundaries for `metadata`, `options`, and `entities[entity_name]` instead of treating every save as whole-document regeneration.
+  - Positions that narrower subtree-merge capability as a foundation for comment-preserving saves, entity-level optimistic locking, and future collaboration improvements.
+
+- **[proposals/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md](proposals/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md)**
+  - Companion technical sketch for implementing the comment-preserving save proposal.
+  - Compares the current save flow with a save-time reload and merge flow that preserves comments without adding another long-lived cache layer.
 
 - **[proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md](proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md)**
   - Proposes a small, safe DSL layered on top of `extra_columns` for lightweight derived-value transforms.

@@ -13,12 +13,16 @@ Treat `docs/features/` as future-feature backlog rather than authoritative imple
 - **REQUIREMENTS.md** - Feature specifications
 - **TESTING_GUIDE.md** - Concise functional testing procedures (core workflows only)
 - **AI_VALIDATION_GUIDE.md** - Concise AI-focused validation rules for shapeshifter.yml files
+- **PROPOSAL_WRITING_GUIDE.md** - Proposal writing rules and structure guidance
+- **templates/PROPOSAL_TEMPLATE.md** - Default template for new design proposals
 - **testing/** - Testing resources subfolder:
   - **ERROR_SCENARIO_TESTING.md** - Error handling and recovery tests
   - **TEST_RESULTS_TEMPLATE.md** - Templates and quick test checklists
   - **APPENDIX.md** - Shortcuts, troubleshooting, tools
   - **NON_FUNCTIONAL_TESTING_GUIDE.md** - Browser compatibility, performance
   - **ACCESSIBILITY_TESTING_GUIDE.md** - WCAG compliance testing
+
+When writing or updating proposal documents, follow `docs/PROPOSAL_WRITING_GUIDE.md` and use `docs/templates/PROPOSAL_TEMPLATE.md` by default unless the user asks for a different structure. Keep proposals concise, problem-focused, and no more detailed than needed to support the decision.
 
 ## Project Architecture
 

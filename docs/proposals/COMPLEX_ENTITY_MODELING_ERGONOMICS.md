@@ -11,7 +11,7 @@ This proposal captures the remaining feature additions and feature changes that 
 
 The Arbodat `analysis_entity` / `relative_dating` / `relative_ages` scenario is the motivating example.
 
-The document has been updated to reflect the current baseline: derived branch markers, synthetic labels, and synthetic identifiers can already be expressed directly in `extra_columns` using interpolation and formula expressions. That means the main remaining ergonomics gap is no longer derived-value creation itself. The harder problem is expressing branch topology, fact-versus-lookup intent, and branch-scoped consumers in a way that is obvious in YAML and easy to validate.
+The document has been updated to reflect the current baseline: derived branch markers, synthetic labels, and synthetic identifiers can already be expressed directly in `extra_columns` using interpolation and formula expressions. The follow-through work around that baseline is now complete, including stronger validation, clearer preview behavior, better editor guidance, and a documented decision not to introduce a second overlapping derived-value feature at this stage. That means the main remaining ergonomics gap is no longer derived-value creation itself. The harder problem is expressing branch topology, fact-versus-lookup intent, and branch-scoped consumers in a way that is obvious in YAML and easy to validate.
 
 ## Current Baseline
 
@@ -23,6 +23,14 @@ Today authors can use `extra_columns` to define:
 - constant values
 - interpolated strings such as `"{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}"`
 - formula expressions for lightweight transforms when interpolation is not enough
+
+In addition, the completed follow-through work now provides:
+
+- canonical documentation and examples for copy, constant, interpolation, and formula usage
+- preflight validation for invalid `extra_columns` expressions and impossible references
+- clearer runtime feedback for unresolved deferred derived values
+- preview visibility for derived columns and derived-column failures
+- editor-side guidance, diagnostics, and low-risk suggestions for common `extra_columns` patterns
 
 That materially changes the framing of this proposal.
 
@@ -104,88 +112,21 @@ Today the model has to simulate this through generic `append` plus author-manage
 - Branch identity is retained as metadata or as an explicit branch discriminator
 - The merged parent gets one public ID space after concatenation
 
-## Proposal 2: Explicit Fact-to-Lookup Mapping
+## Proposal 2: Entity Semantic Roles (Fact vs Lookup)
 
-Add a declarative way to express that a fact entity references a lookup based on a raw source column.
+**Status: Extracted to standalone proposal**
 
-Illustrative shape:
+See [ENTITY_SEMANTIC_ROLES.md](ENTITY_SEMANTIC_ROLES.md) for the complete proposal.
 
-```yaml
-relative_dating:
-  type: fact
-  source: relative_dating_source
-  lookup_refs:
-    - raw_column: ArchDat
-      lookup_entity: relative_ages
-      lookup_key: archdat
-```
+The core issue is making fact-versus-lookup intent explicit to enable better validation. The recommended approach is adding an optional `role` field to entity configuration rather than overloading the existing `type` field.
 
-### Why
+## Proposal 3: Derived-Value Ergonomics Follow-Through
 
-The difficult part in the relative-dating scenario was not only row production. It was also the semantic distinction that:
+Derived-value ergonomics was tracked separately in [done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md) and is now complete.
 
-- `relative_ages` is the lookup
-- `relative_dating` is the fact table
+This umbrella proposal now treats derived values as supporting infrastructure rather than as one of the main unresolved modeling primitives. The follow-through work already delivered the validation, preview visibility, editor guidance, examples, and closure decision that this proposal previously depended on.
 
-That distinction is still implicit. When it is not expressed directly, it is easy to model the fact entity as if it were the lookup itself, or to reuse lookup-style identifiers in the wrong place.
-
-### Expected Behavior
-
-- Validation warns when a fact entity appears to use the lookup public ID as its own public ID
-- The lookup link is described once, declaratively
-- The same model can later support coverage checks such as “all raw fact values must be resolvable in the lookup”
-
-## Proposal 3: Derived-Value Ergonomics On Top Of The Current Baseline
-
-Clarify derived-value support around what already exists, rather than treating derived values as the missing primitive.
-
-The current baseline is:
-
-- `extra_columns` is the cross-entity derived-value feature
-- interpolation is already suitable for many synthetic identifiers and branch markers
-- formula expressions already cover many lightweight transforms that previously pushed authors toward SQL-specific workarounds
-
-Illustrative shape:
-
-```yaml
-extra_columns:
-  analysis_entity_type: abundance
-  analysis_entity_value: "=concat(PCODE, '|', Fraktion, '|', cf, '|', RTyp, '|', Zust)"
-  analysis_entity_label: "{PCODE}|{Fraktion}"
-```
-
-### Why
-
-This changes the role of Proposal 3.
-
-The central question is no longer “how do we add derived-value support?” The more useful questions are:
-
-- how do we make the current capability discoverable and easy to choose correctly
-- how do we validate interpolations and formulas in a way that is visible during authoring and preview
-- how do we avoid introducing a second, overlapping feature unless the current baseline proves insufficient
-
-In other words, derived-value ergonomics is now mostly a documentation, validation, preview, and authoring-support problem, not primarily a missing modeling primitive.
-
-### Expected Behavior
-
-- `extra_columns` remains the default place for lightweight derived values across all entity types
-- Authors can mix copied columns, interpolated strings, formulas, and constants in the same block
-- Validation surfaces missing references and formula errors early
-- Preview makes derived columns visible enough that authors do not need to infer behavior indirectly
-- Any future richer feature should complement `extra_columns`, not replace or duplicate it
-
-### Suggested Scope
-
-Short term:
-
-- treat current `extra_columns` support as the recommended solution for branch markers, synthetic labels, and synthetic identifiers
-- improve validation and preview support for derived columns, especially when referenced columns arrive later in the pipeline
-- improve examples and guidance so authors can tell when a column copy, interpolation, or formula is the best fit
-
-Medium term:
-
-- evaluate whether there are concrete modeling cases that still remain awkward even with the current baseline
-- only if those cases are real and recurring, consider whether a separate SQL-oriented `computed_columns` feature is justified at all
+For the purposes of this document, the key point is simple: complex-entity modeling should assume that branch markers, synthetic labels, and lightweight synthetic identifiers can be handled through the existing derived-value path, while the harder remaining problems are branch topology, fact-versus-lookup intent, and branch-scoped consumers.
 
 ## Proposal 4: Branch-Scoped Consumers
 
@@ -245,20 +186,11 @@ This would make multi-branch parent modeling less error-prone while preserving t
 
 ## Proposal 6: Target-Schema-Aware Validation
 
-Add optional target-schema-aware validation rules that reason about intent, not just structure.
+**Status: Extracted to standalone proposal**
 
-Examples of useful warnings:
+See [TARGET_SCHEMA_AWARE_VALIDATION.md](TARGET_SCHEMA_AWARE_VALIDATION.md) for the complete proposal.
 
-- a fact-like entity using a lookup-style public ID name
-- an entity named `relative_dating` mapping to `relative_age_id`
-- a merged parent missing any branch discriminator or stable branch-local identity
-- a child fact table not linked to the intended shared parent
-
-### Why
-
-The relative-dating issue was not a YAML syntax problem. It was a semantic mismatch with the target model. A validator that understands common target-model patterns would catch this earlier.
-
-This could remain optional and be enabled only for projects that want target-aware guidance.
+The core issue is enabling semantic validation based on target data model requirements (e.g., SEAD Clearinghouse), not just YAML structure. The recommended approach is introducing reusable target model specification files referenced via `@include:`, making Shape Shifter truly generic while providing structure-specific validation when needed.
 
 ## Proposal 7: Derived Lookup Helpers
 
@@ -284,15 +216,11 @@ Even when a curated lookup file exists, a derived-lookup helper could still be u
 
 ## Proposal 8: Comment-Preserving Save Path
 
-Preserve YAML comments across normal load/edit/save operations.
+**Status: Extracted to standalone proposal**
 
-### Why
+See [COMMENT_PRESERVING_SAVE_PATH.md](COMMENT_PRESERVING_SAVE_PATH.md) for the complete proposal.
 
-Complex modeling work often needs local explanation in the YAML file itself. In the current backend save path, explanatory comments are not reliably preserved because YAML is normalized into plain Python objects before being written again.
-
-That means the more complex the modeling workaround, the harder it is to keep the rationale close to the configuration.
-
-This is not the core modeling feature, but it materially affects maintainability.
+The core issue is preserving author comments across ordinary save operations so complex modeling rationale is not stripped from YAML during editor round trips. The recommended approach is a comment-preserving persistence path, not a generic entity-level `note` field as a substitute.
 
 ## Proposal 9: Reusable Entity Macros or Templates
 
@@ -340,7 +268,7 @@ These three improvements would remove most of the remaining friction seen in the
 - branch-scoped consumers remove downstream cleanup filters for mixed parent entities
 - explicit fact-to-lookup mapping reduces semantic confusion between lookup tables and fact tables
 
-Derived-value ergonomics is no longer in the top three because the current `extra_columns` baseline already covers a substantial part of that earlier gap. The remaining work there is follow-through and polish, not a missing primary modeling construct.
+Derived-value ergonomics is no longer in the top three because the current `extra_columns` baseline already covers a substantial part of that earlier gap. The follow-through work is complete and recorded in [done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md), not a missing primary modeling construct.
 
 ## Implementation Strategy
 
@@ -348,20 +276,20 @@ The delivery order below is organized by implementation risk, not only by concep
 
 ### Phase 1: Low-Risk Ergonomic Follow-Through
 
-- **Proposal 3: Derived-Value Ergonomics On Top Of The Current Baseline**
-  Dependency: none. This is follow-through on the current baseline and can proceed independently.
-- **Proposal 8: Comment-Preserving Save Path**
+- ✔️ COMPLETED **Derived-value ergonomics follow-through**
+  Dependency: none. This is complete and documented in [done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md).
+- **[Proposal 8: Comment-Preserving Save Path](COMMENT_PRESERVING_SAVE_PATH.md)**
   Dependency: none. This is operationally independent from the modeling proposals and can ship on its own.
-- **Proposal 6: Target-Schema-Aware Validation**
+- **[Proposal 6: Target-Schema-Aware Validation](TARGET_SCHEMA_AWARE_VALIDATION.md)**
   Dependency: starts with no hard dependency, but Phase 1 should scope the first rules around the current baseline and obvious lookup-versus-fact confusion. Later validation rules should expand after Proposal 4 and Proposal 5 clarify branch-aware intent.
 
 ### Phase 2: Branch-Aware Modeling Helpers
 
 - **Proposal 4: Branch-Scoped Consumers**
-  Dependency: depends conceptually on Proposal 3 for authoring clarity around branch markers and derived discriminator columns, but does not require any new derived-value feature to exist first.
+  Dependency: builds on the now-complete derived-value baseline for authoring branch markers and derived discriminator columns, but does not require any new derived-value feature to exist first.
 - **Proposal 5: Schema-Aware Append for Heterogeneous Branches**
   Dependency: independent of Proposal 4 at the implementation level, but the two proposals reinforce each other. Proposal 5 should preferably land before Proposal 1 so branch behavior can be validated in a lighter-weight form first.
-- **Proposal 6: Target-Schema-Aware Validation**
+- **[Proposal 6: Target-Schema-Aware Validation](TARGET_SCHEMA_AWARE_VALIDATION.md)**
   Dependency: expanded Phase 2 rules should build on Proposal 4 and Proposal 5 so the validator can reason about branch-scoped consumption, mixed-parent entities, and append-driven branch structure with less guesswork.
 
 ### Phase 3: First-Class Modeling Constructs
@@ -369,7 +297,7 @@ The delivery order below is organized by implementation risk, not only by concep
 - **Proposal 1: First-Class Merged Parent Entities**
   Dependency: should build on lessons from Proposal 5 and, ideally, Proposal 4. Schema-aware append and branch-scoped consumers provide the lower-risk proving ground for branch semantics before introducing a first-class merged entity type.
 - **Proposal 2: Explicit Fact-to-Lookup Mapping**
-  Dependency: benefits from Proposal 6, because validation is the main mechanism that turns declarative fact-to-lookup intent into actionable guidance. It does not strictly depend on Proposal 1, but the two proposals complement each other in shared-parent fact models.
+  Dependency: benefits from [Proposal 6](TARGET_SCHEMA_AWARE_VALIDATION.md), because validation is the main mechanism that turns declarative fact-to-lookup intent into actionable guidance. It does not strictly depend on Proposal 1, but the two proposals complement each other in shared-parent fact models.
 - **Proposal 7: Derived Lookup Helpers**
   Dependency: should follow Proposal 2, because lookup derivation or lookup coverage checks are clearer once explicit fact-to-lookup relationships exist.
 - **Proposal 9: Reusable Entity Macros or Templates**
@@ -400,6 +328,6 @@ The best next investments are:
 - branch-aware consumption
 - clearer merged-parent modeling
 - stronger semantic validation
-- comment-preserving save behavior
+- [comment-preserving save behavior](COMMENT_PRESERVING_SAVE_PATH.md)
 
-Those changes would materially simplify scenarios like Arbodat relative dating without reopening the already-addressed question of how lightweight derived values should be authored.
+Those changes would materially simplify scenarios like Arbodat relative dating without reopening the now-closed question of how lightweight derived values should be authored.

@@ -467,7 +467,7 @@
     },
     "extra_columns": {
       "additionalProperties": true,
-      "description": "Additional computed columns",
+      "description": "Canonical derived-value columns for copies, constants, interpolation, and lightweight formulas",
       "title": "Extra Columns",
       "type": "object"
     },

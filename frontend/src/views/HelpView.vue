@@ -8,7 +8,7 @@
             <span class="text-h5">User Guide</span>
             <v-spacer />
             <!-- Quick navigation -->
-            <v-chip-group v-model="selectedSection" mandatory class="mr-2">
+            <v-chip-group v-if="showQuickSections" v-model="selectedSection" mandatory class="mr-2">
               <v-chip
                 v-for="section in sections"
                 :key="section.id"
@@ -22,7 +22,7 @@
             </v-chip-group>
             <!-- External link -->
             <v-btn
-              href="https://github.com/humlab-sead/sead_shape_shifter/blob/main/docs/USER_GUIDE.md"
+              :href="githubDocHref"
               target="_blank"
               rel="noopener noreferrer"
               variant="outlined"
@@ -55,6 +55,7 @@
               v-else
               ref="contentRef"
               class="markdown-content"
+              @click="handleContentClick"
               v-html="renderedContent"
             ></div>
           </v-card-text>
@@ -65,7 +66,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useHelp } from '@/composables'
 
 // Quick navigation sections
@@ -84,20 +86,91 @@ const sections = [
 
 const selectedSection = ref('1-introduction')
 const contentRef = ref<HTMLElement | null>(null)
+const route = useRoute()
+const router = useRouter()
 
 const { renderedContent, loading, error, loadHelp } = useHelp()
 
-onMounted(async () => {
-  await loadHelp('USER_GUIDE')
+const currentDoc = computed(() => {
+  const doc = route.query.doc
+  return typeof doc === 'string' && doc ? doc : 'USER_GUIDE'
 })
 
-function scrollToSection(sectionId: string) {
-  if (!contentRef.value) return
+const showQuickSections = computed(() => currentDoc.value === 'USER_GUIDE')
+
+const githubDocHref = computed(() => `https://github.com/humlab-sead/sead_shape_shifter/blob/main/docs/${currentDoc.value}.md`)
+
+function getSectionFromHash(hash: string): string {
+  return hash.startsWith('#') ? decodeURIComponent(hash.slice(1)) : ''
+}
+
+watch(
+  () => [currentDoc.value, route.hash] as const,
+  async ([docPath, hash], [previousDocPath, previousHash]) => {
+    if (docPath !== previousDocPath) {
+      await loadHelp(docPath)
+    }
+
+    if (hash && (hash !== previousHash || docPath !== previousDocPath)) {
+      await nextTick()
+      scrollToSection(getSectionFromHash(hash), false)
+      return
+    }
+
+    if (!hash && docPath === 'USER_GUIDE') {
+      selectedSection.value = '1-introduction'
+    }
+  },
+  { immediate: true }
+)
+
+function updateRoute(sectionId: string) {
+  const nextQuery = currentDoc.value === 'USER_GUIDE' ? {} : { doc: currentDoc.value }
+  void router.replace({ name: 'help', query: nextQuery, hash: `#${sectionId}` })
+}
+
+function scrollToSection(sectionId: string, syncRoute: boolean = true) {
+  if (!sectionId || !contentRef.value) return
 
   const heading = document.getElementById(sectionId)
   if (heading && contentRef.value.contains(heading)) {
+    selectedSection.value = sectionId
     heading.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+    if (syncRoute && route.hash !== `#${sectionId}`) {
+      updateRoute(sectionId)
+    }
   }
+}
+
+function handleContentClick(event: MouseEvent) {
+  const target = event.target
+  if (!(target instanceof Element)) return
+
+  const anchor = target.closest('a')
+  if (!(anchor instanceof HTMLAnchorElement)) return
+
+  const href = anchor.getAttribute('href') ?? ''
+  if (!href) return
+
+  if (href.startsWith('#')) {
+    event.preventDefault()
+    scrollToSection(href.slice(1))
+    return
+  }
+
+  if (!href.startsWith('/help')) {
+    return
+  }
+
+  event.preventDefault()
+  const nextUrl = new URL(href, window.location.origin)
+  const nextDoc = nextUrl.searchParams.get('doc')
+  void router.push({
+    name: 'help',
+    query: nextDoc && nextDoc !== 'USER_GUIDE' ? { doc: nextDoc } : {},
+    hash: nextUrl.hash,
+  })
 }
 </script>
 

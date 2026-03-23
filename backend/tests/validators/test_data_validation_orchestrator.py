@@ -1,6 +1,6 @@
 """Tests for DataValidationOrchestrator and fetch strategies."""
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
 import pytest
@@ -8,9 +8,11 @@ import pytest
 from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.validators.data_validation_orchestrator import (
     DataValidationOrchestrator,
+    FullDataFetchStrategy,
     PreviewDataFetchStrategy,
     TableStoreDataFetchStrategy,
 )
+from src.model import ShapeShiftProject
 
 
 @pytest.mark.asyncio
@@ -120,3 +122,46 @@ def test_orchestrator_with_injected_strategy():
     # Verify strategy was injected
     assert orchestrator.fetch_strategy is strategy
     assert isinstance(orchestrator.fetch_strategy, TableStoreDataFetchStrategy)
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_surfaces_unresolved_extra_columns_in_full_data_mode():
+    """Full-data validation should report unresolved deferred extra_columns as structured issues."""
+    core_project = ShapeShiftProject(
+        cfg={
+            "entities": {
+                "sample": {
+                    "type": "fixed",
+                    "public_id": "sample_id",
+                    "keys": ["sample_name"],
+                    "columns": ["sample_name"],
+                    "values": [["Soil"]],
+                    "extra_columns": {
+                        "sample_label": "=concat(sample_name, ' / ', country_name)",
+                    },
+                }
+            }
+        }
+    )
+
+    mock_project_service = Mock()
+    mock_project_service.load_project.return_value = Mock()
+
+    with patch("backend.app.validators.data_validation_orchestrator.ProjectMapper.to_core", return_value=core_project):
+        strategy = FullDataFetchStrategy(mock_project_service)
+        orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+
+        issues = await orchestrator.validate_all_entities(
+            core_project=core_project,
+            project_name="test_project",
+            entity_names=["sample"],
+        )
+
+    unresolved_issues = [issue for issue in issues if issue.code == "EXTRA_COLUMN_UNRESOLVED"]
+
+    assert len(unresolved_issues) == 1
+    assert unresolved_issues[0].entity == "sample"
+    assert unresolved_issues[0].field == "extra_columns.sample_label"
+    assert "Entity 'sample', field 'extra_columns.sample_label':" in unresolved_issues[0].message
+    assert "country_name" in unresolved_issues[0].message
+    assert "=concat(sample_name, ' / ', country_name)" in unresolved_issues[0].message

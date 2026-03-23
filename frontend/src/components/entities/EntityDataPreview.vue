@@ -55,9 +55,19 @@
             {{ previewData.dependencies_loaded.length }} dependencies
           </v-chip>
 
+          <v-chip v-if="derivedColumns.length" size="small" variant="outlined" color="warning">
+            <v-icon icon="mdi-function-variant" start size="small" />
+            {{ derivedColumns.length }} derived
+          </v-chip>
+
           <v-chip size="small" variant="outlined" color="success">
             <v-icon icon="mdi-clock-outline" start size="small" />
             {{ previewData.execution_time_ms }}ms
+          </v-chip>
+
+          <v-chip v-if="previewIssues.length" size="small" variant="outlined" color="error">
+            <v-icon icon="mdi-alert-outline" start size="small" />
+            {{ previewIssues.length }} preview issue{{ previewIssues.length === 1 ? '' : 's' }}
           </v-chip>
 
           <v-spacer />
@@ -82,6 +92,18 @@
 
         <v-divider />
 
+        <v-alert v-if="previewIssues.length" type="warning" variant="tonal" density="compact" class="ma-3 mb-0">
+          <div class="font-weight-medium mb-1">Preview notices</div>
+          <ul class="preview-issues-list">
+            <li v-for="(issue, index) in previewIssues.slice(0, 5)" :key="`${issue.type}-${index}`">
+              {{ issue.message }}
+            </li>
+          </ul>
+          <div v-if="previewIssues.length > 5" class="text-caption mt-1">
+            Showing first 5 of {{ previewIssues.length }} issues.
+          </div>
+        </v-alert>
+
         <!-- Scrollable table container -->
         <div class="preview-table-container">
           <v-table density="compact" fixed-header height="400px">
@@ -97,6 +119,9 @@
                   <div class="d-flex align-center gap-1">
                     <v-icon v-if="column.is_key" icon="mdi-key" size="x-small" color="warning" class="mr-1" />
                     <span class="font-weight-medium">{{ column.name }}</span>
+                    <v-chip v-if="column.is_derived" size="x-small" variant="outlined" color="warning" class="ml-1">
+                      Derived
+                    </v-chip>
                     <v-chip size="x-small" variant="flat" :color="getTypeColor(column.data_type)" class="ml-1">
                       {{ column.data_type }}
                     </v-chip>
@@ -131,7 +156,12 @@
             </thead>
             <tbody>
               <tr v-for="(row, idx) in filteredRows" :key="idx" :class="{ 'striped-row': idx % 2 === 0 }">
-                <td v-for="column in previewData.columns" :key="column.name" class="text-left">
+                <td
+                  v-for="column in previewData.columns"
+                  :key="column.name"
+                  class="text-left"
+                  :class="{ 'derived-cell': column.is_derived }"
+                >
                   <span
                     v-if="row[column.name] === null || row[column.name] === undefined"
                     class="text-grey font-italic"
@@ -151,7 +181,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { PreviewResult } from '@/composables/useEntityPreview'
+import type { PreviewResult, PreviewValidationIssue } from '@/composables/useEntityPreview'
 import PreviewError from './PreviewError.vue'
 
 interface Props {
@@ -175,6 +205,9 @@ const sortDirection = ref<'asc' | 'desc'>('asc')
 
 // Filtering state
 const columnFilters = ref<Record<string, string>>({})
+
+const derivedColumns = computed(() => props.previewData?.columns.filter((column) => column.is_derived) ?? [])
+const previewIssues = computed<PreviewValidationIssue[]>(() => props.previewData?.validation_issues ?? [])
 
 // Computed filtered and sorted rows
 const filteredRows = computed(() => {
@@ -274,6 +307,11 @@ function formatValue(value: any): string {
   background: rgb(var(--v-theme-surface-variant));
 }
 
+.preview-issues-list {
+  margin: 0;
+  padding-left: 1rem;
+}
+
 :deep(.v-table th) {
   background: rgb(var(--v-theme-surface));
   font-weight: 600;
@@ -310,6 +348,10 @@ function formatValue(value: any): string {
   max-width: 300px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+:deep(.v-table td.derived-cell) {
+  background: rgba(var(--v-theme-warning), 0.08);
 }
 
 /* Resizable columns */

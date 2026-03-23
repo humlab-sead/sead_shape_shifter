@@ -35,7 +35,7 @@ def test_validate_project_file():
 
     print(specification.get_report())
 
-    assert is_valid is True
+    assert is_valid is True, specification.get_report()
 
 
 def test_access_database_csv_workflow():

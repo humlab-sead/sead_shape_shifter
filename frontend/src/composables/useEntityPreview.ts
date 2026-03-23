@@ -10,6 +10,17 @@ export interface ColumnInfo {
   data_type: string
   nullable: boolean
   is_key: boolean
+  is_derived: boolean
+  derived_from: string | null
+}
+
+export interface PreviewValidationIssue {
+  type: string
+  severity: string
+  local_entity: string | null
+  remote_entity: string | null
+  message: string
+  metadata?: Record<string, any>
 }
 
 export interface PreviewResult {
@@ -22,6 +33,7 @@ export interface PreviewResult {
   has_dependencies: boolean
   dependencies_loaded: string[]
   cache_hit: boolean
+  validation_issues: PreviewValidationIssue[]
 }
 
 export function useEntityPreview() {
