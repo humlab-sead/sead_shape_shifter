@@ -1,3 +1,20 @@
+# [1.26.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.25.0...v1.26.0) (2026-03-23)
+
+
+### Bug Fixes
+
+* ensure proper handling of help document retrieval and path sanitization ([325a51c](https://github.com/humlab-sead/sead_shape_shifter/commit/325a51cf70ade24ae21657271bcf71391d8ba592))
+* handle undefined tokens in heading and link renderers in help markdown ([4525693](https://github.com/humlab-sead/sead_shape_shifter/commit/45256932871998ec49adb474f37640cff8d83af2))
+* restore help docs navigation and loading ([53c3d04](https://github.com/humlab-sead/sead_shape_shifter/commit/53c3d0441dfd888ccd8fc33b3269d300560ffa56))
+* serve help and release notes through api endpoints ([c11d45b](https://github.com/humlab-sead/sead_shape_shifter/commit/c11d45bf0d85a750943023846bd7e1456d6471f6)), closes [#373](https://github.com/humlab-sead/sead_shape_shifter/issues/373)
+* update shape-shifter version to 1.25.0 in uv.lock ([cabe127](https://github.com/humlab-sead/sead_shape_shifter/commit/cabe127528a1a5153e2f70b62467d7b574f92b8b))
+
+
+### Features
+
+* **validation:** complete extra_columns ergonomics follow-through ([5da5200](https://github.com/humlab-sead/sead_shape_shifter/commit/5da52009bedab376bdf22b7824f6816ed1991e1e)), closes [#375](https://github.com/humlab-sead/sead_shape_shifter/issues/375)
+* **core:** implement deferred extra_columns evaluation methods ([ebb970d](https://github.com/humlab-sead/sead_shape_shifter/commit/ebb970d4adf5ddb9945b15f617b2139c954d4ed2)), closes [#377](https://github.com/humlab-sead/sead_shape_shifter/issues/377)
+
 # [1.25.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.24.0...v1.25.0) (2026-03-21)
 
 
