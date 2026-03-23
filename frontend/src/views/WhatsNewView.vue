@@ -94,6 +94,13 @@
                 </v-expansion-panel>
               </v-expansion-panels>
             </template>
+
+            <v-alert v-else type="warning" variant="tonal" class="mb-4">
+              <div class="font-weight-bold">No release notes available</div>
+              <div class="text-caption mt-1">
+                The release notes archive is currently empty or unavailable from the backend manifest.
+              </div>
+            </v-alert>
           </v-card-text>
         </v-card>
       </v-col>

@@ -293,6 +293,29 @@ class TestValidationServiceErrorParsing:
         # All errors should have codes
         assert all(e.code is not None for e in result.errors)
 
+    def test_extra_columns_errors_include_entity_field_and_expression_context(self, validation_service):
+        """Derived-value validation messages should include entity, field, and expression context."""
+        config = {
+            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "entities": {
+                "sample": {
+                    "type": "entity",
+                    "keys": ["sample_id"],
+                    "columns": ["sample_name"],
+                    "extra_columns": {
+                        "sample_label": "=unknown_func(sample_name)",
+                    },
+                }
+            },
+        }
+
+        result = validation_service.validate_project(config)
+
+        matching_errors = [error for error in result.errors if error.field == "extra_columns.sample_label"]
+        assert len(matching_errors) == 1
+        assert "Entity 'sample', field 'extra_columns.sample_label':" in matching_errors[0].message
+        assert "=unknown_func(sample_name)" in matching_errors[0].message
+
 
 class TestValidationServiceIntegration:
     """Integration tests with complex configurations."""

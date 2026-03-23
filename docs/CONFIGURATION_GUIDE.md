@@ -587,6 +587,99 @@ entities:
 
 ### Column Selection Properties
 
+### Canonical Pattern: Derived Values With `extra_columns`
+
+Use `extra_columns` as the default place for lightweight derived values.
+
+This is the canonical mechanism for four common cases:
+
+- **Direct copy**: Rename or preserve an existing column under a new name
+- **Constant**: Add the same literal value to every row
+- **Interpolation**: Build a text value from one or more columns using `{column_name}` placeholders
+- **Formula**: Apply a small transformation with the DSL syntax that starts with `=`
+
+#### Which Mechanism Should I Use?
+
+- **Copy** when you just need another column name for an existing value
+- **Constant** when every row should receive the same value, `null`, number, or boolean
+- **Interpolation** when you are assembling a label, synthetic identifier, or display string from several columns
+- **Formula** when interpolation is not enough and you need a small expression such as `upper(...)`, `trim(...)`, `substr(...)`, or `coalesce(...)`
+
+Quick examples:
+
+- **Copy**: `feature_type_name: "BefuTyp"`
+- **Constant**: `dataset_type_id: 4`
+- **Interpolation**: `sample_label: "{trench}-{context}-{sample_id}"`
+- **Formula**: `clean_name: "=trim(upper(taxon_name))"`
+
+In practice, `extra_columns` should be the first thing you reach for when the value belongs to the current entity and can be expressed from columns already flowing through the pipeline. If the problem is really about linking entities, reshaping rows, or choosing a different source, use the corresponding relationship or transformation feature instead.
+
+**Canonical Example:**
+
+```yaml
+entities:
+  sample:
+    type: data
+    table: tbl_sample
+    columns: [sample_id, trench, context, taxon_name, analyst_name]
+    extra_columns:
+      # Direct copy
+      source_sample_id: "sample_id"
+
+      # Constant
+      record_type: "botanical_sample"
+
+      # Interpolation
+      sample_label: "{trench}-{context}-{sample_id}"
+
+      # Formula
+      analyst_display: "=coalesce(analyst_name, concat('Unknown analyst for sample ', sample_id))"
+```
+
+**Example: Interpolation-Heavy Synthetic Labels**
+
+Use interpolation when the main job is to assemble readable text from columns that already exist.
+
+```yaml
+entities:
+  context_sample:
+    type: data
+    table: tbl_context_samples
+    columns: [site_code, trench, context, sample_id, fraction]
+    extra_columns:
+      sample_label: "{site_code}-{trench}-{context}-{sample_id}"
+      fraction_label: "{sample_id}:{fraction}"
+      import_note: "Imported sample {sample_id} from context {context} in trench {trench}"
+```
+
+This is usually easier to read and maintain than a formula when you only need string assembly.
+
+**Example: Formula-Heavy Lightweight Cleanup**
+
+Use a formula when you need a small transformation step rather than plain text assembly.
+
+```yaml
+entities:
+  taxa:
+    type: data
+    table: tbl_taxa
+    columns: [taxon_name, taxon_author, preferred_name, specimen_code]
+    extra_columns:
+      normalized_taxon_name: "=trim(upper(taxon_name))"
+      display_name: "=coalesce(preferred_name, concat(trim(taxon_name), ' ', trim(taxon_author)))"
+      specimen_prefix: "=substr(specimen_code, 0, 3)"
+```
+
+This is the right fit when the derived value depends on cleanup, fallback handling, or small string operations.
+
+**Authoring Notes:**
+
+- Interpolation is usually the best fit for synthetic labels and identifiers because the YAML stays easy to read.
+- Formula expressions are better for small transformations than for large business rules.
+- To store a literal string that must start with `=`, escape it as `==value`.
+- Interpolated values are null-safe and may be re-evaluated later if referenced columns appear after linking or unnesting.
+- Formula expressions are evaluated from the columns available at evaluation time, so referenced columns must already exist when the formula runs.
+
 #### `columns`
 - **Type**: `list[string] | string`
 - **Required**: Recommended (error if missing for most entity types)
@@ -622,7 +715,7 @@ entities:
 #### `extra_columns`
 - **Type**: `dict[string, string | Any]`
 - **Required**: No
-- **Description**: Additional columns to add to the entity. Keys are new column names. Values can be:
+- **Description**: Additional columns to add to the entity. This is the canonical derived-value mechanism for entity-level copies, constants, interpolated strings, and lightweight formulas. Keys are new column names. Values can be:
   - A source column name (string) - copies that column
   - An interpolated string using `{column_name}` placeholders - derives a value from one or more columns
   - A formula expression starting with `=` - evaluates a DSL expression for string transformations

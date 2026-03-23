@@ -31,7 +31,7 @@ Grammar:
 
 Example:
     from src.transforms.dsl import FormulaEngine
-
+    
     engine = FormulaEngine()
     df = pd.DataFrame({"first": ["Ada"], "last": ["Lovelace"]})
     df["fullname"] = engine.evaluate_formula("=concat(first, ' ', last)", df)
@@ -45,6 +45,7 @@ from enum import Enum, auto
 from typing import Any, Callable, Iterable, Protocol
 
 import pandas as pd
+
 
 # ============================================================================
 # Error types
@@ -94,28 +95,24 @@ class DSLEvaluationError(DSLException):
 @dataclass(frozen=True)
 class Expr:
     """Base class for all expression nodes."""
-
     span: SourceSpan
 
 
 @dataclass(frozen=True)
 class Literal(Expr):
     """Literal value (string, int, bool, or null)."""
-
     value: Any
 
 
 @dataclass(frozen=True)
 class ColumnRef(Expr):
     """Reference to a column by name."""
-
     name: str
 
 
 @dataclass(frozen=True)
 class Call(Expr):
     """Function call expression."""
-
     name: str
     args: list[Expr]
 
@@ -127,36 +124,34 @@ class Call(Expr):
 
 def extract_column_references(expr: Expr) -> set[str]:
     """Extract all column references from an expression AST.
-
+    
     Args:
         expr: Expression AST node
-
+        
     Returns:
         Set of column names referenced in the expression
-
+        
     Examples:
         >>> parser = Parser()
         >>> ast = parser.parse("concat(first_name, ' ', last_name)")
         >>> extract_column_references(ast)
         {'first_name', 'last_name'}
-        >>>
+        >>> 
         >>> ast = parser.parse("'constant'")
         >>> extract_column_references(ast)
         set()
     """
     if isinstance(expr, ColumnRef):
         return {expr.name}
-
-    if isinstance(expr, Literal):
+    elif isinstance(expr, Literal):
         return set()
-
-    if isinstance(expr, Call):
+    elif isinstance(expr, Call):
         refs = set()
         for arg in expr.args:
             refs.update(extract_column_references(arg))
         return refs
-
-    return set()
+    else:
+        return set()
 
 
 # ============================================================================
@@ -166,7 +161,6 @@ def extract_column_references(expr: Expr) -> set[str]:
 
 class TokenType(Enum):
     """Token types for the DSL."""
-
     NAME = auto()
     STRING = auto()
     INTEGER = auto()
@@ -180,7 +174,6 @@ class TokenType(Enum):
 @dataclass(frozen=True)
 class Token:
     """A token with position information."""
-
     type: TokenType
     value: str
     span: SourceSpan
@@ -191,13 +184,13 @@ class Tokenizer:
 
     # Token patterns (order matters - longer matches first)
     PATTERNS = [
-        (TokenType.STRING, r"""("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')"""),
-        (TokenType.INTEGER, r"-?\d+"),
-        (TokenType.NAME, r"[a-zA-Z_][a-zA-Z0-9_]*"),
-        (TokenType.LPAREN, r"\("),
-        (TokenType.RPAREN, r"\)"),
-        (TokenType.COMMA, r","),
-        (TokenType.EQUAL, r"="),
+        (TokenType.STRING, r'''("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')'''),
+        (TokenType.INTEGER, r'-?\d+'),
+        (TokenType.NAME, r'[a-zA-Z_][a-zA-Z0-9_]*'),
+        (TokenType.LPAREN, r'\('),
+        (TokenType.RPAREN, r'\)'),
+        (TokenType.COMMA, r','),
+        (TokenType.EQUAL, r'='),
     ]
 
     def __init__(self, source: str) -> None:
@@ -213,7 +206,7 @@ class Tokenizer:
         while self.pos < len(self.source):
             # Skip whitespace
             if self.source[self.pos].isspace():
-                if self.source[self.pos] == "\n":
+                if self.source[self.pos] == '\n':
                     self.line += 1
                     self.column = 1
                 else:
@@ -379,10 +372,10 @@ class Parser:
             s = s[1:-1]
 
         # Handle escape sequences
-        s = s.replace("\\n", "\n")
-        s = s.replace("\\t", "\t")
-        s = s.replace("\\r", "\r")
-        s = s.replace("\\\\", "\\")
+        s = s.replace('\\n', '\n')
+        s = s.replace('\\t', '\t')
+        s = s.replace('\\r', '\r')
+        s = s.replace('\\\\', '\\')
         s = s.replace("\\'", "'")
         s = s.replace('\\"', '"')
 
@@ -453,7 +446,6 @@ class FormulaParser:
 @dataclass(frozen=True)
 class FunctionSpec:
     """Specification for a function in the DSL."""
-
     name: str
     impl_name: str
     exact_args: int | None = None
@@ -484,7 +476,6 @@ def validate_arity(spec: FunctionSpec, argc: int, span: SourceSpan) -> None:
 @dataclass(frozen=True)
 class ValidationConfig:
     """Configuration for the validator."""
-
     max_depth: int = 20
     max_total_nodes: int = 500
     max_string_literal_length: int = 10_000
@@ -492,7 +483,6 @@ class ValidationConfig:
 
 class Validator:
     """Validator for expressions in the DSL."""
-
     def __init__(
         self,
         allowed_columns: set[str],
@@ -509,7 +499,8 @@ class Validator:
         total_nodes: int = self._count_nodes(expr)
         if total_nodes > self.config.max_total_nodes:
             raise DSLValidationError(
-                f"Expression is too complex: {total_nodes} AST nodes exceeds " f"limit of {self.config.max_total_nodes}",
+                f"Expression is too complex: {total_nodes} AST nodes exceeds "
+                f"limit of {self.config.max_total_nodes}",
                 span=expr.span,
             )
 
@@ -524,7 +515,8 @@ class Validator:
         if isinstance(expr, Literal):
             if isinstance(expr.value, str) and len(expr.value) > self.config.max_string_literal_length:
                 raise DSLValidationError(
-                    f"String literal exceeds maximum length of " f"{self.config.max_string_literal_length}",
+                    f"String literal exceeds maximum length of "
+                    f"{self.config.max_string_literal_length}",
                     span=expr.span,
                 )
             return
@@ -570,11 +562,14 @@ class Validator:
 
 
 class Backend(Protocol):
-    def get_column(self, name: str) -> Any: ...
+    def get_column(self, name: str) -> Any:
+        ...
 
-    def literal(self, value: Any) -> Any: ...
+    def literal(self, value: Any) -> Any:
+        ...
 
-    def call(self, impl_name: str, args: list[Any], span: SourceSpan) -> Any: ...
+    def call(self, impl_name: str, args: list[Any], span: SourceSpan) -> Any:
+        ...
 
 
 # ============================================================================
@@ -641,11 +636,15 @@ class PandasStringBackend:
 
     def _require_scalar_int(self, value: Any, fn_name: str) -> int:
         if isinstance(value, pd.Series):
-            raise DSLEvaluationError(f"Function '{fn_name}' requires integer literal arguments, not column references")
+            raise DSLEvaluationError(
+                f"Function '{fn_name}' requires integer literal arguments, not column references"
+            )
         try:
             return int(value)
         except Exception as e:
-            raise DSLEvaluationError(f"Function '{fn_name}' expected an integer argument, got {value!r}") from e
+            raise DSLEvaluationError(
+                f"Function '{fn_name}' expected an integer argument, got {value!r}"
+            ) from e
 
     # ---- functions -------------------------------------------------------
 

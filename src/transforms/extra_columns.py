@@ -49,13 +49,13 @@ class ExtraColumnEvaluator:
     Examples:
         >>> evaluator = ExtraColumnEvaluator()
         >>> df = pd.DataFrame({"first": ["John"], "last": ["Doe"]})
-        >>>
+        >>> 
         >>> # Interpolated string
         >>> extra_cols = {"fullname": "{first} {last}"}
         >>> result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "person")
         >>> result["fullname"].iloc[0]
         'John Doe'
-        >>>
+        >>> 
         >>> # DSL formula
         >>> extra_cols = {"initials": "=concat(upper(substr(first, 0, 1)), upper(substr(last, 0, 1)))"}
         >>> result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "person")
@@ -72,38 +72,242 @@ class ExtraColumnEvaluator:
         """Initialize evaluator with FormulaEngine for DSL formula support."""
         self.formula_engine = FormulaEngine()
 
-    @staticmethod
-    def is_dsl_formula(value: Any) -> bool:
-        """Detect if value is a DSL formula (starts with '=').
+    def collect_source_dependencies(
+        self,
+        source: pd.DataFrame | list[str],
+        extra_columns: dict[str, Any],
+        case_sensitive: bool = True,
+    ) -> set[str]:
+        """Collect all source column dependencies required to evaluate extra_columns.
 
-        DSL formulas are strings that start with '=' and contain
-        function calls like concat(), upper(), etc.
+        This method analyzes the extra_columns configuration and determines which
+        source columns are needed to evaluate all the extra column expressions.
+        It handles DSL formulas, interpolated strings, and column copies.
+
+        Args:
+            source: DataFrame or list of available source column names
+            extra_columns: Dict of {new_column: value/pattern/formula}
+            case_sensitive: Whether column name matching is case-sensitive
+
+        Returns:
+            Set of source column names required to evaluate extra_columns
+
+        Examples:
+            >>> df = pd.DataFrame({"first": [1], "last": [2], "age": [30]})
+            >>> evaluator = ExtraColumnEvaluator()
+            >>> extra_cols = {"fullname": "{first} {last}", "status": "active"}
+            >>> deps = evaluator.collect_source_dependencies(df, extra_cols)
+            >>> sorted(deps)
+            ['first', 'last']
+        """
+        if not extra_columns:
+            return set()
+
+        # Get available source columns
+        if isinstance(source, pd.DataFrame):
+            source_columns = set(source.columns)
+        else:
+            source_columns = set(source)
+
+        # Build case-insensitive column lookup if needed
+        if not case_sensitive:
+            col_map = {str(c).lower(): c for c in source_columns}
+        else:
+            col_map = {c: c for c in source_columns}
+
+        dependencies: set[str] = set()
+
+        for new_col, value in extra_columns.items():
+            # Skip non-string constants (no dependencies)
+            if not isinstance(value, str):
+                continue
+
+            # Case 1: DSL formula (starts with '=')
+            if self.is_dsl_formula(value):
+                try:
+                    # Parse formula and extract column references
+                    ast = self.formula_engine.parse(value)
+                    formula_deps = extract_column_references(ast)
+                    
+                    # Match against source columns (case-insensitive if needed)
+                    for dep in formula_deps:
+                        dep_key = dep.lower() if not case_sensitive else dep
+                        if dep_key in col_map:
+                            dependencies.add(col_map[dep_key])
+                except Exception:
+                    # If formula parsing fails, skip it
+                    # The actual evaluation will report the error
+                    pass
+                continue
+
+            # Case 2: Interpolated string (contains {column})
+            if self.is_interpolated_string(value):
+                interp_deps = self.extract_column_dependencies(value)
+                
+                # Match against source columns (case-insensitive if needed)
+                for dep in interp_deps:
+                    dep_key = dep.lower() if not case_sensitive else dep
+                    if dep_key in col_map:
+                        dependencies.add(col_map[dep_key])
+                continue
+
+            # Case 3: Potential column copy (string value)
+            # Check if value matches an existing source column
+            value_key = value.lower() if not case_sensitive else value
+            if value_key in col_map:
+                dependencies.add(col_map[value_key])
+
+        return dependencies
+
+    def get_unresolved_extra_columns(
+        self,
+        df: pd.DataFrame,
+        extra_columns: dict[str, Any],
+    ) -> dict[str, dict[str, Any]]:
+        """Identify extra_columns that could not be evaluated and their missing dependencies.
+
+        This method checks which configured extra_columns are not present in the
+        DataFrame and determines which dependencies are missing for each unresolved column.
+
+        Args:
+            df: DataFrame to check for evaluated extra_columns
+            extra_columns: Configured extra_columns dict
+
+        Returns:
+            Dict mapping unresolved column names to metadata:
+            {
+                "column_name": {
+                    "expression": original_value,
+                    "missing_dependencies": [list of missing column names]
+                }
+            }
+
+        Examples:
+            >>> df = pd.DataFrame({"a": [1], "b": [2]})
+            >>> evaluator = ExtraColumnEvaluator()
+            >>> extra_cols = {"result": "=concat(a, c)", "constant": 99}
+            >>> unresolved = evaluator.get_unresolved_extra_columns(df, extra_cols)
+            >>> unresolved
+            {'result': {'expression': '=concat(a, c)', 'missing_dependencies': ['c']}}
+        """
+        if not extra_columns:
+            return {}
+
+        unresolved: dict[str, dict[str, Any]] = {}
+        available_columns = set(df.columns)
+
+        for column_name, value in extra_columns.items():
+            # Skip if column was successfully evaluated
+            if column_name in available_columns:
+                continue
+
+            # Column is missing - determine why
+            missing_dependencies: list[str] = []
+
+            # Check what dependencies this column needs
+            if isinstance(value, str):
+                # Case 1: DSL formula
+                if self.is_dsl_formula(value):
+                    try:
+                        ast = self.formula_engine.parse(value)
+                        formula_deps = extract_column_references(ast)
+                        missing_dependencies = sorted(set(formula_deps) - available_columns)
+                    except Exception:
+                        # Parsing failed - can't determine dependencies
+                        missing_dependencies = []
+
+                # Case 2: Interpolated string
+                elif self.is_interpolated_string(value):
+                    interp_deps = self.extract_column_dependencies(value)
+                    missing_dependencies = sorted(set(interp_deps) - available_columns)
+
+                # Case 3: Column copy (string matching column name)
+                else:
+                    # Check if it's trying to copy a column that doesn't exist
+                    col_lower = value.lower()
+                    col_map = {str(c).lower(): c for c in available_columns if isinstance(c, str)}
+                    if col_lower not in col_map:
+                        missing_dependencies = [value]
+
+            # Record the unresolved column
+            unresolved[column_name] = {
+                "expression": value,
+                "missing_dependencies": missing_dependencies,
+            }
+
+        return unresolved
+
+    @staticmethod
+    def is_escaped_equals_literal(value: Any) -> bool:
+        """Detect if value is an escaped equals literal (starts with '==').
+
+        Strings starting with '==' are treated as literal constants where
+        the first '=' is an escape character, and the result is a string
+        starting with '=' (not a DSL formula).
 
         Args:
             value: Value to check
 
         Returns:
-            True if value is a string starting with '='
+            True if value is a string starting with '=='
+
+        Examples:
+            >>> ExtraColumnEvaluator.is_escaped_equals_literal("==literal")
+            True
+            >>> ExtraColumnEvaluator.is_escaped_equals_literal("=formula")
+            False
+            >>> ExtraColumnEvaluator.is_escaped_equals_literal("regular")
+            False
+        """
+        return isinstance(value, str) and value.startswith("==")
+
+    @staticmethod
+    def unescape_equals_literal(value: str) -> str:
+        """Remove the escape character from an escaped equals literal.
+
+        Converts '==...' to '=...' by removing the first '=' character.
+
+        Args:
+            value: String starting with '=='
+
+        Returns:
+            String with first '=' removed
+
+        Examples:
+            >>> ExtraColumnEvaluator.unescape_equals_literal("==not_a_formula")
+            '=not_a_formula'
+            >>> ExtraColumnEvaluator.unescape_equals_literal("==value")
+            '=value'
+        """
+        if value.startswith("=="):
+            return value[1:]  # Remove first '='
+        return value
+
+    @staticmethod
+    def is_dsl_formula(value: Any) -> bool:
+        """Detect if value is a DSL formula (starts with '=' but not '==').
+
+        DSL formulas are strings that start with '=' and contain
+        function calls like concat(), upper(), etc. Strings starting
+        with '==' are escaped literals, not formulas.
+
+        Args:
+            value: Value to check
+
+        Returns:
+            True if value is a string starting with '=' but not '=='
 
         Examples:
             >>> ExtraColumnEvaluator.is_dsl_formula("=concat(first, last)")
             True
             >>> ExtraColumnEvaluator.is_dsl_formula("{first} {last}")
             False
+            >>> ExtraColumnEvaluator.is_dsl_formula("==literal")
+            False
             >>> ExtraColumnEvaluator.is_dsl_formula(123)
             False
         """
         return isinstance(value, str) and value.startswith("=") and not value.startswith("==")
-
-    @staticmethod
-    def is_escaped_equals_literal(value: Any) -> bool:
-        """Detect doubled '=' prefix used to escape literal strings starting with '='."""
-        return isinstance(value, str) and value.startswith("==")
-
-    @staticmethod
-    def unescape_equals_literal(value: str) -> str:
-        """Convert doubled '=' prefix back to a literal leading '='."""
-        return value[1:] if value.startswith("==") else value
 
     @staticmethod
     def is_interpolated_string(value: Any) -> bool:
@@ -246,10 +450,11 @@ class ExtraColumnEvaluator:
 
         Processing order:
         1. Constants (non-string values)
-        2. DSL formulas (strings starting with '=')
-        3. Interpolated strings (strings with {column} patterns)
-        4. Column copies (string value matching existing column)
-        5. String constants
+        2. Escaped equals literals (strings starting with '==')
+        3. DSL formulas (strings starting with '=' but not '==')
+        4. Interpolated strings (strings with {column} patterns)
+        5. Column copies (string value matching existing column)
+        6. String constants
 
         When defer_missing=True, formulas and interpolations with missing columns
         are deferred for later evaluation (e.g., after FK linking adds columns).
@@ -298,26 +503,27 @@ class ExtraColumnEvaluator:
                 logger.trace(f"{entity_name}[extra_columns]: Added constant '{new_col}' = {value}")
                 continue
 
-            # Escaped literal starting with '='
+            # Case 2: Escaped equals literal (starts with '==')
             if self.is_escaped_equals_literal(value):
                 result[new_col] = self.unescape_equals_literal(value)
                 added_count += 1
-                logger.trace(f"{entity_name}[extra_columns]: Added escaped literal '{new_col}' = '{result[new_col].iloc[0]}'")
+                logger.trace(f"{entity_name}[extra_columns]: Added escaped literal '{new_col}' = '{value}' -> '{result[new_col].iloc[0] if len(result) > 0 else self.unescape_equals_literal(value)}'")
                 continue
 
-            # Case 2: DSL formula (starts with '=')
+            # Case 3: DSL formula (starts with '=' but not '==')
             if self.is_dsl_formula(value):
                 try:
                     # Parse formula and extract dependencies
                     ast = self.formula_engine.parse(value)
                     columns = list(extract_column_references(ast))
                     missing: set[str] = set(columns) - set(result.columns)
-
+                    
                     if missing:
                         if defer_missing:
                             deferred[new_col] = value
                             logger.trace(
-                                f"{entity_name}[extra_columns]: Deferred formula '{new_col}' " f"(missing columns: {sorted(missing)})"
+                                f"{entity_name}[extra_columns]: Deferred formula '{new_col}' "
+                                f"(missing columns: {sorted(missing)})"
                             )
                         else:
                             raise ValueError(
@@ -325,19 +531,21 @@ class ExtraColumnEvaluator:
                                 f"columns not found: {sorted(missing)}"
                             )
                         continue
-
+                    
                     # All columns available - compile (parse + validate) and evaluate
                     compiled_ast = self.formula_engine.compile(value, result.columns)
                     result[new_col] = self.formula_engine.evaluate(compiled_ast, result)
                     added_count += 1
                     logger.trace(f"{entity_name}[extra_columns]: Added formula '{new_col}' = '{value}'")
-
+                    
                 except Exception as e:
-                    raise ValueError(f"{entity_name}[extra_columns]: Error evaluating formula '{new_col}' = '{value}': {e}") from e
-
+                    raise ValueError(
+                        f"{entity_name}[extra_columns]: Error evaluating formula '{new_col}' = '{value}': {e}"
+                    ) from e
+                
                 continue
 
-            # Case 3: Interpolated string
+            # Case 4: Interpolated string
             if self.is_interpolated_string(value):
                 columns: list[str] = self.extract_column_dependencies(value)
                 missing: set[str] = set(columns) - set(result.columns)
@@ -361,7 +569,7 @@ class ExtraColumnEvaluator:
                 logger.trace(f"{entity_name}[extra_columns]: Added interpolation '{new_col}' = '{value}'")
                 continue
 
-            # Case 4: Column copy (string matching existing column, case-insensitive)
+            # Case 5: Column copy (string matching existing column, case-insensitive)
             # Convert column names to strings to handle any non-string column names
             col_lower: str = value.lower()
             col_map: dict[str, str] = {str(c).lower(): c for c in result.columns if isinstance(c, str)}
@@ -372,7 +580,7 @@ class ExtraColumnEvaluator:
                 logger.trace(f"{entity_name}[extra_columns]: Copied column '{new_col}' from '{value}'")
                 continue
 
-            # Case 5: String constant (doesn't match any column)
+            # Case 6: String constant (doesn't match any column)
             result[new_col] = value
             added_count += 1
             logger.trace(f"{entity_name}[extra_columns]: Added constant '{new_col}' = '{value}'")
@@ -388,47 +596,6 @@ class ExtraColumnEvaluator:
             logger.info(f"{entity_name}[extra_columns]: {', '.join(msg_parts)}")
 
         return result, deferred
-
-    @staticmethod
-    def _resolve_source_column(source: pd.DataFrame, column_name: str, case_sensitive: bool = False) -> str | None:
-        """Resolve a configured column reference against source columns, optionally case-insensitively."""
-        if case_sensitive:
-            return column_name if column_name in source.columns else None
-
-        source_columns_lower: dict[str, str] = {str(col).lower(): col for col in source.columns if isinstance(col, str)}
-        return source_columns_lower.get(column_name.lower())
-
-    def collect_source_dependencies(self, source: pd.DataFrame, extra_columns: dict[str, Any], case_sensitive: bool = False) -> set[str]:
-        """Collect source columns needed to evaluate extra_columns during extraction."""
-        dependencies: set[str] = set()
-
-        for value in extra_columns.values():
-            if not isinstance(value, str):
-                continue
-
-            if self.is_escaped_equals_literal(value):
-                continue
-
-            if self.is_dsl_formula(value):
-                ast = self.formula_engine.parse(value)
-                for reference in extract_column_references(ast):
-                    resolved = self._resolve_source_column(source, reference, case_sensitive=case_sensitive)
-                    if resolved is not None:
-                        dependencies.add(resolved)
-                continue
-
-            if self.is_interpolated_string(value):
-                for reference in self.extract_column_dependencies(value):
-                    resolved = self._resolve_source_column(source, reference, case_sensitive=case_sensitive)
-                    if resolved is not None:
-                        dependencies.add(resolved)
-                continue
-
-            resolved = self._resolve_source_column(source, value, case_sensitive=case_sensitive)
-            if resolved is not None:
-                dependencies.add(resolved)
-
-        return dependencies
 
     def verify_extra_columns(self, df: pd.DataFrame, extra_columns: dict[str, Any], entity_name: str) -> bool:
         """Verify all configured extra_columns have been evaluated.

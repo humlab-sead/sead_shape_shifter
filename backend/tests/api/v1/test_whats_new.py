@@ -30,3 +30,11 @@ def test_whats_new_manifest_is_sorted_descending() -> None:
 
     versions = [item["version"] for item in response.json()["items"][:5]]
     assert versions == ["1.24.0", "1.23.0", "1.22.0", "1.21.0", "1.20.0"]
+
+
+def test_whats_new_content_returns_markdown() -> None:
+    """The frontend should be able to fetch markdown content through the API."""
+    response = client.get("/api/v1/whats-new/1.24.0/content")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/markdown")
+    assert response.text.startswith("# What's New in v1.24.0")
