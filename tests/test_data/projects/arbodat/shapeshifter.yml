@@ -215,7 +215,10 @@ entities:
     depends_on: []
     drop_duplicates: true
     data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr],\n       'relative_dating' as [analysis_entity_type],\n       [ArchDat] as [analysis_entity_value],\n       null as [PCODE],\n       null as [Fraktion],\n       null as [cf],\n       null as [RTyp],\n       null as [Zust],\n       [ArchDat]\nfrom [Proben]\nwhere [ArchDat] is not null and [ArchDat] <> '';"
+    extra_columns:
+      analysis_entity_type: relative_dating
+      analysis_entity_value: "{ArchDat}"
+    query: "select [Projekt], [Befu], [ProbNr], null as [PCODE], null as [Fraktion], null as [cf], null as [RTyp], null as [Zust], [ArchDat]\nfrom [Proben]\nwhere [ArchDat] is not null and [ArchDat] <> '';"
   analysis_entity:
     type: sql
     source:
@@ -275,7 +278,10 @@ entities:
       columns: [PCODE, Fraktion, cf, RTyp, Zust, ArchDat, analysis_entity_type, analysis_entity_value]
     append_mode: distinct
     data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       'abundance' as [analysis_entity_type],\n       Nz([PCODE],'') & '|' & Nz([Fraktion],'') & '|' & Nz([cf],'') & '|' & Nz([RTyp],'') & '|' & Nz([Zust],'') as [analysis_entity_value],\n       null as [ArchDat]\nfrom [Details];"
+    extra_columns:
+      analysis_entity_type: abundance
+      analysis_entity_value: "{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}"
+    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust], null as [ArchDat]\nfrom [Details];"
   archaeological_period:
     type: sql
     source:
