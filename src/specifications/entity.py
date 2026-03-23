@@ -679,7 +679,11 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
     """
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
-        """Check that extra_columns don't conflict with existing columns."""
+        """Check that extra_columns don't conflict with existing columns.
+        
+        Note: Keys can be a mix of source columns and extra_columns. Only prevent
+        overriding columns that actually exist in the source data or are system-generated.
+        """
         self.clear()
 
         entities_cfg: dict[str, Any] = self.project_cfg.get("entities", {})
@@ -688,8 +692,9 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
         if not table_cfg.extra_columns:
             return True
 
+        # Only check actual source columns, not keys (keys can be added via extra_columns)
         existing_columns: set[str] = set(
-            table_cfg.get_columns(include_keys=True, include_fks=False, include_extra=False, include_unnest=True)
+            table_cfg.get_columns(include_keys=False, include_fks=False, include_extra=False, include_unnest=True)
         )
         existing_columns.add(table_cfg.system_id)
         if table_cfg.public_id:
@@ -701,7 +706,7 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
             for conflict in sorted(conflicts):
                 self.add_error(
                     f"extra_columns '{conflict}' conflicts with an existing result column in entity '{entity_name}'. "
-                    "Rename the derived column instead of overriding source, key, ID, FK, or unnest output columns.",
+                    "Rename the derived column instead of overriding source, system_id, public_id, or unnest output columns.",
                     entity=entity_name,
                     field="extra_columns",
                     expression=table_cfg.extra_columns.get(conflict),
