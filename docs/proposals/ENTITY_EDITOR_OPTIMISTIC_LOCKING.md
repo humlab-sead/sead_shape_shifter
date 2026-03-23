@@ -29,6 +29,7 @@ This prevents silent overwrite of the same entity while still allowing independe
 
 - The backend has a project-level optimistic locking concept for whole-project save flows.
 - Entity updates currently go through the normal entity CRUD path and project save path.
+- Entity updates are targeted at the API level, but persistence is still whole-project persistence today.
 - The server-side project cache is project-scoped and is primarily a performance mechanism, not the correct source of truth for fine-grained concurrency decisions.
 
 ### Problem
@@ -44,6 +45,8 @@ This should not turn into collaborative editing, CRDT, OT, or automatic merging.
 ### Scope Boundary
 
 This proposal applies to structured entity editing through the entity API. It does not by itself solve concurrent edits made through raw YAML editing, project metadata editing, or other whole-project mutation flows.
+
+It also does not require a fully generic YAML patch engine. If the persistence layer later gains isolated merge support, the relevant boundary for this feature is `entities[entity_name]`, not arbitrary dot-path updates across the whole document. The broader persistence rationale is proposed separately in [BOUNDARY_BASED_PROJECT_PERSISTENCE.md](BOUNDARY_BASED_PROJECT_PERSISTENCE.md).
 
 ## Recommended Design
 
@@ -83,6 +86,18 @@ The source of truth for the concurrency check must be the latest project content
 The server-side project cache should continue to exist as a cache, but it should not decide whether an entity update is stale. The cache can be refreshed after a successful save, as it is today.
 
 This requires an uncached read path for the compare-and-swap operation. The update transaction must bypass any previously loaded in-memory project object when determining whether the entity is stale.
+
+### Persistence Boundary
+
+The natural persistence boundary for this feature is the entity subtree under `entities[entity_name]`.
+
+That does not mean the first implementation must physically rewrite only that YAML subtree on disk. It does mean the concurrency model, stale-check, and replacement semantics should be defined at that boundary.
+
+In other words:
+
+- the feature should behave like an isolated compare-and-swap on one entity
+- the persistence layer may initially still save the full project file atomically
+- if a subtree-merge save path is introduced later, this feature should plug into `entities[entity_name]` rather than a broader whole-project redesign
 
 ## Why Not Use the Project Cache
 
@@ -210,7 +225,7 @@ Within that method:
 5. Compare it with `expected_etag`.
 6. If mismatched, raise a conflict error.
 7. If matched, replace only that entity.
-8. Save the project.
+8. Persist the result atomically, ideally through an entity-subtree save boundary when available.
 9. Return the updated entity and new ETag.
 
 This keeps the change local to the entity update path.
@@ -233,6 +248,14 @@ That avoids false conflicts caused by equivalent inputs that normalize to the sa
 
 The YAML service already writes to a temp file and replaces the original file. That is a good foundation.
 
+Today, however, entity CRUD is not backed by isolated persistence primitives such as:
+
+- read current YAML and replace only `entities[entity_name]`
+- read current YAML and replace only `metadata`
+- read current YAML and replace only `options`
+
+The current implementation mutates one entity in memory and then saves the project through the whole-project save path.
+
 ### Required Hardening
 
 The save path should be tightened to a proper atomic write-by-rename sequence:
@@ -245,6 +268,24 @@ The save path should be tightened to a proper atomic write-by-rename sequence:
 6. If practical, `fsync()` the parent directory.
 
 This is not specific to entity-level locking, but it is the right time to harden the persistence guarantee because the compare-and-swap contract depends on reliable whole-file replacement.
+
+### Relationship To Isolated Save Work
+
+This proposal should not be blocked on a fully generic isolated-save framework.
+
+The broader case for isolated persistence boundaries is captured separately in [BOUNDARY_BASED_PROJECT_PERSISTENCE.md](BOUNDARY_BASED_PROJECT_PERSISTENCE.md).
+
+The right dependency is narrower:
+
+- if isolated persistence helpers are introduced, the relevant one is entity-subtree replacement at `entities[entity_name]`
+- a generic `read-yaml, update any dot path, save` mechanism is not required for this feature
+
+So the implementation order can be either:
+
+1. entity optimistic locking first, still ending in a full atomic project save, or
+2. a narrower entity-subtree merge/save helper first, then optimistic locking layered on top of it
+
+Both are valid. The key is to keep the concurrency semantics entity-scoped.
 
 ## Frontend Impact
 
@@ -283,6 +324,7 @@ This feature does not attempt to solve:
 - comment-preserving YAML diff merges
 - raw YAML whole-project editing conflicts
 - whole-project metadata or options editing conflicts
+- arbitrary dot-path persistence patching for all YAML nodes
 
 Conflict on entity save is sufficient.
 
@@ -358,6 +400,7 @@ The feature is complete when:
 - updates to different entities in the same project do not conflict solely because they share a project file
 - entity update locking does not depend on project cache version values or cached project objects
 - YAML persistence uses hardened atomic replace semantics
+- the design does not depend on a generic dot-path patch engine
 - backend and frontend tests cover the main success and conflict paths
 - the proposal is explicitly scoped to structured entity editing, not whole-project editing
 
@@ -376,13 +419,15 @@ Proceed with entity-level optimistic locking as a targeted feature in the entity
 
 Do not redesign the server-side project cache for this. The cache should remain a cache.
 
+Do not broaden the persistence goal to a generic whole-document patch system. If isolated save support is introduced, the right boundary for this feature is `entities[entity_name]`.
+
 The simplest viable solution is:
 
 - `etag` on entity reads and `If-Match` on entity writes
 - entity-level fingerprint from canonical JSON of normalized persisted entity content
 - compare-and-swap under the existing per-project lock
 - bypass ApplicationState cache for the stale-check read
-- reuse the current save pipeline with a hardened atomic write implementation
+- reuse the current save pipeline with a hardened atomic write implementation, or a narrower entity-subtree persistence helper if one lands first
 
 That gives the right granularity, keeps the implementation small, and aligns with how users actually edit projects today.
 
@@ -442,6 +487,7 @@ This is intended to prevent same-entity last-writer-wins while still allowing in
 * Reuse the existing YAML save pipeline if practical; the project already uses `ruamel.yaml` with custom formatting.
 * Do not treat ApplicationState cache as the concurrency source of truth.
 * Do not broaden this task into a whole-project editing concurrency redesign.
+* Do not require a generic dot-path persistence engine before implementing entity-level compare-and-swap.
 
 ### ETag / fingerprint design
 
