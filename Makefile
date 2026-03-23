@@ -292,6 +292,43 @@ arbodat-schema: arbodat-data-schema arbodat-lookup-schema
 	@echo "✅ Schema extraction complete!"
 
 ################################################################################
+# Release Notes
+################################################################################
+
+.PHONY: release-notes-list
+release-notes-list:
+	@echo "Available versions in CHANGELOG.md:"
+	@uv run python scripts/generate_user_release_notes.py --list-versions
+
+.PHONY: release-notes-missing
+release-notes-missing:
+	@echo "Generating release notes for all missing versions..."
+	@uv run python scripts/generate_user_release_notes.py --generate-missing --force-heuristic
+
+.PHONY: release-notes-missing-ai
+release-notes-missing-ai:
+	@echo "Generating release notes for all missing versions (with AI)..."
+	@uv run python scripts/generate_user_release_notes.py --generate-missing
+
+.PHONY: release-notes
+release-notes:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION not specified. Usage: make release-notes VERSION=1.26.0"; \
+		exit 1; \
+	fi
+	@echo "Generating release notes for version $(VERSION)..."
+	@uv run python scripts/generate_user_release_notes.py --version $(VERSION) --force-heuristic
+
+.PHONY: release-notes-ai
+release-notes-ai:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION not specified. Usage: make release-notes-ai VERSION=1.26.0"; \
+		exit 1; \
+	fi
+	@echo "Generating release notes for version $(VERSION) with AI..."
+	@uv run python scripts/generate_user_release_notes.py --version $(VERSION)
+
+################################################################################
 # Presentation
 ################################################################################
 
