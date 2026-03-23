@@ -154,6 +154,18 @@ class ShapeShifter:
             # Process all configured tables (base + append items)
             data: pd.DataFrame = await self.get_subset(subset_service, entity, table_cfg)
 
+            # Evaluate extra_columns immediately after loading (before FK linking)
+            # This ensures columns added via extra_columns (including key columns) are available for FK validation
+            if table_cfg.extra_columns:
+                data, deferred = self.extra_col_evaluator.evaluate_extra_columns(
+                    df=data,
+                    extra_columns=table_cfg.extra_columns,
+                    entity_name=entity,
+                    defer_missing=True,  # Defer columns that reference FK-added columns
+                )
+                if deferred:
+                    logger.trace(f"{entity}[extra_columns]: Deferred {len(deferred)} columns until after FK linking")
+
             if table_cfg.filters:
                 data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store, stage="extract")
 

@@ -570,17 +570,23 @@ class ExtraColumnEvaluator:
                 continue
 
             # Case 5: Column copy (string matching existing column, case-insensitive)
+            # BUT: If value matches another extra_column key, treat as literal constant to avoid ambiguity
+            # (e.g., extra_columns: {abundance: FAnzahl, analysis_entity_type: abundance})
             # Convert column names to strings to handle any non-string column names
             col_lower: str = value.lower()
             col_map: dict[str, str] = {str(c).lower(): c for c in result.columns if isinstance(c, str)}
 
-            if col_lower in col_map:
+            # Check if value matches an extra_column key (case-insensitive)
+            extra_col_keys_lower = {str(k).lower() for k in extra_columns.keys()}
+            is_extra_col_ref = col_lower in extra_col_keys_lower
+            
+            if col_lower in col_map and not is_extra_col_ref:
                 result[new_col] = result[col_map[col_lower]]
                 added_count += 1
                 logger.trace(f"{entity_name}[extra_columns]: Copied column '{new_col}' from '{value}'")
                 continue
 
-            # Case 6: String constant (doesn't match any column)
+            # Case 6: String constant (doesn't match any column, or matches extra_column key)
             result[new_col] = value
             added_count += 1
             logger.trace(f"{entity_name}[extra_columns]: Added constant '{new_col}' = '{value}'")

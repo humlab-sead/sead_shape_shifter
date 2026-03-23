@@ -145,24 +145,28 @@ class SqlLoader(DataLoader):
 
         if auto_detect_columns:
 
-            missing_keys: list[str] = [k for k in table_cfg.keys if k not in detected_columns]
+            # Separate keys into source-backed (must exist in SQL) and extra_columns-backed (added later)
+            source_backed_keys: list[str] = [k for k in table_cfg.keys if k not in table_cfg.extra_column_names]
+            missing_keys: list[str] = [k for k in source_backed_keys if k not in detected_columns]
 
             if missing_keys:
                 raise ValueError(
-                    f"[{table_cfg.entity_name}] Auto-detect columns is enabled, but key column(s) {missing_keys} are missing in the data."
+                    f"[{table_cfg.entity_name}] Auto-detect columns is enabled, but key column(s) {missing_keys} are missing in the data. "
+                    f"(Keys can be added via extra_columns)"
                 )
 
             configured_columns: list[str] = table_cfg.safe_columns
             if configured_columns:
                 derived_columns: set[str] = set(table_cfg.identity_columns) | set(table_cfg.extra_column_names)
                 source_backed_columns: list[str] = [column for column in configured_columns if column not in derived_columns]
-                required_columns: list[str] = list(dict.fromkeys([*source_backed_columns, *sorted(table_cfg.keys)]))
+                # Only require source-backed keys (not those added via extra_columns)
+                required_columns: list[str] = list(dict.fromkeys([*source_backed_columns, *sorted(source_backed_keys)]))
                 missing_columns: list[str] = [column for column in required_columns if column not in detected_columns]
                 if missing_columns:
                     raise ValueError(
                         f"[{table_cfg.entity_name}] Auto-detected SQL columns do not satisfy stored schema. "
                         f"Stored columns: {configured_columns}. Query-backed columns: {source_backed_columns}. "
-                        f"Keys: {sorted(table_cfg.keys)}. "
+                        f"Source-backed keys: {sorted(source_backed_keys)}. "
                         f"Missing from detected columns: {missing_columns}. Detected columns: {detected_columns}. "
                         "Sync the entity columns before executing the workflow."
                     )
