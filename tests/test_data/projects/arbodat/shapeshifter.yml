@@ -1288,7 +1288,6 @@ entities:
       other_entity: _pcodes
       other_column: PCODE
     extra_columns:
-      system_id:
       author_id:
       genus_id:
       species: BNam
@@ -1565,7 +1564,7 @@ entities:
     type: sql
     public_id: ecocode_definition_id
     keys: [Ökogruppe]
-    columns: []
+    columns: [Ökogruppe, Bezeichnung, Reihenfolge, Eco_EN, Eco_FR]
     foreign_keys:
     - entity: ecocode_group
       local_keys: [ecocode_group_id]
