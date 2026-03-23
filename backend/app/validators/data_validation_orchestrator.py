@@ -21,7 +21,6 @@ from src.normalizer import ShapeShifter
 from src.validators.data_validators import (
     ColumnExistsValidator,
     DataTypeCompatibilityValidator,
-    DuplicateKeysValidator,
     ForeignKeyDataValidator,
     ForeignKeyIntegrityValidator,
     NaturalKeyUniquenessValidator,
@@ -206,7 +205,6 @@ class DataValidationOrchestrator:
             keys: list[str] = entity_cfg.get("keys", [])
             if keys:
                 issues.extend(NaturalKeyUniquenessValidator.validate(df, keys, entity_name))
-                issues.extend(DuplicateKeysValidator.validate(df, keys, entity_name))
 
             # Validate foreign keys
             fk_configs: list[dict[str, Any]] = entity_cfg.get("foreign_keys", [])
