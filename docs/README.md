@@ -139,7 +139,19 @@ These are the primary system documentation files:
 
 - **[proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md](proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md)**
   - Proposes new modeling ergonomics for complex target-schema scenarios such as merged parent entities, lookup/fact pairs, and branch-aware downstream entities.
-  - Recommends merged-parent modeling, branch-scoped consumers, target-aware validation, and comment-preserving YAML saves as the highest-value improvements, with derived-value follow-through tracked separately.
+  - Recommends merged-parent modeling, branch-scoped consumers, and explicit fact-to-lookup intent as the highest-value modeling improvements, with related supporting proposals split out separately.
+
+- **[proposals/COMMENT_PRESERVING_SAVE_PATH.md](proposals/COMMENT_PRESERVING_SAVE_PATH.md)**
+  - Proposes preserving YAML comments across ordinary project saves so local modeling rationale is not lost during editor round trips.
+  - Recommends a comment-preserving persistence path instead of treating a generic entity-level `note` field as a substitute.
+
+- **[proposals/BOUNDARY_BASED_PROJECT_PERSISTENCE.md](proposals/BOUNDARY_BASED_PROJECT_PERSISTENCE.md)**
+  - Proposes explicit persistence boundaries for `metadata`, `options`, and `entities[entity_name]` instead of treating every save as whole-document regeneration.
+  - Positions that narrower subtree-merge capability as a foundation for comment-preserving saves, entity-level optimistic locking, and future collaboration improvements.
+
+- **[proposals/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md](proposals/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md)**
+  - Companion technical sketch for implementing the comment-preserving save proposal.
+  - Compares the current save flow with a save-time reload and merge flow that preserves comments without adding another long-lived cache layer.
 
 - **[proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md](proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md)**
   - Proposes a small, safe DSL layered on top of `extra_columns` for lightweight derived-value transforms.
