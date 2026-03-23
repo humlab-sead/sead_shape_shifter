@@ -8,7 +8,7 @@ This guide consolidates all configuration documentation including:
 - **Entity Project**: Structure, properties, and relationship definitions
 - **Foreign Key Constraints**: Comprehensive validation and data quality enforcement  
 - **Append Project**: Union/concatenation of multiple data sources
-- **Project Validation**: Specification-based validation system with 9 validators
+- **Project Validation**: Specification-based validation system
 - **Complete Examples**: Real-world configuration patterns and best practices
 
 ## Architecture
@@ -47,7 +47,6 @@ options:           # Global options (optional)
   translations:    # Column name translations
   data_sources:    # named data sources associated to this project
   mappings:        # Remote entity mappings (optional)
-
 ```
 
 ---
@@ -92,57 +91,11 @@ metadata:
   type: 'shapeshifter-project'
   name: "Archaeological Site Data Import"
   description: |
-    Imports archaeological site data from multiple sources including
-    field surveys, laboratory analyses, and historical records.
+    Imports archaeological site data from multiple sources.
     Transforms data to match SEAD Clearinghouse schema.
   version: "2.1.0"
   default_entity: sample_data
 ```
-
-### Validation Rules
-
-- **metadata section**: Required (error if missing)
-- **metadata.type**: Required, must be `"shapeshifter-project"` (error if missing or incorrect)
-- **metadata.name**: Optional string
-- **metadata.description**: Optional string  
-- **metadata.version**: Optional string (recommended to follow semantic versioning)
-- **metadata.default_entity**: Optional, must reference existing entity if provided
-
-### API Integration
-
-When loaded via the API, metadata is accessible through the `Project.metadata` property:
-
-```python
-from backend.app.mappers.project_mapper import ProjectMapper
-
-# Load configuration
-cfg_dict = load_yaml("my_config.yml")
-api_config = ProjectMapper.to_api_config(cfg_dict, "my-config")
-
-# Access metadata
-print(api_config.metadata.name)         # "Archaeological Site Data Import"
-print(api_config.metadata.description)  # "Imports archaeological site data..."
-print(api_config.metadata.version)      # "2.1.0"
-```
-
-### Core Model Integration
-
-In the core `ShapeShiftProject`, metadata is accessible via the `metadata` property:
-
-```python
-from src.model import ShapeShiftProject
-
-project = ShapeShiftProject.from_file("my_config.yml")
-
-# Access metadata
-print(project.metadata.name)         # "Archaeological Site Data Import"
-print(project.metadata.description)  # "Imports archaeological site data..."
-print(project.metadata.version)      # "2.1.0"
-```
-
-### Backward Compatibility
-
-The metadata section's optional fields maintain backward compatibility. Projects with minimal metadata (only `type` specified) continue to work, with the project name derived from the filename.
 
 ## Entity Section
 
