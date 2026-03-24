@@ -658,7 +658,9 @@
                   v-model="formData.advanced.append"
                   :available-entities="availableSourceEntities"
                   :parent-columns="effectiveEntityColumns"
+                  :parent-public-id="formData.public_id"
                   :source-entity-columns="sourceEntityColumnsMap"
+                  :source-entity-public-ids="sourceEntityPublicIdMap"
                 />
               </v-window-item>
 
@@ -2076,6 +2078,17 @@ const sourceEntityColumnsMap = computed<Record<string, string[]>>(() => {
     entities.value
       .filter((entity) => entity.name !== formData.value.name)
       .map((entity) => [entity.name, normalizeChipField(entity.entity_data.columns)])
+  )
+})
+
+const sourceEntityPublicIdMap = computed<Record<string, string | null>>(() => {
+  return Object.fromEntries(
+    entities.value
+      .filter((entity) => entity.name !== formData.value.name)
+      .map((entity) => {
+        const publicId = typeof entity.entity_data.public_id === 'string' ? entity.entity_data.public_id.trim() : ''
+        return [entity.name, publicId || null]
+      })
   )
 })
 

@@ -167,6 +167,12 @@
                             <div v-if="getNameAlignmentSummary(item).extraColumns.length > 0" class="mt-1">
                               Extra source columns ignored: {{ getNameAlignmentSummary(item).extraColumns.join(', ') }}
                             </div>
+                            <div v-if="getNameAlignmentSummary(item).excludedTargetColumns.length > 0" class="mt-1">
+                              Ignored target identity columns: {{ getNameAlignmentSummary(item).excludedTargetColumns.join(', ') }}
+                            </div>
+                            <div v-if="getNameAlignmentSummary(item).excludedSourceColumns.length > 0" class="mt-1">
+                              Ignored source identity columns: {{ getNameAlignmentSummary(item).excludedSourceColumns.join(', ') }}
+                            </div>
                             <div v-if="!getNameAlignmentSummary(item).canMatch" class="mt-1">
                               Switch to <strong>Explicit mapping</strong> if you need to rename source columns.
                             </div>
@@ -203,6 +209,12 @@
                             <div class="mt-1">
                               Target columns: {{ getPositionAlignmentSummary(item).targetCount }}
                               | Source columns: {{ getPositionAlignmentSummary(item).sourceCount }}
+                            </div>
+                            <div v-if="getPositionAlignmentSummary(item).excludedTargetColumns.length > 0" class="mt-1">
+                              Ignored target identity columns: {{ getPositionAlignmentSummary(item).excludedTargetColumns.join(', ') }}
+                            </div>
+                            <div v-if="getPositionAlignmentSummary(item).excludedSourceColumns.length > 0" class="mt-1">
+                              Ignored source identity columns: {{ getPositionAlignmentSummary(item).excludedSourceColumns.join(', ') }}
                             </div>
                             <div v-if="!getPositionAlignmentSummary(item).canMatch" class="mt-1">
                               Position matching requires the same number of source and target columns.
@@ -346,14 +358,18 @@ interface Props {
   modelValue?: AppendConfigInternal[]
   availableEntities?: string[]
   parentColumns?: string[]
+  parentPublicId?: string | null
   sourceEntityColumns?: Record<string, string[]>
+  sourceEntityPublicIds?: Record<string, string | null>
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: () => [],
   availableEntities: () => [],
   parentColumns: () => [],
+  parentPublicId: null,
   sourceEntityColumns: () => ({}),
+  sourceEntityPublicIds: () => ({}),
 })
 
 const emit = defineEmits<{
@@ -393,6 +409,34 @@ function getAvailableSourceColumns(item: AppendConfigInternal): string[] {
   return props.sourceEntityColumns?.[item.source] || []
 }
 
+function getSourcePublicId(item: AppendConfigInternal): string | null {
+  if (!item.source) {
+    return null
+  }
+
+  return props.sourceEntityPublicIds?.[item.source] || null
+}
+
+function getAlignableColumns(columns: string[], publicId?: string | null): { alignable: string[]; excluded: string[] } {
+  const excludedSet = new Set(['system_id'])
+  if (publicId?.trim()) {
+    excludedSet.add(publicId.trim())
+  }
+
+  const alignable: string[] = []
+  const excluded: string[] = []
+
+  for (const column of columns) {
+    if (excludedSet.has(column)) {
+      excluded.push(column)
+    } else {
+      alignable.push(column)
+    }
+  }
+
+  return { alignable, excluded }
+}
+
 function getEffectiveSourceColumns(item: AppendConfigInternal): string[] {
   if (item.showColumnsOverride) {
     const parsedColumns = parseColumnsText(item.columnsText)
@@ -421,10 +465,15 @@ function getNameAlignmentSummary(item: AppendConfigInternal): {
   matchedColumns: string[]
   missingColumns: string[]
   extraColumns: string[]
+  excludedTargetColumns: string[]
+  excludedSourceColumns: string[]
   canMatch: boolean
 } {
-  const target = parentColumns.value
-  const source = getEffectiveSourceColumns(item)
+  const { alignable: target, excluded: excludedTargetColumns } = getAlignableColumns(parentColumns.value, props.parentPublicId)
+  const { alignable: source, excluded: excludedSourceColumns } = getAlignableColumns(
+    getEffectiveSourceColumns(item),
+    getSourcePublicId(item)
+  )
   const sourceSet = new Set(source)
   const targetSet = new Set(target)
 
@@ -436,6 +485,8 @@ function getNameAlignmentSummary(item: AppendConfigInternal): {
     matchedColumns,
     missingColumns,
     extraColumns,
+    excludedTargetColumns,
+    excludedSourceColumns,
     canMatch: target.length > 0 && missingColumns.length === 0,
   }
 }
@@ -444,16 +495,26 @@ function getPositionAlignmentSummary(item: AppendConfigInternal): {
   targetCount: number
   sourceCount: number
   canMatch: boolean
+  excludedTargetColumns: string[]
+  excludedSourceColumns: string[]
   pairs: Array<{ index: number; source: string; target: string }>
 } {
-  const target = parentColumns.value
-  const source = getEffectiveSourceColumns(item)
+  const { alignable: target, excluded: excludedTargetColumns } = getAlignableColumns(
+    parentColumns.value,
+    props.parentPublicId
+  )
+  const { alignable: source, excluded: excludedSourceColumns } = getAlignableColumns(
+    getEffectiveSourceColumns(item),
+    getSourcePublicId(item)
+  )
   const pairCount = Math.min(target.length, source.length)
 
   return {
     targetCount: target.length,
     sourceCount: source.length,
     canMatch: target.length > 0 && target.length === source.length,
+    excludedTargetColumns,
+    excludedSourceColumns,
     pairs: Array.from({ length: pairCount }, (_, index) => ({
       index,
       source: source[index] || '',
