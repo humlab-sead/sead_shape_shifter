@@ -69,43 +69,86 @@
                 <v-expansion-panel>
                   <template #title>
                     <v-icon size="small" class="mr-2">mdi-cog</v-icon>
-                    <span class="text-caption">Column Alignment Options</span>
+                    <span class="text-caption">Column Alignment</span>
                   </template>
                   <v-expansion-panel-text>
                     <div class="pt-2">
-                      <v-checkbox
-                        v-model="item.align_by_position"
-                        label="Align by position"
+                      <p class="text-caption mb-3 text-medium-emphasis">
+                        Choose how source columns are matched to target columns:
+                      </p>
+                      
+                      <!-- Alignment Mode Selection -->
+                      <v-radio-group
+                        :model-value="getAlignmentMode(item)"
                         density="compact"
                         hide-details
-                        class="mb-2"
-                        @update:model-value="handleAlignByPositionChange(item)"
-                      />
-                      <v-divider class="my-2" />
-                      <p class="text-caption mb-2">
-                        <strong>Column Mapping:</strong> Explicitly map source columns to target columns
-                      </p>
-                      <v-text-field
-                        v-for="(targetCol, sourceCol) in item.column_mapping || {}"
-                        :key="sourceCol"
-                        :label="`${sourceCol} →`"
-                        :model-value="targetCol"
-                        variant="outlined"
-                        density="compact"
-                        class="mb-2"
-                        hint="Target column name"
-                        persistent-hint
-                        @update:model-value="updateColumnMapping(item, sourceCol, $event)"
-                      />
-                      <v-btn
-                        size="small"
-                        variant="tonal"
-                        prepend-icon="mdi-plus"
-                        @click="addColumnMapping(item)"
-                        class="mt-2"
+                        class="mb-3"
+                        @update:model-value="handleAlignmentModeChange(item, $event)"
                       >
-                        Add Mapping
-                      </v-btn>
+                        <v-radio value="name">
+                          <template #label>
+                            <div>
+                              <strong>Match by name</strong>
+                              <span class="text-caption text-medium-emphasis ml-2">(default)</span>
+                              <div class="text-caption text-medium-emphasis">
+                                Source and target column names must match exactly
+                              </div>
+                            </div>
+                          </template>
+                        </v-radio>
+                        
+                        <v-radio value="position" class="mt-2">
+                          <template #label>
+                            <div>
+                              <strong>Match by position</strong>
+                              <v-chip size="x-small" color="warning" variant="flat" class="ml-2">advanced</v-chip>
+                              <div class="text-caption text-medium-emphasis">
+                                Align columns by order, ignoring names (excludes identity columns)
+                              </div>
+                            </div>
+                          </template>
+                        </v-radio>
+                        
+                        <v-radio value="mapping" class="mt-2">
+                          <template #label>
+                            <div>
+                              <strong>Explicit mapping</strong>
+                              <div class="text-caption text-medium-emphasis">
+                                Manually specify how each source column maps to target
+                              </div>
+                            </div>
+                          </template>
+                        </v-radio>
+                      </v-radio-group>
+
+                      <!-- Explicit Mapping Editor -->
+                      <div v-if="getAlignmentMode(item) === 'mapping'" class="mt-3">
+                        <v-divider class="mb-3" />
+                        <p class="text-caption mb-2">
+                          <strong>Column Mapping:</strong> Define source → target column mappings
+                        </p>
+                        <v-text-field
+                          v-for="(targetCol, sourceCol) in item.column_mapping || {}"
+                          :key="sourceCol"
+                          :label="`${sourceCol} →`"
+                          :model-value="targetCol"
+                          variant="outlined"
+                          density="compact"
+                          class="mb-2"
+                          hint="Target column name"
+                          persistent-hint
+                          @update:model-value="updateColumnMapping(item, sourceCol, $event)"
+                        />
+                        <v-btn
+                          size="small"
+                          variant="tonal"
+                          prepend-icon="mdi-plus"
+                          @click="addColumnMapping(item)"
+                          class="mt-2"
+                        >
+                          Add Mapping
+                        </v-btn>
+                      </div>
                     </div>
                   </v-expansion-panel-text>
                 </v-expansion-panel>
@@ -253,6 +296,30 @@ function handleAlignByPositionChange(item: AppendConfigInternal): void {
     // Clear column mapping when switching to align_by_position
     item.column_mapping = undefined
   }
+}
+
+function getAlignmentMode(item: AppendConfigInternal): 'name' | 'position' | 'mapping' {
+  if (item.align_by_position) {
+    return 'position'
+  }
+  if (item.column_mapping && Object.keys(item.column_mapping).length > 0) {
+    return 'mapping'
+  }
+  return 'name'
+}
+
+function handleAlignmentModeChange(item: AppendConfigInternal, mode: 'name' | 'position' | 'mapping'): void {
+  // Clear all alignment settings
+  item.align_by_position = false
+  item.column_mapping = undefined
+
+  // Apply new mode
+  if (mode === 'position') {
+    item.align_by_position = true
+  } else if (mode === 'mapping') {
+    item.column_mapping = {}
+  }
+  // 'name' mode requires no special settings (default behavior)
 }
 
 function addColumnMapping(item: AppendConfigInternal): void {

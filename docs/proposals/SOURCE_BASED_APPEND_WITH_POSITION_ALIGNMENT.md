@@ -281,7 +281,7 @@ The motivating `a` / `b` / `ab` example should be added as an integration test.
 2. ✅ **Align validator behavior with runtime behavior for `source` and `type: entity` append forms.** (Implemented 2026-03-24)
 3. ✅ **Tighten position-based alignment rules around payload columns and identity columns.** (Verified 2026-03-24)
 4. ✅ **Add integration tests for the motivating case and for failure modes.** (Implemented 2026-03-24)
-5. ⏳ **Update append documentation and editor wording.** (Partial - info notice updated)
+5. ✅ **Update append documentation and editor wording.** (Implemented 2026-03-24)
 
 ## Implementation Notes
 
@@ -379,6 +379,59 @@ rename_map = dict(zip(current_cols_filtered, parent_cols_filtered))
 - All existing tests pass (3 unit tests + 1 integration test)
 - Identity columns properly preserved during position-based alignment
 - Heterogeneous entities with different identity columns can be unioned successfully
+
+### Step 5: Editor UX Improvements (Implemented 2026-03-24)
+
+**Status:** Implemented and ready for testing.
+
+**Implementation Location:**
+- `frontend/src/components/entities/AppendEditor.vue`
+
+**Changes:**
+
+1. **Redesigned Alignment Mode Selector:**
+   - Replaced independent checkboxes with mutually exclusive radio group
+   - Changed "Column Alignment Options" to "Column Alignment" for clarity
+   - Made alignment mode a single explicit choice (not independent toggles)
+
+2. **Three Mutually Exclusive Modes:**
+   - **Match by name (default)** - Strict column name matching (no flags required)
+   - **Match by position (advanced)** - Align payload columns by position with identity exclusion (warning chip)
+   - **Explicit mapping** - Manual source→target column specification
+
+3. **Added Mode Management Functions:**
+   ```typescript
+   // Determine current alignment mode from item state
+   function getAlignmentMode(item): 'name' | 'position' | 'mapping' {
+     if (item.align_by_position) return 'position'
+     if (item.column_mapping?.length) return 'mapping'
+     return 'name'
+   }
+   
+   // Handle mode changes from radio group
+   function handleAlignmentModeChange(item, mode) {
+     item.align_by_position = (mode === 'position')
+     item.column_mapping = (mode === 'mapping') ? {} : undefined
+   }
+   ```
+
+4. **Visual Improvements:**
+   - Added "(default)" label to name-based mode
+   - Added "advanced" warning chip to position-based mode
+   - Added descriptive text under each mode option
+   - Conditional display of mapping editor based on selected mode
+
+**Benefits:**
+- Single-choice UI pattern matches mutual exclusivity of modes
+- Position mode clearly labeled as advanced feature
+- Reduced cognitive load (one decision instead of two checkboxes)
+- Better visual hierarchy and mode descriptions
+
+**Testing Plan:**
+- Verify radio group renders correctly
+- Test mode switching behavior (mutual exclusivity enforced)
+- Verify mapping editor shows/hides based on selected mode
+- Check visual styling (chips, descriptions, layout)
 
 ## Final Recommendation
 
