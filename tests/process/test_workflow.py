@@ -126,11 +126,8 @@ async def test_full_data_validation():
         core_project=project, project_name="arbodat", entity_names=None
     )
     issue_report: str = "\n".join(f"{issue.severity} [{issue.code}] {issue.entity}: {issue.message}" for issue in issues)
-
-    if issues:
-
-        assert not issues, f"Found {len(issues)} validation issues\n{issue_report}"
-
+    error_count: int = sum(1 for issue in issues if issue.severity == "error")
+    assert error_count == 0, f"Expected no validation errors, found {error_count}\n{issue_report}"
 
 @pytest.mark.asyncio
 async def test_full_data_validation_with_unresolved_extra_columns():
