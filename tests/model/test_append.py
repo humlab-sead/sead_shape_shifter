@@ -368,6 +368,124 @@ class TestAppendPropertyInheritance:
         # Columns should remain unchanged
         assert merged["columns"] == ["id", "name", "value"]
 
+    def test_source_append_does_not_inherit_type_from_fixed_parent(self):
+        """Test that source-based append doesn't inherit type: fixed from parent."""
+        cfg = {
+            "parent": {
+                "type": "fixed",
+                "values": [],
+                "public_id": "parent_id",
+                "keys": ["id"],
+                "columns": ["id", "name"],
+                "depends_on": [],
+            },
+            "source_entity": {
+                "keys": ["id"],
+                "columns": ["id", "name"],
+                "depends_on": [],
+            },
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="parent")
+        append_data = {"source": "source_entity"}
+
+        merged = table_cfg.create_append_config(append_data)
+
+        # Should NOT inherit type from parent
+        assert "type" not in merged or merged.get("type") is None
+        # Should NOT inherit values from parent
+        assert "values" not in merged or merged.get("values") is None
+        # Should have source
+        assert merged["source"] == "source_entity"
+
+    def test_source_append_does_not_inherit_query_from_sql_parent(self):
+        """Test that source-based append doesn't inherit query from SQL parent."""
+        cfg = {
+            "parent": {
+                "type": "sql",
+                "query": "SELECT * FROM parent_table",
+                "data_source": "test_db",
+                "public_id": "parent_id",
+                "keys": ["id"],
+                "columns": ["id", "name"],
+                "depends_on": [],
+            },
+            "source_entity": {
+                "keys": ["id"],
+                "columns": ["id", "name"],
+                "depends_on": [],
+            },
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="parent")
+        append_data = {"source": "source_entity"}
+
+        merged = table_cfg.create_append_config(append_data)
+
+        # Should NOT inherit loader-driving fields
+        assert "type" not in merged or merged.get("type") is None
+        assert "query" not in merged or merged.get("query") is None
+        assert "data_source" not in merged or merged.get("data_source") is None
+        # Should have source
+        assert merged["source"] == "source_entity"
+
+    def test_source_append_still_inherits_safe_properties(self):
+        """Test that source-based append still inherits safe processing properties."""
+        cfg = {
+            "parent": {
+                "type": "fixed",
+                "values": [],
+                "public_id": "parent_id",
+                "keys": ["id"],
+                "columns": ["id", "name"],
+                "drop_duplicates": True,
+                "drop_empty_rows": True,
+                "depends_on": [],
+            },
+            "source_entity": {
+                "keys": ["id"],
+                "columns": ["id", "name"],
+                "depends_on": [],
+            },
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="parent")
+        append_data = {"source": "source_entity"}
+
+        merged = table_cfg.create_append_config(append_data)
+
+        # Should NOT inherit type/values
+        assert "type" not in merged or merged.get("type") is None
+        assert "values" not in merged or merged.get("values") is None
+        # Should inherit safe properties
+        assert merged["drop_duplicates"] is True
+        assert merged["drop_empty_rows"] is True
+        # Should have source
+        assert merged["source"] == "source_entity"
+
+    def test_non_source_append_still_inherits_type_for_backward_compatibility(self):
+        """Test that non-source append (e.g., fixed) still inherits type for backward compat."""
+        cfg = {
+            "parent": {
+                "type": "sql",
+                "query": "SELECT * FROM parent",
+                "public_id": "parent_id",
+                "keys": ["id"],
+                "columns": ["id", "name"],
+                "depends_on": [],
+            }
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="parent")
+        # Append without source - should inherit type
+        append_data = {"values": [["test"]], "type": "fixed"}
+
+        merged = table_cfg.create_append_config(append_data)
+
+        # Should use type from append_data
+        assert merged["type"] == "fixed"
+        assert merged["values"] == [["test"]]
+
 
 class TestColumnRenaming:
     """Test column renaming functionality for append configurations."""

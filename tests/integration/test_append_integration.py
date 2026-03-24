@@ -579,3 +579,84 @@ class TestAppendIntegration:
         # Should raise ValueError due to column count mismatch
         with pytest.raises(ValueError, match="Column count mismatch"):
             await normalizer.normalize()
+
+    @pytest.mark.asyncio
+    async def test_source_append_from_fixed_parent_does_not_inherit_type(self):
+        """Test that source append from fixed parent entity doesn't inherit type=fixed.
+
+        This is the critical bug fix: when a parent entity has type=fixed with values=[],
+        append items with source should NOT inherit type and values, otherwise they
+        load empty data instead of fetching from table_store.
+
+        Regression test for proposal: SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md
+        """
+        # Create source entities with data
+        a_df = pd.DataFrame(
+            {
+                "system_id": [1],
+                "a_id": [1],
+                "a_type": ["A"],
+                "a_value": ["a"],
+            }
+        )
+
+        b_df = pd.DataFrame(
+            {
+                "system_id": [1],
+                "b_id": [1],
+                "b_type": ["B"],
+                "b_value": ["b"],
+            }
+        )
+
+        # Parent is fixed entity with empty values, expecting append to populate it
+        cfg = {
+            "entities": {
+                "a": {
+                    "public_id": "a_id",
+                    "keys": [],
+                    "columns": ["system_id", "a_type", "a_id", "a_value"],
+                },
+                "b": {
+                    "public_id": "b_id",
+                    "keys": [],
+                    "columns": ["system_id", "b_type", "b_id", "b_value"],
+                },
+                "ab": {
+                    "type": "fixed",
+                    "values": [],  # Empty values - union pattern
+                    "public_id": "ab_id",
+                    "keys": [],
+                    "columns": ["system_id", "ab_type", "ab_id", "ab_value"],
+                    "depends_on": [],
+                    "append": [
+                        {
+                            "source": "a",
+                            "columns": ["system_id", "a_type", "a_id", "a_value"],
+                        },
+                        {
+                            "source": "b",
+                            "columns": ["system_id", "b_type", "b_id", "b_value"],
+                        },
+                    ],
+                },
+            }
+        }
+
+        normalizer: ShapeShifter = ShapeShifter(
+            table_store={"a": a_df, "b": b_df},
+            project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
+            default_entity="a",
+        )
+
+        await normalizer.normalize()
+
+        result = normalizer.table_store["ab"]
+
+        # Should have 2 rows: 1 from a, 1 from b
+        assert len(result) == 2, f"Expected 2 rows, got {len(result)}"
+
+        # Verify data came from both sources
+        assert result["a_type"].notna().any(), "Missing data from entity 'a'"
+        assert result["b_type"].notna().any(), "Missing data from entity 'b'"
+
