@@ -654,7 +654,12 @@
               </v-window-item>
 
               <v-window-item value="append">
-                <append-editor v-model="formData.advanced.append" :available-entities="availableSourceEntities" />
+                <append-editor
+                  v-model="formData.advanced.append"
+                  :available-entities="availableSourceEntities"
+                  :parent-columns="effectiveEntityColumns"
+                  :source-entity-columns="sourceEntityColumnsMap"
+                />
               </v-window-item>
 
               <v-window-item value="extra_columns">
@@ -2064,6 +2069,14 @@ const entityTypeOptions = [
 
 const availableSourceEntities = computed(() => {
   return entities.value.filter((e) => e.name !== formData.value.name).map((e) => e.name)
+})
+
+const sourceEntityColumnsMap = computed<Record<string, string[]>>(() => {
+  return Object.fromEntries(
+    entities.value
+      .filter((entity) => entity.name !== formData.value.name)
+      .map((entity) => [entity.name, normalizeChipField(entity.entity_data.columns)])
+  )
 })
 
 const availableDataSources = computed(() => {
