@@ -278,10 +278,10 @@ The motivating `a` / `b` / `ab` example should be added as an integration test.
 ## Recommended Delivery Order
 
 1. ✅ **Fix internal source-append normalization so `source` append does not inherit parent loader type.** (Implemented 2026-03-24)
-2. Align validator behavior with runtime behavior for `source` and `type: entity` append forms.
-3. Tighten position-based alignment rules around payload columns and identity columns.
+2. ✅ **Align validator behavior with runtime behavior for `source` and `type: entity` append forms.** (Implemented 2026-03-24)
+3. ✅ **Tighten position-based alignment rules around payload columns and identity columns.** (Verified 2026-03-24)
 4. ✅ **Add integration tests for the motivating case and for failure modes.** (Implemented 2026-03-24)
-5. Update append documentation and editor wording.
+5. ⏳ **Update append documentation and editor wording.** (Partial - info notice updated)
 
 ## Implementation Notes
 
@@ -313,6 +313,72 @@ This ensures source-based append items resolve data from `table_store` rather th
 - `tests/test_data/projects/bugs/shapeshifter.yml` now returns 2 rows (was 0 rows)
 - Production `analysis_entity` pattern verified working correctly
 - All existing tests pass (38 unit tests + 10 integration tests)
+
+### Step 2: Validator Alignment for Source Append Forms (Implemented 2026-03-24)
+
+**Files Changed:**
+- `src/specifications/entity.py` - Modified `AppendSpecification.is_satisfied_by()` to treat source append forms equivalently
+- `tests/specifications/test_entity.py` - Updated tests to cover both shorthand and explicit forms
+
+**Implementation:**
+The validator now:
+- Accepts both `source: entity_name` (shorthand) and `type: entity, source: entity_name` (explicit)
+- Validates that if `type` and `source` are both specified, `type` must be `"entity"`
+- Rejects combinations like `type: fixed, source: entity_name` with clear error message
+- Treats both forms identically during validation
+
+**Changes:**
+- Removed restriction that prevented `type` and `source` from coexisting
+- Added validation that `type` must be `"entity"` when both present
+- Split validation logic: type-only (fixed/sql) vs source-based (entity)
+
+**Tests Added:**
+- `test_valid_source_append` - Verifies shorthand form `source: entity` passes validation
+- `test_valid_source_with_type_entity` - Verifies explicit form `type: entity, source: entity` passes validation
+- `test_invalid_source_with_wrong_type` - Verifies `type: fixed, source: entity` is rejected
+
+**Validation:**
+- All 7 AppendSpecification tests pass
+- Both source append forms validate identically
+
+### Step 3: Position-Based Alignment Around Payload Columns (Verified 2026-03-24)
+
+**Status:** Already implemented and tested in codebase.
+
+**Implementation Location:**
+- `src/model.py` - `TableConfig.apply_column_renaming()` method (lines 653-708)
+
+**Behavior:**
+Position-based alignment properly excludes identity columns:
+- Always excludes `system_id` from positional matching
+- Excludes entity's `public_id` from positional matching (if defined)
+- Aligns only payload columns by position
+- Preserves identity columns unchanged in result
+
+**Algorithm:**
+```python
+# Filter out identity columns from both source and target
+exclude_cols = {system_id_col, public_id_col} if public_id_col else {system_id_col}
+parent_cols_filtered = [c for c in parent_columns if c not in exclude_cols]
+current_cols_filtered = [c for c in current_columns if c not in exclude_cols]
+
+# Validate payload column count matches
+if len(parent_cols_filtered) != len(current_cols_filtered):
+    raise ValueError("Column count mismatch for align_by_position...")
+
+# Create rename mapping for payload columns only
+rename_map = dict(zip(current_cols_filtered, parent_cols_filtered))
+```
+
+**Existing Tests:**
+- `test_apply_column_renaming_align_by_position_with_system_id` - Unit test verifying exclusion
+- `test_apply_column_renaming_column_count_mismatch` - Validates error on mismatch
+- `test_append_with_align_by_position` - Integration test with full pipeline
+
+**Validation:**
+- All existing tests pass (3 unit tests + 1 integration test)
+- Identity columns properly preserved during position-based alignment
+- Heterogeneous entities with different identity columns can be unioned successfully
 
 ## Final Recommendation
 

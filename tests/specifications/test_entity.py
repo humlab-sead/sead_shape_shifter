@@ -1134,7 +1134,8 @@ class TestAppendSpecification:
                 "valid_fixed_append": {"append": [{"type": "fixed", "values": [["a"], ["b"]]}], "append_mode": "all"},
                 "valid_sql_append": {"append": [{"type": "sql", "query": "SELECT * FROM table"}]},
                 "valid_source_append": {"append": [{"source": "other_entity"}]},
-                "both_type_and_source": {"append": [{"type": "fixed", "source": "other", "values": []}]},
+                "valid_source_with_type_entity": {"append": [{"type": "entity", "source": "other_entity"}]},
+                "invalid_source_with_wrong_type": {"append": [{"type": "fixed", "source": "other_entity", "values": []}]},
                 "neither_type_nor_source": {"append": [{}]},
                 "invalid_mode": {"append": [{"type": "fixed", "values": []}], "append_mode": "invalid"},
             }
@@ -1157,7 +1158,7 @@ class TestAppendSpecification:
         assert result is True
 
     def test_valid_source_append(self, project_cfg):
-        """Test validation passes for valid source append."""
+        """Test validation passes for valid source append (shorthand form)."""
         # Need to add the referenced entity
         project_cfg["entities"]["other_entity"] = {"columns": ["col1"]}
 
@@ -1167,14 +1168,25 @@ class TestAppendSpecification:
 
         assert result is True
 
-    def test_both_type_and_source(self, project_cfg):
-        """Test validation fails when both type and source specified."""
+    def test_valid_source_with_type_entity(self, project_cfg):
+        """Test validation passes for source append with type: entity (explicit form)."""
+        # Need to add the referenced entity
+        project_cfg["entities"]["other_entity"] = {"columns": ["col1"]}
+
         spec = AppendSpecification(project_cfg)
 
-        result = spec.is_satisfied_by(entity_name="both_type_and_source")
+        result = spec.is_satisfied_by(entity_name="valid_source_with_type_entity")
+
+        assert result is True
+
+    def test_invalid_source_with_wrong_type(self, project_cfg):
+        """Test validation fails when type is not 'entity' but source is specified."""
+        spec = AppendSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="invalid_source_with_wrong_type")
 
         assert result is False
-        assert any("cannot specify both" in str(e) for e in spec.errors)
+        assert any("type must be 'entity'" in str(e) for e in spec.errors)
 
     def test_neither_type_nor_source(self, project_cfg):
         """Test validation fails when neither type nor source specified."""

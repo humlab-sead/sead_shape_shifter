@@ -751,17 +751,23 @@ class AppendSpecification(ProjectSpecification):
                 entity_name, ["type", "source"], "of_type/E", expected_types=(str, None), target_cfg=append_cfg, message=append_id
             )
 
-            # Must have either type or source, but not both
+            # Validate append form: either type-only, source-only, or type+source
             if not append_type and not append_source:
                 self.add_error(f"{append_id}: must specify either 'type' or 'source'", entity=entity_name, field="append")
                 continue
 
+            # If both type and source are specified, type MUST be "entity"
             if append_type and append_source:
-                self.add_error(f"{append_id}: cannot specify both 'type' and 'source'", entity=entity_name, field="append")
-                continue
+                if append_type != "entity":
+                    self.add_error(
+                        f"{append_id}: when both 'type' and 'source' are specified, type must be 'entity' (got '{append_type}')",
+                        entity=entity_name,
+                        field="append",
+                    )
+                    continue
 
-            # Validate type-based append
-            if append_type:
+            # Validate type-based append (fixed, sql)
+            if append_type and not append_source:
                 self.check_fields(
                     entity_name,
                     ["type"],
@@ -783,7 +789,7 @@ class AppendSpecification(ProjectSpecification):
                         entity_name, ["query"], "exists/E,of_type/E", expected_types=(str,), target_cfg=append_cfg, message=append_id
                     )
 
-            # Validate source-based append
+            # Validate source-based append (source alone or type: entity + source)
             if append_source:
                 self.check_fields(entity_name, ["source"], "of_type/E", expected_types=(str,), target_cfg=append_cfg, message=append_id)
                 self.check_fields(entity_name, ["source"], "is_existing_entity/E", target_cfg=append_cfg, message=append_id)
