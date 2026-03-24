@@ -52,10 +52,14 @@ export interface FilterConfig {
 }
 
 export interface AppendConfig {
-  type: 'fixed' | 'sql'
+  type?: 'fixed' | 'sql'
   values?: any[][] | null
   data_source?: string | null
   query?: string | null
+  source?: string | null
+  columns?: string[] | null
+  align_by_position?: boolean
+  column_mapping?: Record<string, string> | null
 }
 
 export interface Entity {
