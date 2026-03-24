@@ -737,7 +737,7 @@ class TableConfig:
         }
 
         # Check if we're using column renaming with entity source
-        has_source = "source" in append_data
+        has_source = "source" in append_data and append_data["source"] is not None
         has_align = append_data.get("align_by_position", False)
         has_mapping = "column_mapping" in append_data
         use_source_columns = has_source and (has_align or has_mapping) and "columns" not in append_data
