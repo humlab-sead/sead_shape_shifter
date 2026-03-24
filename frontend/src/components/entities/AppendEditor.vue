@@ -139,11 +139,18 @@
       <ul class="mt-2">
         <li><strong>Fixed Values:</strong> Manually specify rows as arrays</li>
         <li><strong>SQL Query:</strong> Execute query against a data source</li>
-        <li><strong>From Entity:</strong> Append rows from another entity with optional column mapping</li>
+        <li><strong>From Entity (source):</strong> Fetch rows from another entity's processed data
+          <ul class="ml-4 mt-1">
+            <li>Uses shorthand: <code>source: entity_name</code> instead of <code>type: entity</code></li>
+            <li>Fetches from entity's table_store (not a new data load)</li>
+            <li>Does NOT inherit loader properties (type, values, query) from parent</li>
+          </ul>
+        </li>
       </ul>
       <div class="mt-2">
         For <strong>From Entity</strong>, use <em>column mapping</em> to rename source columns or
         <em>align by position</em> to match columns by order instead of name.
+        Safe properties like filters and drop_duplicates are inherited from the parent entity.
       </div>
     </v-alert>
 

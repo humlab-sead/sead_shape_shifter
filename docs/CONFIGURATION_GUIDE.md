@@ -2199,10 +2199,39 @@ measurement:
 ```
 
 **Properties for `type: entity`:**
-- `type`: Must be `"entity"`
+- `type`: Must be `"entity"` (or omit for shorthand)
 - `source`: Required, entity name to extract from
 - `columns`: Optional, inherits from parent if not specified
 - Inherits: `drop_duplicates`, `drop_empty_rows`, `replacements`, `filters`
+
+**Source Append Shorthand**: When using `type: entity`, you can omit `type` and specify only `source`:
+
+```yaml
+measurement:
+  source: survey_2023  # Shorthand for type: entity, source: survey_2023
+  columns: [measurement_id, value, unit]
+  
+  append:
+    - source: survey_2024  # Shorthand form
+      # Equivalent to: type: entity, source: survey_2024
+```
+
+**Union Pattern** (fixed parent with source append):
+```yaml
+analysis_entity:
+  type: fixed       # Parent defines structure only
+  values: []        # No data in parent
+  columns: [id, name, type]
+  
+  append:
+    - source: method        # Fetch from method entity's processed data
+    - source: sample_type   # Fetch from sample_type entity's processed data
+    # These append sources do NOT inherit type: fixed or values: []
+```
+
+This pattern allows defining shared configuration (columns, keys, foreign keys, constraints) on the parent entity while actual data comes from child entities. The parent acts as a union schema definition.
+
+**Important**: Source-based append (with `source` specified) NEVER inherits loader-driving properties (`type`, `values`, `query`, `data_source`, `sql`) from the parent, even if the parent has them. This prevents conflicts where inherited loader properties would override the `source` directive.
 
 ### Property Inheritance
 
@@ -2242,6 +2271,16 @@ These properties are specific to the parent entity and are NOT inherited:
 - `depends_on`: Processing dependencies
 - `source`: Data source (append sources specify their own)
 - `type`: Entity type (append sources must specify their own)
+
+**Source-Based Append Loader Blocking**: When an append configuration includes `source` (referencing another entity), the following loader-driving properties are ALSO blocked from inheritance to prevent conflicts:
+
+- `type`: Loader type (sql, fixed, csv, etc.)
+- `values`: Fixed data rows
+- `query`: SQL query
+- `data_source`: Database connection
+- `sql`: Alternative SQL specification
+
+This behavior ensures that source-based append fetches data from the referenced entity's `table_store` rather than executing a new data load. Safe properties like `drop_duplicates`, `filters`, and `columns` continue to inherit normally.
 
 ### Column Name Handling
 
