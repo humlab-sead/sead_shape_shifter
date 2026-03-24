@@ -722,6 +722,7 @@ class TableConfig:
         """Create a merged configuration for an append item, inheriting parent properties.
 
         Special handling:
+        - Source-based append (when 'source' is present) blocks inheritance of loader-driving fields
         - Filters out public_id from columns list (will be added after concatenation)
         - Inherits most properties except foreign_keys, unnest, append, append_mode, depends_on
         - Passes through align_by_position and column_mapping from append item
@@ -741,6 +742,12 @@ class TableConfig:
         has_mapping = "column_mapping" in append_data
         use_source_columns = has_source and (has_align or has_mapping) and "columns" not in append_data
         use_source_keys = has_source and (has_align or has_mapping) and "keys" not in append_data
+
+        # Source-based append must not inherit loader-driving fields from parent
+        # Otherwise a fixed parent would cause the append item to load from empty values
+        # instead of resolving from table_store
+        if has_source:
+            non_inheritable_keys |= {"type", "values", "query", "data_source", "sql"}
 
         for key in all_keys:
 
