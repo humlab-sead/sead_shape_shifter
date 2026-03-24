@@ -260,19 +260,23 @@ function initializeAppendItems(): void {
 
     // Determine appendType based on the config structure
     if (item.source) {
+      initialized.type = 'entity'
       initialized.appendType = 'entity'
     } else if (item.type === 'fixed') {
+      initialized.type = 'fixed'
       initialized.appendType = 'fixed'
       if (item.values && !item.valuesText) {
         initialized.valuesText = JSON.stringify(item.values, null, 2)
       }
     } else if (item.type === 'sql') {
+      initialized.type = 'sql'
       initialized.appendType = 'sql'
     }
 
     // For columns override
     if (item.columns && !item.columnsText) {
       initialized.columnsText = JSON.stringify(item.columns, null, 2)
+      initialized.showColumnsOverride = true
     }
 
     return initialized
@@ -291,13 +295,6 @@ function handleRemoveAppend(index: number): void {
   append.value.splice(index, 1)
 }
 
-function handleAlignByPositionChange(item: AppendConfigInternal): void {
-  if (item.align_by_position && item.column_mapping) {
-    // Clear column mapping when switching to align_by_position
-    item.column_mapping = undefined
-  }
-}
-
 function getAlignmentMode(item: AppendConfigInternal): 'name' | 'position' | 'mapping' {
   if (item.align_by_position) {
     return 'position'
@@ -308,7 +305,11 @@ function getAlignmentMode(item: AppendConfigInternal): 'name' | 'position' | 'ma
   return 'name'
 }
 
-function handleAlignmentModeChange(item: AppendConfigInternal, mode: 'name' | 'position' | 'mapping'): void {
+function handleAlignmentModeChange(item: AppendConfigInternal, mode: 'name' | 'position' | 'mapping' | null): void {
+  if (!mode) {
+    return
+  }
+
   // Clear all alignment settings
   item.align_by_position = false
   item.column_mapping = undefined
@@ -346,9 +347,10 @@ function updateColumnMapping(item: AppendConfigInternal, sourceCol: string, targ
 function normalizeForAPI(): AppendConfigInternal[] {
   return append.value.map((item) => {
     const normalized: Record<string, any> = {}
+    const effectiveType = item.type ?? (item.source ? 'entity' : undefined)
 
     // Determine current type based on item state
-    if (item.type === 'fixed' && !item.source) {
+    if (effectiveType === 'fixed' && !item.source) {
       normalized.type = 'fixed'
       if (item.valuesText) {
         try {
@@ -358,13 +360,13 @@ function normalizeForAPI(): AppendConfigInternal[] {
           normalized.values = []
         }
       }
-    } else if (item.type === 'sql') {
+    } else if (effectiveType === 'sql') {
       normalized.type = 'sql'
       if (item.data_source) normalized.data_source = item.data_source
       if (item.query) normalized.query = item.query
-    } else if (item.type === 'entity') {
+    } else if (effectiveType === 'entity') {
       normalized.source = item.source
-      if (item.showColumnsOverride && item.columnsText) {
+      if ((item.showColumnsOverride || item.columns?.length) && item.columnsText) {
         try {
           normalized.columns = JSON.parse(item.columnsText)
         } catch {

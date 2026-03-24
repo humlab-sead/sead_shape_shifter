@@ -54,11 +54,59 @@
           "default": null,
           "description": "SQL query for appending data",
           "title": "Query"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Entity name to append rows from",
+          "title": "Source"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Columns to append or override from the source entity",
+          "title": "Columns"
+        },
+        "align_by_position": {
+          "default": false,
+          "description": "Align source columns by position instead of name",
+          "title": "Align By Position",
+          "type": "boolean"
+        },
+        "column_mapping": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Explicit source-to-target column mapping",
+          "title": "Column Mapping"
         }
       },
-      "required": [
-        "type"
-      ],
       "title": "AppendConfig",
       "type": "object"
     },
