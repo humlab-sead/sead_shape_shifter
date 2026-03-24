@@ -259,7 +259,7 @@ entities:
         require_unique_right: false
         allow_null_keys: true
         allow_row_decrease: true
-        allow_unmatched_left: false
+        allow_unmatched_left: true
     - entity: method
       local_keys: [Fraktion]
       remote_keys: [arbodat_code]
@@ -271,7 +271,7 @@ entities:
         require_unique_right: false
         allow_null_keys: true
         allow_row_decrease: true
-        allow_unmatched_left: false
+        allow_unmatched_left: true
     depends_on: [method, taxa, sample, _analysis_entity_relative_dating]
     append:
     - source: _analysis_entity_relative_dating
@@ -410,7 +410,7 @@ entities:
       remote_keys: [arbodat_code]
       how: left
       constraints:
-        allow_unmatched_left: false
+        allow_unmatched_left: true
         cardinality: many-to-one
         allow_null_keys: true
     - entity: master_dataset
