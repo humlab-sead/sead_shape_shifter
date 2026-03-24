@@ -11,6 +11,9 @@ entities:
     public_id: abundance_id
     keys: '@value: entities.analysis_entity.keys'
     columns:
+    - Projekt
+    - Befu
+    - ProbNr
     - PCODE
     - Fraktion
     - cf
@@ -48,7 +51,7 @@ entities:
         allow_unmatched_left: false
         allow_null_keys: false
         cardinality: many-to-one
-    depends_on: [analysis_entity]
+    depends_on: [taxa, abundance_element]
     extra_columns:
       abundance: FAnzahl
       analysis_entity_type: abundance
@@ -220,7 +223,7 @@ entities:
       analysis_entity_value: "{ArchDat}"
     query: "select [Projekt], [Befu], [ProbNr], null as [PCODE], null as [Fraktion], null as [cf], null as [RTyp], null as [Zust], [ArchDat]\nfrom [Proben]\nwhere [ArchDat] is not null and [ArchDat] <> '';"
   analysis_entity:
-    type: sql
+    type: fixed
     source:
     public_id: analysis_entity_id
     keys:
@@ -236,6 +239,7 @@ entities:
     - RTyp
     - Zust
     - ArchDat
+    values: []  # Empty - union entity aggregating both branches
     foreign_keys:
     - entity: sample
       local_keys: [Projekt, Befu, ProbNr]
@@ -272,16 +276,13 @@ entities:
         allow_null_keys: true
         allow_row_decrease: true
         allow_unmatched_left: true
-    depends_on: [method, taxa, sample, _analysis_entity_relative_dating]
+    depends_on: [method, taxa, sample, abundance, _analysis_entity_relative_dating]
     append:
+    - source: abundance
+      columns: [PCODE, Fraktion, cf, RTyp, Zust, ArchDat, analysis_entity_type, analysis_entity_value]
     - source: _analysis_entity_relative_dating
       columns: [PCODE, Fraktion, cf, RTyp, Zust, ArchDat, analysis_entity_type, analysis_entity_value]
     append_mode: distinct
-    data_source: arbodat_data
-    extra_columns:
-      analysis_entity_type: abundance
-      analysis_entity_value: "{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}"
-    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust], null as [ArchDat]\nfrom [Details];"
   archaeological_period:
     type: sql
     source:
