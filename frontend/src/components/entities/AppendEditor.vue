@@ -64,6 +64,32 @@
                 />
               </div>
 
+              <div v-if="item.source" class="mb-3">
+                <div class="text-caption font-weight-medium mb-2">Target columns</div>
+                <div class="d-flex flex-wrap ga-1 mb-3">
+                  <v-chip v-for="column in parentColumns" :key="`target-${column}`" size="small" variant="outlined">
+                    {{ column }}
+                  </v-chip>
+                  <span v-if="parentColumns.length === 0" class="text-caption text-medium-emphasis">No parent columns configured.</span>
+                </div>
+
+                <div class="text-caption font-weight-medium mb-2">Source columns</div>
+                <div class="d-flex flex-wrap ga-1">
+                  <v-chip
+                    v-for="column in getEffectiveSourceColumns(item)"
+                    :key="`source-${item.source}-${column}`"
+                    size="small"
+                    color="secondary"
+                    variant="tonal"
+                  >
+                    {{ column }}
+                  </v-chip>
+                  <span v-if="getEffectiveSourceColumns(item).length === 0" class="text-caption text-medium-emphasis">
+                    No source columns available for this entity.
+                  </span>
+                </div>
+              </div>
+
               <!-- Column Alignment Options -->
               <v-expansion-panels density="compact" class="mb-3">
                 <v-expansion-panel>
@@ -91,7 +117,7 @@
                               <strong>Match by name</strong>
                               <span class="text-caption text-medium-emphasis ml-2">(default)</span>
                               <div class="text-caption text-medium-emphasis">
-                                Source and target column names must match exactly
+                                All target columns must exist in the source with the same names
                               </div>
                             </div>
                           </template>
@@ -120,6 +146,85 @@
                           </template>
                         </v-radio>
                       </v-radio-group>
+
+                      <div v-if="item.source && getAlignmentMode(item) === 'name'" class="mt-3">
+                        <v-divider class="mb-3" />
+                        <v-alert
+                          :type="getNameAlignmentSummary(item).canMatch ? 'success' : 'warning'"
+                          variant="tonal"
+                          density="compact"
+                        >
+                          <div class="text-caption">
+                            <strong>
+                              {{ getNameAlignmentSummary(item).canMatch ? 'Match by name is possible.' : 'Match by name is not possible.' }}
+                            </strong>
+                            <div v-if="getNameAlignmentSummary(item).missingColumns.length > 0" class="mt-1">
+                              Missing target columns: {{ getNameAlignmentSummary(item).missingColumns.join(', ') }}
+                            </div>
+                            <div v-else class="mt-1">
+                              All target columns are available in the source.
+                            </div>
+                            <div v-if="getNameAlignmentSummary(item).extraColumns.length > 0" class="mt-1">
+                              Extra source columns ignored: {{ getNameAlignmentSummary(item).extraColumns.join(', ') }}
+                            </div>
+                            <div v-if="!getNameAlignmentSummary(item).canMatch" class="mt-1">
+                              Switch to <strong>Explicit mapping</strong> if you need to rename source columns.
+                            </div>
+                          </div>
+                        </v-alert>
+
+                        <div v-if="getNameAlignmentSummary(item).matchedColumns.length > 0" class="mt-2">
+                          <div class="text-caption font-weight-medium mb-1">Matched columns</div>
+                          <div class="d-flex flex-wrap ga-1">
+                            <v-chip
+                              v-for="column in getNameAlignmentSummary(item).matchedColumns"
+                              :key="`matched-${item.source}-${column}`"
+                              size="small"
+                              color="success"
+                              variant="tonal"
+                            >
+                              {{ column }}
+                            </v-chip>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div v-if="item.source && getAlignmentMode(item) === 'position'" class="mt-3">
+                        <v-divider class="mb-3" />
+                        <v-alert
+                          :type="getPositionAlignmentSummary(item).canMatch ? 'success' : 'warning'"
+                          variant="tonal"
+                          density="compact"
+                        >
+                          <div class="text-caption">
+                            <strong>
+                              {{ getPositionAlignmentSummary(item).canMatch ? 'Match by position is possible.' : 'Match by position is not possible.' }}
+                            </strong>
+                            <div class="mt-1">
+                              Target columns: {{ getPositionAlignmentSummary(item).targetCount }}
+                              | Source columns: {{ getPositionAlignmentSummary(item).sourceCount }}
+                            </div>
+                            <div v-if="!getPositionAlignmentSummary(item).canMatch" class="mt-1">
+                              Position matching requires the same number of source and target columns.
+                            </div>
+                          </div>
+                        </v-alert>
+
+                        <div v-if="getPositionAlignmentSummary(item).pairs.length > 0" class="mt-2">
+                          <div class="text-caption font-weight-medium mb-1">Inferred position pairs</div>
+                          <div class="d-flex flex-column ga-1">
+                            <div
+                              v-for="pair in getPositionAlignmentSummary(item).pairs"
+                              :key="`position-${item.source}-${pair.source}-${pair.target}-${pair.index}`"
+                              class="text-caption"
+                            >
+                              <v-chip size="small" color="secondary" variant="tonal" class="mr-2">{{ pair.source }}</v-chip>
+                              <span class="text-medium-emphasis mr-2">→</span>
+                              <v-chip size="small" color="success" variant="tonal">{{ pair.target }}</v-chip>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
                       <!-- Explicit Mapping Editor -->
                       <div v-if="getAlignmentMode(item) === 'mapping'" class="mt-3">
@@ -154,23 +259,39 @@
                 </v-expansion-panel>
               </v-expansion-panels>
 
-              <!-- Column Override -->
-              <v-checkbox
-                v-model="item.showColumnsOverride"
-                label="Override inherited columns"
-                density="compact"
-                hide-details
-                class="mb-2"
-              />
-              <v-textarea
-                v-if="item.showColumnsOverride"
-                v-model="item.columnsText"
-                label="Columns (JSON Array)"
-                hint='Example: ["col1", "col2", "col3"]'
-                persistent-hint
-                variant="outlined"
-                rows="2"
-              />
+              <v-expansion-panels density="compact" class="mb-3">
+                <v-expansion-panel>
+                  <template #title>
+                    <v-icon size="small" class="mr-2">mdi-tune</v-icon>
+                    <span class="text-caption">Advanced: custom source column subset</span>
+                  </template>
+                  <v-expansion-panel-text>
+                    <div class="pt-2">
+                      <p class="text-caption mb-3 text-medium-emphasis">
+                        Optional. Restrict which columns are taken from the source entity before alignment.
+                        Most source-based append cases should leave this off.
+                      </p>
+                      <v-checkbox
+                        :model-value="item.showColumnsOverride"
+                        label="Use custom source column subset"
+                        density="compact"
+                        hide-details
+                        class="mb-2"
+                        @update:model-value="handleSourceSubsetToggle(item, $event)"
+                      />
+                      <v-textarea
+                        v-if="item.showColumnsOverride"
+                        v-model="item.columnsText"
+                        label="Source columns (JSON Array)"
+                        hint='Example: ["col1", "col2", "col3"]'
+                        persistent-hint
+                        variant="outlined"
+                        rows="2"
+                      />
+                    </div>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
             </template>
           </v-card-text>
         </v-card>
@@ -224,11 +345,15 @@ interface AppendConfigInternal {
 interface Props {
   modelValue?: AppendConfigInternal[]
   availableEntities?: string[]
+  parentColumns?: string[]
+  sourceEntityColumns?: Record<string, string[]>
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: () => [],
   availableEntities: () => [],
+  parentColumns: () => [],
+  sourceEntityColumns: () => ({}),
 })
 
 const emit = defineEmits<{
@@ -245,6 +370,97 @@ const appendTypes = [
 ]
 
 const availableEntities = computed(() => props.availableEntities || [])
+const parentColumns = computed(() => (props.parentColumns || []).filter((column) => typeof column === 'string' && column.trim().length > 0))
+
+function parseColumnsText(columnsText?: string): string[] {
+  if (!columnsText?.trim()) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(columnsText)
+    return Array.isArray(parsed) ? parsed.filter((column): column is string => typeof column === 'string' && column.trim().length > 0) : []
+  } catch {
+    return []
+  }
+}
+
+function getAvailableSourceColumns(item: AppendConfigInternal): string[] {
+  if (!item.source) {
+    return []
+  }
+
+  return props.sourceEntityColumns?.[item.source] || []
+}
+
+function getEffectiveSourceColumns(item: AppendConfigInternal): string[] {
+  if (item.showColumnsOverride) {
+    const parsedColumns = parseColumnsText(item.columnsText)
+    if (parsedColumns.length > 0) {
+      return parsedColumns
+    }
+
+    if (item.columns?.length) {
+      return item.columns.filter((column): column is string => typeof column === 'string' && column.trim().length > 0)
+    }
+  }
+
+  return getAvailableSourceColumns(item)
+}
+
+function handleSourceSubsetToggle(item: AppendConfigInternal, enabled: boolean | null): void {
+  item.showColumnsOverride = Boolean(enabled)
+
+  if (!item.showColumnsOverride) {
+    item.columns = undefined
+    item.columnsText = ''
+  }
+}
+
+function getNameAlignmentSummary(item: AppendConfigInternal): {
+  matchedColumns: string[]
+  missingColumns: string[]
+  extraColumns: string[]
+  canMatch: boolean
+} {
+  const target = parentColumns.value
+  const source = getEffectiveSourceColumns(item)
+  const sourceSet = new Set(source)
+  const targetSet = new Set(target)
+
+  const matchedColumns = target.filter((column) => sourceSet.has(column))
+  const missingColumns = target.filter((column) => !sourceSet.has(column))
+  const extraColumns = source.filter((column) => !targetSet.has(column))
+
+  return {
+    matchedColumns,
+    missingColumns,
+    extraColumns,
+    canMatch: target.length > 0 && missingColumns.length === 0,
+  }
+}
+
+function getPositionAlignmentSummary(item: AppendConfigInternal): {
+  targetCount: number
+  sourceCount: number
+  canMatch: boolean
+  pairs: Array<{ index: number; source: string; target: string }>
+} {
+  const target = parentColumns.value
+  const source = getEffectiveSourceColumns(item)
+  const pairCount = Math.min(target.length, source.length)
+
+  return {
+    targetCount: target.length,
+    sourceCount: source.length,
+    canMatch: target.length > 0 && target.length === source.length,
+    pairs: Array.from({ length: pairCount }, (_, index) => ({
+      index,
+      source: source[index] || '',
+      target: target[index] || '',
+    })),
+  }
+}
 
 /**
  * Initialize append items, detecting whether they use type-based or source-based approach
@@ -366,7 +582,7 @@ function normalizeForAPI(): AppendConfigInternal[] {
       if (item.query) normalized.query = item.query
     } else if (effectiveType === 'entity') {
       normalized.source = item.source
-      if ((item.showColumnsOverride || item.columns?.length) && item.columnsText) {
+      if (item.showColumnsOverride && item.columnsText) {
         try {
           normalized.columns = JSON.parse(item.columnsText)
         } catch {
