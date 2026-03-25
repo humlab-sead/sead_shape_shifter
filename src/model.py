@@ -682,13 +682,24 @@ class TableConfig:
             # Position-based renaming: map current columns to parent's columns by position
             current_columns: list[str] = list(table.columns)
 
-            # Filter out system_id and public_id from both lists for alignment
+            # Filter out system_id and identity/public_id columns from both lists for alignment.
+            # For source-based append, the source entity may have a different public_id than the target.
             system_id_col = self.system_id
-            public_id_col = self.public_id
-            exclude_cols = {system_id_col, public_id_col} if public_id_col else {system_id_col}
+            target_public_id_col = self.public_id
+            source_public_id_col = self.get_source_public_id()
 
-            parent_cols_filtered = [c for c in parent_columns if c not in exclude_cols]
-            current_cols_filtered = [c for c in current_columns if c not in exclude_cols]
+            parent_exclude_cols = {system_id_col}
+            current_exclude_cols = {system_id_col}
+
+            if target_public_id_col:
+                parent_exclude_cols.add(target_public_id_col)
+                current_exclude_cols.add(target_public_id_col)
+
+            if source_public_id_col:
+                current_exclude_cols.add(source_public_id_col)
+
+            parent_cols_filtered = [c for c in parent_columns if c not in parent_exclude_cols]
+            current_cols_filtered = [c for c in current_columns if c not in current_exclude_cols]
 
             if len(parent_cols_filtered) != len(current_cols_filtered):
                 raise ValueError(
@@ -709,6 +720,14 @@ class TableConfig:
             table = table.rename(columns=column_mapping)
 
         return table
+
+    def get_source_public_id(self) -> str:
+        """Get the public_id of the source entity, if this config references one."""
+        source_entity: str | None = self.source
+        if not source_entity or source_entity not in self.entities_cfg:
+            return ""
+        source_cfg = self.entities_cfg[source_entity] or {}
+        return source_cfg.get("public_id") or ""
 
     def is_drop_duplicate_dependent_on_unnesting(self) -> bool:
         """Check if `drop_duplicates` is dependent on columns created during unnesting."""
