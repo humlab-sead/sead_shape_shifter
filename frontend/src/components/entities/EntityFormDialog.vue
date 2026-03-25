@@ -657,8 +657,10 @@
                 <append-editor
                   v-model="formData.advanced.append"
                   :available-entities="availableSourceEntities"
+                  :data-source-names="availableDataSources"
                   :parent-columns="effectiveEntityColumns"
                   :parent-public-id="formData.public_id"
+                  :fixed-values-columns="fixedValuesColumns"
                   :source-entity-columns="sourceEntityColumnsMap"
                   :source-entity-public-ids="sourceEntityPublicIdMap"
                 />
