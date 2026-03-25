@@ -134,11 +134,11 @@ class ForeignKeyConfig:
     @property
     def defer_dependency(self) -> bool:
         """Whether to defer hard dependency on the remote entity.
-        
+
         When True, the FK target is not treated as a hard dependency during
         topological sorting, allowing circular references. The FK will be linked
         in a final linking pass after all entities are processed.
-        
+
         Default: False (safe, backward compatible)
         Use with caution: Only enable when circular references are unavoidable.
         """

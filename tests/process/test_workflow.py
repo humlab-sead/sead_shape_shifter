@@ -7,6 +7,10 @@ import jpype
 import pandas as pd
 import pytest
 
+from backend.app.validators.data_validation_orchestrator import (
+    DataValidationOrchestrator,
+    TableStoreDataFetchStrategy,
+)
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
@@ -14,11 +18,6 @@ from src.specifications.project import CompositeProjectSpecification
 from src.utility import load_shape_file
 from src.validators.data_validators import ValidationIssue
 from src.workflow import validate_entity_shapes, workflow
-
-from backend.app.validators.data_validation_orchestrator import (
-    DataValidationOrchestrator,
-    TableStoreDataFetchStrategy,
-)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -128,6 +127,7 @@ async def test_full_data_validation():
     issue_report: str = "\n".join(f"{issue.severity} [{issue.code}] {issue.entity}: {issue.message}" for issue in issues)
     error_count: int = sum(1 for issue in issues if issue.severity == "error")
     assert error_count == 0, f"Expected no validation errors, found {error_count}\n{issue_report}"
+
 
 @pytest.mark.asyncio
 async def test_full_data_validation_with_unresolved_extra_columns():

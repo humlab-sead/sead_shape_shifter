@@ -783,4 +783,3 @@ class TestAppendIntegration:
         # Verify data came from both sources
         assert result["a_type"].notna().any(), "Missing data from entity 'a'"
         assert result["b_type"].notna().any(), "Missing data from entity 'b'"
-

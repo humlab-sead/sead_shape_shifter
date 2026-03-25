@@ -680,7 +680,7 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that extra_columns don't conflict with existing columns.
-        
+
         Note: Keys can be a mix of source columns and extra_columns. Only prevent
         overriding columns that actually exist in the source data or are system-generated.
         """
@@ -814,7 +814,9 @@ class AppendSpecification(ProjectSpecification):
                 self.check_fields(entity_name, ["columns"], "exists/W", target_cfg=append_cfg, message=append_id)
 
                 source_entity_cfg = self.project_cfg.get("entities", {}).get(append_source, {}) if isinstance(append_source, str) else {}
-                target_columns, target_excluded = self._get_alignable_columns(entity_cfg.get("columns", []) or [], entity_cfg.get("public_id"))
+                target_columns, target_excluded = self._get_alignable_columns(
+                    entity_cfg.get("columns", []) or [], entity_cfg.get("public_id")
+                )
 
                 source_columns_cfg = append_cfg.get("columns")
                 if not isinstance(source_columns_cfg, list):

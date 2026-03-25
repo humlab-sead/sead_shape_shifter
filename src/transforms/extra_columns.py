@@ -49,13 +49,13 @@ class ExtraColumnEvaluator:
     Examples:
         >>> evaluator = ExtraColumnEvaluator()
         >>> df = pd.DataFrame({"first": ["John"], "last": ["Doe"]})
-        >>> 
+        >>>
         >>> # Interpolated string
         >>> extra_cols = {"fullname": "{first} {last}"}
         >>> result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "person")
         >>> result["fullname"].iloc[0]
         'John Doe'
-        >>> 
+        >>>
         >>> # DSL formula
         >>> extra_cols = {"initials": "=concat(upper(substr(first, 0, 1)), upper(substr(last, 0, 1)))"}
         >>> result, deferred = evaluator.evaluate_extra_columns(df, extra_cols, "person")
@@ -128,7 +128,7 @@ class ExtraColumnEvaluator:
                     # Parse formula and extract column references
                     ast = self.formula_engine.parse(value)
                     formula_deps = extract_column_references(ast)
-                    
+
                     # Match against source columns (case-insensitive if needed)
                     for dep in formula_deps:
                         dep_key = dep.lower() if not case_sensitive else dep
@@ -143,7 +143,7 @@ class ExtraColumnEvaluator:
             # Case 2: Interpolated string (contains {column})
             if self.is_interpolated_string(value):
                 interp_deps = self.extract_column_dependencies(value)
-                
+
                 # Match against source columns (case-insensitive if needed)
                 for dep in interp_deps:
                     dep_key = dep.lower() if not case_sensitive else dep
@@ -507,7 +507,9 @@ class ExtraColumnEvaluator:
             if self.is_escaped_equals_literal(value):
                 result[new_col] = self.unescape_equals_literal(value)
                 added_count += 1
-                logger.trace(f"{entity_name}[extra_columns]: Added escaped literal '{new_col}' = '{value}' -> '{result[new_col].iloc[0] if len(result) > 0 else self.unescape_equals_literal(value)}'")
+                logger.trace(
+                    f"{entity_name}[extra_columns]: Added escaped literal '{new_col}' = '{value}' -> '{result[new_col].iloc[0] if len(result) > 0 else self.unescape_equals_literal(value)}'"
+                )
                 continue
 
             # Case 3: DSL formula (starts with '=' but not '==')
@@ -517,13 +519,12 @@ class ExtraColumnEvaluator:
                     ast = self.formula_engine.parse(value)
                     columns = list(extract_column_references(ast))
                     missing: set[str] = set(columns) - set(result.columns)
-                    
+
                     if missing:
                         if defer_missing:
                             deferred[new_col] = value
                             logger.trace(
-                                f"{entity_name}[extra_columns]: Deferred formula '{new_col}' "
-                                f"(missing columns: {sorted(missing)})"
+                                f"{entity_name}[extra_columns]: Deferred formula '{new_col}' " f"(missing columns: {sorted(missing)})"
                             )
                         else:
                             raise ValueError(
@@ -531,18 +532,16 @@ class ExtraColumnEvaluator:
                                 f"columns not found: {sorted(missing)}"
                             )
                         continue
-                    
+
                     # All columns available - compile (parse + validate) and evaluate
                     compiled_ast = self.formula_engine.compile(value, result.columns)
                     result[new_col] = self.formula_engine.evaluate(compiled_ast, result)
                     added_count += 1
                     logger.trace(f"{entity_name}[extra_columns]: Added formula '{new_col}' = '{value}'")
-                    
+
                 except Exception as e:
-                    raise ValueError(
-                        f"{entity_name}[extra_columns]: Error evaluating formula '{new_col}' = '{value}': {e}"
-                    ) from e
-                
+                    raise ValueError(f"{entity_name}[extra_columns]: Error evaluating formula '{new_col}' = '{value}': {e}") from e
+
                 continue
 
             # Case 4: Interpolated string
@@ -579,7 +578,7 @@ class ExtraColumnEvaluator:
             # Check if value matches an extra_column key (case-insensitive)
             extra_col_keys_lower = {str(k).lower() for k in extra_columns.keys()}
             is_extra_col_ref = col_lower in extra_col_keys_lower
-            
+
             if col_lower in col_map and not is_extra_col_ref:
                 result[new_col] = result[col_map[col_lower]]
                 added_count += 1

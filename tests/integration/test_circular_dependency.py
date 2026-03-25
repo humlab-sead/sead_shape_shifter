@@ -21,7 +21,7 @@ class TestCircularDependency:
     @with_test_config
     async def test_circular_dependency_without_defer_flag_should_fail(self, test_provider):
         """Test that circular dependencies fail without defer_dependency flag (current behavior)."""
-        
+
         # Setup: Create two entities with circular FK references
         # abundance -> analysis_entity (FK)
         # analysis_entity -> abundance (append source)
@@ -73,7 +73,7 @@ class TestCircularDependency:
     @with_test_config
     async def test_circular_dependency_with_defer_flag_should_succeed(self, test_provider):
         """Test that circular dependencies succeed with defer_dependency: true."""
-        
+
         # Setup: Same circular reference but with defer_dependency: true
         config = {
             "entities": {
@@ -136,7 +136,7 @@ class TestCircularDependency:
     @with_test_config
     async def test_complex_circular_dependency_with_three_entities(self, test_provider):
         """Test circular dependency with three entities: A -> B -> C -> A."""
-        
+
         config = {
             "data_sources": {
                 "test_source": {
@@ -216,7 +216,7 @@ class TestCircularDependency:
     @with_test_config
     async def test_backwards_compatibility_default_defer_false(self, test_provider):
         """Test that defer_dependency defaults to False (backward compatible)."""
-        
+
         # Setup: Simple FK without defer_dependency specified
         config = {
             "data_sources": {
@@ -275,7 +275,7 @@ class TestCircularDependency:
     @with_test_config
     async def test_defer_dependency_with_multiple_fks(self, test_provider):
         """Test entity with multiple FKs, some deferred and some not."""
-        
+
         config = {
             "data_sources": {
                 "test_source": {
@@ -355,7 +355,7 @@ class TestCircularDependency:
     @with_test_config
     async def test_final_linking_pass_convergence(self, test_provider):
         """Test that final linking pass converges for valid configurations."""
-        
+
         # Setup: Configuration that requires multiple linking passes
         config = {
             "data_sources": {

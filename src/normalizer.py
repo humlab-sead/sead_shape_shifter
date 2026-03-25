@@ -252,36 +252,33 @@ class ShapeShifter:
         # Retry linking for entities with deferred FKs (e.g., circular references)
         if not self.linker.deferred_tracker.deferred:
             return
-        
+
         logger.info(f"Starting final linking pass for deferred FK dependencies: {self.linker.deferred_tracker.deferred}")
-        
+
         max_retries: int = 5
         retry_count: int = 0
-        
+
         while self.linker.deferred_tracker.deferred and retry_count < max_retries:
             retry_count += 1
             entities_before: set[str] = set(self.linker.deferred_tracker.deferred)
-            
+
             logger.info(f"Final linking pass attempt {retry_count}/{max_retries} for entities: {entities_before}")
-            
+
             # Retry linking for all deferred entities
             for entity_name in list(entities_before):
                 if entity_name in self.table_store:
                     self.linker.link_entity(entity_name=entity_name)
-            
+
             entities_after: set[str] = set(self.linker.deferred_tracker.deferred)
-            
+
             # Check if we made progress
             if entities_after == entities_before:
-                logger.warning(
-                    f"Final linking pass {retry_count}: No progress made. "
-                    f"Remaining deferred entities: {entities_after}"
-                )
+                logger.warning(f"Final linking pass {retry_count}: No progress made. " f"Remaining deferred entities: {entities_after}")
                 break
-            
+
             resolved_count: int = len(entities_before) - len(entities_after)
             logger.info(f"Final linking pass {retry_count}: Resolved {resolved_count} entities")
-        
+
         if self.linker.deferred_tracker.deferred:
             logger.warning(
                 f"Final linking pass completed after {retry_count} attempts. "
