@@ -23,7 +23,6 @@
                   label="Source Entity"
                   variant="outlined"
                   density="compact"
-                  hint="Select an existing entity to append rows from"
                   persistent-hint
                   @update:model-value="handleSourceChange(item, $event)"
                 />
@@ -71,7 +70,7 @@
             <template v-else-if="item.type === 'entity'">
               <div v-if="item.source" class="mb-3">
                 <v-row align="start" class="mb-0">
-                  <v-col cols="12" md="6">
+                  <v-col cols="12" md="4">
                     <div class="text-caption font-weight-medium mb-2">Target columns</div>
                     <div class="d-flex flex-wrap ga-1">
                       <v-chip v-for="column in parentColumns" :key="`target-${column}`" size="small" variant="outlined">
