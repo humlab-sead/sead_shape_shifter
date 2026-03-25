@@ -719,6 +719,22 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
 class AppendSpecification(ProjectSpecification):
     """Validates append configuration settings."""
 
+    @staticmethod
+    def _get_alignable_columns(columns: list[str] | None, public_id: str | None) -> tuple[list[str], list[str]]:
+        """Split columns into alignable payload columns and excluded identity columns."""
+        excluded_names = {"system_id"}
+        if public_id:
+            excluded_names.add(public_id)
+
+        alignable: list[str] = []
+        excluded: list[str] = []
+        for column in columns or []:
+            if column in excluded_names:
+                excluded.append(column)
+            else:
+                alignable.append(column)
+        return alignable, excluded
+
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that append configurations are valid."""
         self.clear()
@@ -746,6 +762,8 @@ class AppendSpecification(ProjectSpecification):
 
             append_type = append_cfg.get("type")
             append_source = append_cfg.get("source")
+            align_by_position = append_cfg.get("align_by_position", False)
+            column_mapping = append_cfg.get("column_mapping")
 
             self.check_fields(
                 entity_name, ["type", "source"], "of_type/E", expected_types=(str, None), target_cfg=append_cfg, message=append_id
@@ -795,10 +813,34 @@ class AppendSpecification(ProjectSpecification):
                 self.check_fields(entity_name, ["source"], "is_existing_entity/E", target_cfg=append_cfg, message=append_id)
                 self.check_fields(entity_name, ["columns"], "exists/W", target_cfg=append_cfg, message=append_id)
 
-            # Validate column renaming options
-            align_by_position = append_cfg.get("align_by_position", False)
-            column_mapping = append_cfg.get("column_mapping")
+                source_entity_cfg = self.project_cfg.get("entities", {}).get(append_source, {}) if isinstance(append_source, str) else {}
+                target_columns, target_excluded = self._get_alignable_columns(entity_cfg.get("columns", []) or [], entity_cfg.get("public_id"))
 
+                source_columns_cfg = append_cfg.get("columns")
+                if not isinstance(source_columns_cfg, list):
+                    source_columns_cfg = source_entity_cfg.get("columns", []) or []
+
+                source_columns, source_excluded = self._get_alignable_columns(source_columns_cfg, source_entity_cfg.get("public_id"))
+
+                if align_by_position and len(target_columns) != len(source_columns):
+                    self.add_error(
+                        f"{append_id}: align_by_position requires equal payload column counts after excluding identity columns "
+                        f"(target={target_columns}, source={source_columns}, excluded_target={target_excluded}, excluded_source={source_excluded})",
+                        entity=entity_name,
+                        field="append",
+                    )
+
+                if not align_by_position and not column_mapping:
+                    missing_columns = [column for column in target_columns if column not in source_columns]
+                    if missing_columns:
+                        self.add_error(
+                            f"{append_id}: match-by-name is not possible because source entity '{append_source}' is missing target columns "
+                            f"{missing_columns}; use column_mapping or align_by_position",
+                            entity=entity_name,
+                            field="append",
+                        )
+
+            # Validate column renaming options
             if align_by_position and column_mapping:
                 self.add_error(
                     f"{append_id}: cannot specify both 'align_by_position' and 'column_mapping'",
