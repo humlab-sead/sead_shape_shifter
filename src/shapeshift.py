@@ -78,24 +78,3 @@ def main(
 
 if __name__ == "__main__":
     main()
-
-    # PYTHONPATH=. python src/arbodat/shapeshift.py  --sep ";" --translate --config-file
-    # src/arbodat/config.yml src/arbodat/arbodat_mal_elena_input.csv output.xlsx
-
-    # from click.testing import CliRunner
-
-    # runner = CliRunner()
-    # result = runner.invoke(
-    #     main,
-    #     [
-    #         "--sep",
-    #         ";",
-    #         "--translate",
-    #         "--config-file",
-    #         "src/arbodat/config.yml",
-    #         "src/arbodat/arbodat_mal_elena_input.csv",
-    #         "output.xlsx",
-    #     ],
-    # )
-
-    # print(result.output)
