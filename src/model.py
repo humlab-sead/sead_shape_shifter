@@ -132,6 +132,19 @@ class ForeignKeyConfig:
         return self.fk_cfg.get("drop_remote_id", False)
 
     @property
+    def defer_dependency(self) -> bool:
+        """Whether to defer hard dependency on the remote entity.
+        
+        When True, the FK target is not treated as a hard dependency during
+        topological sorting, allowing circular references. The FK will be linked
+        in a final linking pass after all entities are processed.
+        
+        Default: False (safe, backward compatible)
+        Use with caution: Only enable when circular references are unavoidable.
+        """
+        return self.fk_cfg.get("defer_dependency", False)
+
+    @property
     def remote_entity(self) -> str:
         return self.fk_cfg.get("entity", "")
 
@@ -411,7 +424,7 @@ class TableConfig:
         return (
             set(self.entity_cfg.get("depends_on", []) or [])
             | ({self.source} if self.source else set())
-            | {fk.remote_entity for fk in self.foreign_keys}
+            | {fk.remote_entity for fk in self.foreign_keys if not fk.defer_dependency}
             | append_sources
             | filter_dependencies
         )
