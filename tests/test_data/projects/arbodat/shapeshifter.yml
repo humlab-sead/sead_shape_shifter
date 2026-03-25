@@ -33,6 +33,7 @@ entities:
     - entity: analysis_entity
       local_keys: '@value: entities.analysis_entity.keys'
       remote_keys: '@value: entities.analysis_entity.keys'
+      defer_dependency: true
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
@@ -752,7 +753,7 @@ entities:
     - description
     - method_name
     - method_abbrev_or_alt_name
-    - method_group_id
+    - sead_method_group_id
     - arbodat_code
     values:
     - [1, null, null, Organic remains >2.0 mm, 'ORG 2,0', 'ORG 2,0', null, 'ORG 2,0']
@@ -767,8 +768,11 @@ entities:
     - [10, 76, null, null, Altitude above sea level, null, null, null]
     foreign_keys:
     - entity: method_group
-      local_keys: [method_group_id]
-      remote_keys: [system_id]
+      local_keys: [sead_method_group_id]
+      remote_keys: [method_group_id]
+      how: left
+      constraints:
+        allow_null_keys: true
     depends_on: []
     arbodat_codes:
     - ORG2,0
@@ -783,7 +787,7 @@ entities:
     type: sql
     public_id: method_group_id
     keys: [method_group_id]
-    columns: [method_group_id, group_name, description]
+    columns: [group_name, description]
     depends_on: []
     data_source: sead
     query: select "method_group_id", "group_name", "description" from public.tbl_method_groups
@@ -845,8 +849,7 @@ entities:
       remote_keys: [archdat]
       how: left
       constraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
+        allow_unmatched_left: true
         cardinality: many-to-one
     depends_on: [analysis_entity, relative_ages]
     drop_duplicates: true
