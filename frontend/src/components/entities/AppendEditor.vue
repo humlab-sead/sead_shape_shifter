@@ -1,9 +1,29 @@
 <template>
-  <div class="pa-4">
-    <v-list>
-      <v-list-item v-for="(item, index) in append" :key="index" class="px-0 mb-2">
-        <v-card variant="outlined">
-          <v-card-text>
+  <v-card class="append-editor-compact">
+    <v-card-title class="d-flex align-center justify-space-between py-2">
+      <span class="text-body-2">Append</span>
+      <v-btn variant="text" size="x-small" prepend-icon="mdi-plus" @click="handleAddAppend"> Add </v-btn>
+    </v-card-title>
+
+    <v-divider />
+
+    <v-card-text class="pa-4">
+      <v-expansion-panels v-if="append.length > 0" variant="accordion" density="compact" class="mb-3">
+        <v-expansion-panel v-for="(item, index) in append" :key="index">
+          <v-expansion-panel-title class="py-2">
+            <div class="d-flex align-center justify-space-between flex-grow-1">
+              <span class="text-caption">{{ getAppendLabel(item) }}</span>
+              <v-btn
+                icon="mdi-delete"
+                variant="text"
+                size="x-small"
+                color="error"
+                @click.stop="handleRemoveAppend(index)"
+              />
+            </div>
+          </v-expansion-panel-title>
+
+          <v-expansion-panel-text class="pt-2">
             <!-- Header: Type selector + source selector + Delete button -->
             <v-row align="start" class="mb-3">
               <v-col cols="12" sm="5" md="4">
@@ -182,12 +202,11 @@
               </div>
 
             </template>
-          </v-card-text>
-        </v-card>
-      </v-list-item>
-    </v-list>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
 
-    <v-alert type="info" variant="tonal" density="compact" class="mt-3 text-caption">
+      <v-alert type="info" variant="tonal" density="compact" class="mt-3 text-caption">
       <strong>Append</strong> adds rows from multiple sources to this entity.
       <ul class="mt-2">
         <li><strong>Fixed Values:</strong> Manually specify rows as arrays</li>
@@ -212,12 +231,10 @@
         Identity columns such as <code>system_id</code> and <code>public_id</code> are excluded from alignment.
         <em>Explicit mapping</em> is still supported in YAML, but it is not edited in this UI.
       </div>
-    </v-alert>
+      </v-alert>
 
-    <v-btn variant="outlined" prepend-icon="mdi-plus" size="small" block class="mt-3" @click="handleAddAppend">
-      Add Append
-    </v-btn>
-  </div>
+    </v-card-text>
+  </v-card>
 </template>
 
 <script setup lang="ts">
@@ -467,6 +484,23 @@ function handleRemoveAppend(index: number): void {
   append.value.splice(index, 1)
 }
 
+function getAppendLabel(item: AppendConfigInternal): string {
+  if (item.type === 'entity') {
+    const modeLabel = getAlignmentMode(item) === 'position' ? 'position' : 'name'
+    return item.source ? `From ${item.source} (${modeLabel})` : 'From entity'
+  }
+
+  if (item.type === 'sql') {
+    return item.data_source ? `SQL append (${item.data_source})` : 'SQL append'
+  }
+
+  if (item.type === 'fixed') {
+    return 'Fixed values'
+  }
+
+  return 'Append item'
+}
+
 function getAlignmentMode(item: AppendConfigInternal): 'name' | 'position' {
   if (item.align_by_position) {
     return 'position'
@@ -574,6 +608,16 @@ initializeAppendItems()
 <style scoped>
 .text-caption {
   font-size: 0.75rem;
+}
+
+.append-editor-compact :deep(.v-expansion-panel-title) {
+  min-height: 40px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.append-editor-compact :deep(.v-expansion-panel-text__wrapper) {
+  padding: 8px 0 0 0;
 }
 
 .append-alignment-toggle {
