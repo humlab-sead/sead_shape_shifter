@@ -117,7 +117,7 @@ class ExtraColumnEvaluator:
 
         dependencies: set[str] = set()
 
-        for new_col, value in extra_columns.items():
+        for _, value in extra_columns.items():
             # Skip non-string constants (no dependencies)
             if not isinstance(value, str):
                 continue
@@ -134,7 +134,7 @@ class ExtraColumnEvaluator:
                         dep_key = dep.lower() if not case_sensitive else dep
                         if dep_key in col_map:
                             dependencies.add(col_map[dep_key])
-                except Exception:
+                except Exception:  # pylint: disable=broad-except
                     # If formula parsing fails, skip it
                     # The actual evaluation will report the error
                     pass
@@ -212,7 +212,7 @@ class ExtraColumnEvaluator:
                         ast = self.formula_engine.parse(value)
                         formula_deps = extract_column_references(ast)
                         missing_dependencies = sorted(set(formula_deps) - available_columns)
-                    except Exception:
+                    except Exception:  # pylint: disable=broad-except
                         # Parsing failed - can't determine dependencies
                         missing_dependencies = []
 
@@ -508,7 +508,8 @@ class ExtraColumnEvaluator:
                 result[new_col] = self.unescape_equals_literal(value)
                 added_count += 1
                 logger.trace(
-                    f"{entity_name}[extra_columns]: Added escaped literal '{new_col}' = '{value}' -> '{result[new_col].iloc[0] if len(result) > 0 else self.unescape_equals_literal(value)}'"
+                    f"{entity_name}[extra_columns]: Added escaped literal '{new_col}' = '{value}' -> "
+                    f"'{result[new_col].iloc[0] if len(result) > 0 else self.unescape_equals_literal(value)}'"
                 )
                 continue
 

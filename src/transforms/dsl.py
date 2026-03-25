@@ -146,15 +146,14 @@ def extract_column_references(expr: Expr) -> set[str]:
     """
     if isinstance(expr, ColumnRef):
         return {expr.name}
-    elif isinstance(expr, Literal):
+    if isinstance(expr, Literal):
         return set()
-    elif isinstance(expr, Call):
+    if isinstance(expr, Call):
         refs = set()
         for arg in expr.args:
             refs.update(extract_column_references(arg))
         return refs
-    else:
-        return set()
+    return set()
 
 
 # ============================================================================

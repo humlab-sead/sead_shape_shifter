@@ -589,7 +589,7 @@ class ExtraColumnsExpressionSpecification(ProjectSpecification):
     ) -> None:
         try:
             ast = self.formula_engine.parse(expression)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             self.add_error(
                 f"Invalid formula for extra_columns '{new_col}': {exc}. Expression: {expression!r}",
                 entity=entity_name,
@@ -624,7 +624,7 @@ class ExtraColumnsExpressionSpecification(ProjectSpecification):
 
         try:
             self.formula_engine.validate(ast, eventual_available)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             self.add_error(
                 f"Invalid formula for extra_columns '{new_col}': {exc}. Expression: {expression!r}",
                 entity=entity_name,
@@ -827,7 +827,8 @@ class AppendSpecification(ProjectSpecification):
                 if align_by_position and len(target_columns) != len(source_columns):
                     self.add_error(
                         f"{append_id}: align_by_position requires equal payload column counts after excluding identity columns "
-                        f"(target={target_columns}, source={source_columns}, excluded_target={target_excluded}, excluded_source={source_excluded})",
+                        f"(target={target_columns}, source={source_columns}, excluded_target={target_excluded}, "
+                        f"excluded_source={source_excluded})",
                         entity=entity_name,
                         field="append",
                     )
