@@ -6,12 +6,13 @@ fail (current behavior). With the flag, circular references should be resolved
 via the final linking pass.
 """
 
-import pandas as pd
 import pytest
 
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from tests.decorators import with_test_config
+
+# pylint: disable=unused-argument
 
 
 class TestCircularDependency:

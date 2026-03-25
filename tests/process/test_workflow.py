@@ -16,7 +16,7 @@ from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications.project import CompositeProjectSpecification
 from src.utility import load_shape_file
-from src.validators.data_validators import ValidationIssue
+from src.validators.data_validators import UnresolvedExtraColumnsValidator, ValidationIssue
 from src.workflow import validate_entity_shapes, workflow
 
 
@@ -182,7 +182,6 @@ async def test_full_data_validation_with_unresolved_extra_columns():
 
         async def get_additional_issues(self, project_name: str, entity_name: str) -> list[ValidationIssue]:
             """Return unresolved extra column issues."""
-            from src.validators.data_validators import UnresolvedExtraColumnsValidator
 
             unresolved_extra_columns = self.unresolved_map.get(entity_name, {})
             return UnresolvedExtraColumnsValidator.validate(unresolved_extra_columns, entity_name)
