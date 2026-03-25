@@ -4,18 +4,35 @@
       <v-list-item v-for="(item, index) in append" :key="index" class="px-0 mb-2">
         <v-card variant="outlined">
           <v-card-text>
-            <!-- Header: Type selector + Delete button -->
-            <div class="d-flex align-center justify-space-between mb-3">
-              <v-select
-                v-model="item.type"
-                :items="appendTypes"
-                label="Append Type"
-                variant="outlined"
-                density="compact"
-                style="max-width: 250px"
-              />
-              <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="handleRemoveAppend(index)" />
-            </div>
+            <!-- Header: Type selector + source selector + Delete button -->
+            <v-row align="start" class="mb-3">
+              <v-col cols="12" sm="5" md="4">
+                <v-select
+                  v-model="item.type"
+                  :items="appendTypes"
+                  label="Append Type"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+
+              <v-col v-if="item.type === 'entity'" cols="12" sm="5" md="6">
+                <v-select
+                  :model-value="item.source"
+                  :items="availableEntities"
+                  label="Source Entity"
+                  variant="outlined"
+                  density="compact"
+                  hint="Select an existing entity to append rows from"
+                  persistent-hint
+                  @update:model-value="handleSourceChange(item, $event)"
+                />
+              </v-col>
+
+              <v-col cols="12" sm="2" md="2" class="d-flex justify-end">
+                <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="handleRemoveAppend(index)" />
+              </v-col>
+            </v-row>
 
             <!-- Fixed Values Type -->
             <template v-if="item.type === 'fixed' && !item.source">
@@ -52,18 +69,6 @@
 
             <!-- Entity Source Type -->
             <template v-else-if="item.type === 'entity'">
-              <div class="mb-3">
-                <v-select
-                  v-model="item.source"
-                  :items="availableEntities"
-                  label="Source Entity"
-                  variant="outlined"
-                  density="compact"
-                  hint="Select an existing entity to append rows from"
-                  persistent-hint
-                />
-              </div>
-
               <div v-if="item.source" class="mb-3">
                 <div class="text-caption font-weight-medium mb-2">Target columns</div>
                 <div class="d-flex flex-wrap ga-1 mb-3">
@@ -90,220 +95,104 @@
                 </div>
               </div>
 
-              <!-- Column Alignment Options -->
-              <v-expansion-panels density="compact" class="mb-3">
-                <v-expansion-panel>
-                  <template #title>
-                    <v-icon size="small" class="mr-2">mdi-cog</v-icon>
-                    <span class="text-caption">Column Alignment</span>
-                  </template>
-                  <v-expansion-panel-text>
-                    <div class="pt-2">
-                      <p class="text-caption mb-3 text-medium-emphasis">
-                        Choose how source columns are matched to target columns:
-                      </p>
-                      
-                      <!-- Alignment Mode Selection -->
-                      <v-radio-group
-                        :model-value="getAlignmentMode(item)"
-                        density="compact"
-                        hide-details
-                        class="mb-3"
-                        @update:model-value="handleAlignmentModeChange(item, $event)"
-                      >
-                        <v-radio value="name">
-                          <template #label>
-                            <div>
-                              <strong>Match by name</strong>
-                              <span class="text-caption text-medium-emphasis ml-2">(default)</span>
-                              <div class="text-caption text-medium-emphasis">
-                                All target columns must exist in the source with the same names
-                              </div>
-                            </div>
-                          </template>
-                        </v-radio>
-                        
-                        <v-radio value="position" class="mt-2">
-                          <template #label>
-                            <div>
-                              <strong>Match by position</strong>
-                              <v-chip size="x-small" color="warning" variant="flat" class="ml-2">advanced</v-chip>
-                              <div class="text-caption text-medium-emphasis">
-                                Align columns by order, ignoring names (excludes identity columns)
-                              </div>
-                            </div>
-                          </template>
-                        </v-radio>
-                        
-                        <v-radio value="mapping" class="mt-2">
-                          <template #label>
-                            <div>
-                              <strong>Explicit mapping</strong>
-                              <div class="text-caption text-medium-emphasis">
-                                Manually specify how each source column maps to target
-                              </div>
-                            </div>
-                          </template>
-                        </v-radio>
-                      </v-radio-group>
+              <div class="mb-3">
+                <v-btn-toggle
+                  :model-value="getAlignmentMode(item)"
+                  mandatory
+                  divided
+                  variant="outlined"
+                  density="compact"
+                  class="append-alignment-toggle"
+                  @update:model-value="handleAlignmentModeChange(item, $event)"
+                >
+                  <v-btn value="name" size="small" class="text-caption">Match by name</v-btn>
+                  <v-btn value="position" size="small" class="text-caption">Match by position</v-btn>
+                </v-btn-toggle>
 
-                      <div v-if="item.source && getAlignmentMode(item) === 'name'" class="mt-3">
-                        <v-divider class="mb-3" />
-                        <v-alert
-                          :type="getNameAlignmentSummary(item).canMatch ? 'success' : 'warning'"
-                          variant="tonal"
-                          density="compact"
-                        >
-                          <div class="text-caption">
-                            <strong>
-                              {{ getNameAlignmentSummary(item).canMatch ? 'Match by name is possible.' : 'Match by name is not possible.' }}
-                            </strong>
-                            <div v-if="getNameAlignmentSummary(item).missingColumns.length > 0" class="mt-1">
-                              Missing target columns: {{ getNameAlignmentSummary(item).missingColumns.join(', ') }}
-                            </div>
-                            <div v-else class="mt-1">
-                              All target columns are available in the source.
-                            </div>
-                            <div v-if="getNameAlignmentSummary(item).extraColumns.length > 0" class="mt-1">
-                              Extra source columns ignored: {{ getNameAlignmentSummary(item).extraColumns.join(', ') }}
-                            </div>
-                            <div v-if="getNameAlignmentSummary(item).excludedTargetColumns.length > 0" class="mt-1">
-                              Ignored target identity columns: {{ getNameAlignmentSummary(item).excludedTargetColumns.join(', ') }}
-                            </div>
-                            <div v-if="getNameAlignmentSummary(item).excludedSourceColumns.length > 0" class="mt-1">
-                              Ignored source identity columns: {{ getNameAlignmentSummary(item).excludedSourceColumns.join(', ') }}
-                            </div>
-                            <div v-if="!getNameAlignmentSummary(item).canMatch" class="mt-1">
-                              Switch to <strong>Explicit mapping</strong> if you need to rename source columns.
-                            </div>
-                          </div>
-                        </v-alert>
+                <v-select
+                  v-if="item.source"
+                  :model-value="getSourceColumnsSelection(item)"
+                  :items="getAvailableSourceColumns(item)"
+                  label="Source columns"
+                  variant="outlined"
+                  density="compact"
+                  chips
+                  closable-chips
+                  multiple
+                  clearable
+                  class="mt-3"
+                  hint="Choose source columns and selection order for alignment"
+                  persistent-hint
+                  @update:model-value="handleSourceColumnsChange(item, $event)"
+                />
 
-                        <div v-if="getNameAlignmentSummary(item).matchedColumns.length > 0" class="mt-2">
-                          <div class="text-caption font-weight-medium mb-1">Matched columns</div>
-                          <div class="d-flex flex-wrap ga-1">
-                            <v-chip
-                              v-for="column in getNameAlignmentSummary(item).matchedColumns"
-                              :key="`matched-${item.source}-${column}`"
-                              size="small"
-                              color="success"
-                              variant="tonal"
-                            >
-                              {{ column }}
-                            </v-chip>
-                          </div>
-                        </div>
+                <div v-if="item.source && getAlignmentMode(item) === 'name'" class="mt-2">
+                  <v-alert
+                    :type="getNameAlignmentSummary(item).canMatch ? 'success' : 'warning'"
+                    variant="tonal"
+                    density="compact"
+                  >
+                    <div class="text-caption">
+                      <strong>
+                        {{ getNameAlignmentSummary(item).canMatch ? 'Match by name is possible.' : 'Match by name is not possible.' }}
+                      </strong>
+                      <div v-if="getNameAlignmentSummary(item).missingColumns.length > 0" class="mt-1">
+                        Missing target columns: {{ getNameAlignmentSummary(item).missingColumns.join(', ') }}
                       </div>
-
-                      <div v-if="item.source && getAlignmentMode(item) === 'position'" class="mt-3">
-                        <v-divider class="mb-3" />
-                        <v-alert
-                          :type="getPositionAlignmentSummary(item).canMatch ? 'success' : 'warning'"
-                          variant="tonal"
-                          density="compact"
-                        >
-                          <div class="text-caption">
-                            <strong>
-                              {{ getPositionAlignmentSummary(item).canMatch ? 'Match by position is possible.' : 'Match by position is not possible.' }}
-                            </strong>
-                            <div class="mt-1">
-                              Target columns: {{ getPositionAlignmentSummary(item).targetCount }}
-                              | Source columns: {{ getPositionAlignmentSummary(item).sourceCount }}
-                            </div>
-                            <div v-if="getPositionAlignmentSummary(item).excludedTargetColumns.length > 0" class="mt-1">
-                              Ignored target identity columns: {{ getPositionAlignmentSummary(item).excludedTargetColumns.join(', ') }}
-                            </div>
-                            <div v-if="getPositionAlignmentSummary(item).excludedSourceColumns.length > 0" class="mt-1">
-                              Ignored source identity columns: {{ getPositionAlignmentSummary(item).excludedSourceColumns.join(', ') }}
-                            </div>
-                            <div v-if="!getPositionAlignmentSummary(item).canMatch" class="mt-1">
-                              Position matching requires the same number of source and target columns.
-                            </div>
-                          </div>
-                        </v-alert>
-
-                        <div v-if="getPositionAlignmentSummary(item).pairs.length > 0" class="mt-2">
-                          <div class="text-caption font-weight-medium mb-1">Inferred position pairs</div>
-                          <div class="d-flex flex-column ga-1">
-                            <div
-                              v-for="pair in getPositionAlignmentSummary(item).pairs"
-                              :key="`position-${item.source}-${pair.source}-${pair.target}-${pair.index}`"
-                              class="text-caption"
-                            >
-                              <v-chip size="small" color="secondary" variant="tonal" class="mr-2">{{ pair.source }}</v-chip>
-                              <span class="text-medium-emphasis mr-2">→</span>
-                              <v-chip size="small" color="success" variant="tonal">{{ pair.target }}</v-chip>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Explicit Mapping Editor -->
-                      <div v-if="getAlignmentMode(item) === 'mapping'" class="mt-3">
-                        <v-divider class="mb-3" />
-                        <p class="text-caption mb-2">
-                          <strong>Column Mapping:</strong> Define source → target column mappings
-                        </p>
-                        <v-text-field
-                          v-for="(targetCol, sourceCol) in item.column_mapping || {}"
-                          :key="sourceCol"
-                          :label="`${sourceCol} →`"
-                          :model-value="targetCol"
-                          variant="outlined"
-                          density="compact"
-                          class="mb-2"
-                          hint="Target column name"
-                          persistent-hint
-                          @update:model-value="updateColumnMapping(item, sourceCol, $event)"
-                        />
-                        <v-btn
-                          size="small"
-                          variant="tonal"
-                          prepend-icon="mdi-plus"
-                          @click="addColumnMapping(item)"
-                          class="mt-2"
-                        >
-                          Add Mapping
-                        </v-btn>
+                      <div v-else class="mt-1">
+                        All target columns are available in the source.
                       </div>
                     </div>
-                  </v-expansion-panel-text>
-                </v-expansion-panel>
-              </v-expansion-panels>
+                  </v-alert>
+                </div>
 
-              <v-expansion-panels density="compact" class="mb-3">
-                <v-expansion-panel>
-                  <template #title>
-                    <v-icon size="small" class="mr-2">mdi-tune</v-icon>
-                    <span class="text-caption">Advanced: custom source column subset</span>
-                  </template>
-                  <v-expansion-panel-text>
-                    <div class="pt-2">
-                      <p class="text-caption mb-3 text-medium-emphasis">
-                        Optional. Restrict which columns are taken from the source entity before alignment.
-                        Most source-based append cases should leave this off.
-                      </p>
-                      <v-checkbox
-                        :model-value="item.showColumnsOverride"
-                        label="Use custom source column subset"
-                        density="compact"
-                        hide-details
-                        class="mb-2"
-                        @update:model-value="handleSourceSubsetToggle(item, $event)"
-                      />
-                      <v-textarea
-                        v-if="item.showColumnsOverride"
-                        v-model="item.columnsText"
-                        label="Source columns (JSON Array)"
-                        hint='Example: ["col1", "col2", "col3"]'
-                        persistent-hint
-                        variant="outlined"
-                        rows="2"
-                      />
+                <div v-if="item.source && getAlignmentMode(item) === 'position'" class="mt-2">
+                  <v-alert
+                    :type="getPositionAlignmentSummary(item).canMatch ? 'success' : 'warning'"
+                    variant="tonal"
+                    density="compact"
+                  >
+                    <div class="text-caption">
+                      <strong>
+                        {{ getPositionAlignmentSummary(item).canMatch ? 'Match by position is possible.' : 'Match by position is not possible.' }}
+                      </strong>
+                      <div class="mt-1">
+                        Target columns: {{ getPositionAlignmentSummary(item).targetCount }}
+                        | Source columns: {{ getPositionAlignmentSummary(item).sourceCount }}
+                      </div>
                     </div>
-                  </v-expansion-panel-text>
-                </v-expansion-panel>
-              </v-expansion-panels>
+                  </v-alert>
+                </div>
+
+                <div v-if="item.source && getAlignmentMode(item) === 'position' && getPositionAlignmentSummary(item).pairs.length > 0" class="mt-2">
+                  <div class="text-caption font-weight-medium mb-1">Inferred position pairs</div>
+                  <div class="d-flex flex-column ga-1">
+                    <div
+                      v-for="pair in getPositionAlignmentSummary(item).pairs"
+                      :key="`position-${item.source}-${pair.source}-${pair.target}-${pair.index}`"
+                      class="text-caption"
+                    >
+                      <v-chip size="small" color="secondary" variant="tonal" class="mr-2">{{ pair.source }}</v-chip>
+                      <span class="text-medium-emphasis mr-2">→</span>
+                      <v-chip size="small" color="success" variant="tonal">{{ pair.target }}</v-chip>
+                    </div>
+                  </div>
+                </div>
+
+                <v-alert
+                  v-if="item.source && item.column_mapping && Object.keys(item.column_mapping).length > 0"
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="mt-2"
+                >
+                  <div class="text-caption">
+                    Explicit mapping is configured for this append item. Edit the YAML to change it, or switch to
+                    <strong>Match by name</strong> or <strong>Match by position</strong> here to replace it.
+                  </div>
+                </v-alert>
+              </div>
+
             </template>
           </v-card-text>
         </v-card>
@@ -324,9 +213,16 @@
         </li>
       </ul>
       <div class="mt-2">
-        For <strong>From Entity</strong>, use <em>column mapping</em> to rename source columns or
-        <em>align by position</em> to match columns by order instead of name.
+        For <strong>From Entity</strong>, use <em>Match by name</em> for straightforward matching or
+        <em>Match by position</em> to match columns by order instead of name.
         Safe properties like filters and drop_duplicates are inherited from the parent entity.
+      </div>
+      <div class="mt-2">
+        <strong>Alignment modes:</strong> <em>Match by name</em> requires matching payload column names,
+        <em>Match by position</em> pairs payload columns by order.
+        Use the <strong>Source columns</strong> selector to limit or reorder the source payload columns used during alignment.
+        Identity columns such as <code>system_id</code> and <code>public_id</code> are excluded from alignment.
+        <em>Explicit mapping</em> is still supported in YAML, but it is not edited in this UI.
       </div>
     </v-alert>
 
@@ -348,10 +244,9 @@ interface AppendConfigInternal {
   query?: string
   source?: string
   columns?: string[]
-  columnsText?: string
-  showColumnsOverride?: boolean
   align_by_position?: boolean
   column_mapping?: Record<string, string>
+  sourceColumnsState?: 'default' | 'custom' | 'position-default'
 }
 
 interface Props {
@@ -388,19 +283,6 @@ const appendTypes = [
 const availableEntities = computed(() => props.availableEntities || [])
 const parentColumns = computed(() => (props.parentColumns || []).filter((column) => typeof column === 'string' && column.trim().length > 0))
 
-function parseColumnsText(columnsText?: string): string[] {
-  if (!columnsText?.trim()) {
-    return []
-  }
-
-  try {
-    const parsed = JSON.parse(columnsText)
-    return Array.isArray(parsed) ? parsed.filter((column): column is string => typeof column === 'string' && column.trim().length > 0) : []
-  } catch {
-    return []
-  }
-}
-
 function getAvailableSourceColumns(item: AppendConfigInternal): string[] {
   if (!item.source) {
     return []
@@ -415,6 +297,19 @@ function getSourcePublicId(item: AppendConfigInternal): string | null {
   }
 
   return props.sourceEntityPublicIds?.[item.source] || null
+}
+
+function normalizeSourceColumns(columns: string[], availableColumns: string[]): string[] {
+  const availableSet = new Set(availableColumns)
+  const normalized: string[] = []
+
+  for (const column of columns) {
+    if (availableSet.has(column) && !normalized.includes(column)) {
+      normalized.push(column)
+    }
+  }
+
+  return normalized
 }
 
 function getAlignableColumns(columns: string[], publicId?: string | null): { alignable: string[]; excluded: string[] } {
@@ -438,27 +333,38 @@ function getAlignableColumns(columns: string[], publicId?: string | null): { ali
 }
 
 function getEffectiveSourceColumns(item: AppendConfigInternal): string[] {
-  if (item.showColumnsOverride) {
-    const parsedColumns = parseColumnsText(item.columnsText)
-    if (parsedColumns.length > 0) {
-      return parsedColumns
-    }
+  const availableColumns = getAvailableSourceColumns(item)
 
-    if (item.columns?.length) {
-      return item.columns.filter((column): column is string => typeof column === 'string' && column.trim().length > 0)
-    }
+  if (item.sourceColumnsState === 'position-default') {
+    return []
   }
 
-  return getAvailableSourceColumns(item)
+  if (item.sourceColumnsState === 'custom') {
+    return normalizeSourceColumns(item.columns || [], availableColumns)
+  }
+
+  return availableColumns
 }
 
-function handleSourceSubsetToggle(item: AppendConfigInternal, enabled: boolean | null): void {
-  item.showColumnsOverride = Boolean(enabled)
+function getSourceColumnsSelection(item: AppendConfigInternal): string[] {
+  return getEffectiveSourceColumns(item)
+}
 
-  if (!item.showColumnsOverride) {
-    item.columns = undefined
-    item.columnsText = ''
+function handleSourceChange(item: AppendConfigInternal, source: string | null): void {
+  item.source = source || undefined
+  item.columns = undefined
+
+  if (getAlignmentMode(item) === 'position') {
+    item.sourceColumnsState = 'position-default'
+  } else {
+    item.sourceColumnsState = 'default'
   }
+}
+
+function handleSourceColumnsChange(item: AppendConfigInternal, value: string[]): void {
+  const normalized = normalizeSourceColumns(value, getAvailableSourceColumns(item))
+  item.columns = normalized
+  item.sourceColumnsState = 'custom'
 }
 
 function getNameAlignmentSummary(item: AppendConfigInternal): {
@@ -550,10 +456,11 @@ function initializeAppendItems(): void {
       initialized.appendType = 'sql'
     }
 
-    // For columns override
-    if (item.columns && !item.columnsText) {
-      initialized.columnsText = JSON.stringify(item.columns, null, 2)
-      initialized.showColumnsOverride = true
+    if (item.columns) {
+      initialized.columns = item.columns.filter((column): column is string => typeof column === 'string' && column.trim().length > 0)
+      initialized.sourceColumnsState = 'custom'
+    } else {
+      initialized.sourceColumnsState = 'default'
     }
 
     return initialized
@@ -572,49 +479,42 @@ function handleRemoveAppend(index: number): void {
   append.value.splice(index, 1)
 }
 
-function getAlignmentMode(item: AppendConfigInternal): 'name' | 'position' | 'mapping' {
+function getAlignmentMode(item: AppendConfigInternal): 'name' | 'position' {
   if (item.align_by_position) {
     return 'position'
-  }
-  if (item.column_mapping && Object.keys(item.column_mapping).length > 0) {
-    return 'mapping'
   }
   return 'name'
 }
 
-function handleAlignmentModeChange(item: AppendConfigInternal, mode: 'name' | 'position' | 'mapping' | null): void {
+function handleAlignmentModeChange(item: AppendConfigInternal, mode: 'name' | 'position' | null): void {
   if (!mode) {
     return
   }
 
-  // Clear all alignment settings
-  item.align_by_position = false
-  item.column_mapping = undefined
+  const previousMode = getAlignmentMode(item)
 
-  // Apply new mode
+  // Clear UI-managed alignment settings. Existing YAML column_mapping is preserved
+  // unless the user actively switches alignment mode here.
+  item.align_by_position = false
+
   if (mode === 'position') {
     item.align_by_position = true
-  } else if (mode === 'mapping') {
-    item.column_mapping = {}
-  }
-  // 'name' mode requires no special settings (default behavior)
-}
-
-function addColumnMapping(item: AppendConfigInternal): void {
-  if (!item.column_mapping) {
-    item.column_mapping = {}
-  }
-  item.column_mapping['source_column'] = 'target_column'
-}
-
-function updateColumnMapping(item: AppendConfigInternal, sourceCol: string, targetCol: string): void {
-  if (!item.column_mapping) {
-    item.column_mapping = {}
-  }
-  if (targetCol) {
-    item.column_mapping[sourceCol] = targetCol
+    item.column_mapping = undefined
+    if (previousMode !== 'position' && item.sourceColumnsState !== 'custom') {
+      item.columns = undefined
+      item.sourceColumnsState = 'position-default'
+    }
   } else {
-    delete item.column_mapping[sourceCol]
+    item.column_mapping = undefined
+    if (item.sourceColumnsState !== 'custom') {
+      item.columns = undefined
+      item.sourceColumnsState = 'default'
+    }
+  }
+
+  if (mode === 'name' && item.sourceColumnsState !== 'custom') {
+    item.columns = undefined
+    item.sourceColumnsState = 'default'
   }
 }
 
@@ -643,12 +543,8 @@ function normalizeForAPI(): AppendConfigInternal[] {
       if (item.query) normalized.query = item.query
     } else if (effectiveType === 'entity') {
       normalized.source = item.source
-      if (item.showColumnsOverride && item.columnsText) {
-        try {
-          normalized.columns = JSON.parse(item.columnsText)
-        } catch {
-          // Invalid JSON - will be caught by backend validation
-        }
+      if (item.sourceColumnsState === 'custom' && item.columns) {
+        normalized.columns = item.columns
       }
       if (item.align_by_position) normalized.align_by_position = true
       if (item.column_mapping && Object.keys(item.column_mapping).length > 0) {
@@ -690,5 +586,16 @@ initializeAppendItems()
 <style scoped>
 .text-caption {
   font-size: 0.75rem;
+}
+
+.append-alignment-toggle {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+:deep(.append-alignment-toggle .v-btn) {
+  font-size: 0.75rem;
+  letter-spacing: normal;
+  text-transform: none;
 }
 </style>
