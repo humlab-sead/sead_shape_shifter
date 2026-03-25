@@ -29,6 +29,11 @@
         "panel.background": "#000000"
     },
     "yaml.keyOrdering": false,
+    "yaml.schemas": {
+        "/home/roger/source/sead_shape_shifter/frontend/src/schemas/projectSchema.json": [
+            "**/shapeshifter.yml"
+        ]
+    },
     "yaml.format.enable": true,
     "yaml.format.singleQuote": false,
     "yaml.format.bracketSpacing": false,
