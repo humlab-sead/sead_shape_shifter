@@ -139,26 +139,16 @@ class TestCircularDependency:
         """Test circular dependency with three entities: A -> B -> C -> A."""
 
         config = {
-            "data_sources": {
-                "test_source": {
-                    "driver": "fixed",
-                    "data": {
-                        "entity_a": [
-                            {"a_id": 1, "b_id": 1},
-                            {"a_id": 2, "b_id": 2},
-                        ],
-                        "entity_b": [
-                            {"b_id": 1, "c_id": 1},
-                            {"b_id": 2, "c_id": 2},
-                        ],
-                    },
-                }
-            },
             "entities": {
                 "entity_a": {
-                    "source": "test_source",
+                    "type": "fixed",
                     "keys": ["a_id"],
                     "public_id": "a_id",
+                    "columns": ["a_id", "b_id"],
+                    "values": [
+                        [1, 1],
+                        [2, 2],
+                    ],
                     "foreign_keys": [
                         {
                             "entity": "entity_b",
@@ -169,9 +159,14 @@ class TestCircularDependency:
                     ],
                 },
                 "entity_b": {
-                    "source": "test_source",
+                    "type": "fixed",
                     "keys": ["b_id"],
                     "public_id": "b_id",
+                    "columns": ["b_id", "c_id"],
+                    "values": [
+                        [1, 1],
+                        [2, 2],
+                    ],
                     "foreign_keys": [
                         {
                             "entity": "entity_c",
@@ -185,12 +180,12 @@ class TestCircularDependency:
                     "type": "fixed",
                     "keys": ["c_id"],
                     "public_id": "c_id",
+                    "columns": ["c_id"],
                     "values": [],
                     "append": [
                         {
-                            "source": "entity_a",
-                            "columns": ["a_id"],
-                            "mapping": [{"a_id": "c_id"}],  # Map a_id -> c_id
+                            "source": "entity_b",
+                            "columns": ["c_id"],
                         },
                     ],
                 },
@@ -220,31 +215,26 @@ class TestCircularDependency:
 
         # Setup: Simple FK without defer_dependency specified
         config = {
-            "data_sources": {
-                "test_source": {
-                    "driver": "fixed",
-                    "data": {
-                        "parent": [
-                            {"parent_id": 1, "name": "Parent 1"},
-                            {"parent_id": 2, "name": "Parent 2"},
-                        ],
-                        "child": [
-                            {"child_id": 1, "parent_id": 1},
-                            {"child_id": 2, "parent_id": 2},
-                        ],
-                    },
-                }
-            },
             "entities": {
                 "parent": {
-                    "source": "test_source",
+                    "type": "fixed",
                     "keys": ["parent_id"],
                     "public_id": "parent_id",
+                    "columns": ["parent_id", "name"],
+                    "values": [
+                        [1, "Parent 1"],
+                        [2, "Parent 2"],
+                    ],
                 },
                 "child": {
-                    "source": "test_source",
+                    "type": "fixed",
                     "keys": ["child_id"],
                     "public_id": "child_id",
+                    "columns": ["child_id", "parent_id"],
+                    "values": [
+                        [1, 1],
+                        [2, 2],
+                    ],
                     "foreign_keys": [
                         {
                             "entity": "parent",
@@ -278,29 +268,24 @@ class TestCircularDependency:
         """Test entity with multiple FKs, some deferred and some not."""
 
         config = {
-            "data_sources": {
-                "test_source": {
-                    "driver": "fixed",
-                    "data": {
-                        "lookup_1": [
-                            {"lookup_1_id": 1, "name": "Lookup 1"},
-                        ],
-                        "main_entity": [
-                            {"main_id": 1, "lookup_1_id": 1, "circular_id": 1},
-                        ],
-                    },
-                }
-            },
             "entities": {
                 "lookup_1": {
-                    "source": "test_source",
+                    "type": "fixed",
                     "keys": ["lookup_1_id"],
                     "public_id": "lookup_1_id",
+                    "columns": ["lookup_1_id", "name"],
+                    "values": [
+                        [1, "Lookup 1"],
+                    ],
                 },
                 "main_entity": {
-                    "source": "test_source",
+                    "type": "fixed",
                     "keys": ["main_id"],
                     "public_id": "main_id",
+                    "columns": ["main_id", "lookup_1_id", "circular_id"],
+                    "values": [
+                        [1, 1, 1],
+                    ],
                     "foreign_keys": [
                         {
                             "entity": "lookup_1",
@@ -320,6 +305,7 @@ class TestCircularDependency:
                     "type": "fixed",
                     "keys": ["circular_id"],
                     "public_id": "circular_id",
+                    "columns": ["circular_id"],
                     "values": [],
                     "append": [
                         {
@@ -359,24 +345,15 @@ class TestCircularDependency:
 
         # Setup: Configuration that requires multiple linking passes
         config = {
-            "data_sources": {
-                "test_source": {
-                    "driver": "fixed",
-                    "data": {
-                        "source_a": [
-                            {"a_id": 1, "shared_id": 1},
-                        ],
-                        "source_b": [
-                            {"b_id": 1, "shared_id": 1},
-                        ],
-                    },
-                }
-            },
             "entities": {
                 "entity_a": {
-                    "source": "test_source:source_a",
+                    "type": "fixed",
                     "keys": ["a_id"],
                     "public_id": "a_id",
+                    "columns": ["a_id", "shared_id"],
+                    "values": [
+                        [1, 1],
+                    ],
                     "foreign_keys": [
                         {
                             "entity": "shared_entity",
@@ -387,9 +364,13 @@ class TestCircularDependency:
                     ],
                 },
                 "entity_b": {
-                    "source": "test_source:source_b",
+                    "type": "fixed",
                     "keys": ["b_id"],
                     "public_id": "b_id",
+                    "columns": ["b_id", "shared_id"],
+                    "values": [
+                        [1, 1],
+                    ],
                     "foreign_keys": [
                         {
                             "entity": "shared_entity",
@@ -403,7 +384,9 @@ class TestCircularDependency:
                     "type": "fixed",
                     "keys": ["shared_id"],
                     "public_id": "shared_id",
+                    "columns": ["shared_id"],
                     "values": [],
+                    "drop_duplicates": True,  # Deduplicate shared_id values from both sources
                     "append": [
                         {
                             "source": "entity_a",
