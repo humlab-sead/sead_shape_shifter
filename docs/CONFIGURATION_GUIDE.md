@@ -1057,6 +1057,7 @@ foreign_keys:
     how: "inner" | "left" | ...     # Join type (optional)
     extra_columns: {...}            # Extra columns to bring (optional)
     drop_remote_id: bool            # Drop remote ID after linking (optional)
+    defer_dependency: bool          # ⚠️ Defer hard dependency (advanced, default: false)
     constraints: {...}              # Validation constraints (optional)
 ```
 
@@ -1201,6 +1202,74 @@ foreign_keys:
 - **Suggested Additional Validation**:
   - Warn if dropping ID that's referenced elsewhere
   - Suggest dropping when only extra_columns are used
+
+##### `defer_dependency`
+- **Type**: `bool`
+- **Required**: No (defaults to `false`)
+- **Description**: **⚠️ Advanced Feature - Use with Caution**
+  
+  When `true`, the foreign key target is NOT treated as a hard dependency during topological sorting. This allows circular references between entities where:
+  - Entity A has a FK to Entity B
+  - Entity B appends from Entity A (or has another dependency on A)
+  
+  The FK will be linked in a **final linking pass** after all entities are processed, using the existing deferred FK infrastructure.
+
+  **Important**: This is an **explicit opt-in** feature. The default (`false`) maintains safe, strict dependency checking and prevents circular references.
+
+- **Use Cases**:
+  - **Symmetric Branch Pattern**: Entity `analysis_entity` defined as empty fixed entity that appends from `abundance`, while `abundance` has FK to `analysis_entity`
+  - **Complex Entity Hierarchies**: Three or more entities with circular FK dependencies
+  - **Forward FK References**: Entity A needs to reference Entity B before B is fully materialized
+
+- **Example**:
+  ```yaml
+  # Entity with forward FK reference
+  abundance:
+    type: fixed
+    keys: ["abundance_id"]
+    values: [[1, 1], [2, 2]]
+    foreign_keys:
+      - entity: analysis_entity      # FK to entity defined later
+        local_keys: ["analysis_entity_id"]
+        remote_keys: ["analysis_entity_id"]
+        defer_dependency: true        # ⚠️ Allow circular reference
+  
+  # Entity that appends from abundance
+  analysis_entity:
+    type: fixed
+    keys: ["analysis_entity_id"]
+    values: []
+    append:
+      - source: abundance             # Depends on abundance
+        columns: ["analysis_entity_id"]
+  ```
+
+- **⚠️ Warnings**:
+  - **Data Integrity Risk**: FK validation happens AFTER initial processing, so invalid FK values may not be caught until final linking pass
+  - **Processing Order**: Entity processing order becomes less predictable
+  - **Debugging Complexity**: Circular dependencies can make error diagnosis harder
+  - **Use Sparingly**: Only enable when absolutely necessary (e.g., ArboDat symmetric branch pattern)
+
+- **Validation Rules**:
+  - **Type**: Must be `bool` if provided
+  - **Default**: Defaults to `false` (safe, backward compatible)
+  - **Final Linking**: Deferred FKs are retried up to 5 times in convergence loop after all entities processed
+
+- **Common Issues**:
+  - **Unconverged Links**: If final linking pass doesn't resolve all deferred FKs after 5 attempts, warnings are logged
+  - **Missing Targets**: If FK target entity is never created, FK remains unresolved
+  - **Performance**: Final linking pass adds processing overhead (minimal for most cases)
+
+- **Debugging**:
+  - Check logs for "Starting final linking pass" and "Final linking pass successful"
+  - If unresolved deferred links persist: "Entities still with unresolved deferred links: {...}"
+  - Verify both entities in circular relationship are actually created
+
+- **Best Practices**:
+  - **Document Why**: Add comment explaining why `defer_dependency: true` is needed
+  - **Minimize Scope**: Only defer the minimum FKs needed to break the cycle
+  - **Test Thoroughly**: Verify final linking resolves all deferred FKs in your test suite
+  - **Alternative Patterns**: Consider restructuring entities to avoid circular dependencies if possible
 
 ##### `constraints`
 - **Type**: `ForeignKeyConstraints`
