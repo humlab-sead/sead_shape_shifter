@@ -2484,9 +2484,12 @@ function applyTaskFilter() {
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+  pointer-events: none;
 }
 
 .stats-card {
+  display: inline-block;
+  align-self: flex-start;
   background: transparent !important;
   backdrop-filter: blur(8px);
   box-shadow: none;
@@ -2500,7 +2503,7 @@ function applyTaskFilter() {
 }
 
 .stats-card--legend {
-  width: fit-content;
+  width: max-content;
   max-width: calc(100vw - 32px);
 }
 
