@@ -246,7 +246,7 @@ class ShapeShifter:
 
         return self
 
-    def _link_deferred_foreign_keys(self) -> None:
+    def _link_deferred_foreign_keys(self, max_retries: int = 5) -> None:
         """Perform additional linking passes for any entities with deferred foreign key dependencies."""
         # Enhanced final linking pass for deferred FK dependencies
         # Retry linking for entities with deferred FKs (e.g., circular references)
@@ -255,40 +255,16 @@ class ShapeShifter:
 
         logger.info(f"Starting final linking pass for deferred FK dependencies: {self.linker.deferred_tracker.deferred}")
 
-        max_retries: int = 5
-        retry_count: int = 0
-
-        while self.linker.deferred_tracker.deferred and retry_count < max_retries:
-            retry_count += 1
-            entities_before: set[str] = set(self.linker.deferred_tracker.deferred)
-
-            logger.info(f"Final linking pass attempt {retry_count}/{max_retries} for entities: {entities_before}")
-
-            # Retry linking for all deferred entities
-            for entity_name in list(entities_before):
-                if entity_name in self.table_store:
-                    self.linker.link_entity(entity_name=entity_name)
-
-            entities_after: set[str] = set(self.linker.deferred_tracker.deferred)
-
-            # Check if we made progress
-            if entities_after == entities_before:
-                logger.warning(f"Final linking pass {retry_count}: No progress made. " f"Remaining deferred entities: {entities_after}")
+        for _ in range(max_retries):
+            if not self.linker.deferred_tracker.deferred:
                 break
 
-            resolved_count: int = len(entities_before) - len(entities_after)
-            logger.info(f"Final linking pass {retry_count}: Resolved {resolved_count} entities")
-
-        if self.linker.deferred_tracker.deferred:
-            logger.warning(
-                f"Final linking pass completed after {retry_count} attempts. "
-                f"Entities still with unresolved deferred links: {self.linker.deferred_tracker.deferred}"
-            )
-        else:
-            logger.info(f"Final linking pass successful: All deferred FK dependencies resolved")
+            self.retry_linking()
 
         if self.linker.deferred_tracker.deferred:
             logger.warning(f"Entities with unresolved deferred links after normalization: {self.linker.deferred_tracker.deferred}")
+        else:
+            logger.info("Final linking pass successful: All deferred FK dependencies resolved")
 
     def drop_duplicates(self, entity_name: str, table_cfg: TableConfig, data: pd.DataFrame) -> pd.DataFrame:
         return drop_duplicate_rows(
