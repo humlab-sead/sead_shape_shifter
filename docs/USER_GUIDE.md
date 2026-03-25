@@ -524,6 +524,72 @@ If the selected dispatcher writes a file, the dialog also shows **Download resul
 4. Download or inspect the output.
 5. If needed, continue with **Dispatch**.
 
+### Command Line Execution
+
+For automation, scripting, or batch processing, Shape Shifter can be run from the command line using the `shapeshift` module.
+
+**Basic usage:**
+
+```bash
+python -m src.shapeshift OUTPUT_PATH --project PROJECT_FILE.yml [OPTIONS]
+```
+
+**Common examples:**
+
+```bash
+# Export to Excel
+python -m src.shapeshift output.xlsx \
+  --project data/projects/my_project.yml \
+  --mode xlsx
+
+# Validate configuration only (no processing)
+python -m src.shapeshift output.xlsx \
+  --project data/projects/my_project.yml \
+  --validate-then-exit
+
+# Export to CSV folder with verbose logging
+python -m src.shapeshift output/ \
+  --project data/projects/my_project.yml \
+  --mode csv \
+  --verbose \
+  --log-file logs/transform.log
+
+# With environment variables
+python -m src.shapeshift output.xlsx \
+  --project data/projects/my_project.yml \
+  --env-file .env \
+  --mode xlsx
+```
+
+**Available options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--project FILE` | `-p` | Path to project YAML file (required) |
+| `--mode [xlsx\|csv\|db]` | `-m` | Output format (default: xlsx) |
+| `--env-file FILE` | `-e` | Path to environment variables file |
+| `--verbose` | `-v` | Enable verbose logging output |
+| `--translate` | `-t` | Enable translation/mapping rules |
+| `--drop-foreign-keys` | `-d` | Remove FK columns from output |
+| `--log-file PATH` | `-l` | Write logs to specified file |
+| `--validate-then-exit` | | Validate config and exit (no processing) |
+| `--default-entity TEXT` | `-de` | Default entity when none specified |
+| `--help` | | Show all options and exit |
+
+**When to use CLI:**
+
+- Automated workflows and scheduled processing
+- CI/CD pipelines and testing
+- Batch processing multiple projects
+- Server-side or headless environments
+- Scripted validation checks
+
+**Exit codes:**
+
+- `0` - Success
+- `1` - Validation failure (when using `--validate-then-exit`)
+- Non-zero - Processing error
+
 ---
 
 ## 8. Tips & Best Practices
