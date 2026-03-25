@@ -16,7 +16,7 @@
                 />
               </v-col>
 
-              <v-col v-if="item.type === 'entity'" cols="12" sm="5" md="6">
+              <v-col v-if="item.type === 'entity'" cols="12" sm="4" md="4">
                 <v-select
                   :model-value="item.source"
                   :items="availableEntities"
@@ -26,6 +26,21 @@
                   persistent-hint
                   @update:model-value="handleSourceChange(item, $event)"
                 />
+              </v-col>
+
+              <v-col v-if="item.type === 'entity'" cols="12" sm="3" md="2">
+                <v-btn-toggle
+                  :model-value="getAlignmentMode(item)"
+                  mandatory
+                  divided
+                  variant="outlined"
+                  density="compact"
+                  class="append-alignment-toggle"
+                  @update:model-value="handleAlignmentModeChange(item, $event)"
+                >
+                  <v-btn value="name" size="small" class="text-caption">Name</v-btn>
+                  <v-btn value="position" size="small" class="text-caption">Position</v-btn>
+                </v-btn-toggle>
               </v-col>
 
               <v-col cols="12" sm="2" md="2" class="d-flex justify-end">
@@ -99,19 +114,6 @@
               </div>
 
               <div class="mb-3">
-                <v-btn-toggle
-                  :model-value="getAlignmentMode(item)"
-                  mandatory
-                  divided
-                  variant="outlined"
-                  density="compact"
-                  class="append-alignment-toggle"
-                  @update:model-value="handleAlignmentModeChange(item, $event)"
-                >
-                  <v-btn value="name" size="small" class="text-caption">Match by name</v-btn>
-                  <v-btn value="position" size="small" class="text-caption">Match by position</v-btn>
-                </v-btn-toggle>
-
                 <div v-if="item.source && getAlignmentMode(item) === 'name'" class="mt-2">
                   <v-alert
                     :type="getNameAlignmentSummary(item).canMatch ? 'success' : 'warning'"
