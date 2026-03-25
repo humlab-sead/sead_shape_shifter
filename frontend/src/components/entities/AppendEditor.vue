@@ -24,7 +24,7 @@
           </v-expansion-panel-title>
 
           <v-expansion-panel-text class="pt-2">
-            <!-- Header: Type selector + source selector + Delete button -->
+            <!-- Header: Type selector + source selector + alignment toggle -->
             <v-row align="start" class="mb-3">
               <v-col cols="12" sm="5" md="4">
                 <v-select
@@ -63,33 +63,36 @@
                 </v-btn-toggle>
               </v-col>
 
-              <v-col cols="12" sm="2" md="2" class="d-flex justify-end">
-                <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="handleRemoveAppend(index)" />
-              </v-col>
             </v-row>
 
             <!-- Fixed Values Type -->
             <template v-if="item.type === 'fixed' && !item.source">
-              <v-textarea
-                v-model="item.valuesText"
-                label="Values (JSON Array)"
-                hint='Example: [["value1", "value2"], ["value3", "value4"]]'
-                persistent-hint
-                variant="outlined"
-                rows="3"
+              <FixedValuesGrid
+                v-if="fixedValuesColumns.length > 0"
+                :model-value="item.values || []"
+                :columns="fixedValuesColumns"
+                :public-id="parentPublicId || undefined"
+                height="320px"
+                @update:model-value="handleFixedValuesChange(item, $event)"
               />
+              <v-alert v-else type="info" variant="tonal" density="compact">
+                <v-alert-title>No Columns Defined</v-alert-title>
+                Add keys and/or columns in the Basic tab to define the fixed append grid structure.
+              </v-alert>
             </template>
 
             <!-- SQL Query Type -->
             <template v-else-if="item.type === 'sql'">
-              <v-text-field
+              <v-autocomplete
                 v-model="item.data_source"
+                :items="availableDataSources"
                 label="Data Source"
                 variant="outlined"
                 density="compact"
                 class="mb-2"
                 hint="Data source name from project configuration"
                 persistent-hint
+                clearable
               />
               <v-textarea
                 v-model="item.query"
@@ -239,6 +242,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import FixedValuesGrid from './FixedValuesGrid.vue'
 
 interface AppendConfigInternal {
   type?: 'fixed' | 'sql' | 'entity'
@@ -257,8 +261,10 @@ interface AppendConfigInternal {
 interface Props {
   modelValue?: AppendConfigInternal[]
   availableEntities?: string[]
+  dataSourceNames?: string[]
   parentColumns?: string[]
   parentPublicId?: string | null
+  fixedValuesColumns?: string[]
   sourceEntityColumns?: Record<string, string[]>
   sourceEntityPublicIds?: Record<string, string | null>
 }
@@ -266,8 +272,10 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   modelValue: () => [],
   availableEntities: () => [],
+  dataSourceNames: () => [],
   parentColumns: () => [],
   parentPublicId: null,
+  fixedValuesColumns: () => [],
   sourceEntityColumns: () => ({}),
   sourceEntityPublicIds: () => ({}),
 })
@@ -286,7 +294,9 @@ const appendTypes = [
 ]
 
 const availableEntities = computed(() => props.availableEntities || [])
+const availableDataSources = computed(() => props.dataSourceNames || [])
 const parentColumns = computed(() => (props.parentColumns || []).filter((column) => typeof column === 'string' && column.trim().length > 0))
+const fixedValuesColumns = computed(() => (props.fixedValuesColumns || []).filter((column) => typeof column === 'string' && column.trim().length > 0))
 
 function getAvailableSourceColumns(item: AppendConfigInternal): string[] {
   if (!item.source) {
@@ -372,6 +382,10 @@ function handleSourceColumnsChange(item: AppendConfigInternal, value: string[]):
   item.sourceColumnsState = 'custom'
 }
 
+function handleFixedValuesChange(item: AppendConfigInternal, value: any[][]): void {
+  item.values = Array.isArray(value) ? value : []
+}
+
 function getNameAlignmentSummary(item: AppendConfigInternal): {
   matchedColumns: string[]
   missingColumns: string[]
@@ -453,9 +467,7 @@ function initializeAppendItems(): void {
     } else if (item.type === 'fixed') {
       initialized.type = 'fixed'
       initialized.appendType = 'fixed'
-      if (item.values && !item.valuesText) {
-        initialized.valuesText = JSON.stringify(item.values, null, 2)
-      }
+      initialized.values = Array.isArray(item.values) ? item.values : []
     } else if (item.type === 'sql') {
       initialized.type = 'sql'
       initialized.appendType = 'sql'
@@ -476,7 +488,7 @@ function handleAddAppend(): void {
   append.value.push({
     type: 'fixed',
     appendType: 'fixed',
-    valuesText: '',
+    values: [],
   })
 }
 
@@ -551,14 +563,7 @@ function normalizeForAPI(): AppendConfigInternal[] {
     // Determine current type based on item state
     if (effectiveType === 'fixed' && !item.source) {
       normalized.type = 'fixed'
-      if (item.valuesText) {
-        try {
-          normalized.values = JSON.parse(item.valuesText)
-        } catch {
-          // Invalid JSON - will be caught by backend validation
-          normalized.values = []
-        }
-      }
+      normalized.values = Array.isArray(item.values) ? item.values : []
     } else if (effectiveType === 'sql') {
       normalized.type = 'sql'
       if (item.data_source) normalized.data_source = item.data_source
