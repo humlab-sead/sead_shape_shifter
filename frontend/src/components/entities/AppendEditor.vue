@@ -70,29 +70,33 @@
             <!-- Entity Source Type -->
             <template v-else-if="item.type === 'entity'">
               <div v-if="item.source" class="mb-3">
-                <div class="text-caption font-weight-medium mb-2">Target columns</div>
-                <div class="d-flex flex-wrap ga-1 mb-3">
-                  <v-chip v-for="column in parentColumns" :key="`target-${column}`" size="small" variant="outlined">
-                    {{ column }}
-                  </v-chip>
-                  <span v-if="parentColumns.length === 0" class="text-caption text-medium-emphasis">No parent columns configured.</span>
-                </div>
+                <v-row align="start" class="mb-0">
+                  <v-col cols="12" md="6">
+                    <div class="text-caption font-weight-medium mb-2">Target columns</div>
+                    <div class="d-flex flex-wrap ga-1">
+                      <v-chip v-for="column in parentColumns" :key="`target-${column}`" size="small" variant="outlined">
+                        {{ column }}
+                      </v-chip>
+                      <span v-if="parentColumns.length === 0" class="text-caption text-medium-emphasis">No parent columns configured.</span>
+                    </div>
+                  </v-col>
 
-                <div class="text-caption font-weight-medium mb-2">Source columns</div>
-                <div class="d-flex flex-wrap ga-1">
-                  <v-chip
-                    v-for="column in getEffectiveSourceColumns(item)"
-                    :key="`source-${item.source}-${column}`"
-                    size="small"
-                    color="secondary"
-                    variant="tonal"
-                  >
-                    {{ column }}
-                  </v-chip>
-                  <span v-if="getEffectiveSourceColumns(item).length === 0" class="text-caption text-medium-emphasis">
-                    No source columns available for this entity.
-                  </span>
-                </div>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      :model-value="getSourceColumnsSelection(item)"
+                      :items="getAvailableSourceColumns(item)"
+                      label="Source columns"
+                      variant="outlined"
+                      density="compact"
+                      chips
+                      closable-chips
+                      multiple
+                      clearable
+                      persistent-hint
+                      @update:model-value="handleSourceColumnsChange(item, $event)"
+                    />
+                  </v-col>
+                </v-row>
               </div>
 
               <div class="mb-3">
@@ -108,23 +112,6 @@
                   <v-btn value="name" size="small" class="text-caption">Match by name</v-btn>
                   <v-btn value="position" size="small" class="text-caption">Match by position</v-btn>
                 </v-btn-toggle>
-
-                <v-select
-                  v-if="item.source"
-                  :model-value="getSourceColumnsSelection(item)"
-                  :items="getAvailableSourceColumns(item)"
-                  label="Source columns"
-                  variant="outlined"
-                  density="compact"
-                  chips
-                  closable-chips
-                  multiple
-                  clearable
-                  class="mt-3"
-                  hint="Choose source columns and selection order for alignment"
-                  persistent-hint
-                  @update:model-value="handleSourceColumnsChange(item, $event)"
-                />
 
                 <div v-if="item.source && getAlignmentMode(item) === 'name'" class="mt-2">
                   <v-alert
