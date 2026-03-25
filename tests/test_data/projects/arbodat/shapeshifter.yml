@@ -37,21 +37,21 @@ entities:
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: taxa
       local_keys: [PCODE]
       remote_keys: [PCODE]
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: abundance_element
       local_keys: [RTyp]
       remote_keys: [RTyp]
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     depends_on: [taxa, abundance_element]
     extra_columns:
       abundance: FAnzahl
@@ -246,7 +246,7 @@ entities:
       local_keys: [Projekt, Befu, ProbNr]
       remote_keys: [Projekt, Befu, ProbNr]
       constraints:
-        cardinality: many-to-one
+        cardinality: many_to_one
         allow_unmatched_right: true
         require_unique_left: false
         require_unique_right: false
@@ -270,7 +270,7 @@ entities:
       remote_keys: [arbodat_code]
       how: left
       constraints:
-        cardinality: many-to-one
+        cardinality: many_to_one
         allow_unmatched_right: true
         require_unique_left: false
         require_unique_right: false
@@ -402,7 +402,7 @@ entities:
       contraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
       constraints:
         cardinality: many_to_one
         require_unique_left: false
@@ -413,7 +413,7 @@ entities:
       how: left
       constraints:
         allow_unmatched_left: true
-        cardinality: many-to-one
+        cardinality: many_to_one
         allow_null_keys: true
     - entity: master_dataset
       local_keys: [master_set_id]
@@ -843,14 +843,14 @@ entities:
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: relative_ages
       local_keys: [ArchDat]
       remote_keys: [archdat]
       how: left
       constraints:
         allow_unmatched_left: true
-        cardinality: many-to-one
+        cardinality: many_to_one
     depends_on: [analysis_entity, relative_ages]
     drop_duplicates: true
     extra_columns:
@@ -875,14 +875,14 @@ entities:
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: sample_group
       local_keys: [Projekt, Befu]
       remote_keys: [Projekt, Befu]
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: sample_type
       local_keys: [ProbTyp]
       remote_keys: [ProbTyp]
@@ -1075,7 +1075,7 @@ entities:
           constraints:
             allow_unmatched_left: false
             allow_null_keys: false
-            cardinality: many-to-one
+            cardinality: many_to_one
         depends_on: [site_type]
         drop_duplicates: [Fustel, EVNr]
         check_functional_dependency: false
@@ -1263,7 +1263,7 @@ entities:
           constraints:
             allow_unmatched_left: false
             allow_null_keys: false
-            cardinality: many-to-one
+            cardinality: many_to_one
         depends_on: [site_type_group]
         drop_duplicates: [FustelTyp]
         check_functional_dependency: true
