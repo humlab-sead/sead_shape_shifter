@@ -355,6 +355,76 @@ entities:
 - **FK column naming**: Child FK column = parent's `public_id` (avoids `system_id` collision)
 - **SEAD ID mapping**: Applied separately via `mappings.yml` → `map_to_remote()` (decoration step)
 - **Local domain integrity**: All processing happens with sequential integer references
+
+---
+
+#### FK Pattern: Pre-existing External IDs
+
+**Problem**: Sometimes an entity already contains FK values from the external target system (e.g., SEAD IDs hardcoded in a fixed entity). How should you configure the FK when the child already has the parent's external IDs?
+
+**Solution**: Separate the external ID (business key) from the local FK reference by using a different column name for the external ID.
+
+**Example Scenario**:
+```yaml
+# Parent entity loaded from SEAD database
+method_group:
+  type: sql
+  public_id: method_group_id
+  keys: [method_group_id]        # SEAD IDs are the business keys
+  columns: [group_name, description]
+  data_source: sead
+  query: select "method_group_id", "group_name", "description" from tbl_method_groups
+  # Result: system_id=[1, 2, 3], method_group_id=[17, 23, 45]
+
+# Child entity with pre-existing SEAD IDs (WRONG approach)
+method:
+  type: fixed
+  public_id: method_id
+  columns: [method_id, method_name, method_group_id]
+  values:
+    - [105, "Altitude", 17]      # 17 is SEAD method_group_id
+    - [76, "Local grid", 23]     # 23 is SEAD method_group_id
+  foreign_keys:
+    - entity: method_group
+      local_keys: [method_group_id]
+      remote_keys: [method_group_id]
+      # ❌ PROBLEM: method_group_id contains SEAD IDs (17, 23)
+      # but FK linking expects to add a column with system_id values (1, 2, 3)
+      # This causes name collision!
+
+# Child entity with pre-existing SEAD IDs (CORRECT approach)
+method:
+  type: fixed
+  public_id: method_id
+  columns: [method_id, method_name, sead_method_group_id]  # ← Renamed!
+  values:
+    - [105, "Altitude", 17]      # 17 is SEAD method_group_id
+    - [76, "Local grid", 23]     # 23 is SEAD method_group_id
+  foreign_keys:
+    - entity: method_group
+      local_keys: [sead_method_group_id]   # ← Join on business key
+      remote_keys: [method_group_id]       # ← Parent's business key
+      # ✅ Result: FK adds new column "method_group_id" with system_id values
+      # Final columns: [..., sead_method_group_id, method_group_id]
+      # sead_method_group_id: [17, 23]     ← Preserved external IDs
+      # method_group_id: [1, 2]             ← Local FK references
+```
+
+**Key Points**:
+1. **Rename the pre-existing column** to distinguish it from the FK column that will be added (e.g., `method_group_id` → `sead_method_group_id`)
+2. **Join on business keys**: Use `local_keys: [sead_method_group_id]` and `remote_keys: [method_group_id]` to join on the external IDs
+3. **FK linking adds new column**: The FK process will add a new column named `method_group_id` (from parent's `public_id`) containing parent's `system_id` values
+4. **Both columns preserved**: You maintain both the external ID (for reference/debugging) and the local FK reference (for processing)
+
+**When to use this pattern**:
+- ✅ Fixed entities with hardcoded references to external systems (SEAD, taxonomy databases, etc.)
+- ✅ When you need to preserve external IDs for reconciliation or debugging
+- ✅ When the external ID is part of the entity's definition (not derived from processing)
+
+**When NOT to use this pattern**:
+- ❌ For normal FK relationships where the child doesn't pre-contain parent references
+- ❌ When the FK values will be populated during processing (use standard FK linking without pre-existing column)
+
 ---
 
 ### Data Source Properties
