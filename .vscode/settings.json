@@ -2,7 +2,8 @@
     "python.testing.pytestArgs": [
         "tests",
         "backend/tests",
-        "ingesters/sead/tests"
+        "ingesters/sead/tests",
+        "target_models/tests"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
@@ -75,7 +76,8 @@
     "python.analysis.extraPaths": [
         ".",
         "src",
-        "tests"
+        "tests",
+        "target_models/src"
     ],
     "python.analysis.generateWithTypeAnnotation": true,
     "python.analysis.ignore": [
@@ -101,7 +103,8 @@
     "python.analysis.include": [
         "src/**",
         "backend/**",
-        "tests/**"
+        "tests/**",
+        "target_models/**"
     ],
     "python.analysis.inlayHints.callArgumentNames": "off",
     "python.analysis.inlayHints.functionReturnTypes": true,
