@@ -220,10 +220,10 @@ Goals:
 - [x] `public_id` mappings added for iteration-1 entities
 - [x] Core foreign-key relationships expressed
 - [x] Global constraints included
-- [ ] Required columns reviewed for all iteration-1 entities
-- [ ] Identity columns reviewed for all iteration-1 entities
-- [ ] Unique sets reviewed for all iteration-1 entities
-- [ ] Draft cross-checked against SEAD source schema and a real Shape Shifter project
+- [x] Required columns reviewed for all iteration-1 entities
+- [x] Identity columns reviewed for all iteration-1 entities
+- [x] Unique sets reviewed for all iteration-1 entities
+- [x] Draft cross-checked against SEAD source schema and a real Shape Shifter project
 
 Deliverables:
 - `target_models/specs/sead_v2.yml`
@@ -235,6 +235,10 @@ Iteration-1 content rules:
 
 Exit criteria:
 - The SEAD spec is internally consistent and usable as the first acceptance test of the format
+
+Cross-check basis:
+- `docs/sead/01_tables.sql`
+- `tests/test_data/projects/arbodat/shapeshifter.yml`
 
 ## Future Phase: Deferred Issues
 
