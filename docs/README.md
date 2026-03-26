@@ -115,6 +115,12 @@ These are the primary system documentation files:
   - The most frequent use case in the UI, is where a user opens, edits, and saves one entity at a time.
   - This proposal introduces optimistic locking at an entity level increasing collaborative work.
 
+- **[proposals/OPT_IN_PRESERVE_SYSTEM_ID_FILE_BACKED.md](proposals/OPT_IN_PRESERVE_SYSTEM_ID_FILE_BACKED.md)**
+  - Introduce an explicit, validated opt-in mechanism to allow file-backed reference entities (e.g., loaded via openpyxl, csv) to preserve externally curated `system_id` values. This will:
+    - Enable stable identity for reference tables curated outside Shape Shifter
+    - Prevent accidental acceptance of user-supplied IDs without review
+    - Maintain strict validation and integrity for all other entity types
+
 ### Done Proposals
 
 - **[proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)**
