@@ -8,7 +8,7 @@
 
 ## Summary
 
-Add optional target-schema-aware validation that reasons about modeling intent and target system requirements, not just YAML structure. The validator would catch semantic mismatches like fact tables using lookup-style IDs or entities missing required relationships. Target models would be defined in reusable specification files and referenced via `@include:`, making Shape Shifter truly generic while providing structure-specific guidance when needed.
+Add optional target-schema-aware validation that reasons about modeling intent and target system requirements, not just YAML structure. The validator would catch semantic mismatches like fact tables using lookup-style IDs or entities missing required relationships. Target models are defined in reusable specification files and referenced via `@include:`, making Shape Shifter generic while still allowing target-specific guidance when needed.
 
 ## Problem
 
@@ -73,78 +73,89 @@ Shape Shifter does not validate:
 
 ## Proposed Design
 
+The target-model format is defined in [TARGET_MODEL_SPECIFICATION_FORMAT.md](TARGET_MODEL_SPECIFICATION_FORMAT.md). Implementation details and code-level sketches are documented in [TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md](TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md). Phased rollout for the first SEAD model is tracked in [target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md](../../target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md).
+
+### Key Concepts
+
+This proposal uses a small set of semantic concepts to describe modeling intent independently of YAML syntax.
+
+**Semantic role**
+
+A semantic role describes what an entity means in the target model, not how it is loaded. A role helps the validator distinguish between structurally valid configurations that serve different purposes.
+
+- `fact`: A primary observational or transactional entity. Facts usually represent records the project is fundamentally about, such as samples, observations, measurements, or events. They typically depend on surrounding lookup or classifier entities and often sit lower in the dependency graph.
+- `lookup`: A reference entity that defines reusable domain values or parent context, such as locations, sites, or categories. Lookup entities are commonly referenced by many facts and usually expose stable identifier columns.
+- `classifier`: A controlled-vocabulary or typology entity used to classify other records. In practice these are often best loaded from `fixed` or `sql` sources because they represent curated value sets rather than row-by-row extracted observations.
+- `bridge`: An association entity that connects two or more entities, especially in many-to-many relationships. A bridge may carry little business meaning of its own, but it is still semantically important because it expresses relationship structure explicitly.
+
+**Modeling intent**
+
+Modeling intent is the meaning implied by an entity's name, role, columns, and relationships taken together. For example, an entity named `relative_dating` implies a fact-like record, while a public ID such as `relative_age_id` implies a lookup-style identity. Target-schema-aware validation checks for these mismatches.
+
+Aggregates should not be treated as separate semantic roles in v1. An aggregate is usually still a `fact`, but at a different grain or with derived meaning. If aggregate semantics become important, they should be modeled as a separate axis such as `derivation: aggregate` or an explicit grain declaration, rather than by expanding the base role set with variants like `aggregate_fact`.
+
+**Required entity**
+
+A required entity is one the target model expects to be present for the project to be considered conformant. This is not a generic Shape Shifter rule; it is target-model-specific knowledge such as SEAD expecting entities like `location`, `site`, or `sample`.
+
+**Required relationship**
+
+A required relationship is a foreign key or dependency that must exist for an entity to make sense in the target model. For example, a fact entity may be structurally valid on its own but still semantically incomplete if it is not linked to the lookup or parent entity required by the target schema.
+
+**Naming convention**
+
+Naming conventions are target-model rules about identifiers and columns, such as expected public ID suffixes or patterns. These conventions matter because they often encode semantic expectations: fact-like entities should not present themselves using lookup-style identifier names unless that is explicitly intended by the target model.
+
 ### Target Model Specification Files
 
 Introduce target model specification files that define target system requirements independently from project data mappings.
 
-**File location:** `data/models/<target_system_name>.yml`
+**File location during iteration:** `target_models/specs/<target_system_name>.yml`
 
 **Structure:**
 ```yaml
-# data/models/sead_v2.yml
+# target_models/specs/sead_v2.yml
 model:
   name: "SEAD Clearinghouse"
   version: "2.0.0"
   description: "SEAD archaeological data model"
-  
-  # Entities that MUST exist in conforming projects
-  required_entities:
-    - location
-    - site
-    - sample
-  
-  # Entity specifications
-  entities:
-    location:
-      role: lookup              # Semantic role
-      required: true            # Must exist in project
-      required_columns:         # Must have these columns
-        - location_id
-        - location_name
-        - location_type_id
-      constraints:
-        - type: unique_keys
-          keys: [location_name]
-    
-    site:
-      role: lookup
-      required: true
-      required_columns:
-        - site_id
-        - site_name
-        - location_id
-      foreign_keys:              # Required relationships
-        - entity: location
-          required: true
-    
-    sample:
-      role: fact
-      required: true
-      required_columns:
-        - sample_id
-        - sample_name
-        - site_id
-      foreign_keys:
-        - entity: site
-          required: true
-    
-    sample_type:
-      role: classifier           # Controlled vocabulary
-      required: true
-      source_options: [fixed, sql]  # Acceptable source types
-      required_columns:
-        - sample_type_id
-        - type_name
-  
-  # Global constraints
-  constraints:
-    - type: no_circular_dependencies
-    - type: all_lookups_before_facts
-    
-  # Naming conventions
-  naming:
-    public_id_suffix: "_id"
-    lookup_id_pattern: "^[a-z_]+_id$"
+
+entities:
+  location:
+    role: lookup
+    required: true
+    public_id: location_id
+    columns:
+      - name: location_name
+        required: true
+        type: string
+        nullable: false
+      - name: location_type_id
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: location_type
+        required: true
+
+  site:
+    role: lookup
+    required: true
+    public_id: site_id
+    columns:
+      - name: site_name
+        required: true
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: location
+        required: true
+
+naming:
+  public_id_suffix: "_id"
+
+constraints:
+  - type: no_circular_dependencies
 ```
 
 ### Project Referencing
@@ -155,7 +166,7 @@ Projects reference target models using existing `@include:` pattern:
 metadata:
   type: shapeshifter-project
   name: "Arbodat Dendrochronology Import"
-  target_model: "@include: models/sead_v2.yml"
+  target_model: "@include: target_models/specs/sead_v2.yml"
   
 entities:
   location:
@@ -172,176 +183,37 @@ metadata:
   target_model:
     model:
       name: "Custom"
-      entities:
-        artifact:
-          role: fact
-          required_columns: [artifact_id, name]
+    entities:
+      artifact:
+        role: fact
+        required: true
+        public_id: artifact_id
+        columns:
+          - name: name
+            required: true
+            type: string
+            nullable: false
 ```
 
 ### Validation Rules
 
 **Phase 1: Basic Conformance**
-- Required entities present
-- Required columns exist
-- Entity roles match (if specified in target model)
+- Required entities present via `required: true` on entity specs
+- Required columns exist via `columns[].required`
 - Required foreign keys exist
+- Basic naming checks such as `public_id_suffix`
 
 **Phase 2: Semantic Checks**
-- Public ID naming conventions
-- Source type appropriateness (classifiers use fixed/sql)
-- Fact-to-lookup relationship patterns
-- Naming mismatches (e.g., entity named `X_dating` but maps to `X_age_id`)
+- Global role-informed checks such as `no_orphan_facts`
+- Public ID expectation checks when the target model declares an explicit `public_id`
+- Low-noise semantic naming mismatches where the entity key and expected identifier clearly diverge
 
 **Phase 3: Branch-Aware** (after Proposals 4–5)
 - Merged parent branch discriminators
 - Branch-scoped consumer validity
 - Schema-aware append conformance
 
-### Data Model
-
-```python
-# backend/app/models/target_model.py
-from pydantic import BaseModel
-from typing import Literal
-
-class ForeignKeySpec(BaseModel):
-    entity: str
-    required: bool = False
-
-class EntitySpec(BaseModel):
-    role: Literal["fact", "lookup", "classifier", "bridge"] | None = None
-    required: bool = False
-    required_columns: list[str] = []
-    foreign_keys: list[ForeignKeySpec] = []
-    source_options: list[str] | None = None  # e.g., ["fixed", "sql"]
-    constraints: list[dict] = []
-
-class NamingConventions(BaseModel):
-    public_id_suffix: str | None = None
-    lookup_id_pattern: str | None = None
-
-class TargetModel(BaseModel):
-    name: str
-    version: str
-    description: str | None = None
-    required_entities: list[str] = []
-    entities: dict[str, EntitySpec] = {}
-    constraints: list[dict] = []
-    naming: NamingConventions | None = None
-```
-
-### Validator Implementation
-
-```python
-# backend/app/validators/target_model_validator.py
-class TargetModelValidator:
-    def __init__(self, target_model: TargetModel):
-        self.target_model = target_model
-    
-    def validate(self, project: ShapeShiftProject) -> list[ValidationError]:
-        errors = []
-        
-        # Check required entities
-        errors.extend(self._check_required_entities(project))
-        
-        # Check entity specs
-        for entity_name, entity_spec in self.target_model.entities.items():
-            if entity_name in project.cfg["entities"]:
-                errors.extend(self._validate_entity(
-                    entity_name, 
-                    project.cfg["entities"][entity_name],
-                    entity_spec
-                ))
-        
-        # Check naming conventions
-        if self.target_model.naming:
-            errors.extend(self._check_naming_conventions(project))
-        
-        return errors
-    
-    def _check_required_entities(self, project: ShapeShiftProject) -> list[ValidationError]:
-        missing = set(self.target_model.required_entities) - set(project.cfg["entities"].keys())
-        return [
-            ValidationError(
-                severity="error",
-                code="MISSING_REQUIRED_ENTITY",
-                message=f"Target model requires entity '{name}'",
-                entity=None,
-                field="entities",
-                suggestion=f"Add entity '{name}' or choose a different target model"
-            )
-            for name in missing
-        ]
-    
-    def _validate_entity(self, name: str, entity_cfg: dict, spec: EntitySpec) -> list[ValidationError]:
-        errors = []
-        
-        # Check required columns
-        configured_columns = entity_cfg.get("columns", [])
-        missing_cols = set(spec.required_columns) - set(configured_columns)
-        for col in missing_cols:
-            errors.append(ValidationError(
-                severity="error",
-                code="MISSING_REQUIRED_COLUMN",
-                message=f"Entity '{name}' missing required column '{col}'",
-                entity=name,
-                field="columns"
-            ))
-        
-        # Check required foreign keys
-        configured_fks = {fk["entity"] for fk in entity_cfg.get("foreign_keys", [])}
-        for fk_spec in spec.foreign_keys:
-            if fk_spec.required and fk_spec.entity not in configured_fks:
-                errors.append(ValidationError(
-                    severity="error",
-                    code="MISSING_REQUIRED_FK",
-                    message=f"Entity '{name}' missing required FK to '{fk_spec.entity}'",
-                    entity=name,
-                    field="foreign_keys"
-                ))
-        
-        # Check source type (for classifiers)
-        if spec.source_options and "type" in entity_cfg:
-            if entity_cfg["type"] not in spec.source_options:
-                errors.append(ValidationError(
-                    severity="warning",
-                    code="INVALID_SOURCE_TYPE",
-                    message=f"Entity '{name}' has type '{entity_cfg['type']}' but target model expects {spec.source_options}",
-                    entity=name,
-                    field="type",
-                    suggestion=f"Consider using one of: {', '.join(spec.source_options)}"
-                ))
-        
-        return errors
-```
-
-### Integration with ValidationService
-
-```python
-# backend/app/services/validation_service.py
-class ValidationService:
-    async def validate_project(
-        self, 
-        project_name: str,
-        use_target_model: bool = True
-    ) -> ValidationResponse:
-        # Load project
-        api_project = self.project_service.load_project(project_name)
-        core_project = ProjectMapper.to_core(api_project)
-        
-        errors = []
-        
-        # Structural validation (existing)
-        errors.extend(self._validate_structure(core_project))
-        
-        # Target model validation (new)
-        if use_target_model and api_project.metadata.target_model:
-            target_model = self._load_target_model(api_project.metadata.target_model)
-            validator = TargetModelValidator(target_model)
-            errors.extend(validator.validate(core_project))
-        
-        return ValidationResponse(errors=errors)
-```
+Some checks discussed earlier, such as source-type appropriateness heuristics and richer naming-pattern validation, are intentionally deferred until the first SEAD draft proves they are necessary. See [target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md](../../target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md).
 
 ## Architecture Decisions
 
@@ -368,10 +240,10 @@ class ValidationService:
 
 ```yaml
 # This (recommended):
-target_model: "@include: models/sead_v2.yml"
+target_model: "@include: target_models/specs/sead_v2.yml"
 
 # Not this:
-target_model: "models/sead_v2.yml"
+target_model: "target_models/specs/sead_v2.yml"
 ```
 
 Reasons:
@@ -386,10 +258,13 @@ Reasons:
 
 **Target Model:**
 ```yaml
-required_entities:
-  - location
-  - site
-  - sample
+entities:
+  location:
+    required: true
+  site:
+    required: true
+  sample:
+    required: true
 ```
 
 **Project (missing `location`):**
@@ -407,40 +282,14 @@ ERROR [MISSING_REQUIRED_ENTITY]: Target model 'SEAD v2.0' requires entity 'locat
   Suggestion: Add entity 'location' or choose a different target model
 ```
 
-### Example 2: Wrong Role for Entity
-
-**Target Model:**
-```yaml
-entities:
-  sample_type:
-    role: classifier
-    source_options: [fixed, sql]
-```
-
-**Project (using wrong source):**
-```yaml
-entities:
-  sample_type:
-    type: entity  # Should be 'fixed' or 'sql'
-    source: sample
-```
-
-**Validation Warning:**
-```
-WARNING [INVALID_SOURCE_TYPE]: Entity 'sample_type' has type 'entity' but target model expects ['fixed', 'sql']
-  Entity: sample_type
-  Field: type
-  Suggestion: Consider using one of: fixed, sql
-```
-
-### Example 3: Semantic Naming Mismatch
+### Example 2: Semantic Naming Mismatch
 
 **Target Model:**
 ```yaml
 entities:
   relative_dating:
     role: fact
-    required_columns: [relative_dating_id]
+    public_id: relative_dating_id
 ```
 
 **Project (wrong column name):**
@@ -529,43 +378,9 @@ entities:
 - Required entity checks work
 - Required column checks work
 - Required FK checks work
-- Semantic naming checks work (Phase 2)
+- Semantic naming checks work for explicit, low-noise mismatches (Phase 2)
 - Projects without target models still validate normally
 - Clear, actionable error messages
-
-## Recommended Delivery Order
-
-### Phase 1: Foundation (Low Risk)
-1. Target model Pydantic schema (`backend/app/models/target_model.py`)
-2. Add `metadata.target_model` field support
-3. Target model file loading with `@include:` resolution
-4. Basic required entity validation
-5. Basic required column validation
-6. Ship with `data/models/sead_v2.yml` example
-
-**Dependency:** None, can ship independently
-
-### Phase 2: Semantic Validation
-1. Entity role validation (fact/lookup/classifier)
-2. Source type appropriateness (classifiers)
-3. Required FK validation
-4. Naming convention checks
-5. Semantic mismatch detection (entity name vs public_id)
-
-**Dependency:** Phase 1 complete, benefits from Proposal 2 (Entity Semantic Roles)
-
-### Phase 3: Branch-Aware (After Proposals 4–5)
-1. Merged parent branch discriminator checks
-2. Branch-scoped consumer validation
-3. Schema-aware append conformance
-
-**Dependency:** Proposals 4 and 5 (branch modeling features)
-
-### Future Enhancements
-- Project template generation from target models
-- Target model diff tool (for version upgrades)
-- Remote target model references (URLs)
-- Community target model registry
 
 ## Open Questions
 
@@ -589,10 +404,10 @@ entities:
 Implement target-schema-aware validation using separate, reusable target model specification files referenced via `@include:`.
 
 **Start with Phase 1:**
-- Define target model schema (entity specs, required entities, constraints)
+- Define target model schema around top-level `model`, `entities`, `naming`, and `constraints`
 - Add `metadata.target_model` field
-- Implement basic validation (required entities, columns)
-- Ship with `data/models/sead_v2.yml` as reference
+- Implement basic validation (required entities, columns, and foreign keys)
+- Ship with `target_models/specs/sead_v2.yml` as reference
 
 **Benefits:**
 - Makes Shape Shifter truly generic (no hardcoded SEAD assumptions)
