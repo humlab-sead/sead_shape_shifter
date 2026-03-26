@@ -281,7 +281,8 @@ Included for every question:
 2. active tab or selected entity if available,
 3. summary of validation state,
 4. dependency summary,
-5. concise project metadata.
+5. concise project metadata,
+6. structural schema metadata from the generated project and entity JSON schemas.
 
 ### Entity Context
 
@@ -328,7 +329,14 @@ Use active docs and live project state, especially:
 3. architecture and developer guides,
 4. validation results,
 5. dependency graph,
-6. preview results.
+6. preview results,
+7. generated `projectSchema.json` and `entitySchema.json` as structural references for fields, enums, and nested shapes.
+
+The generated JSON schemas are useful because they give the advisor a compact, machine-friendly view of the allowed project structure.
+
+They should be used for structural grounding and schema-guided output, not as the final authority.
+
+The backend Pydantic models and validation services remain the source of truth for acceptance.
 
 ### SEAD And SIMS Sources
 
@@ -451,7 +459,7 @@ Complexity: medium-high
 
 Includes:
 
-1. schema-guided output,
+1. schema-guided output using the existing generated JSON schemas as a starting point,
 2. YAML patch proposals,
 3. richer citations,
 4. proposal preview UX,
