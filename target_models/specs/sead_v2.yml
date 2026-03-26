@@ -11,7 +11,7 @@ entities:
     domains: [core, spatial]
     target_table: tbl_locations
     public_id: location_id
-    identity_columns: [location_name]
+    identity_columns: [location_type_id, location_name]
     columns:
       - name: location_name
         required: true
@@ -21,8 +21,14 @@ entities:
         required: true
         type: integer
         nullable: false
+      - name: default_lat_dd
+        type: decimal
+        nullable: true
+      - name: default_long_dd
+        type: decimal
+        nullable: true
     unique_sets:
-      - [location_name]
+      - [location_type_id, location_name]
     foreign_keys:
       - entity: location_type
         required: true
@@ -40,6 +46,9 @@ entities:
         required: true
         type: string
         nullable: false
+      - name: description
+        type: string
+        nullable: true
     unique_sets:
       - [location_type]
 
@@ -56,6 +65,21 @@ entities:
         required: true
         type: string
         nullable: false
+      - name: national_site_identifier
+        type: string
+        nullable: true
+      - name: site_description
+        type: string
+        nullable: true
+      - name: latitude_dd
+        type: decimal
+        nullable: true
+      - name: longitude_dd
+        type: decimal
+        nullable: true
+      - name: altitude
+        type: decimal
+        nullable: true
     foreign_keys:
       - entity: location
         required: true
@@ -67,8 +91,31 @@ entities:
     domains: [core]
     target_table: tbl_sample_groups
     public_id: sample_group_id
+    identity_columns: [site_id, sample_group_name]
+    columns:
+      - name: site_id
+        required: true
+        type: integer
+        nullable: false
+      - name: method_id
+        required: true
+        type: integer
+        nullable: false
+      - name: sample_group_name
+        type: string
+        nullable: true
+      - name: sample_group_description
+        type: string
+        nullable: true
+      - name: sampling_context_id
+        type: integer
+        nullable: true
+    unique_sets:
+      - [site_id, sample_group_name]
     foreign_keys:
       - entity: site
+        required: true
+      - entity: method
         required: true
 
   sample:
@@ -78,6 +125,28 @@ entities:
     domains: [core]
     target_table: tbl_physical_samples
     public_id: physical_sample_id
+    identity_columns: [sample_group_id, sample_name]
+    columns:
+      - name: sample_group_id
+        required: true
+        type: integer
+        nullable: false
+      - name: sample_type_id
+        required: true
+        type: integer
+        nullable: false
+      - name: sample_name
+        required: true
+        type: string
+        nullable: false
+      - name: alt_ref_type_id
+        type: integer
+        nullable: true
+      - name: date_sampled
+        type: string
+        nullable: true
+    unique_sets:
+      - [sample_group_id, sample_name]
     foreign_keys:
       - entity: sample_group
         required: true
@@ -97,6 +166,9 @@ entities:
         required: true
         type: string
         nullable: false
+      - name: description
+        type: string
+        nullable: true
     unique_sets:
       - [type_name]
 
@@ -107,6 +179,28 @@ entities:
     domains: [core]
     target_table: tbl_methods
     public_id: method_id
+    identity_columns: [method_name]
+    columns:
+      - name: method_name
+        required: true
+        type: string
+        nullable: false
+      - name: description
+        required: true
+        type: string
+        nullable: false
+      - name: method_group_id
+        required: true
+        type: integer
+        nullable: false
+      - name: method_abbrev_or_alt_name
+        type: string
+        nullable: true
+      - name: biblio_id
+        type: integer
+        nullable: true
+    unique_sets:
+      - [method_name]
 
   dataset:
     role: lookup
@@ -115,6 +209,28 @@ entities:
     domains: [core]
     target_table: tbl_datasets
     public_id: dataset_id
+    identity_columns: [dataset_name]
+    columns:
+      - name: dataset_name
+        required: true
+        type: string
+        nullable: false
+      - name: data_type_id
+        required: true
+        type: integer
+        nullable: false
+      - name: method_id
+        required: true
+        type: integer
+        nullable: false
+      - name: master_set_id
+        type: integer
+        nullable: true
+      - name: project_id
+        type: integer
+        nullable: true
+    unique_sets:
+      - [dataset_name]
     foreign_keys:
       - entity: method
         required: true
@@ -126,6 +242,15 @@ entities:
     domains: [core]
     target_table: tbl_analysis_entities
     public_id: analysis_entity_id
+    columns:
+      - name: physical_sample_id
+        required: true
+        type: integer
+        nullable: false
+      - name: dataset_id
+        required: true
+        type: integer
+        nullable: false
     foreign_keys:
       - entity: sample
         required: true
