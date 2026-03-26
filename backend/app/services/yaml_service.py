@@ -262,7 +262,7 @@ class YamlService:
 
         return data
 
-    def _apply_flow_style(self, obj: Any, max_items: int) -> None:
+    def _apply_flow_style(self, obj: Any, max_items: int, *, in_append_item: bool = False) -> None:
         """
         Recursively mark short lists to use flow style for compact formatting.
 
@@ -271,10 +271,11 @@ class YamlService:
         - item2
 
         Special handling:
-        - 'values' key: Always formatted as list of rows where each row is a
-          flow-style list on its own line, regardless of max_items.
-        - 'foreign_keys' and 'filters' keys: Always use block style for readability
-          since they contain complex nested structures.
+                - 'values' key: Always formatted as list of rows where each row is a
+                    flow-style list on its own line, regardless of max_items.
+                - 'foreign_keys', 'filters', and 'append' keys: Always use block style for readability
+                    since they contain complex nested structures.
+                - 'append[*].columns': Always use flow style so appended payload columns stay compact.
 
         Args:
             obj: Object to process (dict, list, or other)
@@ -324,9 +325,13 @@ class YamlService:
                 elif key in ("foreign_keys", "filters"):
                     # Always use block style for better readability
                     if isinstance(value, (dict, list)):
-                        self._apply_flow_style(value, max_items)
+                        self._apply_flow_style(value, max_items, in_append_item=in_append_item)
+                elif key == "append":
+                    # Keep append entries in block style, but still compact nested payload columns.
+                    if isinstance(value, (dict, list)):
+                        self._apply_flow_style(value, max_items, in_append_item=True)
                 # Regular handling for other keys
-                elif isinstance(value, list) and 0 < len(value) <= max_items:
+                elif isinstance(value, list) and (0 < len(value) <= max_items or (in_append_item and key == "columns")):
                     # Convert to CommentedSeq and mark for flow style
                     if not isinstance(value, CommentedSeq):
                         flow_seq = CommentedSeq(value)
@@ -335,11 +340,11 @@ class YamlService:
                         flow_seq = value
                     flow_seq.fa.set_flow_style()
                 elif isinstance(value, (dict, list)):
-                    self._apply_flow_style(value, max_items)
+                    self._apply_flow_style(value, max_items, in_append_item=in_append_item)
         elif isinstance(obj, list):
             for item in obj:
                 if isinstance(item, (dict, list)):
-                    self._apply_flow_style(item, max_items)
+                    self._apply_flow_style(item, max_items, in_append_item=in_append_item)
 
     def create_backup(self, file_path: str | Path) -> Path:
         """
