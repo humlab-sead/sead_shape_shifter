@@ -1,0 +1,140 @@
+model:
+  name: SEAD Clearinghouse
+  version: 2.0.0
+  description: SEAD archaeological research data model
+
+entities:
+  location:
+    role: lookup
+    required: true
+    description: Geographic location referenced by sites and other context entities.
+    domains: [core, spatial]
+    target_table: tbl_locations
+    public_id: location_id
+    identity_columns: [location_name]
+    columns:
+      - name: location_name
+        required: true
+        type: string
+        nullable: false
+      - name: location_type_id
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [location_name]
+    foreign_keys:
+      - entity: location_type
+        required: true
+
+  location_type:
+    role: classifier
+    required: true
+    description: Controlled vocabulary for location classification.
+    domains: [core, spatial]
+    target_table: tbl_location_types
+    public_id: location_type_id
+    identity_columns: [location_type]
+    columns:
+      - name: location_type
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [location_type]
+
+  site:
+    role: lookup
+    required: true
+    description: Archaeological site anchored to a location.
+    domains: [core, spatial]
+    target_table: tbl_sites
+    public_id: site_id
+    identity_columns: [site_name]
+    columns:
+      - name: site_name
+        required: true
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: location
+        required: true
+
+  sample_group:
+    role: lookup
+    required: true
+    description: Collection or contextual grouping that sits between site and physical samples.
+    domains: [core]
+    target_table: tbl_sample_groups
+    public_id: sample_group_id
+    foreign_keys:
+      - entity: site
+        required: true
+
+  sample:
+    role: fact
+    required: true
+    description: Core analytical specimen represented in SEAD as a physical sample.
+    domains: [core]
+    target_table: tbl_physical_samples
+    public_id: physical_sample_id
+    foreign_keys:
+      - entity: sample_group
+        required: true
+      - entity: sample_type
+        required: true
+
+  sample_type:
+    role: classifier
+    required: true
+    description: Controlled vocabulary for sample classification.
+    domains: [core]
+    target_table: tbl_sample_types
+    public_id: sample_type_id
+    identity_columns: [type_name]
+    columns:
+      - name: type_name
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [type_name]
+
+  method:
+    role: classifier
+    required: true
+    description: Analytical or collection method referenced by datasets.
+    domains: [core]
+    target_table: tbl_methods
+    public_id: method_id
+
+  dataset:
+    role: lookup
+    required: true
+    description: Dataset context for imported analytical observations.
+    domains: [core]
+    target_table: tbl_datasets
+    public_id: dataset_id
+    foreign_keys:
+      - entity: method
+        required: true
+
+  analysis_entity:
+    role: bridge
+    required: true
+    description: Analytical observation context connecting sample and dataset.
+    domains: [core]
+    target_table: tbl_analysis_entities
+    public_id: analysis_entity_id
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: dataset
+        required: true
+
+naming:
+  public_id_suffix: _id
+
+constraints:
+  - type: no_orphan_facts
+  - type: no_circular_dependencies
