@@ -203,12 +203,7 @@ entities:
     type: sql
     source:
     public_id: analysis_entity_id
-    keys:
-    - Projekt
-    - Befu
-    - ProbNr
-    - analysis_entity_type
-    - analysis_entity_value
+    keys: [Projekt, Befu, ProbNr, analysis_entity_type, analysis_entity_value]
     columns:
     - PCODE
     - Fraktion
@@ -218,29 +213,18 @@ entities:
     - ArchDat
     depends_on: []
     drop_duplicates: true
-    data_source: arbodat_data
     extra_columns:
       analysis_entity_type: relative_dating
       analysis_entity_value: "{ArchDat}"
+    data_source: arbodat_data
     query: "select [Projekt], [Befu], [ProbNr], null as [PCODE], null as [Fraktion], null as [cf], null as [RTyp], null as [Zust], [ArchDat]\nfrom [Proben]\nwhere [ArchDat] is not null and [ArchDat] <> '';"
   analysis_entity:
     type: fixed
     source:
     public_id: analysis_entity_id
-    keys:
-    - Projekt
-    - Befu
-    - ProbNr
-    - analysis_entity_type
-    - analysis_entity_value
-    columns:
-    - PCODE
-    - Fraktion
-    - cf
-    - RTyp
-    - Zust
-    - ArchDat
-    values: []  # Empty - union entity aggregating both branches
+    keys: [Projekt, Befu, ProbNr, analysis_entity_type, analysis_entity_value]
+    columns: [PCODE, Fraktion, cf, RTyp, Zust]
+    values: []
     foreign_keys:
     - entity: sample
       local_keys: [Projekt, Befu, ProbNr]
@@ -774,15 +758,6 @@ entities:
       constraints:
         allow_null_keys: true
     depends_on: []
-    arbodat_codes:
-    - ORG2,0
-    - ORG1,0
-    - ORG0,5
-    - ORG0,25
-    - MIN2,0
-    - MIN1,0
-    - MIN0,5
-    - MIN0,25
   method_group:
     type: sql
     public_id: method_group_id
