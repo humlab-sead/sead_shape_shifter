@@ -929,7 +929,8 @@ cache 1;
 
 
 alter sequence public.tbl_sample_description_sample_sample_description_sample_gro_seq owner to sead_master;
-alter sequence public.tbl_sample_description_sample_sample_description_sample_gro_seq owned by public.tbl_sample_description_sample_group_contexts.sample_description_sample_group_context_id;
+alter sequence public.tbl_sample_description_sample_sample_description_sample_gro_seq
+owned by public.tbl_sample_description_sample_group_contexts.sample_description_sample_group_context_id;
 
 create sequence public.tbl_sample_description_types_sample_description_type_id_seq
 as integer
@@ -1001,7 +1002,8 @@ cache 1;
 
 
 alter sequence public.tbl_sample_group_description__sample_group_description_type_seq owner to sead_master;
-alter sequence public.tbl_sample_group_description__sample_group_description_type_seq owned by public.tbl_sample_group_description_type_sampling_contexts.sample_group_description_type_sampling_context_id;
+alter sequence public.tbl_sample_group_description__sample_group_description_type_seq
+owned by public.tbl_sample_group_description_type_sampling_contexts.sample_group_description_type_sampling_context_id;
 
 create sequence public.tbl_sample_group_descriptions_sample_group_description_id_seq
 as integer
@@ -1085,7 +1087,8 @@ cache 1;
 
 
 alter sequence public.tbl_sample_horizons_sample_horizon_id_seq owner to sead_master;
-alter sequence public.tbl_sample_horizons_sample_horizon_id_seq owned by public.tbl_sample_horizons.sample_horizon_id;
+alter sequence public.tbl_sample_horizons_sample_horizon_id_seq
+owned by public.tbl_sample_horizons.sample_horizon_id;
 
 create sequence public.tbl_sample_images_sample_image_id_seq
 as integer
@@ -1097,7 +1100,8 @@ cache 1;
 
 
 alter sequence public.tbl_sample_location_type_samp_sample_location_type_sampling_seq owner to sead_master;
-alter sequence public.tbl_sample_location_type_samp_sample_location_type_sampling_seq owned by public.tbl_sample_location_type_sampling_contexts.sample_location_type_sampling_context_id;
+alter sequence public.tbl_sample_location_type_samp_sample_location_type_sampling_seq
+owned by public.tbl_sample_location_type_sampling_contexts.sample_location_type_sampling_context_id;
 
 create sequence public.tbl_sample_location_types_sample_location_type_id_seq
 as integer

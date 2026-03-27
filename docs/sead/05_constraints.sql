@@ -1240,7 +1240,6 @@ alter table only public.tbl_site_locations
 add constraint fk_locations_site_id foreign key (site_id) references public.tbl_sites (site_id);
 
 
-
 alter table only public.tbl_measured_value_dimensions
 add constraint fk_measured_value_dimensions_dimension_id foreign key (dimension_id) references public.tbl_dimensions (
     dimension_id
@@ -1479,7 +1478,6 @@ add constraint fk_sample_group_dimensions_sample_group_id foreign key (
 ) references public.tbl_sample_groups (sample_group_id) on update cascade;
 
 
-
 alter table only public.tbl_sample_group_coordinates
 add constraint fk_sample_group_positions_coordinate_method_dimension_id foreign key (
     coordinate_method_dimension_id
@@ -1542,7 +1540,6 @@ alter table only public.tbl_sample_horizons
 add constraint fk_sample_horizons_physical_sample_id foreign key (
     physical_sample_id
 ) references public.tbl_physical_samples (physical_sample_id) on update cascade;
-
 
 
 alter table only public.tbl_sample_location_type_sampling_contexts
