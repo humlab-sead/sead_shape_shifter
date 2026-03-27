@@ -14,4 +14,10 @@ def test_sead_v2_spec_loads_and_validates() -> None:
 
     assert target_model.model.name == "SEAD Clearinghouse"
     assert "sample_group" in target_model.entities
+    assert {"abundance", "abundance_element", "abundance_element_group", "abundance_modification", "abundance_property"}.issubset(
+        target_model.entities
+    )
+    assert {"taxa_tree_master", "taxa_common_names"}.issubset(target_model.entities)
+    assert {"relative_ages", "relative_dating", "geochronology", "dating_lab"}.issubset(target_model.entities)
+    assert {"method_group", "contact", "contact_type"}.issubset(target_model.entities)
     assert issues == []

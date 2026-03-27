@@ -201,6 +201,9 @@ entities:
         nullable: true
     unique_sets:
       - [method_name]
+    foreign_keys:
+      - entity: method_group
+        required: false
 
   dataset:
     role: lookup
@@ -256,6 +259,370 @@ entities:
         required: true
       - entity: dataset
         required: true
+
+  abundance:
+    role: fact
+    required: false
+    description: Biological abundance observation linked to an analysis entity and typically to a taxon.
+    domains: [abundance, taxonomy]
+    target_table: tbl_abundances
+    public_id: abundance_id
+    identity_columns: [analysis_entity_id, taxon_id]
+    columns:
+      analysis_entity_id:
+        required: true
+        type: integer
+        nullable: false
+      taxon_id:
+        type: integer
+        nullable: false
+      abundance_element_id:
+        type: integer
+        nullable: true
+      abundance:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: analysis_entity
+        required: true
+      - entity: abundance_element
+        required: false
+      - entity: taxa_tree_master
+        required: true
+
+  abundance_element:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for the element or remain type attached to an abundance observation.
+    domains: [abundance]
+    target_table: tbl_abundance_elements
+    public_id: abundance_element_id
+    identity_columns: [element_name]
+    columns:
+      element_name:
+        required: true
+        type: string
+        nullable: false
+      record_type_id:
+        type: integer
+        nullable: true
+      element_description:
+        type: string
+        nullable: true
+
+  abundance_element_group:
+    role: classifier
+    required: false
+    description: Common project-side grouping vocabulary for abundance elements used during SEAD abundance preparation.
+    domains: [abundance]
+    public_id: abundance_element_group_id
+    identity_columns: [abundance_element_group_name]
+    columns:
+      abundance_element_group_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+
+  abundance_modification:
+    role: bridge
+    required: false
+    description: Join entity linking an abundance record to one or more modification types.
+    domains: [abundance]
+    target_table: tbl_abundance_modifications
+    public_id: abundance_modification_id
+    identity_columns: [abundance_id, modification_type_id]
+    columns:
+      abundance_id:
+        required: true
+        type: integer
+        nullable: false
+      modification_type_id:
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: abundance
+        required: false
+
+  abundance_property:
+    role: fact
+    required: false
+    description: Property/value observation attached to an abundance record.
+    domains: [abundance]
+    target_table: tbl_abundance_properties
+    public_id: abundance_property_id
+    identity_columns: [abundance_id, property_type_id, property_value]
+    columns:
+      abundance_id:
+        required: true
+        type: integer
+        nullable: false
+      property_type_id:
+        type: integer
+        nullable: false
+      property_value:
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: abundance
+        required: false
+
+  taxa_tree_master:
+    role: classifier
+    required: false
+    description: Canonical SEAD taxonomy entity referenced by abundance and other taxon-linked observations.
+    domains: [taxonomy]
+    target_table: tbl_taxa_tree_master
+    public_id: taxon_id
+    identity_columns: [genus_id, species]
+    columns:
+      genus_id:
+        required: true
+        type: integer
+        nullable: true
+      species:
+        required: true
+        type: string
+        nullable: true
+      author_id:
+        type: integer
+        nullable: true
+
+  taxa_common_names:
+    role: lookup
+    required: false
+    description: Human-readable taxon names associated with SEAD taxonomy records.
+    domains: [taxonomy]
+    target_table: tbl_taxa_common_names
+    public_id: taxon_common_name_id
+    identity_columns: [taxon_id, common_name]
+    columns:
+      taxon_id:
+        required: true
+        type: integer
+        nullable: true
+      common_name:
+        required: true
+        type: string
+        nullable: true
+      language_id:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: taxa_tree_master
+        required: true
+
+  relative_ages:
+    role: lookup
+    required: false
+    description: Controlled relative-age vocabulary used by archaeological dating records.
+    domains: [dating]
+    target_table: tbl_relative_ages
+    public_id: relative_age_id
+    identity_columns: [relative_age_name]
+    columns:
+      relative_age_name:
+        required: true
+        type: string
+        nullable: true
+      relative_age_type_id:
+        type: integer
+        nullable: true
+      description:
+        type: string
+        nullable: true
+      c14_age_older:
+        type: decimal
+        nullable: true
+      c14_age_younger:
+        type: decimal
+        nullable: true
+      cal_age_older:
+        type: decimal
+        nullable: true
+      cal_age_younger:
+        type: decimal
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+      location_id:
+        type: integer
+        nullable: true
+      abbreviation:
+        type: string
+        nullable: true
+
+  relative_dating:
+    role: fact
+    required: false
+    description: Relative dating observation linked to an analysis entity and optionally to a relative age vocabulary entry.
+    domains: [dating]
+    target_table: tbl_relative_dates
+    public_id: relative_date_id
+    identity_columns: [analysis_entity_id, relative_age_id]
+    columns:
+      analysis_entity_id:
+        required: true
+        type: integer
+        nullable: false
+      relative_age_id:
+        type: integer
+        nullable: true
+      method_id:
+        type: integer
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+      dating_uncertainty_id:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: analysis_entity
+        required: true
+      - entity: relative_ages
+        required: false
+
+  geochronology:
+    role: fact
+    required: false
+    description: Absolute dating observation linked to an analysis entity and optionally to a dating laboratory.
+    domains: [dating]
+    target_table: tbl_geochronology
+    public_id: geochron_id
+    identity_columns: [analysis_entity_id, lab_number]
+    columns:
+      analysis_entity_id:
+        required: true
+        type: integer
+        nullable: false
+      dating_lab_id:
+        type: integer
+        nullable: true
+      lab_number:
+        type: string
+        nullable: true
+      age:
+        type: decimal
+        nullable: true
+      error_older:
+        type: decimal
+        nullable: true
+      error_younger:
+        type: decimal
+        nullable: true
+      delta_13c:
+        type: decimal
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+      dating_uncertainty_id:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: analysis_entity
+        required: true
+      - entity: dating_lab
+        required: false
+
+  dating_lab:
+    role: lookup
+    required: false
+    description: Laboratory metadata for dated samples and geochronology results.
+    domains: [dating]
+    target_table: tbl_dating_labs
+    public_id: dating_lab_id
+    identity_columns: [international_lab_id]
+    columns:
+      international_lab_id:
+        required: true
+        type: string
+        nullable: false
+      lab_name:
+        type: string
+        nullable: true
+      contact_id:
+        type: integer
+        nullable: true
+      country_id:
+        type: integer
+        nullable: true
+
+  method_group:
+    role: classifier
+    required: false
+    description: Controlled grouping for analytical and collection methods.
+    domains: [core, contacts]
+    target_table: tbl_method_groups
+    public_id: method_group_id
+    identity_columns: [group_name]
+    columns:
+      group_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [group_name]
+
+  contact:
+    role: lookup
+    required: false
+    description: Person or organization contact metadata used by datasets, projects, and dating laboratories.
+    domains: [contacts]
+    target_table: tbl_contacts
+    public_id: contact_id
+    columns:
+      first_name:
+        type: string
+        nullable: true
+      last_name:
+        type: string
+        nullable: true
+      email:
+        type: string
+        nullable: true
+      phone_number:
+        type: string
+        nullable: true
+      address_1:
+        type: string
+        nullable: true
+      address_2:
+        type: string
+        nullable: true
+      location_id:
+        type: integer
+        nullable: true
+      url:
+        type: string
+        nullable: true
+
+  contact_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary describing a contact's role in a dataset or project context.
+    domains: [contacts]
+    target_table: tbl_contact_types
+    public_id: contact_type_id
+    identity_columns: [contact_type_name]
+    columns:
+      contact_type_name:
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [contact_type_name]
 
 naming:
   public_id_suffix: _id

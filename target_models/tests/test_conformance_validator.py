@@ -135,9 +135,9 @@ def test_conformance_validator_reports_known_gaps_for_full_arbodat_project() -> 
         ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
         ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
         ("MISSING_REQUIRED_COLUMN", "sample_type"),
-        ("MISSING_REQUIRED_COLUMN", "method"),
         ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
         ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
     ])
 
 
@@ -166,5 +166,5 @@ def test_conformance_validator_current_corpus_issue_families_are_stable() -> Non
                 "UNEXPECTED_PUBLIC_ID": 1,
             }
         ),
-        "arbodat_full": Counter({"MISSING_REQUIRED_FOREIGN_KEY_TARGET": 4, "MISSING_REQUIRED_COLUMN": 3}),
+        "arbodat_full": Counter({"MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5, "MISSING_REQUIRED_COLUMN": 2}),
     }

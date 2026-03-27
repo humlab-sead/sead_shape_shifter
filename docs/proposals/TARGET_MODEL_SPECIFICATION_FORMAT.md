@@ -34,7 +34,7 @@ This means:
 This proposal covers two deliverables developed in parallel:
 
 1. **The format** — A YAML schema defining how to express target model requirements: entities, roles, columns, relationships, naming rules, and constraints.
-2. **SEAD v2 specification** — A concrete file (`data/models/sead_v2.yml`) that describes the SEAD archaeological database using this format, covering the entities and patterns most commonly used in Shape Shifter projects.
+2. **SEAD v2 specification** — A concrete file (`sead_v2.yml`) that describes the SEAD archaeological database using this format, covering the entities and patterns most commonly used in Shape Shifter projects. Until Shape Shifter integration is completed, the working version lives at `target_models/specs/sead_v2.yml`.
 
 ## Non-Goals
 
@@ -57,7 +57,7 @@ This proposal covers two deliverables developed in parallel:
 ### Top-Level Structure
 
 ```yaml
-# data/models/sead_v2.yml
+# target_models/specs/sead_v2.yml
 model:
   name: "SEAD Clearinghouse"
   version: "2.0.0"
@@ -118,11 +118,13 @@ entities:
     identity_columns:                     # Canonical columns that identify this entity
       - location_name
     columns:                              # Columns expected in a conforming dataset
-      - name: location_name
+      location_name:
         required: true
+        type: string
         nullable: false
-      - name: location_type_id
+      location_type_id:
         required: true
+        type: integer
         nullable: false
     unique_sets:                          # Candidate unique sets / alternative keys
       - [location_name]
@@ -142,28 +144,32 @@ entities:
 | `target_table`         | `string`                                 | `null`  | Corresponding table in target database           |
 | `public_id`            | `string`                                 | `null`  | Expected `public_id` column name                 |
 | `identity_columns`     | `list[string]`                           | `[]`    | Canonical columns used to identify this entity   |
-| `columns`              | `list[string] \| list[ColumnSpec]`       | `[]`    | Expected columns, optionally with metadata       |
+| `columns`              | `dict[string, ColumnSpec]`               | `{}`    | Expected columns keyed by column name            |
 | `unique_sets`          | `list[list[string]]`                     | `[]`    | Candidate unique sets / alternative keys         |
 | `foreign_keys`         | `list[ForeignKeySpec]`                   | `[]`    | Required FK relationships                        |
 
 #### Column Specification
 
-For simple cases, `columns` can be a plain list of names:
-
-```yaml
-columns: [location_name, location_type_id]
-```
-
-When richer metadata is useful for validation, templates, or documentation, use typed column specs:
+`columns` is a mapping keyed by column name. This makes the spec easier to scan and keeps the identifier in the same position where `entities` already put it.
 
 ```yaml
 columns:
-  - name: location_name
+  location_name: {}
+  location_type_id: {}
+```
+
+When richer metadata is useful for validation, templates, or documentation, attach metadata under each column name:
+
+```yaml
+columns:
+  location_name:
     required: true
+    type: string
     nullable: false
     description: Human-readable location label
-  - name: location_type_id
+  location_type_id:
     required: true
+    type: integer
     nullable: false
 ```
 
@@ -171,12 +177,40 @@ Supported `ColumnSpec` fields in v1:
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `name` | `string` | required | Column name |
 | `required` | `bool` | `false` | Must the column exist? |
+| `type` | `string \| null` | `null` | Logical target type for validation and docs |
 | `nullable` | `bool \| null` | `null` | If set, whether null values are acceptable |
 | `description` | `string \| null` | `null` | Human-readable explanation |
 
-In v1, this is intentionally minimal. The format needs to distinguish between the full expected column set and the subset that is strictly required, and it should be able to express target-level nullability where it matters. It still does not attempt to encode database types or storage details.
+Column order is not part of the format contract. YAML parsers commonly preserve mapping insertion order, so authors can still list columns in a preferred reading order, but validators and other consumers should treat `columns` as an unordered mapping.
+
+In v1, this is intentionally minimal. The format needs to distinguish between the full expected column set and the subset that is strictly required, and it should be able to express target-level nullability where it matters.
+
+It should also be able to express logical type constraints where they are important to conforming data. This is not meant to mirror PostgreSQL storage types exactly. The goal is to capture the target-level expectation that a column behaves like an `integer`, `string`, `boolean`, `date`, `datetime`, `decimal`, or `enum`, so validators, template generators, and documentation can reason about it consistently.
+
+The type vocabulary should stay system-agnostic and relatively small in v1. If SEAD uses `integer` and PostgreSQL stores it as `int4`, the target-model spec should say `integer`. If a target system distinguishes more specialized categories later, those can be added deliberately rather than leaking DBMS-specific types into the format.
+
+Examples:
+
+```yaml
+columns:
+  dataset_id:
+    required: true
+    type: integer
+    nullable: false
+  dataset_name:
+    required: true
+    type: string
+    nullable: false
+  dating_uncertainty:
+    type: decimal
+    nullable: true
+  method_group:
+    type: enum
+    nullable: false
+```
+
+For `enum`-like values, v1 can either rely on `domains` plus narrative documentation, or later grow a small `allowed_values` feature if a real validator or generator needs it. That should be a separate extension, not assumed by default.
 
 #### Domain Tags
 
@@ -265,7 +299,7 @@ Additional constraint types (e.g., `all_lookups_before_facts`, `required_lookup_
 
 ### What the Format Does NOT Express
 
-- **Column types or sizes.** The format says "column X must exist," not "column X must be varchar(100)." Column typing is the target database's job.
+- **Database-native storage types or sizes.** The format may say a column is `integer` or `date`, but not that it must be `varchar(100)`, `int4`, or another DBMS-specific physical type.
 - **Database defaults and generated values.** Defaults such as sequences, timestamps, or server-side fallback values are usually persistence mechanics, not target-model semantics. If needed later, treat them as advisory metadata rather than normative validation rules.
 - **Join strategies.** The format says "entity X must FK to entity Y," not which columns to join on. Join column choice depends on the data source.
 - **Source mechanics.** The format does not say whether an entity should be loaded from `sql`, `fixed`, or file-backed inputs. That is project authoring strategy, not target-model semantics.
@@ -294,14 +328,19 @@ The format and the SEAD specification should be iterated together:
 ### Delivery milestones
 
 **Milestone 1: Core shape**
-- Format supports: entities, roles, required flag, columns, nullability, identity_columns, unique_sets, domains, foreign_keys, naming, basic constraints
+- Format supports: entities, roles, required flag, columns, logical types, nullability, identity_columns, unique_sets, domains, foreign_keys, naming, basic constraints
 - SEAD spec covers: location, site, sample, dataset, analysis_entity, physical_sample (~6 core entities)
 - The format is concrete enough to support parser and validator implementation without schema changes
 
 **Milestone 2: Expanded coverage**
 - Format refined based on M1 feedback
-- SEAD spec covers: abundance chain, dating entities, method/contact entities (~20 entities)
-- Template generation proof-of-concept (generate project skeleton from spec, optionally filtered by domain/profile)
+- SEAD spec covers a concrete Milestone 2 package of abundance, dating, method/contact, and taxonomy entities
+- Milestone 2 is considered complete when the working SEAD spec reaches 20-24 total entities
+- Preferred planning target: 23 total entities, corresponding to the current 9 core entities plus the 14 currently named Milestone 2 additions
+- Template-generation proof of concept is implemented as a standalone generator that produces a non-runnable `shapeshifter.yml` starter scaffold from the target model, optionally filtered by domain/profile, including entity stubs, `public_id`, required target-facing columns, and required FK dependency closure without guessing loaders, SQL queries, or project-specific joins
+
+Milestone 2 should be completed as far as practical before backend-service integration becomes the primary focus.
+That means expanding the working `target_models/specs/sead_v2.yml`, tightening the documentation around the expanded scope, and documenting the expected template-generation outcome before shifting effort toward backend wiring.
 
 **Milestone 3: Stability**
 - Format considered stable for v1
@@ -326,11 +365,13 @@ entities:
     public_id: location_id
     identity_columns: [location_name]
     columns:
-      - name: location_name
+      location_name:
         required: true
+        type: string
         nullable: false
-      - name: location_type_id
+      location_type_id:
         required: true
+        type: integer
         nullable: false
     unique_sets:
       - [location_name]
@@ -346,8 +387,9 @@ entities:
     public_id: location_type_id
     identity_columns: [location_type]
     columns:
-      - name: location_type
+      location_type:
         required: true
+        type: string
         nullable: false
     unique_sets:
       - [location_type]
@@ -360,8 +402,9 @@ entities:
     public_id: site_id
     identity_columns: [site_name]
     columns:
-      - name: site_name
+      site_name:
         required: true
+        type: string
         nullable: false
     foreign_keys:
       - entity: location
@@ -386,8 +429,9 @@ entities:
     public_id: sample_type_id
     identity_columns: [type_name]
     columns:
-      - name: type_name
+      type_name:
         required: true
+        type: string
         nullable: false
     unique_sets:
       - [type_name]
@@ -419,12 +463,16 @@ entities:
 
 These vary by data type (botanical, dating, ceramics, etc.):
 
+The current Milestone 2 backlog is intentionally concrete rather than open-ended. The abundance, taxonomy, dating, and method/contact packages have now been drafted in the working SEAD spec, which now stands at 23 entities.
+
+For Milestone 2, template generation should be understood narrowly: it is not a promise to auto-generate runnable project files. The implemented proof of concept is a deterministic starter scaffold generated from the target model, optionally filtered by domain/profile, that includes entity stubs, `public_id`, required target-facing columns, and required FK dependency closure while leaving source-specific extraction details to a human author.
+
 The same specification file can tag these with `domains` such as `dating`, `abundance`, `taxonomy`, `contacts`, or `spatial` so consumers can work with focused subsets without splitting the model into many separate files too early.
 
-- **Abundance chain:** `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `abundance_property`
-- **Dating:** `relative_ages`, `relative_dating`, `geochronology`, `dating_lab`
-- **Methods and contacts:** `method`, `method_group`, `contact`, `contact_type`
-- **Taxonomy:** `taxa_tree_master`, `taxa_common_names`
+- **Abundance chain:** `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `abundance_property` (drafted)
+- **Dating:** `relative_ages`, `relative_dating`, `geochronology`, `dating_lab` (drafted)
+- **Methods and contacts:** `method`, `method_group`, `contact`, `contact_type` (drafted)
+- **Taxonomy:** `taxa_tree_master`, `taxa_common_names` (drafted)
 
 These will be specified as the format stabilizes during M1→M2 iteration.
 
@@ -462,7 +510,7 @@ Rejected because it defeats reusability. The whole point is that target model re
 
 ## Testing and Validation
 
-- **Round-trip:** `sead_v2.yml` loads, serializes, and reloads identically.
+- **Round-trip:** The working spec at `target_models/specs/sead_v2.yml` loads, serializes, and reloads identically.
 - **Coverage:** SEAD spec covers all entities used in at least two existing Shape Shifter projects.
 - **Cross-check:** Every `target_table` in the spec exists in `docs/sead/01_tables.sql`.
 - **Consumer test:** TARGET_SCHEMA_AWARE_VALIDATION validator can consume the spec and produce correct errors for a known-bad project.
@@ -470,7 +518,7 @@ Rejected because it defeats reusability. The whole point is that target model re
 ## Acceptance Criteria
 
 1. YAML format is documented with field definitions and semantics.
-2. `data/models/sead_v2.yml` exists and covers core SEAD entities (~6 for M1, ~30 for M3).
+2. A working `sead_v2.yml` exists and covers core SEAD entities (~6 for M1, ~30 for M3). Until integration is completed, the working version lives at `target_models/specs/sead_v2.yml`.
 3. Required entities are expressed via `required: true` on entity specs (no redundant top-level list).
 4. Global constraints use typed objects, not untyped dicts.
 5. At least one non-SEAD hypothetical model can be expressed cleanly to verify format generality.
@@ -502,4 +550,6 @@ The format should be opinionated about structure (typed constraints, no redundan
 
 The SEAD spec serves as both the primary consumer and the acceptance test for the format. If the format cannot express a real SEAD requirement cleanly, the format is wrong.
 
-Start with Milestone 1. Ship the 6-entity SEAD spec. Let the TARGET_SCHEMA_AWARE_VALIDATION proposal consume it. Expand from there.
+Start with Milestone 1. Ship the 6-entity SEAD spec. Then complete as much of Milestone 2 as practical in the standalone target-model work before turning primary attention to backend integration.
+
+For planning purposes, treat 20 total entities as the minimum acceptable Milestone 2 completion threshold and 23 total entities as the preferred target while the current named Milestone 2 backlog remains unchanged. Expand from there.
