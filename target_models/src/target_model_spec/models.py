@@ -11,7 +11,6 @@ class ForeignKeySpec(BaseModel):
 
 
 class ColumnSpec(BaseModel):
-    name: str
     required: bool = False
     type: str | None = None
     nullable: bool | None = None
@@ -26,7 +25,7 @@ class EntitySpec(BaseModel):
     target_table: str | None = None
     public_id: str | None = None
     identity_columns: list[str] = Field(default_factory=list)
-    columns: list[str | ColumnSpec] = Field(default_factory=list)
+    columns: dict[str, ColumnSpec] = Field(default_factory=dict)
     unique_sets: list[list[str]] = Field(default_factory=list)
     foreign_keys: list[ForeignKeySpec] = Field(default_factory=list)
 
