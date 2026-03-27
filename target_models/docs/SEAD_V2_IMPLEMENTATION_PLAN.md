@@ -273,11 +273,11 @@ Goals:
 
 ### Checklist
 
-- [ ] Create a `target_models/examples/` area for standalone project fixtures
-- [ ] Add at least one real SEAD-oriented project fixture
-- [ ] Add at least one intentionally non-conforming or partially conforming fixture
-- [ ] Document fixture provenance and any simplifications made for standalone testing
-- [ ] Add tests that load the fixture projects independently of backend services
+- [x] Create a `target_models/examples/` area for standalone project fixtures
+- [x] Add at least one real SEAD-oriented project fixture
+- [x] Add at least one intentionally non-conforming or partially conforming fixture
+- [x] Document fixture provenance and any simplifications made for standalone testing
+- [x] Add tests that load the fixture projects independently of backend services
 
 Deliverables:
 - `target_models/examples/`
