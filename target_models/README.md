@@ -6,6 +6,7 @@ This area is intentionally separate from `src/`, `backend/`, and `data/` while t
 
 ## Structure
 
+- `examples/` — standalone Shape Shifter project fixtures for conformance iteration
 - `specs/` — YAML target model specifications such as `sead_v2.yml`
 - `src/target_model_spec/` — Python source for parsing and validating target model specs
 - `tests/` — tests for the parser and validator
@@ -15,8 +16,9 @@ This area is intentionally separate from `src/`, `backend/`, and `data/` while t
 
 1. Evolve the YAML format in `specs/`
 2. Keep parser and validator code in `src/target_model_spec/` aligned with the format
-3. Add tests for both happy-path and invalid specifications
-4. Add or refine JSON Schema only if it proves useful for external tooling
+3. Add standalone example projects in `examples/` for conformance experiments
+4. Add tests for both happy-path and invalid specifications
+5. Add or refine JSON Schema only if it proves useful for external tooling
 
 ## Notes
 
