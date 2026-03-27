@@ -64,6 +64,20 @@ The following cases are real mismatches between the current Arbodat-derived fixt
 
 These may be genuine conformance failures, but the validator should not silently treat them as equivalent yet. Doing so would require explicit alias rules or target-model metadata for acceptable project-side source names.
 
+### Current decision
+
+For the current Phase 6 iteration, keep both the target model and the validator strict.
+
+- Do not change `sead_v2.yml` to encode project-specific aliases.
+- Do not teach the validator implicit alias equivalence.
+- Treat these as real conformance failures unless a later target-model extension introduces explicit alias metadata.
+
+Rationale:
+
+- The target model is meant to express canonical target-facing names, not source-specific naming habits.
+- Implicit alias acceptance would hide real modeling gaps and make validator behavior harder to explain.
+- The current fixture corpus is too small to justify a general alias mechanism.
+
 ### Transitive relationship expectations
 
 The current validator only checks required foreign-key targets explicitly declared on the project entity. It does not infer that an entity is effectively linked through some longer path.
