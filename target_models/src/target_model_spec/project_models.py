@@ -33,6 +33,6 @@ class ProjectMetadata(BaseModel):
     description: str | None = None
 
 
-class ShapeShifterProject(BaseModel):
+class ConformanceProjectModel(BaseModel):
     metadata: ProjectMetadata
     entities: dict[str, ProjectEntitySpec] = Field(default_factory=dict)

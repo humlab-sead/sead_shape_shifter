@@ -10,7 +10,7 @@
 
 Define a declarative YAML format for describing the requirements, structure, and conventions of a target data model. The format is independent of Shape Shifter's processing pipeline — it describes *what a conforming dataset must look like*, not how data flows through the system.
 
-Execution sequencing, iteration phases, and the staged rollout of the first SEAD specification are tracked in [target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md](../../target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md).
+The format and the first concrete specification (SEAD v2) should be developed iteratively in parallel: the format evolves as the SEAD model exposes gaps, and the SEAD model stress-tests the format against real requirements.
 
 Other systems in the SEAD ecosystem (Clearinghouse validation, ingestion pipelines, documentation generators) can consume the same specification files.
 
@@ -34,7 +34,7 @@ This means:
 This proposal covers two deliverables developed in parallel:
 
 1. **The format** — A YAML schema defining how to express target model requirements: entities, roles, columns, relationships, naming rules, and constraints.
-2. **SEAD v2 specification** — A concrete file (`target_models/specs/sead_v2.yml`) that describes the SEAD archaeological database using this format, covering the entities and patterns most commonly used in Shape Shifter projects.
+2. **SEAD v2 specification** — A concrete file (`data/models/sead_v2.yml`) that describes the SEAD archaeological database using this format, covering the entities and patterns most commonly used in Shape Shifter projects.
 
 ## Non-Goals
 
@@ -57,7 +57,7 @@ This proposal covers two deliverables developed in parallel:
 ### Top-Level Structure
 
 ```yaml
-# target_models/specs/sead_v2.yml
+# data/models/sead_v2.yml
 model:
   name: "SEAD Clearinghouse"
   version: "2.0.0"
@@ -105,7 +105,6 @@ At a high level, a target-model specification should express facts such as:
 8. it may define canonical identity columns for matching and documentation
 9. it may define nullability and uniqueness expectations that matter to conforming data
 10. it may participate in global naming and constraint rules
-11. it may define logical value types needed for validation and documentation
 
 ```yaml
 entities:
@@ -119,13 +118,11 @@ entities:
     identity_columns:                     # Canonical columns that identify this entity
       - location_name
     columns:                              # Columns expected in a conforming dataset
-      location_name:
+      - name: location_name
         required: true
-        type: string
         nullable: false
-      location_type_id:
+      - name: location_type_id
         required: true
-        type: integer
         nullable: false
     unique_sets:                          # Candidate unique sets / alternative keys
       - [location_name]
@@ -145,32 +142,28 @@ entities:
 | `target_table`         | `string`                                 | `null`  | Corresponding table in target database           |
 | `public_id`            | `string`                                 | `null`  | Expected `public_id` column name                 |
 | `identity_columns`     | `list[string]`                           | `[]`    | Canonical columns used to identify this entity   |
-| `columns`              | `dict[string, ColumnSpec]`               | `{}`    | Expected columns keyed by column name            |
+| `columns`              | `list[string] \| list[ColumnSpec]`       | `[]`    | Expected columns, optionally with metadata       |
 | `unique_sets`          | `list[list[string]]`                     | `[]`    | Candidate unique sets / alternative keys         |
 | `foreign_keys`         | `list[ForeignKeySpec]`                   | `[]`    | Required FK relationships                        |
 
 #### Column Specification
 
-`columns` is a mapping keyed by column name. This makes the spec easier to scan and keeps the identifier in the same position where `entities` already put it.
+For simple cases, `columns` can be a plain list of names:
 
 ```yaml
-columns:
-  location_name: {}
-  location_type_id: {}
+columns: [location_name, location_type_id]
 ```
 
-When richer metadata is useful for validation, templates, or documentation, attach metadata under each column name:
+When richer metadata is useful for validation, templates, or documentation, use typed column specs:
 
 ```yaml
 columns:
-  location_name:
+  - name: location_name
     required: true
-    type: string
     nullable: false
     description: Human-readable location label
-  location_type_id:
+  - name: location_type_id
     required: true
-    type: integer
     nullable: false
 ```
 
@@ -178,40 +171,12 @@ Supported `ColumnSpec` fields in v1:
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
+| `name` | `string` | required | Column name |
 | `required` | `bool` | `false` | Must the column exist? |
-| `type` | `string \| null` | `null` | Logical target type for validation and docs |
 | `nullable` | `bool \| null` | `null` | If set, whether null values are acceptable |
 | `description` | `string \| null` | `null` | Human-readable explanation |
 
-Column order is not part of the format contract. YAML parsers commonly preserve mapping insertion order, so authors can still list columns in a preferred reading order, but validators and other consumers should treat `columns` as an unordered mapping.
-
-In v1, this is intentionally minimal. The format needs to distinguish between the full expected column set and the subset that is strictly required, and it should be able to express target-level nullability where it matters.
-
-It should also be able to express logical type constraints where they are important to conforming data. This is not meant to mirror PostgreSQL storage types exactly. The goal is to capture the target-level expectation that a column behaves like an `integer`, `string`, `boolean`, `date`, `datetime`, `decimal`, or `enum`, so validators, template generators, and documentation can reason about it consistently.
-
-The type vocabulary should stay system-agnostic and relatively small in v1. If SEAD uses `integer` and PostgreSQL stores it as `int4`, the target-model spec should say `integer`. If a target system distinguishes more specialized categories later, those can be added deliberately rather than leaking DBMS-specific types into the format.
-
-Examples:
-
-```yaml
-columns:
-  dataset_id:
-    required: true
-    type: integer
-    nullable: false
-  dataset_name:
-    required: true
-    type: string
-    nullable: false
-  dating_uncertainty:
-    type: decimal
-    nullable: true
-  method_group:
-    type: enum
-    nullable: false
-```
-
-For `enum`-like values, v1 can either rely on `domains` plus narrative documentation, or later grow a small `allowed_values` feature if a real validator or generator needs it. That should be a separate extension, not assumed by default.
+In v1, this is intentionally minimal. The format needs to distinguish between the full expected column set and the subset that is strictly required, and it should be able to express target-level nullability where it matters. It still does not attempt to encode database types or storage details.
 
 #### Domain Tags
 
@@ -300,18 +265,168 @@ Additional constraint types (e.g., `all_lookups_before_facts`, `required_lookup_
 
 ### What the Format Does NOT Express
 
-- **Database-native storage types or sizes.** The format may say a column is `integer` or `date`, but not that it must be `varchar(100)`, `int4`, or another DBMS-specific physical type.
+- **Column types or sizes.** The format says "column X must exist," not "column X must be varchar(100)." Column typing is the target database's job.
 - **Database defaults and generated values.** Defaults such as sequences, timestamps, or server-side fallback values are usually persistence mechanics, not target-model semantics. If needed later, treat them as advisory metadata rather than normative validation rules.
 - **Join strategies.** The format says "entity X must FK to entity Y," not which columns to join on. Join column choice depends on the data source.
 - **Source mechanics.** The format does not say whether an entity should be loaded from `sql`, `fixed`, or file-backed inputs. That is project authoring strategy, not target-model semantics.
 - **Processing order.** The format describes the target shape, not how to get there.
 - **Cardinality constraints on data.** The format does not say "location must have at least 1 row." It describes schema structure, not data content.
 
-## Implementation Sequencing
+## Developing Format and SEAD Spec in Parallel
 
-This proposal intentionally focuses on the format contract rather than rollout sequencing.
+The format and the SEAD specification should be iterated together:
 
-Implementation phases, the iteration-1 SEAD entity set, deferred issues, and the first-draft delivery order are tracked in [target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md](../../target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md).
+### Iteration cycle
+
+1. **Draft format** — Define the schema with enough structure to express basic SEAD patterns (entities, roles, required columns, FKs).
+2. **Apply to SEAD** — Write specs for 5-10 core SEAD entities (location, site, sample, dataset, etc.) using the draft format.
+3. **Find gaps** — Identify where the format is insufficient, ambiguous, or verbose for real SEAD requirements.
+4. **Refine format** — Adjust schema to close gaps. Add fields only when SEAD (or another real consumer) needs them.
+5. **Expand SEAD coverage** — Add more entities using the refined format.
+6. **Repeat** — Until the format is stable and covers ~30 common SEAD entities.
+
+### Why parallel, not sequential
+
+- Designing the format in isolation risks overengineering (inventing fields no real model needs) or underspecifying (missing patterns that only emerge when writing concrete specs).
+- The SEAD spec is the format's first acceptance test. If the format cannot cleanly express SEAD requirements, it needs revision.
+- Feedback loops are tighter: each format change is immediately validated against real content.
+
+### Delivery milestones
+
+**Milestone 1: Core shape**
+- Format supports: entities, roles, required flag, columns, nullability, identity_columns, unique_sets, domains, foreign_keys, naming, basic constraints
+- SEAD spec covers: location, site, sample, dataset, analysis_entity, physical_sample (~6 core entities)
+- The format is concrete enough to support parser and validator implementation without schema changes
+
+**Milestone 2: Expanded coverage**
+- Format refined based on M1 feedback
+- SEAD spec covers: abundance chain, dating entities, method/contact entities (~20 entities)
+- Template generation proof-of-concept (generate project skeleton from spec, optionally filtered by domain/profile)
+
+**Milestone 3: Stability**
+- Format considered stable for v1
+- SEAD spec covers ~30 most commonly mapped entities
+- Validator integration ready (hand off to TARGET_SCHEMA_AWARE_VALIDATION)
+
+## SEAD Specification Sketch
+
+Initial entity groupings based on the SEAD schema (165 tables) and existing Shape Shifter projects:
+
+### Core entities (Milestone 1)
+
+These appear in virtually every SEAD project:
+
+```yaml
+entities:
+  location:
+    role: lookup
+    required: true
+    domains: [core, spatial]
+    target_table: tbl_locations
+    public_id: location_id
+    identity_columns: [location_name]
+    columns:
+      - name: location_name
+        required: true
+        nullable: false
+      - name: location_type_id
+        required: true
+        nullable: false
+    unique_sets:
+      - [location_name]
+    foreign_keys:
+      - entity: location_type
+        required: true
+
+  location_type:
+    role: classifier
+    required: false
+    domains: [core, spatial]
+    target_table: tbl_location_types
+    public_id: location_type_id
+    identity_columns: [location_type]
+    columns:
+      - name: location_type
+        required: true
+        nullable: false
+    unique_sets:
+      - [location_type]
+
+  site:
+    role: lookup
+    required: true
+    domains: [core, spatial]
+    target_table: tbl_sites
+    public_id: site_id
+    identity_columns: [site_name]
+    columns:
+      - name: site_name
+        required: true
+        nullable: false
+    foreign_keys:
+      - entity: location
+        required: true
+
+  sample:
+    role: fact
+    required: true
+    domains: [core]
+    target_table: tbl_physical_samples
+    public_id: physical_sample_id
+    foreign_keys:
+      - entity: site
+        required: true
+      - entity: sample_type
+        required: false
+
+  sample_type:
+    role: classifier
+    domains: [core]
+    target_table: tbl_sample_types
+    public_id: sample_type_id
+    identity_columns: [type_name]
+    columns:
+      - name: type_name
+        required: true
+        nullable: false
+    unique_sets:
+      - [type_name]
+
+  dataset:
+    role: lookup
+    required: true
+    domains: [core]
+    target_table: tbl_datasets
+    public_id: dataset_id
+    foreign_keys:
+      - entity: method
+        required: true
+
+  analysis_entity:
+    role: bridge
+    required: true
+    domains: [core]
+    target_table: tbl_analysis_entities
+    public_id: analysis_entity_id
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: dataset
+        required: true
+```
+
+### Domain-specific entities (Milestone 2)
+
+These vary by data type (botanical, dating, ceramics, etc.):
+
+The same specification file can tag these with `domains` such as `dating`, `abundance`, `taxonomy`, `contacts`, or `spatial` so consumers can work with focused subsets without splitting the model into many separate files too early.
+
+- **Abundance chain:** `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `abundance_property`
+- **Dating:** `relative_ages`, `relative_dating`, `geochronology`, `dating_lab`
+- **Methods and contacts:** `method`, `method_group`, `contact`, `contact_type`
+- **Taxonomy:** `taxa_tree_master`, `taxa_common_names`
+
+These will be specified as the format stabilizes during M1→M2 iteration.
 
 ## Alternatives Considered
 
@@ -355,15 +470,21 @@ Rejected because it defeats reusability. The whole point is that target model re
 ## Acceptance Criteria
 
 1. YAML format is documented with field definitions and semantics.
-2. `target_models/specs/sead_v2.yml` exists and covers the iteration-1 core SEAD entities, with later expansion handled in phased implementation.
+2. `data/models/sead_v2.yml` exists and covers core SEAD entities (~6 for M1, ~30 for M3).
 3. Required entities are expressed via `required: true` on entity specs (no redundant top-level list).
 4. Global constraints use typed objects, not untyped dicts.
 5. At least one non-SEAD hypothetical model can be expressed cleanly to verify format generality.
 6. Format is consumable by the target-schema-aware validation proposal without modifications.
 
-## Deferred Questions
+## Open Questions
 
-Questions intentionally deferred out of the format contract and into future implementation phases are tracked in [target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md](../../target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md).
+1. **Should `target_table` support schema-qualified names?** E.g., `public.tbl_locations` vs `tbl_locations`. Probably not in v1 — single-schema assumption is fine for SEAD.
+
+2. **Should entity specs support inheritance or mixins?** E.g., a "standard_lookup" template that many classifiers share. Likely YAGNI for v1 but worth noting.
+
+3. **How should `identity_columns` relate to project-level `keys`?** They should be conceptually aligned where possible, but `identity_columns` belongs to the target model and should not force a one-to-one mapping to Shape Shifter authoring choices.
+
+4. **How to handle SEAD entities that appear in only one data type?** E.g., `tbl_ceramics` is relevant only for ceramics projects. Options: include all in one spec with `required: false`, tag entities with `domains`, or split into domain-specific spec fragments. Recommend single file plus `domains` for now, revisit if it grows unwieldy.
 
 5. **Should the format version be in the file?** E.g., `format_version: "1.0"` alongside `model.version`. Useful if the format itself evolves. Recommend adding it.
 

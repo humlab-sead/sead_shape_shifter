@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from target_model_spec.models import TargetModel
-from target_model_spec.project_models import ProjectEntitySpec, ShapeShifterProject
+from target_model_spec.project_models import ConformanceProjectModel, ProjectEntitySpec
 
 
 @dataclass(slots=True)
@@ -14,7 +14,7 @@ class ConformanceIssue:
 
 
 class TargetModelConformanceValidator:
-    def validate(self, target_model: TargetModel, project: ShapeShifterProject) -> list[ConformanceIssue]:
+    def validate(self, target_model: TargetModel, project: ConformanceProjectModel) -> list[ConformanceIssue]:
         issues: list[ConformanceIssue] = []
 
         for entity_name, entity_spec in target_model.entities.items():
