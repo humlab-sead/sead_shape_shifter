@@ -8,8 +8,9 @@ It exists to separate low-noise rules that are safe to keep from heuristic check
 
 - `target_models/examples/sead_arbodat_core.yml`
 - `target_models/examples/sead_missing_sample_group.yml`
+- `tests/test_data/projects/arbodat/shapeshifter.yml`
 
-Both were validated against `target_models/specs/sead_v2.yml` using the standalone `TargetModelConformanceValidator`.
+All were validated against `target_models/specs/sead_v2.yml` using the standalone `TargetModelConformanceValidator`.
 
 ## Current Stable Findings
 
@@ -53,6 +54,18 @@ These are reliable when the project expresses the target-facing column explicitl
 - `analysis_entity` is missing required foreign-key target `dataset`
 - `analysis_entity` is missing required target-facing column `dataset_id`
 
+### Full `arbodat` project
+
+- `site` is missing required foreign-key target `location`
+- `sample_group` is missing required foreign-key target `site`
+- `sample_group` is missing required foreign-key target `method`
+- `sample_type` is missing required target-facing column `type_name`
+- `method` is missing required target-facing column `method_group_id`
+- `analysis_entity` is missing required foreign-key target `dataset`
+- `analysis_entity` is missing required target-facing column `dataset_id`
+
+This is useful because it corroborates the same rule families against a fuller real project, rather than only against trimmed standalone fixtures.
+
 ## Ambiguous Cases And Deferred Heuristics
 
 The following cases are real mismatches between the current Arbodat-derived fixture and the SEAD target model, but they are not yet good candidates for more aggressive inference rules.
@@ -84,6 +97,8 @@ The current validator only checks required foreign-key targets explicitly declar
 
 This is intentional for now. Inferring transitive conformance would increase false positives and make failure explanations harder to trust.
 
+The full Arbodat project reinforces this decision. For example, `sample_group` currently depends on `feature`, and `feature` may carry some of the missing parent semantics, but the project entity does not declare the direct target-model relationships to `site` and `method`. Treating those links as satisfied transitively would blur the distinction between Shape Shifter processing structure and explicit target-model conformance.
+
 ## Minimal Safe Rule Set For Future Integration
 
 If a subset of the standalone validator is later integrated into backend validation, the safe minimum rule set is:
@@ -92,6 +107,20 @@ If a subset of the standalone validator is later integrated into backend validat
 - Exact `public_id` expectation when the target model declares one
 - Required foreign-key targets by direct entity reference only
 - Required target-facing columns only when they are explicit or safely inferable from current standalone rules
+
+## Current Phase 6 Conclusion
+
+At this point, the evidence still supports keeping `sead_v2.yml` strict and leaving alias metadata out of the format.
+
+- The full Arbodat project confirms the same mismatch families already visible in the standalone fixtures.
+- Those mismatches are explainable as either direct target-model gaps in the project or intentional source-specific naming choices.
+- Neither case justifies weakening the target model yet.
+
+So the current Phase 6 direction remains:
+
+- keep the validator conservative
+- keep the target model canonical
+- defer any alias mechanism until there is evidence from multiple distinct real project shapes
 
 ## Not Yet Safe For Integration
 

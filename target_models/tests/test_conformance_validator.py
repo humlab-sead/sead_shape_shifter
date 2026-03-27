@@ -10,6 +10,7 @@ from target_model_spec.project_models import ShapeShifterProject
 ROOT_DIR = Path(__file__).resolve().parents[1]
 SPEC_PATH = ROOT_DIR / "specs" / "sead_v2.yml"
 EXAMPLES_DIR = ROOT_DIR / "examples"
+REAL_PROJECTS_DIR = ROOT_DIR.parent / "tests" / "test_data" / "projects"
 
 
 def load_target_model() -> TargetModel:
@@ -18,6 +19,11 @@ def load_target_model() -> TargetModel:
 
 def load_project(name: str) -> ShapeShifterProject:
     project_path = EXAMPLES_DIR / name
+    return ShapeShifterProject.model_validate(yaml.safe_load(project_path.read_text(encoding="utf-8")))
+
+
+def load_real_project(project_name: str) -> ShapeShifterProject:
+    project_path = REAL_PROJECTS_DIR / project_name / "shapeshifter.yml"
     return ShapeShifterProject.model_validate(yaml.safe_load(project_path.read_text(encoding="utf-8")))
 
 
@@ -166,3 +172,20 @@ def test_conformance_validator_keeps_alias_like_names_strict() -> None:
 
     assert ("MISSING_REQUIRED_COLUMN", "sample_type") in {(issue.code, issue.entity) for issue in issues}
     assert ("MISSING_REQUIRED_COLUMN", "method") in {(issue.code, issue.entity) for issue in issues}
+
+
+def test_conformance_validator_reports_known_gaps_for_full_arbodat_project() -> None:
+    target_model = load_target_model()
+    project = load_real_project("arbodat")
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert sorted((issue.code, issue.entity) for issue in issues) == sorted([
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "site"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
+        ("MISSING_REQUIRED_COLUMN", "sample_type"),
+        ("MISSING_REQUIRED_COLUMN", "method"),
+        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
+        ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
+    ])
