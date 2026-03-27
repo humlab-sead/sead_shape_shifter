@@ -126,11 +126,11 @@ entities:
     required: true
     public_id: location_id
     columns:
-      - name: location_name
+      location_name:
         required: true
         type: string
         nullable: false
-      - name: location_type_id
+      location_type_id:
         required: true
         type: integer
         nullable: false
@@ -143,7 +143,7 @@ entities:
     required: true
     public_id: site_id
     columns:
-      - name: site_name
+      site_name:
         required: true
         type: string
         nullable: false
@@ -189,7 +189,7 @@ metadata:
         required: true
         public_id: artifact_id
         columns:
-          - name: name
+          name:
             required: true
             type: string
             nullable: false
@@ -199,7 +199,7 @@ metadata:
 
 **Phase 1: Basic Conformance**
 - Required entities present via `required: true` on entity specs
-- Required columns exist via `columns[].required`
+- Required columns exist via `columns.<name>.required`
 - Required foreign keys exist
 - Basic naming checks such as `public_id_suffix`
 

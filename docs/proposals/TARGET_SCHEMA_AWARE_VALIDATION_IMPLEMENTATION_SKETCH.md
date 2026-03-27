@@ -62,7 +62,6 @@ class ForeignKeySpec(BaseModel):
 
 
 class ColumnSpec(BaseModel):
-    name: str
     required: bool = False
     type: str | None = None
     nullable: bool | None = None
@@ -77,7 +76,7 @@ class EntitySpec(BaseModel):
     target_table: str | None = None
     public_id: str | None = None
     identity_columns: list[str] = []
-    columns: list[ColumnSpec] = []
+    columns: dict[str, ColumnSpec] = {}
     unique_sets: list[list[str]] = []
     foreign_keys: list[ForeignKeySpec] = []
 
@@ -169,7 +168,11 @@ class TargetModelValidator:
         errors = []
 
         configured_columns = entity_cfg.get("columns", [])
-        required_columns = {column.name for column in spec.columns if column.required}
+        required_columns = {
+            column_name
+            for column_name, column in spec.columns.items()
+            if column.required
+        }
         missing_cols = required_columns - set(configured_columns)
         for col in missing_cols:
             errors.append(

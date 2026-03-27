@@ -59,7 +59,7 @@ def test_validator_reports_unknown_identity_and_unique_set_columns() -> None:
             "entities": {
                 "site": {
                     "public_id": "site_id",
-                    "columns": [{"name": "site_name", "required": True}],
+                    "columns": {"site_name": {"required": True}},
                     "identity_columns": ["missing_identity"],
                     "unique_sets": [["site_name", "missing_unique"]],
                 }

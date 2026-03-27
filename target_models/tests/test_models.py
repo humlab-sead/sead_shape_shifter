@@ -33,16 +33,16 @@ def test_target_model_parses_richer_entity_payload() -> None:
                     "target_table": "tbl_locations",
                     "public_id": "location_id",
                     "identity_columns": ["location_type_id", "location_name"],
-                    "columns": [
-                        {"name": "location_name", "required": True, "type": "string", "nullable": False},
-                        {"name": "location_type_id", "required": True, "type": "integer", "nullable": False},
-                    ],
+                    "columns": {
+                        "location_name": {"required": True, "type": "string", "nullable": False},
+                        "location_type_id": {"required": True, "type": "integer", "nullable": False},
+                    },
                     "unique_sets": [["location_type_id", "location_name"]],
                     "foreign_keys": [{"entity": "location_type", "required": True}],
                 },
                 "location_type": {
                     "role": "classifier",
-                    "columns": [{"name": "location_type", "required": True}],
+                    "columns": {"location_type": {"required": True}},
                 },
             },
             "naming": {"public_id_suffix": "_id"},
@@ -53,5 +53,6 @@ def test_target_model_parses_richer_entity_payload() -> None:
     location = target_model.entities["location"]
     assert location.domains == ["core", "spatial"]
     assert location.identity_columns == ["location_type_id", "location_name"]
-    assert location.columns[0].name == "location_name"
+    assert list(location.columns) == ["location_name", "location_type_id"]
+    assert location.columns["location_name"].required is True
     assert location.unique_sets == [["location_type_id", "location_name"]]

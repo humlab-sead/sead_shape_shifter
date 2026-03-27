@@ -119,11 +119,11 @@ entities:
     identity_columns:                     # Canonical columns that identify this entity
       - location_name
     columns:                              # Columns expected in a conforming dataset
-      - name: location_name
+      location_name:
         required: true
         type: string
         nullable: false
-      - name: location_type_id
+      location_type_id:
         required: true
         type: integer
         nullable: false
@@ -145,28 +145,30 @@ entities:
 | `target_table`         | `string`                                 | `null`  | Corresponding table in target database           |
 | `public_id`            | `string`                                 | `null`  | Expected `public_id` column name                 |
 | `identity_columns`     | `list[string]`                           | `[]`    | Canonical columns used to identify this entity   |
-| `columns`              | `list[string] \| list[ColumnSpec]`       | `[]`    | Expected columns, optionally with metadata       |
+| `columns`              | `dict[string, ColumnSpec]`               | `{}`    | Expected columns keyed by column name            |
 | `unique_sets`          | `list[list[string]]`                     | `[]`    | Candidate unique sets / alternative keys         |
 | `foreign_keys`         | `list[ForeignKeySpec]`                   | `[]`    | Required FK relationships                        |
 
 #### Column Specification
 
-For simple cases, `columns` can be a plain list of names:
-
-```yaml
-columns: [location_name, location_type_id]
-```
-
-When richer metadata is useful for validation, templates, or documentation, use typed column specs:
+`columns` is a mapping keyed by column name. This makes the spec easier to scan and keeps the identifier in the same position where `entities` already put it.
 
 ```yaml
 columns:
-  - name: location_name
+  location_name: {}
+  location_type_id: {}
+```
+
+When richer metadata is useful for validation, templates, or documentation, attach metadata under each column name:
+
+```yaml
+columns:
+  location_name:
     required: true
     type: string
     nullable: false
     description: Human-readable location label
-  - name: location_type_id
+  location_type_id:
     required: true
     type: integer
     nullable: false
@@ -176,11 +178,12 @@ Supported `ColumnSpec` fields in v1:
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `name` | `string` | required | Column name |
 | `required` | `bool` | `false` | Must the column exist? |
 | `type` | `string \| null` | `null` | Logical target type for validation and docs |
 | `nullable` | `bool \| null` | `null` | If set, whether null values are acceptable |
 | `description` | `string \| null` | `null` | Human-readable explanation |
+
+Column order is not part of the format contract. YAML parsers commonly preserve mapping insertion order, so authors can still list columns in a preferred reading order, but validators and other consumers should treat `columns` as an unordered mapping.
 
 In v1, this is intentionally minimal. The format needs to distinguish between the full expected column set and the subset that is strictly required, and it should be able to express target-level nullability where it matters.
 
@@ -192,18 +195,18 @@ Examples:
 
 ```yaml
 columns:
-  - name: dataset_id
+  dataset_id:
     required: true
     type: integer
     nullable: false
-  - name: dataset_name
+  dataset_name:
     required: true
     type: string
     nullable: false
-  - name: dating_uncertainty
+  dating_uncertainty:
     type: decimal
     nullable: true
-  - name: method_group
+  method_group:
     type: enum
     nullable: false
 ```

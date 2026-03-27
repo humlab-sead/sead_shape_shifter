@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from target_model_spec.models import ColumnSpec, TargetModel
+from target_model_spec.models import TargetModel
 
 
 @dataclass(slots=True)
@@ -18,7 +18,7 @@ class TargetModelSpecValidator:
         suffix = target_model.naming.public_id_suffix if target_model.naming else None
 
         for entity_name, entity_spec in target_model.entities.items():
-            column_names: set[str] = self._get_column_names(entity_spec.columns)
+            column_names = set(entity_spec.columns)
 
             if suffix and entity_spec.public_id and not entity_spec.public_id.endswith(suffix):
                 issues.append(
@@ -61,13 +61,3 @@ class TargetModelSpecValidator:
                         )
 
         return issues
-
-    @staticmethod
-    def _get_column_names(columns: list[str | ColumnSpec]) -> set[str]:
-        names: set[str] = set()
-        for column in columns:
-            if isinstance(column, str):
-                names.add(column)
-            else:
-                names.add(column.name)
-        return names

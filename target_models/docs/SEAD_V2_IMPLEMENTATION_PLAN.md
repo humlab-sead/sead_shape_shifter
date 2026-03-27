@@ -11,6 +11,29 @@ It complements, but does not replace:
 
 The goal here is practical sequencing: what must be decided before drafting, what will be delivered in the first iterations, and what is explicitly deferred.
 
+## Terminology
+
+The words `phase` and `iteration` mean different things in this document.
+
+- **Phase** = a broad stage of work with a distinct goal and exit criteria.
+- **Iteration** = one pass within a phase where we refine the output using real examples, feedback, or tests.
+
+In practice:
+
+- We are currently using **phases** to describe the roadmap.
+- We use **iterations** to describe refinement loops within a phase.
+
+Examples:
+
+- Phase 3 is "author the first SEAD draft".
+- Iteration 1 within that phase is the first narrow draft of `sead_v2.yml`.
+- A later iteration in the same phase could tighten columns or identity rules after testing against another real project.
+
+For the next stretch of work, the important distinction is:
+
+- we can add new **phases** for standalone conformance-validation work inside `target_models/`
+- and still expect multiple **iterations** within those phases before any backend integration is justified
+
 ## Phase 0: Pre-Draft Decisions
 
 Phase 0 locks the minimum decisions needed before writing the first SEAD model draft.
@@ -97,12 +120,13 @@ Rationale:
 ### 0.5 Minimum column contract
 
 Decision:
+- Iteration 1 stores columns as a mapping keyed by column name
 - Iteration 1 column metadata is limited to:
-  - `name`
   - `required`
   - `type`
   - `nullable`
   - `description`
+- Column order is not semantically significant in the format contract, even if authors preserve a preferred reading order in YAML
 
 No richer column contract is introduced in iteration 1.
 
@@ -240,9 +264,117 @@ Cross-check basis:
 - `docs/sead/01_tables.sql`
 - `tests/test_data/projects/arbodat/shapeshifter.yml`
 
+## Phase 4: Standalone Project Corpus
+
+Goals:
+- Collect a small set of real `shapeshifter.yml` files inside `target_models/` for isolated experimentation
+- Keep target-model conformance work independent from backend integration
+- Make the next validator phase testable using real project examples rather than synthetic payloads only
+
+### Checklist
+
+- [ ] Create a `target_models/examples/` area for standalone project fixtures
+- [ ] Add at least one real SEAD-oriented project fixture
+- [ ] Add at least one intentionally non-conforming or partially conforming fixture
+- [ ] Document fixture provenance and any simplifications made for standalone testing
+- [ ] Add tests that load the fixture projects independently of backend services
+
+Deliverables:
+- `target_models/examples/`
+- Standalone project fixtures derived from real `shapeshifter.yml` files
+- Fixture-loading tests under `target_models/tests/`
+
+Exit criteria:
+- Real project configurations can be loaded and exercised from within `target_models/` alone
+
+### Iteration Notes
+
+- **Iteration 1**: start with one real SEAD-style project and one intentionally broken fixture
+- **Iteration 2**: add a second real project only if the first validator pass exposes ambiguity in the target model
+
+## Phase 5: Initial TargetModelConformanceValidator
+
+Goals:
+- Introduce a validator that checks whether a Shape Shifter project conforms to a target model
+- Keep it standalone inside `target_models/` before wiring anything into Shape Shifter validation services
+- Focus on low-noise checks driven directly by the target model contract
+
+### Checklist
+
+- [ ] Define a lightweight project-side model for the subset of `shapeshifter.yml` needed for conformance checks
+- [ ] Add a `TargetModelConformanceValidator` alongside the spec validator
+- [ ] Validate required entities declared in the target model
+- [ ] Validate expected `public_id` values where the target model declares them
+- [ ] Validate required foreign-key targets by entity name
+- [ ] Validate required target-facing columns where the project declares column output explicitly enough to compare
+- [ ] Return standalone conformance issues without depending on backend `ValidationError`
+- [ ] Cover the validator with tests against real fixture projects
+
+Deliverables:
+- `target_models/src/target_model_spec/conformance_validator.py` or equivalent
+- A lightweight project model or adapter for standalone `shapeshifter.yml` validation
+- Conformance tests under `target_models/tests/`
+
+Exit criteria:
+- A standalone conformance validator can detect obvious project-versus-target mismatches using real project fixtures
+
+### Iteration Notes
+
+- **Iteration 1**: required entities, `public_id`, foreign-key entity presence, and required columns only
+- **Iteration 2**: tighten comparisons where project files express enough information to check them reliably
+- **Iteration 3**: decide which checks are too noisy for the first integrated version
+
+## Phase 6: Standalone Conformance Refinement
+
+Goals:
+- Iterate on validator behavior using real projects before integrating with Shape Shifter services
+- Separate stable, low-noise checks from speculative or brittle checks
+- Use this phase to decide what deserves backend integration and what should remain experimental
+
+### Checklist
+
+- [ ] Run the standalone conformance validator against multiple real project fixtures
+- [ ] Classify findings into stable errors, warnings, and deferred heuristics
+- [ ] Record false positives and ambiguous cases in `target_models/docs/`
+- [ ] Refine `sead_v2.yml` only where real project evidence shows the target model is underspecified or misleading
+- [ ] Identify the minimal check set safe for eventual backend integration
+
+Deliverables:
+- Refined conformance tests
+- Notes on noisy versus stable rules
+- A documented minimal rule set for future backend integration
+
+Exit criteria:
+- The validator behavior is understood well enough that integration can be incremental rather than speculative
+
+### Iteration Notes
+
+- **Iteration 1**: evaluate one project deeply
+- **Iteration 2**: compare across multiple project shapes
+- **Iteration 3**: freeze a minimum viable conformance rule set
+
+## Phase 7: Optional Backend Integration
+
+Goals:
+- Integrate only the proven subset of conformance checks into Shape Shifter validation services
+- Reuse the standalone work rather than redesigning it inside the backend
+
+### Checklist
+
+- [ ] Decide whether target-model loading should stay in a dedicated loader or move into existing services
+- [ ] Map standalone conformance issues to backend validation error shapes
+- [ ] Integrate target-model conformance as an additive validation pass
+- [ ] Keep non-integrated experimental rules outside the backend path
+
+Deliverables:
+- Backend integration work described in `docs/proposals/TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md`
+
+Exit criteria:
+- Target-model-aware validation in the backend uses only rules that have already been stabilized in `target_models/`
+
 ## Future Phase: Deferred Issues
 
-These are intentionally deferred so iteration 1 stays small and coherent.
+These are intentionally deferred so the standalone validator and the first target-model iterations stay small and coherent.
 
 ### Checklist
 
@@ -267,6 +399,7 @@ These are intentionally deferred so iteration 1 stays small and coherent.
 - Type-aware validation against real preview or normalized data
 - Branch-aware semantic validation
 - Severity overrides or per-rule suppression mechanisms
+- Value-level checks that require executing the Shape Shifter pipeline rather than inspecting project configuration
 
 ### Deferred SEAD coverage issues
 
@@ -281,4 +414,6 @@ These are intentionally deferred so iteration 1 stays small and coherent.
 1. Complete Phase 1.
 2. Confirm Phase 2 decisions in the first draft.
 3. Produce Phase 3 output.
-4. Revisit deferred issues only after the first draft exposes real gaps.
+4. Build a standalone project corpus in Phase 4.
+5. Implement and iterate on `TargetModelConformanceValidator` in Phases 5 and 6.
+6. Revisit backend integration only after the standalone validator has stabilized.
