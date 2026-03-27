@@ -104,3 +104,65 @@ def test_conformance_validator_reports_missing_entity_and_wrong_public_id() -> N
 
     assert ("MISSING_REQUIRED_ENTITY", "sample_group") in {(issue.code, issue.entity) for issue in issues}
     assert ("UNEXPECTED_PUBLIC_ID", "sample") in {(issue.code, issue.entity) for issue in issues}
+
+
+def test_conformance_validator_keeps_alias_like_names_strict() -> None:
+    target_model = load_target_model()
+    project = ShapeShifterProject.model_validate(
+        {
+            "metadata": {
+                "name": "sead:alias-like-columns",
+                "type": "shapeshifter-project",
+                "version": "1.0.0",
+            },
+            "entities": {
+                "location": {
+                    "public_id": "location_id",
+                    "columns": ["location_name"],
+                    "foreign_keys": [{"entity": "location_type"}],
+                },
+                "location_type": {
+                    "public_id": "location_type_id",
+                    "columns": ["location_type"],
+                },
+                "site": {
+                    "public_id": "site_id",
+                    "columns": ["site_name"],
+                    "foreign_keys": [{"entity": "location"}],
+                },
+                "sample_group": {
+                    "public_id": "sample_group_id",
+                    "keys": ["site_id"],
+                    "extra_columns": {"method_id": None, "sample_group_name": None},
+                    "foreign_keys": [{"entity": "site"}, {"entity": "method"}],
+                },
+                "sample": {
+                    "public_id": "physical_sample_id",
+                    "extra_columns": {"sample_name": None},
+                    "foreign_keys": [{"entity": "sample_group"}, {"entity": "sample_type"}],
+                },
+                "sample_type": {
+                    "public_id": "sample_type_id",
+                    "extra_columns": {"sample_type_name": None},
+                },
+                "method": {
+                    "public_id": "method_id",
+                    "columns": ["method_name", "description", "sead_method_group_id"],
+                },
+                "dataset": {
+                    "public_id": "dataset_id",
+                    "extra_columns": {"dataset_name": None, "data_type_id": None},
+                    "foreign_keys": [{"entity": "method"}],
+                },
+                "analysis_entity": {
+                    "public_id": "analysis_entity_id",
+                    "foreign_keys": [{"entity": "sample"}, {"entity": "dataset"}],
+                },
+            },
+        }
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert ("MISSING_REQUIRED_COLUMN", "sample_type") in {(issue.code, issue.entity) for issue in issues}
+    assert ("MISSING_REQUIRED_COLUMN", "method") in {(issue.code, issue.entity) for issue in issues}
