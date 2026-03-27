@@ -18,7 +18,7 @@ class TargetModelSpecValidator:
         suffix = target_model.naming.public_id_suffix if target_model.naming else None
 
         for entity_name, entity_spec in target_model.entities.items():
-            column_names = self._get_column_names(entity_spec.columns)
+            column_names: set[str] = self._get_column_names(entity_spec.columns)
 
             if suffix and entity_spec.public_id and not entity_spec.public_id.endswith(suffix):
                 issues.append(
