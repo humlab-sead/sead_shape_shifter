@@ -1,4 +1,5 @@
 from pathlib import Path
+from collections import Counter
 
 import yaml
 
@@ -25,6 +26,11 @@ def load_project(name: str) -> ShapeShifterProject:
 def load_real_project(project_name: str) -> ShapeShifterProject:
     project_path = REAL_PROJECTS_DIR / project_name / "shapeshifter.yml"
     return ShapeShifterProject.model_validate(yaml.safe_load(project_path.read_text(encoding="utf-8")))
+
+
+def issue_pairs(target_model: TargetModel, project: ShapeShifterProject) -> list[tuple[str, str | None]]:
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+    return [(issue.code, issue.entity) for issue in issues]
 
 
 def test_conformance_validator_accepts_minimal_conforming_project() -> None:
@@ -92,9 +98,7 @@ def test_conformance_validator_reports_known_gaps_for_real_fixture() -> None:
     target_model = load_target_model()
     project = load_project("sead_arbodat_core.yml")
 
-    issues = TargetModelConformanceValidator().validate(target_model, project)
-
-    assert sorted((issue.code, issue.entity) for issue in issues) == sorted([
+    assert sorted(issue_pairs(target_model, project)) == sorted([
         ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
         ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
         ("MISSING_REQUIRED_COLUMN", "method"),
@@ -106,10 +110,10 @@ def test_conformance_validator_reports_missing_entity_and_wrong_public_id() -> N
     target_model = load_target_model()
     project = load_project("sead_missing_sample_group.yml")
 
-    issues = TargetModelConformanceValidator().validate(target_model, project)
+    issues = issue_pairs(target_model, project)
 
-    assert ("MISSING_REQUIRED_ENTITY", "sample_group") in {(issue.code, issue.entity) for issue in issues}
-    assert ("UNEXPECTED_PUBLIC_ID", "sample") in {(issue.code, issue.entity) for issue in issues}
+    assert ("MISSING_REQUIRED_ENTITY", "sample_group") in set(issues)
+    assert ("UNEXPECTED_PUBLIC_ID", "sample") in set(issues)
 
 
 def test_conformance_validator_keeps_alias_like_names_strict() -> None:
@@ -168,19 +172,17 @@ def test_conformance_validator_keeps_alias_like_names_strict() -> None:
         }
     )
 
-    issues = TargetModelConformanceValidator().validate(target_model, project)
+    issues = issue_pairs(target_model, project)
 
-    assert ("MISSING_REQUIRED_COLUMN", "sample_type") in {(issue.code, issue.entity) for issue in issues}
-    assert ("MISSING_REQUIRED_COLUMN", "method") in {(issue.code, issue.entity) for issue in issues}
+    assert ("MISSING_REQUIRED_COLUMN", "sample_type") in set(issues)
+    assert ("MISSING_REQUIRED_COLUMN", "method") in set(issues)
 
 
 def test_conformance_validator_reports_known_gaps_for_full_arbodat_project() -> None:
     target_model = load_target_model()
     project = load_real_project("arbodat")
 
-    issues = TargetModelConformanceValidator().validate(target_model, project)
-
-    assert sorted((issue.code, issue.entity) for issue in issues) == sorted([
+    assert sorted(issue_pairs(target_model, project)) == sorted([
         ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "site"),
         ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
         ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
@@ -189,3 +191,30 @@ def test_conformance_validator_reports_known_gaps_for_full_arbodat_project() -> 
         ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
         ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
     ])
+
+
+def test_conformance_validator_current_corpus_issue_families_are_stable() -> None:
+    target_model = load_target_model()
+    corpus = {
+        "sead_arbodat_core": load_project("sead_arbodat_core.yml"),
+        "sead_missing_sample_group": load_project("sead_missing_sample_group.yml"),
+        "arbodat_full": load_real_project("arbodat"),
+    }
+
+    issue_summary = {
+        name: Counter(code for code, _entity in issue_pairs(target_model, project))
+        for name, project in corpus.items()
+    }
+
+    assert issue_summary == {
+        "sead_arbodat_core": Counter({"MISSING_REQUIRED_COLUMN": 3, "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 1}),
+        "sead_missing_sample_group": Counter(
+            {
+                "MISSING_REQUIRED_COLUMN": 4,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
+                "MISSING_REQUIRED_ENTITY": 1,
+                "UNEXPECTED_PUBLIC_ID": 1,
+            }
+        ),
+        "arbodat_full": Counter({"MISSING_REQUIRED_FOREIGN_KEY_TARGET": 4, "MISSING_REQUIRED_COLUMN": 3}),
+    }
