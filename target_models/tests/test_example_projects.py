@@ -38,6 +38,24 @@ def test_real_example_contains_iteration_one_sead_core_entities() -> None:
     assert project["entities"]["sample"]["public_id"] == "physical_sample_id"
 
 
+def test_canonical_example_is_non_arbodat_positive_control() -> None:
+    project = load_example_project("sead_canonical_minimal.yml")
+
+    assert project["metadata"]["name"] == "example:sead-canonical-minimal"
+    assert set(project["entities"]) == {
+        "analysis_entity",
+        "dataset",
+        "location",
+        "location_type",
+        "method",
+        "sample",
+        "sample_group",
+        "sample_type",
+        "site",
+    }
+    assert project["entities"]["method"]["columns"] == ["method_name", "description", "method_group_id"]
+
+
 def test_broken_example_preserves_intended_conformance_gaps() -> None:
     project = load_example_project("sead_missing_sample_group.yml")
 

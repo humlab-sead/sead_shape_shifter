@@ -6,6 +6,7 @@ It exists to separate low-noise rules that are safe to keep from heuristic check
 
 ## Corpus Used
 
+- `target_models/examples/sead_canonical_minimal.yml`
 - `target_models/examples/sead_arbodat_core.yml`
 - `target_models/examples/sead_missing_sample_group.yml`
 - `tests/test_data/projects/arbodat/shapeshifter.yml`
@@ -39,11 +40,18 @@ These are reliable when the project expresses the target-facing column explicitl
 
 | Project shape | Required entity | Public ID | Required FK target | Required column |
 |---|---:|---:|---:|---:|
+| `sead_canonical_minimal.yml` | 0 | 0 | 0 | 0 |
 | `sead_arbodat_core.yml` | 0 | 0 | 1 | 3 |
 | `sead_missing_sample_group.yml` | 1 | 1 | 3 | 4 |
 | Full `arbodat` project | 0 | 0 | 4 | 3 |
 
-This matrix is useful because it shows that the current validator is not surfacing new rule families as the project shape gets larger. The differences are in where the same rule families appear, not in the validator inventing new classes of findings.
+This matrix is useful because it now includes both a positive control and several failure-heavy shapes. The current validator is not surfacing new rule families as the project shape gets larger. The differences are in where the same rule families appear, not in the validator inventing new classes of findings.
+
+### `sead_canonical_minimal.yml`
+
+- No issues
+
+This is a hand-authored non-Arbodat project shape that uses canonical target-facing names directly. It serves as a positive control showing that the standalone validator can also accept a distinct project shape cleanly, rather than only reporting failures on Arbodat-derived fixtures.
 
 ### `sead_arbodat_core.yml`
 
@@ -123,6 +131,7 @@ If a subset of the standalone validator is later integrated into backend validat
 At this point, the evidence still supports keeping `sead_v2.yml` strict and leaving alias metadata out of the format.
 
 - The full Arbodat project confirms the same mismatch families already visible in the standalone fixtures.
+- The non-Arbodat canonical fixture confirms that those mismatch families are not universal artifacts of the validator.
 - Those mismatches are explainable as either direct target-model gaps in the project or intentional source-specific naming choices.
 - Neither case justifies weakening the target model yet.
 
