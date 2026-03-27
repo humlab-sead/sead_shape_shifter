@@ -301,14 +301,14 @@ Goals:
 
 ### Checklist
 
-- [ ] Define a lightweight project-side model for the subset of `shapeshifter.yml` needed for conformance checks
-- [ ] Add a `TargetModelConformanceValidator` alongside the spec validator
-- [ ] Validate required entities declared in the target model
-- [ ] Validate expected `public_id` values where the target model declares them
-- [ ] Validate required foreign-key targets by entity name
-- [ ] Validate required target-facing columns where the project declares column output explicitly enough to compare
-- [ ] Return standalone conformance issues without depending on backend `ValidationError`
-- [ ] Cover the validator with tests against real fixture projects
+- [x] Define a lightweight project-side model for the subset of `shapeshifter.yml` needed for conformance checks
+- [x] Add a `TargetModelConformanceValidator` alongside the spec validator
+- [x] Validate required entities declared in the target model
+- [x] Validate expected `public_id` values where the target model declares them
+- [x] Validate required foreign-key targets by entity name
+- [x] Validate required target-facing columns where the project declares column output explicitly enough to compare
+- [x] Return standalone conformance issues without depending on backend `ValidationError`
+- [x] Cover the validator with tests against real fixture projects
 
 Deliverables:
 - `target_models/src/target_model_spec/conformance_validator.py` or equivalent

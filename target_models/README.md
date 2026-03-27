@@ -17,8 +17,9 @@ This area is intentionally separate from `src/`, `backend/`, and `data/` while t
 1. Evolve the YAML format in `specs/`
 2. Keep parser and validator code in `src/target_model_spec/` aligned with the format
 3. Add standalone example projects in `examples/` for conformance experiments
-4. Add tests for both happy-path and invalid specifications
-5. Add or refine JSON Schema only if it proves useful for external tooling
+4. Add standalone conformance checks against those examples before backend integration
+5. Add tests for both happy-path and invalid specifications
+6. Add or refine JSON Schema only if it proves useful for external tooling
 
 ## Notes
 
