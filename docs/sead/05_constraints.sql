@@ -34,30 +34,6 @@ alter table only public.tbl_age_types
 add constraint tbl_age_types_pkey primary key (age_type_id);
 
 
-alter table only public.tbl_aggregate_datasets
-add constraint tbl_aggregate_datasets_pkey primary key (aggregate_dataset_id);
-
-
-alter table only public.tbl_aggregate_order_types
-add constraint tbl_aggregate_order_types_aggregate_order_type_key unique (aggregate_order_type);
-
-
-alter table only public.tbl_aggregate_order_types
-add constraint tbl_aggregate_order_types_aggregate_order_type_unique unique (aggregate_order_type);
-
-
-alter table only public.tbl_aggregate_order_types
-add constraint tbl_aggregate_order_types_pkey primary key (aggregate_order_type_id);
-
-
-alter table only public.tbl_aggregate_sample_ages
-add constraint tbl_aggregate_sample_ages_pkey primary key (aggregate_sample_age_id);
-
-
-alter table only public.tbl_aggregate_samples
-add constraint tbl_aggregate_samples_pkey primary key (aggregate_sample_id);
-
-
 alter table only public.tbl_alt_ref_types
 add constraint tbl_alt_ref_types_alt_ref_type_key unique (alt_ref_type);
 
@@ -140,18 +116,6 @@ add constraint tbl_analysis_values_pkey primary key (analysis_value_id);
 
 alter table only public.tbl_biblio
 add constraint tbl_biblio_pkey primary key (biblio_id);
-
-
-alter table only public.tbl_ceramics_lookup
-add constraint tbl_ceramics_lookup_pkey primary key (ceramics_lookup_id);
-
-
-alter table only public.tbl_ceramics_measurements
-add constraint tbl_ceramics_measurements_pkey primary key (ceramics_measurement_id);
-
-
-alter table only public.tbl_ceramics
-add constraint tbl_ceramics_pkey primary key (ceramics_id);
 
 
 alter table only public.tbl_chronologies
@@ -266,22 +230,6 @@ alter table only public.tbl_dating_uncertainty
 add constraint tbl_dating_uncertainty_uncertainty_unique unique (uncertainty);
 
 
-alter table only public.tbl_dendro_date_notes
-add constraint tbl_dendro_date_notes_pkey primary key (dendro_date_note_id);
-
-
-alter table only public.tbl_dendro_dates
-add constraint tbl_dendro_dates_pkey primary key (dendro_date_id);
-
-
-alter table only public.tbl_dendro_lookup
-add constraint tbl_dendro_lookup_pkey primary key (dendro_lookup_id);
-
-
-alter table only public.tbl_dendro
-add constraint tbl_dendro_pkey primary key (dendro_id);
-
-
 alter table only public.tbl_dimensions
 add constraint tbl_dimensions_pkey primary key (dimension_id);
 
@@ -350,40 +298,8 @@ alter table only public.tbl_identification_levels
 add constraint tbl_identification_levels_pkey primary key (identification_level_id);
 
 
-alter table only public.tbl_image_types
-add constraint tbl_image_types_image_type_key unique (image_type);
-
-
-alter table only public.tbl_image_types
-add constraint tbl_image_types_image_type_unique unique (image_type);
-
-
-alter table only public.tbl_image_types
-add constraint tbl_image_types_pkey primary key (image_type_id);
-
-
 alter table only public.tbl_imported_taxa_replacements
 add constraint tbl_imported_taxa_replacements_pkey primary key (imported_taxa_replacement_id);
-
-
-alter table only public.tbl_isotope_measurements
-add constraint tbl_isotope_measurements_pkey primary key (isotope_measurement_id);
-
-
-alter table only public.tbl_isotope_standards
-add constraint tbl_isotope_standards_pkey primary key (isotope_standard_id);
-
-
-alter table only public.tbl_isotope_types
-add constraint tbl_isotope_types_pkey primary key (isotope_type_id);
-
-
-alter table only public.tbl_isotope_value_specifiers
-add constraint tbl_isotope_value_specifiers_pkey primary key (isotope_value_specifier_id);
-
-
-alter table only public.tbl_isotopes
-add constraint tbl_isotopes_pkey primary key (isotope_id);
 
 
 alter table only public.tbl_languages
@@ -408,18 +324,6 @@ add constraint tbl_location_types_pkey primary key (location_type_id);
 
 alter table only public.tbl_locations
 add constraint tbl_locations_pkey primary key (location_id);
-
-
-alter table only public.tbl_mcr_names
-add constraint tbl_mcr_names_pkey primary key (taxon_id);
-
-
-alter table only public.tbl_mcr_summary_data
-add constraint tbl_mcr_summary_data_pkey primary key (mcr_summary_data_id);
-
-
-alter table only public.tbl_mcrdata_birmbeetledat
-add constraint tbl_mcrdata_birmbeetledat_pkey primary key (mcrdata_birmbeetledat_id);
 
 
 alter table only public.tbl_measured_value_dimensions
@@ -634,10 +538,6 @@ alter table only public.tbl_sample_group_dimensions
 add constraint tbl_sample_group_dimensions_pkey primary key (sample_group_dimension_id);
 
 
-alter table only public.tbl_sample_group_images
-add constraint tbl_sample_group_images_pkey primary key (sample_group_image_id);
-
-
 alter table only public.tbl_sample_group_notes
 add constraint tbl_sample_group_notes_pkey primary key (sample_group_note_id);
 
@@ -656,10 +556,6 @@ add constraint tbl_sample_groups_pkey primary key (sample_group_id);
 
 alter table only public.tbl_sample_horizons
 add constraint tbl_sample_horizons_pkey primary key (sample_horizon_id);
-
-
-alter table only public.tbl_sample_images
-add constraint tbl_sample_images_pkey primary key (sample_image_id);
 
 
 alter table only public.tbl_sample_location_type_sampling_contexts
@@ -720,10 +616,6 @@ add constraint tbl_seasons_season_name_key unique (season_name);
 
 alter table only public.tbl_seasons
 add constraint tbl_seasons_season_name_unique unique (season_name);
-
-
-alter table only public.tbl_site_images
-add constraint tbl_site_images_pkey primary key (site_image_id);
 
 
 alter table only public.tbl_site_locations
@@ -798,10 +690,6 @@ alter table only public.tbl_taxa_common_names
 add constraint tbl_taxa_common_names_pkey primary key (taxon_common_name_id);
 
 
-alter table only public.tbl_taxa_images
-add constraint tbl_taxa_images_pkey primary key (taxa_images_id);
-
-
 alter table only public.tbl_taxa_measured_attributes
 add constraint tbl_taxa_measured_attributes_pkey primary key (measured_attribute_id);
 
@@ -856,18 +744,6 @@ add constraint tbl_taxonomy_notes_pkey primary key (taxonomy_notes_id);
 
 alter table only public.tbl_temperatures
 add constraint tbl_temperatures_pkey primary key (record_id);
-
-
-alter table only public.tbl_tephra_dates
-add constraint tbl_tephra_dates_pkey primary key (tephra_date_id);
-
-
-alter table only public.tbl_tephra_refs
-add constraint tbl_tephra_refs_pkey primary key (tephra_ref_id);
-
-
-alter table only public.tbl_tephras
-add constraint tbl_tephras_pkey primary key (tephra_id);
 
 
 alter table only public.tbl_text_biology
@@ -950,10 +826,6 @@ alter table only public.tbl_years_types
 add constraint tbl_years_types_pkey primary key (years_type_id);
 
 
-alter table only public.tbl_aggregate_datasets
-add constraint unique_tbl_aggregate_datasets_aggregate_dataset_uuid unique (aggregate_dataset_uuid);
-
-
 alter table only public.tbl_biblio
 add constraint unique_tbl_biblio_biblio_uuid unique (biblio_uuid);
 
@@ -1012,10 +884,6 @@ add constraint unique_tbl_taxonomic_order_systems_taxonomic_order_system_uuid un
 
 alter table only public.tbl_taxonomy_notes
 add constraint unique_tbl_taxonomy_notes_taxonomy_notes_uuid unique (taxonomy_notes_uuid);
-
-
-alter table only public.tbl_tephras
-add constraint unique_tbl_tephras_tephra_uuid unique (tephra_uuid);
 
 
 alter table only public.tbl_text_biology
@@ -1090,42 +958,6 @@ add constraint fk_abundances_taxon_id foreign key (taxon_id) references public.t
 ) on update cascade on delete cascade;
 
 
-alter table only public.tbl_aggregate_samples
-add constraint fk_aggragate_samples_analysis_entity_id foreign key (
-    analysis_entity_id
-) references public.tbl_analysis_entities (analysis_entity_id) on update cascade;
-
-
-alter table only public.tbl_aggregate_datasets
-add constraint fk_aggregate_datasets_aggregate_order_type_id foreign key (
-    aggregate_order_type_id
-) references public.tbl_aggregate_order_types (aggregate_order_type_id) on update cascade;
-
-
-alter table only public.tbl_aggregate_datasets
-add constraint fk_aggregate_datasets_biblio_id foreign key (biblio_id) references public.tbl_biblio (
-    biblio_id
-) on update cascade;
-
-
-alter table only public.tbl_aggregate_sample_ages
-add constraint fk_aggregate_sample_ages_aggregate_dataset_id foreign key (
-    aggregate_dataset_id
-) references public.tbl_aggregate_datasets (aggregate_dataset_id) on update cascade;
-
-
-alter table only public.tbl_aggregate_sample_ages
-add constraint fk_aggregate_sample_ages_analysis_entity_age_id foreign key (
-    analysis_entity_age_id
-) references public.tbl_analysis_entity_ages (analysis_entity_age_id) on update cascade;
-
-
-alter table only public.tbl_aggregate_samples
-add constraint fk_aggregate_samples_aggregate_dataset_id foreign key (
-    aggregate_dataset_id
-) references public.tbl_aggregate_datasets (aggregate_dataset_id) on update cascade;
-
-
 alter table only public.tbl_analysis_entities
 add constraint fk_analysis_entities_dataset_id foreign key (dataset_id) references public.tbl_datasets (
     dataset_id
@@ -1172,27 +1004,6 @@ alter table only public.tbl_analysis_entity_prep_methods
 add constraint fk_analysis_entity_prep_methods_method_id foreign key (method_id) references public.tbl_methods (
     method_id
 );
-
-
-alter table only public.tbl_ceramics
-add constraint fk_ceramics_analysis_entity_id foreign key (
-    analysis_entity_id
-) references public.tbl_analysis_entities (analysis_entity_id);
-
-
-alter table only public.tbl_ceramics
-add constraint fk_ceramics_ceramics_lookup_id foreign key (ceramics_lookup_id) references public.tbl_ceramics_lookup (
-    ceramics_lookup_id
-);
-
-
-alter table only public.tbl_ceramics_lookup
-add constraint fk_ceramics_lookup_method_id foreign key (method_id) references public.tbl_methods (method_id);
-
-
-alter table only public.tbl_ceramics_measurements
-add constraint fk_ceramics_measurements_method_id foreign key (method_id) references public.tbl_methods (method_id);
-
 
 alter table only public.tbl_chronologies
 add constraint fk_chronologies_contact_id foreign key (contact_id) references public.tbl_contacts (
@@ -1322,46 +1133,6 @@ add constraint fk_dating_material_taxa_tree_master_taxon_id foreign key (
 ) references public.tbl_taxa_tree_master (taxon_id);
 
 
-alter table only public.tbl_dendro
-add constraint fk_dendro_analysis_entity_id foreign key (analysis_entity_id) references public.tbl_analysis_entities (
-    analysis_entity_id
-);
-
-
-alter table only public.tbl_dendro_date_notes
-add constraint fk_dendro_date_notes_dendro_date_id foreign key (dendro_date_id) references public.tbl_dendro_dates (
-    dendro_date_id
-);
-
-
-alter table only public.tbl_dendro_dates
-add constraint fk_dendro_dates_analysis_entity_id foreign key (
-    analysis_entity_id
-) references public.tbl_analysis_entities (analysis_entity_id);
-
-
-alter table only public.tbl_dendro_dates
-add constraint fk_dendro_dates_dating_uncertainty_id foreign key (
-    dating_uncertainty_id
-) references public.tbl_dating_uncertainty (dating_uncertainty_id);
-
-
-alter table only public.tbl_dendro
-add constraint fk_dendro_dendro_lookup_id foreign key (dendro_lookup_id) references public.tbl_dendro_lookup (
-    dendro_lookup_id
-);
-
-
-alter table only public.tbl_dendro_dates
-add constraint fk_dendro_lookup_dendro_lookup_id foreign key (dendro_lookup_id) references public.tbl_dendro_lookup (
-    dendro_lookup_id
-);
-
-
-alter table only public.tbl_dendro_lookup
-add constraint fk_dendro_lookup_method_id foreign key (method_id) references public.tbl_methods (method_id);
-
-
 alter table only public.tbl_dimensions
 add constraint fk_dimensions_method_group_id foreign key (method_group_id) references public.tbl_method_groups (
     method_group_id
@@ -1449,51 +1220,6 @@ add constraint fk_imported_taxa_replacements_taxon_id foreign key (taxon_id) ref
     taxon_id
 ) on update cascade on delete cascade;
 
-
-alter table only public.tbl_isotope_measurements
-add constraint fk_isotope_isotope_type_id foreign key (isotope_type_id) references public.tbl_isotope_types (
-    isotope_type_id
-);
-
-
-alter table only public.tbl_isotope_measurements
-add constraint fk_isotope_measurements_isotope_standard_id foreign key (
-    isotope_standard_id
-) references public.tbl_isotope_standards (isotope_standard_id);
-
-
-alter table only public.tbl_isotope_measurements
-add constraint fk_isotope_method_id foreign key (method_id) references public.tbl_methods (method_id);
-
-
-alter table only public.tbl_isotopes
-add constraint fk_isotopes_analysis_entity_id foreign key (
-    analysis_entity_id
-) references public.tbl_analysis_entities (analysis_entity_id);
-
-
-alter table only public.tbl_isotopes
-add constraint fk_isotopes_isotope_measurement_id foreign key (
-    isotope_measurement_id
-) references public.tbl_isotope_measurements (isotope_measurement_id);
-
-
-alter table only public.tbl_isotopes
-add constraint fk_isotopes_isotope_standard_id foreign key (
-    isotope_standard_id
-) references public.tbl_isotope_standards (isotope_standard_id);
-
-
-alter table only public.tbl_isotopes
-add constraint fk_isotopes_isotope_value_specifier_id foreign key (
-    isotope_value_specifier_id
-) references public.tbl_isotope_value_specifiers (isotope_value_specifier_id);
-
-
-alter table only public.tbl_isotopes
-add constraint fk_isotopes_unit_id foreign key (unit_id) references public.tbl_units (unit_id);
-
-
 alter table only public.tbl_lithology
 add constraint fk_lithology_sample_group_id foreign key (sample_group_id) references public.tbl_sample_groups (
     sample_group_id
@@ -1513,23 +1239,6 @@ add constraint fk_locations_location_type_id foreign key (location_type_id) refe
 alter table only public.tbl_site_locations
 add constraint fk_locations_site_id foreign key (site_id) references public.tbl_sites (site_id);
 
-
-alter table only public.tbl_mcr_names
-add constraint fk_mcr_names_taxon_id foreign key (taxon_id) references public.tbl_taxa_tree_master (
-    taxon_id
-) on update cascade;
-
-
-alter table only public.tbl_mcr_summary_data
-add constraint fk_mcr_summary_data_taxon_id foreign key (taxon_id) references public.tbl_taxa_tree_master (
-    taxon_id
-) on update cascade;
-
-
-alter table only public.tbl_mcrdata_birmbeetledat
-add constraint fk_mcrdata_birmbeetledat_taxon_id foreign key (taxon_id) references public.tbl_taxa_tree_master (
-    taxon_id
-) on update cascade;
 
 
 alter table only public.tbl_measured_value_dimensions
@@ -1770,17 +1479,6 @@ add constraint fk_sample_group_dimensions_sample_group_id foreign key (
 ) references public.tbl_sample_groups (sample_group_id) on update cascade;
 
 
-alter table only public.tbl_sample_group_images
-add constraint fk_sample_group_images_image_type_id foreign key (image_type_id) references public.tbl_image_types (
-    image_type_id
-) on update cascade;
-
-
-alter table only public.tbl_sample_group_images
-add constraint fk_sample_group_images_sample_group_id foreign key (
-    sample_group_id
-) references public.tbl_sample_groups (sample_group_id);
-
 
 alter table only public.tbl_sample_group_coordinates
 add constraint fk_sample_group_positions_coordinate_method_dimension_id foreign key (
@@ -1846,17 +1544,6 @@ add constraint fk_sample_horizons_physical_sample_id foreign key (
 ) references public.tbl_physical_samples (physical_sample_id) on update cascade;
 
 
-alter table only public.tbl_sample_images
-add constraint fk_sample_images_image_type_id foreign key (image_type_id) references public.tbl_image_types (
-    image_type_id
-) on update cascade;
-
-
-alter table only public.tbl_sample_images
-add constraint fk_sample_images_physical_sample_id foreign key (
-    physical_sample_id
-) references public.tbl_physical_samples (physical_sample_id) on update cascade;
-
 
 alter table only public.tbl_sample_location_type_sampling_contexts
 add constraint fk_sample_location_sampling_contexts_sampling_context_id foreign key (
@@ -1900,22 +1587,6 @@ add constraint fk_seasons_season_type_id foreign key (season_type_id) references
 ) on update cascade;
 
 
-alter table only public.tbl_site_images
-add constraint fk_site_images_contact_id foreign key (contact_id) references public.tbl_contacts (
-    contact_id
-) on update cascade;
-
-
-alter table only public.tbl_site_images
-add constraint fk_site_images_image_type_id foreign key (image_type_id) references public.tbl_image_types (
-    image_type_id
-) on update cascade;
-
-
-alter table only public.tbl_site_images
-add constraint fk_site_images_site_id foreign key (site_id) references public.tbl_sites (site_id);
-
-
 alter table only public.tbl_site_natgridrefs
 add constraint fk_site_natgridrefs_method_id foreign key (method_id) references public.tbl_methods (method_id);
 
@@ -1943,7 +1614,7 @@ add constraint fk_site_other_records_site_id foreign key (site_id) references pu
 
 
 alter table only public.tbl_site_preservation_status
-add constraint "fk_site_preservation_status_site_id " foreign key (site_id) references public.tbl_sites (
+add constraint fk_site_preservation_status_site_id foreign key (site_id) references public.tbl_sites (
     site_id
 ) on update cascade;
 
@@ -1998,18 +1669,6 @@ alter table only public.tbl_taxa_common_names
 add constraint fk_taxa_common_names_taxon_id foreign key (taxon_id) references public.tbl_taxa_tree_master (
     taxon_id
 ) on update cascade;
-
-
-alter table only public.tbl_taxa_images
-add constraint fk_taxa_images_image_type_id foreign key (image_type_id) references public.tbl_image_types (
-    image_type_id
-);
-
-
-alter table only public.tbl_taxa_images
-add constraint fk_taxa_images_taxa_tree_master_id foreign key (taxon_id) references public.tbl_taxa_tree_master (
-    taxon_id
-);
 
 
 alter table only public.tbl_taxa_measured_attributes
@@ -2148,10 +1807,6 @@ add constraint fk_taxonomy_notes_taxon_id foreign key (taxon_id) references publ
 ) on update cascade on delete cascade;
 
 
-alter table only public.tbl_dendro_dates
-add constraint fk_tbl_age_types_age_type_id foreign key (age_type_id) references public.tbl_age_types (age_type_id);
-
-
 alter table only public.tbl_dataset_methods
 add constraint fk_tbl_dataset_methods_to_tbl_datasets foreign key (dataset_id) references public.tbl_datasets (
     dataset_id
@@ -2176,36 +1831,6 @@ alter table only public.tbl_sample_group_notes
 add constraint fk_tbl_sample_group_notes_sample_groups foreign key (
     sample_group_id
 ) references public.tbl_sample_groups (sample_group_id) on update cascade;
-
-
-alter table only public.tbl_tephra_dates
-add constraint fk_tephra_dates_analysis_entity_id foreign key (
-    analysis_entity_id
-) references public.tbl_analysis_entities (analysis_entity_id) on update cascade;
-
-
-alter table only public.tbl_tephra_dates
-add constraint fk_tephra_dates_dating_uncertainty_id foreign key (
-    dating_uncertainty_id
-) references public.tbl_dating_uncertainty (dating_uncertainty_id);
-
-
-alter table only public.tbl_tephra_dates
-add constraint fk_tephra_dates_tephra_id foreign key (tephra_id) references public.tbl_tephras (
-    tephra_id
-) on update cascade;
-
-
-alter table only public.tbl_tephra_refs
-add constraint fk_tephra_refs_biblio_id foreign key (biblio_id) references public.tbl_biblio (
-    biblio_id
-) on update cascade;
-
-
-alter table only public.tbl_tephra_refs
-add constraint fk_tephra_refs_tephra_id foreign key (tephra_id) references public.tbl_tephras (
-    tephra_id
-) on update cascade;
 
 
 alter table only public.tbl_text_biology
