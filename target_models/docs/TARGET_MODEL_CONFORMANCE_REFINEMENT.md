@@ -35,6 +35,16 @@ These are reliable when the project expresses the target-facing column explicitl
 
 ## Observed Findings
 
+### Comparison matrix
+
+| Project shape | Required entity | Public ID | Required FK target | Required column |
+|---|---:|---:|---:|---:|
+| `sead_arbodat_core.yml` | 0 | 0 | 1 | 3 |
+| `sead_missing_sample_group.yml` | 1 | 1 | 3 | 4 |
+| Full `arbodat` project | 0 | 0 | 4 | 3 |
+
+This matrix is useful because it shows that the current validator is not surfacing new rule families as the project shape gets larger. The differences are in where the same rule families appear, not in the validator inventing new classes of findings.
+
 ### `sead_arbodat_core.yml`
 
 - `sample_type` is missing required target-facing column `type_name`
