@@ -333,15 +333,15 @@ Goals:
 
 ### Checklist
 
-- [ ] Run the standalone conformance validator against multiple real project fixtures
-- [ ] Classify findings into stable errors, warnings, and deferred heuristics
-- [ ] Record false positives and ambiguous cases in `target_models/docs/`
+- [x] Run the standalone conformance validator against multiple real project fixtures
+- [x] Classify findings into stable errors, warnings, and deferred heuristics
+- [x] Record false positives and ambiguous cases in `target_models/docs/`
 - [ ] Refine `sead_v2.yml` only where real project evidence shows the target model is underspecified or misleading
-- [ ] Identify the minimal check set safe for eventual backend integration
+- [x] Identify the minimal check set safe for eventual backend integration
 
 Deliverables:
 - Refined conformance tests
-- Notes on noisy versus stable rules
+- Notes on noisy versus stable rules in `target_models/docs/TARGET_MODEL_CONFORMANCE_REFINEMENT.md`
 - A documented minimal rule set for future backend integration
 
 Exit criteria:
