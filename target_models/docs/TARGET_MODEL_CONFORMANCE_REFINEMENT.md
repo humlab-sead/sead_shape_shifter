@@ -126,6 +126,27 @@ If a subset of the standalone validator is later integrated into backend validat
 - Required foreign-key targets by direct entity reference only
 - Required target-facing columns only when they are explicit or safely inferable from current standalone rules
 
+## Frozen Standalone Rule Set
+
+Based on the current corpus, the standalone rule set can now be treated as frozen for the first integration pass.
+
+Included in the frozen set:
+
+- required entity presence
+- exact `public_id` checks
+- direct required foreign-key target checks
+- required target-facing columns only when the project expresses them directly or through the currently documented safe inferences
+
+Explicitly excluded from the frozen set:
+
+- alias acceptance
+- semantic column normalization
+- transitive relationship satisfaction
+- value-level or pipeline-executed checks
+- interpretation of `@value:` expressions beyond direct structural presence
+
+This freeze does not mean the format is final forever. It means the current standalone evidence is sufficient to stop broadening the rule set before any backend integration work begins.
+
 ## Current Phase 6 Conclusion
 
 At this point, the evidence still supports keeping `sead_v2.yml` strict and leaving alias metadata out of the format.
@@ -140,6 +161,8 @@ So the current Phase 6 direction remains:
 - keep the validator conservative
 - keep the target model canonical
 - defer any alias mechanism until there is evidence from multiple distinct real project shapes
+
+For Phase 7 planning, backend integration should stay limited to this frozen standalone rule set.
 
 ## Not Yet Safe For Integration
 

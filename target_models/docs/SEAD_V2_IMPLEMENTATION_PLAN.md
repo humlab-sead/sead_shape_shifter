@@ -336,13 +336,17 @@ Goals:
 - [x] Run the standalone conformance validator against multiple real project fixtures
 - [x] Classify findings into stable errors, warnings, and deferred heuristics
 - [x] Record false positives and ambiguous cases in `target_models/docs/`
-- [ ] Refine `sead_v2.yml` only where real project evidence shows the target model is underspecified or misleading
+- [x] Confirm whether `sead_v2.yml` needs refinement based on real project evidence
 - [x] Identify the minimal check set safe for eventual backend integration
 
 Deliverables:
 - Refined conformance tests
 - Notes on noisy versus stable rules in `target_models/docs/TARGET_MODEL_CONFORMANCE_REFINEMENT.md`
 - A documented minimal rule set for future backend integration
+
+Current Phase 6 decision:
+- Keep `sead_v2.yml` canonical and unchanged for now; the current real-project evidence does not justify alias metadata or weaker conformance semantics.
+- Freeze the standalone integration candidate to the conservative checks already documented in `target_models/docs/TARGET_MODEL_CONFORMANCE_REFINEMENT.md`.
 
 Exit criteria:
 - The validator behavior is understood well enough that integration can be incremental rather than speculative
@@ -351,7 +355,7 @@ Exit criteria:
 
 - **Iteration 1**: evaluate one project deeply
 - **Iteration 2**: compare across multiple project shapes
-- **Iteration 3**: freeze a minimum viable conformance rule set
+- **Iteration 3**: freeze a minimum viable conformance rule set and carry only that subset toward backend integration
 
 ## Phase 7: Optional Backend Integration
 
@@ -363,14 +367,14 @@ Goals:
 
 - [ ] Decide whether target-model loading should stay in a dedicated loader or move into existing services
 - [ ] Map standalone conformance issues to backend validation error shapes
-- [ ] Integrate target-model conformance as an additive validation pass
+- [ ] Integrate only the frozen standalone rule set as an additive validation pass
 - [ ] Keep non-integrated experimental rules outside the backend path
 
 Deliverables:
 - Backend integration work described in `docs/proposals/TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md`
 
 Exit criteria:
-- Target-model-aware validation in the backend uses only rules that have already been stabilized in `target_models/`
+- Target-model-aware validation in the backend uses only the frozen conservative rules already stabilized in `target_models/`
 
 ## Future Phase: Deferred Issues
 

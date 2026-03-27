@@ -5,7 +5,7 @@ import yaml
 
 from target_model_spec.conformance_validator import TargetModelConformanceValidator
 from target_model_spec.models import TargetModel
-from target_model_spec.project_models import ShapeShifterProject
+from target_model_spec.project_models import ConformanceProjectModel
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -18,17 +18,17 @@ def load_target_model() -> TargetModel:
     return TargetModel.model_validate(yaml.safe_load(SPEC_PATH.read_text(encoding="utf-8")))
 
 
-def load_project(name: str) -> ShapeShifterProject:
+def load_project(name: str) -> ConformanceProjectModel:
     project_path = EXAMPLES_DIR / name
-    return ShapeShifterProject.model_validate(yaml.safe_load(project_path.read_text(encoding="utf-8")))
+    return ConformanceProjectModel.model_validate(yaml.safe_load(project_path.read_text(encoding="utf-8")))
 
 
-def load_real_project(project_name: str) -> ShapeShifterProject:
+def load_real_project(project_name: str) -> ConformanceProjectModel:
     project_path = REAL_PROJECTS_DIR / project_name / "shapeshifter.yml"
-    return ShapeShifterProject.model_validate(yaml.safe_load(project_path.read_text(encoding="utf-8")))
+    return ConformanceProjectModel.model_validate(yaml.safe_load(project_path.read_text(encoding="utf-8")))
 
 
-def issue_pairs(target_model: TargetModel, project: ShapeShifterProject) -> list[tuple[str, str | None]]:
+def issue_pairs(target_model: TargetModel, project: ConformanceProjectModel) -> list[tuple[str, str | None]]:
     issues = TargetModelConformanceValidator().validate(target_model, project)
     return [(issue.code, issue.entity) for issue in issues]
 
@@ -66,7 +66,7 @@ def test_conformance_validator_reports_missing_entity_and_wrong_public_id() -> N
 
 def test_conformance_validator_keeps_alias_like_names_strict() -> None:
     target_model = load_target_model()
-    project = ShapeShifterProject.model_validate(
+    project = ConformanceProjectModel.model_validate(
         {
             "metadata": {
                 "name": "sead:alias-like-columns",
