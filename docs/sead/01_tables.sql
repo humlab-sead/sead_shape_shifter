@@ -514,7 +514,6 @@ create table tbl_location_types (
 );
 
 
-
 create table tbl_measured_values (
     measured_value_id bigint not null,
     analysis_entity_id bigint not null,
