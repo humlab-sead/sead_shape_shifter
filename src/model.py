@@ -715,12 +715,12 @@ class TableConfig:
 
             # Filter out system_id and identity/public_id columns from both lists for alignment.
             # For source-based append, the source entity may have a different public_id than the target.
-            system_id_col = self.system_id
-            target_public_id_col = self.public_id
-            source_public_id_col = self.get_source_public_id()
+            system_id_col: str = self.system_id
+            target_public_id_col: str = self.public_id
+            source_public_id_col: str = self.get_source_public_id()
 
-            parent_exclude_cols = {system_id_col}
-            current_exclude_cols = {system_id_col}
+            parent_exclude_cols: set[str] = {system_id_col}
+            current_exclude_cols: set[str] = {system_id_col}
 
             if target_public_id_col:
                 parent_exclude_cols.add(target_public_id_col)
@@ -729,8 +729,8 @@ class TableConfig:
             if source_public_id_col:
                 current_exclude_cols.add(source_public_id_col)
 
-            parent_cols_filtered = [c for c in parent_columns if c not in parent_exclude_cols]
-            current_cols_filtered = [c for c in current_columns if c not in current_exclude_cols]
+            parent_cols_filtered: list[str] = [c for c in parent_columns if c not in parent_exclude_cols]
+            current_cols_filtered: list[str] = [c for c in current_columns if c not in current_exclude_cols]
 
             if len(parent_cols_filtered) != len(current_cols_filtered):
                 raise ValueError(
@@ -740,12 +740,12 @@ class TableConfig:
                 )
 
             # Create rename mapping
-            rename_map = dict(zip(current_cols_filtered, parent_cols_filtered))
+            rename_map: dict[str, str] = dict(zip(current_cols_filtered, parent_cols_filtered))
             table = table.rename(columns=rename_map)
 
         elif column_mapping:
             # Explicit column mapping
-            missing_cols = set(column_mapping.keys()) - set(table.columns)
+            missing_cols: set[str] = set(column_mapping.keys()) - set(table.columns)
             if missing_cols:
                 raise ValueError(f"Columns specified in column_mapping not found in {self.entity_name}: {missing_cols}")
             table = table.rename(columns=column_mapping)
