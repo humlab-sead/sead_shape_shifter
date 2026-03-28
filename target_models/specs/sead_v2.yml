@@ -65,6 +65,9 @@ entities:
         required: true
         type: string
         nullable: false
+      site_type_id:
+        type: integer
+        nullable: true
       national_site_identifier:
         type: string
         nullable: true
@@ -83,6 +86,63 @@ entities:
     foreign_keys:
       - entity: location
         required: true
+      - entity: site_type
+        required: false
+
+  site_type_group:
+    role: classifier
+    required: false
+    description: Controlled grouping for site-type vocabularies used by archaeological site classifiers.
+    domains: [core, spatial]
+    target_table: tbl_site_type_groups
+    public_id: site_type_group_id
+    identity_columns: [site_type_group]
+    columns:
+      site_type_group:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: false
+      site_type_group_abbrev:
+        type: string
+        nullable: false
+      origin_code:
+        type: string
+        nullable: true
+      origin_description:
+        type: string
+        nullable: false
+    unique_sets:
+      - [site_type_group]
+
+  site_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for site classification in SEAD.
+    domains: [core, spatial]
+    target_table: tbl_site_types
+    public_id: site_type_id
+    identity_columns: [site_type]
+    columns:
+      site_type_group_id:
+        required: true
+        type: integer
+        nullable: false
+      site_type:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: false
+      site_type_abbrev:
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: site_type_group
+        required: false
 
   sample_group:
     role: lookup
@@ -153,6 +213,51 @@ entities:
       - entity: sample_type
         required: true
 
+  sample_description_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for typed sample descriptions.
+    domains: [core, sample-metadata]
+    target_table: tbl_sample_description_types
+    public_id: sample_description_type_id
+    identity_columns: [type_name]
+    columns:
+      type_name:
+        required: true
+        type: string
+        nullable: true
+      type_description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [type_name]
+
+  sample_description:
+    role: fact
+    required: false
+    description: Typed free-text or coded description attached to a physical sample.
+    domains: [core, sample-metadata]
+    target_table: tbl_sample_descriptions
+    public_id: sample_description_id
+    identity_columns: [physical_sample_id, sample_description_type_id]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      sample_description_type_id:
+        required: true
+        type: integer
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: sample_description_type
+        required: true
+
   sample_type:
     role: classifier
     required: true
@@ -202,6 +307,8 @@ entities:
     unique_sets:
       - [method_name]
     foreign_keys:
+      - entity: citation
+        required: false
       - entity: method_group
         required: false
 
@@ -229,6 +336,9 @@ entities:
       master_set_id:
         type: integer
         nullable: true
+      biblio_id:
+        type: integer
+        nullable: true
       project_id:
         type: integer
         nullable: true
@@ -237,6 +347,110 @@ entities:
     foreign_keys:
       - entity: method
         required: true
+      - entity: master_dataset
+        required: false
+      - entity: citation
+        required: false
+      - entity: project
+        required: false
+
+  master_dataset:
+    role: lookup
+    required: false
+    description: Master dataset grouping referenced by one or more datasets.
+    domains: [core, provenance]
+    target_table: tbl_dataset_masters
+    public_id: master_set_id
+    identity_columns: [master_name]
+    columns:
+      contact_id:
+        type: integer
+        nullable: true
+      biblio_id:
+        type: integer
+        nullable: true
+      master_name:
+        required: true
+        type: string
+        nullable: true
+      master_notes:
+        type: string
+        nullable: true
+      url:
+        type: string
+        nullable: true
+    unique_sets:
+      - [master_name]
+    foreign_keys:
+      - entity: contact
+        required: false
+      - entity: citation
+        required: false
+
+  project:
+    role: lookup
+    required: false
+    description: Project-level metadata referenced by datasets and site collections.
+    domains: [core, provenance]
+    target_table: tbl_projects
+    public_id: project_id
+    identity_columns: [project_name]
+    columns:
+      project_name:
+        required: true
+        type: string
+        nullable: true
+      project_type_id:
+        type: integer
+        nullable: true
+      project_stage_id:
+        type: integer
+        nullable: true
+      project_abbrev_name:
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [project_abbrev_name]
+
+  citation:
+    role: lookup
+    required: false
+    description: Bibliographic reference reused by datasets, methods, and other SEAD entities.
+    domains: [provenance, bibliography]
+    target_table: tbl_biblio
+    public_id: biblio_id
+    identity_columns: [title, year, authors]
+    columns:
+      bugs_reference:
+        type: string
+        nullable: true
+      doi:
+        type: string
+        nullable: true
+      isbn:
+        type: string
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+      title:
+        type: string
+        nullable: true
+      year:
+        type: string
+        nullable: true
+      authors:
+        type: string
+        nullable: true
+      full_reference:
+        type: string
+        nullable: false
+      url:
+        type: string
+        nullable: true
 
   analysis_entity:
     role: bridge
@@ -341,11 +555,33 @@ entities:
         type: integer
         nullable: false
       modification_type_id:
+        required: true
         type: integer
         nullable: false
     foreign_keys:
       - entity: abundance
         required: false
+      - entity: modification_type
+        required: true
+
+  modification_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for abundance and specimen modification states.
+    domains: [abundance]
+    target_table: tbl_modification_types
+    public_id: modification_type_id
+    identity_columns: [modification_type_name]
+    columns:
+      modification_type_name:
+        required: true
+        type: string
+        nullable: true
+      modification_type_description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [modification_type_name]
 
   abundance_property:
     role: fact
@@ -459,7 +695,7 @@ entities:
   relative_dating:
     role: fact
     required: false
-    description: Relative dating observation linked to an analysis entity and optionally to a relative age vocabulary entry.
+    description: Relative or archaeological dating observation linked to an analysis entity and optionally to a relative age vocabulary entry; Arbodat archaeological dating facts map here.
     domains: [dating]
     target_table: tbl_relative_dates
     public_id: relative_date_id
@@ -490,7 +726,7 @@ entities:
   geochronology:
     role: fact
     required: false
-    description: Absolute dating observation linked to an analysis entity and optionally to a dating laboratory.
+    description: Absolute or chronology dating observation linked to an analysis entity and optionally to a dating laboratory; Arbodat chronology/lab dating facts map here even when the project-local entity is named `dating`.
     domains: [dating]
     target_table: tbl_geochronology
     public_id: geochron_id
@@ -623,6 +859,100 @@ entities:
         nullable: true
     unique_sets:
       - [contact_type_name]
+
+  dataset_contact:
+    role: bridge
+    required: false
+    description: Many-to-many bridge connecting datasets, contacts, and contact roles.
+    domains: [contacts, provenance]
+    target_table: tbl_dataset_contacts
+    public_id: dataset_contact_id
+    identity_columns: [dataset_id, contact_id, contact_type_id]
+    columns:
+      dataset_id:
+        required: true
+        type: integer
+        nullable: false
+      contact_id:
+        required: true
+        type: integer
+        nullable: false
+      contact_type_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: dataset
+        required: true
+      - entity: contact
+        required: true
+      - entity: contact_type
+        required: true
+
+  feature_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for archaeological feature classification.
+    domains: [core, excavation]
+    target_table: tbl_feature_types
+    public_id: feature_type_id
+    identity_columns: [feature_type_name]
+    columns:
+      feature_type_name:
+        required: true
+        type: string
+        nullable: true
+      feature_type_description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [feature_type_name]
+
+  feature:
+    role: lookup
+    required: false
+    description: Archaeological feature or excavation context referenced by samples and site workflows.
+    domains: [core, excavation]
+    target_table: tbl_features
+    public_id: feature_id
+    identity_columns: [feature_type_id, feature_name]
+    columns:
+      feature_type_id:
+        required: true
+        type: integer
+        nullable: false
+      feature_name:
+        type: string
+        nullable: true
+      feature_description:
+        type: string
+        nullable: true
+    foreign_keys:
+      - entity: feature_type
+        required: true
+
+  sample_feature:
+    role: bridge
+    required: false
+    description: Many-to-many bridge connecting physical samples to archaeological features.
+    domains: [core, excavation]
+    target_table: tbl_physical_sample_features
+    public_id: physical_sample_feature_id
+    identity_columns: [physical_sample_id, feature_id]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      feature_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: feature
+        required: true
 
 naming:
   public_id_suffix: _id

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from target_model_spec.models import EntitySpec, TargetModel
+from src.target_model.models import EntitySpec, TargetModel
 
 
 PLACEHOLDER_ENTITY_TYPE = "TODO"

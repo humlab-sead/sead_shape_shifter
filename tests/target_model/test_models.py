@@ -1,4 +1,4 @@
-from target_model_spec.models import TargetModel
+from src.target_model.models import TargetModel
 
 
 def test_target_model_parses_minimal_payload() -> None:

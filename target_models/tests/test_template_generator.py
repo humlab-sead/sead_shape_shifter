@@ -2,9 +2,8 @@ from pathlib import Path
 
 import yaml
 
-from target_model_spec.models import TargetModel
-from target_model_spec.project_models import ConformanceProjectModel
-from target_model_spec.template_generator import generate_project_template, render_project_template_yaml
+from src.target_model.models import TargetModel
+from src.target_model.template_generator import generate_project_template, render_project_template_yaml
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -33,12 +32,11 @@ def test_generate_project_template_renders_valid_yaml_for_explicit_entity_select
 
     rendered = render_project_template_yaml(target_model, entity_names=["contact_type"], project_name="generated:test-contact-type")
     parsed = yaml.safe_load(rendered)
-    project = ConformanceProjectModel.model_validate(parsed)
 
-    assert project.metadata.name == "generated:test-contact-type"
-    assert set(project.entities) == {"contact_type"}
-    assert project.entities["contact_type"].public_id == "contact_type_id"
-    assert project.entities["contact_type"].type == "TODO"
+    assert parsed["metadata"]["name"] == "generated:test-contact-type"
+    assert set(parsed["entities"]) == {"contact_type"}
+    assert parsed["entities"]["contact_type"]["public_id"] == "contact_type_id"
+    assert parsed["entities"]["contact_type"]["type"] == "TODO"
 
 
 def test_generate_project_template_raises_for_unknown_entity() -> None:

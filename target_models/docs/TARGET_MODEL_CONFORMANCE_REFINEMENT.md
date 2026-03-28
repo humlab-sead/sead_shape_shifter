@@ -6,7 +6,6 @@ It exists to separate low-noise rules that are safe to keep from heuristic check
 
 ## Corpus Used
 
-- `target_models/examples/sead_canonical_minimal.yml`
 - `target_models/examples/sead_arbodat_core.yml`
 - `target_models/examples/sead_missing_sample_group.yml`
 - `tests/test_data/projects/arbodat/shapeshifter.yml`
@@ -40,18 +39,11 @@ These are reliable when the project expresses the target-facing column explicitl
 
 | Project shape | Required entity | Public ID | Required FK target | Required column |
 |---|---:|---:|---:|---:|
-| `sead_canonical_minimal.yml` | 0 | 0 | 0 | 0 |
 | `sead_arbodat_core.yml` | 0 | 0 | 1 | 3 |
 | `sead_missing_sample_group.yml` | 1 | 1 | 3 | 4 |
 | Full `arbodat` project | 0 | 0 | 4 | 3 |
 
-This matrix is useful because it now includes both a positive control and several failure-heavy shapes. The current validator is not surfacing new rule families as the project shape gets larger. The differences are in where the same rule families appear, not in the validator inventing new classes of findings.
-
-### `sead_canonical_minimal.yml`
-
-- No issues
-
-This is a hand-authored non-Arbodat project shape that uses canonical target-facing names directly. It serves as a positive control showing that the standalone validator can also accept a distinct project shape cleanly, rather than only reporting failures on Arbodat-derived fixtures.
+This matrix is useful because it shows that the current validator is not surfacing new rule families as the project shape gets larger. The differences are in where the same rule families appear, not in the validator inventing new classes of findings.
 
 ### `sead_arbodat_core.yml`
 
@@ -126,33 +118,11 @@ If a subset of the standalone validator is later integrated into backend validat
 - Required foreign-key targets by direct entity reference only
 - Required target-facing columns only when they are explicit or safely inferable from current standalone rules
 
-## Frozen Standalone Rule Set
-
-Based on the current corpus, the standalone rule set can now be treated as frozen for the first integration pass.
-
-Included in the frozen set:
-
-- required entity presence
-- exact `public_id` checks
-- direct required foreign-key target checks
-- required target-facing columns only when the project expresses them directly or through the currently documented safe inferences
-
-Explicitly excluded from the frozen set:
-
-- alias acceptance
-- semantic column normalization
-- transitive relationship satisfaction
-- value-level or pipeline-executed checks
-- interpretation of `@value:` expressions beyond direct structural presence
-
-This freeze does not mean the format is final forever. It means the current standalone evidence is sufficient to stop broadening the rule set before any backend integration work begins.
-
 ## Current Phase 6 Conclusion
 
 At this point, the evidence still supports keeping `sead_v2.yml` strict and leaving alias metadata out of the format.
 
 - The full Arbodat project confirms the same mismatch families already visible in the standalone fixtures.
-- The non-Arbodat canonical fixture confirms that those mismatch families are not universal artifacts of the validator.
 - Those mismatches are explainable as either direct target-model gaps in the project or intentional source-specific naming choices.
 - Neither case justifies weakening the target model yet.
 
@@ -161,8 +131,6 @@ So the current Phase 6 direction remains:
 - keep the validator conservative
 - keep the target model canonical
 - defer any alias mechanism until there is evidence from multiple distinct real project shapes
-
-For Phase 7 planning, backend integration should stay limited to this frozen standalone rule set.
 
 ## Not Yet Safe For Integration
 

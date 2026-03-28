@@ -2,8 +2,8 @@ from pathlib import Path
 
 import yaml
 
-from target_model_spec.models import TargetModel
-from target_model_spec.validator import TargetModelSpecValidator
+from src.target_model.models import TargetModel
+from src.target_model.spec_validator import TargetModelSpecValidator
 
 
 def test_sead_v2_spec_loads_and_validates() -> None:
@@ -20,4 +20,9 @@ def test_sead_v2_spec_loads_and_validates() -> None:
     assert {"taxa_tree_master", "taxa_common_names"}.issubset(target_model.entities)
     assert {"relative_ages", "relative_dating", "geochronology", "dating_lab"}.issubset(target_model.entities)
     assert {"method_group", "contact", "contact_type"}.issubset(target_model.entities)
+    assert {"project", "feature_type", "feature", "sample_description_type", "sample_description"}.issubset(
+        target_model.entities
+    )
+    assert {"site_type_group", "site_type", "modification_type"}.issubset(target_model.entities)
+    assert {"citation", "master_dataset", "dataset_contact", "sample_feature"}.issubset(target_model.entities)
     assert issues == []

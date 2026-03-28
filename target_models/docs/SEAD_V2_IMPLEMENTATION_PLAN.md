@@ -79,11 +79,11 @@ Checklist:
 - [x] Validate the expanded model with parser, spec-validation, and conformance tests
 
 Current status:
-- **Milestone 2 is complete for the current standalone scope.**
-- The abundance, taxonomy, dating, and method/contact packages have now been drafted in the working spec.
-- Current baseline: the working spec contains 23 entities, so both the minimum and preferred Milestone 2 entity-count targets are now satisfied.
-- The template-generation proof of concept now exists as a standalone generator and CLI in `target_models/`.
-- The remaining work moves out of Milestone 2 and into later implementation choices such as backend integration, broader coverage, or a richer generator.
+- **Milestone 2 remains complete for its initial standalone package, and the same pre-integration track now continues with follow-on coverage work.**
+- The abundance, taxonomy, dating, and method/contact packages remain drafted in the working spec.
+- The working spec now contains 31 entities after the first common-entity follow-on package (`project`, `feature`, `feature_type`, `modification_type`, `sample_description`, `sample_description_type`, `site_type`, `site_type_group`).
+- The template-generation proof of concept continues to exist as a standalone generator and CLI in `target_models/`.
+- Backend integration is still deferred; the next standalone phase now focuses on resolving remaining proposal-versus-implementation drift and expanding the spec toward the most commonly mapped entities before claiming Milestone 3 stability.
 
 ### Milestone 3: Stability
 
@@ -101,7 +101,7 @@ Checklist:
 
 Current status:
 - **Milestone 3 is not complete.**
-- The current standalone work is still best understood as pre-integration stabilization rather than full v1 format stabilization.
+- The working spec has now reached roughly 30 commonly mapped entities, but Milestone 3 still requires v1 contract freeze and downstream consumer validation.
 
 ## Phase 0: Pre-Draft Decisions
 
@@ -380,7 +380,7 @@ Goals:
 - [x] Cover the validator with tests against real fixture projects
 
 Deliverables:
-- `target_models/src/target_model_spec/conformance_validator.py` or equivalent
+- `src/target_model/conformance.py` or equivalent
 - A lightweight project model or adapter for standalone `shapeshifter.yml` validation
 - Conformance tests under `target_models/tests/`
 
@@ -497,7 +497,7 @@ Acceptance criteria:
 - The generated output is valid YAML and is clearly usable as an authoring starting point, even if incomplete for execution.
 
 Implementation shape:
-- The standalone generator lives in `target_models/src/target_model_spec/template_generator.py`.
+- The standalone generator now lives in `src/target_model/template_generator.py`.
 - The proof-of-concept CLI entrypoint lives in `target_models/scripts/generate_project_template.py`.
 - The initial CLI shape is:
   - `--spec PATH`
@@ -509,32 +509,73 @@ Implementation shape:
 Preferred demonstration target:
 - Generate a dating-focused scaffold from the current SEAD target model covering `relative_ages`, `relative_dating`, `geochronology`, `dating_lab`, and any required dependency entities pulled in by the filter.
 
+Dating semantics note:
+- In Arbodat-style projects, archaeological dating facts correspond to the canonical `relative_dating` target-model entity.
+- Chronology or laboratory dating facts correspond to canonical SEAD `geochronology`, even when a project-local entity is simply named `dating`.
+
 Current implementation status:
-- Implemented in `target_models/src/target_model_spec/template_generator.py` with CLI wrapper `target_models/scripts/generate_project_template.py`.
+- Implemented in `src/target_model/template_generator.py` with CLI wrapper `target_models/scripts/generate_project_template.py`.
 - Covered by standalone tests in `target_models/tests/test_template_generator.py`.
 
 Exit criteria:
 - Milestone 2 is complete or reduced to a clearly bounded remainder with explicit deferred items
 - The documentation and standalone target-model artifacts are as complete as practical before backend integration begins
 
-## Phase 8: Optional Backend Integration
+## Phase 8: Commonly Mapped Entity Expansion
 
 Goals:
-- Integrate only the proven subset of conformance checks into Shape Shifter validation services
-- Reuse the standalone work rather than redesigning it inside the backend
+- Continue the standalone pre-integration track after the initial Milestone 2 package is complete
+- Resolve remaining proposal-versus-implementation drift in the roadmap and coverage language
+- Expand `sead_v2.yml` toward the most commonly mapped SEAD entities found in real project corpora without yet claiming v1 format stability
 
 ### Checklist
 
-- [ ] Decide whether target-model loading should stay in a dedicated loader or move into existing services
-- [ ] Map standalone conformance issues to backend validation error shapes
-- [ ] Integrate only the frozen standalone rule set as an additive validation pass
+- [x] Add a follow-on roadmap phase before backend integration so expanded standalone coverage is represented explicitly
+- [x] Update proposal and implementation-plan text so the current coverage and next-step sequencing match the implementation
+- [x] Draft a first common-entity package in `target_models/specs/sead_v2.yml`: `project`, `feature`, `feature_type`, `modification_type`, `sample_description`, `sample_description_type`, `site_type`, `site_type_group`
+- [x] Improve related existing entities where the new package adds clearer target-model relationships (`dataset -> project`, `site -> site_type`, `abundance_modification -> modification_type`)
+- [x] Draft a second common/provenance bridge package in `target_models/specs/sead_v2.yml`: `citation`, `master_dataset`, `dataset_contact`, `sample_feature`
+- [x] Improve related existing entities where the new package adds clearer target-model relationships (`dataset -> master_dataset`, `dataset -> citation`, `method -> citation`, `sample <-> feature` via `sample_feature`, `dataset <-> contact` via `dataset_contact`)
+- [x] Reach roughly 30 total entities in the working SEAD spec without promoting Milestone 3 to complete
+- [x] Update standalone validation tests to cover the new common-entity package
+- [x] Reassess which still-common entities remain deferred because current standalone conformance semantics cannot yet compare them reliably
+
+Current status:
+- **Phase 8 is complete for its second follow-on package.**
+- The working SEAD spec now contains 35 entities.
+- The post-Milestone-2 expansion now covers not only site/excavation and sample-metadata entities, but also bibliographic and many-to-many provenance bridges that occur in real Arbodat-style projects.
+- Still-deferred entities such as `sample_coordinate` and other alias-heavy mappings remain good candidates for later work, but they need either richer target metadata or broader conformance semantics to avoid noisy false positives.
+
+Deliverables:
+- A 35-entity working `target_models/specs/sead_v2.yml`
+- Updated proposal and implementation-plan language for the post-23-entity standalone expansion
+- Updated standalone spec-validation coverage for the new entity package
+
+Exit criteria:
+- The most immediate proposal-versus-implementation drift is removed
+- The working spec reaches roughly 30 entities while remaining stable under the standalone parser and validators
+
+## Phase 9: Core Conformance Integration
+
+Goals:
+- Move target-model conformance from the standalone experimental validator onto the resolved core Shape Shifter project model
+- Reuse the standalone target-model specifications and fixtures without keeping a duplicate lightweight project model
+- Keep target-model loading at the boundary while making conformance itself a core Shape Shifter capability
+
+### Checklist
+
+- [ ] Move the target-model schema to a shared domain location rather than a backend-only or standalone-only module
+- [ ] Add a core conformance validator that accepts a parsed target model plus resolved `ShapeShiftProject`
+- [ ] Add a `TableConfig`-level target-facing column abstraction for conformance checks
+- [ ] Map core conformance issues to backend validation error shapes
+- [ ] Retire the duplicate standalone project-side conformance model once parity is reached
 - [ ] Keep non-integrated experimental rules outside the backend path
 
 Deliverables:
-- Backend integration work described in `docs/proposals/TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md`
+- Core conformance migration work described in `docs/proposals/TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md`
 
 Exit criteria:
-- Target-model-aware validation in the backend uses only the frozen conservative rules already stabilized in `target_models/`
+- Target-model-aware validation runs against the resolved core project model and no longer depends on a duplicate standalone project-side conformance model
 
 ## Future Phase: Deferred Issues
 
@@ -581,4 +622,5 @@ These are intentionally deferred so the standalone validator and the first targe
 4. Build a standalone project corpus in Phase 4.
 5. Implement and iterate on `TargetModelConformanceValidator` in Phases 5 and 6.
 6. Complete Milestone 2 documentation and target-model expansion work in Phase 7.
-7. Revisit backend integration only after the standalone validator and Milestone 2 work have stabilized.
+7. Extend standalone coverage with the first common-entity package in Phase 8.
+8. Revisit backend integration only after the standalone validator and expanded standalone coverage have stabilized.
