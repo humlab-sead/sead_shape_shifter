@@ -360,6 +360,14 @@ class TableConfig:
         return set(self.entity_cfg.get("keys", []) or [])
 
     @property
+    def safe_keys(self) -> list[str]:
+        """Return keys as an ordered list, converting scalar values if necessary."""
+        keys: str | list[Any] = self.entity_cfg.get("keys", []) or []
+        if isinstance(keys, str):
+            return [keys]
+        return [key for key in keys if isinstance(key, str)]
+
+    @property
     def columns(self) -> list[str]:
         return unique(self.entity_cfg.get("columns"))
 
@@ -551,9 +559,19 @@ class TableConfig:
     @property
     def unnest_columns(self) -> set[str]:
         """Get set of columns that are pending (e.g., from unnesting)."""
-        if self.unnest:
-            return {self.unnest.var_name, self.unnest.value_name}
-        return set()
+        if not self.unnest:
+            return set()
+
+        return {self.unnest.var_name, self.unnest.value_name}
+
+    @property
+    def surviving_unnest_columns(self) -> set[str]:
+        """Return the columns that remain immediately after unnest."""
+
+        if not self.unnest:
+            return set()
+
+        return (set(self.unnest.id_vars) - {self.system_id}) | self.unnest_columns
 
     @property
     def append_mode(self) -> str:
@@ -817,6 +835,65 @@ class TableConfig:
                 merged["columns"] = [col for col in columns if col != self.public_id]
 
         return merged
+
+    def get_target_facing_foreign_key_targets(self) -> set[str]:
+        """Return FK target entities that contribute to target-facing output."""
+
+        if self.unnest:
+            targets: list[str] = []
+            avaliable_columns: list[str] = sorted(self.surviving_unnest_columns)
+            for foreign_key in self.foreign_keys:
+                if not set(foreign_key.local_keys).issubset(avaliable_columns):
+                    continue
+
+                targets.append(foreign_key.remote_entity)
+                # Add FK remote extra columns to available columns for subsequent FKs in case of chaining
+                avaliable_columns.extend(foreign_key.resolved_extra_columns().values())
+            return set(targets)
+
+        return {foreign_key.remote_entity for foreign_key in self.foreign_keys if foreign_key.remote_entity}
+
+    def get_target_facing_columns(self) -> list[str]:
+        """Return the columns this entity presents to a target model.
+
+        Contract in v1:
+        - without unnest: includes business keys, explicit `columns`, `public_id`,
+        configured `extra_columns`, and generated FK-facing columns
+        - with unnest: first collapse the current table shape the same way `pd.melt`
+        does, so only surviving `id_vars`, `var_name`, and `value_name` count as
+        direct outputs from that stage
+        - with unnest: FK-generated columns only count if the FK local keys still
+        exist after unnest, allowing the post-unnest relink pass to recreate them
+        - append branches do not widen the target-facing schema; they must conform
+        to the parent entity's output contract rather than add new columns
+
+        It intentionally excludes the internal `system_id` column unless it is exposed
+        explicitly through some other target-facing mechanism.
+        """
+
+        target_columns: list[str] = []
+
+        if self.unnest:
+            target_columns.extend(sorted(self.surviving_unnest_columns))
+        else:
+            system_id: str = self.system_id
+            target_columns.extend(column for column in self.safe_keys if column != system_id)
+            target_columns.extend(column for column in self.safe_columns if column != system_id)
+            target_columns.extend(self.extra_column_names)
+
+        if self.public_id:
+            target_columns.append(self.public_id)
+
+        for foreign_key in self.foreign_keys:
+            if self.unnest and not set(foreign_key.local_keys).issubset(target_columns):
+                continue
+
+            remote_cfg: TableConfig = TableConfig(entities_cfg=self.entities_cfg, entity_name=foreign_key.remote_entity)
+            target_columns.append(remote_cfg.public_id)
+
+            target_columns.extend(foreign_key.resolved_extra_columns().values())
+
+        return unique([column for column in target_columns if column])
 
     def get_sub_table_configs(self) -> Generator[Self | "TableConfig", Any, None]:
         """Yield a sequence of resolved TableConfig objects.
