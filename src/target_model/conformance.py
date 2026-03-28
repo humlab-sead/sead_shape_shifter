@@ -15,11 +15,7 @@ class ConformanceIssue:
 
 
 class TargetModelConformanceValidator:
-    """Validate a resolved Shape Shifter project against a target model.
-
-    The core validator reasons about target-facing semantics exposed by `TableConfig`
-    rather than a separate lightweight project model.
-    """
+    """Validate a resolved Shape Shifter project against a target model. """
 
     def __init__(
         self,
@@ -45,7 +41,7 @@ class TargetModelConformanceValidator:
             if not project.has_table(entity_name):
                 continue
 
-            table_cfg = project.get_table(entity_name)
+            table_cfg: TableConfig = project.get_table(entity_name)
 
             issues.extend(self._validate_public_id(entity_name, entity_spec.public_id, table_cfg.public_id or None))
             issues.extend(self._validate_required_foreign_keys(entity_name, entity_spec.foreign_keys, table_cfg))
@@ -81,7 +77,9 @@ class TargetModelConformanceValidator:
 
         return []
 
-    def _validate_required_foreign_keys(self, entity_name: str, target_foreign_keys: list, table_cfg: TableConfig) -> list[ConformanceIssue]:
+    def _validate_required_foreign_keys(
+        self, entity_name: str, target_foreign_keys: list, table_cfg: TableConfig
+    ) -> list[ConformanceIssue]:
         project_targets = table_cfg.get_target_facing_foreign_key_targets()
         issues: list[ConformanceIssue] = []
 
