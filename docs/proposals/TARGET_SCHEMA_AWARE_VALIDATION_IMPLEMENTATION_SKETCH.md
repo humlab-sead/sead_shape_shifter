@@ -15,7 +15,7 @@ The core recommendations are:
 1. keep target-schema-aware validation optional and layered on top of existing structural validation,
 2. model target requirements as separate reusable specifications rather than project-local code paths,
 3. resolve target model references at the API or mapper boundary, not inside core processing,
-4. keep semantic validation logic isolated in a dedicated validator that reads resolved core project data and produces normal validation errors.
+4. move semantic conformance logic onto the resolved core Shape Shifter project model rather than maintaining a second lightweight project-side model.
 
 In short:
 
@@ -27,7 +27,7 @@ In short:
 
 ## Relationship To Existing Code
 
-The feature fits naturally into the current backend layering.
+The feature spans both the current backend boundary and the core configuration model.
 
 Relevant files:
 
@@ -35,23 +35,27 @@ Relevant files:
 - [backend/app/mappers/project_mapper.py](../../backend/app/mappers/project_mapper.py)
 - [backend/app/models](../../backend/app/models)
 - [src/model.py](../../src/model.py)
+- [src/configuration/config.py](../../src/configuration/config.py)
 
 The intended relationship is:
 
 - the API layer continues loading editable project models,
 - `ProjectMapper.to_core()` continues producing the resolved core project,
 - structural validation remains unchanged and runs first,
-- a new target-model loader plus validator runs only when `metadata.target_model` is present,
-- target-model validation returns the same `ValidationError` shape used elsewhere.
+- target-model loading and include resolution stay at the boundary,
+- a core conformance engine validates the parsed target model against the resolved `ShapeShiftProject`,
+- backend validation services map conformance findings to the normal `ValidationError` shape used elsewhere.
 
-This keeps target-specific semantics out of the core normalization pipeline while still making them actionable during validation.
+This keeps target-model file I/O out of the core while still making target-model conformance a genuine Shape Shifter core capability.
 
 ## Suggested Data Model
 
-The proposal’s target model can be represented as a small backend-side schema aligned with the current format proposal.
+The proposal’s target model should be represented as a small shared schema aligned with the current format proposal.
+
+In the short term, the existing models in `target_models/` can continue to serve as the drafting source. The migration target should not be a backend-only schema, but a shared domain model that can be consumed by backend validation services and, later, other entry points.
 
 ```python
-# backend/app/models/target_model.py
+# src/target_model/models.py  # illustrative location
 from pydantic import BaseModel
 from typing import Literal
 
@@ -102,22 +106,87 @@ This schema should remain declarative. It is enough to support reusable rules wi
 
 ## Loading And Resolution Model
 
-The lowest-risk implementation keeps target-model resolution at the backend boundary.
+The lowest-risk implementation keeps target-model file resolution at the backend boundary.
 
 Recommended behavior:
 
 1. allow `metadata.target_model` to be either an inline object or an `@include:` reference,
 2. resolve the reference using the same infrastructure already used for included project content,
 3. validate the resolved object into `TargetModel`,
-4. pass the parsed target model into a dedicated validator.
+4. pass the parsed target model into a core conformance engine.
 
 This avoids leaking unresolved include directives into the semantic validation layer.
 
 It also aligns with the project’s layer-boundary rule: directives live in the YAML or API boundary, resolved values live in the backend or core logic path that consumes them.
 
-## Validator Shape
+## Core Conformance Engine
 
-The simplest implementation is a dedicated validator class responsible only for target-model conformance.
+The dedicated conformance engine should move onto the resolved core project model.
+
+Recommended shape:
+
+```python
+# src/validators/target_model_conformance.py
+class TargetModelConformanceValidator:
+    def __init__(self, target_model: TargetModel):
+        self.target_model = target_model
+
+    def validate(self, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        issues = []
+        issues.extend(self._check_required_entities(project))
+
+        for entity_name, entity_spec in self.target_model.entities.items():
+            if entity_name not in project.cfg.get("entities", {}):
+                continue
+
+            table_cfg = TableConfig(entities_cfg=project.cfg["entities"], entity_name=entity_name)
+            issues.extend(self._validate_entity(entity_name, table_cfg, entity_spec, project))
+
+        return issues
+```
+
+The key architectural change is that conformance works against `TableConfig`, `ForeignKeyConfig`, append configuration, unnest configuration, resolved `@value:` directives, and other canonical semantics already defined in core.
+
+### Target-Facing Column Contract
+
+The main missing core abstraction is a canonical way to ask:
+
+`Which columns does this entity present to the target model?`
+
+That should become an explicit `TableConfig`-level API rather than remaining implicit across multiple helpers.
+
+Recommended addition:
+
+```python
+class TableConfig:
+    def get_target_facing_columns(self) -> set[str]:
+        """Return the columns a target-model conformance check should treat as present."""
+```
+
+The initial implementation should derive this from already-resolved core semantics, including:
+
+- declared `columns`
+- generated `public_id`
+- `extra_columns`
+- FK-added target-facing columns (`public_id` plus FK extra columns)
+- unnest outputs (`var_name`, `value_name`)
+- append-derived output columns
+
+Later iterations can decide whether target-facing columns should also include richer materialized/source-state derivations or other projected outputs that do not appear literally in the raw entity config.
+
+### Why This Belongs In Core
+
+The current standalone validator in `target_models/` depends on a reduced project model that only sees literal `columns`, `keys`, a shallow `foreign_keys` list, and top-level `extra_columns`.
+
+That is enough for exploratory validation, but it is not the right permanent abstraction because it cannot reliably answer target-model questions for real Shape Shifter projects that depend on:
+
+- resolved `@value:` expressions,
+- append inheritance,
+- FK-driven target columns,
+- materialized state,
+- generated target-facing columns.
+
+Keeping a second lightweight project model for conformance would duplicate core semantics and violate DRY.
 
 ```python
 # backend/app/validators/target_model_validator.py
@@ -126,94 +195,11 @@ class TargetModelValidator:
         self.target_model = target_model
 
     def validate(self, project: ShapeShiftProject) -> list[ValidationError]:
-        errors = []
-
-        errors.extend(self._check_required_entities(project))
-
-        for entity_name, entity_spec in self.target_model.entities.items():
-            if entity_name in project.cfg["entities"]:
-                errors.extend(
-                    self._validate_entity(
-                        entity_name,
-                        project.cfg["entities"][entity_name],
-                        entity_spec,
-                    )
-                )
-
-        if self.target_model.naming:
-            errors.extend(self._check_naming_conventions(project))
-
-        return errors
-
-    def _check_required_entities(self, project: ShapeShiftProject) -> list[ValidationError]:
-        required_entities = {
-            entity_name
-            for entity_name, entity_spec in self.target_model.entities.items()
-            if entity_spec.required
-        }
-        missing = required_entities - set(project.cfg["entities"].keys())
-        return [
-            ValidationError(
-                severity="error",
-                code="MISSING_REQUIRED_ENTITY",
-                message=f"Target model requires entity '{name}'",
-                entity=None,
-                field="entities",
-                suggestion=f"Add entity '{name}' or choose a different target model",
-            )
-            for name in missing
-        ]
-
-    def _validate_entity(self, name: str, entity_cfg: dict, spec: EntitySpec) -> list[ValidationError]:
-        errors = []
-
-        configured_columns = entity_cfg.get("columns", [])
-        required_columns = {
-            column_name
-            for column_name, column in spec.columns.items()
-            if column.required
-        }
-        missing_cols = required_columns - set(configured_columns)
-        for col in missing_cols:
-            errors.append(
-                ValidationError(
-                    severity="error",
-                    code="MISSING_REQUIRED_COLUMN",
-                    message=f"Entity '{name}' missing required column '{col}'",
-                    entity=name,
-                    field="columns",
-                )
-            )
-
-        configured_fks = {fk["entity"] for fk in entity_cfg.get("foreign_keys", [])}
-        for fk_spec in spec.foreign_keys:
-            if fk_spec.required and fk_spec.entity not in configured_fks:
-                errors.append(
-                    ValidationError(
-                        severity="error",
-                        code="MISSING_REQUIRED_FK",
-                        message=f"Entity '{name}' missing required FK to '{fk_spec.entity}'",
-                        entity=name,
-                        field="foreign_keys",
-                    )
-                )
-
-        if spec.public_id and entity_cfg.get("public_id") and entity_cfg["public_id"] != spec.public_id:
-            errors.append(
-                ValidationError(
-                    severity="warning",
-                    code="UNEXPECTED_PUBLIC_ID",
-                    message=f"Entity '{name}' uses public_id '{entity_cfg['public_id']}' but target model expects '{spec.public_id}'",
-                    entity=name,
-                    field="public_id",
-                    suggestion=f"Use '{spec.public_id}' if this entity is intended to conform to the target model",
-                )
-            )
-
-        return errors
+        conformance_issues = CoreTargetModelConformanceValidator(self.target_model).validate(project)
+        return [ValidationMapper.from_conformance_issue(issue) for issue in conformance_issues]
 ```
 
-This validator should remain narrowly focused on semantic conformance. It should not fetch data, mutate the project, or own the broader validation orchestration.
+The backend-facing validator should remain a thin adapter. It should not duplicate conformance semantics already available in core.
 
 ## Validation Service Integration
 
@@ -251,31 +237,36 @@ Key points:
 
 ## Delivery Order
 
-### Phase 1: Foundation
+### Phase 1: Shared TargetModel And Core Hook Points
 
-1. Add the target model Pydantic schema in [backend/app/models](../../backend/app/models).
-2. Add support for `metadata.target_model` in the editable project model.
-3. Implement target model loading and `@include:` resolution.
-4. Add required-entity validation.
-5. Add required-column validation.
-6. Ship a reference model such as `target_models/specs/sead_v2.yml`.
+1. Move or duplicate the target-model schema into a shared domain location that is not backend-only.
+2. Keep `metadata.target_model` support at the editable project/API boundary.
+3. Implement target-model loading and `@include:` resolution at the boundary.
+4. Add a core-facing validator entry point that accepts `TargetModel` plus resolved `ShapeShiftProject`.
+5. Ship the shared validator in parallel with the existing standalone one during transition.
 
-### Phase 2: Semantic Rules
+### Phase 2: Target-Facing Column Semantics In Core
 
-1. Add required foreign-key validation.
-2. Add naming convention checks.
-3. Add semantic mismatch detection such as entity-name versus `public_id` conflicts.
-4. Consider source-type appropriateness only after the first SEAD draft proves it is worth the noise.
+1. Add `TableConfig.get_target_facing_columns()` or equivalent.
+2. Define exactly which generated columns count as present for conformance.
+3. Add required-column validation using the new core abstraction.
+4. Add required foreign-key validation using `ForeignKeyConfig` rather than raw dicts.
+5. Add naming convention checks and semantic mismatch detection such as entity-name versus `public_id` conflicts.
 
-This phase benefits from any parallel work on explicit semantic roles, but it does not require changes to the core normalization engine.
+This phase is where DRY is recovered: conformance stops re-implementing project semantics and instead uses the existing core configuration wrappers.
 
-### Phase 3: Branch-Aware Rules
+### Phase 3: Migration And Backend Adoption
 
-1. Add merged-parent branch discriminator checks.
-2. Add branch-scoped consumer validation.
-3. Add schema-aware append conformance.
+1. Replace the standalone lightweight project model in `target_models/` with tests that run against the core validator.
+2. Keep `target_models/` for specifications, fixtures, and exploratory docs only.
+3. Use backend validation services as adapters that load target models and map conformance issues to API errors.
+4. Retire duplicated standalone conformance logic once parity is reached.
 
-This phase depends on separate branch-modeling proposals becoming concrete enough to validate against.
+### Phase 4: Advanced Semantic Rules
+
+1. Add schema-aware append conformance.
+2. Add branch-aware or merged-parent rules when those proposals are concrete enough.
+3. Add richer heuristics only after the core target-facing-column contract has proven stable.
 
 ### Future Enhancements
 
@@ -288,26 +279,26 @@ Current phase sequencing and deferred issues are tracked in [target_models/docs/
 
 ## Testing Strategy
 
-Primary coverage should sit around backend validation behavior.
+Primary coverage should shift toward core conformance behavior, with backend tests covering loading and adapter integration.
 
 Important test areas:
 
 - parsing valid and invalid target model definitions,
 - resolving inline versus `@include:` target model declarations,
 - validating projects with and without `metadata.target_model`,
-- verifying required entity, required column, and required foreign-key errors,
+- verifying required entity, required column, and required foreign-key errors against resolved core projects,
 - verifying warning versus error severity for semantic checks,
 - handling missing target model files gracefully.
 
 Relevant areas for tests:
 
+- [src/model.py](../../src/model.py)
+- a new core conformance validator module under [src](../../src)
 - [backend/app/services/validation_service.py](../../backend/app/services/validation_service.py)
-- [backend/app/models](../../backend/app/models)
-- a new target-model validator module under [backend/app](../../backend/app)
 
 ## Open Technical Questions
 
 1. Should target model loading live directly in `ValidationService` or in a small dedicated loader service?
-2. How much of the existing include-resolution machinery can be reused without introducing project-specific assumptions?
+2. What exactly should `TableConfig.get_target_facing_columns()` include in v1: only explicit outputs, or also materialized/source-state derived outputs?
 3. Should target-model-specific validation codes be grouped under a naming convention such as `TARGET_*` for easier filtering?
 4. What is the cleanest way to support future rule disabling such as `options.validation.disabled_rules` without coupling the validator to frontend concerns?

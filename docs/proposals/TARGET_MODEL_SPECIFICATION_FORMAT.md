@@ -339,6 +339,8 @@ The format and the SEAD specification should be iterated together:
 - Preferred planning target: 23 total entities, corresponding to the current 9 core entities plus the 14 currently named Milestone 2 additions
 - Template-generation proof of concept is implemented as a standalone generator that produces a non-runnable `shapeshifter.yml` starter scaffold from the target model, optionally filtered by domain/profile, including entity stubs, `public_id`, required target-facing columns, and required FK dependency closure without guessing loaders, SQL queries, or project-specific joins
 
+After that initial Milestone 2 package is complete, the same standalone pre-integration track can continue with a follow-on expansion phase. That follow-on work can resolve remaining proposal-versus-implementation drift and draft the next most commonly mapped entities before the format is treated as Milestone 3 stable.
+
 Milestone 2 should be completed as far as practical before backend-service integration becomes the primary focus.
 That means expanding the working `target_models/specs/sead_v2.yml`, tightening the documentation around the expanded scope, and documenting the expected template-generation outcome before shifting effort toward backend wiring.
 
@@ -346,6 +348,8 @@ That means expanding the working `target_models/specs/sead_v2.yml`, tightening t
 - Format considered stable for v1
 - SEAD spec covers ~30 most commonly mapped entities
 - Validator integration ready (hand off to TARGET_SCHEMA_AWARE_VALIDATION)
+
+Reaching ~30 entities is necessary but not sufficient for Milestone 3. Stability still requires a frozen v1 contract and downstream consumer validation.
 
 ## SEAD Specification Sketch
 
@@ -463,16 +467,36 @@ entities:
 
 These vary by data type (botanical, dating, ceramics, etc.):
 
-The current Milestone 2 backlog is intentionally concrete rather than open-ended. The abundance, taxonomy, dating, and method/contact packages have now been drafted in the working SEAD spec, which now stands at 23 entities.
+The current Milestone 2 backlog is intentionally concrete rather than open-ended. The abundance, taxonomy, dating, and method/contact packages were the initial Milestone 2 package, which brought the working SEAD spec to 23 entities.
+
+The next standalone follow-on expansion then added a first common-mapped-entity package, bringing the working SEAD spec to 31 entities. That package currently includes:
+
+- `project`
+- `feature_type`
+- `feature`
+- `modification_type`
+- `sample_description_type`
+- `sample_description`
+- `site_type_group`
+- `site_type`
+
+The following follow-on package then extended the working SEAD spec to 35 entities with provenance and bridge coverage:
+
+- `citation`
+- `master_dataset`
+- `dataset_contact`
+- `sample_feature`
 
 For Milestone 2, template generation should be understood narrowly: it is not a promise to auto-generate runnable project files. The implemented proof of concept is a deterministic starter scaffold generated from the target model, optionally filtered by domain/profile, that includes entity stubs, `public_id`, required target-facing columns, and required FK dependency closure while leaving source-specific extraction details to a human author.
 
 The same specification file can tag these with `domains` such as `dating`, `abundance`, `taxonomy`, `contacts`, or `spatial` so consumers can work with focused subsets without splitting the model into many separate files too early.
 
-- **Abundance chain:** `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `abundance_property` (drafted)
-- **Dating:** `relative_ages`, `relative_dating`, `geochronology`, `dating_lab` (drafted)
-- **Methods and contacts:** `method`, `method_group`, `contact`, `contact_type` (drafted)
+- **Abundance chain:** `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `abundance_property`, `modification_type` (drafted)
+- **Dating:** `relative_ages`, `relative_dating`, `geochronology`, `dating_lab` (drafted). In Arbodat terms, archaeological dating facts map to `relative_dating`, while chronology or laboratory dating facts map to canonical SEAD `geochronology`.
+- **Methods, provenance, and contacts:** `method`, `method_group`, `contact`, `contact_type`, `project`, `master_dataset`, `citation`, `dataset_contact` (drafted)
 - **Taxonomy:** `taxa_tree_master`, `taxa_common_names` (drafted)
+- **Excavation and site vocabulary:** `feature_type`, `feature`, `site_type_group`, `site_type` (drafted)
+- **Sample metadata and bridges:** `sample_description_type`, `sample_description`, `sample_feature` (drafted)
 
 These will be specified as the format stabilizes during M1→M2 iteration.
 
@@ -518,7 +542,7 @@ Rejected because it defeats reusability. The whole point is that target model re
 ## Acceptance Criteria
 
 1. YAML format is documented with field definitions and semantics.
-2. A working `sead_v2.yml` exists and covers core SEAD entities (~6 for M1, ~30 for M3). Until integration is completed, the working version lives at `target_models/specs/sead_v2.yml`.
+2. A working `sead_v2.yml` exists and covers core SEAD entities plus the current standalone expansion packages (31 entities at present). Until integration is completed, the working version lives at `target_models/specs/sead_v2.yml`.
 3. Required entities are expressed via `required: true` on entity specs (no redundant top-level list).
 4. Global constraints use typed objects, not untyped dicts.
 5. At least one non-SEAD hypothetical model can be expressed cleanly to verify format generality.
@@ -550,6 +574,6 @@ The format should be opinionated about structure (typed constraints, no redundan
 
 The SEAD spec serves as both the primary consumer and the acceptance test for the format. If the format cannot express a real SEAD requirement cleanly, the format is wrong.
 
-Start with Milestone 1. Ship the 6-entity SEAD spec. Then complete as much of Milestone 2 as practical in the standalone target-model work before turning primary attention to backend integration.
+Start with Milestone 1. Ship the 6-entity SEAD spec. Then complete as much of Milestone 2 as practical in the standalone target-model work, including follow-on common-entity expansion where it still clarifies the target model, before turning primary attention to backend integration.
 
-For planning purposes, treat 20 total entities as the minimum acceptable Milestone 2 completion threshold and 23 total entities as the preferred target while the current named Milestone 2 backlog remains unchanged. Expand from there.
+For planning purposes, treat 20 total entities as the minimum acceptable Milestone 2 completion threshold and 23 total entities as the preferred target for the initial named backlog. The current standalone spec now stands at 31 entities after the first common-entity follow-on expansion.
