@@ -842,7 +842,7 @@ class TableConfig:
 
     def get_key_columns(self) -> set[str]:
         """Get all key columns including system_id and public_id."""
-        key_columns = set(self.keys or [])
+        key_columns: set[str] = set(self.keys or [])
         if self.system_id:
             key_columns.add(self.system_id)
         if self.public_id:
