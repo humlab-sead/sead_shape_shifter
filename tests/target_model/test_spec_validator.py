@@ -1,5 +1,5 @@
-from target_model_spec.models import TargetModel
-from target_model_spec.validator import TargetModelSpecValidator
+from src.target_model.models import TargetModel
+from src.target_model.spec_validator import TargetModelSpecValidator
 
 
 def test_validator_reports_unknown_foreign_key_entity() -> None:

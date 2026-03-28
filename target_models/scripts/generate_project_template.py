@@ -1,4 +1,4 @@
-from target_model_spec.template_generator import main
+from src.target_model.template_generator import main
 
 
 if __name__ == "__main__":
