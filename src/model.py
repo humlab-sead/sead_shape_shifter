@@ -787,15 +787,13 @@ class TableConfig:
         }
 
         # Check if we're using column renaming with entity source
-        has_source = "source" in append_data and append_data["source"] is not None
-        has_align = append_data.get("align_by_position", False)
-        has_mapping = "column_mapping" in append_data
-        use_source_columns = has_source and (has_align or has_mapping) and "columns" not in append_data
-        use_source_keys = has_source and (has_align or has_mapping) and "keys" not in append_data
+        has_source: bool = "source" in append_data and append_data["source"] is not None
+        has_align: bool = append_data.get("align_by_position", False)
+        has_mapping: bool = "column_mapping" in append_data
+        use_source_columns: bool = has_source and (has_align or has_mapping) and "columns" not in append_data
+        use_source_keys: bool = has_source and (has_align or has_mapping) and "keys" not in append_data
 
-        # Source-based append must not inherit loader-driving fields from parent
-        # Otherwise a fixed parent would cause the append item to load from empty values
-        # instead of resolving from table_store
+        # Source-based append shouldn't inherit loader-related fields from parent
         if has_source:
             non_inheritable_keys |= {"type", "values", "query", "data_source", "sql"}
 
@@ -813,9 +811,9 @@ class TableConfig:
             # When using column renaming with entity source and no explicit columns/keys,
             # get them from the source entity instead of parent
             if (key == "columns" and use_source_columns) or (key == "keys" and use_source_keys):
-                source_entity = append_data.get("source")
+                source_entity: str | None = append_data.get("source")
                 if source_entity and source_entity in self.entities_cfg:
-                    source_value = self.entities_cfg[source_entity].get(key, [])
+                    source_value: list[Any] = self.entities_cfg[source_entity].get(key, [])
                     if source_value:
                         merged[key] = source_value
                     continue
