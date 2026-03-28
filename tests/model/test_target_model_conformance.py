@@ -360,3 +360,33 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
         ),
         "arbodat_full": Counter({"MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5, "MISSING_REQUIRED_COLUMN": 2}),
     }
+
+
+def _minimal_target_model(entities: dict) -> TargetModel:
+    return TargetModel.model_validate({"model": {"name": "test", "version": "1.0"}, "entities": entities})
+
+
+def _minimal_project(entities: dict) -> ShapeShiftProject:
+    return ShapeShiftProject(cfg={"metadata": {"name": "test", "type": "shapeshifter-project"}, "entities": entities})
+
+
+def test_public_id_validator_produces_missing_public_id_when_project_entity_has_none() -> None:
+    """PublicIdConformanceValidator reports MISSING_PUBLIC_ID when the spec declares a public_id
+    but the project entity omits it entirely."""
+    target_model = _minimal_target_model({"location": {"public_id": "location_id", "required": True}})
+    project = _minimal_project({"location": {"columns": ["location_name"]}})  # no public_id
+
+    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "MISSING_PUBLIC_ID" in codes
+
+
+def test_public_id_validator_is_silent_when_spec_declares_no_public_id() -> None:
+    """PublicIdConformanceValidator produces no issue when the target spec does not declare a public_id,
+    regardless of what the project entity carries."""
+    target_model = _minimal_target_model({"location": {"required": True}})  # no public_id in spec
+    project = _minimal_project({"location": {"public_id": "location_id", "columns": ["location_name"]}})
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert not any(issue.code.startswith("MISSING_PUBLIC_ID") or issue.code.startswith("UNEXPECTED_PUBLIC_ID") for issue in issues)
