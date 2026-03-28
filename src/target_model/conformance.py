@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Literal
 
 from src.model import ShapeShiftProject, TableConfig
-from src.target_model.models import TargetModel
+from src.target_model.models import EntitySpec, TargetModel
+from src.utility import Registry
 
 
 @dataclass(slots=True)
@@ -14,62 +15,67 @@ class ConformanceIssue:
     entity: str | None = None
 
 
-class TargetModelConformanceValidator:
-    """Validate a resolved Shape Shifter project against a target model. """
+class ConformanceValidator(ABC):
 
-    def __init__(
-        self,
-        *,
-        foreign_key_column_source: Literal["project", "target_model"] = "project",
-    ) -> None:
-        self.foreign_key_column_source = foreign_key_column_source
+    @abstractmethod
+    def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        pass
+
+
+class ConformanceValidatorRegistry(Registry[type[ConformanceValidator]]):
+    """Registry for entity type validators."""
+
+    items: dict[str, type[ConformanceValidator]] = {}
+
+
+CONFORMANCE_VALIDATORS = ConformanceValidatorRegistry()
+
+
+class EntityConformanceValidator(ConformanceValidator):
+
+    @abstractmethod
+    def validate_entity(self, entity_name: str, entity_spec: EntitySpec, table_cfg: TableConfig) -> list[ConformanceIssue]:
+        pass
+
+    def guard(self, target_model: TargetModel, project: ShapeShiftProject, entity_name) -> bool:
+        """Determine whether this validator should be applied to the given entity."""
+        return project.has_table(entity_name)
 
     def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        """Validate that entities in the project conform to public_id expectations declared in the target model."""
         issues: list[ConformanceIssue] = []
-
         for entity_name, entity_spec in target_model.entities.items():
-            if entity_spec.required and not project.has_table(entity_name):
-                issues.append(
-                    ConformanceIssue(
-                        code="MISSING_REQUIRED_ENTITY",
-                        message=f"Target model requires entity '{entity_name}'",
-                        entity=entity_name,
-                    )
-                )
+            if not self.guard(target_model, project, entity_name):
                 continue
-
-            if not project.has_table(entity_name):
-                continue
-
             table_cfg: TableConfig = project.get_table(entity_name)
-
-            issues.extend(self._validate_public_id(entity_name, entity_spec.public_id, table_cfg.public_id or None))
-            issues.extend(self._validate_required_foreign_keys(entity_name, entity_spec.foreign_keys, table_cfg))
-            issues.extend(self._validate_required_columns(entity_name, entity_spec.columns, table_cfg, target_model))
-
+            issues.extend(self.validate_entity(entity_name, entity_spec, table_cfg))
         return issues
 
-    @staticmethod
-    def _validate_public_id(entity_name: str, expected_public_id: str | None, project_public_id: str | None) -> list[ConformanceIssue]:
-        if expected_public_id is None:
+
+@CONFORMANCE_VALIDATORS.register(key="public_id")
+class PublicIdConformanceValidator(EntityConformanceValidator):
+
+    def validate_entity(self, entity_name: str, entity_spec: EntitySpec, table_cfg: TableConfig) -> list[ConformanceIssue]:
+        """Validate that entities in the project conform to public_id expectations declared in the target model."""
+        if entity_spec.public_id is None:
             return []
 
-        if project_public_id is None:
+        if not table_cfg.public_id:
             return [
                 ConformanceIssue(
                     code="MISSING_PUBLIC_ID",
-                    message=f"Entity '{entity_name}' is missing expected public_id '{expected_public_id}'",
+                    message=f"Entity '{entity_name}' is missing expected public_id '{entity_spec.public_id}'",
                     entity=entity_name,
                 )
             ]
 
-        if project_public_id != expected_public_id:
+        if table_cfg.public_id != entity_spec.public_id:
             return [
                 ConformanceIssue(
                     code="UNEXPECTED_PUBLIC_ID",
                     message=(
-                        f"Entity '{entity_name}' declares public_id '{project_public_id}' "
-                        f"but target model expects '{expected_public_id}'"
+                        f"Entity '{entity_name}' declares public_id '{table_cfg.public_id}' "
+                        f"but target model expects '{entity_spec.public_id}'"
                     ),
                     entity=entity_name,
                 )
@@ -77,13 +83,15 @@ class TargetModelConformanceValidator:
 
         return []
 
-    def _validate_required_foreign_keys(
-        self, entity_name: str, target_foreign_keys: list, table_cfg: TableConfig
-    ) -> list[ConformanceIssue]:
-        project_targets = table_cfg.get_target_facing_foreign_key_targets()
-        issues: list[ConformanceIssue] = []
 
-        for foreign_key in target_foreign_keys:
+@CONFORMANCE_VALIDATORS.register(key="foreign_key")
+class ForeignKeyConformanceValidator(EntityConformanceValidator):
+
+    def validate_entity(self, entity_name: str, entity_spec: EntitySpec, table_cfg: TableConfig) -> list[ConformanceIssue]:
+        issues: list[ConformanceIssue] = []
+        project_targets: set[str] = table_cfg.get_target_facing_foreign_key_targets()
+
+        for foreign_key in entity_spec.foreign_keys:
             if foreign_key.required and foreign_key.entity not in project_targets:
                 issues.append(
                     ConformanceIssue(
@@ -95,24 +103,14 @@ class TargetModelConformanceValidator:
 
         return issues
 
-    def _validate_required_columns(
-        self,
-        entity_name: str,
-        target_columns: dict,
-        table_cfg: TableConfig,
-        target_model: TargetModel,
-    ) -> list[ConformanceIssue]:
-        declared_columns = set(table_cfg.get_target_facing_columns())
 
-        if self.foreign_key_column_source == "target_model":
-            for foreign_key_target in table_cfg.get_target_facing_foreign_key_targets():
-                target_entity = target_model.entities.get(foreign_key_target)
-                if target_entity and target_entity.public_id:
-                    declared_columns.add(target_entity.public_id)
+@CONFORMANCE_VALIDATORS.register(key="required_columns")
+class RequiredColumnsConformanceValidator(EntityConformanceValidator):
 
+    def validate_entity(self, entity_name: str, entity_spec: EntitySpec, table_cfg: TableConfig) -> list[ConformanceIssue]:
         issues: list[ConformanceIssue] = []
-
-        for column_name, column_spec in target_columns.items():
+        declared_columns: set[str] = set(table_cfg.get_target_facing_columns())
+        for column_name, column_spec in entity_spec.columns.items():
             if column_spec.required and column_name not in declared_columns:
                 issues.append(
                     ConformanceIssue(
@@ -121,5 +119,32 @@ class TargetModelConformanceValidator:
                         entity=entity_name,
                     )
                 )
+        return issues
 
+
+@CONFORMANCE_VALIDATORS.register(key="required_entity")
+class RequiredEntityConformanceValidator(ConformanceValidator):
+
+    def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        issues: list[ConformanceIssue] = []
+        for entity_name, entity_spec in target_model.entities.items():
+            if not project.has_table(entity_name) and entity_spec.required:
+                issues.append(
+                    ConformanceIssue(
+                        code="MISSING_REQUIRED_ENTITY",
+                        message=f"Target model requires entity '{entity_name}'",
+                        entity=entity_name,
+                    )
+                )
+        return issues
+
+
+class TargetModelConformanceValidator(ConformanceValidator):
+    """Validate a resolved Shape Shifter project against a target model."""
+
+    def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        issues: list[ConformanceIssue] = []
+        for validator_cls in CONFORMANCE_VALIDATORS.items.values():
+            validator: ConformanceValidator = validator_cls()
+            issues.extend(validator.validate(target_model, project))
         return issues
