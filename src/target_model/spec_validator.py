@@ -24,10 +24,7 @@ class TargetModelSpecValidator:
                 issues.append(
                     SpecValidationIssue(
                         code="INVALID_PUBLIC_ID_SUFFIX",
-                        message=(
-                            f"Entity '{entity_name}' has public_id '{entity_spec.public_id}' "
-                            f"which does not end with '{suffix}'"
-                        ),
+                        message=(f"Entity '{entity_name}' has public_id '{entity_spec.public_id}' " f"which does not end with '{suffix}'"),
                         entity=entity_name,
                     )
                 )

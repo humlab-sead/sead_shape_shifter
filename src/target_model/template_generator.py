@@ -7,7 +7,6 @@ import yaml
 
 from src.target_model.models import EntitySpec, TargetModel
 
-
 PLACEHOLDER_ENTITY_TYPE = "TODO"
 
 
@@ -99,7 +98,9 @@ def _generate_entity_stub(entity_spec: EntitySpec) -> dict[str, object]:
     if required_columns:
         entity_stub["columns"] = required_columns
 
-    required_foreign_keys: list[dict[str, str]] = [{"entity": foreign_key.entity} for foreign_key in entity_spec.foreign_keys if foreign_key.required]
+    required_foreign_keys: list[dict[str, str]] = [
+        {"entity": foreign_key.entity} for foreign_key in entity_spec.foreign_keys if foreign_key.required
+    ]
     if required_foreign_keys:
         entity_stub["foreign_keys"] = required_foreign_keys
 

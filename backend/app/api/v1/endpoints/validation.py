@@ -102,9 +102,7 @@ async def validate_target_model(name: str) -> ValidationResult:
     validation_service: ValidationService = get_validation_service()
     result: ValidationResult = validation_service.validate_target_model(name)
 
-    logger.info(
-        f"Target-model conformance for '{name}': valid={result.is_valid}, errors={result.error_count}"
-    )
+    logger.info(f"Target-model conformance for '{name}': valid={result.is_valid}, errors={result.error_count}")
     return result
 
 

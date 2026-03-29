@@ -499,8 +499,13 @@ class ProjectService:
             ProjectNotFoundError: If project not found
         """
         return self.operations.update_metadata(
-            name, new_name, description, version, default_entity,
-            target_model=target_model, target_model_provided=target_model_provided,
+            name,
+            new_name,
+            description,
+            version,
+            default_entity,
+            target_model=target_model,
+            target_model_provided=target_model_provided,
         )
 
     @staticmethod
