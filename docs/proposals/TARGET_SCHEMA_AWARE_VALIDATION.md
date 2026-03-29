@@ -2,9 +2,30 @@
 
 ## Status
 
-- Proposed feature
+- **Core engine: implemented** — `src/target_model/` package contains the domain model, conformance validator, spec validator, and template generator
+- **Backend integration: pending** — `metadata.target_model` support, `@include:` resolution, and `ValidationService` wiring are not yet done
 - Scope: Validation system, project configuration
 - Goal: Enable semantic validation based on target data model requirements
+
+## Implementation Progress
+
+### Completed
+
+- `src/target_model/models.py` — Pydantic domain model: `TargetModel`, `EntitySpec`, `ColumnSpec`, `ForeignKeySpec`, `NamingConventions`, `GlobalConstraint`
+- `src/target_model/conformance.py` — Registry-based conformance engine with four built-in validators: `RequiredEntityConformanceValidator`, `PublicIdConformanceValidator`, `ForeignKeyConformanceValidator`, `RequiredColumnsConformanceValidator`; extensible via `CONFORMANCE_VALIDATORS` registry
+- `src/target_model/spec_validator.py` — `TargetModelSpecValidator` checks the target model spec itself (public_id suffix adherence, unknown FK targets, unknown identity/unique-set columns)
+- `src/target_model/template_generator.py` — Generates starter project scaffolds from a target model with domain and entity filters; includes CLI (`python -m src.target_model.template_generator --spec ...`)
+- `src/model.py` — `TableConfig.get_target_facing_columns()` and `TableConfig.get_target_facing_foreign_key_targets()` provide the column-contract API for conformance
+- `tests/model/test_target_model_conformance.py` — 11 tests, 98% branch coverage
+
+### Pending
+
+- `metadata.target_model` field on `ShapeShiftProject` / API project model
+- `@include:` resolution for `target_model` references at the backend boundary
+- `ValidationService` integration (structural validation + target-model conformance in one pass)
+- Naming convention checks inside conformance (public_id_suffix is validated for the spec file, not yet against project entities)
+- Semantic mismatch detection (entity-name vs. public_id style divergence)
+- Migration of standalone `target_models/` example tests to use the core conformance engine
 
 ## Summary
 
@@ -56,20 +77,30 @@ This proposal does not:
 - Add runtime enforcement beyond validation warnings/errors
 - Create a type system or schema DSL beyond what's needed
 
-## Current Behavior
+## Current State
 
-Shape Shifter validates:
+### What Shape Shifter validates today
+
 - YAML syntax and structure
 - Foreign key constraint completeness
 - Circular dependency detection
 - Column existence in entities
 - Topological sort feasibility
 
-Shape Shifter does not validate:
-- Entity semantic roles (fact vs lookup vs classifier)
-- Target system requirements (required entities, mandatory relationships)
-- Naming convention adherence (public ID patterns)
+### Core target-model validation (implemented in `src/target_model/`)
+
+- Required entity presence
+- Required column presence (via `TableConfig.get_target_facing_columns()`)
+- Required foreign key targets (via `TableConfig.get_target_facing_foreign_key_targets()`)
+- Public ID conformance (missing, unexpected)
+- Spec self-consistency (unknown FK targets, identity columns, unique-set columns, naming conventions)
+
+### Still absent from any validation path
+
+- Entity semantic roles (fact vs lookup vs classifier) — semantic mismatch detection deferred
+- Naming convention adherence checked against project entities (only enforced in spec validator, not conformance)
 - Source type appropriateness (classifiers should use `fixed` or `sql`)
+- Backend wiring — all of the above is in core but not yet exposed through the API
 
 ## Proposed Design
 
@@ -197,21 +228,21 @@ metadata:
 
 ### Validation Rules
 
-**Phase 1: Basic Conformance**
-- Required entities present via `required: true` on entity specs
-- Required columns exist via `columns.<name>.required`
-- Required foreign keys exist
-- Basic naming checks such as `public_id_suffix`
+**Phase 1: Basic Conformance** — implemented in `src/target_model/conformance.py`
+- [x] Required entities present via `required: true` on entity specs (`RequiredEntityConformanceValidator`)
+- [x] Required columns exist via `columns.<name>.required` (`RequiredColumnsConformanceValidator`)
+- [x] Required foreign keys exist (`ForeignKeyConformanceValidator`)
+- [x] Expected/unexpected public_id checks (`PublicIdConformanceValidator`)
+- [ ] Naming convention checks against project entities — public_id_suffix validated in `TargetModelSpecValidator` only; not yet in conformance
 
-**Phase 2: Semantic Checks**
-- Global role-informed checks such as `no_orphan_facts`
-- Public ID expectation checks when the target model declares an explicit `public_id`
-- Low-noise semantic naming mismatches where the entity key and expected identifier clearly diverge
+**Phase 2: Semantic Checks** — not yet implemented
+- [ ] Global role-informed checks such as `no_orphan_facts`
+- [ ] Semantic naming mismatches where entity key and expected identifier clearly diverge
 
-**Phase 3: Branch-Aware** (after Proposals 4–5)
-- Merged parent branch discriminators
-- Branch-scoped consumer validity
-- Schema-aware append conformance
+**Phase 3: Branch-Aware** (after Proposals 4–5) — not yet started
+- [ ] Merged parent branch discriminators
+- [ ] Branch-scoped consumer validity
+- [ ] Schema-aware append conformance
 
 Some checks discussed earlier, such as source-type appropriateness heuristics and richer naming-pattern validation, are intentionally deferred until the first SEAD draft proves they are necessary. See [target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md](../../target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md).
 
