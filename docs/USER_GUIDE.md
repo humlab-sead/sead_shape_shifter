@@ -72,6 +72,12 @@ aspect of an entity resembles a SQL query or an SQL UDF.
 **Public ID** (`public_id`)
 : The target-side (i.e. SEAD) primary key column name. It must end with `_id` and determines foreign-key column names in child entities. This is currently limited to an integer ID, but future version will allow compound keys and UUIDs 
 
+**Target Model**
+: An optional YAML specification file describing what an external destination system (such as SEAD) expects from a project: which entities are required, which columns and foreign-key relationships they must have, and what naming conventions apply. When a project references a target model via `metadata.target_model`, the editor can run **conformance validation** to check whether the project satisfies those requirements. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the full format reference.
+
+**Conformance Validation**
+: A validation pass that checks the project entities against the requirements declared in the referenced target model. Unlike structural validation (YAML consistency) and data validation (column contents), conformance validation reasons about *semantic modeling intent*: are the right entities present? Do they expose the right columns and foreign keys? Does `public_id` follow the expected naming convention?
+
 **Execute**
 : Runs the full normalization workflow and exports data through a dispatcher such as Excel, ZIP CSV, folder CSV, or to a database (e.g. SEAD ClearingHouse). Dispatcher's are pluggable components that can be tailor-made for specific needs. 
 
@@ -183,7 +189,7 @@ The graph also shows task completion, dependency counts, and cycle warnings when
 
 These tabs support project setup around the entities themselves:
 
-- **Metadata** edits project description, version, and default entity.
+- **Metadata** edits project description, version, default entity, and the optional **Target Model** reference.
 - **Files** uploads project-local `.csv`, `.xls`, and `.xlsx` files.
 - **Data Sources** connects shared/global data source definitions into the current project and can launch entity creation from a selected source table.
 
@@ -390,13 +396,46 @@ Each issue can include:
 Use **Copy** in the validation panel to copy the current issues to the clipboard in a tabular format. This is useful when sharing results in tickets, chat, or review notes.
 
 
+### Conformance Validation
+
+If the project has a `target_model` reference in its metadata, the Validate tab shows a third action: **Check Conformance**.
+
+Conformance validation checks whether the project entities satisfy the requirements declared in the referenced target model specification:
+
+- Are all required entities present?
+- Do entities expose the required columns?
+- Are the required foreign-key targets declared?
+- Do `public_id` values match the expected naming convention?
+
+**Running conformance:**
+
+1. Set the **Target Model** field in the Metadata tab (e.g., `@include: target_models/specs/sead_v2.yml`).
+2. Go to the **Validate** tab and click **Check Conformance**.
+3. Review results in the **Conformance** expansion panel.
+
+Conformance issues are grouped in their own panel under the *By Category* tab and use a distinct deep-purple colour to tell them apart from structural (grey) and data (blue) issues. If the project has no target model, the button is still safe to press — it returns an empty result without error.
+
+### Conformance Issue Codes
+
+| Code | What it means |
+|------|---------------|
+| `MISSING_REQUIRED_ENTITY` | An entity the target model requires is absent from the project |
+| `MISSING_PUBLIC_ID` | The target model expects a `public_id` on an entity, but none is set |
+| `UNEXPECTED_PUBLIC_ID` | The project entity has a `public_id` the target model does not expect |
+| `MISSING_REQUIRED_FOREIGN_KEY_TARGET` | A required FK target is not declared on the entity |
+| `MISSING_REQUIRED_COLUMN` | A required column is not present in the entity's target-facing columns |
+| `PUBLIC_ID_NAMING_VIOLATION` | A `public_id` value does not end with the required suffix (e.g., `_id`) |
+
+See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for a full description of how conformance validation works.
+
 ### Recommended Validation Workflow
 
 1. Run **YAML Validation** after structural changes.
 2. Run **Sample Data** validation while iterating.
 3. Run **Complete Data** validation before executing.
-4. Fix errors first.
-5. Review warnings before treating the project as ready.
+4. If the project targets a known destination system, run **Check Conformance** to catch semantic modeling errors early.
+5. Fix errors first.
+6. Review warnings before treating the project as ready.
 
 ---
 
