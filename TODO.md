@@ -235,3 +235,7 @@ T.ex. abundance har ej Fustel, så det är oklart för mig var felet uppstår.
 Har du några idéer tankar kring vad jag kan göra åt dessa fel? Jag kollar också på relative ages/relative dating. I relative dating får jag också  felet när jag försöker göra en preview: InternalServerError
 
 ShapeShift failed for relative_dating: You are trying to merge on str and int64 columns for key 'Fustel'. If you wish to proceed you should use pd.concat
+Current phase 9 in target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md  is out-of-scope for this proposal. Please streamline these three proposal to have a more focused scoping:
+1. proposal docs/proposals/TARGET_MODEL_SPECIFICATION_FORMAT.md shoudld be focused on the target model specification format only, and it's semantics. No design, or implementation detail and no implementation planning details.
+2. docs/proposals/TARGET_SCHEMA_AWARE_VALIDATION.md is focusing on the requirements and design of logic that implement's 1ö
+3. target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md is focused on the development of the SEAD target model specification YAML file only.
