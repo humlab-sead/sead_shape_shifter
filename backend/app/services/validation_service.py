@@ -226,6 +226,40 @@ class ValidationService:
 
         return ValidationResult(is_valid=len(entity_errors) == 0, errors=entity_errors, warnings=entity_warnings)
 
+    def validate_target_model(self, project_name: str) -> ValidationResult:
+        """
+        Run target-model conformance validation for a project.
+
+        Loads the project, resolves it to the core model (which expands any
+        @include: reference in metadata.target_model), then runs
+        TargetModelConformanceValidator against the resolved spec.
+
+        If the project has no metadata.target_model, returns an empty valid result.
+
+        Args:
+            project_name: Project name to validate.
+
+        Returns:
+            ValidationResult with conformance errors (severity="error") only.
+            is_valid is True only when there are zero conformance errors.
+        """
+        from backend.app.validators.target_model_validator import TargetModelValidator  # pylint: disable=import-outside-toplevel
+
+        project_service: ProjectService = get_project_service()
+        api_project: Project = project_service.load_project(project_name)
+        core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+
+        target_model_data: dict | None = core_project.metadata.target_model
+
+        if not target_model_data or not isinstance(target_model_data, dict):
+            logger.debug(f"Project '{project_name}' has no resolved target_model — skipping conformance")
+            return ValidationResult(is_valid=True)
+
+        logger.debug(f"Running target-model conformance for project: {project_name}")
+        errors: list[ValidationError] = TargetModelValidator().validate(target_model_data, core_project)
+
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors)
+
 
 # Singleton instance
 _validation_service: ValidationService | None = None  # pylint: disable=invalid-name

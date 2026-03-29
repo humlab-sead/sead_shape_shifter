@@ -235,6 +235,8 @@ class ProjectOperations:
         description: str | None = None,
         version: str | None = None,
         default_entity: str | None = None,
+        target_model: str | None = None,
+        target_model_provided: bool = False,
     ) -> Project:
         """
         Update project metadata.
@@ -248,6 +250,9 @@ class ProjectOperations:
             description: Project description (optional)
             version: Project version (optional)
             default_entity: Default entity name (optional)
+            target_model: Target model path.  Ignored unless ``target_model_provided``
+                is True.  Pass ``None`` or ``""`` to clear the field.
+            target_model_provided: Whether target_model was explicitly sent.
 
         Returns:
             Updated project
@@ -271,6 +276,9 @@ class ProjectOperations:
             project.metadata.version = version
         if default_entity is not None:
             project.metadata.default_entity = default_entity
+        if target_model_provided:
+            # Empty string or null both mean "clear the field"
+            project.metadata.target_model = target_model or None
 
         # Ensure metadata.name matches filename (filename is source of truth)
         project.metadata.name = name

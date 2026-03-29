@@ -30,6 +30,7 @@ export interface MetadataUpdateRequest {
   description?: string | null
   version?: string | null
   default_entity?: string | null
+  target_model?: string | null
 }
 
 /**

@@ -63,6 +63,31 @@
           </template>
         </v-select>
 
+        <v-combobox
+          v-model="formData.target_model"
+          :items="targetModelItems"
+          :loading="yamlFilesLoading"
+          label="Target Model"
+          hint="YAML file declaring the target model (e.g. @include: target_model.yml). Select a file or type an @include: path."
+          persistent-hint
+          variant="outlined"
+          density="comfortable"
+          clearable
+          class="mb-4"
+          placeholder="@include: target_model.yml"
+        >
+          <template #prepend-inner>
+            <v-icon icon="mdi-check-decagram-outline" size="small" />
+          </template>
+          <template #no-data>
+            <v-list-item>
+              <v-list-item-title class="text-caption text-grey">
+                {{ yamlFilesLoading ? 'Loading files...' : 'No YAML files found — type a path manually' }}
+              </v-list-item-title>
+            </v-list-item>
+          </template>
+        </v-combobox>
+
         <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
           {{ error }}
         </v-alert>
@@ -92,6 +117,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useProjectStore } from '@/stores/project'
 import { storeToRefs } from 'pinia'
+import { projectsApi } from '@/api/projects'
 import type { MetadataUpdateRequest } from '@/api/projects'
 
 const props = defineProps<{
@@ -106,17 +132,38 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
 
+// YAML file list for target model picker
+const yamlFiles = ref<string[]>([])
+const yamlFilesLoading = ref(false)
+
+async function loadYamlFiles() {
+  yamlFilesLoading.value = true
+  try {
+    const files = await projectsApi.listFiles(props.projectName, ['yml', 'yaml'])
+    yamlFiles.value = files.map((f) => f.name)
+  } catch {
+    yamlFiles.value = []
+  } finally {
+    yamlFilesLoading.value = false
+  }
+}
+
+// Build combobox items: format each YAML file as an @include: path
+const targetModelItems = computed(() => yamlFiles.value.map((name) => `@include: ${name}`))
+
 // Form data
 const formData = ref<{
   name: string
   description: string | null
   version: string | null
   default_entity: string | null
+  target_model: string | null
 }>({
   name: '',
   description: null,
   version: null,
   default_entity: null,
+  target_model: null,
 })
 
 // Initial values for change detection
@@ -144,7 +191,8 @@ const hasChanges = computed(() => {
     formData.value.name !== initialValues.value.name ||
     formData.value.description !== initialValues.value.description ||
     formData.value.version !== initialValues.value.version ||
-    formData.value.default_entity !== initialValues.value.default_entity
+    formData.value.default_entity !== initialValues.value.default_entity ||
+    formData.value.target_model !== initialValues.value.target_model
   )
 })
 
@@ -152,11 +200,16 @@ const hasChanges = computed(() => {
 function loadMetadata() {
   if (selectedProject.value?.metadata) {
     const metadata = selectedProject.value.metadata
+    // target_model on ProjectMetadata may be a string (@include: ...) or null; if it's an
+    // object (resolved inline dict) we can't display it sensibly — show null instead.
+    const rawTargetModel: string | null =
+      typeof metadata.target_model === 'string' ? metadata.target_model : null
     formData.value = {
       name: metadata.name || props.projectName,
       description: metadata.description || null,
       version: metadata.version || null,
       default_entity: metadata.default_entity || null,
+      target_model: rawTargetModel,
     }
     initialValues.value = { ...formData.value }
   }
@@ -179,6 +232,9 @@ async function handleSave() {
       description: formData.value.description,
       version: formData.value.version,
       default_entity: formData.value.default_entity,
+      // Always include target_model so the backend knows it was explicitly provided
+      // (empty string / null both clear the field)
+      target_model: formData.value.target_model || null,
     }
 
     await projectStore.updateMetadata(props.projectName, updateData)
@@ -218,5 +274,6 @@ watch(
 
 onMounted(() => {
   loadMetadata()
+  loadYamlFiles()
 })
 </script>

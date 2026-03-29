@@ -3,7 +3,7 @@
  */
 
 export type ValidationSeverity = 'error' | 'warning' | 'info'
-export type ValidationCategory = 'structural' | 'data' | 'performance'
+export type ValidationCategory = 'structural' | 'data' | 'performance' | 'conformance'
 export type ValidationPriority = 'low' | 'medium' | 'high' | 'critical'
 export type DataValidationMode = 'sample' | 'complete'
 
