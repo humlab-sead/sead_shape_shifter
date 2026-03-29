@@ -2,7 +2,7 @@
 
 ## Status
 
-- Proposed feature / change request
+- **Implemented** (branch `entity-level-optimistic-locking`)
 - Scope: backend API, entity editor client flow, YAML persistence hardening
 - Goal: prevent same-entity last-writer-wins while preserving independent edits to different entities
 
