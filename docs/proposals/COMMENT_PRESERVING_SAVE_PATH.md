@@ -66,7 +66,7 @@ The design goal should be pragmatic:
 
 The system does not need perfect source-code-style round-tripping of every formatting detail to deliver value. It does need to stop discarding human explanation during normal saves.
 
-The broader persistence rationale, including the intended initial subtree boundaries, is proposed separately in [BOUNDARY_BASED_PROJECT_PERSISTENCE.md](BOUNDARY_BASED_PROJECT_PERSISTENCE.md). This proposal stays focused on the user-visible goal: comments should survive normal saves.
+The broader persistence rationale, including the intended initial subtree boundaries, is proposed separately in [BOUNDARY_BASED_PROJECT_PERSISTENCE.md](done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md). This proposal stays focused on the user-visible goal: comments should survive normal saves.
 
 Implementation details, delivery order, and a side-by-side comparison of the current and proposed save flows are documented in [COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md](COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md).
 
