@@ -249,20 +249,37 @@ class EntityOperations:
             else:
                 self._save_project(project)
 
-    def update_entity_by_name(self, project_name: str, entity_name: str, entity_data: dict[str, Any]) -> None:
+    def update_entity_by_name(
+        self,
+        project_name: str,
+        entity_name: str,
+        entity_data: dict[str, Any],
+        *,
+        expected_etag: str | None = None,
+    ) -> None:
         """
         Update entity in project by project name.
 
-        Serialized per-project to prevent lost-update race conditions.
+        Serialized per-project to prevent lost-update race conditions.  When
+        *expected_etag* is supplied the update is conditional (compare-and-swap):
+        the project is force-loaded from disk so the stale-check always reflects
+        the latest persisted state.  If the recomputed ETag does not match
+        *expected_etag* the request is rejected with :exc:`EntityConflictError`
+        (HTTP 409) carrying the current ETag and entity.  Omitting *expected_etag*
+        performs an unconditional update (backward compatible).
 
         Args:
             project_name: Project name
             entity_name: Entity name
             entity_data: Updated entity data as dict
+            expected_etag: When provided, the ETag the client received on last read.
+                If the current persisted ETag differs, raises EntityConflictError.
 
         Raises:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
+            EntityConflictError: If *expected_etag* is given and does not match the
+                current entity ETag
         """
         corr: str = get_correlation_id()
         lock = self._get_lock(project_name)
@@ -274,7 +291,9 @@ class EntityOperations:
         )
 
         with lock:
-            project: Project = self._load_project(project_name)
+            # Force-load from disk when performing a conditional (ETag) update so the
+            # stale-check always reflects the latest persisted content.
+            project: Project = self._load_project(project_name, force_reload=expected_etag is not None)
 
             entity_names: list[str] = sorted((project.entities or {}).keys())
             logger.info(
@@ -289,6 +308,25 @@ class EntityOperations:
             if entity_name not in project.entities:
                 raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
 
+            if expected_etag is not None:
+                current_entity = project.entities[entity_name]
+                current_etag = compute_entity_etag(current_entity)
+                if current_etag != expected_etag:
+                    logger.info(
+                        "[{}] update_entity_by_name: ETag mismatch project='{}' entity='{}' expected='{}' current='{}'",
+                        corr,
+                        project_name,
+                        entity_name,
+                        expected_etag,
+                        current_etag,
+                    )
+                    raise EntityConflictError(
+                        message=f"Entity '{entity_name}' was modified by another user. Reload before saving.",
+                        entity_name=entity_name,
+                        current_etag=current_etag,
+                        current_entity=current_entity,
+                    )
+
             # Ensure public_id is preserved (three-tier identity model)
             # If not in incoming data, keep existing value (even if None)
             if "public_id" not in entity_data and "public_id" in project.entities[entity_name]:
@@ -298,89 +336,6 @@ class EntityOperations:
 
             # Use the model's add_entity method to ensure proper handling
             project.add_entity(entity_name, entity_data)
-
-            if self._save_entity_boundary:
-                self._save_entity_boundary(project_name, entity_name, entity_data)
-            else:
-                self._save_project(project)
-
-    def update_entity_by_name_if_match(
-        self,
-        project_name: str,
-        entity_name: str,
-        entity_data: dict[str, Any],
-        expected_etag: str,
-    ) -> None:
-        """
-        Update entity with ETag-based optimistic locking (compare-and-swap).
-
-        Performs the stale-check against a freshly disk-loaded project inside
-        the per-project lock.  If the current entity ETag does not match
-        *expected_etag* the update is rejected with :exc:`EntityConflictError`
-        (HTTP 409) carrying the current ETag and entity so the client can
-        present a reload-before-saving prompt.
-
-        Args:
-            project_name: Project name
-            entity_name: Entity name
-            entity_data: Updated entity data as dict
-            expected_etag: ETag from the client's last entity read
-
-        Raises:
-            ResourceNotFoundError: If project or entity not found
-            EntityConflictError: If the entity has changed since the client read it
-        """
-        corr: str = get_correlation_id()
-        lock = self._get_lock(project_name)
-        logger.info(
-            "[{}] update_entity_by_name_if_match: ACQUIRING lock project='{}' entity='{}'",
-            corr,
-            project_name,
-            entity_name,
-        )
-
-        with lock:
-            # Force-load from disk to bypass ApplicationState cache so the stale-check
-            # always reflects the latest persisted content.
-            project: Project = self._load_project(project_name, force_reload=True)
-
-            if entity_name not in project.entities:
-                raise ResourceNotFoundError(
-                    resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found"
-                )
-
-            current_entity = project.entities[entity_name]
-            current_etag = compute_entity_etag(current_entity)
-
-            if current_etag != expected_etag:
-                logger.info(
-                    "[{}] update_entity_by_name_if_match: ETag mismatch project='{}' entity='{}' expected='{}' current='{}'",
-                    corr,
-                    project_name,
-                    entity_name,
-                    expected_etag,
-                    current_etag,
-                )
-                raise EntityConflictError(
-                    message=f"Entity '{entity_name}' was modified by another user. Reload before saving.",
-                    entity_name=entity_name,
-                    current_etag=current_etag,
-                    current_entity=current_entity,
-                )
-
-            # Preserve public_id (three-tier identity model)
-            if "public_id" not in entity_data and "public_id" in project.entities[entity_name]:
-                entity_data["public_id"] = project.entities[entity_name]["public_id"]
-
-            entity_data = self._prepare_entity_for_persistence(entity_name, entity_data)
-            project.add_entity(entity_name, entity_data)
-
-            logger.info(
-                "[{}] update_entity_by_name_if_match: ETag matched, saving project='{}' entity='{}'",
-                corr,
-                project_name,
-                entity_name,
-            )
 
             if self._save_entity_boundary:
                 self._save_entity_boundary(project_name, entity_name, entity_data)

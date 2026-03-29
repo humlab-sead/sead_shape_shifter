@@ -181,10 +181,7 @@ async def update_entity(
         Updated entity data with a fresh ETag
     """
     project_service: ProjectService = get_project_service()
-    if if_match is not None:
-        project_service.update_entity_by_name_if_match(project_name, entity_name, request.entity_data, if_match)
-    else:
-        project_service.update_entity_by_name(project_name, entity_name, request.entity_data)
+    project_service.update_entity_by_name(project_name, entity_name, request.entity_data, expected_etag=if_match)
     entity_data: dict[str, Any] = project_service.get_entity_by_name(project_name, entity_name)
     logger.info(f"Updated entity '{entity_name}' in '{project_name}'")
     return _build_entity_response(entity_name, entity_data)

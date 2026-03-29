@@ -685,22 +685,33 @@ class ProjectService:
         """
         return self.entities.add_entity_by_name(project_name, entity_name, entity_data)
 
-    def update_entity_by_name(self, project_name: str, entity_name: str, entity_data: dict[str, Any]) -> None:
+    def update_entity_by_name(
+        self,
+        project_name: str,
+        entity_name: str,
+        entity_data: dict[str, Any],
+        *,
+        expected_etag: str | None = None,
+    ) -> None:
         """
         Update entity in project by project name.
 
         Serialized per-project to prevent lost-update race conditions.
+        Pass *expected_etag* for conditional (ETag-based) compare-and-swap;
+        omit for an unconditional update (backward compatible).
 
         Args:
             project_name: Project name
             entity_name: Entity name
             entity_data: Updated entity data as dict
+            expected_etag: When provided, raises EntityConflictError on ETag mismatch
 
         Raises:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
+            EntityConflictError: If *expected_etag* is given and does not match
         """
-        return self.entities.update_entity_by_name(project_name, entity_name, entity_data)
+        return self.entities.update_entity_by_name(project_name, entity_name, entity_data, expected_etag=expected_etag)
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:
         """
@@ -734,16 +745,6 @@ class ProjectService:
             ResourceNotFoundError: If entity not found
         """
         return self.entities.get_entity_by_name(project_name, entity_name)
-
-    def update_entity_by_name_if_match(
-        self,
-        project_name: str,
-        entity_name: str,
-        entity_data: dict[str, Any],
-        expected_etag: str,
-    ) -> None:
-        """ETag-based compare-and-swap update — raises EntityConflictError on mismatch."""
-        return self.entities.update_entity_by_name_if_match(project_name, entity_name, entity_data, expected_etag)
 
     def get_entity_etag_by_name(self, project_name: str, entity_name: str) -> str:
         """Return the current ETag for an entity."""
