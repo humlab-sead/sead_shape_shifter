@@ -37,7 +37,7 @@ class EntityConformanceValidator(ConformanceValidator):
     def validate_entity(self, entity_name: str, entity_spec: EntitySpec, table_cfg: TableConfig) -> list[ConformanceIssue]:
         pass
 
-    def guard(self, target_model: TargetModel, project: ShapeShiftProject, entity_name) -> bool:
+    def guard(self, target_model: TargetModel, project: ShapeShiftProject, entity_name) -> bool:  # pylint: disable=unused-argument
         """Determine whether this validator should be applied to the given entity."""
         return project.has_table(entity_name)
 
