@@ -11,6 +11,11 @@ export const useEntityStore = defineStore('entity', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const hasUnsavedChanges = ref(false)
+  const conflictInfo = ref<{
+    entityName: string
+    currentEtag: string
+    currentEntity: Record<string, unknown>
+  } | null>(null)
   
   // Overlay state
   const showEditorOverlay = ref(false)
@@ -131,8 +136,10 @@ export const useEntityStore = defineStore('entity', () => {
   async function updateEntity(projectName: string, entityName: string, data: EntityUpdateRequest) {
     loading.value = true
     error.value = null
+    conflictInfo.value = null
     try {
-      const entity = await api.entities.update(projectName, entityName, data)
+      const ifMatch = selectedEntity.value?.etag
+      const entity = await api.entities.update(projectName, entityName, data, ifMatch)
 
       // Update entity in list
       const index = entities.value.findIndex((e: EntityResponse) => e.name === entityName)
@@ -148,7 +155,16 @@ export const useEntityStore = defineStore('entity', () => {
       // which resets dialog state (closes the entity editor).
       
       return entity
-    } catch (err) {
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { detail?: { context?: { current_etag?: string; current_entity?: Record<string, unknown> } } } } }
+      if (axiosErr?.response?.status === 409) {
+        const ctx = axiosErr.response?.data?.detail?.context
+        conflictInfo.value = {
+          entityName,
+          currentEtag: ctx?.current_etag ?? '',
+          currentEntity: ctx?.current_entity ?? {},
+        }
+      }
       error.value = err instanceof Error ? err.message : 'Failed to update entity'
       throw err
     } finally {
@@ -217,6 +233,7 @@ export const useEntityStore = defineStore('entity', () => {
     loading,
     error,
     hasUnsavedChanges,
+    conflictInfo,
     showEditorOverlay,
     overlayEntityName,
     overlayInitialTab,
