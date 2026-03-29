@@ -2,11 +2,11 @@
 
 Covers:
 - compute_entity_etag: stable, content-based, repeatable
-- update_entity_by_name_if_match: match → success, mismatch → EntityConflictError
-- update_entity_by_name_if_match: missing entity → ResourceNotFoundError
-- update_entity_by_name_if_match: calls boundary callback on success
+- update_entity_by_name(expected_etag=...): match → success, mismatch → EntityConflictError
+- update_entity_by_name(expected_etag=...): missing entity → ResourceNotFoundError
+- update_entity_by_name(expected_etag=...): calls boundary callback on success
+- update_entity_by_name (no expected_etag): unconditional update (backward compatible)
 - get_entity_etag_by_name: convenience wrapper
-- Fallback (no If-Match header) via unconditional update_entity_by_name is unaffected
 """
 
 from typing import Any
@@ -100,11 +100,11 @@ class TestComputeEntityEtag:
 
 
 # ---------------------------------------------------------------------------
-# update_entity_by_name_if_match
+# update_entity_by_name with expected_etag (conditional / CAS path)
 # ---------------------------------------------------------------------------
 
 
-class TestUpdateEntityByNameIfMatch:
+class TestUpdateEntityByNameConditional:
     def test_etag_match_updates_entity(self):
         entity = _sample_entity()
         project = _make_project({"sample": entity})
@@ -113,7 +113,7 @@ class TestUpdateEntityByNameIfMatch:
         expected_etag = compute_entity_etag(entity)
         updated = {**entity, "columns": ["name", "value", "extra"]}
 
-        ops.update_entity_by_name_if_match("test-project", "sample", updated, expected_etag)
+        ops.update_entity_by_name("test-project", "sample", updated, expected_etag=expected_etag)
 
         # Boundary callback should have been called with the saved data
         assert boundary_mock is not None
@@ -128,7 +128,7 @@ class TestUpdateEntityByNameIfMatch:
         ops, _, _ = _make_ops(project)
 
         with pytest.raises(EntityConflictError) as exc_info:
-            ops.update_entity_by_name_if_match("test-project", "sample", entity, "stale_etag_123456")
+            ops.update_entity_by_name("test-project", "sample", entity, expected_etag="stale_etag_123456")
 
         err = exc_info.value
         assert "sample" in str(err.message)
@@ -140,7 +140,7 @@ class TestUpdateEntityByNameIfMatch:
         ops, _, _ = _make_ops(project)
 
         with pytest.raises(ResourceNotFoundError):
-            ops.update_entity_by_name_if_match("test-project", "missing", _sample_entity(), "any_etag")
+            ops.update_entity_by_name("test-project", "missing", _sample_entity(), expected_etag="any_etag")
 
     def test_correct_etag_calls_boundary_not_save_project(self):
         """When boundary callback is wired, save_project should NOT be called."""
@@ -162,7 +162,7 @@ class TestUpdateEntityByNameIfMatch:
         )
 
         etag = compute_entity_etag(entity)
-        ops.update_entity_by_name_if_match("test-project", "sample", entity, etag)
+        ops.update_entity_by_name("test-project", "sample", entity, expected_etag=etag)
 
         boundary_mock.assert_called_once()
         save_project_mock.assert_not_called()
@@ -185,12 +185,12 @@ class TestUpdateEntityByNameIfMatch:
         )
 
         etag = compute_entity_etag(entity)
-        ops.update_entity_by_name_if_match("test-project", "sample", entity, etag)
+        ops.update_entity_by_name("test-project", "sample", entity, expected_etag=etag)
 
         save_project_mock.assert_called_once()
 
-    def test_force_reload_on_every_cas(self):
-        """update_entity_by_name_if_match must force-reload from disk (bypass cache)."""
+    def test_force_reload_when_etag_supplied(self):
+        """force_reload=True must be passed to load_project_callback when expected_etag given."""
         entity = _sample_entity()
         project = _make_project({"sample": entity})
         load_mock = MagicMock(return_value=project)
@@ -208,13 +208,36 @@ class TestUpdateEntityByNameIfMatch:
         )
 
         etag = compute_entity_etag(entity)
-        ops.update_entity_by_name_if_match("test-project", "sample", entity, etag)
+        ops.update_entity_by_name("test-project", "sample", entity, expected_etag=etag)
 
-        # force_reload=True must be passed to load_project_callback
         load_args = load_mock.call_args
         assert load_args.kwargs.get("force_reload") is True or (
             len(load_args.args) >= 2 and load_args.args[1] is True
         )
+
+    def test_no_force_reload_when_no_etag(self):
+        """Unconditional update must NOT force-reload (avoids unnecessary disk I/O)."""
+        entity = _sample_entity()
+        project = _make_project({"sample": entity})
+        load_mock = MagicMock(return_value=project)
+        save_project_mock = MagicMock(return_value=project)
+        lock_mock = MagicMock()
+        lock_mock.__enter__ = MagicMock(return_value=None)
+        lock_mock.__exit__ = MagicMock(return_value=False)
+        lock_getter = MagicMock(return_value=lock_mock)
+
+        ops = EntityOperations(
+            project_lock_getter=lock_getter,
+            load_project_callback=load_mock,
+            save_project_callback=save_project_mock,
+            save_entity_boundary_callback=MagicMock(),
+        )
+
+        ops.update_entity_by_name("test-project", "sample", entity)  # no expected_etag
+
+        load_args = load_mock.call_args
+        force_reload = load_args.kwargs.get("force_reload", False)
+        assert force_reload is False
 
 
 # ---------------------------------------------------------------------------
