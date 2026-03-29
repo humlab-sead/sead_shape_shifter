@@ -153,7 +153,7 @@ class TestValidationErrorShape:
         assert errors, "Expected at least one conformance error"
         for err in errors:
             assert err.severity == "error"
-            assert err.category == ValidationCategory.STRUCTURAL
+            assert err.category == ValidationCategory.CONFORMANCE
             assert err.priority == ValidationPriority.HIGH
             assert err.auto_fixable is False
             assert err.suggestion is None
