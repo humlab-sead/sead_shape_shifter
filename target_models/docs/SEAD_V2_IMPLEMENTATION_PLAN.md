@@ -93,15 +93,19 @@ Proposal intent:
 - Hand the format off cleanly to downstream consumers such as target-schema-aware validation
 
 Checklist:
-- [ ] Resolve remaining proposal-versus-implementation mismatches
-- [ ] Expand the canonical SEAD spec toward roughly 30 commonly mapped entities
-- [ ] Freeze the v1 format contract as stable
-- [ ] Demonstrate downstream consumption by target-schema-aware validation without further schema redesign
-- [ ] Confirm the proposal-level acceptance criteria are satisfied
+- [x] Resolve remaining proposal-versus-implementation mismatches
+- [x] Expand the canonical SEAD spec toward roughly 30 commonly mapped entities
+- [x] Freeze the v1 format contract as stable
+- [x] Demonstrate downstream consumption by target-schema-aware validation without further schema redesign
+- [x] Confirm the proposal-level acceptance criteria are satisfied
 
 Current status:
-- **Milestone 3 is not complete.**
-- The working spec has now reached roughly 30 commonly mapped entities, but Milestone 3 still requires v1 contract freeze and downstream consumer validation.
+- **Milestone 3 is complete.**
+- The working spec stands at 35 entities, exceeding the ~30-entity threshold.
+- The v1 format contract is frozen: the `TargetModel` Pydantic schema in `src/target_model/models.py` covers all fields defined in this proposal and requires no further schema changes to satisfy either the SEAD specification or the validation consumer.
+- Backend endpoint (`POST /projects/{name}/validate/target-model`) and frontend Check Conformance button are wired; conformance issues reach the UI via `ValidationCategory.CONFORMANCE`.
+- All acceptance criteria in `TARGET_MODEL_SPECIFICATION_FORMAT.md` are satisfied, including the non-SEAD generality criterion (test added in `target_models/tests/test_spec_files.py`).
+- Naming convention conformance (`PUBLIC_ID_NAMING_VIOLATION`) is now checked by `NamingConventionConformanceValidator` in `src/target_model/conformance.py`.
 
 ## Phase 0: Pre-Draft Decisions
 

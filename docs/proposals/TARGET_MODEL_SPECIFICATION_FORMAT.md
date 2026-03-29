@@ -2,7 +2,9 @@
 
 ## Status
 
-- Proposed feature
+- **Format: v1 implemented and stable** — Pydantic domain model, spec validator, and conformance engine are all in `src/target_model/`
+- **SEAD specification: active** — `target_models/specs/sead_v2.yml` covers 35 entities across core, spatial, abundance, dating, taxonomy, method/contact, and provenance domains
+- **Validator integration: done** — `TargetModelConformanceValidator` runs against resolved `ShapeShiftProject`; backend endpoint and frontend Check Conformance button are wired (see [TARGET_SCHEMA_AWARE_VALIDATION](TARGET_SCHEMA_AWARE_VALIDATION.md))
 - Scope: Specification format (YAML schema + semantics) and initial SEAD model definition
 - Goal: Define a reusable, system-independent format for describing target data model requirements, and produce a concrete SEAD specification as the first consumer
 
@@ -541,12 +543,12 @@ Rejected because it defeats reusability. The whole point is that target model re
 
 ## Acceptance Criteria
 
-1. YAML format is documented with field definitions and semantics.
-2. A working `sead_v2.yml` exists and covers core SEAD entities plus the current standalone expansion packages (31 entities at present). Until integration is completed, the working version lives at `target_models/specs/sead_v2.yml`.
-3. Required entities are expressed via `required: true` on entity specs (no redundant top-level list).
-4. Global constraints use typed objects, not untyped dicts.
-5. At least one non-SEAD hypothetical model can be expressed cleanly to verify format generality.
-6. Format is consumable by the target-schema-aware validation proposal without modifications.
+1. ✅ YAML format is documented with field definitions and semantics.
+2. ✅ A working `sead_v2.yml` exists and covers core SEAD entities plus all expansion packages (35 entities). The working version lives at `target_models/specs/sead_v2.yml`.
+3. ✅ Required entities are expressed via `required: true` on entity specs (no redundant top-level list).
+4. ✅ Global constraints use typed objects, not untyped dicts.
+5. ✅ A non-SEAD hypothetical model (museum specimen database) is expressed and tested in `target_models/tests/test_spec_files.py::test_non_sead_target_model_expresses_cleanly`.
+6. ✅ Format is consumed by the target-schema-aware validation proposal without schema modifications.
 
 ## Open Questions
 

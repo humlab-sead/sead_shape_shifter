@@ -139,6 +139,38 @@ class RequiredEntityConformanceValidator(ConformanceValidator):
         return issues
 
 
+@CONFORMANCE_VALIDATORS.register(key="naming_convention")
+class NamingConventionConformanceValidator(ConformanceValidator):
+    """Validate that project entity public_id values conform to the target model naming conventions."""
+
+    def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        if not target_model.naming or not target_model.naming.public_id_suffix:
+            return []
+
+        suffix = target_model.naming.public_id_suffix
+        issues: list[ConformanceIssue] = []
+
+        for entity_name in target_model.entities:
+            if not project.has_table(entity_name):
+                continue
+            table_cfg: TableConfig = project.get_table(entity_name)
+            if not table_cfg.public_id:
+                continue
+            if not table_cfg.public_id.endswith(suffix):
+                issues.append(
+                    ConformanceIssue(
+                        code="PUBLIC_ID_NAMING_VIOLATION",
+                        message=(
+                            f"Entity '{entity_name}' has public_id '{table_cfg.public_id}' "
+                            f"which does not end with naming convention suffix '{suffix}'"
+                        ),
+                        entity=entity_name,
+                    )
+                )
+
+        return issues
+
+
 class TargetModelConformanceValidator(ConformanceValidator):
     """Validate a resolved Shape Shifter project against a target model."""
 
