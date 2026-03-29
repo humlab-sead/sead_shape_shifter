@@ -768,6 +768,14 @@ Use these documents:
 - [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
 - [other/USER_GUIDE_APPENDIX.md](other/USER_GUIDE_APPENDIX.md)
 
+### Where can I see what changed in a new version?
+
+Each release publishes a short, user-facing summary in `docs/whats-new/`. These notes are written for normal users and focus on visible improvements, workflow changes, and anything worth knowing before upgrading. They are separate from the full technical `CHANGELOG.md`, which is aimed at developers.
+
+To find notes for a specific version, open `docs/whats-new/vX.Y.Z.md` or browse [docs/whats-new/](whats-new/).
+
+GitHub Releases also carry a short version of these notes with a link to the full changelog.
+
 ---
 
 **Document Version**: 2.1
