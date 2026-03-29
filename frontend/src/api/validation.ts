@@ -38,4 +38,14 @@ export const validationApi = {
       url: `/projects/${projectName}/dependencies/check`,
     })
   },
+
+  /**
+   * Run target-model conformance validation for a project
+   */
+  validateTargetModel: async (projectName: string): Promise<ValidationResult> => {
+    return apiRequest<ValidationResult>({
+      method: 'POST',
+      url: `/projects/${projectName}/validate/target-model`,
+    })
+  },
 }

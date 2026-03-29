@@ -957,6 +957,10 @@ class Metadata:
         """Configuration version."""
         return self.data.get("default_entity")  # e.g. "survey"
 
+    @property
+    def target_model(self) -> dict[str, Any] | None:
+        return self.data.get("target_model")
+
 
 class LayoutPosition:
     """Position of a node in custom graph layout."""

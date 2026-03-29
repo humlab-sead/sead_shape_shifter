@@ -30,6 +30,20 @@
             </v-btn>
           </template>
         </v-tooltip>
+        <v-tooltip text="Check project entities conform to target model specification" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              size="small"
+              prepend-icon="mdi-check-decagram-outline"
+              color="deep-purple"
+              :loading="conformanceValidationLoading"
+              @click="emit('validate-target-model')"
+            >
+              Check Conformance
+            </v-btn>
+          </template>
+        </v-tooltip>
         <v-tooltip text="Configure data validation options" location="bottom">
           <template v-slot:activator="{ props }">
             <v-btn
@@ -206,6 +220,25 @@
                   <validation-message-list :messages="performanceIssues" @open-entity="handleOpenEntity" />
                 </v-expansion-panel-text>
               </v-expansion-panel>
+
+              <!-- Conformance Issues -->
+              <v-expansion-panel v-if="conformanceIssues.length > 0" value="conformance">
+                <v-expansion-panel-title>
+                  <div class="d-flex align-center">
+                    <v-icon icon="mdi-check-decagram-outline" class="mr-2" color="deep-purple" />
+                    <span class="font-weight-medium">Conformance</span>
+                    <v-chip size="small" class="ml-2">
+                      {{ conformanceIssues.length }}
+                    </v-chip>
+                    <v-chip v-if="conformanceErrors.length > 0" size="small" color="error" class="ml-2">
+                      {{ conformanceErrors.length }} errors
+                    </v-chip>
+                  </div>
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <validation-message-list :messages="conformanceIssues" @open-entity="handleOpenEntity" />
+                </v-expansion-panel-text>
+              </v-expansion-panel>
             </v-expansion-panels>
           </v-window-item>
         </v-window>
@@ -226,6 +259,7 @@ interface Props {
   validationResult: ValidationResult | null
   loading: boolean
   dataValidationLoading?: boolean
+  conformanceValidationLoading?: boolean
   availableEntities?: string[]
 }
 
@@ -238,6 +272,7 @@ interface ValidationConfig {
 interface Emits {
   (e: 'validate'): void
   (e: 'validate-data', config?: ValidationConfig): void
+  (e: 'validate-target-model'): void
   (e: 'open-entity', entityName: string): void
 }
 
@@ -299,6 +334,14 @@ const dataErrors = computed(() => {
 
 const performanceErrors = computed(() => {
   return performanceIssues.value.filter((msg) => msg.severity === 'error')
+})
+
+const conformanceIssues = computed(() => {
+  return allMessages.value.filter((msg) => msg.category === 'conformance')
+})
+
+const conformanceErrors = computed(() => {
+  return conformanceIssues.value.filter((msg) => msg.severity === 'error')
 })
 
 // Methods

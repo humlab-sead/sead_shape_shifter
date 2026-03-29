@@ -564,12 +564,12 @@ Goals:
 
 ### Checklist
 
-- [ ] Move the target-model schema to a shared domain location rather than a backend-only or standalone-only module
-- [ ] Add a core conformance validator that accepts a parsed target model plus resolved `ShapeShiftProject`
-- [ ] Add a `TableConfig`-level target-facing column abstraction for conformance checks
-- [ ] Map core conformance issues to backend validation error shapes
-- [ ] Retire the duplicate standalone project-side conformance model once parity is reached
-- [ ] Keep non-integrated experimental rules outside the backend path
+- [x] Move the target-model schema to a shared domain location rather than a backend-only or standalone-only module
+- [x] Add a core conformance validator that accepts a parsed target model plus resolved `ShapeShiftProject`
+- [x] Add a `TableConfig`-level target-facing column abstraction for conformance checks
+- [x] Map core conformance issues to backend validation error shapes
+- [x] Retire the duplicate standalone project-side conformance model once parity is reached
+- [x] Keep non-integrated experimental rules outside the backend path
 
 Deliverables:
 - Core conformance migration work described in `docs/proposals/TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md`

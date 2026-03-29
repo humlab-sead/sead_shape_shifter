@@ -3,7 +3,8 @@
 ## Status
 
 - **Core engine: implemented** — `src/target_model/` package contains the domain model, conformance validator, spec validator, and template generator
-- **Backend integration: pending** — `metadata.target_model` support, `@include:` resolution, and `ValidationService` wiring are not yet done
+- **Backend integration: implemented** — `metadata.target_model` support, `@include:` resolution, `ValidationService.validate_target_model()`, and REST endpoint are all wired
+- **Frontend adoption: implemented** — Check Conformance button, Conformance panel, and target_model field in Metadata Editor are all wired
 - Scope: Validation system, project configuration
 - Goal: Enable semantic validation based on target data model requirements
 
@@ -17,12 +18,26 @@
 - `src/target_model/template_generator.py` — Generates starter project scaffolds from a target model with domain and entity filters; includes CLI (`python -m src.target_model.template_generator --spec ...`)
 - `src/model.py` — `TableConfig.get_target_facing_columns()` and `TableConfig.get_target_facing_foreign_key_targets()` provide the column-contract API for conformance
 - `tests/model/test_target_model_conformance.py` — 11 tests, 98% branch coverage
+- `backend/app/models/project.py` — `ProjectMetadata.target_model` field (`str | dict | None`) added to the API model
+- `backend/app/mappers/project_mapper.py` — `@include:` directives resolved at the API→Core boundary; inline dicts preserved as-is
+- `backend/app/validators/target_model_validator.py` — `TargetModelValidator` bridges core conformance engine and backend; wraps `TargetModelConformanceValidator` and converts `ConformanceIssue` → `ValidationError`
+- `backend/app/services/validation_service.py` — `ValidationService.validate_target_model()` loads and resolves the project, extracts the resolved `target_model` dict, and delegates to `TargetModelValidator`
+- `backend/app/models/validation.py` — `ValidationCategory.CONFORMANCE = "conformance"` added; conformance issues now have their own category (no longer grouped with structural)
+- `backend/app/mappers/validation_mapper.py` — `ValidationMapper.from_conformance_issue()` uses `ValidationCategory.CONFORMANCE`
+- `backend/app/api/v1/endpoints/validation.py` — `POST /projects/{name}/validate/target-model` endpoint
+- `backend/app/api/v1/endpoints/projects.py` — `MetadataUpdateRequest.target_model` field added; endpoint passes it to service with presence detection via `model_fields_set`
+- `backend/app/services/project_service.py` and `project_operations.py` — `update_metadata()` accepts `target_model` + `target_model_provided`; empty string or explicit `null` clears the field
+- `frontend/src/types/config.ts` — `ProjectMetadata.target_model?: string | null` added
+- `frontend/src/types/validation.ts` — `ValidationCategory` extended with `'conformance'`
+- `frontend/src/api/projects.ts` — `MetadataUpdateRequest.target_model?: string | null` added
+- `frontend/src/api/validation.ts` — `validationApi.validateTargetModel()` added
+- `frontend/src/composables/useConformanceValidation.ts` — New composable following the `useDataValidation` pattern
+- `frontend/src/components/validation/ValidationPanel.vue` — **Check Conformance** button (deep-purple, `mdi-check-decagram-outline`), `conformanceValidationLoading` prop, `validate-target-model` emit, `conformanceIssues`/`conformanceErrors` computed properties, and a **Conformance** expansion panel in the By Category tab
+- `frontend/src/views/ProjectDetailView.vue` — `useConformanceValidation` imported and wired; `handleConformanceValidate()` handler added; `mergedValidationResult` extended to include conformance results alongside structural and data results
+- `frontend/src/components/MetadataEditor.vue` — **Target Model** combobox added; lists project YAML files as `@include: <file>` suggestions; allows free-text entry; clearable; included in save payload
 
 ### Pending
 
-- `metadata.target_model` field on `ShapeShiftProject` / API project model
-- `@include:` resolution for `target_model` references at the backend boundary
-- `ValidationService` integration (structural validation + target-model conformance in one pass)
 - Naming convention checks inside conformance (public_id_suffix is validated for the spec file, not yet against project entities)
 - Semantic mismatch detection (entity-name vs. public_id style divergence)
 - Migration of standalone `target_models/` example tests to use the core conformance engine
@@ -337,6 +352,20 @@ ERROR [SEMANTIC_NAMING_MISMATCH]: Entity 'relative_dating' (fact) uses public_id
   Field: public_id
   Suggestion: Use 'relative_dating_id' to match entity role
 ```
+
+## Frontend Adoption
+
+The conformance feature is surfaced in two places in the editor UI.
+
+### Validation Panel — Check Conformance button
+
+A **Check Conformance** button sits alongside the existing Run YAML Validation and Run Data Validation buttons. Clicking it calls `POST /projects/{name}/validate/target-model` and displays the results in a dedicated **Conformance** expansion panel under the *By Category* tab. Conformance issues use the `deep-purple` colour and the `mdi-check-decagram-outline` icon to distinguish them visually from structural (grey) and data (blue) issues. Like the other validation runs, conformance results are merged into the unified `mergedValidationResult` so they participate in the tab-level error/warning counts and the copy-to-clipboard export.
+
+If the project has no `target_model` declared, the endpoint returns an empty valid result and the panel does not appear (it is gated on `conformanceIssues.length > 0`). There is no error — the button is always safe to press.
+
+### Metadata Editor — Target Model field
+
+A **Target Model** combobox is added below the Default Entity selector. On mount the editor fetches the project's uploaded YAML files (`GET /projects/{name}/files?ext=yml,yaml`) and presents them as `@include: <filename>` options. Users can also type a path directly, which is the idiomatic way to reference a spec file that lives outside the uploads directory (e.g. `@include: target_models/specs/sead_v2.yml`). The field is clearable; clearing it and saving removes `target_model` from the project metadata entirely. The value is always included in the PATCH payload so the backend can distinguish an intentional clear from a field that was simply not sent.
 
 ## Alternatives Considered
 

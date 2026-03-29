@@ -67,6 +67,7 @@ class MetadataUpdateRequest(BaseModel):
     description: str | None = Field(default=None, description="Project description")
     version: str | None = Field(default=None, description="Project version (x.y.z format)")
     default_entity: str | None = Field(default=None, description="Default entity name")
+    target_model: str | None = Field(default=None, description="Target model spec path (e.g. @include: target.yml); empty string clears the field")
 
 
 # Endpoints
@@ -200,6 +201,8 @@ async def update_project_metadata(name: str, request: MetadataUpdateRequest) -> 
         description=request.description,
         version=request.version,
         default_entity=request.default_entity,
+        target_model=request.target_model if "target_model" in request.model_fields_set else None,
+        target_model_provided="target_model" in request.model_fields_set,
     )
     logger.info(f"Updated metadata for project '{name}'")
     return project

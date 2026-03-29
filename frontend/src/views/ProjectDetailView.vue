@@ -607,9 +607,11 @@
               :validation-result="mergedValidationResult"
               :loading="validationLoading"
               :data-validation-loading="dataValidationLoading"
+              :conformance-validation-loading="conformanceValidationLoading"
               :available-entities="entityNames"
               @validate="handleValidate"
               @validate-data="handleDataValidate"
+              @validate-target-model="handleConformanceValidate"
               @open-entity="handleOpenValidationEntity"
               @apply-fix="handleApplyFix"
               @apply-all-fixes="handleApplyAllFixes"
@@ -848,6 +850,7 @@ import { useTheme } from 'vuetify'
 import { api } from '@/api'
 import { useProjects, useEntities, useValidation, useDependencies, useCytoscape } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
+import { useConformanceValidation } from '@/composables/useConformanceValidation'
 import { useEntityPreview } from '@/composables/useEntityPreview'
 import { useSession } from '@/composables/useSession'
 import { getTaskStatusNodeClasses, shouldShowNodeForTaskFilter } from '@/utils/taskGraph'
@@ -949,6 +952,12 @@ const {
   applyFixes,
   autoFixableIssues,
 } = useDataValidation()
+
+const {
+  loading: conformanceValidationLoading,
+  result: conformanceValidationResult,
+  validateConformance,
+} = useConformanceValidation()
 
 // Local state
 const activeTab = ref('entities')
@@ -1052,23 +1061,25 @@ const yamlHasChanges = ref(false)
 
 // Computed
 const mergedValidationResult = computed(() => {
-  if (!validationResult.value && !dataValidationResult.value) return null
+  if (!validationResult.value && !dataValidationResult.value && !conformanceValidationResult.value) return null
 
   const structural = validationResult.value
   const data = dataValidationResult.value
+  const conformance = conformanceValidationResult.value
 
-  if (!structural && data) return data
-  if (structural && !data) return structural
-  if (!structural || !data) return null
+  // Collect all non-null results
+  const results = [structural, data, conformance].filter(Boolean)
+  if (results.length === 0) return null
+  if (results.length === 1) return results[0]!
 
-  // Merge both results
+  // Merge all results
   return {
-    is_valid: structural.is_valid && data.is_valid,
-    errors: [...structural.errors, ...data.errors],
-    warnings: [...structural.warnings, ...data.warnings],
-    info: [...(structural.info || []), ...(data.info || [])],
-    error_count: structural.error_count + data.error_count,
-    warning_count: structural.warning_count + data.warning_count,
+    is_valid: results.every((r) => r!.is_valid),
+    errors: results.flatMap((r) => r!.errors),
+    warnings: results.flatMap((r) => r!.warnings),
+    info: results.flatMap((r) => r!.info || []),
+    error_count: results.reduce((sum, r) => sum + r!.error_count, 0),
+    warning_count: results.reduce((sum, r) => sum + r!.warning_count, 0),
   }
 })
 
@@ -1307,6 +1318,17 @@ async function handleDataValidate(config?: any) {
     showSuccessSnackbar.value = true
   } catch (err) {
     console.error('Data validation failed:', err)
+  }
+}
+
+async function handleConformanceValidate() {
+  try {
+    await validateConformance(projectName.value)
+    await taskStatusStore.refresh()
+    successMessage.value = 'Conformance check completed'
+    showSuccessSnackbar.value = true
+  } catch (err) {
+    console.error('Conformance validation failed:', err)
   }
 }
 

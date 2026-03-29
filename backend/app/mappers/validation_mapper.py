@@ -1,6 +1,7 @@
 """Mapper for translating between domain validation models and API validation models."""
 
 from backend.app import models as api
+from src.target_model.conformance import ConformanceIssue
 from src.validators.data_validators import ValidationIssue
 
 
@@ -53,4 +54,30 @@ class ValidationMapper:
             category=category,
             priority=priority,
             auto_fixable=issue.auto_fixable,
+        )
+
+    @staticmethod
+    def from_conformance_issue(issue: ConformanceIssue) -> api.ValidationError:
+        """
+        Convert a core ConformanceIssue to an API ValidationError.
+
+        Conformance issues are structural by category and high priority by default.
+        Severity is always 'error' — conformance violations are hard requirements.
+
+        Args:
+            issue: Core conformance issue from TargetModelConformanceValidator
+
+        Returns:
+            API validation error model
+        """
+        return api.ValidationError(
+            severity="error",
+            entity=issue.entity,
+            field=None,
+            message=issue.message,
+            code=issue.code,
+            suggestion=None,
+            category=api.ValidationCategory.CONFORMANCE,
+            priority=api.ValidationPriority.HIGH,
+            auto_fixable=False,
         )

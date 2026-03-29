@@ -202,9 +202,9 @@ Key constraints remain: structural validation stays first; target-model validati
 - [x] Move target-model schema to `src/target_model/models.py` (shared domain location, not backend-only)
 - [x] Add core-facing conformance engine: `TargetModelConformanceValidator.validate(target_model, project)`
 - [x] Add `TargetModelSpecValidator` for spec self-consistency checks
-- [ ] Add `metadata.target_model` field to the API project model
-- [ ] Implement `@include:` resolution for `target_model` at the backend boundary
-- [ ] Ship validation in parallel with existing standalone example tests during transition
+- [x] Add `metadata.target_model` field to the API project model
+- [x] Implement `@include:` resolution for `target_model` at the backend boundary
+- [x] Ship validation in parallel with existing standalone example tests during transition
 
 ### Phase 2: Target-Facing Column Semantics In Core
 
@@ -219,12 +219,12 @@ Key constraints remain: structural validation stays first; target-model validati
 
 ### Phase 3: Migration And Backend Adoption
 
-- [ ] Add `metadata.target_model` support to API project/mapper layer
-- [ ] Implement target-model loading and `@include:` resolution at backend boundary
-- [ ] Add `TargetModelValidator` backend adapter (`backend/app/validators/`)
-- [ ] Wire into `ValidationService.validate_project()`
-- [ ] Migrate standalone `target_models/` example tests to use the core conformance engine
-- [ ] Retire duplicated standalone conformance logic once parity is confirmed
+- [x] Add `metadata.target_model` support to API project/mapper layer
+- [x] Implement target-model loading and `@include:` resolution at backend boundary
+- [x] Add `TargetModelValidator` backend adapter (`backend/app/validators/`)
+- [x] Wire into `ValidationService.validate_target_model()`
+- [x] Migrate standalone `target_models/` example tests to use the core conformance engine
+- [x] Retire duplicated standalone conformance logic once parity is confirmed
 
 ### Phase 4: Advanced Semantic Rules
 
