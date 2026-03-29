@@ -4,6 +4,8 @@ This note records the first standalone conformance-validator findings from the P
 
 It exists to separate low-noise rules that are safe to keep from heuristic checks that need more evidence before backend integration.
 
+**Status:** Findings incorporated. Deferred heuristics and items not yet safe for integration have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](../../docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+
 ## Corpus Used
 
 - `target_models/examples/sead_arbodat_core.yml`
@@ -134,8 +136,4 @@ So the current Phase 6 direction remains:
 
 ## Not Yet Safe For Integration
 
-- Alias matching such as `sample_type_name -> type_name`
-- Semantic normalization such as `sead_method_group_id -> method_group_id`
-- Transitive FK satisfaction
-- Value-level checks requiring execution of the Shape Shifter pipeline
-- Any rule that depends on interpreting `@value:` expressions rather than reading direct structure
+Deferred items (alias matching, semantic normalization, transitive FK satisfaction, value-level checks, `@value:` expression interpretation) have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](../../docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).

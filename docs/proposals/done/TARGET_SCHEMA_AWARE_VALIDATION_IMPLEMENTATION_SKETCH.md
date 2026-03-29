@@ -2,10 +2,9 @@
 
 ## Status
 
-- **Core engine: implemented** — phases 1 and 2 are substantially complete in `src/target_model/`
-- **Backend integration: pending** — phase 3 (`ValidationService` wiring, `@include:` resolution) is not yet started
+- **Milestones 1–3: complete** — core engine, backend integration, frontend wiring all done
+- **Remaining backlog:** see [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
 - Scope: implementation approach for [TARGET_SCHEMA_AWARE_VALIDATION.md](TARGET_SCHEMA_AWARE_VALIDATION.md)
-- Goal: describe a low-risk path for adding optional target-model validation without hardcoding target-system behavior into the core pipeline
 
 ## Summary
 
@@ -226,22 +225,9 @@ Key constraints remain: structural validation stays first; target-model validati
 - [x] Migrate standalone `target_models/` example tests to use the core conformance engine
 - [x] Retire duplicated standalone conformance logic once parity is confirmed
 
-### Phase 4: Advanced Semantic Rules
+### Phase 4 and Future Enhancements
 
-- [ ] Naming convention checks against project entities (public_id_suffix in conformance)
-- [ ] Semantic mismatch detection (`UNEXPECTED_PUBLIC_ID` style: entity-name vs. public_id)
-- [ ] Global role-informed checks (`no_orphan_facts`)
-- [ ] Schema-aware append conformance
-- [ ] Branch-aware/merged-parent rules (after branch proposals are concrete)
-
-### Future Enhancements
-
-- [x] Project template generation from target models (`src/target_model/template_generator.py`)
-- [ ] Target model diff tooling for upgrades
-- [ ] Remote target-model references (`@include: https://...`)
-- [ ] Curated registry of shared target models
-
-Current phase sequencing and deferred issues are tracked in [target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md](../../target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md).
+Phase 4 advanced semantic rules, future enhancements, and remaining deferred items are tracked in [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Testing Strategy
 
@@ -252,16 +238,8 @@ Current phase sequencing and deferred issues are tracked in [target_models/docs/
 
 ### Remaining test areas
 
-- parsing valid and invalid target model YAML into `TargetModel`
-- resolving inline vs. `@include:` declarations (backend boundary)
-- validating projects with and without `metadata.target_model`
-- verifying warning vs. error severity for semantic checks (Phase 4)
-- handling missing target model files gracefully
-- backend adapter integration tests
+Test coverage gaps are tracked in [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Open Technical Questions
 
-1. **Target model loading location** — should loading live directly in `ValidationService` or in a small dedicated `TargetModelLoader` service? Thin service is probably fine; a dedicated loader makes it easier to add caching or remote resolution later.
-2. ~~**`get_target_facing_columns()` scope** — only explicit outputs, or also materialized/source-state derived outputs?~~ **Resolved:** v1 covers keys, columns, extra_columns, public_id, FK-generated columns, and unnest survivors. Materialized source-state outputs are explicitly out of scope and documented in the method docstring.
-3. **Validation code naming** — should codes be prefixed with `TARGET_` (e.g., `TARGET_MISSING_REQUIRED_ENTITY`) to distinguish them from structural validation codes? Current codes are unprefixed (`MISSING_REQUIRED_ENTITY`). Prefixing would help in the combined `ValidationResponse` but is a cosmetic change that can be deferred to Phase 3.
-4. **Rule disabling** — how should projects selectively suppress specific conformance checks? A future `options.validation.disabled_rules: [...]` field would work cleanly. The registry pattern makes it straightforward to skip specific validators by key without coupling to frontend concerns.
+Open technical questions (target model loading location, validation code naming, rule disabling) are tracked in [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
