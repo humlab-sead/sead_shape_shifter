@@ -129,3 +129,79 @@ class TestExampleProjectConformance:
 
             issues = TargetModelConformanceValidator().validate(target_model, project)
             assert isinstance(issues, list), f"Expected list for {example_path.name}"
+
+
+class TestNamingConventionConformance:
+    """Unit tests for NamingConventionConformanceValidator."""
+
+    _MINIMAL_CFG_PREFIX: dict = {
+        "metadata": {"type": "shapeshifter-project", "name": "test"},
+    }
+
+    def _make_project(self, entities: dict) -> ShapeShiftProject:
+        cfg = {**self._MINIMAL_CFG_PREFIX, "entities": entities}
+        return ShapeShiftProject(cfg=cfg, filename="test.yml")
+
+    def _make_target_model(self, entity_specs: dict, suffix: str = "_id") -> "TargetModel":
+        import yaml as _yaml
+        from src.target_model.models import TargetModel as _TM
+
+        raw = {
+            "model": {"name": "Test", "version": "1.0.0"},
+            "entities": entity_specs,
+            "naming": {"public_id_suffix": suffix},
+        }
+        return _TM.model_validate(raw)
+
+    def test_entity_with_conforming_public_id_produces_no_violation(self) -> None:
+        target_model = self._make_target_model({"location": {"required": True}})
+        project = self._make_project({"location": {"type": "csv", "file": "loc.csv", "public_id": "location_id"}})
+
+        from src.target_model.conformance import NamingConventionConformanceValidator
+
+        issues = NamingConventionConformanceValidator().validate(target_model, project)
+        assert issues == []
+
+    def test_entity_with_non_conforming_public_id_raises_violation(self) -> None:
+        target_model = self._make_target_model({"location": {"required": True}})
+        # "locid" does not end with "_id"
+        project = self._make_project({"location": {"type": "csv", "file": "loc.csv", "public_id": "locid"}})
+
+        from src.target_model.conformance import NamingConventionConformanceValidator
+
+        issues = NamingConventionConformanceValidator().validate(target_model, project)
+        assert len(issues) == 1
+        assert issues[0].code == "PUBLIC_ID_NAMING_VIOLATION"
+        assert issues[0].entity == "location"
+        assert "locid" in issues[0].message
+        assert "_id" in issues[0].message
+
+    def test_entity_without_public_id_produces_no_violation(self) -> None:
+        target_model = self._make_target_model({"location": {"required": True}})
+        project = self._make_project({"location": {"type": "csv", "file": "loc.csv"}})
+
+        from src.target_model.conformance import NamingConventionConformanceValidator
+
+        issues = NamingConventionConformanceValidator().validate(target_model, project)
+        assert issues == []
+
+    def test_no_naming_conventions_in_target_model_skips_check(self) -> None:
+        from src.target_model.models import TargetModel as _TM
+
+        raw = {"model": {"name": "Test", "version": "1.0.0"}, "entities": {"location": {}}}
+        target_model = _TM.model_validate(raw)
+        project = self._make_project({"location": {"type": "csv", "file": "loc.csv", "public_id": "locid"}})
+
+        from src.target_model.conformance import NamingConventionConformanceValidator
+
+        issues = NamingConventionConformanceValidator().validate(target_model, project)
+        assert issues == []
+
+    def test_naming_convention_integrated_into_main_validator(self) -> None:
+        """NamingConventionConformanceValidator is registered and runs via TargetModelConformanceValidator."""
+        target_model = self._make_target_model({"location": {"required": True}})
+        project = self._make_project({"location": {"type": "csv", "file": "loc.csv", "public_id": "locid"}})
+
+        issues = TargetModelConformanceValidator().validate(target_model, project)
+        naming_issues = [i for i in issues if i.code == "PUBLIC_ID_NAMING_VIOLATION"]
+        assert naming_issues, "Expected PUBLIC_ID_NAMING_VIOLATION from integrated validator"
