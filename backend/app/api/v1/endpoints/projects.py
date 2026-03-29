@@ -164,19 +164,11 @@ async def update_project(name: str, request: ProjectUpdateRequest) -> Project:
         Updated project with new metadata
     """
     project_service: ProjectService = get_project_service()
-    # CRITICAL: Force reload from disk to get the latest entities.
-    # The cache may be stale (e.g., entity CRUD updates disk but cache
-    # holds an older version). Without force_reload, saving would
-    # overwrite disk entities with the stale cache version.
-    project: Project = project_service.load_project(name, force_reload=True)
-    project.options = request.options
-
-    logger.debug(f"Updating project '{name}': preserving {len(project.entities)} entities from disk, " f"updating options only")
-
-    updated_project: Project = project_service.save_project(project)
-    logger.info(
-        f"Updated project '{name}' options (entities preserved: " f"{list(updated_project.entities.keys())})",
-    )
+    # Boundary save: replaces only the options section on disk, leaving entities
+    # and metadata (and all YAML comments) untouched.  No full-file reload needed.
+    project_service.save_options_boundary(name, request.options or {})
+    updated_project: Project = project_service.load_project(name, force_reload=True)
+    logger.info(f"Updated project '{name}' options via boundary save")
     return updated_project
 
 
