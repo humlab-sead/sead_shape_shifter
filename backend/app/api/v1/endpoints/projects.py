@@ -4,7 +4,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body, File, UploadFile, status
+from fastapi import APIRouter, Body, File, Query, UploadFile, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -780,13 +780,20 @@ async def upload_project_file(
 @handle_endpoint_errors
 async def list_project_files(
     name: str,
+    ext: list[str] | None = Query(default=None, description="Filter by extension(s), e.g. ext=yml&ext=yaml"),
 ) -> list[ProjectFileInfo]:
-    """List data files in project directory.
+    """List files in project directory.
 
-    Returns all Excel and CSV files stored in the project's directory.
+    By default returns Excel and CSV data files.  Pass one or more ``ext``
+    query parameters (without the leading dot) to filter by extension instead,
+    e.g. ``?ext=yml&ext=yaml`` for YAML files only.
     """
     project_service: ProjectService = get_project_service()
+    if ext:
+        extensions = [f".{e.lstrip('.')}" for e in ext]
+    else:
+        extensions = [".xlsx", ".xls", ".csv"]
     return project_service.list_project_files(
         project_name=name,
-        extensions=[".xlsx", ".xls", ".csv"],
+        extensions=extensions,
     )
