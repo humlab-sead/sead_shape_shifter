@@ -84,6 +84,7 @@ class ProjectService:
             save_project_callback=self.save_project,
             load_project_callback=self.load_project,
             cache_invalidator=self._invalidate_all_caches,
+            save_metadata_boundary_callback=self.save_metadata_boundary,
         )
 
         # Initialize entity operations component
@@ -92,6 +93,7 @@ class ProjectService:
             load_project_callback=self.load_project,
             save_project_callback=self.save_project,
             persistence_strategy_registry=EntityPersistenceStrategyRegistry(),
+            save_entity_boundary_callback=self.save_entity_boundary,
         )
 
         # Initialize file manager component
@@ -329,6 +331,80 @@ class ProjectService:
         except Exception as e:
             logger.error(f"Failed to save project: {e}")
             raise ConfigurationError(message=f"Failed to save project: {e}") from e
+
+    # ------------------------------------------------------------------
+    # Boundary save methods (preserve comments, replace one section only)
+    # ------------------------------------------------------------------
+
+    def _resolve_project_file_path(self, project_name: str) -> Path:
+        """Return the shapeshifter.yml path for *project_name*.
+
+        Raises:
+            ResourceNotFoundError: If the project file does not exist on disk.
+        """
+        file_path = self.projects_dir / ProjectNameMapper.to_path(project_name) / "shapeshifter.yml"
+        if not file_path.exists():
+            raise ResourceNotFoundError(resource_type="project", resource_id=project_name, message=f"Project not found: {project_name}")
+        return file_path
+
+    def save_metadata_boundary(self, project_name: str, metadata_dict: dict[str, Any]) -> None:
+        """
+        Replace only the ``metadata`` section on disk.
+
+        All other project sections (options, entities, …) and their YAML
+        comments are left untouched.
+
+        Args:
+            project_name: Project name
+            metadata_dict: New metadata as a plain dict (serialised from ProjectMetadata)
+        """
+        file_path = self._resolve_project_file_path(project_name)
+        logger.info(f"save_metadata_boundary: '{project_name}'")
+        self.yaml_service.merge_boundary(file_path, "metadata", metadata_dict)
+        self.state.invalidate(project_name)
+
+    def save_options_boundary(self, project_name: str, options: dict[str, Any]) -> None:
+        """
+        Replace only the ``options`` section on disk.
+
+        All other project sections (metadata, entities, …) and their YAML
+        comments are left untouched.
+
+        Args:
+            project_name: Project name
+            options: New options dict
+        """
+        file_path = self._resolve_project_file_path(project_name)
+        logger.info(f"save_options_boundary: '{project_name}'")
+        self.yaml_service.merge_boundary(file_path, "options", options)
+        self.state.invalidate(project_name)
+
+    def save_entity_boundary(
+        self,
+        project_name: str,
+        entity_name: str,
+        entity_dict: dict[str, Any] | None,
+    ) -> None:
+        """
+        Replace or delete one entity on disk without touching other entities.
+
+        Pass ``entity_dict=None`` to remove the entity from the YAML file.
+        All other entities (and any comments in the file) are preserved.
+
+        Callers that need serialization should hold the per-project lock for
+        the full duration of their read-modify-write cycle.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity key under ``entities:``
+            entity_dict: Replacement entity dict, or ``None`` to delete.
+        """
+        file_path = self._resolve_project_file_path(project_name)
+        logger.info(f"save_entity_boundary: '{project_name}' entity='{entity_name}' delete={entity_dict is None}")
+        self.yaml_service.merge_boundary(file_path, ("entities", entity_name), entity_dict)
+        self.state.invalidate(project_name)
+
+    # ------------------------------------------------------------------
 
     def _verify_save(self, name: str, expected_entities: list[str], file_path: Path, corr: str) -> None:
         """Read back the saved file and verify entity count matches.

@@ -27,18 +27,24 @@ class EntityOperations:
         load_project_callback,  # Callable[[str], Project]
         save_project_callback,  # Callable[[Project], Project]
         persistence_strategy_registry: EntityPersistenceStrategyRegistry | None = None,
+        save_entity_boundary_callback=None,  # Callable[[str, str, dict | None], None] | None
     ):
         """Initialize entity operations.
 
         Args:
             project_lock_getter: Function to get per-project lock
             load_project_callback: Function to load project by name
-            save_project_callback: Function to save project
+            save_project_callback: Function to save project (full project, fallback)
             persistence_strategy_registry: Registry for type-specific persistence strategies
+            save_entity_boundary_callback: Optional callback for boundary-based entity save.
+                Signature: (project_name: str, entity_name: str, entity_dict: dict | None) -> None.
+                When provided, entity mutations use boundary save instead of full project save.
+                Pass None to fall back to whole-project save.
         """
         self._get_lock = project_lock_getter
         self._load_project = load_project_callback
         self._save_project = save_project_callback
+        self._save_entity_boundary = save_entity_boundary_callback
         self._persistence_strategy_registry = persistence_strategy_registry or EntityPersistenceStrategyRegistry()
 
     @staticmethod
@@ -218,7 +224,10 @@ class EntityOperations:
                 after_names,
             )
 
-            self._save_project(project)
+            if self._save_entity_boundary:
+                self._save_entity_boundary(project_name, entity_name, entity_data)
+            else:
+                self._save_project(project)
 
     def update_entity_by_name(self, project_name: str, entity_name: str, entity_data: dict[str, Any]) -> None:
         """
@@ -269,7 +278,11 @@ class EntityOperations:
 
             # Use the model's add_entity method to ensure proper handling
             project.add_entity(entity_name, entity_data)
-            self._save_project(project)
+
+            if self._save_entity_boundary:
+                self._save_entity_boundary(project_name, entity_name, entity_data)
+            else:
+                self._save_project(project)
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:
         """
@@ -321,7 +334,10 @@ class EntityOperations:
                 after_names,
             )
 
-            self._save_project(project)
+            if self._save_entity_boundary:
+                self._save_entity_boundary(project_name, entity_name, None)
+            else:
+                self._save_project(project)
 
     def get_entity_by_name(self, project_name: str, entity_name: str) -> dict[str, Any]:
         """

@@ -37,6 +37,7 @@ class ProjectOperations:
         save_project_callback,  # Callable to save project
         load_project_callback,  # Callable to load project
         cache_invalidator,  # Callable[[str, str], None]
+        save_metadata_boundary_callback=None,  # Optional: Callable[[str, dict], None]
     ):
         """Initialize project operations.
 
@@ -49,6 +50,10 @@ class ProjectOperations:
             save_project_callback: Function to save project
             load_project_callback: Function to load project
             cache_invalidator: Function to invalidate all caches
+            save_metadata_boundary_callback: Optional boundary save for metadata only.
+                When provided, update_metadata() writes only the metadata section,
+                preserving comments in options/entities.  Falls back to full
+                save_project when absent.
         """
         self.yaml_service = yaml_service
         self.projects_dir = projects_dir
@@ -58,6 +63,7 @@ class ProjectOperations:
         self._save_project = save_project_callback
         self._load_project = load_project_callback
         self._invalidate_all_caches = cache_invalidator
+        self._save_metadata_boundary = save_metadata_boundary_callback
 
     def create_project(self, name: str, entities: dict[str, Any] | None = None, task_list: dict[str, Any] | None = None) -> Project:
         """
@@ -283,7 +289,20 @@ class ProjectOperations:
         # Ensure metadata.name matches filename (filename is source of truth)
         project.metadata.name = name
 
-        # Save project using original file path to prevent duplicate files
-        saved_config: Project = self._save_project(project, create_backup=True, original_file_path=original_file_path)
+        if self._save_metadata_boundary:
+            # Build the metadata dict using the same sparse format as ProjectMapper.to_core_dict
+            metadata_out: dict[str, Any] = {
+                "name": name,
+                "type": project.metadata.type or "shapeshifter-project",
+                "description": project.metadata.description,
+                "version": project.metadata.version,
+                "default_entity": project.metadata.default_entity,
+            }
+            if project.metadata.target_model is not None:
+                metadata_out["target_model"] = project.metadata.target_model
+            self._save_metadata_boundary(name, metadata_out)
+            return self._load_project(name)
 
+        # Fallback: full project save (preserves behaviour when no boundary callback)
+        saved_config: Project = self._save_project(project, create_backup=True, original_file_path=original_file_path)
         return saved_config
