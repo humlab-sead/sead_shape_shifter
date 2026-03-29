@@ -1,12 +1,11 @@
-from pathlib import Path
 from collections import Counter
+from pathlib import Path
 
 import yaml
 
 from src.model import ShapeShiftProject, TableConfig
 from src.target_model.conformance import TargetModelConformanceValidator
 from src.target_model.models import TargetModel
-
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 SPEC_PATH = ROOT_DIR / "target_models" / "specs" / "sead_v2.yml"
@@ -240,12 +239,14 @@ def test_core_legacy_mode_matches_existing_fixture() -> None:
     target_model = load_target_model()
     project = load_project("sead_arbodat_core.yml")
 
-    assert sorted(issue_pairs(target_model, project)) == sorted([
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
-        ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
-        ("MISSING_REQUIRED_COLUMN", "method"),
-        ("MISSING_REQUIRED_COLUMN", "sample_type"),
-    ])
+    assert sorted(issue_pairs(target_model, project)) == sorted(
+        [
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
+            ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
+            ("MISSING_REQUIRED_COLUMN", "method"),
+            ("MISSING_REQUIRED_COLUMN", "sample_type"),
+        ]
+    )
 
 
 def test_core_conformance_reports_missing_entity_and_wrong_public_id() -> None:
@@ -324,15 +325,17 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
     target_model = load_target_model()
     project = load_real_project("arbodat")
 
-    assert sorted(issue_pairs(target_model, project)) == sorted([
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "site"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
-        ("MISSING_REQUIRED_COLUMN", "sample_type"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
-        ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
-        ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
-    ])
+    assert sorted(issue_pairs(target_model, project)) == sorted(
+        [
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "site"),
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
+            ("MISSING_REQUIRED_COLUMN", "sample_type"),
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
+            ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
+        ]
+    )
 
 
 def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
@@ -343,10 +346,7 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
         "arbodat_full": load_real_project("arbodat"),
     }
 
-    issue_summary = {
-        name: Counter(code for code, _entity in issue_pairs(target_model, project))
-        for name, project in corpus.items()
-    }
+    issue_summary = {name: Counter(code for code, _entity in issue_pairs(target_model, project)) for name, project in corpus.items()}
 
     assert issue_summary == {
         "sead_arbodat_core": Counter({"MISSING_REQUIRED_COLUMN": 3, "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 1}),

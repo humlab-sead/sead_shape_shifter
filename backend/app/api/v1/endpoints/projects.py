@@ -67,7 +67,9 @@ class MetadataUpdateRequest(BaseModel):
     description: str | None = Field(default=None, description="Project description")
     version: str | None = Field(default=None, description="Project version (x.y.z format)")
     default_entity: str | None = Field(default=None, description="Default entity name")
-    target_model: str | None = Field(default=None, description="Target model spec path (e.g. @include: target.yml); empty string clears the field")
+    target_model: str | None = Field(
+        default=None, description="Target model spec path (e.g. @include: target.yml); empty string clears the field"
+    )
 
 
 # Endpoints
