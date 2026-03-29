@@ -1,10 +1,12 @@
 """Entity operations: add, update, delete entities within projects."""
 
+import hashlib
+import json
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
-from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError
+from backend.app.exceptions import EntityConflictError, ResourceConflictError, ResourceNotFoundError
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project
@@ -12,6 +14,24 @@ from backend.app.services.project.entity_persistence_strategies import EntityPer
 
 if TYPE_CHECKING:
     pass
+
+
+def compute_entity_etag(entity_dict: dict[str, Any]) -> str:
+    """Compute a stable, content-based ETag for an entity dict.
+
+    The ETag is the first 16 hex characters of the SHA-256 digest of the
+    canonical JSON representation of *entity_dict*.  Logically identical
+    dicts (same keys, same values, any insertion order) always produce the
+    same ETag, making it safe to compare across requests.
+
+    Args:
+        entity_dict: Entity data as stored in the project file.
+
+    Returns:
+        16-character lowercase hex string.
+    """
+    canonical = json.dumps(entity_dict, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
 
 
 class EntityOperations:
@@ -229,20 +249,37 @@ class EntityOperations:
             else:
                 self._save_project(project)
 
-    def update_entity_by_name(self, project_name: str, entity_name: str, entity_data: dict[str, Any]) -> None:
+    def update_entity_by_name(
+        self,
+        project_name: str,
+        entity_name: str,
+        entity_data: dict[str, Any],
+        *,
+        expected_etag: str | None = None,
+    ) -> None:
         """
         Update entity in project by project name.
 
-        Serialized per-project to prevent lost-update race conditions.
+        Serialized per-project to prevent lost-update race conditions.  When
+        *expected_etag* is supplied the update is conditional (compare-and-swap):
+        the project is force-loaded from disk so the stale-check always reflects
+        the latest persisted state.  If the recomputed ETag does not match
+        *expected_etag* the request is rejected with :exc:`EntityConflictError`
+        (HTTP 409) carrying the current ETag and entity.  Omitting *expected_etag*
+        performs an unconditional update (backward compatible).
 
         Args:
             project_name: Project name
             entity_name: Entity name
             entity_data: Updated entity data as dict
+            expected_etag: When provided, the ETag the client received on last read.
+                If the current persisted ETag differs, raises EntityConflictError.
 
         Raises:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
+            EntityConflictError: If *expected_etag* is given and does not match the
+                current entity ETag
         """
         corr: str = get_correlation_id()
         lock = self._get_lock(project_name)
@@ -254,7 +291,9 @@ class EntityOperations:
         )
 
         with lock:
-            project: Project = self._load_project(project_name)
+            # Force-load from disk when performing a conditional (ETag) update so the
+            # stale-check always reflects the latest persisted content.
+            project: Project = self._load_project(project_name, force_reload=expected_etag is not None)
 
             entity_names: list[str] = sorted((project.entities or {}).keys())
             logger.info(
@@ -268,6 +307,25 @@ class EntityOperations:
 
             if entity_name not in project.entities:
                 raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
+
+            if expected_etag is not None:
+                current_entity = project.entities[entity_name]
+                current_etag = compute_entity_etag(current_entity)
+                if current_etag != expected_etag:
+                    logger.info(
+                        "[{}] update_entity_by_name: ETag mismatch project='{}' entity='{}' expected='{}' current='{}'",
+                        corr,
+                        project_name,
+                        entity_name,
+                        expected_etag,
+                        current_etag,
+                    )
+                    raise EntityConflictError(
+                        message=f"Entity '{entity_name}' was modified by another user. Reload before saving.",
+                        entity_name=entity_name,
+                        current_etag=current_etag,
+                        current_entity=current_entity,
+                    )
 
             # Ensure public_id is preserved (three-tier identity model)
             # If not in incoming data, keep existing value (even if None)
@@ -360,3 +418,20 @@ class EntityOperations:
             raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
 
         return project.entities[entity_name]
+
+    def get_entity_etag_by_name(self, project_name: str, entity_name: str) -> str:
+        """
+        Return the current ETag for an entity.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+
+        Returns:
+            16-character hex ETag string
+
+        Raises:
+            ResourceNotFoundError: If project or entity not found
+        """
+        entity_dict = self.get_entity_by_name(project_name, entity_name)
+        return compute_entity_etag(entity_dict)

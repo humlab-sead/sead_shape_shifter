@@ -7,6 +7,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from backend.app.models.project import Project
+from backend.app.services.project.entity_operations import compute_entity_etag
 from backend.app.services.entity_generator_service import (
     EntityGeneratorService,
     get_entity_generator_service,
@@ -46,6 +47,7 @@ class EntityResponse(BaseModel):
 
     name: str = Field(..., description="Entity name")
     entity_data: dict[str, Any] = Field(..., description="Entity configuration data")
+    etag: str = Field(..., description="Content-based ETag for optimistic locking")
     materialized: dict[str, Any] | None = Field(default=None, description="Materialization metadata (if entity is materialized)")
     fixed_schema: FixedSchema | None = Field(default=None, description="Authoritative fixed-schema metadata for fixed entities")
 
@@ -55,6 +57,7 @@ def _build_entity_response(name: str, entity_data: dict[str, Any]) -> EntityResp
     return EntityResponse(
         name=name,
         entity_data=entity_data,
+        etag=compute_entity_etag(entity_data),
         materialized=entity_data.get("materialized"),
         fixed_schema=derive_fixed_schema(entity_data),
     )
@@ -154,20 +157,31 @@ async def create_entity(project_name: str, request: EntityCreateRequest) -> Enti
 
 @router.put("/projects/{project_name}/entities/{entity_name}", response_model=EntityResponse)
 @handle_endpoint_errors
-async def update_entity(project_name: str, entity_name: str, request: EntityUpdateRequest) -> EntityResponse:
+async def update_entity(
+    project_name: str,
+    entity_name: str,
+    request: EntityUpdateRequest,
+    if_match: str | None = Header(None, alias="If-Match"),
+) -> EntityResponse:
     """
     Update existing entity in configuration.
+
+    When an ``If-Match`` header is supplied the update is conditional:
+    the server computes the current entity ETag and rejects the request
+    with **409 Conflict** if it does not match (optimistic locking).
+    Omitting the header performs an unconditional update (backward compatible).
 
     Args:
         project_name: Project name
         entity_name: Entity name
         request: Entity update request
+        if_match: Optional ETag from a previous GET/PUT response
 
     Returns:
-        Updated entity data
+        Updated entity data with a fresh ETag
     """
     project_service: ProjectService = get_project_service()
-    project_service.update_entity_by_name(project_name, entity_name, request.entity_data)
+    project_service.update_entity_by_name(project_name, entity_name, request.entity_data, expected_etag=if_match)
     entity_data: dict[str, Any] = project_service.get_entity_by_name(project_name, entity_name)
     logger.info(f"Updated entity '{entity_name}' in '{project_name}'")
     return _build_entity_response(entity_name, entity_data)
