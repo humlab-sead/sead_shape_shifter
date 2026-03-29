@@ -12,6 +12,7 @@ class ValidationCategory(str, Enum):
     STRUCTURAL = "structural"  # Configuration structure issues
     DATA = "data"  # Issues found in actual data
     PERFORMANCE = "performance"  # Performance-related warnings
+    CONFORMANCE = "conformance"  # Target-model conformance issues
 
 
 class DataValidationMode(str, Enum):

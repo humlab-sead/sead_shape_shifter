@@ -46,6 +46,7 @@ class ProjectMetadata(BaseModel):
     modified_at: float = Field(default=0, description="Last modification timestamp (Unix timestamp)")
     is_valid: bool = Field(default=True, description="Whether project is valid")
     default_entity: str | None = Field(default=None, description="Default source entity name")
+    target_model: str | dict[str, Any] | None = Field(default=None, description="Target model spec: inline dict or @include: path string")
 
     @field_serializer("created_at", "modified_at")
     def serialize_timestamp(self, value: float) -> str | None:

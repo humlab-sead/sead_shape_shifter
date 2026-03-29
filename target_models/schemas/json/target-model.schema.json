@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://humlab-sead.github.io/sead_shape_shifter/target-model.schema.json",
+  "title": "Target Model Specification",
+  "description": "Optional JSON Schema representation of the target model format.",
+  "type": "object"
+}
