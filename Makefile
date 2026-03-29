@@ -82,6 +82,26 @@ check-schemas:
 	@PYTHONPATH=.:backend uv run python scripts/generate_schemas.py --check
 
 ################################################################################
+# Target-model template generation
+################################################################################
+
+ARBODAT_TEMPLATE_OUTPUT ?= target_models/examples/generated/arbodat.generated.yml
+
+.PHONY: generate-arbodat-yaml
+generate-arbodat-yaml:
+	@echo "Generating Arbodat starter project YAML at $(ARBODAT_TEMPLATE_OUTPUT)..."
+	@mkdir -p $(dir $(ARBODAT_TEMPLATE_OUTPUT))
+	@PYTHONPATH=target_models/src uv run python target_models/scripts/generate_project_template.py \
+		--spec target_models/specs/sead_v2.yml \
+		--project-name arbodat:generated-template \
+		--domain abundance \
+		--domain dating \
+		--domain taxonomy \
+		--domain contacts \
+		--output $(ARBODAT_TEMPLATE_OUTPUT)
+	@echo "✓ Arbodat starter project YAML written to $(ARBODAT_TEMPLATE_OUTPUT)"
+
+################################################################################
 # Backend & frontend recipes
 ################################################################################
 
