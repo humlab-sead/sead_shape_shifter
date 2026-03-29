@@ -38,9 +38,7 @@
 
 ### Pending
 
-- Naming convention checks inside conformance (public_id_suffix is validated for the spec file, not yet against project entities)
-- Semantic mismatch detection (entity-name vs. public_id style divergence)
-- Migration of standalone `target_models/` example tests to use the core conformance engine
+Naming convention conformance and standalone test migration are complete (Milestone 3). Remaining deferred and future items — including semantic mismatch detection, Phase 4 advanced rules, format extensions, and open technical questions — have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Summary
 
@@ -112,10 +110,9 @@ This proposal does not:
 
 ### Still absent from any validation path
 
-- Entity semantic roles (fact vs lookup vs classifier) — semantic mismatch detection deferred
-- Naming convention adherence checked against project entities (only enforced in spec validator, not conformance)
-- Source type appropriateness (classifiers should use `fixed` or `sql`)
-- Backend wiring — all of the above is in core but not yet exposed through the API
+- Entity semantic roles (fact vs lookup vs classifier) — semantic mismatch detection deferred to [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
+- Source type appropriateness (classifiers should use `fixed` or `sql`) — deferred
+- Backend wiring for Phase 4 checks — deferred
 
 ## Proposed Design
 
@@ -250,16 +247,16 @@ metadata:
 - [x] Expected/unexpected public_id checks (`PublicIdConformanceValidator`)
 - [ ] Naming convention checks against project entities — public_id_suffix validated in `TargetModelSpecValidator` only; not yet in conformance
 
-**Phase 2: Semantic Checks** — not yet implemented
+**Phase 2: Semantic Checks** — deferred; see [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
 - [ ] Global role-informed checks such as `no_orphan_facts`
 - [ ] Semantic naming mismatches where entity key and expected identifier clearly diverge
 
-**Phase 3: Branch-Aware** (after Proposals 4–5) — not yet started
+**Phase 3: Branch-Aware** (after Proposals 4–5) — deferred
 - [ ] Merged parent branch discriminators
 - [ ] Branch-scoped consumer validity
 - [ ] Schema-aware append conformance
 
-Some checks discussed earlier, such as source-type appropriateness heuristics and richer naming-pattern validation, are intentionally deferred until the first SEAD draft proves they are necessary. See [target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md](../../target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md).
+Deferred items and open technical questions are tracked in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Architecture Decisions
 
@@ -444,20 +441,7 @@ entities:
 
 ## Open Questions
 
-1. **Severity defaults:** Should missing required entities be errors or warnings by default?
-   - **Recommendation:** Errors for `required: true`, warnings for recommended patterns
-
-2. **Custom validation rules:** Should target models support custom Python validators?
-   - **Recommendation:** Defer to Phase 3, start with declarative rules only
-
-3. **Multiple target models:** Can a project conform to multiple target models simultaneously?
-   - **Recommendation:** Single target model in v1, multi-model in future if needed
-
-4. **Target model inheritance:** Should target models support extends/inheritance?
-   - **Recommendation:** YAGNI for v1, revisit if real need emerges
-
-5. **Validation configuration:** Should projects be able to selectively disable rules?
-   - **Recommendation:** Yes, via `options.validation.disabled_rules: [...]`
+Deferred open questions (severity defaults, custom validators, multiple target models, target model inheritance, validation configuration / rule disabling) have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Final Recommendation
 

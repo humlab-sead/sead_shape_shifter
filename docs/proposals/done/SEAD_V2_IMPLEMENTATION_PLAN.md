@@ -583,48 +583,9 @@ Exit criteria:
 
 ## Future Phase: Deferred Issues
 
-These are intentionally deferred so the standalone validator and the first target-model iterations stay small and coherent.
-
-### Checklist
-
-- [ ] Revisit deferred format issues after iteration-1 feedback
-- [ ] Revisit deferred validation issues after the first validator pass
-- [ ] Expand beyond the core SEAD spine only after the first draft stabilizes
-
-### Deferred format issues
-
-- Join-column semantics for foreign keys
-- Schema-qualified `target_table` names
-- `allowed_values` or richer enum support
-- Advisory metadata for database defaults or generated values
-- Inheritance, mixins, or reusable entity templates
-- Physical storage details such as lengths or DBMS-native types
-
-### Deferred validation issues
-
-- Source-type appropriateness rules such as classifier-prefer-fixed-or-sql
-- Advanced naming-pattern checks beyond suffix validation
-- Entity-name versus `public_id` semantic mismatch heuristics beyond clear, low-noise cases
-- Type-aware validation against real preview or normalized data
-- Branch-aware semantic validation
-- Severity overrides or per-rule suppression mechanisms
-- Value-level checks that require executing the Shape Shifter pipeline rather than inspecting project configuration
-
-### Deferred SEAD coverage issues
-
-- Abundance chain entities
-- Dating entities
-- Method-group and contact entities
-- Taxonomy-focused entities
-- Lower-frequency SEAD tables that appear only in specialized project types
+Milestones 1–3 are complete. All deferred format issues, validation issues, and SEAD coverage issues have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](../../docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Near-Term Order
 
-1. Complete Phase 1.
-2. Confirm Phase 2 decisions in the first draft.
-3. Produce Phase 3 output.
-4. Build a standalone project corpus in Phase 4.
-5. Implement and iterate on `TargetModelConformanceValidator` in Phases 5 and 6.
-6. Complete Milestone 2 documentation and target-model expansion work in Phase 7.
-7. Extend standalone coverage with the first common-entity package in Phase 8.
+Milestones 1–3 are complete. For remaining backlog and suggested resumption order, see [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](../../docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 8. Revisit backend integration only after the standalone validator and expanded standalone coverage have stabilized.

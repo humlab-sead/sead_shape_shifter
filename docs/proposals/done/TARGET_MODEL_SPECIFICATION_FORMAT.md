@@ -552,21 +552,7 @@ Rejected because it defeats reusability. The whole point is that target model re
 
 ## Open Questions
 
-1. **Should `target_table` support schema-qualified names?** E.g., `public.tbl_locations` vs `tbl_locations`. Probably not in v1 — single-schema assumption is fine for SEAD.
-
-2. **Should entity specs support inheritance or mixins?** E.g., a "standard_lookup" template that many classifiers share. Likely YAGNI for v1 but worth noting.
-
-3. **How should `identity_columns` relate to project-level `keys`?** They should be conceptually aligned where possible, but `identity_columns` belongs to the target model and should not force a one-to-one mapping to Shape Shifter authoring choices.
-
-4. **How to handle SEAD entities that appear in only one data type?** E.g., `tbl_ceramics` is relevant only for ceramics projects. Options: include all in one spec with `required: false`, tag entities with `domains`, or split into domain-specific spec fragments. Recommend single file plus `domains` for now, revisit if it grows unwieldy.
-
-5. **Should the format version be in the file?** E.g., `format_version: "1.0"` alongside `model.version`. Useful if the format itself evolves. Recommend adding it.
-
-6. **Do we need richer foreign-key semantics later?** Possibly for association-heavy entities and documentation generation, but defer until a concrete consumer needs more than relationship existence and required-ness.
-
-7. **Should database defaults ever appear in the format?** Probably not as normative requirements. If consumers eventually need them, add advisory metadata rather than validation rules.
-
-8. **Relationship to ENTITY_SEMANTIC_ROLES proposal.** That proposal adds `role` to project entity configuration. This proposal uses `role` in the target model spec. They should use the same enum values. Coordination needed but no conflict — one describes what *is*, the other what *should be*.
+Deferred format open questions (schema-qualified target_table names, entity spec inheritance, format_version field, richer FK semantics, database defaults, relationship to ENTITY_SEMANTIC_ROLES) have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Final Recommendation
 
