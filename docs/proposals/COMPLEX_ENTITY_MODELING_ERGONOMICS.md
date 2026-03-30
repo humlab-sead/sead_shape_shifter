@@ -1,5 +1,37 @@
 # Proposal: Complex Entity Modeling Ergonomics
 
+## Implementation Checklist
+
+### Append Ergonomics
+- [x] Source-based append — `source:` key treated as first-class append mode regardless of parent entity type
+- [x] Name-based alignment — default column matching by name
+- [x] Position-based alignment — `align_by_position: true`, identity columns excluded automatically
+- [x] Explicit column mapping — `column_mapping:` for heterogeneous source entities
+- [x] Validator alignment — `source` and `type: entity` append forms validated equivalently
+- [x] Frontend alignment mode toggle — name / position / explicit mapping exposed in append editor
+- [x] `defer_dependency` flag — opt-in circular FK reference breaking
+
+### Persistence and Save Path
+- [x] Boundary-based project persistence — subtree-merge primitives for `metadata`, `options`, `entities[name]`
+- [ ] Comment-preserving save path — full comment-preserving round-trips across the editor (foundation in place)
+
+### Target-Schema-Aware Validation
+- [x] Conformance validation engine — registry-based, wired into UX (see [done/TARGET_SCHEMA_AWARE_VALIDATION.md](done/TARGET_SCHEMA_AWARE_VALIDATION.md))
+
+### Branch-Aware Modeling
+- [ ] Branch-scoped consumers — `source_branch:` or `source_when:` to restrict a downstream entity to one branch
+- [ ] Schema-aware entity-level branch syntax — `type: append` with top-level `branches:` list and shared/optional column declaration (source-based append with alignment is already usable; this is a higher-level ergonomic layer)
+- [ ] First-class merged parent entities — `type: merged` with explicit named branches, per-branch key validation, unified public ID space
+
+### Semantic Roles and Lookup Helpers
+- [ ] Entity semantic roles — `role: fact | lookup | classifier` (see [ENTITY_SEMANTIC_ROLES.md](ENTITY_SEMANTIC_ROLES.md))
+- [ ] Derived lookup helpers — `type: derived_lookup` for bootstrapping or validating lookup tables from source columns
+
+### Templates and Macros
+- [ ] Reusable entity macros / templates — `templates:` block and `use: / with:` syntax for repeated modeling patterns
+
+---
+
 ## Summary
 
 This proposal captures the remaining feature additions and feature changes that would make complex target-schema modeling easier in Shape Shifter, especially scenarios where:
@@ -35,6 +67,8 @@ In addition, the completed follow-through work now provides:
 That materially changes the framing of this proposal.
 
 The Arbodat-style workaround no longer needs to be described primarily as a missing derived-value feature. Many of the synthetic branch markers and identity columns that previously felt like SQL-only workarounds can now be modeled directly in configuration. The remaining friction is centered on declaration of modeling intent rather than on the ability to compute a value.
+
+The append mechanism has also received meaningful improvements since this proposal was first written. Source-based append is now a first-class feature: an append item with a `source` key is treated as a source-based append regardless of the parent entity type, and users can choose between name-based (default), position-based (`align_by_position: true`), and explicit column mapping (`column_mapping:`) alignment modes. Position-based alignment properly excludes identity columns (`system_id` and `public_id`) to avoid collisions between differently named public ID columns. This resolves the class of problems that previously required per-branch staging and post-merge cleanup when appending heterogeneous source entities. The `defer_dependency` flag is also now available to break circular FK references when two entities have mutual dependencies. See [done/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md](done/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md) for the complete implementation record.
 
 ## Problem
 
@@ -160,6 +194,10 @@ Branch-scoped consumption would make that intent explicit and reduce accidental 
 
 ## Proposal 5: Schema-Aware Append for Heterogeneous Branches
 
+**Status: Foundation implemented — see [done/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md](done/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md)**
+
+Source-based append with explicit column alignment is now working. The `source` key in an append item is recognized as a first-class source-based append mode with name-based (default), position-based, and explicit mapping alignment. The original illustrative shape shown below, with `shared_keys`, `shared_columns`, and a top-level `branches:` list, remains conceptual: the current implementation achieves structurally equivalent results through per-item `source` references and alignment options rather than a dedicated entity-level branch syntax.
+
 Keep the generic `append` feature, but add a higher-level schema-aware mode for branch merging.
 
 Illustrative shape:
@@ -186,11 +224,9 @@ This would make multi-branch parent modeling less error-prone while preserving t
 
 ## Proposal 6: Target-Schema-Aware Validation
 
-**Status: Extracted to standalone proposal**
+**Status: Completed — see [done/TARGET_SCHEMA_AWARE_VALIDATION.md](done/TARGET_SCHEMA_AWARE_VALIDATION.md)**
 
-See [TARGET_SCHEMA_AWARE_VALIDATION.md](TARGET_SCHEMA_AWARE_VALIDATION.md) for the complete proposal.
-
-The core issue is enabling semantic validation based on target data model requirements (e.g., SEAD Clearinghouse), not just YAML structure. The recommended approach is introducing reusable target model specification files referenced via `@include:`, making Shape Shifter truly generic while providing structure-specific validation when needed.
+Conformance validation is implemented and wired into the UX. The final delivered scope covers structural conformance (column presence, naming conventions, FK requirements, induced requirements), standalone target-model checks, and a registry-based conformance validator architecture. Remaining enhancement backlog is tracked in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Proposal 7: Derived Lookup Helpers
 
@@ -278,26 +314,26 @@ The delivery order below is organized by implementation risk, not only by concep
 
 - ✔️ COMPLETED **Derived-value ergonomics follow-through**
   Dependency: none. This is complete and documented in [done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md).
-- **[Proposal 8: Comment-Preserving Save Path](COMMENT_PRESERVING_SAVE_PATH.md)**
-  Dependency: none. This is operationally independent from the modeling proposals and can ship on its own.
-- **[Proposal 6: Target-Schema-Aware Validation](TARGET_SCHEMA_AWARE_VALIDATION.md)**
-  Dependency: starts with no hard dependency, but Phase 1 should scope the first rules around the current baseline and obvious lookup-versus-fact confusion. Later validation rules should expand after Proposal 4 and Proposal 5 clarify branch-aware intent.
+- ✔️ FOUNDATION COMPLETE **[Proposal 8: Comment-Preserving Save Path](COMMENT_PRESERVING_SAVE_PATH.md)**
+  The boundary-based persistence layer is now in place (see [done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md](done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md)), providing the subtree-merge primitives this feature requires. Full comment-preserving round-trips across the editor are still pending.
+- ✔️ COMPLETED **[Proposal 6: Target-Schema-Aware Validation](done/TARGET_SCHEMA_AWARE_VALIDATION.md)**
+  Conformance validation is implemented and wired into the UX. Remaining backlog (data conformance, branch-aware rules) is tracked in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ### Phase 2: Branch-Aware Modeling Helpers
 
 - **Proposal 4: Branch-Scoped Consumers**
   Dependency: builds on the now-complete derived-value baseline for authoring branch markers and derived discriminator columns, but does not require any new derived-value feature to exist first.
-- **Proposal 5: Schema-Aware Append for Heterogeneous Branches**
-  Dependency: independent of Proposal 4 at the implementation level, but the two proposals reinforce each other. Proposal 5 should preferably land before Proposal 1 so branch behavior can be validated in a lighter-weight form first.
-- **[Proposal 6: Target-Schema-Aware Validation](TARGET_SCHEMA_AWARE_VALIDATION.md)**
-  Dependency: expanded Phase 2 rules should build on Proposal 4 and Proposal 5 so the validator can reason about branch-scoped consumption, mixed-parent entities, and append-driven branch structure with less guesswork.
+- ✔️ FOUNDATION COMPLETE **Proposal 5: Source-Based Append With Alignment** (see [done/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md](done/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md))
+  Source-based append and column alignment modes are now implemented. The higher-level `branches:` entity syntax from the original proposal sketch remains conceptual. Proposal 4 (branch-scoped consumers) is the natural next step now that heterogeneous source appends can be expressed and aligned correctly.
+- ✔️ COMPLETED **[Proposal 6: Target-Schema-Aware Validation](done/TARGET_SCHEMA_AWARE_VALIDATION.md)**
+  Completed in Phase 1. Phase 2 expansion rules (branch-aware conformance) are tracked in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ### Phase 3: First-Class Modeling Constructs
 
 - **Proposal 1: First-Class Merged Parent Entities**
   Dependency: should build on lessons from Proposal 5 and, ideally, Proposal 4. Schema-aware append and branch-scoped consumers provide the lower-risk proving ground for branch semantics before introducing a first-class merged entity type.
 - **Proposal 2: Explicit Fact-to-Lookup Mapping**
-  Dependency: benefits from [Proposal 6](TARGET_SCHEMA_AWARE_VALIDATION.md), because validation is the main mechanism that turns declarative fact-to-lookup intent into actionable guidance. It does not strictly depend on Proposal 1, but the two proposals complement each other in shared-parent fact models.
+  Dependency: benefits from [Proposal 6](done/TARGET_SCHEMA_AWARE_VALIDATION.md), because validation is the main mechanism that turns declarative fact-to-lookup intent into actionable guidance. It does not strictly depend on Proposal 1, but the two proposals complement each other in shared-parent fact models.
 - **Proposal 7: Derived Lookup Helpers**
   Dependency: should follow Proposal 2, because lookup derivation or lookup coverage checks are clearer once explicit fact-to-lookup relationships exist.
 - **Proposal 9: Reusable Entity Macros or Templates**
