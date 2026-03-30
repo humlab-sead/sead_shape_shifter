@@ -334,6 +334,7 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
             ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
+            ("MISSING_INDUCED_REQUIRED_ENTITY", "taxa_tree_master"),
         ]
     )
 
@@ -358,7 +359,7 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
                 "UNEXPECTED_PUBLIC_ID": 1,
             }
         ),
-        "arbodat_full": Counter({"MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5, "MISSING_REQUIRED_COLUMN": 2}),
+        "arbodat_full": Counter({"MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5, "MISSING_REQUIRED_COLUMN": 2, "MISSING_INDUCED_REQUIRED_ENTITY": 1}),
     }
 
 
@@ -390,3 +391,145 @@ def test_public_id_validator_is_silent_when_spec_declares_no_public_id() -> None
     issues = TargetModelConformanceValidator().validate(target_model, project)
 
     assert not any(issue.code.startswith("MISSING_PUBLIC_ID") or issue.code.startswith("UNEXPECTED_PUBLIC_ID") for issue in issues)
+
+
+# ---------------------------------------------------------------------------
+# InducedRequirementConformanceValidator
+# ---------------------------------------------------------------------------
+
+
+def test_induced_requirement_emits_issue_when_optional_entity_present_but_required_fk_target_absent() -> None:
+    """If non-required entity X is in the project and has a required FK to Y,
+    then Y must also be present even though Y is not globally required."""
+    target_model = _minimal_target_model(
+        {
+            "site": {
+                "required": False,
+                "foreign_keys": [{"entity": "location", "required": True}],
+            },
+            "location": {"required": False},
+        }
+    )
+    # project has site but NOT location
+    project = _minimal_project({"site": {"columns": ["site_name"]}})
+
+    codes_entities = [(i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert ("MISSING_INDUCED_REQUIRED_ENTITY", "location") in codes_entities
+
+
+def test_induced_requirement_is_silent_when_required_fk_target_is_present() -> None:
+    """No issue when the induced-required entity Y is already present in the project."""
+    target_model = _minimal_target_model(
+        {
+            "site": {
+                "required": False,
+                "foreign_keys": [{"entity": "location", "required": True}],
+            },
+            "location": {"required": False},
+        }
+    )
+    project = _minimal_project(
+        {
+            "site": {"columns": ["site_name"]},
+            "location": {"columns": ["location_name"]},
+        }
+    )
+
+    codes = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "MISSING_INDUCED_REQUIRED_ENTITY" not in codes
+
+
+def test_induced_requirement_is_silent_when_optional_entity_is_absent_from_project() -> None:
+    """If X is not present in the project, its FK requirements are not induced."""
+    target_model = _minimal_target_model(
+        {
+            "site": {
+                "required": False,
+                "foreign_keys": [{"entity": "location", "required": True}],
+            },
+            "location": {"required": False},
+        }
+    )
+    # project has neither site nor location — no rule triggered
+    project = _minimal_project({"sample": {"columns": ["sample_name"]}})
+
+    codes = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "MISSING_INDUCED_REQUIRED_ENTITY" not in codes
+
+
+def test_induced_requirement_does_not_double_report_when_entity_is_globally_required() -> None:
+    """If X is globally required (required=True), the induced_requirements validator skips it;
+    required_entity validator handles it. No MISSING_INDUCED_REQUIRED_ENTITY is emitted for X."""
+    target_model = _minimal_target_model(
+        {
+            "site": {
+                "required": True,  # globally required — handled by required_entity validator
+                "foreign_keys": [{"entity": "location", "required": True}],
+            },
+            "location": {"required": False},
+        }
+    )
+    # project has neither — required_entity will fire for site, not induced_requirements
+    project = _minimal_project({"sample": {"columns": ["sample_name"]}})
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+    codes = [i.code for i in issues]
+
+    assert "MISSING_REQUIRED_ENTITY" in codes  # site is globally required
+    assert "MISSING_INDUCED_REQUIRED_ENTITY" not in codes  # induced validator skips globally-required entities
+
+
+def test_induced_requirement_is_transitive() -> None:
+    """If X (present) → Y (absent, required FK) → Z (absent, required FK), both Y and Z are reported."""
+    target_model = _minimal_target_model(
+        {
+            "abundance": {
+                "required": False,
+                "foreign_keys": [{"entity": "taxon", "required": True}],
+            },
+            "taxon": {
+                "required": False,
+                "foreign_keys": [{"entity": "taxon_group", "required": True}],
+            },
+            "taxon_group": {"required": False},
+        }
+    )
+    # only abundance is present — taxon and taxon_group must both be induced
+    project = _minimal_project({"abundance": {"columns": ["count"]}})
+
+    codes_entities = set((i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project))
+
+    assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon") in codes_entities
+    assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon_group") in codes_entities
+
+
+def test_induced_requirement_transitive_stops_at_present_intermediate() -> None:
+    """If X (present) → Y (present) → Z (absent), Z is still reported because Y is present."""
+    target_model = _minimal_target_model(
+        {
+            "abundance": {
+                "required": False,
+                "foreign_keys": [{"entity": "taxon", "required": True}],
+            },
+            "taxon": {
+                "required": False,
+                "foreign_keys": [{"entity": "taxon_group", "required": True}],
+            },
+            "taxon_group": {"required": False},
+        }
+    )
+    # both abundance and taxon are present; taxon_group is missing
+    project = _minimal_project(
+        {
+            "abundance": {"columns": ["count"]},
+            "taxon": {"columns": ["taxon_name"]},
+        }
+    )
+
+    codes_entities = set((i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project))
+
+    assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon_group") in codes_entities
+    assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon") not in codes_entities  # taxon is present

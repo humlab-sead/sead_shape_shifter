@@ -171,6 +171,71 @@ class NamingConventionConformanceValidator(ConformanceValidator):
         return issues
 
 
+@CONFORMANCE_VALIDATORS.register(key="induced_requirements")
+class InducedRequirementConformanceValidator(ConformanceValidator):
+    """If entity X is present in the project and has a required FK to Y, then Y is required — transitively.
+
+    Uses BFS (Breadth-First Search) over the required-FK graph starting from all present,
+    non-globally-required entities. Each induced missing entity is reported once; BFS continues
+    through absent entities so that their own required FK targets are also induced.
+    Globally required entities are skipped (the ``required_entity`` validator covers them).
+
+    Example: X (present) → Y (absent) → Z (absent).  Both Y and Z are reported.
+    """
+
+    def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        """Validate that if entity X is present and has a required FK to Y, then Y is also present (transitively)."""
+
+        # Seed the queue with every present, non-globally-required entity.
+        visited: set[str] = set()
+        queue: list[tuple[str, str]] = self.get_optional_entities(target_model, project, visited)
+
+        issues: list[ConformanceIssue] = []
+        while queue:
+            entity_name, inducer = queue.pop(0)
+            entity_spec: EntitySpec | None = target_model.entities.get(entity_name)
+            if entity_spec is None:
+                continue
+
+            for fk in entity_spec.foreign_keys:
+                if not fk.required or fk.entity in visited:
+                    continue
+                visited.add(fk.entity)
+
+                fk_target_spec: EntitySpec | None = target_model.entities.get(fk.entity)
+                # Skip globally required targets — handled by required_entity validator.
+                if fk_target_spec and fk_target_spec.required:
+                    continue
+
+                if not project.has_table(fk.entity):
+                    is_direct: bool = entity_name == inducer
+                    via: str = "" if is_direct else f" (via induced requirement on '{entity_name}')"
+                    issues.append(
+                        ConformanceIssue(
+                            code="MISSING_INDUCED_REQUIRED_ENTITY",
+                            message=(
+                                f"Entity '{fk.entity}' is required because "
+                                f"entity '{inducer}' is present and has a required "
+                                f"foreign key chain to '{fk.entity}'{via}"
+                            ),
+                            entity=fk.entity,
+                        )
+                    )
+
+                # Add fk.entity (even if absent) for transitive closure.
+                queue.append((fk.entity, inducer))
+
+        return issues
+
+    def get_optional_entities(self, target_model, project, visited):
+        queue: list[tuple[str, str]] = []  # (entity_to_explore, direct_inducer_name)
+        for entity_name, entity_spec in target_model.entities.items():
+            if project.has_table(entity_name) and not entity_spec.required:
+                visited.add(entity_name)
+                queue.append((entity_name, entity_name))
+        return queue
+
+
 class TargetModelConformanceValidator(ConformanceValidator):
     """Validate a resolved Shape Shifter project against a target model."""
 

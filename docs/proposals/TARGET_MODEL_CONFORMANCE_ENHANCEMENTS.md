@@ -16,17 +16,31 @@ This proposal consolidates deferred and future items from:
 
 ## What Is Already Implemented
 
-Five conformance validators are registered and active:
+Six conformance validators are registered and active:
 
-| Key | What it checks |
-|-----|----------------|
-| `required_entity` | Required entities present in the project |
-| `public_id` | `public_id` present and not unexpected |
-| `foreign_key` | Required FK targets present |
-| `required_columns` | Required columns present |
-| `naming_convention` | `public_id` values end with `naming.public_id_suffix` |
+| Key                    | What it checks                                                                            |
+|------------------------|-------------------------------------------------------------------------------------------|
+| `required_entity`      | Required entities present in the project                                                  |
+| `public_id`            | `public_id` present and not unexpected                                                    |
+| `foreign_key`          | Required FK targets present on entities that are in the project                           |
+| `required_columns`     | Required columns present                                                                  |
+| `naming_convention`    | `public_id` values end with `naming.public_id_suffix`                                    |
+| `induced_requirements` | If optional entity X is present and has a required FK to Y, then Y is required (transitively) |
 
 Backend wiring, frontend Check Conformance button, and Conformance panel in ValidationPanel are all live.
+
+### Induced Requirements — Implementation Notes
+
+`InducedRequirementConformanceValidator` (key: `induced_requirements`) uses BFS over the required-FK graph:
+
+- **Seed:** every entity that is present in the project and not globally required
+- **Traversal:** follow `required: true` FK edges; report each absent, non-globally-required target as `MISSING_INDUCED_REQUIRED_ENTITY`; continue BFS through absent nodes for transitive closure
+- **Guard:** globally-required targets are skipped — the `required_entity` validator covers them independently
+- **No execution order needed:** transitivity is handled inside a single validator pass; there is no inter-validator dependency
+
+**Example:** `abundance` (present) → `taxon` (absent, required FK) → `taxon_group` (absent, required FK). Both `taxon` and `taxon_group` are reported in one pass.
+
+Issue code: `MISSING_INDUCED_REQUIRED_ENTITY`
 
 ---
 
@@ -54,7 +68,7 @@ Check global modeling requirements that depend on understanding the *combination
 
 **Candidate rule:** `no_orphan_facts` — a fact entity must be linked (directly or transitively) to at least one required lookup entity. A fact with no FK path to any required parent is likely misconfigured.
 
-**Implementation note:** Requires walking the FK graph, which is already available via `ProcessState`. Add a `GlobalConformanceValidator` base type to the registry.
+**Implementation note:** BFS over the required-FK graph is already implemented in `InducedRequirementConformanceValidator`. A `GlobalConformanceValidator` base type and the `no_orphan_facts` rule can reuse that traversal pattern. The FK graph walk no longer needs `ProcessState` as a prerequisite.
 
 ### Source-Type Appropriateness
 
