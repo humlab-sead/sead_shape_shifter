@@ -160,6 +160,18 @@
           "default": false,
           "title": "Required",
           "type": "boolean"
+        },
+        "via": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Via"
         }
       },
       "required": [
