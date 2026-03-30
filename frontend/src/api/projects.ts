@@ -216,10 +216,18 @@ export const projectsApi = {
    * List files available for a project (uploads directory)
    */
   listFiles: async (name: string, extensions?: string[]): Promise<ProjectFileInfo[]> => {
+    // Build query string manually to handle multiple ext parameters correctly
+    const params = new URLSearchParams()
+    if (extensions && extensions.length > 0) {
+      extensions.forEach((ext) => params.append('ext', ext))
+    }
+    
+    const query = params.toString()
+    const url = query ? `/projects/${name}/files?${query}` : `/projects/${name}/files`
+
     return apiRequest<ProjectFileInfo[]>({
       method: 'GET',
-      url: `/projects/${name}/files`,
-      params: extensions && extensions.length > 0 ? { ext: extensions } : undefined,
+      url,
     })
   },
 
