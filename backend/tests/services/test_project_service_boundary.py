@@ -6,7 +6,7 @@ disturb other sections or their comments.
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -106,7 +106,7 @@ class TestSaveMetadataBoundary:
 
     def test_invalidates_state_cache(self, service: ProjectService, project_file: Path) -> None:  # pylint: disable=unused-argument
         service.save_metadata_boundary("test-project", {"name": "test-project"})
-        service.state.invalidate.assert_called_once_with("test-project")
+        cast(MagicMock, service.state.invalidate).assert_called_once_with("test-project")
 
 
 # ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ class TestSaveOptionsBoundary:
 
     def test_invalidates_state_cache(self, service: ProjectService, project_file: Path) -> None:  # pylint: disable=unused-argument
         service.save_options_boundary("test-project", {})
-        service.state.invalidate.assert_called_once_with("test-project")
+        cast(MagicMock, service.state.invalidate).assert_called_once_with("test-project")
 
 
 # ---------------------------------------------------------------------------
@@ -186,4 +186,4 @@ class TestSaveEntityBoundary:
 
     def test_invalidates_state_cache(self, service: ProjectService, project_file: Path) -> None:  # pylint: disable=unused-argument
         service.save_entity_boundary("test-project", "sample", {"type": "entity", "keys": ["x"]})
-        service.state.invalidate.assert_called_once_with("test-project")
+        cast(MagicMock, service.state.invalidate).assert_called_once_with("test-project")
