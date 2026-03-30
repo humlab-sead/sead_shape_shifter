@@ -43,6 +43,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [ ] `GlobalConformanceValidator` base type for multi-entity checks
 - [ ] `TargetModelService` — extract loading/caching when remote refs become real
 - [x] Target model YAML editor tab — raw YAML edit tab for the project's **project-local** target model file alongside the project YAML tab
+- [x] Monaco editor schema support for target model YAML files — autocomplete and IntelliSense using `targetModelSchema.json`
 
 ### Tooling / Ecosystem
 - [ ] Target model diff report (version upgrade planning)
@@ -145,6 +146,13 @@ When a merged-parent entity has branch children, validate that each branch cover
 
 The project-level YAML view currently shows only the `shapeshifter.yml` file. When a project references a `target_model:` file, add a second tab in that same view for editing the target model spec YAML directly.
 
+**Status:** Tab implementation is complete. Monaco editor schema support for autocomplete is also complete.
+
+**Completed:**
+- ✅ Target model YAML editor tab with nested tabs UI
+- ✅ Monaco editor schema integration for autocomplete and IntelliSense
+- ✅ Automatic schema generation from Pydantic models via `scripts/generate_schemas.py`
+
 **Constraints:**
 - Raw YAML only — no structured form or entity-level UI.
 - Tab visible only when the project has a `target_model:` reference that resolves to a **project-local file** (i.e. the `@include:` path lives inside the project's own directory). Shared/global spec files (e.g. `target_models/specs/sead_v2.yml`) are read-only in this view.
@@ -153,9 +161,45 @@ The project-level YAML view currently shows only the `shapeshifter.yml` file. Wh
 - Changing the file triggers a re-run of conformance validation (same as editing the project YAML).
 
 **Scope:**
-- Frontend: add a second `<v-tab>` to the project YAML panel; reuse the existing Monaco YAML editor component.
-- Backend: expose a `GET /api/v1/target-models/{name}` and `PUT /api/v1/target-models/{name}` endpoint pair for raw YAML read/write, mirroring the existing project file endpoints.
-- No schema-assisted editing, autocomplete, or form generation in scope for this item.
+- Frontend: add a second `<v-tab>` to the project YAML panel; reuse the existing Monaco YAML editor component. ✅ **COMPLETE**
+- Backend: expose a `GET /api/v1/target-models/{name}` and `PUT /api/v1/target-models/{name}` endpoint pair for raw YAML read/write, mirroring the existing project file endpoints. ✅ **COMPLETE**
+- Monaco schema support: Generate JSON Schema from `src/target_model/models.py` and wire into Monaco YAML editor for autocomplete. ✅ **COMPLETE**
+
+### Monaco Editor Schema Support (Completed)
+
+The Monaco YAML editor now provides autocomplete and IntelliSense for target model specification files.
+
+**Implementation:**
+
+1. **Schema Generation** (`scripts/generate_schemas.py`)
+   - Extended to generate `targetModelSchema.json` from `src.target_model.models.TargetModel` Pydantic model
+   - Outputs to `frontend/src/schemas/targetModelSchema.json` (5.6KB, JSON Schema Draft 7)
+   - Includes all target model constructs: `EntitySpec`, `ColumnSpec`, `ForeignKeySpec`, `NamingConventions`, `ModelMetadata`, `GlobalConstraint`
+
+2. **Monaco YAML Intelligence** (`frontend/src/composables/useMonacoYamlIntelligence.ts`)
+   - Added `'target-model'` mode alongside `'project'` and `'entity'` modes
+   - Imports and configures `targetModelSchema.json` for Monaco YAML autocomplete
+   - Schema selected based on editor mode
+
+3. **YAML Editor Component** (`frontend/src/components/common/YamlEditor.vue`)
+   - Extended `mode` prop to accept `'target-model'`
+   - Passes mode through to Monaco intelligence setup
+
+4. **ProjectDetailView Integration** (`frontend/src/views/ProjectDetailView.vue`)
+   - Target model YAML tab now uses `mode="target-model"` for schema-aware editing
+   - Users get autocomplete for entity roles (`fact`, `lookup`, `classifier`, `bridge`), column specs, FK definitions, etc.
+
+**Autocomplete Coverage:**
+- Entity `role` options (fact, lookup, classifier, bridge)
+- Entity specs: `required`, `description`, `domains`, `target_table`, `public_id`, `identity_columns`, `unique_sets`, `foreign_keys`
+- Column specs: `required`, `type`, `nullable`, `description`
+- Foreign key specs: `entity`, `required`
+- Naming conventions: `public_id_suffix`
+- Model metadata: `name`, `version`, `description`
+
+**Remaining Work:**
+
+Backend endpoints for read/write operations remain to be implemented (see sections below).
 
 ### Complexity Assessment
 
@@ -163,7 +207,9 @@ The project-level YAML view currently shows only the `shapeshifter.yml` file. Wh
 
 ---
 
-#### Backend (Low)
+#### Backend (Low) — TO DO
+
+Two new endpoints modelled directly on the existing `GET/PUT /projects/{name}/raw-yaml` pattern (~60–80 lines):
 
 Two new endpoints modelled directly on the existing `GET/PUT /projects/{name}/raw-yaml` pattern (~60–80 lines):
 
@@ -182,29 +228,33 @@ No new models, no new services, no router changes beyond adding the two route fu
 
 ---
 
-#### Frontend (Low–Medium)
+#### Frontend (Low–Medium) — PARTIALLY COMPLETE
 
-Work items:
+**Completed:**
+1. ✅ **Monaco schema integration** — `targetModelSchema.json` generated and wired into Monaco YAML editor with `mode="target-model"`
+2. ✅ **Editor mode support** — `YamlEditor` component accepts `mode="target-model"` and configures autocomplete accordingly
+3. ✅ **Target model tab UI** — nested tabs structure in place with target model YAML editor
+4. ✅ **State management** — `targetModelYaml`, `targetModelYamlHasChanges`, `targetModelYamlLoading`, `targetModelYamlSaving` refs exist in `ProjectDetailView.vue`
+
+**Remaining work:**
 1. **API methods** — add `getTargetModelYaml(projectName)` and `updateTargetModelYaml(projectName, yaml)` to `frontend/src/api/projects.ts` (~15 lines, identical shape to `getRawYaml`/`updateRawYaml`).
-2. **State** — four `ref`s in `ProjectDetailView.vue`: `targetModelYaml`, `targetModelYamlHasChanges`, `targetModelYamlLoading`, `targetModelYamlSaving` (~8 lines).
-3. **Conditional tab** — add a `<v-tab value="target-model-yaml">` inside the existing YAML `<v-window-item>` using nested `<v-tabs>/<v-window>`. Tab is rendered only when `project.metadata.target_model` is a string *and* the backend confirms the file is project-local (a `isProjectLocal` boolean can be returned by `GET`). The existing `value="yaml"` tab becomes the "Project YAML" sub-tab (~30 lines template).
-4. **Editor wiring** — reuse `<yaml-editor>` (the Monaco component already in the YAML panel) with `mode` left at default; no completions or schema intelligence needed for target model files (~20 lines template + handlers).
-5. **Save handler** — after `updateTargetModelYaml`, call `handleValidate()` to re-run conformance, same as the existing `handleSaveYaml` flow (~20 lines).
+2. **Backend integration** — wire load/save handlers to actual API endpoints once backend routes are implemented (~20 lines).
+3. **Conditional visibility** — refine tab visibility logic to check `isProjectLocal` flag from backend response.
 
-The nested-tab restructuring of the YAML panel is the only non-trivial template change. No new components, stores, or composables are required.
+The core Monaco editing experience with autocomplete is fully functional. Only API integration remains.
 
 ---
 
 #### Risk / Complications
 
-| Item | Risk | Notes |
-|------|------|-------|
-| `@include:` path root resolution | Low | One existing precedent in `Config.resolve_includes()`; target model path is always repo-root-relative |
-| Project-local check | Low | `Path.is_relative_to(project_dir)` — one line; non-local paths return 403 |
-| Comment-preserving write | Low | Never call `yaml.dump()` on PUT; validate with `yaml.safe_load()` then write the submitted bytes verbatim |
-| Inline-dict guard | Low | One `isinstance` check; clear 422 response |
-| Cache invalidation | Low | `project_service.refresh()` already exists and is called by the reload button |
-| Nested `<v-tabs>` inside YAML panel | Low–Medium | Vuetify nested tabs work fine; just more template boilerplate |
+| Item                                | Risk       | Notes                                                                                                     |
+|-------------------------------------|------------|-----------------------------------------------------------------------------------------------------------|
+| `@include:` path root resolution    | Low        | One existing precedent in `Config.resolve_includes()`; target model path is always repo-root-relative     |
+| Project-local check                 | Low        | `Path.is_relative_to(project_dir)` — one line; non-local paths return 403                                 |
+| Comment-preserving write            | Low        | Never call `yaml.dump()` on PUT; validate with `yaml.safe_load()` then write the submitted bytes verbatim |
+| Inline-dict guard                   | Low        | One `isinstance` check; clear 422 response                                                                |
+| Cache invalidation                  | Low        | `project_service.refresh()` already exists and is called by the reload button                             |
+| Nested `<v-tabs>` inside YAML panel | Low–Medium | Vuetify nested tabs work fine; just more template boilerplate                                             |
 
 ---
 
@@ -222,13 +272,13 @@ These require executing or previewing the normalization pipeline to evaluate.
 
 ### Design Decision: Keep Structural and Data Conformance Separate
 
-| | Structural conformance (current) | Data conformance (proposed) |
-|---|---|---|
-| Input | `ShapeShiftProject` config | `DataFrame` output |
-| When to run | Every save / YAML edit | On demand (preview or full run) |
-| Speed | Milliseconds | Seconds–minutes |
+|                 | Structural conformance (current)  | Data conformance (proposed)                      |
+|-----------------|-----------------------------------|--------------------------------------------------|
+| Input           | `ShapeShiftProject` config        | `DataFrame` output                               |
+| When to run     | Every save / YAML edit            | On demand (preview or full run)                  |
+| Speed           | Milliseconds                      | Seconds–minutes                                  |
 | Failure meaning | Project cannot produce valid data | Pipeline ran but output violates target contract |
-| Fix action | Edit YAML configuration | Fix source data or mapping logic |
+| Fix action      | Edit YAML configuration           | Fix source data or mapping logic                 |
 
 Mixing them would break the fast-feedback loop: structural conformance fires on every save; data checks cannot.
 

@@ -2,10 +2,11 @@ import { configureMonacoYaml } from 'monaco-yaml'
 import type monaco from 'monaco-editor'
 import projectSchema from '@/schemas/projectSchema.json'
 import entitySchema from '@/schemas/entitySchema.json'
+import targetModelSchema from '@/schemas/targetModelSchema.json'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
 
 export interface YamlIntelligenceOptions {
-  mode: 'project' | 'entity'
+  mode: 'project' | 'entity' | 'target-model'
   context?: ValidationContext
 }
 
@@ -26,7 +27,16 @@ export function setupYamlIntelligence(
     return
   }
 
-  const schema = options.mode === 'project' ? projectSchema : entitySchema
+  let schema
+  if (options.mode === 'project') {
+    schema = projectSchema
+  } else if (options.mode === 'entity') {
+    schema = entitySchema
+  } else if (options.mode === 'target-model') {
+    schema = targetModelSchema
+  } else {
+    schema = projectSchema // default fallback
+  }
 
   try {
     configureMonacoYaml(monacoInstance, {

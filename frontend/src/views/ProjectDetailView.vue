@@ -758,6 +758,7 @@
                       height="600px"
                       :readonly="false"
                       :validate-on-change="true"
+                      mode="target-model"
                       @change="handleTargetModelYamlChange"
                     />
 
