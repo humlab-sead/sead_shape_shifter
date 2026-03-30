@@ -30,7 +30,7 @@ class DocumentationService:
         """
         self.project_service = project_service or get_project_service()
 
-    def generate_target_model_docs(self, project_name: str, format: DocumentFormat) -> bytes:
+    def generate_target_model_docs(self, project_name: str, format: DocumentFormat) -> bytes:  # pylint: disable=redefined-builtin
         """
         Generate target model documentation for a project.
 
@@ -80,12 +80,12 @@ class DocumentationService:
 
 
 # Singleton instance
-_documentation_service: DocumentationService | None = None
+_documentation_service: DocumentationService | None = None  # pylint: disable=invalid-name
 
 
 def get_documentation_service() -> DocumentationService:
     """Get singleton documentation service instance."""
-    global _documentation_service  # noqa: PLW0603
+    global _documentation_service  # noqa: PLW0603 ; # pylint: disable=global-statement
     if _documentation_service is None:
         _documentation_service = DocumentationService()
     return _documentation_service

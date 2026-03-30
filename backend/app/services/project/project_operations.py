@@ -1,6 +1,7 @@
 """Project operations: create, copy, delete, update metadata."""
 
 import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -110,7 +111,13 @@ class ProjectOperations:
 
     def delete_project(self, name: str) -> None:
         """
-        Delete project directory and all its contents.
+        Archive and delete project directory and all its contents.
+
+        Before deletion, creates a zip archive of the full project folder in:
+            self.projects_dir / "archived"
+
+        Archive name format:
+            <project_name>_<yyyymmddhhmmss>.zip
 
         Clears ALL caches (ApplicationState, ShapeShiftCache, ShapeShiftProjectCache)
         to prevent ghost entities when a new project is created with the same name.
@@ -122,12 +129,16 @@ class ProjectOperations:
             ResourceNotFoundError: If project not found
         """
         corr: str = get_correlation_id()
-        # Structure: projects_dir/name/shapeshifter.yml (convert : to /)
+
         project_dir: Path = self.projects_dir / ProjectNameMapper.to_path(name)
         file_path: Path = project_dir / "shapeshifter.yml"
 
         if not file_path.exists():
-            raise ResourceNotFoundError(resource_type="project", resource_id=name, message=f"Project not found: {name}")
+            raise ResourceNotFoundError(
+                resource_type="project",
+                resource_id=name,
+                message=f"Project not found: {name}",
+            )
 
         lock = self._get_lock(name)
         logger.info("[{}] delete_project: ACQUIRING lock for '{}'", corr, name)
@@ -137,12 +148,28 @@ class ProjectOperations:
             try:
                 # Backup the main config file before deletion
                 self.yaml_service.create_backup(file_path)
+
+                # Ensure archive directory exists
+                archive_dir: Path = self.projects_dir / "archived"
+                archive_dir.mkdir(parents=True, exist_ok=True)
+
+                # Build archive name from project "name" + timestamp
+                timestamp: str = datetime.now().strftime("%Y%m%d%H%M%S")
+                archive_base_name: str = f"{project_dir.name}_{timestamp}"
+                archive_base_path: Path = archive_dir / archive_base_name
+
+                # Create zip archive of the full project directory
+                archive_path: str = shutil.make_archive(
+                    base_name=str(archive_base_path), format="zip", root_dir=str(project_dir.parent), base_dir=project_dir.name
+                )
+                logger.info("[{}] delete_project: archive created for '{}' at '{}'", corr, name, archive_path)
+
                 # Delete entire project directory
                 shutil.rmtree(project_dir)
                 logger.info("[{}] delete_project: directory deleted for '{}'", corr, name)
 
             except Exception as e:
-                logger.error("[{}] delete_project: failed to delete file for '{}': {}", corr, name, e)
+                logger.error("[{}] delete_project: failed for '{}': {}", corr, name, e)
                 raise ProjectServiceError(f"Failed to delete project: {e}") from e
 
             # CRITICAL FIX: Clear ALL caches to prevent ghost entities

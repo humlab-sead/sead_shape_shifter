@@ -13,6 +13,7 @@ import pytest
 
 from backend.app.core.config import settings
 from backend.app.services.project_service import ProjectService
+from backend.app.services.yaml_service import YamlService
 
 # pylint: disable=redefined-outer-name
 
@@ -85,7 +86,6 @@ class TestSaveMetadataBoundary:
     def test_updates_metadata(self, service: ProjectService, project_file: Path) -> None:
         new_meta: dict[str, Any] = {"name": "test-project", "version": "2.0.0", "description": "Updated"}
         service.save_metadata_boundary("test-project", new_meta)
-        from backend.app.services.yaml_service import YamlService
 
         data = YamlService().load(project_file)
         assert data["metadata"]["version"] == "2.0.0"
@@ -93,7 +93,6 @@ class TestSaveMetadataBoundary:
 
     def test_entities_unchanged(self, service: ProjectService, project_file: Path) -> None:
         service.save_metadata_boundary("test-project", {"name": "test-project", "version": "9.9.9"})
-        from backend.app.services.yaml_service import YamlService
 
         data = YamlService().load(project_file)
         assert "sample" in data["entities"]
@@ -101,12 +100,11 @@ class TestSaveMetadataBoundary:
 
     def test_options_unchanged(self, service: ProjectService, project_file: Path) -> None:
         service.save_metadata_boundary("test-project", {"name": "test-project"})
-        from backend.app.services.yaml_service import YamlService
 
         data = YamlService().load(project_file)
         assert data["options"]["output"] == "csv"
 
-    def test_invalidates_state_cache(self, service: ProjectService, project_file: Path) -> None:
+    def test_invalidates_state_cache(self, service: ProjectService, project_file: Path) -> None:  # pylint: disable=unused-argument
         service.save_metadata_boundary("test-project", {"name": "test-project"})
         service.state.invalidate.assert_called_once_with("test-project")
 
@@ -119,7 +117,6 @@ class TestSaveMetadataBoundary:
 class TestSaveOptionsBoundary:
     def test_updates_options(self, service: ProjectService, project_file: Path) -> None:
         service.save_options_boundary("test-project", {"output": "excel", "mode": "append"})
-        from backend.app.services.yaml_service import YamlService
 
         data = YamlService().load(project_file)
         assert data["options"]["output"] == "excel"
@@ -127,7 +124,6 @@ class TestSaveOptionsBoundary:
 
     def test_entities_unchanged(self, service: ProjectService, project_file: Path) -> None:
         service.save_options_boundary("test-project", {"output": "excel"})
-        from backend.app.services.yaml_service import YamlService
 
         data = YamlService().load(project_file)
         assert "sample" in data["entities"]
@@ -135,13 +131,12 @@ class TestSaveOptionsBoundary:
 
     def test_metadata_unchanged(self, service: ProjectService, project_file: Path) -> None:
         service.save_options_boundary("test-project", {"output": "tsv"})
-        from backend.app.services.yaml_service import YamlService
 
         data = YamlService().load(project_file)
         assert data["metadata"]["name"] == "test-project"
         assert data["metadata"]["version"] == "1.0.0"
 
-    def test_invalidates_state_cache(self, service: ProjectService, project_file: Path) -> None:
+    def test_invalidates_state_cache(self, service: ProjectService, project_file: Path) -> None:  # pylint: disable=unused-argument
         service.save_options_boundary("test-project", {})
         service.state.invalidate.assert_called_once_with("test-project")
 
@@ -155,7 +150,6 @@ class TestSaveEntityBoundary:
     def test_updates_entity(self, service: ProjectService, project_file: Path) -> None:
         updated = {"type": "entity", "keys": ["sample_id"], "columns": ["name", "value", "extra"]}
         service.save_entity_boundary("test-project", "sample", updated)
-        from backend.app.services.yaml_service import YamlService
 
         data = YamlService().load(project_file)
         assert data["entities"]["sample"]["columns"] == ["name", "value", "extra"]
@@ -163,7 +157,6 @@ class TestSaveEntityBoundary:
     def test_sibling_entity_unchanged(self, service: ProjectService, project_file: Path) -> None:
         updated = {"type": "entity", "keys": ["sample_id"], "columns": ["name"]}
         service.save_entity_boundary("test-project", "sample", updated)
-        from backend.app.services.yaml_service import YamlService
 
         data = YamlService().load(project_file)
         assert "site" in data["entities"]
@@ -172,7 +165,6 @@ class TestSaveEntityBoundary:
     def test_adds_new_entity(self, service: ProjectService, project_file: Path) -> None:
         new_entity = {"type": "entity", "keys": ["analysis_id"], "columns": ["result"]}
         service.save_entity_boundary("test-project", "analysis", new_entity)
-        from backend.app.services.yaml_service import YamlService
 
         data = YamlService().load(project_file)
         assert "analysis" in data["entities"]
@@ -180,7 +172,6 @@ class TestSaveEntityBoundary:
 
     def test_deletes_entity(self, service: ProjectService, project_file: Path) -> None:
         service.save_entity_boundary("test-project", "sample", None)
-        from backend.app.services.yaml_service import YamlService
 
         data = YamlService().load(project_file)
         assert "sample" not in data["entities"]
@@ -188,12 +179,11 @@ class TestSaveEntityBoundary:
 
     def test_metadata_unchanged_after_entity_update(self, service: ProjectService, project_file: Path) -> None:
         service.save_entity_boundary("test-project", "sample", {"type": "entity", "keys": ["x"]})
-        from backend.app.services.yaml_service import YamlService
 
         data = YamlService().load(project_file)
         assert data["metadata"]["name"] == "test-project"
         assert data["options"]["output"] == "csv"
 
-    def test_invalidates_state_cache(self, service: ProjectService, project_file: Path) -> None:
+    def test_invalidates_state_cache(self, service: ProjectService, project_file: Path) -> None:  # pylint: disable=unused-argument
         service.save_entity_boundary("test-project", "sample", {"type": "entity", "keys": ["x"]})
         service.state.invalidate.assert_called_once_with("test-project")
