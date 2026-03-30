@@ -700,7 +700,7 @@
                     <yaml-editor
                       v-if="rawYamlContent !== null"
                       v-model="rawYamlContent"
-                      height="calc(100vh - 400px)"
+                      height="calc(100vh - 450px)"
                       :readonly="false"
                       :validate-on-change="true"
                       @change="handleYamlChange"
@@ -755,7 +755,7 @@
                     <yaml-editor
                       v-if="targetModelYamlContent !== null"
                       v-model="targetModelYamlContent"
-                      height="calc(100vh - 400px)"
+                      height="calc(100vh - 450px)"
                       :readonly="false"
                       :validate-on-change="true"
                       mode="target-model"
