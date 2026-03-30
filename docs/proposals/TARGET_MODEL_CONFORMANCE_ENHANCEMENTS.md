@@ -4,6 +4,54 @@
 
 **Active — backlog.** Core conformance engine (Milestones 1–3) is complete. This proposal tracks the remaining deferred and future work gathered from five now-archived source documents.
 
+## Implementation Checklist
+
+### Validators
+- [x] `required_entity` — required entities present in the project
+- [x] `public_id` — `public_id` present and matches spec
+- [x] `foreign_key` — required FK targets present on project entities
+- [x] `required_columns` — required columns present
+- [x] `naming_convention` — `public_id` values end with configured suffix
+- [x] `induced_requirements` — optional entity present → its required FK targets are induced-required (transitive)
+- [x] `source_type_appropriateness` — classifiers should not use `type: entity`
+- [ ] `no_orphan_facts` — fact entities must have a required FK path to at least one required lookup
+- [ ] `semantic_mismatch` — entity name role disagrees with `public_id` role (Phase 4, high false-positive risk)
+- [ ] `schema_aware_append` — appended columns conform to target model column spec
+
+### Format Extensions
+- [ ] `format_version` field in `model:` block
+- [ ] `generated: true` flag on `ColumnSpec` (suppress missing-column warnings for auto-generated columns)
+- [ ] `allowed_values` / `type: enum` on `ColumnSpec`
+- [ ] Richer FK semantics — join-column override in FK spec
+- [ ] Entity spec inheritance (`extends:`) — defer until 5+ target models exist
+
+### Test Coverage
+- [ ] Target model spec parsing — valid, invalid, round-trip
+- [ ] `@include:` resolution at mapper boundary (inline dict, file ref, missing file, relative path)
+- [ ] Projects without target model — structural validation unaffected, conformance returns empty
+- [ ] Missing target model file — graceful 422, not 500
+- [ ] Backend adapter integration — `TargetModelValidator` code mapping, endpoint response, category tagging
+- [ ] Warning vs error severity (Phase 4 checks)
+
+### Infrastructure
+- [ ] Rule disabling via `options.validation.disabled_rules`
+- [ ] `GlobalConformanceValidator` base type for multi-entity checks
+- [ ] `TargetModelService` — extract loading/caching when remote refs become real
+
+### Tooling / Ecosystem
+- [ ] Target model diff report (version upgrade planning)
+- [ ] Remote target model references (SSRF-safe, with caching)
+- [ ] Curated target model registry (bundled YAML short-name resolution)
+
+### SEAD spec coverage (`target_models/specs/sead_v2.yml`)
+- [ ] Abundance chain — `abundance`, `abundance_element`, `abundance_modification`
+- [ ] Dating — `relative_dating`, `relative_age`, `radiocarbon_dating`
+- [ ] Method/contacts — `method_group`, `biblio`, `contact`
+- [ ] Taxonomy — `taxon`, `taxonomic_order`, `ecocodes`
+- [ ] Data-type-specific tables (ceramics, dendrochronology, insects)
+
+---
+
 ## Source Documents
 
 This proposal consolidates deferred and future items from:
@@ -18,14 +66,15 @@ This proposal consolidates deferred and future items from:
 
 Six conformance validators are registered and active:
 
-| Key                    | What it checks                                                                            |
-|------------------------|-------------------------------------------------------------------------------------------|
-| `required_entity`      | Required entities present in the project                                                  |
-| `public_id`            | `public_id` present and not unexpected                                                    |
-| `foreign_key`          | Required FK targets present on entities that are in the project                           |
-| `required_columns`     | Required columns present                                                                  |
-| `naming_convention`    | `public_id` values end with `naming.public_id_suffix`                                    |
-| `induced_requirements` | If optional entity X is present and has a required FK to Y, then Y is required (transitively) |
+| Key                            | What it checks                                                                            |
+|--------------------------------|-------------------------------------------------------------------------------------------|
+| `required_entity`              | Required entities present in the project                                                  |
+| `public_id`                    | `public_id` present and not unexpected                                                    |
+| `foreign_key`                  | Required FK targets present on entities that are in the project                           |
+| `required_columns`             | Required columns present                                                                  |
+| `naming_convention`            | `public_id` values end with `naming.public_id_suffix`                                    |
+| `induced_requirements`         | If optional entity X is present and has a required FK to Y, then Y is required (transitively) |
+| `source_type_appropriateness`  | Classifiers (`role: classifier`) must use `type: fixed` or `type: sql`, not `type: entity` |
 
 Backend wiring, frontend Check Conformance button, and Conformance panel in ValidationPanel are all live.
 
