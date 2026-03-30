@@ -17,7 +17,12 @@
 - [ ] `no_orphan_facts` — fact entities must have a required FK path to at least one required lookup
 - [ ] `semantic_mismatch` — entity name role disagrees with `public_id` role (Phase 4, high false-positive risk)
 - [ ] `schema_aware_append` — appended columns conform to target model column spec
+### Data Conformance Validators
+- [ ] `nullable` — required-not-null columns must have no null values in produced data
+- [ ] `type_compatibility` — column values must be compatible with the declared logical type (integer, string, date, …)
+- [ ] `fk_referential_integrity` — FK values must exist in the parent entity's output
 
+See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) for design rationale and implementation notes.
 ### Format Extensions
 - [ ] `format_version` field in `model:` block
 - [ ] `generated: true` flag on `ColumnSpec` (suppress missing-column warnings for auto-generated columns)
@@ -200,6 +205,111 @@ The nested-tab restructuring of the YAML panel is the only non-trivial template 
 | Inline-dict guard | Low | One `isinstance` check; clear 422 response |
 | Cache invalidation | Low | `project_service.refresh()` already exists and is called by the reload button |
 | Nested `<v-tabs>` inside YAML panel | Low–Medium | Vuetify nested tabs work fine; just more template boilerplate |
+
+---
+
+## Target-Model-Aware Data Conformance
+
+### Problem
+
+Current conformance validates what the project **promises to produce** — configuration-level facts evaluated without running the pipeline. It cannot catch cases where the project is structurally valid but the produced data violates target-model contracts such as:
+
+- A `required: true, nullable: false` column containing null values in the output
+- An integer column containing string values
+- A FK value that has no corresponding row in the parent entity's output
+
+These require executing or previewing the normalization pipeline to evaluate.
+
+### Design Decision: Keep Structural and Data Conformance Separate
+
+| | Structural conformance (current) | Data conformance (proposed) |
+|---|---|---|
+| Input | `ShapeShiftProject` config | `DataFrame` output |
+| When to run | Every save / YAML edit | On demand (preview or full run) |
+| Speed | Milliseconds | Seconds–minutes |
+| Failure meaning | Project cannot produce valid data | Pipeline ran but output violates target contract |
+| Fix action | Edit YAML configuration | Fix source data or mapping logic |
+
+Mixing them would break the fast-feedback loop: structural conformance fires on every save; data checks cannot.
+
+**Data conformance is an extension of data validation, not of structural conformance.**
+
+### Architecture
+
+Data conformance validators follow the existing pure-domain pattern: static methods receiving a `DataFrame` and an `EntitySpec`, returning `list[ValidationIssue]`. No infrastructure dependencies.
+
+```python
+# src/validators/target_model_data_validators.py
+
+class NullabilityConformanceValidator:
+    @staticmethod
+    def validate(df: pd.DataFrame, entity_spec: EntitySpec, entity_name: str) -> list[ValidationIssue]:
+        """Check required-not-null columns have no nulls in produced data."""
+        issues = []
+        for col_name, col_spec in (entity_spec.columns or {}).items():
+            if col_name not in df.columns:
+                continue  # structural validator's job
+            if col_spec.nullable is False and df[col_name].isna().any():
+                null_count = int(df[col_name].isna().sum())
+                issues.append(ValidationIssue(
+                    severity="error",
+                    entity=entity_name,
+                    field=col_name,
+                    message=f"Column '{col_name}' has {null_count} null value(s) but target model requires non-null",
+                    code="TARGET_NULL_VIOLATION",
+                    suggestion="Check source data or mapping for missing values",
+                ))
+        return issues
+
+class TypeCompatibilityConformanceValidator:
+    @staticmethod
+    def validate(df: pd.DataFrame, entity_spec: EntitySpec, entity_name: str) -> list[ValidationIssue]:
+        """Check column dtypes are compatible with declared logical types (warnings only)."""
+        ...
+
+class FKReferentialIntegrityConformanceValidator:
+    @staticmethod
+    def validate(
+        child_df: pd.DataFrame,
+        parent_df: pd.DataFrame,
+        fk_spec: ForeignKeySpec,
+        entity_name: str,
+    ) -> list[ValidationIssue]:
+        """Check FK values in child DataFrame exist in parent DataFrame (post-link)."""
+        ...
+```
+
+### Orchestration
+
+The `DataValidationOrchestrator` already fetches DataFrames via an injected `DataFetchStrategy`. Extend the orchestrator to also call target-model data validators when the resolved `core_project` has a `target_model`:
+
+```python
+async def validate_all_entities(...) -> list[ValidationIssue]:
+    # ... existing data validators ...
+
+    # Additional: target-model data conformance (if project has a target model)
+    target_model = getattr(core_project.cfg.get("metadata", {}), "target_model", None)
+    if target_model and isinstance(target_model, dict):
+        for entity_name, entity_spec in target_model.get("entities", {}).items():
+            df = await self.fetch_strategy.fetch(project_name, entity_name)
+            issues += NullabilityConformanceValidator.validate(df, entity_spec, entity_name)
+            issues += TypeCompatibilityConformanceValidator.validate(df, entity_spec, entity_name)
+```
+
+No new UI trigger is needed. Data conformance fires as part of the existing **Validate Data** run. The results appear in the same data validation panel under the entity's section.
+
+### FK Referential Integrity
+
+FK checks run best post-normalization (all entities linked). They fit into the `FullDataFetchStrategy` path where `table_store` is available. For preview-based runs, skip FK integrity checks (preview data is a sample, not the full output).
+
+### Type Compatibility
+
+The `ColumnSpec.type` field uses logical types (`integer`, `string`, `boolean`, `date`, `datetime`, `decimal`, `enum`). Emit **warnings**, not errors — type coercions happen legitimately during normalization. Only emit an error if the dtype is clearly incompatible (e.g. object column containing mixed non-numeric values where `integer` is declared).
+
+### Deferred
+
+- `allowed_values` / enum value checks — depends on `allowed_values` field in `ColumnSpec` (not yet in format)
+- Row-count constraints — out of scope (the format deliberately does not express cardinality requirements)
 
 ---
 
