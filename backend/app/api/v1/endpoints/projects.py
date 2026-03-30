@@ -17,7 +17,7 @@ from backend.app.services.project_service import ProjectService, get_project_ser
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from backend.app.services.yaml_service import YamlService, get_yaml_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
-from backend.app.utils.exceptions import BadRequestError, NotFoundError
+from backend.app.utils.exceptions import BadRequestError, BaseAPIException, NotFoundError
 
 router = APIRouter()
 
