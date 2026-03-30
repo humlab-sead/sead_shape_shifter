@@ -44,10 +44,10 @@
 - [ ] Curated target model registry (bundled YAML short-name resolution)
 
 ### SEAD spec coverage (`target_models/specs/sead_v2.yml`)
-- [ ] Abundance chain — `abundance`, `abundance_element`, `abundance_modification`
-- [ ] Dating — `relative_dating`, `relative_age`, `radiocarbon_dating`
-- [ ] Method/contacts — `method_group`, `biblio`, `contact`
-- [ ] Taxonomy — `taxon`, `taxonomic_order`, `ecocodes`
+- [x] Abundance chain — `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `modification_type`, `abundance_property`
+- [x] Dating — `relative_dating`, `relative_ages`, `geochronology` (abs/radiocarbon), `dating_lab`
+- [x] Method/contacts — `method_group`, `citation` (`tbl_biblio`), `contact`, `contact_type`, `dataset_contact`
+- [ ] Taxonomy — `taxa_tree_master` present; `taxonomic_order`, `ecocodes` still missing
 - [ ] Data-type-specific tables (ceramics, dendrochronology, insects)
 
 ---
