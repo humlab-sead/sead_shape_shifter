@@ -87,11 +87,11 @@ class PublicIdConformanceValidator(EntityConformanceValidator):
 @CONFORMANCE_VALIDATORS.register(key="foreign_key")
 class ForeignKeyConformanceValidator(EntityConformanceValidator):
     """Validate that required FK targets are present, with support for bridge-mediated relationships.
-    
+
     When a FK spec includes 'via: bridge_entity', the validator checks that:
     1. The bridge entity is present in the project's FK targets
     2. The ultimate target entity is referenced (direct check; transitive validation deferred)
-    
+
     Example: site -> location (via: site_location)
     - Checks that 'site' has FK to 'site_location'
     - Final target 'location' presence is advisory (bridge mediates the relationship)
@@ -106,18 +106,18 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
     def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
         """Validate FK targets with bridge entity support (requires project access)."""
         issues: list[ConformanceIssue] = []
-        
+
         for entity_name, entity_spec in target_model.entities.items():
             if not self.guard(target_model, project, entity_name):
                 continue
-            
+
             table_cfg: TableConfig = project.get_table(entity_name)
             project_targets: set[str] = table_cfg.get_target_facing_foreign_key_targets()
 
             for foreign_key in entity_spec.foreign_keys:
                 if not foreign_key.required:
                     continue
-                
+
                 # Direct FK target (no bridge)
                 if not foreign_key.via:
                     if foreign_key.entity not in project_targets:
@@ -129,10 +129,10 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
                             )
                         )
                     continue
-                
+
                 # Bridge-mediated FK target
                 bridge_name = foreign_key.via
-                
+
                 # Check 1: Bridge entity must be in project's FK targets
                 if bridge_name not in project_targets:
                     issues.append(
@@ -146,13 +146,13 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
                         )
                     )
                     continue
-                
+
                 # Check 2: Bridge entity should have FK to ultimate target (advisory)
                 # This is a softer check - we verify the bridge exists in the project
                 if project.has_table(bridge_name):
                     bridge_cfg: TableConfig = project.get_table(bridge_name)
                     bridge_targets: set[str] = bridge_cfg.get_target_facing_foreign_key_targets()
-                    
+
                     if foreign_key.entity not in bridge_targets:
                         issues.append(
                             ConformanceIssue(
@@ -324,8 +324,7 @@ class SourceTypeAppropriatenessConformanceValidator(EntityConformanceValidator):
                 ConformanceIssue(
                     code="CLASSIFIER_WRONG_SOURCE_TYPE",
                     message=(
-                        f"Entity '{entity_name}' has role 'classifier' but uses "
-                        f"source type '{entity_type}'; expected 'fixed' or 'sql'"
+                        f"Entity '{entity_name}' has role 'classifier' but uses " f"source type '{entity_type}'; expected 'fixed' or 'sql'"
                     ),
                     entity=entity_name,
                 )

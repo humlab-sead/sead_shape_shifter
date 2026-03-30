@@ -733,9 +733,7 @@ async def download_target_model_docs(
 
     logger.info(f"Serving {doc_format.value} target model documentation for project '{name}' ({len(content)} bytes)")
 
-    return Response(
-        content=content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-    )
+    return Response(content=content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 # Layout Management Models

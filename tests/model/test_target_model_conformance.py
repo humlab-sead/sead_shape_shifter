@@ -359,7 +359,9 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
                 "UNEXPECTED_PUBLIC_ID": 1,
             }
         ),
-        "arbodat_full": Counter({"MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5, "MISSING_REQUIRED_COLUMN": 2, "MISSING_INDUCED_REQUIRED_ENTITY": 1}),
+        "arbodat_full": Counter(
+            {"MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5, "MISSING_REQUIRED_COLUMN": 2, "MISSING_INDUCED_REQUIRED_ENTITY": 1}
+        ),
     }
 
 

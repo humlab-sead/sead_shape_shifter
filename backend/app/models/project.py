@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Literal, Type
 
 from pydantic import BaseModel, Field, field_serializer
-from pydantic.json_schema import GenerateJsonSchema, JsonSchemaValue
+from pydantic.json_schema import GenerateJsonSchema
 
 from src.configuration.config import Config
 
@@ -78,21 +78,20 @@ class ProjectMetadata(BaseModel):
             mode=mode,
             union_format=union_format,
         )
-        
+
         # Remove fields marked with exclude_from_schema=True
         if "properties" in schema:
             fields_to_remove: list[str] = [
                 field_name
                 for field_name, field_info in cls.model_fields.items()
-                if isinstance(field_info.json_schema_extra, dict)
-                and field_info.json_schema_extra.get("exclude_from_schema")
+                if isinstance(field_info.json_schema_extra, dict) and field_info.json_schema_extra.get("exclude_from_schema")
             ]
-            
+
             for field_name in fields_to_remove:
                 schema["properties"].pop(field_name, None)
                 if "required" in schema and field_name in schema["required"]:
                     schema["required"].remove(field_name)
-        
+
         return schema
 
 
