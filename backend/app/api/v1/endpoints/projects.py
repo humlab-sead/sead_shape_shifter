@@ -568,6 +568,106 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
     return updated_project
 
 
+# ---------------------------------------------------------------------------
+# Target Model YAML Endpoints
+# ---------------------------------------------------------------------------
+
+
+def _resolve_target_model_path(project: Project, project_name: str) -> Path:
+    """Return the absolute path to the project-local target model file.
+
+    Raises:
+        NotFoundError: if project has no target_model or the file is missing.
+        BadRequestError: if target_model is an inline dict (no backing file).
+        BaseAPIException (403): if the resolved path escapes the project directory.
+    """
+    target_model = project.metadata.target_model if project.metadata else None
+    if target_model is None:
+        raise NotFoundError(f"Project '{project_name}' has no target_model configured")
+    if isinstance(target_model, dict):
+        raise BadRequestError("Target model is defined inline and has no backing file to edit")
+
+    raw = str(target_model).strip()
+    rel_path = raw[len("@include:") :].strip() if raw.startswith("@include:") else raw
+
+    # Resolve the file path relative to APPLICATION_ROOT (same base as config directives)
+    target_path = (settings.APPLICATION_ROOT / rel_path).resolve()
+
+    # Security: must stay inside the project directory
+    path_name = ProjectNameMapper.to_path(project_name)
+    project_dir = (settings.PROJECTS_DIR / path_name).resolve()
+    if not target_path.is_relative_to(project_dir):
+        raise BaseAPIException(
+            f"Target model file '{rel_path}' is outside the project directory and cannot be edited here",
+            403,
+        )
+
+    if not target_path.exists():
+        raise NotFoundError(f"Target model file not found: {target_path}")
+
+    return target_path
+
+
+@router.get("/projects/{name}/target-model-yaml", response_model=dict[str, str])
+@handle_endpoint_errors
+async def get_project_target_model_yaml(name: str) -> dict[str, str]:
+    """
+    Get the project-local target model file as a raw YAML string.
+
+    Only project-local files (inside the project directory) are served.
+    Shared/global spec files return 403.
+
+    Args:
+        name: Project name
+
+    Returns:
+        Dictionary containing yaml_content
+    """
+    project_service: ProjectService = get_project_service()
+    project: Project = project_service.load_project(name)
+    target_path: Path = _resolve_target_model_path(project, name)
+    yaml_content: str = target_path.read_text(encoding="utf-8")
+    logger.info(f"Retrieved target model YAML for project '{name}'")
+    return {"yaml_content": yaml_content}
+
+
+@router.put("/projects/{name}/target-model-yaml", response_model=Project)
+@handle_endpoint_errors
+async def update_project_target_model_yaml(name: str, request: RawYamlUpdateRequest) -> Project:
+    """
+    Update the project-local target model file with raw YAML content.
+
+    Content is written verbatim to preserve comments. Syntax is validated
+    but the file is never re-serialised through PyYAML.
+
+    Only project-local files can be updated; shared files return 403.
+
+    Args:
+        name: Project name
+        request: Raw YAML content
+
+    Returns:
+        Updated project
+    """
+    yaml_service: YamlService = get_yaml_service()
+    project_service: ProjectService = get_project_service()
+
+    project: Project = project_service.load_project(name)
+    target_path: Path = _resolve_target_model_path(project, name)
+
+    # Validate YAML syntax only — never re-serialise; write verbatim to preserve comments
+    is_valid, error_msg = yaml_service.validate_yaml(request.yaml_content)
+    if not is_valid:
+        raise BadRequestError(f"Invalid YAML syntax: {error_msg}")
+
+    yaml_service.create_backup(target_path)
+    target_path.write_text(request.yaml_content, encoding="utf-8")
+
+    updated_project: Project = project_service.load_project(name, force_reload=True)
+    logger.info(f"Updated target model YAML for project '{name}'")
+    return updated_project
+
+
 # Layout Management Models
 class LayoutPositionResponse(BaseModel):
     """Node position in graph layout."""

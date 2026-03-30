@@ -258,6 +258,27 @@ export const projectsApi = {
   },
 
   /**
+   * Get the project-local target model file as raw YAML
+   */
+  getTargetModelYaml: async (name: string): Promise<{ yaml_content: string }> => {
+    return apiRequest<{ yaml_content: string }>({
+      method: 'GET',
+      url: `/projects/${name}/target-model-yaml`,
+    })
+  },
+
+  /**
+   * Update the project-local target model file with raw YAML content
+   */
+  updateTargetModelYaml: async (name: string, yamlContent: string): Promise<Project> => {
+    return apiRequest<Project>({
+      method: 'PUT',
+      url: `/projects/${name}/target-model-yaml`,
+      data: { yaml_content: yamlContent },
+    })
+  },
+
+  /**
    * Get custom graph layout for project
    */
   getLayout: async (name: string): Promise<{ layout: CustomGraphLayout; has_custom_layout: boolean }> => {
