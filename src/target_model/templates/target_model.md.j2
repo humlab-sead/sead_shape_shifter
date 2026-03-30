@@ -1,0 +1,82 @@
+# {{ model.name }}
+
+**Version:** {{ model.version }}  
+**Description:** {{ model.description }}
+
+{% if has_project_context %}
+## Project Context
+
+**Project:** {{ project_name }}  
+**Project Version:** {{ project_version or '1.0.0' }}  
+**Entities Used:** {{ stats.used_count }} of {{ stats.total_entities }}  
+{% if stats.unused_required > 0 %}
+⚠️ **Warning:** {{ stats.unused_required }} required {{ stats.unused_required|pluralize('entity is', 'entities are') }} not used in this project.
+{% endif %}
+
+{% endif %}
+## Model Statistics
+
+| Metric | Value |
+|--------|-------|
+| Total Entities | {{ stats.total_entities }} |
+| Required Entities | {{ stats.required_entities }} |
+| Optional Entities | {{ stats.optional_entities }} |
+{% if has_project_context -%}
+| Used in Project | {{ stats.used_count }} |
+{% endif -%}
+| Total Foreign Keys | {{ stats.total_fks }} |
+| Total Columns | {{ stats.total_columns }} |
+| Domains | {{ stats.domain_count }} |
+
+---
+
+{% for domain, entities in by_domain.items()|sort %}
+## Domain: {{ domain }}
+
+{% for entity in entities %}
+### {{ entity.name }}{% if has_project_context %}{% if entity.used %} ✅{% endif %}{% endif %}
+
+**Target Table:** `{{ entity.spec.target_table or 'tbl_' + entity.name }}`  
+**Required:** {{ 'Yes' if entity.spec.required else 'No' }}  
+{% if has_project_context -%}
+**Used in Project:** {{ 'Yes ✅' if entity.used else 'No' }}  
+{% endif -%}
+{% if entity.spec.role -%}
+**Role:** {{ entity.spec.role }}  
+{% endif -%}
+**Description:** {{ entity.spec.description or '_No description available_' }}
+
+{% if entity.spec.columns %}
+#### Columns ({{ entity.spec.columns|length }})
+
+| Column | Type | Required | Description | Constraints |
+|--------|------|----------|-------------|-------------|
+{% for col_name, col in entity.spec.columns.items() -%}
+| `{{ col_name }}` | {{ col.type }} | {{ 'Yes' if col.required else 'No' }} | {{ col.description or '-' }} | {% if col.auto_increment %}AUTO_INCREMENT{% endif %} |
+{% endfor %}
+{% endif %}
+
+{% if entity.spec.foreign_keys %}
+#### Foreign Keys ({{ entity.spec.foreign_keys|length }})
+
+| Local Entity | → | Remote Entity | Via | Required |
+|--------------|----|---------------|-----|----------|
+{% for fk in entity.spec.foreign_keys -%}
+| {{ entity.name }} | → | {{ fk.entity }} | {{ fk.via or '-' }} | {{ 'Yes' if fk.required else 'No' }} |
+{% endfor %}
+{% endif %}
+
+---
+
+{% endfor %}
+{% endfor %}
+
+## Entity Index
+
+{% for domain, entities in by_domain.items()|sort -%}
+### {{ domain }}
+{% for entity in entities -%}
+- [{{ entity.name }}](#{{ entity.name|lower|replace('_', '-') }}) - {{ entity.spec.description or 'No description' }}
+{% endfor %}
+
+{% endfor %}

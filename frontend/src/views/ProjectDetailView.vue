@@ -726,6 +726,36 @@
                       Edit Target Model YAML
                     </div>
                     <div class="d-flex gap-2">
+                      <v-menu>
+                        <template v-slot:activator="{ props }">
+                          <v-btn
+                            variant="outlined"
+                            prepend-icon="mdi-download"
+                            size="small"
+                            :loading="targetModelDocsDownloading"
+                            v-bind="props"
+                          >
+                            Download Docs
+                          </v-btn>
+                        </template>
+                        <v-list density="compact">
+                          <v-list-item @click="handleDownloadTargetModelDocs('html')">
+                            <v-list-item-title>
+                              <v-icon icon="mdi-web" size="small" class="mr-2" />HTML (Interactive)
+                            </v-list-item-title>
+                          </v-list-item>
+                          <v-list-item @click="handleDownloadTargetModelDocs('markdown')">
+                            <v-list-item-title>
+                              <v-icon icon="mdi-language-markdown" size="small" class="mr-2" />Markdown
+                            </v-list-item-title>
+                          </v-list-item>
+                          <v-list-item @click="handleDownloadTargetModelDocs('excel')">
+                            <v-list-item-title>
+                              <v-icon icon="mdi-file-excel" size="small" class="mr-2" />Excel Spreadsheet
+                            </v-list-item-title>
+                          </v-list-item>
+                        </v-list>
+                      </v-menu>
                       <v-btn
                         variant="outlined"
                         prepend-icon="mdi-refresh"
@@ -1131,6 +1161,7 @@ const targetModelYamlLoading = ref(false)
 const targetModelYamlSaving = ref(false)
 const targetModelYamlError = ref<string | null>(null)
 const targetModelYamlHasChanges = ref(false)
+const targetModelDocsDownloading = ref(false)
 
 // Computed
 const mergedValidationResult = computed(() => {
@@ -2340,6 +2371,36 @@ async function handleSaveTargetModelYaml() {
     console.error('Failed to save target model YAML:', err)
   } finally {
     targetModelYamlSaving.value = false
+  }
+}
+
+async function handleDownloadTargetModelDocs(format: 'html' | 'markdown' | 'excel') {
+  if (!projectName.value) return
+
+  targetModelDocsDownloading.value = true
+  try {
+    const blob = await api.projects.downloadTargetModelDocs(projectName.value, format)
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    
+    const extensions = { html: 'html', markdown: 'md', excel: 'xlsx' }
+    link.download = `${projectName.value}_target_model.${extensions[format]}`
+    
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    successMessage.value = `Target model documentation downloaded (${format})`
+    showSuccessSnackbar.value = true
+  } catch (err) {
+    targetModelYamlError.value = err instanceof Error ? err.message : 'Failed to download documentation'
+    console.error('Failed to download target model docs:', err)
+  } finally {
+    targetModelDocsDownloading.value = false
   }
 }
 

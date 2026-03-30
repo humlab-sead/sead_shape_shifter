@@ -287,6 +287,17 @@ export const projectsApi = {
   },
 
   /**
+   * Download target model documentation in specified format
+   */
+  downloadTargetModelDocs: async (name: string, format: 'html' | 'markdown' | 'excel'): Promise<Blob> => {
+    const response = await apiClient.get(`/projects/${name}/target-model-docs`, {
+      params: { format },
+      responseType: 'blob',
+    })
+    return response.data
+  },
+
+  /**
    * Get custom graph layout for project
    */
   getLayout: async (name: string): Promise<{ layout: CustomGraphLayout; has_custom_layout: boolean }> => {
