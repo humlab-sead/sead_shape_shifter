@@ -106,7 +106,7 @@ class Project(BaseModel):
     @property
     def ingesters(self) -> dict[str, Any]:
         """Get ingester configurations from options."""
-        return self.options.get("ingesters", {}) or {}
+        return self.options.get("ingesters", {}) or {}  # pylint: disable=no-member
 
     def get_entity(self, name: str) -> dict[str, Any] | None:
         """Get entity by name."""
@@ -155,4 +155,4 @@ class Project(BaseModel):
     @property
     def data_sources(self) -> dict[str, Any]:
         """Get data source configurations from options."""
-        return self.options.get("data_sources", {}) or {}
+        return self.options.get("data_sources", {}) or {}  # pylint: disable=no-member

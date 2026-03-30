@@ -18,6 +18,7 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 
 from src.target_model.models import TargetModel
@@ -146,10 +147,6 @@ class TargetModelDocumentGenerator:
         Raises:
             ImportError: If pandas or openpyxl not installed.
         """
-        try:
-            import pandas as pd
-        except ImportError as exc:
-            raise ImportError("pandas and openpyxl are required for Excel generation") from exc
 
         used_entities = set(self.project.cfg.get("entities", {}).keys()) if self.project else set()
 
@@ -224,9 +221,8 @@ class TargetModelDocumentGenerator:
                     column_letter = column[0].column_letter
                     for cell in column:
                         try:
-                            if len(str(cell.value)) > max_length:
-                                max_length = len(str(cell.value))
-                        except:  # noqa: E722
+                            max_length = max(max_length, len(str(cell.value)))
+                        except:  # noqa: E722 ; # pylint: disable=bare-except
                             pass
                     adjusted_width = min(max_length + 2, 50)
                     worksheet.column_dimensions[column_letter].width = adjusted_width
@@ -234,7 +230,7 @@ class TargetModelDocumentGenerator:
         buffer.seek(0)
         return buffer.read()
 
-    def generate(self, format: DocumentFormat) -> bytes:
+    def generate(self, format: DocumentFormat) -> bytes:  # pylint: disable=redefined-builtin
         """Generate documentation in specified format.
 
         Args:
@@ -252,12 +248,12 @@ class TargetModelDocumentGenerator:
         else:
             raise ValueError(f"Unsupported format: {format}")
 
-    def write_to_file(self, format: DocumentFormat, output_path: Path) -> None:
+    def write_to_file(self, format: DocumentFormat, output_path: Path) -> None:  # pylint: disable=redefined-builtin
         """Generate documentation and write to file.
 
         Args:
             format: Output format.
             output_path: Path to write output file.
         """
-        content = self.generate(format)
+        content: bytes = self.generate(format)
         output_path.write_bytes(content)

@@ -680,7 +680,8 @@ async def update_project_target_model_yaml(name: str, request: RawYamlUpdateRequ
 @router.get("/projects/{name}/target-model-docs")
 @handle_endpoint_errors
 async def download_target_model_docs(
-    name: str, format: str = Query("html", description="Documentation format: html, markdown, or excel")
+    name: str,
+    format: str = Query("html", description="Documentation format: html, markdown, or excel"),  # pylint: disable=redefined-builtin
 ) -> Response:
     """
     Generate and download target model documentation for a project.
@@ -710,8 +711,8 @@ async def download_target_model_docs(
     format_lower: str = format.lower()
     try:
         doc_format = DocumentFormat(format_lower)
-    except ValueError:
-        raise BadRequestError(f"Invalid format '{format}'. Supported: html, markdown, excel")
+    except ValueError as e:
+        raise BadRequestError(f"Invalid format '{format}'. Supported: html, markdown, excel") from e
 
     # Generate documentation
     content: bytes = documentation_service.generate_target_model_docs(name, doc_format)
