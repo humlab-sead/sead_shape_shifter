@@ -92,9 +92,7 @@ class TargetModelDocumentGenerator:
         used_count = len(used_entities) if self.project else 0
         unused_required = 0
         if self.project:
-            unused_required = sum(
-                1 for name, spec in self.target_model.entities.items() if spec.required and name not in used_entities
-            )
+            unused_required = sum(1 for name, spec in self.target_model.entities.items() if spec.required and name not in used_entities)
 
         return {
             "model": self.target_model.model,

@@ -1,7 +1,5 @@
 """Tests for TargetModelValidator backend adapter."""
 
-
-
 from backend.app.models.validation import ValidationCategory, ValidationPriority
 from backend.app.validators.target_model_validator import TargetModelValidator
 from src.model import ShapeShiftProject

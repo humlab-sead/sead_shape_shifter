@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from ruamel.yaml.comments import CommentedMap
 
-from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService
+from backend.app.services.yaml_service import YamlLoadError, YamlService
 
 # pylint: disable=redefined-outer-name
 
@@ -147,9 +147,7 @@ class TestMergeBoundaryTopLevel:
 
     def test_comments_survive_metadata_update(self, yaml_service: YamlService, project_file: Path) -> None:
         """Comments on the entities section should survive a metadata-only update."""
-        yaml_service.merge_boundary(
-            project_file, "metadata", {"name": "new-name", "version": "3.0.0"}, create_backup=False
-        )
+        yaml_service.merge_boundary(project_file, "metadata", {"name": "new-name", "version": "3.0.0"}, create_backup=False)
         text = project_file.read_text()
         # The entities-section comment should still be present
         assert "Entities section comment" in text

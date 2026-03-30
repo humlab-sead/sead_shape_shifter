@@ -10,7 +10,7 @@ Covers:
 """
 
 from typing import Any
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -211,9 +211,7 @@ class TestUpdateEntityByNameConditional:
         ops.update_entity_by_name("test-project", "sample", entity, expected_etag=etag)
 
         load_args = load_mock.call_args
-        assert load_args.kwargs.get("force_reload") is True or (
-            len(load_args.args) >= 2 and load_args.args[1] is True
-        )
+        assert load_args.kwargs.get("force_reload") is True or (len(load_args.args) >= 2 and load_args.args[1] is True)
 
     def test_no_force_reload_when_no_etag(self):
         """Unconditional update must NOT force-reload (avoids unnecessary disk I/O)."""
