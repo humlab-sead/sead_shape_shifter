@@ -650,61 +650,125 @@
 
           <!-- YAML Tab -->
           <v-window-item value="yaml">
-            <v-card variant="outlined">
-              <v-card-title class="d-flex align-center justify-space-between">
-                <div>
-                  <v-icon icon="mdi-code-braces" class="mr-2" />
-                  Edit Project YAML
-                </div>
-                <div class="d-flex gap-2">
-                  <v-btn
-                    variant="outlined"
-                    prepend-icon="mdi-refresh"
-                    size="small"
-                    :loading="yamlLoading"
-                    @click="handleLoadYaml"
-                  >
-                    Reload
-                  </v-btn>
-                  <v-btn
-                    color="primary"
-                    prepend-icon="mdi-content-save"
-                    size="small"
-                    :loading="yamlSaving"
-                    :disabled="!yamlHasChanges"
-                    @click="handleSaveYaml"
-                  >
-                    Save YAML
-                  </v-btn>
-                </div>
-              </v-card-title>
-              <v-card-text>
-                <!-- <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-                  <div class="text-caption">
-                    <strong>Direct YAML editing:</strong> Edit the complete project YAML file. Changes are saved to
-                    the file immediately. A backup is created automatically before saving.
-                  </div>
-                </v-alert> -->
+            <!-- Sub-tab bar: only shown when project has a project-local target model file reference -->
+            <v-tabs
+              v-if="typeof selectedProject?.metadata?.target_model === 'string'"
+              v-model="activeYamlSubTab"
+              density="compact"
+              class="mb-3"
+            >
+              <v-tab value="project-yaml" prepend-icon="mdi-code-braces">Project YAML</v-tab>
+              <v-tab value="target-model-yaml" prepend-icon="mdi-target">Target Model</v-tab>
+            </v-tabs>
 
-                <v-alert v-if="yamlError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="yamlError = null">
-                  {{ yamlError }}
-                </v-alert>
+            <v-window v-model="activeYamlSubTab">
+              <!-- Project YAML sub-tab (always present) -->
+              <v-window-item value="project-yaml">
+                <v-card variant="outlined">
+                  <v-card-title class="d-flex align-center justify-space-between">
+                    <div>
+                      <v-icon icon="mdi-code-braces" class="mr-2" />
+                      Edit Project YAML
+                    </div>
+                    <div class="d-flex gap-2">
+                      <v-btn
+                        variant="outlined"
+                        prepend-icon="mdi-refresh"
+                        size="small"
+                        :loading="yamlLoading"
+                        @click="handleLoadYaml"
+                      >
+                        Reload
+                      </v-btn>
+                      <v-btn
+                        color="primary"
+                        prepend-icon="mdi-content-save"
+                        size="small"
+                        :loading="yamlSaving"
+                        :disabled="!yamlHasChanges"
+                        @click="handleSaveYaml"
+                      >
+                        Save YAML
+                      </v-btn>
+                    </div>
+                  </v-card-title>
+                  <v-card-text>
+                    <v-alert v-if="yamlError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="yamlError = null">
+                      {{ yamlError }}
+                    </v-alert>
 
-                <yaml-editor
-                  v-if="rawYamlContent !== null"
-                  v-model="rawYamlContent"
-                  height="600px"
-                  :readonly="false"
-                  :validate-on-change="true"
-                  @change="handleYamlChange"
-                />
+                    <yaml-editor
+                      v-if="rawYamlContent !== null"
+                      v-model="rawYamlContent"
+                      height="600px"
+                      :readonly="false"
+                      :validate-on-change="true"
+                      @change="handleYamlChange"
+                    />
 
-                <div v-else class="text-center py-12">
-                  <v-progress-circular indeterminate color="primary" />
-                  <p class="mt-4 text-grey">Loading YAML content...</p>
-                </div>
-              </v-card-text>
-            </v-card>
+                    <div v-else class="text-center py-12">
+                      <v-progress-circular indeterminate color="primary" />
+                      <p class="mt-4 text-grey">Loading YAML content...</p>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-window-item>
+
+              <!-- Target Model sub-tab (only mounted when project has a string target_model file reference) -->
+              <v-window-item
+                v-if="typeof selectedProject?.metadata?.target_model === 'string'"
+                value="target-model-yaml"
+              >
+                <v-card variant="outlined">
+                  <v-card-title class="d-flex align-center justify-space-between">
+                    <div>
+                      <v-icon icon="mdi-target" class="mr-2" />
+                      Edit Target Model YAML
+                    </div>
+                    <div class="d-flex gap-2">
+                      <v-btn
+                        variant="outlined"
+                        prepend-icon="mdi-refresh"
+                        size="small"
+                        :loading="targetModelYamlLoading"
+                        @click="handleLoadTargetModelYaml"
+                      >
+                        Reload
+                      </v-btn>
+                      <v-btn
+                        color="primary"
+                        prepend-icon="mdi-content-save"
+                        size="small"
+                        :loading="targetModelYamlSaving"
+                        :disabled="!targetModelYamlHasChanges"
+                        @click="handleSaveTargetModelYaml"
+                      >
+                        Save YAML
+                      </v-btn>
+                    </div>
+                  </v-card-title>
+                  <v-card-text>
+                    <v-alert v-if="targetModelYamlError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="targetModelYamlError = null">
+                      {{ targetModelYamlError }}
+                    </v-alert>
+
+                    <yaml-editor
+                      v-if="targetModelYamlContent !== null"
+                      v-model="targetModelYamlContent"
+                      height="600px"
+                      :readonly="false"
+                      :validate-on-change="true"
+                      @change="handleTargetModelYamlChange"
+                    />
+
+                    <div v-else class="text-center py-12">
+                      <v-progress-circular indeterminate color="primary" />
+                      <p class="mt-4 text-grey">Loading target model YAML content...</p>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-window-item>
+            </v-window>
           </v-window-item>
         </v-window>
       </v-col>
@@ -961,6 +1025,7 @@ const {
 
 // Local state
 const activeTab = ref('entities')
+const activeYamlSubTab = ref('project-yaml')
 const showBackupsDialog = ref(false)
 const showExecuteDialog = ref(false)
 const showSuccessSnackbar = ref(false)
@@ -1058,6 +1123,13 @@ const yamlLoading = ref(false)
 const yamlSaving = ref(false)
 const yamlError = ref<string | null>(null)
 const yamlHasChanges = ref(false)
+
+const targetModelYamlContent = ref<string | null>(null)
+const originalTargetModelYamlContent = ref<string | null>(null)
+const targetModelYamlLoading = ref(false)
+const targetModelYamlSaving = ref(false)
+const targetModelYamlError = ref<string | null>(null)
+const targetModelYamlHasChanges = ref(false)
 
 // Computed
 const mergedValidationResult = computed(() => {
@@ -2226,6 +2298,50 @@ async function handleSaveYaml() {
   }
 }
 
+async function handleLoadTargetModelYaml() {
+  if (!projectName.value) return
+
+  targetModelYamlLoading.value = true
+  targetModelYamlError.value = null
+  try {
+    const response = await api.projects.getTargetModelYaml(projectName.value)
+    targetModelYamlContent.value = response.yaml_content
+    originalTargetModelYamlContent.value = response.yaml_content
+    targetModelYamlHasChanges.value = false
+  } catch (err) {
+    targetModelYamlError.value = err instanceof Error ? err.message : 'Failed to load target model YAML'
+    console.error('Failed to load target model YAML:', err)
+  } finally {
+    targetModelYamlLoading.value = false
+  }
+}
+
+function handleTargetModelYamlChange(content: string) {
+  targetModelYamlHasChanges.value = content !== originalTargetModelYamlContent.value
+}
+
+async function handleSaveTargetModelYaml() {
+  if (!projectName.value || !targetModelYamlContent.value) return
+
+  targetModelYamlSaving.value = true
+  targetModelYamlError.value = null
+  try {
+    await api.projects.updateTargetModelYaml(projectName.value, targetModelYamlContent.value)
+    originalTargetModelYamlContent.value = targetModelYamlContent.value
+    targetModelYamlHasChanges.value = false
+
+    successMessage.value = 'Target model YAML saved successfully'
+    showSuccessSnackbar.value = true
+
+    await handleValidate()
+  } catch (err) {
+    targetModelYamlError.value = err instanceof Error ? err.message : 'Failed to save target model YAML'
+    console.error('Failed to save target model YAML:', err)
+  } finally {
+    targetModelYamlSaving.value = false
+  }
+}
+
 async function handleDataSourcesUpdated() {
   // Reload project after data source changes
   await handleRefresh()
@@ -2342,6 +2458,12 @@ watch(activeTab, async (newTab) => {
   const currentTab = route.query.tab
   if (currentTab !== newTab) {
     router.replace({ query: { ...route.query, tab: newTab } })
+  }
+})
+
+watch(activeYamlSubTab, async (newSubTab) => {
+  if (newSubTab === 'target-model-yaml' && targetModelYamlContent.value === null) {
+    await handleLoadTargetModelYaml()
   }
 })
 

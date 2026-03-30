@@ -37,6 +37,7 @@
 - [ ] Rule disabling via `options.validation.disabled_rules`
 - [ ] `GlobalConformanceValidator` base type for multi-entity checks
 - [ ] `TargetModelService` — extract loading/caching when remote refs become real
+- [ ] Target model YAML editor tab — raw YAML edit tab for the project's **project-local** target model file alongside the project YAML tab
 
 ### Tooling / Ecosystem
 - [ ] Target model diff report (version upgrade planning)
@@ -132,6 +133,73 @@ When a project uses append mode, validate that the appended columns conform to t
 ### Branch-Aware Semantic Validation
 
 When a merged-parent entity has branch children, validate that each branch covers a non-overlapping slice. Depends on branch modeling being more concrete. Defer until branch proposals stabilize.
+
+---
+
+## Target Model YAML Editor Tab
+
+The project-level YAML view currently shows only the `shapeshifter.yml` file. When a project references a `target_model:` file, add a second tab in that same view for editing the target model spec YAML directly.
+
+**Constraints:**
+- Raw YAML only — no structured form or entity-level UI.
+- Tab visible only when the project has a `target_model:` reference that resolves to a **project-local file** (i.e. the `@include:` path lives inside the project's own directory). Shared/global spec files (e.g. `target_models/specs/sead_v2.yml`) are read-only in this view.
+- API passes the YAML file content as raw text; the server validates syntax but **never re-serialises** it, so comments and formatting survive the round-trip.
+- Save writes directly to the referenced target model YAML file.
+- Changing the file triggers a re-run of conformance validation (same as editing the project YAML).
+
+**Scope:**
+- Frontend: add a second `<v-tab>` to the project YAML panel; reuse the existing Monaco YAML editor component.
+- Backend: expose a `GET /api/v1/target-models/{name}` and `PUT /api/v1/target-models/{name}` endpoint pair for raw YAML read/write, mirroring the existing project file endpoints.
+- No schema-assisted editing, autocomplete, or form generation in scope for this item.
+
+### Complexity Assessment
+
+**Overall rating: Low–Medium. Estimated ~200–250 lines total across 4–5 files.**
+
+---
+
+#### Backend (Low)
+
+Two new endpoints modelled directly on the existing `GET/PUT /projects/{name}/raw-yaml` pattern (~60–80 lines):
+
+```
+GET /api/v1/target-models/{name}   → { yaml_content: str }
+PUT /api/v1/target-models/{name}   ← { yaml_content: str }  → Project (after reload)
+```
+
+Work items:
+1. **Path resolution + locality check** — extract the file path from the `@include: ...` string in `project.metadata.target_model`. Resolve it relative to the project directory and confirm it is *inside* that directory (simple `Path.is_relative_to()` check). Return 403 if the path escapes the project directory (shared/global spec).
+2. **Inline-dict guard** — return 422 when `target_model` is an inline dict (no backing file to edit).
+3. **File read/write (text passthrough)** — read and write the file as raw text (`Path.read_text` / `Path.write_text`). On PUT: validate YAML syntax with `yaml.safe_load()` to catch parse errors, then write the *original* submitted string unchanged — never re-serialise through PyYAML, so comments and blank lines are preserved.
+4. **Cache invalidation** — call `project_service.load_project(name, force_reload=True)` (or the existing `refresh` path) after write so subsequent conformance runs see the updated spec.
+
+No new models, no new services, no router changes beyond adding the two route functions and registering them in `api.py`.
+
+---
+
+#### Frontend (Low–Medium)
+
+Work items:
+1. **API methods** — add `getTargetModelYaml(projectName)` and `updateTargetModelYaml(projectName, yaml)` to `frontend/src/api/projects.ts` (~15 lines, identical shape to `getRawYaml`/`updateRawYaml`).
+2. **State** — four `ref`s in `ProjectDetailView.vue`: `targetModelYaml`, `targetModelYamlHasChanges`, `targetModelYamlLoading`, `targetModelYamlSaving` (~8 lines).
+3. **Conditional tab** — add a `<v-tab value="target-model-yaml">` inside the existing YAML `<v-window-item>` using nested `<v-tabs>/<v-window>`. Tab is rendered only when `project.metadata.target_model` is a string *and* the backend confirms the file is project-local (a `isProjectLocal` boolean can be returned by `GET`). The existing `value="yaml"` tab becomes the "Project YAML" sub-tab (~30 lines template).
+4. **Editor wiring** — reuse `<yaml-editor>` (the Monaco component already in the YAML panel) with `mode` left at default; no completions or schema intelligence needed for target model files (~20 lines template + handlers).
+5. **Save handler** — after `updateTargetModelYaml`, call `handleValidate()` to re-run conformance, same as the existing `handleSaveYaml` flow (~20 lines).
+
+The nested-tab restructuring of the YAML panel is the only non-trivial template change. No new components, stores, or composables are required.
+
+---
+
+#### Risk / Complications
+
+| Item | Risk | Notes |
+|------|------|-------|
+| `@include:` path root resolution | Low | One existing precedent in `Config.resolve_includes()`; target model path is always repo-root-relative |
+| Project-local check | Low | `Path.is_relative_to(project_dir)` — one line; non-local paths return 403 |
+| Comment-preserving write | Low | Never call `yaml.dump()` on PUT; validate with `yaml.safe_load()` then write the submitted bytes verbatim |
+| Inline-dict guard | Low | One `isinstance` check; clear 422 response |
+| Cache invalidation | Low | `project_service.refresh()` already exists and is called by the reload button |
+| Nested `<v-tabs>` inside YAML panel | Low–Medium | Vuetify nested tabs work fine; just more template boilerplate |
 
 ---
 
