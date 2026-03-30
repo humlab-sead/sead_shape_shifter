@@ -236,6 +236,39 @@ class InducedRequirementConformanceValidator(ConformanceValidator):
         return queue
 
 
+@CONFORMANCE_VALIDATORS.register(key="source_type_appropriateness")
+class SourceTypeAppropriatenessConformanceValidator(EntityConformanceValidator):
+    """Classifiers should use type: fixed or type: sql, not type: entity.
+
+    An entity with ``role: classifier`` in the target model is expected to be
+    a pre-loaded lookup table (``type: fixed`` or ``type: sql``).  Using
+    ``type: entity`` (row-extraction) for a classifier is almost always a
+    modelling mistake and produces a warning so the author can decide whether
+    to correct it.
+
+    Issue code: ``CLASSIFIER_WRONG_SOURCE_TYPE``
+    """
+
+    ALLOWED_TYPES: frozenset[str] = frozenset({"fixed", "sql"})
+
+    def validate_entity(self, entity_name: str, entity_spec: EntitySpec, table_cfg: TableConfig) -> list[ConformanceIssue]:
+        if entity_spec.role != "classifier":
+            return []
+        entity_type: str | None = table_cfg.type
+        if entity_type is not None and entity_type not in self.ALLOWED_TYPES:
+            return [
+                ConformanceIssue(
+                    code="CLASSIFIER_WRONG_SOURCE_TYPE",
+                    message=(
+                        f"Entity '{entity_name}' has role 'classifier' but uses "
+                        f"source type '{entity_type}'; expected 'fixed' or 'sql'"
+                    ),
+                    entity=entity_name,
+                )
+            ]
+        return []
+
+
 class TargetModelConformanceValidator(ConformanceValidator):
     """Validate a resolved Shape Shifter project against a target model."""
 

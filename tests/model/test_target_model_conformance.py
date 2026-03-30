@@ -506,6 +506,61 @@ def test_induced_requirement_is_transitive() -> None:
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon_group") in codes_entities
 
 
+# ---------------------------------------------------------------------------
+# SourceTypeAppropriatenessConformanceValidator
+# ---------------------------------------------------------------------------
+
+
+def test_source_type_appropriateness_emits_issue_for_classifier_with_entity_type() -> None:
+    """A classifier using type: entity should produce CLASSIFIER_WRONG_SOURCE_TYPE."""
+    target_model = _minimal_target_model({"sample_type": {"role": "classifier"}})
+    project = _minimal_project({"sample_type": {"type": "entity", "columns": ["sample_type_name"]}})
+
+    codes_entities = [(i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert ("CLASSIFIER_WRONG_SOURCE_TYPE", "sample_type") in codes_entities
+
+
+def test_source_type_appropriateness_is_silent_for_classifier_with_fixed_type() -> None:
+    """A classifier using type: fixed is correct — no issue."""
+    target_model = _minimal_target_model({"sample_type": {"role": "classifier"}})
+    project = _minimal_project({"sample_type": {"type": "fixed", "columns": ["system_id", "sample_type_id"]}})
+
+    codes = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "CLASSIFIER_WRONG_SOURCE_TYPE" not in codes
+
+
+def test_source_type_appropriateness_is_silent_for_classifier_with_sql_type() -> None:
+    """A classifier using type: sql is correct — no issue."""
+    target_model = _minimal_target_model({"sample_type": {"role": "classifier"}})
+    project = _minimal_project({"sample_type": {"type": "sql", "source": "SELECT * FROM sample_types"}})
+
+    codes = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "CLASSIFIER_WRONG_SOURCE_TYPE" not in codes
+
+
+def test_source_type_appropriateness_is_silent_for_non_classifier_entity_type() -> None:
+    """A non-classifier entity may use any source type — rule does not apply."""
+    target_model = _minimal_target_model({"sample": {"role": "fact"}})
+    project = _minimal_project({"sample": {"type": "entity", "columns": ["sample_name"]}})
+
+    codes = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "CLASSIFIER_WRONG_SOURCE_TYPE" not in codes
+
+
+def test_source_type_appropriateness_is_silent_when_classifier_has_no_type() -> None:
+    """If the project entity omits type entirely, emit no issue (cannot determine intent)."""
+    target_model = _minimal_target_model({"sample_type": {"role": "classifier"}})
+    project = _minimal_project({"sample_type": {"columns": ["sample_type_name"]}})  # no type key
+
+    codes = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "CLASSIFIER_WRONG_SOURCE_TYPE" not in codes
+
+
 def test_induced_requirement_transitive_stops_at_present_intermediate() -> None:
     """If X (present) → Y (present) → Z (absent), Z is still reported because Y is present."""
     target_model = _minimal_target_model(
