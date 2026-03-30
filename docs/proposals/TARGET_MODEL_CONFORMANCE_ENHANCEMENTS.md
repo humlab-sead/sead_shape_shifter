@@ -17,12 +17,14 @@
 - [ ] `no_orphan_facts` — fact entities must have a required FK path to at least one required lookup
 - [ ] `semantic_mismatch` — entity name role disagrees with `public_id` role (Phase 4, high false-positive risk)
 - [ ] `schema_aware_append` — appended columns conform to target model column spec
+
 ### Data Conformance Validators
 - [ ] `nullable` — required-not-null columns must have no null values in produced data
 - [ ] `type_compatibility` — column values must be compatible with the declared logical type (integer, string, date, …)
 - [ ] `fk_referential_integrity` — FK values must exist in the parent entity's output
 
 See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) for design rationale and implementation notes.
+
 ### Format Extensions
 - [ ] `format_version` field in `model:` block
 - [ ] `generated: true` flag on `ColumnSpec` (suppress missing-column warnings for auto-generated columns)
@@ -87,7 +89,7 @@ Backend wiring, frontend Check Conformance button, and Conformance panel in Vali
 
 ### Induced Requirements — Implementation Notes
 
-`InducedRequirementConformanceValidator` (key: `induced_requirements`) uses BFS over the required-FK graph:
+`InducedRequirementConformanceValidator` (key: `induced_requirements`) uses breadh-first-searcg (BFS) over the required-FK graph:
 
 - **Seed:** every entity that is present in the project and not globally required
 - **Traversal:** follow `required: true` FK edges; report each absent, non-globally-required target as `MISSING_INDUCED_REQUIRED_ENTITY`; continue BFS through absent nodes for transitive closure
