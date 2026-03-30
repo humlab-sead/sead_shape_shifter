@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 class ForeignKeySpec(BaseModel):
     entity: str
     required: bool = False
+    via: str | None = None  # Bridge entity name for many-to-many relationships
 
 
 class ColumnSpec(BaseModel):

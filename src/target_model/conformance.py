@@ -86,20 +86,84 @@ class PublicIdConformanceValidator(EntityConformanceValidator):
 
 @CONFORMANCE_VALIDATORS.register(key="foreign_key")
 class ForeignKeyConformanceValidator(EntityConformanceValidator):
+    """Validate that required FK targets are present, with support for bridge-mediated relationships.
+    
+    When a FK spec includes 'via: bridge_entity', the validator checks that:
+    1. The bridge entity is present in the project's FK targets
+    2. The ultimate target entity is referenced (direct check; transitive validation deferred)
+    
+    Example: site -> location (via: site_location)
+    - Checks that 'site' has FK to 'site_location'
+    - Final target 'location' presence is advisory (bridge mediates the relationship)
+    """
 
     def validate_entity(self, entity_name: str, entity_spec: EntitySpec, table_cfg: TableConfig) -> list[ConformanceIssue]:
-        issues: list[ConformanceIssue] = []
-        project_targets: set[str] = table_cfg.get_target_facing_foreign_key_targets()
+        """Legacy single-entity validation (no project access for bridge checks)."""
+        # This method is still called by the base class, but we override validate() below
+        # for full bridge-aware logic. Keep this simple for backward compatibility.
+        return []
 
-        for foreign_key in entity_spec.foreign_keys:
-            if foreign_key.required and foreign_key.entity not in project_targets:
-                issues.append(
-                    ConformanceIssue(
-                        code="MISSING_REQUIRED_FOREIGN_KEY_TARGET",
-                        message=f"Entity '{entity_name}' is missing required foreign key target '{foreign_key.entity}'",
-                        entity=entity_name,
+    def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        """Validate FK targets with bridge entity support (requires project access)."""
+        issues: list[ConformanceIssue] = []
+        
+        for entity_name, entity_spec in target_model.entities.items():
+            if not self.guard(target_model, project, entity_name):
+                continue
+            
+            table_cfg: TableConfig = project.get_table(entity_name)
+            project_targets: set[str] = table_cfg.get_target_facing_foreign_key_targets()
+
+            for foreign_key in entity_spec.foreign_keys:
+                if not foreign_key.required:
+                    continue
+                
+                # Direct FK target (no bridge)
+                if not foreign_key.via:
+                    if foreign_key.entity not in project_targets:
+                        issues.append(
+                            ConformanceIssue(
+                                code="MISSING_REQUIRED_FOREIGN_KEY_TARGET",
+                                message=f"Entity '{entity_name}' is missing required foreign key target '{foreign_key.entity}'",
+                                entity=entity_name,
+                            )
+                        )
+                    continue
+                
+                # Bridge-mediated FK target
+                bridge_name = foreign_key.via
+                
+                # Check 1: Bridge entity must be in project's FK targets
+                if bridge_name not in project_targets:
+                    issues.append(
+                        ConformanceIssue(
+                            code="MISSING_BRIDGE_ENTITY",
+                            message=(
+                                f"Entity '{entity_name}' requires foreign key to '{foreign_key.entity}' "
+                                f"via bridge '{bridge_name}', but bridge entity is not present in FK targets"
+                            ),
+                            entity=entity_name,
+                        )
                     )
-                )
+                    continue
+                
+                # Check 2: Bridge entity should have FK to ultimate target (advisory)
+                # This is a softer check - we verify the bridge exists in the project
+                if project.has_table(bridge_name):
+                    bridge_cfg: TableConfig = project.get_table(bridge_name)
+                    bridge_targets: set[str] = bridge_cfg.get_target_facing_foreign_key_targets()
+                    
+                    if foreign_key.entity not in bridge_targets:
+                        issues.append(
+                            ConformanceIssue(
+                                code="BRIDGE_MISSING_TARGET_FK",
+                                message=(
+                                    f"Bridge entity '{bridge_name}' (mediating '{entity_name}' -> '{foreign_key.entity}') "
+                                    f"does not have a foreign key to target entity '{foreign_key.entity}'"
+                                ),
+                                entity=bridge_name,
+                            )
+                        )
 
         return issues
 

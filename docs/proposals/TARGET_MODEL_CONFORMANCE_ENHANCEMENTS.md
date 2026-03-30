@@ -29,7 +29,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [ ] `format_version` field in `model:` block
 - [ ] `generated: true` flag on `ColumnSpec` (suppress missing-column warnings for auto-generated columns)
 - [ ] `allowed_values` / `type: enum` on `ColumnSpec`
-- [ ] Richer FK semantics — join-column override in FK spec
+- [x] Richer FK semantics — bridge entity support via `via` attribute in FK spec
 - [ ] Entity spec inheritance (`extends:`) — defer until 5+ target models exist
 
 ### Test Coverage
@@ -79,7 +79,7 @@ Six conformance validators are registered and active:
 |--------------------------------|-------------------------------------------------------------------------------------------|
 | `required_entity`              | Required entities present in the project                                                  |
 | `public_id`                    | `public_id` present and not unexpected                                                    |
-| `foreign_key`                  | Required FK targets present on entities that are in the project                           |
+| `foreign_key`                  | Required FK targets present on entities that are in the project (with bridge support)     |
 | `required_columns`             | Required columns present                                                                  |
 | `naming_convention`            | `public_id` values end with `naming.public_id_suffix`                                    |
 | `induced_requirements`         | If optional entity X is present and has a required FK to Y, then Y is required (transitively) |
@@ -99,6 +99,58 @@ Backend wiring, frontend Check Conformance button, and Conformance panel in Vali
 **Example:** `abundance` (present) → `taxon` (absent, required FK) → `taxon_group` (absent, required FK). Both `taxon` and `taxon_group` are reported in one pass.
 
 Issue code: `MISSING_INDUCED_REQUIRED_ENTITY`
+
+### Bridge Entity Support — Implementation Notes
+
+`ForeignKeyConformanceValidator` (key: `foreign_key`) now supports many-to-many relationships mediated by bridge entities using the `via` attribute.
+
+**Format:**
+
+```yaml
+# In target model specification
+site:
+  role: lookup
+  foreign_keys:
+    - entity: location        # Ultimate target
+      via: site_location      # Bridge entity mediating the relationship
+      required: true
+```
+
+**Validation Logic:**
+
+When a FK spec includes `via: bridge_entity`, the validator performs two checks:
+
+1. **Bridge presence**: The bridge entity must be present in the source entity's FK targets
+2. **Bridge completeness**: The bridge entity should have a FK to the ultimate target entity
+
+**Issue codes:**
+- `MISSING_BRIDGE_ENTITY` — Bridge entity not present in source entity's FK targets
+- `BRIDGE_MISSING_TARGET_FK` — Bridge entity exists but doesn't have FK to ultimate target
+
+**Example scenario:**
+
+Target model declares: `site → location (via: site_location)`
+
+Project configuration:
+```yaml
+site:
+  foreign_keys:
+    - entity: site_location    # ✅ Bridge present
+      local_keys: [site_id]
+      remote_keys: [site_id]
+
+site_location:
+  foreign_keys:
+    - entity: location         # ✅ Bridge has FK to ultimate target
+      local_keys: [location_id]
+      remote_keys: [location_id]
+```
+
+**Validation outcome:** ✅ Pass — bridge relationship properly configured
+
+**Rationale:**
+
+Many-to-many relationships are common in relational models. The `via` attribute makes bridge patterns explicit in the target model specification, enabling validators to understand transitive FK relationships without requiring deep graph traversal. This documents intent and prevents false positives when the direct FK relationship doesn't exist.
 
 ---
 
