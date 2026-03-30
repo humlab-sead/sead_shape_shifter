@@ -22,24 +22,6 @@ This area is intentionally separate from `src/`, `backend/`, and `data/` while t
 5. Add tests for both happy-path and invalid specifications
 6. Add or refine JSON Schema only if it proves useful for external tooling
 
-## Template Generator Proof of Concept
-
-The Milestone 2 proof of concept lives in:
-
-- `src/target_model_spec/template_generator.py`
-- `scripts/generate_project_template.py`
-
-Example usage:
-
-```bash
-PYTHONPATH=target_models/src /home/roger/source/sead_shape_shifter/.venv/bin/python \
-	target_models/scripts/generate_project_template.py \
-	--spec target_models/specs/sead_v2.yml \
-	--domain dating
-```
-
-This generates a non-runnable `shapeshifter.yml` starter scaffold to stdout. It is intended as an authoring aid, not a complete executable project configuration.
-
 ## Notes
 
 - This is a staging area for parallel iteration on the format and its implementation.

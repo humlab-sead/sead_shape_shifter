@@ -521,7 +521,6 @@
       "type": "array"
     },
     "extra_columns": {
-      "additionalProperties": true,
       "description": "Additional computed columns",
       "title": "Extra Columns",
       "type": "object"

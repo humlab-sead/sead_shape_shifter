@@ -39,7 +39,7 @@ interface Props {
   height?: string
   readonly?: boolean
   validateOnChange?: boolean
-  mode?: 'project' | 'entity'
+  mode?: 'project' | 'entity' | 'target-model'
   validationContext?: ValidationContext
 }
 
