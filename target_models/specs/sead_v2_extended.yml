@@ -1,7 +1,7 @@
 model:
-  name: SEAD Clearinghouse
-  version: 2.0.0
-  description: SEAD archaeological research data model
+  name: SEAD Clearinghouse Extended
+  version: 2.1.0
+  description: SEAD archaeological research data model with enhanced spatial, dating, and metadata coverage
 
 entities:
   location:
@@ -236,6 +236,8 @@ entities:
         required: true
       - entity: sample_type
         required: true
+      - entity: alt_ref_type
+        required: false
 
   sample_description_type:
     role: classifier
@@ -300,6 +302,181 @@ entities:
         nullable: true
     unique_sets:
       - [type_name]
+
+  # PHASE 1 ADDITIONS - Spatial/Coordinate Domain
+
+  dimension:
+    role: classifier
+    required: false
+    description: Measurement dimension type (X, Y, Z, depth, altitude, thickness, etc.)
+    domains: [spatial, physical-properties]
+    target_table: tbl_dimensions
+    public_id: dimension_id
+    identity_columns: [dimension_abbrev]
+    columns:
+      dimension_abbrev:
+        required: true
+        type: string
+        nullable: false
+      dimension_name:
+        required: true
+        type: string
+        nullable: false
+      method_group_id:
+        type: integer
+        nullable: true
+      unit_id:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [dimension_abbrev]
+    foreign_keys:
+      - entity: method_group
+        required: false
+
+  coordinate_method_dimension:
+    role: classifier
+    required: false
+    description: Coordinate measurement method with dimensional constraints
+    domains: [spatial]
+    target_table: tbl_coordinate_method_dimensions
+    public_id: coordinate_method_dimension_id
+    identity_columns: [method_id, dimension_id]
+    columns:
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      limit_upper:
+        type: decimal
+        nullable: true
+      limit_lower:
+        type: decimal
+        nullable: true
+    unique_sets:
+      - [method_id, dimension_id]
+    foreign_keys:
+      - entity: method
+        required: true
+      - entity: dimension
+        required: true
+
+  sample_coordinate:
+    role: fact
+    required: false
+    description: Spatial coordinate measurement for a physical sample
+    domains: [spatial, sample-metadata]
+    target_table: tbl_sample_coordinates
+    public_id: sample_coordinate_id
+    identity_columns: [physical_sample_id, coordinate_method_dimension_id]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      coordinate_method_dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      measurement:
+        required: true
+        type: decimal
+        nullable: false
+      accuracy:
+        type: decimal
+        nullable: true
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: coordinate_method_dimension
+        required: true
+
+  # PHASE 1 ADDITIONS - Sample Metadata Domain
+
+  alt_ref_type:
+    role: classifier
+    required: false
+    description: Type of alternative reference (lab number, field ID, museum number)
+    domains: [sample-metadata]
+    target_table: tbl_alt_ref_types
+    public_id: alt_ref_type_id
+    identity_columns: [alt_ref_type]
+    columns:
+      alt_ref_type:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [alt_ref_type]
+
+  sample_alt_ref:
+    role: fact
+    required: false
+    description: Alternative reference identifier for a sample
+    domains: [sample-metadata]
+    target_table: tbl_sample_alt_refs
+    public_id: sample_alt_ref_id
+    identity_columns: [physical_sample_id, alt_ref_type_id, alt_ref]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      alt_ref_type_id:
+        required: true
+        type: integer
+        nullable: false
+      alt_ref:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [physical_sample_id, alt_ref_type_id, alt_ref]
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: alt_ref_type
+        required: true
+
+  sample_dimension:
+    role: fact
+    required: false
+    description: Physical dimension measurement of a sample
+    domains: [sample-metadata, physical-properties]
+    target_table: tbl_sample_dimensions
+    public_id: sample_dimension_id
+    identity_columns: [physical_sample_id, dimension_id, method_id]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_value:
+        required: true
+        type: decimal
+        nullable: false
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: dimension
+        required: true
+      - entity: method
+        required: true
 
   method:
     role: classifier
@@ -630,6 +807,56 @@ entities:
       - entity: abundance
         required: false
 
+  # PHASE 1 ADDITIONS - Abundance Precision
+
+  identification_level:
+    role: classifier
+    required: false
+    description: Taxonomic identification confidence level (Family, Genus, Species, cf. X)
+    domains: [taxonomy, abundance]
+    target_table: tbl_identification_levels
+    public_id: identification_level_id
+    identity_columns: [identification_level_abbrev]
+    columns:
+      identification_level_abbrev:
+        required: true
+        type: string
+        nullable: false
+      identification_level_name:
+        required: true
+        type: string
+        nullable: false
+      notes:
+        type: string
+        nullable: true
+    unique_sets:
+      - [identification_level_abbrev]
+
+  abundance_ident_level:
+    role: bridge
+    required: false
+    description: Links abundance records to identification confidence levels
+    domains: [taxonomy, abundance]
+    target_table: tbl_abundance_ident_levels
+    public_id: abundance_ident_level_id
+    identity_columns: [abundance_id, identification_level_id]
+    columns:
+      abundance_id:
+        required: true
+        type: integer
+        nullable: false
+      identification_level_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [abundance_id, identification_level_id]
+    foreign_keys:
+      - entity: abundance
+        required: true
+      - entity: identification_level
+        required: true
+
   taxa_tree_master:
     role: classifier
     required: false
@@ -675,6 +902,112 @@ entities:
       - entity: taxa_tree_master
         required: true
 
+  # PHASE 1 ADDITIONS - Dating Domain
+
+  age_type:
+    role: classifier
+    required: false
+    description: Chronological notation system (AD, BC, BP, cal BP)
+    domains: [dating]
+    target_table: tbl_age_types
+    public_id: age_type_id
+    identity_columns: [age_type]
+    columns:
+      age_type:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [age_type]
+
+  relative_age_type:
+    role: classifier
+    required: false
+    description: Type of relative age system (archaeological period, geological epoch)
+    domains: [dating]
+    target_table: tbl_relative_age_types
+    public_id: relative_age_type_id
+    identity_columns: [age_type]
+    columns:
+      age_type:
+        required: true
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [age_type]
+
+  chronology:
+    role: lookup
+    required: false
+    description: Chronological framework or dating system
+    domains: [dating]
+    target_table: tbl_chronologies
+    public_id: chronology_id
+    identity_columns: [chronology_name]
+    columns:
+      chronology_name:
+        required: true
+        type: string
+        nullable: false
+      location_id:
+        type: integer
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+    unique_sets:
+      - [chronology_name]
+    foreign_keys:
+      - entity: location
+        required: false
+
+  dating_uncertainty:
+    role: classifier
+    required: false
+    description: Uncertainty qualifiers for dating results
+    domains: [dating]
+    target_table: tbl_dating_uncertainty
+    public_id: dating_uncertainty_id
+    identity_columns: [uncertainty]
+    columns:
+      uncertainty:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [uncertainty]
+
+  dating_material:
+    role: lookup
+    required: false
+    description: Material dated in geochronological analysis
+    domains: [dating]
+    target_table: tbl_dating_material
+    public_id: dating_material_id
+    identity_columns: [dating_material_name]
+    columns:
+      dating_material_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+      abundance_element_id:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [dating_material_name]
+    foreign_keys:
+      - entity: abundance_element
+        required: false
+
   relative_ages:
     role: lookup
     required: false
@@ -715,6 +1048,11 @@ entities:
       abbreviation:
         type: string
         nullable: true
+    foreign_keys:
+      - entity: relative_age_type
+        required: false
+      - entity: location
+        required: false
 
   relative_dating:
     role: fact
@@ -745,6 +1083,10 @@ entities:
       - entity: analysis_entity
         required: true
       - entity: relative_ages
+        required: false
+      - entity: method
+        required: false
+      - entity: dating_uncertainty
         required: false
 
   geochronology:
@@ -788,6 +1130,8 @@ entities:
       - entity: analysis_entity
         required: true
       - entity: dating_lab
+        required: false
+      - entity: dating_uncertainty
         required: false
 
   dating_lab:
