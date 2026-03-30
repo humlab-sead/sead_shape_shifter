@@ -86,9 +86,33 @@ entities:
     foreign_keys:
       - entity: location
         required: true
+        via: site_location
       - entity: site_type
         required: false
 
+  site_location:
+    role: bridge
+    required: true
+    description: Join entity connecting sites to locations, allowing for many-to-many relationships between the two.
+    domains: [core, spatial]
+    target_table: tbl_site_locations
+    public_id: site_location_id
+    identity_columns: [site_id, location_id]
+    columns:
+      site_id:
+        required: true
+        type: integer
+        nullable: false
+      location_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: site
+        required: true
+      - entity: location
+        required: true
+        
   site_type_group:
     role: classifier
     required: false
