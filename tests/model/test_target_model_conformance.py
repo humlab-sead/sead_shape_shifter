@@ -7,10 +7,10 @@ from src.model import ShapeShiftProject, TableConfig
 from src.target_model.conformance import TargetModelConformanceValidator
 from src.target_model.models import TargetModel
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-SPEC_PATH = ROOT_DIR / "target_models" / "specs" / "sead_v2.yml"
-EXAMPLES_DIR = ROOT_DIR / "target_models" / "examples"
-REAL_PROJECTS_DIR = ROOT_DIR / "tests" / "test_data" / "projects"
+TEST_DATA_DIR = Path(__file__).resolve().parent.parent / "test_data"
+SPEC_PATH = TEST_DATA_DIR / "specs" / "sead_v2.yml"
+EXAMPLES_DIR = TEST_DATA_DIR / "examples"
+REAL_PROJECTS_DIR = TEST_DATA_DIR / "projects"
 
 
 def load_target_model() -> TargetModel:
@@ -241,10 +241,12 @@ def test_core_legacy_mode_matches_existing_fixture() -> None:
 
     assert sorted(issue_pairs(target_model, project)) == sorted(
         [
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
+            ("MISSING_BRIDGE_ENTITY", "site"),
             ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
             ("MISSING_REQUIRED_COLUMN", "method"),
             ("MISSING_REQUIRED_COLUMN", "sample_type"),
+            ("MISSING_REQUIRED_ENTITY", "site_location"),
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
         ]
     )
 
@@ -327,14 +329,14 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
 
     assert sorted(issue_pairs(target_model, project)) == sorted(
         [
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "site"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
-            ("MISSING_REQUIRED_COLUMN", "sample_type"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
-            ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
+            ("MISSING_BRIDGE_ENTITY", "site"),
             ("MISSING_INDUCED_REQUIRED_ENTITY", "taxa_tree_master"),
+            ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
+            ("MISSING_REQUIRED_COLUMN", "sample_type"),
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
         ]
     )
 
@@ -350,17 +352,30 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
     issue_summary = {name: Counter(code for code, _entity in issue_pairs(target_model, project)) for name, project in corpus.items()}
 
     assert issue_summary == {
-        "sead_arbodat_core": Counter({"MISSING_REQUIRED_COLUMN": 3, "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 1}),
+        "sead_arbodat_core": Counter(
+            {
+                "MISSING_BRIDGE_ENTITY": 1,
+                "MISSING_REQUIRED_COLUMN": 3,
+                "MISSING_REQUIRED_ENTITY": 1,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 1,
+            }
+        ),
         "sead_missing_sample_group": Counter(
             {
+                "MISSING_BRIDGE_ENTITY": 1,
                 "MISSING_REQUIRED_COLUMN": 5,
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
-                "MISSING_REQUIRED_ENTITY": 1,
+                "MISSING_REQUIRED_ENTITY": 2,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 2,
                 "UNEXPECTED_PUBLIC_ID": 1,
             }
         ),
         "arbodat_full": Counter(
-            {"MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5, "MISSING_REQUIRED_COLUMN": 2, "MISSING_INDUCED_REQUIRED_ENTITY": 1}
+            {
+                "MISSING_BRIDGE_ENTITY": 1,
+                "MISSING_INDUCED_REQUIRED_ENTITY": 1,
+                "MISSING_REQUIRED_COLUMN": 2,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 4,
+            }
         ),
     }
 
