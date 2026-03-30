@@ -655,6 +655,33 @@ python -m src.shapeshift output.xlsx \
 
 Preview catches many mistakes faster than a full execute run. Check row shape, data types, and dependency joins while you edit.
 
+### Declare Foreign Keys Explicitly
+
+Even when columns are inherited from parent entities, always declare foreign key relationships in the `foreign_keys` section:
+
+```yaml
+sample_group:
+  type: entity
+  source: feature
+  keys: [site_id, Projekt, Befu]
+  foreign_keys:
+    - entity: site
+      local_keys: [site_id]
+      remote_keys: [site_id]
+    - entity: method
+      local_keys: [method_id]
+      remote_keys: [method_id]
+```
+
+**Why declare FKs explicitly?**
+
+- **Documentation** - Makes entity relationships clear to anyone reading the configuration
+- **Conformance validation** - Satisfies target model requirements and avoids validation errors
+- **Referential integrity** - Enables constraint validation and relationship checking
+- **Future-proofing** - Supports advanced features like cascade operations and graph analysis
+
+**Self-referential FKs are fine** - When a column already exists via inheritance (e.g., `site_id` from parent `feature`), declaring a FK with matching local and remote keys is a documentation no-op but provides validation benefits.
+
 ### Use Backups Before Risky Changes
 
 Before major YAML refactors or bulk auto-fix operations:
