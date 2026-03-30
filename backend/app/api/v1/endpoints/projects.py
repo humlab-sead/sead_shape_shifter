@@ -590,12 +590,18 @@ def _resolve_target_model_path(project: Project, project_name: str) -> Path:
     raw = str(target_model).strip()
     rel_path = raw[len("@include:") :].strip() if raw.startswith("@include:") else raw
 
-    # Resolve the file path relative to APPLICATION_ROOT (same base as config directives)
-    target_path = (settings.APPLICATION_ROOT / rel_path).resolve()
-
     # Security: must stay inside the project directory
     path_name = ProjectNameMapper.to_path(project_name)
     project_dir = (settings.PROJECTS_DIR / path_name).resolve()
+
+    # Resolve the file path: simple filenames are project-local, paths with directories use APPLICATION_ROOT
+    if "/" not in rel_path and "\\" not in rel_path:
+        # Simple filename - resolve relative to project directory
+        target_path = (project_dir / rel_path).resolve()
+    else:
+        # Path with directories - resolve relative to APPLICATION_ROOT (for shared specs)
+        target_path = (settings.APPLICATION_ROOT / rel_path).resolve()
+
     if not target_path.is_relative_to(project_dir):
         raise BaseAPIException(
             f"Target model file '{rel_path}' is outside the project directory and cannot be edited here",
