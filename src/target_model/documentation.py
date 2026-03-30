@@ -80,7 +80,7 @@ class TargetModelDocumentGenerator:
                 by_domain[domain].append(entity_data)
 
         # Sort entities within each domain
-        for domain in by_domain:
+        for domain in by_domain:  # type: ignore
             by_domain[domain].sort(key=lambda x: x["name"])
 
         # Calculate statistics
@@ -241,12 +241,11 @@ class TargetModelDocumentGenerator:
         """
         if format == DocumentFormat.HTML:
             return self.generate_html()
-        elif format == DocumentFormat.MARKDOWN:
+        if format == DocumentFormat.MARKDOWN:
             return self.generate_markdown()
-        elif format == DocumentFormat.EXCEL:
+        if format == DocumentFormat.EXCEL:
             return self.generate_excel()
-        else:
-            raise ValueError(f"Unsupported format: {format}")
+        raise ValueError(f"Unsupported format: {format}")
 
     def write_to_file(self, format: DocumentFormat, output_path: Path) -> None:  # pylint: disable=redefined-builtin
         """Generate documentation and write to file.
