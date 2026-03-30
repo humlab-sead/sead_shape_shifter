@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Body, File, Query, UploadFile, status
+from fastapi.responses import Response
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -12,12 +13,14 @@ from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
 from backend.app.models.validation import ValidationResult
+from backend.app.services.documentation_service import DocumentationService, get_documentation_service
 from backend.app.services.layout_sidecar_manager import LayoutSidecarManager, get_layout_sidecar_manager
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from backend.app.services.yaml_service import YamlService, get_yaml_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.exceptions import BadRequestError, BaseAPIException, NotFoundError
+from src.target_model import DocumentFormat
 
 router = APIRouter()
 
@@ -672,6 +675,67 @@ async def update_project_target_model_yaml(name: str, request: RawYamlUpdateRequ
     updated_project: Project = project_service.load_project(name, force_reload=True)
     logger.info(f"Updated target model YAML for project '{name}'")
     return updated_project
+
+
+@router.get("/projects/{name}/target-model-docs")
+@handle_endpoint_errors
+async def download_target_model_docs(
+    name: str, format: str = Query("html", description="Documentation format: html, markdown, or excel")
+) -> Response:
+    """
+    Generate and download target model documentation for a project.
+
+    Generates human-readable documentation from the project's target_model specification
+    with project context (which entities are actually used).
+
+    Supported formats:
+    - html: Interactive web page with entity cards, search, and visual indicators
+    - markdown: Static documentation for GitHub/wikis
+    - excel: Spreadsheet with 3 sheets (Entities, Columns, Relationships)
+
+    Args:
+        name: Project name
+        format: Output format (default: html)
+
+    Returns:
+        Documentation file as downloadable response
+
+    Raises:
+        NotFoundError: If project has no target_model configured
+        BadRequestError: If format is invalid or target_model is malformed
+    """
+    documentation_service: DocumentationService = get_documentation_service()
+
+    # Validate and normalize format
+    format_lower: str = format.lower()
+    try:
+        doc_format = DocumentFormat(format_lower)
+    except ValueError:
+        raise BadRequestError(f"Invalid format '{format}'. Supported: html, markdown, excel")
+
+    # Generate documentation
+    content: bytes = documentation_service.generate_target_model_docs(name, doc_format)
+
+    # Determine content type and file extension
+    content_types: dict[DocumentFormat, str] = {
+        DocumentFormat.HTML: "text/html",
+        DocumentFormat.MARKDOWN: "text/markdown",
+        DocumentFormat.EXCEL: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }
+    extensions: dict[DocumentFormat, str] = {
+        DocumentFormat.HTML: "html",
+        DocumentFormat.MARKDOWN: "md",
+        DocumentFormat.EXCEL: "xlsx",
+    }
+
+    media_type: str = content_types[doc_format]
+    filename: str = f"{name}_target_model.{extensions[doc_format]}"
+
+    logger.info(f"Serving {doc_format.value} target model documentation for project '{name}' ({len(content)} bytes)")
+
+    return Response(
+        content=content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
 
 
 # Layout Management Models

@@ -30,6 +30,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [ ] `generated: true` flag on `ColumnSpec` (suppress missing-column warnings for auto-generated columns)
 - [ ] `allowed_values` / `type: enum` on `ColumnSpec`
 - [x] Richer FK semantics — bridge entity support via `via` attribute in FK spec
+- [ ] Advanced FK validation modes — `direct`, `transitive`, explicit path constraints
 - [ ] Entity spec inheritance (`extends:`) — defer until 5+ target models exist
 
 ### Test Coverage
@@ -48,6 +49,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [x] Monaco editor schema support for target model YAML files — autocomplete and IntelliSense using `targetModelSchema.json`
 
 ### Tooling / Ecosystem
+- [x] Target model documentation downloads — Project-aware HTML/Markdown/Excel documentation accessible from UX
 - [ ] Target model diff report (version upgrade planning)
 - [ ] Remote target model references (SSRF-safe, with caching)
 - [ ] Curated target model registry (bundled YAML short-name resolution)
@@ -151,6 +153,78 @@ site_location:
 **Rationale:**
 
 Many-to-many relationships are common in relational models. The `via` attribute makes bridge patterns explicit in the target model specification, enabling validators to understand transitive FK relationships without requiring deep graph traversal. This documents intent and prevents false positives when the direct FK relationship doesn't exist.
+
+### Advanced FK Validation Modes — Future Enhancement
+
+The current bridge entity support (`via` attribute) handles the most common many-to-many pattern. Future enhancements could add more flexible FK validation modes to handle complex relationship patterns.
+
+**Proposed FK validation mode attributes:**
+
+```yaml
+# Mode 1: Direct FK only (no transitive relationships allowed)
+entity_a:
+  foreign_keys:
+    - entity: entity_b
+      direct: true          # Must be a direct FK, fail if only transitive path exists
+      required: true
+
+# Mode 2: Bridge-mediated (current implementation)
+entity_a:
+  foreign_keys:
+    - entity: entity_c
+      via: bridge_entity    # Must go through specific bridge entity
+      required: true
+
+# Mode 3: Transitive FK (any path allowed)
+entity_a:
+  foreign_keys:
+    - entity: entity_d
+      transitive: true      # Can be satisfied by any FK chain (BFS/DFS walk)
+      required: true
+      max_depth: 3          # Optional: limit transitive search depth
+
+# Mode 4: Explicit path constraint
+entity_a:
+  foreign_keys:
+    - entity: entity_e
+      path: [intermediary_1, intermediary_2]  # Must follow specific FK chain
+      required: true
+```
+
+**Validation strategies:**
+
+1. **Direct mode** (`direct: true`)
+   - Default if no mode specified
+   - Check that target entity appears in source's immediate FK targets
+   - Reject transitive paths
+
+2. **Bridge mode** (`via: bridge_name`)
+   - Current implementation ✅
+   - Validate bridge presence in direct FK targets
+   - Validate bridge has FK to ultimate target
+
+3. **Transitive mode** (`transitive: true`)
+   - BFS/DFS graph walk through FK graph
+   - Accept any valid FK chain from source to target
+   - Optional `max_depth` to prevent infinite loops
+   - Performance consideration: may require full FK graph construction
+
+4. **Explicit path mode** (`path: [...]`)
+   - Validate that each entity in path has FK to next entity
+   - Strictest validation: only accept specified route
+   - Use case: documenting canonical FK traversal paths
+
+**Implementation considerations:**
+
+- **Mutual exclusivity**: Only one mode per FK spec (enforced by Pydantic validators)
+- **Default behavior**: No mode specified = `direct: true` (backward compatible)
+- **Performance**: Transitive and path modes require FK graph access (may need `ProcessState` or equivalent)
+- **False positive risk**: Transitive mode may be too permissive; use with caution
+
+**Deferred until:**
+- Real-world use cases demonstrate need for modes beyond `via`
+- FK graph structure is stable and available at validation time
+- Performance implications of graph traversal are analyzed
 
 ---
 
@@ -601,6 +675,56 @@ A registry of community-contributed target models distributed alongside Shape Sh
 - Museum specimen model
 
 **Approach:** Bundled YAML files in `target_models/specs/`, referenced by short name without a path. The mapper resolves short names to the bundled file before resolving `@include:`.
+
+### Target Model Documentation Downloads
+
+**Status:** ✅ **COMPLETE** (January 2025)
+
+Generate human-readable documentation for target models in HTML, Markdown, or Excel formats, with optional project context showing which entities are actually used vs. just defined in the specification.
+
+**Implementation:**
+
+1. **Core Generator** (`src/target_model/documentation.py`)
+   - `TargetModelDocumentGenerator` class accepting `target_model: TargetModel` and optional `project: ShapeShiftProject`
+   - Project-aware mode: marks entities as "used" or "unused", displays usage statistics, warns about missing required entities
+   - Standalone mode (project=None): generates spec-only documentation without usage context
+   - Format support: HTML (interactive with CSS), Markdown (readable), Excel (tabular with sheets per entity)
+
+2. **Templates** (`src/target_model/templates/`)
+   - Jinja2 templates for HTML and Markdown with conditional project context blocks
+   - HTML: Project header, usage badges (green "✓ Used", gray "Unused"), stats cards, responsive layout
+   - Markdown: Project Context section with warnings for missing required entities
+
+3. **Backend Service** (`backend/app/services/documentation_service.py`)
+   - `DocumentationService.generate_target_model_docs(project_name, format)` → bytes
+   - Loads project, resolves target model, creates generator with project context
+   - Error handling: NotFoundError if no target model, BadRequestError if malformed
+
+4. **API Endpoint** (`GET /api/v1/projects/{name}/target-model-docs?format={html|markdown|excel}`)
+   - Returns binary blob with appropriate content-type and Content-Disposition header
+   - Format query parameter validated against DocumentFormat enum
+
+5. **Frontend Integration** (`frontend/src/views/ProjectDetailView.vue`)
+   - Download button in Target Model tab header with format selector dropdown
+   - Three format options: HTML Interactive, Markdown, Excel Spreadsheet
+   - Blob download pattern with temporary URL creation and cleanup
+
+6. **CLI Script** (`scripts/generate_target_model_docs.py`)
+   - Refactored to use Core generator class (removed ~280 lines of inline templates)
+   - Supports standalone usage: `python scripts/generate_target_model_docs.py <yaml> --format all`
+   - Works without project context for spec-only documentation
+
+**Use Cases:**
+- **Stakeholder documentation**: Download readable guides for non-technical users
+- **Project planning**: See which entities are used vs. unused in current configuration
+- **Quality assurance**: Identify missing required entities before data submission
+- **Version comparison**: Generate docs for different target model versions to compare
+
+**Benefits:**
+- First-class UX feature accessible from Target Model tab (no terminal required)
+- Project-aware insights show configuration gaps
+- Multiple formats support different consumer needs (interactive HTML, portable Markdown, Excel for analysis)
+- Reusable Core class enables both API and CLI usage
 
 ---
 
