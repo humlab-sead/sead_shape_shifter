@@ -107,6 +107,23 @@
           "default": null,
           "description": "Default source entity name",
           "title": "Default Entity"
+        },
+        "target_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Target model spec: inline dict or @include: path string",
+          "title": "Target Model"
         }
       },
       "required": [
