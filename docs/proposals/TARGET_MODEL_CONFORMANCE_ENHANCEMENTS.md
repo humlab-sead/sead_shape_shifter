@@ -37,7 +37,7 @@
 - [ ] Rule disabling via `options.validation.disabled_rules`
 - [ ] `GlobalConformanceValidator` base type for multi-entity checks
 - [ ] `TargetModelService` — extract loading/caching when remote refs become real
-- [ ] Target model YAML editor tab — raw YAML edit tab for the project's **project-local** target model file alongside the project YAML tab
+- [x] Target model YAML editor tab — raw YAML edit tab for the project's **project-local** target model file alongside the project YAML tab
 
 ### Tooling / Ecosystem
 - [ ] Target model diff report (version upgrade planning)
