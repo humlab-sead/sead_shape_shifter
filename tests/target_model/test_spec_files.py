@@ -1,13 +1,13 @@
 from pathlib import Path
-from re import S
 
 import yaml
 
 from src.target_model.models import TargetModel
 from src.target_model.spec_validator import TargetModelSpecValidator
 
-EXAMPLES_DIR = Path( "tests/test_data/examples")
+EXAMPLES_DIR = Path("tests/test_data/examples")
 SPECS_DIR = Path("tests/test_data/specs")
+
 
 def test_sead_v2_spec_loads_and_validates() -> None:
     spec_path: Path = SPECS_DIR / "sead_v2.yml"
@@ -23,9 +23,7 @@ def test_sead_v2_spec_loads_and_validates() -> None:
     assert {"taxa_tree_master", "taxa_common_names"}.issubset(target_model.entities)
     assert {"relative_ages", "relative_dating", "geochronology", "dating_lab"}.issubset(target_model.entities)
     assert {"method_group", "contact", "contact_type"}.issubset(target_model.entities)
-    assert {"project", "feature_type", "feature", "sample_description_type", "sample_description"}.issubset(
-        target_model.entities
-    )
+    assert {"project", "feature_type", "feature", "sample_description_type", "sample_description"}.issubset(target_model.entities)
     assert {"site_type_group", "site_type", "modification_type"}.issubset(target_model.entities)
     assert {"citation", "master_dataset", "dataset_contact", "sample_feature"}.issubset(target_model.entities)
     assert issues == []

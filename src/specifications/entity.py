@@ -169,7 +169,7 @@ class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
 @ENTITY_TYPE_SPECIFICATION.register(key="merged")
 class MergedEntityFieldsSpecification(ProjectSpecification):
     """Validates that fields are present and valid for a merged entity.
-    
+
     Note: Merged entities have different validation rules than standard entities:
     - keys/columns are defined per branch, not at entity level
     - branches field is required and validated separately
@@ -229,12 +229,9 @@ class MergedEntityFieldsSpecification(ProjectSpecification):
 
             branch_name = branch_cfg.get("name")
             branch_source = branch_cfg.get("source")
-            branch_keys = branch_cfg.get("keys", [])
 
             # Validate required fields
-            self.check_fields(
-                entity_name, ["name", "source"], "of_type/E", expected_types=(str,), target_cfg=branch_cfg, message=branch_id
-            )
+            self.check_fields(entity_name, ["name", "source"], "of_type/E", expected_types=(str,), target_cfg=branch_cfg, message=branch_id)
 
             if not branch_name:
                 self.add_error(f"{branch_id}: 'name' field is required", entity=entity_name, field="branches")

@@ -1,9 +1,9 @@
 """Integration test for merged entity processing."""
 
-import pandas as pd
 import pytest
 
 from src.model import ShapeShiftProject
+from src.specifications.entity import MergedEntityFieldsSpecification
 
 
 @pytest.mark.asyncio
@@ -52,7 +52,7 @@ async def test_merged_entity_basic_processing():
     analysis_entity = project.get_table("analysis_entity")
     assert analysis_entity.type == "merged"
     assert len(analysis_entity.branches) == 2
-    
+
     # Verify dependencies include branch sources
     assert "abundance" in analysis_entity.depends_on
     assert "_analysis_entity_relative_dating" in analysis_entity.depends_on
@@ -60,7 +60,7 @@ async def test_merged_entity_basic_processing():
     # Verify get_sub_table_configs yields branch configs
     sub_configs = list(analysis_entity.get_sub_table_configs())
     assert len(sub_configs) == 2  # Two branches, no base config
-    
+
     # Check that branch configs have correct metadata
     branch_names = {cfg.entity_cfg.get("_branch_name") for cfg in sub_configs}
     assert "abundance" in branch_names
@@ -70,7 +70,6 @@ async def test_merged_entity_basic_processing():
 @pytest.mark.asyncio
 async def test_merged_entity_validation():
     """Test that merged entity validation catches configuration errors."""
-    from src.specifications.entity import MergedEntityFieldsSpecification
 
     # Invalid: missing public_id
     config_missing_public_id = {
@@ -156,7 +155,7 @@ def test_merged_entity_dependency_tracking():
 
 def test_merged_entity_not_in_dependent_entities():
     """Test that merged entities don't have dependent entities via depends_on.
-    
+
     Note: Merged entities can still be FK targets for other entities, but they
     don't appear in dependent_entities of their branch sources because they
     don't have a depends_on reference - they have branches references instead.

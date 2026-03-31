@@ -221,8 +221,5 @@ def test_validation_detects_merged_errors(tmp_path, monkeypatch, reset_services)
     elif "results" in validation_result:
         # Check if any result has errors
         results = validation_result["results"]
-        has_public_id_error = any(
-            "public_id" in str(r.get("errors", [])).lower() for r in results
-        )
+        has_public_id_error = any("public_id" in str(r.get("errors", [])).lower() for r in results)
         assert has_public_id_error
-

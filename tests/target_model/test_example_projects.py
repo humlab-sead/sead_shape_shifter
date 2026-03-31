@@ -1,14 +1,12 @@
 from pathlib import Path
 
-import pytest
 import yaml
 
 from src.model import ShapeShiftProject
 from src.target_model.conformance import TargetModelConformanceValidator
 from src.target_model.models import TargetModel
 
-
-EXAMPLES_DIR = Path( "tests/test_data/examples")
+EXAMPLES_DIR = Path("tests/test_data/examples")
 SPECS_DIR = Path("tests/test_data/specs")
 
 
@@ -115,9 +113,7 @@ class TestExampleProjectConformance:
         issues = TargetModelConformanceValidator().validate(target_model, project)
 
         missing = [i for i in issues if i.code == "MISSING_REQUIRED_ENTITY" and i.entity == "sample_group"]
-        assert missing, (
-            f"Expected MISSING_REQUIRED_ENTITY for 'sample_group', got: {[i.code for i in issues]}"
-        )
+        assert missing, f"Expected MISSING_REQUIRED_ENTITY for 'sample_group', got: {[i.code for i in issues]}"
 
     def test_all_example_projects_run_without_exception(self) -> None:
         """All example YAMLs should run through the conformance engine without crashing."""
@@ -143,7 +139,7 @@ class TestNamingConventionConformance:
         return ShapeShiftProject(cfg=cfg, filename="test.yml")
 
     def _make_target_model(self, entity_specs: dict, suffix: str = "_id") -> "TargetModel":
-        import yaml as _yaml
+
         from src.target_model.models import TargetModel as _TM
 
         raw = {

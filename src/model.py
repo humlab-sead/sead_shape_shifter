@@ -514,7 +514,7 @@ class TableConfig:
     @cached_property
     def branches(self) -> list[dict[str, Any]]:
         """Get branch configurations for merged parent entities.
-        
+
         Each branch defines a source entity that contributes rows to the merged parent.
         Returns empty list if entity is not type='merged'.
         """
@@ -953,7 +953,7 @@ class TableConfig:
             for idx, branch_data in enumerate(self.branches):
                 branch_name: str = branch_data.get("name", f"branch_{idx}")
                 branch_source: str | None = branch_data.get("source")
-                
+
                 # Skip if source is not defined (validation should catch this)
                 if not branch_source:
                     continue
@@ -962,10 +962,10 @@ class TableConfig:
 
                 # Create a temporary config for this branch that references the source entity
                 branch_entity_name: str = f"{self.entity_name}__branch_{branch_name}"
-                
+
                 # Get the source entity's configuration
                 source_cfg: dict[str, Any] = self.entities_cfg.get(branch_source, {})
-                
+
                 # Create branch config that includes metadata for processing
                 branch_cfg: dict[str, Any] = {
                     "type": source_cfg.get("type", "entity"),
