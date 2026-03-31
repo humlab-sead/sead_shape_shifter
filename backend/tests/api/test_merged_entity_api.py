@@ -223,3 +223,16 @@ def test_validation_detects_merged_errors(tmp_path, monkeypatch, reset_services)
         results = validation_result["results"]
         has_public_id_error = any("public_id" in str(r.get("errors", [])).lower() for r in results)
         assert has_public_id_error
+
+
+def test_delete_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project):
+    """Test deleting a merged entity via API."""
+    monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+    client.post("/api/v1/projects", json=merged_entity_project)
+
+    response = client.delete("/api/v1/projects/test_merged_api/entities/analysis_entity")
+    assert response.status_code == 204
+
+    get_response = client.get("/api/v1/projects/test_merged_api/entities/analysis_entity")
+    assert get_response.status_code == 404

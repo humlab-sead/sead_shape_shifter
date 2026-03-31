@@ -663,7 +663,7 @@ All design decisions have been confirmed and are ready for implementation:
 - [x] Preview Service: Support preview of individual branch sources (via existing generic entity preview endpoint, surfaced in merged preview UI)
 - [x] Preview Service: Support merged result preview with branch toggle
 - [ ] Preview Service: Cache merged previews (invalidate on branch source changes)
-- [ ] Dependency Service: Enhanced topological sort display
+- [ ] **ONHOLD** Dependency Service: Enhanced topological sort display
 - [ ] Conversion support for existing append-based patterns (optional)
 
 #### Testing — **PHASE 1 (core) + PHASE 2 (comprehensive)**
@@ -712,20 +712,20 @@ All design decisions have been confirmed and are ready for implementation:
 - [x] Test error responses for invalid merged entity configurations (test_validation_detects_merged_errors)
 
 **Backend Tests (`backend/tests/`):** [**Phase 2**]
-- [ ] Test API endpoint for deleting merged entity
+- [x] Test API endpoint for deleting merged entity
 - [ ] Test preview service with merged entities (branch toggle)
 - [ ] Test dependency service enhanced visualization
 
 **Frontend Tests (`frontend/tests/`):** [**Phase 2**]**
 - [x] Test BranchEditor component rendering
-- [ ] Test add/remove/reorder branch operations
-- [ ] Test branch inline editing
-- [ ] Test source entity autocomplete
-- [ ] Test keys multi-select
-- [ ] Test merged entity type selection in entity editor
+- [x] Test add/remove/reorder branch operations
+- [x] Test branch inline editing
+- [x] Test source entity autocomplete
+- [x] Test keys multi-select
+- [x] Test merged entity type selection in entity editor
 - [ ] Test validation error display per branch
-- [ ] Test dependency graph rendering with merged entities
-- [ ] Test preview panel with branch/merged toggle
+- [x] Test dependency graph rendering with merged entities
+- [x] Test preview panel with branch/merged toggle
 
 **Integration Tests:** [**Phase 2**]**
 - [ ] Test end-to-end merged entity creation via UI
