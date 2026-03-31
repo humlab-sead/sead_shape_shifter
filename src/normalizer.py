@@ -115,6 +115,11 @@ class ShapeShifter:
             # Apply column renaming for append items (align_by_position or column_mapping)
             # Pass parent's columns for align_by_position
             sub_data = sub_table_cfg.apply_column_renaming(sub_data, parent_columns=table_cfg.columns)
+
+            # Special processing for merged entity branches
+            if table_cfg.type == "merged":
+                sub_data = self._process_merged_branch(entity, table_cfg, sub_table_cfg, sub_data)
+
             dfs.append(sub_data)
 
         # Concatenate all dataframes while excluding all-NA columns from dtype inference.
@@ -133,6 +138,58 @@ class ShapeShifter:
         )
 
         return data
+
+    def _process_merged_branch(
+        self, entity: str, table_cfg: TableConfig, sub_table_cfg: TableConfig, sub_data: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Process a single branch for a merged entity.
+
+        Adds:
+        - Branch discriminator column (e.g., 'analysis_entity_branch')
+        - FK propagation columns (sparse, nullable Int64 FKs)
+
+        Args:
+            entity: Name of the merged entity
+            table_cfg: Configuration for the merged entity
+            sub_table_cfg: Configuration for this specific branch
+            sub_data: DataFrame containing branch data
+
+        Returns:
+            DataFrame with added columns for merging
+        """
+        # Extract branch metadata from sub_table_cfg
+        branch_name: str = sub_table_cfg.entity_cfg.get("_branch_name", "unknown")
+        branch_source: str = sub_table_cfg.entity_cfg.get("source")
+
+        # 1. Add branch discriminator column
+        discriminator_column: str = f"{entity}_branch"
+        sub_data[discriminator_column] = branch_name
+
+        # 2. Add FK propagation columns (sparse FKs for all branches)
+        # Each branch gets one FK column per branch source's public_id
+        # Only the current branch's FK column is populated; others are NULL
+        for branch_cfg in table_cfg.branches:
+            branch_src: str = branch_cfg.get("source")
+            
+            # Get source entity's public_id for FK column name
+            source_entity_cfg: dict = self.project.cfg.get("entities", {}).get(branch_src, {})
+            source_public_id: str | None = source_entity_cfg.get("public_id")
+
+            if source_public_id:
+                # Check if branch source data has the public_id column
+                if source_public_id in sub_data.columns:
+                    fk_column_name: str = source_public_id
+
+                    # If this is the current branch's source, copy the FK value
+                    if branch_src == branch_source:
+                        # Copy FK value from source public_id, ensure Int64 type
+                        sub_data[fk_column_name] = sub_data[source_public_id].astype("Int64")
+                    else:
+                        # Other branches' FKs are NULL for this row
+                        sub_data[fk_column_name] = pd.NA
+                        sub_data[fk_column_name] = sub_data[fk_column_name].astype("Int64")
+
+        return sub_data
 
     async def normalize(self) -> Self:
         """Extract all configured entities and store them."""

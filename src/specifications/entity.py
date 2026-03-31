@@ -166,6 +166,120 @@ class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
         return not self.has_errors()
 
 
+@ENTITY_TYPE_SPECIFICATION.register(key="merged")
+class MergedEntityFieldsSpecification(ProjectSpecification):
+    """Validates that fields are present and valid for a merged entity.
+    
+    Note: Merged entities have different validation rules than standard entities:
+    - keys/columns are defined per branch, not at entity level
+    - branches field is required and validated separately
+    - public_id is required since merged entities often act as FK targets
+    """
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that merged entity configuration is valid."""
+        self.clear()
+
+        table: TableConfig = self.get_entity(entity_name)
+
+        if table.type != "merged":
+            self.add_error(f"Entity '{entity_name}' is not of type 'merged'", entity=entity_name, field="type")
+            return not self.has_errors()
+
+        entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
+
+        # Check for public_id (required for merged entities since they act as FK targets)
+        public_id = entity_cfg.get("public_id") or entity_cfg.get("surrogate_id")
+        if not public_id:
+            self.add_error(
+                f"Entity '{entity_name}': Field 'public_id' is required for merged entities.",
+                entity=entity_name,
+                field="public_id",
+            )
+
+        # Validate branches field exists and is not empty
+        self.check_fields(entity_name, ["branches"], "exists/E")
+
+        branches_raw = entity_cfg.get("branches")
+        if not branches_raw:
+            self.add_error(
+                f"Entity '{entity_name}': merged entities must define at least one branch in 'branches' field.",
+                entity=entity_name,
+                field="branches",
+            )
+            return not self.has_errors()
+
+        # Normalize branches to list
+        branches: list[dict[str, Any]] = branches_raw if isinstance(branches_raw, list) else [branches_raw]
+
+        # Validate branches is a list
+        self.check_fields(entity_name, ["branches"], "of_type/E", expected_types=(list,))
+
+        # Track branch names for uniqueness validation
+        branch_names: set[str] = set()
+
+        # Validate each branch configuration
+        for idx, branch_cfg in enumerate(branches):
+            branch_id = f"Entity '{entity_name}', branch #{idx + 1}"
+
+            # Validate branch is a dict
+            if not isinstance(branch_cfg, dict):
+                self.add_error(f"{branch_id}: branch configuration must be a dictionary", entity=entity_name, field="branches")
+                continue
+
+            branch_name = branch_cfg.get("name")
+            branch_source = branch_cfg.get("source")
+            branch_keys = branch_cfg.get("keys", [])
+
+            # Validate required fields
+            self.check_fields(
+                entity_name, ["name", "source"], "of_type/E", expected_types=(str,), target_cfg=branch_cfg, message=branch_id
+            )
+
+            if not branch_name:
+                self.add_error(f"{branch_id}: 'name' field is required", entity=entity_name, field="branches")
+                continue
+
+            if not branch_source:
+                self.add_error(f"{branch_id}: 'source' field is required", entity=entity_name, field="branches")
+                continue
+
+            # Validate name uniqueness
+            if branch_name in branch_names:
+                self.add_error(
+                    f"{branch_id}: duplicate branch name '{branch_name}' - branch names must be unique",
+                    entity=entity_name,
+                    field="branches",
+                )
+            else:
+                branch_names.add(branch_name)
+
+            # Validate source entity exists
+            if not self.entity_exists(branch_source):
+                self.add_error(
+                    f"{branch_id} (source='{branch_source}'): source entity '{branch_source}' does not exist",
+                    entity=entity_name,
+                    field="branches",
+                    source=branch_source,
+                )
+
+            # Validate keys field if present
+            if "keys" in branch_cfg:
+                self.check_fields(
+                    entity_name,
+                    ["keys"],
+                    "of_type/E",
+                    expected_types=(list,),
+                    target_cfg=branch_cfg,
+                    message=f"{branch_id} (source='{branch_source}')",
+                )
+
+        # Warn if merged entity also has incompatible source/data_source/query fields
+        self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
+
+        return not self.has_errors()
+
+
 @ENTITY_SPECIFICATION.register(key="sql_column_configuration")
 class SqlColumnConfigurationSpecification(ProjectSpecification):
     """Validates SQL column configuration that can be checked without executing the query."""
