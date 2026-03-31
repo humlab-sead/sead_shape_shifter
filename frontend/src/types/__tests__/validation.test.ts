@@ -9,6 +9,7 @@ import {
   getErrorsForEntity,
   getWarningsForEntity,
   groupByEntity,
+  groupByEntityScope,
   groupBySeverity,
   type ValidationResult,
   type ValidationError,
@@ -243,6 +244,44 @@ describe('validation utilities', () => {
       expect(grouped.get('entity1')).toHaveLength(2)
       expect(grouped.get('entity2')).toHaveLength(1)
       expect(grouped.get('general')).toHaveLength(2)
+    })
+  })
+
+  describe('groupByEntityScope', () => {
+    it('should group entity-level and branch-level issues separately', () => {
+      const messages = [
+        createMockError({ entity: 'analysis_entity', message: 'Entity-level issue' }),
+        createMockError({
+          entity: 'analysis_entity',
+          branch_name: 'abundance',
+          branch_source: 'abundance_source',
+          message: 'Branch issue 1',
+        }),
+        createMockError({
+          entity: 'analysis_entity',
+          branch_name: 'abundance',
+          branch_source: 'abundance_source',
+          message: 'Branch issue 2',
+        }),
+      ]
+
+      const grouped = groupByEntityScope(messages)
+
+      expect(grouped).toHaveLength(1)
+      expect(grouped[0]?.entity).toBe('analysis_entity')
+      expect(grouped[0]?.entityMessages).toHaveLength(1)
+      expect(grouped[0]?.branchGroups).toHaveLength(1)
+      expect(grouped[0]?.branchGroups[0]?.branchName).toBe('abundance')
+      expect(grouped[0]?.branchGroups[0]?.messages).toHaveLength(2)
+    })
+
+    it('should create a general bucket for messages without an entity', () => {
+      const grouped = groupByEntityScope([createMockError({ entity: null, message: 'General issue' })])
+
+      expect(grouped).toHaveLength(1)
+      expect(grouped[0]?.entity).toBeNull()
+      expect(grouped[0]?.entityMessages).toHaveLength(1)
+      expect(grouped[0]?.branchGroups).toHaveLength(0)
     })
   })
 

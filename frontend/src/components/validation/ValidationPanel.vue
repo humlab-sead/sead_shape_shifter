@@ -138,6 +138,10 @@
             By Category
             <v-badge v-if="errorCount + warningCount > 0" :content="errorCount + warningCount" inline class="ml-2" />
           </v-tab>
+          <v-tab value="by-entity">
+            By Entity
+            <v-badge v-if="entityScopedIssues.length > 0" :content="entityScopedIssues.length" inline class="ml-2" />
+          </v-tab>
         </v-tabs>
 
         <!-- Messages List -->
@@ -241,6 +245,52 @@
               </v-expansion-panel>
             </v-expansion-panels>
           </v-window-item>
+
+          <!-- By Entity / Branch -->
+          <v-window-item value="by-entity">
+            <div v-if="entityScopedIssues.length === 0" class="text-center py-8">
+              <v-icon icon="mdi-check-circle" size="48" color="success" />
+              <p class="text-body-1 mt-4">No validation issues found. Project looks good!</p>
+            </div>
+
+            <v-expansion-panels v-else variant="accordion">
+              <v-expansion-panel v-for="group in entityScopedIssues" :key="group.key" :value="group.key">
+                <v-expansion-panel-title>
+                  <div class="d-flex align-center flex-wrap ga-2">
+                    <v-icon :icon="group.entity ? 'mdi-cube' : 'mdi-cog-outline'" class="mr-2" />
+                    <span class="font-weight-medium">{{ group.entity || 'General' }}</span>
+                    <v-chip size="small">{{ group.messages.length }}</v-chip>
+                    <v-chip v-if="group.branchGroups.length > 0" size="small" color="teal" variant="outlined">
+                      {{ group.branchGroups.length }} branches
+                    </v-chip>
+                  </div>
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <validation-message-list
+                    v-if="group.entityMessages.length > 0"
+                    :messages="group.entityMessages"
+                    :empty-message="'No entity-level issues found'"
+                    @open-entity="handleOpenEntity"
+                  />
+
+                  <v-expansion-panels v-if="group.branchGroups.length > 0" variant="accordion" class="mt-3">
+                    <v-expansion-panel v-for="branchGroup in group.branchGroups" :key="branchGroup.key" :value="branchGroup.key">
+                      <v-expansion-panel-title>
+                        <div class="d-flex align-center flex-wrap ga-2">
+                          <v-icon icon="mdi-source-branch" color="teal" class="mr-2" />
+                          <span class="font-weight-medium">{{ formatBranchGroupLabel(branchGroup.branchName, branchGroup.branchSource) }}</span>
+                          <v-chip size="small">{{ branchGroup.messages.length }}</v-chip>
+                        </div>
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <validation-message-list :messages="branchGroup.messages" @open-entity="handleOpenEntity" />
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+          </v-window-item>
         </v-window>
       </div>
     </v-card-text>
@@ -250,7 +300,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useNotification } from '@/composables/useNotification'
-import type { ValidationResult } from '@/types'
+import { groupByEntityScope, type ValidationResult } from '@/types'
 import ValidationMessageList from './ValidationMessageList.vue'
 import DataValidationConfig from './DataValidationConfig.vue'
 
@@ -292,6 +342,7 @@ const warningCount = computed(() => props.validationResult?.warning_count ?? 0)
 const errors = computed(() => props.validationResult?.errors ?? [])
 const warnings = computed(() => props.validationResult?.warnings ?? [])
 const allMessages = computed(() => [...errors.value, ...warnings.value])
+const entityScopedIssues = computed(() => groupByEntityScope(allMessages.value))
 
 const summaryColor = computed(() => {
   if (errorCount.value > 0) return 'error'
@@ -361,7 +412,7 @@ async function copyToClipboard() {
 
   try {
     // Create tabular format with headers
-    const headers = ['Severity', 'Entity', 'Field', 'Category', 'Priority', 'Code', 'Message', 'Suggestion']
+    const headers = ['Severity', 'Entity', 'Branch', 'Branch Source', 'Field', 'Category', 'Priority', 'Code', 'Message', 'Suggestion']
     const separator = '\t'
     const headerRow = headers.join(separator)
 
@@ -370,6 +421,8 @@ async function copyToClipboard() {
       return [
         msg.severity || '',
         msg.entity || '',
+        msg.branch_name || '',
+        msg.branch_source || '',
         msg.field || '',
         msg.category || '',
         msg.priority || '',
@@ -392,5 +445,17 @@ async function copyToClipboard() {
     console.error('Failed to copy to clipboard:', err)
     error('Failed to copy to clipboard')
   }
+}
+
+function formatBranchGroupLabel(branchName: string | null, branchSource: string | null): string {
+  if (branchName && branchSource) {
+    return `${branchName} (${branchSource})`
+  }
+
+  if (branchName) {
+    return branchName
+  }
+
+  return branchSource || 'Unnamed branch'
 }
 </script>

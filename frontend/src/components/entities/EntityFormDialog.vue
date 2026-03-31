@@ -751,6 +751,34 @@
                   </v-chip>
 
                   <v-select
+                    v-if="formData.type === 'merged'"
+                    v-model="previewTargetMode"
+                    :items="previewTargetOptions"
+                    item-title="title"
+                    item-value="value"
+                    label="Preview"
+                    density="compact"
+                    variant="outlined"
+                    style="max-width: 190px"
+                    hide-details
+                    @update:model-value="refreshPreview"
+                  />
+
+                  <v-select
+                    v-if="previewTargetMode === 'source' && previewSourceBranchOptions.length > 0"
+                    v-model="selectedPreviewSourceBranch"
+                    :items="previewSourceBranchOptions"
+                    item-title="title"
+                    item-value="value"
+                    label="Source branch"
+                    density="compact"
+                    variant="outlined"
+                    style="max-width: 240px"
+                    hide-details
+                    @update:model-value="refreshPreview"
+                  />
+
+                  <v-select
                     v-if="mergedPreviewHasBranchFilter"
                     v-model="selectedPreviewBranch"
                     :items="previewBranchOptions"
@@ -812,7 +840,21 @@
               <v-progress-linear v-if="previewLoading" indeterminate color="primary" />
 
               <div
-                v-if="!previewLoading && mergedPreviewHasBranchFilter"
+                v-if="!previewLoading && isPreviewingBranchSource && selectedPreviewSourceBranchOption"
+                class="d-flex flex-wrap align-center ga-2 px-2 pt-2"
+              >
+                <v-chip size="small" color="teal" variant="tonal">
+                  <v-icon start size="x-small">mdi-source-branch</v-icon>
+                  Previewing source rows for {{ selectedPreviewSourceBranchOption.value }}
+                </v-chip>
+                <v-chip size="small" color="secondary" variant="outlined">
+                  <v-icon start size="x-small">mdi-database-eye</v-icon>
+                  {{ selectedPreviewSourceBranchOption.source }}
+                </v-chip>
+              </div>
+
+              <div
+                v-else-if="!previewLoading && mergedPreviewHasBranchFilter"
                 class="d-flex flex-wrap align-center ga-2 px-2 pt-2"
               >
                 <v-chip size="small" color="secondary" variant="tonal">
@@ -1045,6 +1087,7 @@ const projectStore = useProjectStore()
 
 // Split-pane and preview state
 type ViewMode = 'form' | 'both' | 'preview'
+type PreviewTargetMode = 'merged' | 'source'
 const viewMode = ref<ViewMode>('form')
 const autoRefreshEnabled = ref(false)
 const previewLimit = ref<number | null>(100)
@@ -1300,9 +1343,47 @@ const canPreview = computed(() => {
 
 const ALL_BRANCH_PREVIEW_VALUE = '__all__'
 const selectedPreviewBranch = ref<string>(ALL_BRANCH_PREVIEW_VALUE)
+const previewTargetMode = ref<PreviewTargetMode>('merged')
+const selectedPreviewSourceBranch = ref<string | null>(null)
+
+const mergedBranchConfigs = computed(() => {
+  if (formData.value.type !== 'merged') {
+    return [] as Array<{ name?: string; source?: string; keys?: string[] }>
+  }
+
+  return (formData.value.advanced.branches || []).filter(
+    (branch): branch is { name?: string; source?: string; keys?: string[] } => typeof branch === 'object' && branch !== null
+  )
+})
+
+const previewTargetOptions = computed(() => {
+  const options = [{ title: 'Merged result', value: 'merged' as PreviewTargetMode }]
+  if (mergedBranchConfigs.value.length > 0) {
+    options.push({ title: 'Branch source rows', value: 'source' as PreviewTargetMode })
+  }
+  return options
+})
+
+const previewSourceBranchOptions = computed(() => {
+  return mergedBranchConfigs.value
+    .filter((branch) => typeof branch.name === 'string' && branch.name.length > 0 && typeof branch.source === 'string' && branch.source.length > 0)
+    .map((branch) => ({
+      title: `${branch.name} (${branch.source})`,
+      value: branch.name as string,
+      source: branch.source as string,
+    }))
+})
+
+const selectedPreviewSourceBranchOption = computed(() => {
+  return previewSourceBranchOptions.value.find((branch) => branch.value === selectedPreviewSourceBranch.value) || null
+})
+
+const isPreviewingBranchSource = computed(() => {
+  return formData.value.type === 'merged' && previewTargetMode.value === 'source' && !!selectedPreviewSourceBranchOption.value
+})
 
 const mergedPreviewBranchColumn = computed(() => {
-  if (formData.value.type !== 'merged' || !formData.value.name || !livePreviewData.value?.columns) {
+  if (isPreviewingBranchSource.value || formData.value.type !== 'merged' || !formData.value.name || !livePreviewData.value?.columns) {
     return null
   }
 
@@ -1330,7 +1411,7 @@ const mergedPreviewFkColumns = computed(() => {
 })
 
 const mergedPreviewHasBranchFilter = computed(() => {
-  return Boolean(mergedPreviewBranchColumn.value && livePreviewData.value?.rows?.length)
+  return previewTargetMode.value === 'merged' && Boolean(mergedPreviewBranchColumn.value && livePreviewData.value?.rows?.length)
 })
 
 const previewBranchOptions = computed(() => {
@@ -1718,6 +1799,15 @@ async function refreshPreview() {
 
   previewError.value = null
 
+  if (isPreviewingBranchSource.value && selectedPreviewSourceBranchOption.value) {
+    await previewEntity(props.projectName, selectedPreviewSourceBranchOption.value.source, previewLimit.value)
+
+    if (livePreviewError.value) {
+      previewError.value = livePreviewError.value
+    }
+    return
+  }
+
   // Convert form data to entity config format (same as handleSubmit)
   const entityConfig = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
 
@@ -1928,9 +2018,13 @@ watch(
   formData,
   () => {
     if (autoRefreshEnabled.value && viewMode.value !== 'form' && canPreview.value) {
-      // Convert form data to entity config before previewing
-      const entityConfig = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
-      debouncedPreviewEntity(props.projectName, formData.value.name, 100, entityConfig)
+      if (isPreviewingBranchSource.value && selectedPreviewSourceBranchOption.value) {
+        debouncedPreviewEntity(props.projectName, selectedPreviewSourceBranchOption.value.source, 100)
+      } else {
+        // Convert form data to entity config before previewing
+        const entityConfig = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
+        debouncedPreviewEntity(props.projectName, formData.value.name, 100, entityConfig)
+      }
     }
   },
   { deep: true }
@@ -1941,6 +2035,22 @@ watch(
   () => {
     selectedPreviewBranch.value = ALL_BRANCH_PREVIEW_VALUE
   }
+)
+
+watch(
+  previewSourceBranchOptions,
+  (options) => {
+    if (options.length === 0) {
+      previewTargetMode.value = 'merged'
+      selectedPreviewSourceBranch.value = null
+      return
+    }
+
+    if (!selectedPreviewSourceBranch.value || !options.some((option) => option.value === selectedPreviewSourceBranch.value)) {
+      selectedPreviewSourceBranch.value = options[0]?.value || null
+    }
+  },
+  { immediate: true }
 )
 
 // Watch for source entity changes (entity type) to hydrate columns

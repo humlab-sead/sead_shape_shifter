@@ -187,6 +187,8 @@ class ValidationService:
         """Parse error message to extract entity and field information."""
         field_name = issue.entity_field or issue.column_name
         message = issue.message
+        branch_name = issue.kwargs.get("branch_name")
+        branch_source = issue.kwargs.get("branch_source")
 
         if field_name and field_name.startswith("extra_columns"):
             message = format_validation_message_with_context(
@@ -196,12 +198,20 @@ class ValidationService:
                 expression=issue.kwargs.get("expression"),
             )
 
+        code = issue.kwargs.get("code")
+        if code is None:
+            excluded_metadata = {"field", "column", "branch_name", "branch_source", "expression"}
+            fallback_values = [str(v) for k, v in issue.kwargs.items() if k not in excluded_metadata]
+            code = ", ".join(fallback_values)
+
         return ValidationError(
             severity=issue.severity,  # type: ignore[arg-type]
             entity=issue.entity_name,
+            branch_name=branch_name,
+            branch_source=branch_source,
             field=field_name,
             message=message,
-            code=", ".join(str(v) for k, v in issue.kwargs.items()),
+            code=code,
         )
 
     def validate_entity(self, project: Project, entity_name: str) -> ValidationResult:
