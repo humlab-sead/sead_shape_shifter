@@ -51,6 +51,7 @@
         <v-tab value="filters" :disabled="mode === 'create'">Filters</v-tab>
         <v-tab value="unnest" :disabled="mode === 'create'">Unnest</v-tab>
         <v-tab value="append" :disabled="mode === 'create'">Append</v-tab>
+        <v-tab v-if="formData.type === 'merged'" value="branches" :disabled="mode === 'create'">Branches</v-tab>
         <v-tab value="extra_columns" :disabled="mode === 'create'">Extra Columns</v-tab>
         <v-tab value="replacements" :disabled="mode === 'create'">Replace</v-tab>
         <v-tab value="yaml" :disabled="mode === 'create'">
@@ -666,6 +667,16 @@
                 />
               </v-window-item>
 
+              <v-window-item value="branches">
+                <branch-editor
+                  v-model="formData.advanced.branches"
+                  :available-entities="availableSourceEntities"
+                  :parent-entity="formData.name"
+                  :source-entity-columns="sourceEntityColumnsMap"
+                  :source-entity-public-ids="sourceEntityPublicIdMap"
+                />
+              </v-window-item>
+
               <v-window-item value="extra_columns">
                 <extra-columns-editor
                   v-model="formData.advanced.extra_columns"
@@ -926,6 +937,7 @@ import ForeignKeyEditor from './ForeignKeyEditor.vue'
 import FiltersEditor from './FiltersEditor.vue'
 import UnnestEditor from './UnnestEditor.vue'
 import AppendEditor from './AppendEditor.vue'
+import BranchEditor from './BranchEditor.vue'
 import ExtraColumnsEditor from './ExtraColumnsEditor.vue'
 import ReplacementsEditor from './ReplacementsEditor.vue'
 import SuggestionsPanel from './SuggestionsPanel.vue'
@@ -1094,6 +1106,7 @@ interface FormData {
     filters?: any[]
     unnest?: any | null
     append?: any[]
+    branches?: any[]
     extra_columns?: Record<string, string | null>
     replacements?: Record<string, any>
   }
@@ -1156,6 +1169,7 @@ const formData = ref<FormData>({
     filters: [],
     unnest: null,
     append: [],
+    branches: [],
     extra_columns: undefined,
     replacements: undefined,
   },
@@ -1573,6 +1587,9 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
   }
   if (formData.value.advanced.append?.length) {
     entityData.append = formData.value.advanced.append
+  }
+  if (formData.value.advanced.branches?.length) {
+    entityData.branches = formData.value.advanced.branches
   }
   if (formData.value.advanced.extra_columns) {
     entityData.extra_columns = formData.value.advanced.extra_columns
@@ -2069,6 +2086,7 @@ const entityTypeOptions = [
   { title: 'CSV File', value: 'csv', subtitle: 'Load from CSV file' },
   { title: 'Excel File (Pandas)', value: 'xlsx', subtitle: 'Load Excel with pandas' },
   { title: 'Excel File (OpenPyXL)', value: 'openpyxl', subtitle: 'Load Excel with OpenPyXL (supports ranges)' },
+  { title: 'Merged (Multi-Branch)', value: 'merged', subtitle: 'Combine multiple source entities into one' },
 ]
 
 const availableSourceEntities = computed(() => {
@@ -2780,6 +2798,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       filters: (entity.entity_data.filters as any[]) || [],
       unnest: entity.entity_data.unnest || null,
       append: (entity.entity_data.append as any[]) || [],
+      branches: (entity.entity_data.branches as any[]) || [],
       extra_columns: (entity.entity_data.extra_columns as Record<string, string | null>) || undefined,
     },
   }
