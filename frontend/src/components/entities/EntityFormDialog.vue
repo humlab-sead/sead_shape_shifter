@@ -47,11 +47,15 @@
 
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="basic">Basic</v-tab>
+        <v-tab v-if="isMergedEntityType" value="branches" :disabled="false">
+          <v-icon icon="mdi-source-branch" class="mr-1" size="small" />
+          Branches
+          <v-tooltip activator="parent" location="bottom">Primary configuration for merged entities</v-tooltip>
+        </v-tab>
         <v-tab value="relationships" :disabled="mode === 'create'">Foreign Keys</v-tab>
         <v-tab value="filters" :disabled="mode === 'create'">Filters</v-tab>
         <v-tab value="unnest" :disabled="mode === 'create'">Unnest</v-tab>
-        <v-tab value="append" :disabled="mode === 'create'">Append</v-tab>
-        <v-tab v-if="formData.type === 'merged'" value="branches" :disabled="mode === 'create'">Branches</v-tab>
+        <v-tab v-if="!isMergedEntityType" value="append" :disabled="mode === 'create'">Append</v-tab>
         <v-tab value="extra_columns" :disabled="mode === 'create'">Extra Columns</v-tab>
         <v-tab value="replacements" :disabled="mode === 'create'">Replace</v-tab>
         <v-tab value="yaml" :disabled="mode === 'create'">
@@ -243,6 +247,26 @@
                         </v-col>
                       </v-row>
                     </div>
+
+                    <v-alert v-if="isMergedEntityType" type="info" variant="tonal" density="compact" class="mb-4">
+                      <div class="text-caption">
+                        <strong>Merged entity configuration</strong><br />
+                        Use the <strong>Branches</strong> tab as the primary configuration surface for merged entities.
+                      </div>
+                      <ul class="text-caption mt-2 pl-4">
+                        <li>
+                          Available post-merge: <code>keys</code>, <code>foreign_keys</code>, <code>extra_columns</code>,
+                          <code>depends_on</code>, and <code>drop_duplicates</code>
+                        </li>
+                        <li>
+                          Hidden because they do not apply to merged entities: <code>source</code>,
+                          <code>data_source</code>, <code>query</code>, file options, and <code>append</code>
+                        </li>
+                        <li>
+                          Preview headers describe which branch provides each column and which branches receive null-filled values.
+                        </li>
+                      </ul>
+                    </v-alert>
 
                     <!-- Identity Section: system_id (info), public_id (required), keys (required) -->
                     <div class="form-row">
@@ -654,7 +678,7 @@
                 <unnest-editor v-model="formData.advanced.unnest" :available-columns="availableColumnsForUnnest" />
               </v-window-item>
 
-              <v-window-item value="append">
+              <v-window-item v-if="!isMergedEntityType" value="append">
                 <append-editor
                   v-model="formData.advanced.append"
                   :available-entities="availableSourceEntities"
@@ -1341,6 +1365,8 @@ const canPreview = computed(() => {
   return props.mode === 'edit' && formData.value.name
 })
 
+const isMergedEntityType = computed(() => formData.value.type === 'merged')
+
 const ALL_BRANCH_PREVIEW_VALUE = '__all__'
 const selectedPreviewBranch = ref<string>(ALL_BRANCH_PREVIEW_VALUE)
 const previewTargetMode = ref<PreviewTargetMode>('merged')
@@ -1410,6 +1436,70 @@ const mergedPreviewFkColumns = computed(() => {
     })
 })
 
+const mergedPreviewColumnCoverage = computed<Record<string, { presentIn: string[]; absentIn: string[] }>>(() => {
+  if (isPreviewingBranchSource.value || formData.value.type !== 'merged' || !mergedPreviewBranchColumn.value || !livePreviewData.value?.columns) {
+    return {}
+  }
+
+  const rows = livePreviewData.value.rows || []
+  const branchColumn = mergedPreviewBranchColumn.value
+  const branchNames = Array.from(
+    new Set(
+      rows
+        .map((row) => row[branchColumn])
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    )
+  )
+
+  if (branchNames.length === 0) {
+    return {}
+  }
+
+  const hasValue = (value: unknown): boolean => value !== null && value !== undefined && !(typeof value === 'string' && value.length === 0)
+
+  return Object.fromEntries(
+    livePreviewData.value.columns.map((column) => {
+      const presentIn = branchNames.filter((branch) => rows.some((row) => row[branchColumn] === branch && hasValue(row[column.name])))
+      const absentIn = branchNames.filter((branch) => !presentIn.includes(branch))
+      return [column.name, { presentIn, absentIn }]
+    })
+  )
+})
+
+function describeMergedPreviewColumn(columnName: string): string | undefined {
+  const coverage = mergedPreviewColumnCoverage.value[columnName]
+  if (!coverage || coverage.presentIn.length === 0) {
+    return undefined
+  }
+
+  if (coverage.absentIn.length === 0) {
+    return coverage.presentIn.length > 1
+      ? `Present in all visible branches: ${coverage.presentIn.join(', ')}`
+      : `Present in visible branch: ${coverage.presentIn[0]}`
+  }
+
+  return `Present in: ${coverage.presentIn.join(', ')}. Null-filled for: ${coverage.absentIn.join(', ')}`
+}
+
+function isMergedPreviewNullFillCell(columnName: string | undefined, row: Record<string, unknown> | undefined): boolean {
+  if (!columnName || !row || !mergedPreviewBranchColumn.value) {
+    return false
+  }
+
+  const branch = row[mergedPreviewBranchColumn.value]
+  if (typeof branch !== 'string' || branch.length === 0) {
+    return false
+  }
+
+  const coverage = mergedPreviewColumnCoverage.value[columnName]
+  if (!coverage || !coverage.absentIn.includes(branch)) {
+    return false
+  }
+
+  const value = row[columnName]
+  return value === null || value === undefined || (typeof value === 'string' && value.length === 0)
+}
+
 const mergedPreviewHasBranchFilter = computed(() => {
   return previewTargetMode.value === 'merged' && Boolean(mergedPreviewBranchColumn.value && livePreviewData.value?.rows?.length)
 })
@@ -1448,18 +1538,21 @@ const previewColumnDefs = computed<ColDef[]>(() => {
     headerClass: [
       col.name === mergedPreviewBranchColumn.value ? 'merged-preview-branch-header' : '',
       mergedPreviewFkColumns.value.includes(col.name) ? 'merged-preview-fk-header' : '',
+      mergedPreviewColumnCoverage.value[col.name]?.absentIn.length ? 'merged-preview-partial-header' : '',
     ].filter(Boolean),
-    headerTooltip:
-      col.name === mergedPreviewBranchColumn.value
-        ? 'Auto-generated branch discriminator for merged entities'
-        : mergedPreviewFkColumns.value.includes(col.name)
-          ? 'Sparse lineage foreign key back to the source branch row'
-          : undefined,
+    headerTooltip: [
+      col.name === mergedPreviewBranchColumn.value ? 'Auto-generated branch discriminator for merged entities' : '',
+      mergedPreviewFkColumns.value.includes(col.name) ? 'Sparse lineage foreign key back to the source branch row' : '',
+      describeMergedPreviewColumn(col.name) || '',
+    ].filter(Boolean).join(' | ') || undefined,
     cellClass: [
       col.is_key ? 'key-column' : '',
       col.name === mergedPreviewBranchColumn.value ? 'merged-preview-branch-cell' : '',
       mergedPreviewFkColumns.value.includes(col.name) ? 'merged-preview-fk-cell' : '',
     ].filter(Boolean).join(' '),
+    cellClassRules: {
+      'merged-preview-null-fill-cell': (params: any) => isMergedPreviewNullFillCell(col.name, params.data),
+    },
     headerComponent: undefined,
     headerComponentParams: {
       columnInfo: col,
@@ -1777,10 +1870,10 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
   if (formData.value.advanced.unnest) {
     entityData.unnest = formData.value.advanced.unnest
   }
-  if (formData.value.advanced.append?.length) {
+  if (formData.value.type !== 'merged' && formData.value.advanced.append?.length) {
     entityData.append = formData.value.advanced.append
   }
-  if (formData.value.advanced.branches?.length) {
+  if (formData.value.type === 'merged' && formData.value.advanced.branches?.length) {
     entityData.branches = formData.value.advanced.branches
   }
   if (formData.value.advanced.extra_columns) {
@@ -2173,6 +2266,12 @@ watch(
     // Hydrate columns from source entity when switching to entity type
     if (newType === 'entity') {
       hydrateColumnsFromSource()
+    }
+
+    if (newType === 'merged') {
+      activeTab.value = 'branches'
+    } else if (oldType === 'merged' && activeTab.value === 'branches') {
+      activeTab.value = 'basic'
     }
 
     if (isExcelType.value && formData.value.options.filename) {
@@ -3121,6 +3220,7 @@ function buildDefaultFormData(): FormData {
       filters: [],
       unnest: null,
       append: [],
+      branches: [],
       extra_columns: undefined,
     },
   }
@@ -3541,6 +3641,10 @@ function handleRejectDependency(dep: DependencySuggestion) {
   background: rgba(var(--v-theme-primary), 0.08) !important;
 }
 
+.preview-ag-grid :deep(.merged-preview-partial-header) {
+  box-shadow: inset 0 -2px 0 rgba(var(--v-theme-warning), 0.65);
+}
+
 .preview-ag-grid :deep(.merged-preview-branch-cell) {
   background: rgba(var(--v-theme-secondary), 0.08) !important;
   font-weight: 600;
@@ -3548,6 +3652,12 @@ function handleRejectDependency(dep: DependencySuggestion) {
 
 .preview-ag-grid :deep(.merged-preview-fk-cell) {
   background: rgba(var(--v-theme-primary), 0.05) !important;
+}
+
+.preview-ag-grid :deep(.merged-preview-null-fill-cell) {
+  color: rgba(var(--v-theme-on-surface), 0.55) !important;
+  background: linear-gradient(90deg, rgba(var(--v-theme-warning), 0.08), transparent) !important;
+  font-style: italic;
 }
 
 /* Dark mode support for ag-grid */
