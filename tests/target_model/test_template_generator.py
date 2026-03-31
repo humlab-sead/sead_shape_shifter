@@ -6,8 +6,10 @@ from src.target_model.models import TargetModel
 from src.target_model.template_generator import generate_project_template, render_project_template_yaml
 
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-SPEC_PATH = ROOT_DIR / "specs" / "sead_v2.yml"
+EXAMPLES_DIR = Path( "tests/test_data/examples")
+SPECS_DIR = Path("tests/test_data/specs")
+
+SPEC_PATH: Path = SPECS_DIR / "sead_v2.yml"
 
 
 def load_target_model() -> TargetModel:
@@ -15,11 +17,11 @@ def load_target_model() -> TargetModel:
 
 
 def test_generate_project_template_for_dating_domain_includes_required_dependency_closure() -> None:
-    target_model = load_target_model()
+    target_model: TargetModel = load_target_model()
 
     template = generate_project_template(target_model, domains=["dating"])
 
-    generated_entities = template["entities"]
+    generated_entities: set[str] = template["entities"]  # type: ignore
     assert {"relative_ages", "relative_dating", "geochronology", "dating_lab"}.issubset(generated_entities)
     assert {"analysis_entity", "sample", "sample_group", "sample_type", "site", "location", "location_type", "dataset", "method"}.issubset(
         generated_entities
@@ -28,7 +30,7 @@ def test_generate_project_template_for_dating_domain_includes_required_dependenc
 
 
 def test_generate_project_template_renders_valid_yaml_for_explicit_entity_selection() -> None:
-    target_model = load_target_model()
+    target_model: TargetModel = load_target_model()
 
     rendered = render_project_template_yaml(target_model, entity_names=["contact_type"], project_name="generated:test-contact-type")
     parsed = yaml.safe_load(rendered)
