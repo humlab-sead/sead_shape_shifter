@@ -488,7 +488,7 @@ All design decisions have been confirmed and are ready for implementation:
 ## Implementation Checklist
 
 **Phase 1 Status:** 🎉 **COMPLETE** (100%)  
-**Phase 2 Status:** ⏳ **Partially Complete** (~55%)
+**Phase 2 Status:** ⏳ **Partially Complete** (~65%)
 
 **Phase 1 Focus:** Core Layer (complete), Backend API (minimal), Frontend (YAML only), Core Tests, Essential Documentation  
 **Phase 2 Focus:** Frontend UX (visual editor), Comprehensive Tests, Complete Documentation, Release
@@ -500,10 +500,12 @@ All design decisions have been confirmed and are ready for implementation:
 - ✅ Phase 1 Backend Tests: 100% complete (5 API tests)
 - ✅ Phase 1 Documentation: 100% complete (CONFIGURATION_GUIDE.md ~200 lines)
 - ✅ Phase 2 frontend branch editor: complete (`BranchEditor.vue`, merged entity type support, `EntityFormDialog` integration)
-- ✅ Phase 2 frontend branch-editor tests: started (`BranchEditor.test.ts`)
+- ✅ Phase 2 frontend branch-editor tests: complete (`BranchEditor.test.ts`)
 - ✅ Phase 2 dependency graph: merged nodes and branch edges rendered distinctly, branch labels shown, branch sources highlighted on merged-node selection
-- ✅ Phase 2 preview panel: merged-entity branch filter added, discriminator/FK columns highlighted in live preview
-- ⏳ Phase 2 validation panel, deeper preview backend support, user guide, and release prep remain incomplete
+- ✅ Phase 2 preview panel: merged-result/branch-source preview toggle added, merged-entity branch filter added, discriminator/FK columns highlighted in live preview
+- ✅ Phase 2 validation panel: per-entity/per-branch grouping added, branch metadata surfaced in issue rows, branch/entity separation shown before post-merge issues
+- ✅ Phase 2 focused validation tests: backend branch-metadata mapping plus frontend validation grouping utilities/stores covered
+- ⏳ User guide and release prep remain incomplete
 - ✅ **All Phase 1 deliverables achieved**
 - 📊 Test Results: 2590 total tests passing (1346 core + 1239 backend + 5 new API)
 - 📝 Files Modified: 7 (backend models, core model, specifications, normalizer, 3 test files, 1 doc)
@@ -568,7 +570,7 @@ All design decisions have been confirmed and are ready for implementation:
 - [x] Update `ShapeShiftProject` model to support merged entities in `entities` dict (TableConfig.type = "merged")
 - [x] Add validation for branch name uniqueness within merged entity (MergedEntityFieldsSpecification)
 - [x] Add validation for at least one branch required (MergedEntityFieldsSpecification)
-- [ ] Support optional `branch_discriminator_column` override (future enhancement)
+- [ ] **ONHOLD** Support optional `branch_discriminator_column` override (future enhancement)
 
 #### API/Backend Layer (`backend/app/`) — **PHASE 1 (minimal API)**
 
@@ -576,7 +578,7 @@ All design decisions have been confirmed and are ready for implementation:
 - [x] Add `EntityType.MERGED` to `backend/app/models/entity.py` enum (Entity.type includes "merged")
 - [x] Add `BranchConfig` Pydantic model in `backend/app/models/entity.py`
 - [x] Add `branches: list[BranchConfig] | None` to entity configuration model (Entity.branches field)
-- [ ] Add `branch_discriminator_column: str | None` optional field (future enhancement)
+- [ ] **ONHOLD** Add `branch_discriminator_column: str | None` optional field (future enhancement)
 - [x] Update entity configuration validators to handle merged type (Pydantic auto-validates)
 
 **Validation Service:** [**Phase 1**] ✅ **COMPLETE**
@@ -627,22 +629,22 @@ All design decisions have been confirmed and are ready for implementation:
 **Entity Detail View:** [**Phase 2**]
 - [x] Conditionally render `BranchEditor` when `type === 'merged'`
 - [x] Hide source/data-source panels for merged entities
-- [ ] Show branch configuration in read-only summary view
+- [ ] **ONHOLD** Show branch configuration in read-only summary view
 - [x] Update entity form state/serialization to handle merged type
 - [ ] Disable incompatible configuration sections (data_source, append, etc.)
 
 **Validation Panel:** [**Phase 2**]
-- [ ] Display per-branch validation results separately
-- [ ] Group errors by branch name for clarity
-- [ ] Show merged result validation separately from branch validation
-- [ ] Add visual indicators for which branch has errors
+- [x] Display per-branch validation results separately
+- [x] Group errors by branch name for clarity
+- [x] Show merged result validation separately from branch validation
+- [x] Add visual indicators for which branch has errors
 
 **Dependency Graph:** [**Phase 2**]
 - [x] Render branch source entities as direct inputs to merged parent
 - [x] Use distinct edge style for branch dependencies (dotted/dashed)
 - [x] Show branch names on edge labels or tooltips
 - [x] Highlight all branch sources when merged entity is selected
-- [ ] Support "expand branch structure" view showing discriminator/key derivation
+- [ ] **ONHOLD** Support "expand branch structure" view showing discriminator/key derivation
 
 **Preview Panel:** [**Phase 2**]
 - [x] Add tab/toggle to preview individual branches vs. merged result
@@ -658,8 +660,8 @@ All design decisions have been confirmed and are ready for implementation:
 - [ ] Add helpful tooltips explaining branch-specific constraints
 
 **Backend Enhancements:** [**Phase 2**]
-- [ ] Preview Service: Support preview of individual branch sources
-- [ ] Preview Service: Support merged result preview with branch toggle
+- [x] Preview Service: Support preview of individual branch sources (via existing generic entity preview endpoint, surfaced in merged preview UI)
+- [x] Preview Service: Support merged result preview with branch toggle
 - [ ] Preview Service: Cache merged previews (invalidate on branch source changes)
 - [ ] Dependency Service: Enhanced topological sort display
 - [ ] Conversion support for existing append-based patterns (optional)

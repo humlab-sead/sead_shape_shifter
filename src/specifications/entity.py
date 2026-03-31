@@ -224,7 +224,12 @@ class MergedEntityFieldsSpecification(ProjectSpecification):
 
             # Validate branch is a dict
             if not isinstance(branch_cfg, dict):
-                self.add_error(f"{branch_id}: branch configuration must be a dictionary", entity=entity_name, field="branches")
+                self.add_error(
+                    f"{branch_id}: branch configuration must be a dictionary",
+                    entity=entity_name,
+                    field="branches",
+                    branch_source=None,
+                )
                 continue
 
             branch_name = branch_cfg.get("name")
@@ -234,11 +239,21 @@ class MergedEntityFieldsSpecification(ProjectSpecification):
             self.check_fields(entity_name, ["name", "source"], "of_type/E", expected_types=(str,), target_cfg=branch_cfg, message=branch_id)
 
             if not branch_name:
-                self.add_error(f"{branch_id}: 'name' field is required", entity=entity_name, field="branches")
+                self.add_error(
+                    f"{branch_id}: 'name' field is required",
+                    entity=entity_name,
+                    field="branches",
+                    branch_source=branch_source,
+                )
                 continue
 
             if not branch_source:
-                self.add_error(f"{branch_id}: 'source' field is required", entity=entity_name, field="branches")
+                self.add_error(
+                    f"{branch_id}: 'source' field is required",
+                    entity=entity_name,
+                    field="branches",
+                    branch_name=branch_name,
+                )
                 continue
 
             # Validate name uniqueness
@@ -247,6 +262,8 @@ class MergedEntityFieldsSpecification(ProjectSpecification):
                     f"{branch_id}: duplicate branch name '{branch_name}' - branch names must be unique",
                     entity=entity_name,
                     field="branches",
+                    branch_name=branch_name,
+                    branch_source=branch_source,
                 )
             else:
                 branch_names.add(branch_name)
@@ -257,6 +274,8 @@ class MergedEntityFieldsSpecification(ProjectSpecification):
                     f"{branch_id} (source='{branch_source}'): source entity '{branch_source}' does not exist",
                     entity=entity_name,
                     field="branches",
+                    branch_name=branch_name,
+                    branch_source=branch_source,
                     source=branch_source,
                 )
 
