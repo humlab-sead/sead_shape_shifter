@@ -16,7 +16,8 @@ The current workaround pattern requires:
 
 - Creating staging entities for individual branches
 - Using `append` to merge branch rows into a single parent
-- Manually authoring branch discriminator and branch-local identity columns via `extra_columns`
+- Manually authoring branch discriminator columns via `extra_columns`
+- Manually authoring synthetic cross-branch identity columns (e.g. `analysis_entity_value: '{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}'`) to allow downstream joins back to the parent, since the merged table otherwise has no per-row lineage
 - Adding defensive filters in downstream entities that only make sense for one branch
 - Encoding branch intent only indirectly through naming, filters, and foreign-key structure
 
@@ -32,7 +33,8 @@ This works, but it has costs:
 
 - Make shared-parent multi-branch models easier to declare
 - Make branch structure explicit in configuration
-- Reduce the need for manually-authored branch discriminator and identity columns
+- Reduce the need for manually-authored branch discriminator and synthetic identity columns
+- Eliminate the pipe-joined synthetic key pattern (`'{PCODE}|{Fraktion}|...'`) by providing sparse integer FK columns that give downstream entities a direct, type-safe join path back to the source branch row
 - Allow validation per branch before merge
 - Better communicate author intent in the YAML itself
 
@@ -245,7 +247,9 @@ analysis_entity:
 This works and is already supported. The `type: merged` proposal is about ergonomics and clarity, not about enabling something that's impossible today. The key differences:
 
 - Intent is less explicit (branches inferred from append sources)
-- Manual column authoring required for discriminators and keys
+- Manual column authoring required for branch discriminators
+- A synthetic pipe-joined key column (e.g. `analysis_entity_value: '{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}'`) must be added to each branch source and carried through the merge so that downstream entities can join back to the parent — `type: merged` eliminates this entirely with sparse integer FK columns
+- Downstream FK joins require a multi-column compound key match; with `type: merged` they reduce to a single integer FK
 - No automatic per-branch key validation
 - Branch structure not visible in dependency graphs
 
@@ -405,7 +409,8 @@ The merged entity configuration may include an optional `keys` field for dedupli
 **Rationale:**
 - Maximum flexibility — users can specify custom compound keys when needed
 - Auto-generated branch discriminator tracks source branch
-- Branch FK propagation provides type-safe lineage tracking
+- Branch FK propagation provides type-safe lineage tracking, eliminating the need for the synthetic pipe-joined key pattern (`analysis_entity_value: '{PCODE}|{Fraktion}|...'`) that the old `append`-based approach required
+- Downstream entities can now join to the merged parent via a single integer FK (e.g., `local_keys: [abundance_id]`) rather than a compound string match across multiple columns
 - Allows deduplication and FK relationships using business keys if required
 
 **Implementation notes:**

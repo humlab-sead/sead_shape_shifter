@@ -118,7 +118,7 @@ This works, but it has costs:
 
 See [FIRST_CLASS_MERGED_PARENT_ENTITIES.md](FIRST_CLASS_MERGED_PARENT_ENTITIES.md) for the complete proposal.
 
-The core issue is providing first-class support for merged parent entities composed from explicit branches. Currently these scenarios require manual `extra_columns` for branch discriminators and synthetic keys, plus generic `append` to merge rows. The recommended approach is a new entity type `type: merged` with explicit `branches:` declaration, automatic branch discriminator and cross-branch key generation, and per-branch validation.
+The core issue is providing first-class support for merged parent entities composed from explicit branches. Currently these scenarios require manual `extra_columns` for branch discriminators and synthetic pipe-joined keys (e.g. `analysis_entity_value: '{PCODE}|{Fraktion}|...'`), plus generic `append` to merge rows. The recommended approach is a new entity type `type: merged` with explicit `branches:` declaration, automatic branch discriminator and sparse integer FK columns per branch (which replace the synthetic key entirely), and per-branch validation.
 
 ## Proposal 2: Entity Semantic Roles (Fact vs Lookup)
 
