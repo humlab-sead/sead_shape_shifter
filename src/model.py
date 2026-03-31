@@ -966,13 +966,16 @@ class TableConfig:
                 # Get the source entity's configuration
                 source_cfg: dict[str, Any] = self.entities_cfg.get(branch_source, {})
 
-                # Create branch config that includes metadata for processing
+                # Include the source entity's system_id column so _process_merged_branch
+                # can use it as the FK value for this branch's rows.
+                source_system_id: str = source_cfg.get("system_id", "system_id")
+
+                # Create branch config that includes metadata for processing.
+                # Deliberately omit type/data_source/query so resolve_loader returns None
+                # and resolve_source falls through to table_store (source already processed).
                 branch_cfg: dict[str, Any] = {
-                    "type": source_cfg.get("type", "entity"),
-                    "source": branch_source,  # Reference to actual source entity
-                    "columns": source_cfg.get("columns", []),
-                    "data_source": source_cfg.get("data_source"),
-                    "query": source_cfg.get("query"),
+                    "source": branch_source,  # Reference to actual source entity in table_store
+                    "columns": ([source_system_id] + source_cfg.get("columns", [])) if source_system_id else source_cfg.get("columns", []),
                     # Branch-specific metadata for processor
                     "_branch_name": branch_name,  # Used for discriminator column
                     "_branch_keys": branch_keys,  # Used for validation
