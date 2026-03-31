@@ -1,7 +1,5 @@
 """Tests for merged entity configuration parsing."""
 
-import pytest
-
 from src.model import TableConfig
 
 
@@ -14,16 +12,16 @@ class TestMergedEntityConfig:
             "analysis_entity": {
                 "type": "merged",
                 "public_id": "analysis_entity_id",
-                "system_id": "system_id",  
+                "system_id": "system_id",
                 "branches": [
                     {"name": "abundance", "source": "abundance"},
                     {"name": "relative_dating", "source": "_analysis_entity_relative_dating"},
                 ],
             }
         }
-        
+
         table_cfg = TableConfig(entities_cfg=config, entity_name="analysis_entity")
-        
+
         assert table_cfg.type == "merged"
         assert table_cfg.public_id == "analysis_entity_id"
 
@@ -39,9 +37,9 @@ class TestMergedEntityConfig:
                 ],
             }
         }
-        
+
         table_cfg = TableConfig(entities_cfg=config, entity_name="analysis_entity")
-        
+
         assert len(table_cfg.branches) == 2
         assert table_cfg.branches[0]["name"] == "abundance"
         assert table_cfg.branches[0]["source"] == "abundance"
@@ -56,9 +54,9 @@ class TestMergedEntityConfig:
                 "values": [["Soil"], ["Core"]],
             }
         }
-        
+
         table_cfg = TableConfig(entities_cfg=config, entity_name="sample_type")
-        
+
         assert table_cfg.type == "fixed"
         assert table_cfg.branches == []
 
@@ -76,11 +74,11 @@ class TestMergedEntityConfig:
                 ],
             },
         }
-        
+
         table_cfg = TableConfig(entities_cfg=config, entity_name="analysis_entity")
-        
+
         depends_on = table_cfg.depends_on
-        
+
         assert "abundance" in depends_on
         assert "_analysis_entity_relative_dating" in depends_on
         assert len(depends_on) == 2  # Only branch sources, no other dependencies
@@ -98,16 +96,14 @@ class TestMergedEntityConfig:
                     {"name": "abundance", "source": "abundance"},
                     {"name": "relative_dating", "source": "_analysis_entity_relative_dating"},
                 ],
-                "foreign_keys": [
-                    {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"]}
-                ],
+                "foreign_keys": [{"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"]}],
             },
         }
-        
+
         table_cfg = TableConfig(entities_cfg=config, entity_name="analysis_entity")
-        
+
         depends_on = table_cfg.depends_on
-        
+
         # Should include both branch sources and FK dependencies
         assert "abundance" in depends_on
         assert "_analysis_entity_relative_dating" in depends_on

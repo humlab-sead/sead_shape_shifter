@@ -1,7 +1,5 @@
 """Tests for merged entity validation."""
 
-import pytest
-
 from src.specifications.entity import MergedEntityFieldsSpecification
 
 
@@ -112,9 +110,7 @@ class TestMergedEntityFieldsSpecification:
                     "type": "merged",
                     "public_id": "merged_id",
                     "columns": ["id"],
-                    "branches": [
-                        {"source": "source1"}  # Missing 'name'
-                    ],
+                    "branches": [{"source": "source1"}],  # Missing 'name'
                 },
             }
         }
@@ -134,9 +130,7 @@ class TestMergedEntityFieldsSpecification:
                     "type": "merged",
                     "public_id": "merged_id",
                     "columns": ["id"],
-                    "branches": [
-                        {"name": "branch1"}  # Missing 'source'
-                    ],
+                    "branches": [{"name": "branch1"}],  # Missing 'source'
                 },
             }
         }
@@ -156,9 +150,7 @@ class TestMergedEntityFieldsSpecification:
                     "type": "merged",
                     "public_id": "merged_id",
                     "columns": ["id"],
-                    "branches": [
-                        {"name": "branch1", "source": "nonexistent_entity"}  # Source doesn't exist
-                    ],
+                    "branches": [{"name": "branch1", "source": "nonexistent_entity"}],  # Source doesn't exist
                 },
             }
         }
@@ -204,9 +196,7 @@ class TestMergedEntityFieldsSpecification:
                     "type": "merged",
                     "public_id": "merged_id",
                     "columns": ["id", "name"],
-                    "branches": [
-                        {"name": "branch1", "source": "source1", "keys": ["name"]}  # Valid keys list
-                    ],
+                    "branches": [{"name": "branch1", "source": "source1", "keys": ["name"]}],  # Valid keys list
                 },
             }
         }
@@ -226,9 +216,7 @@ class TestMergedEntityFieldsSpecification:
                     "type": "merged",
                     "public_id": "merged_id",
                     "columns": ["id"],
-                    "branches": [
-                        {"name": "branch1", "source": "source1", "keys": "not_a_list"}  # Invalid type
-                    ],
+                    "branches": [{"name": "branch1", "source": "source1", "keys": "not_a_list"}],  # Invalid type
                 },
             }
         }

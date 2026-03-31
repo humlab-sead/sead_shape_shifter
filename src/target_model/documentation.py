@@ -18,6 +18,7 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from jinja2.environment import Template
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 
@@ -46,9 +47,9 @@ class TargetModelDocumentGenerator:
             target_model: Target model specification to document.
             project: Optional project for context (entity usage, validation status).
         """
-        self.target_model = target_model
-        self.project = project
-        self._template_dir = Path(__file__).parent / "templates"
+        self.target_model: TargetModel = target_model
+        self.project: ShapeShiftProject | None = project
+        self._template_dir: Path = Path(__file__).parent / "templates"
 
     def _get_jinja_env(self) -> Environment:
         """Create Jinja2 environment with custom filters."""
@@ -65,7 +66,7 @@ class TargetModelDocumentGenerator:
         """Prepare model data for templates with project context."""
         # Group entities by domain
         by_domain: dict[str, list[dict[str, Any]]] = {}
-        used_entities = set(self.project.cfg.get("entities", {}).keys()) if self.project else set()
+        used_entities: set[str] = set(self.project.cfg.get("entities", {}).keys()) if self.project else set()
 
         for entity_name, entity_spec in self.target_model.entities.items():
             entity_data = {
@@ -80,18 +81,18 @@ class TargetModelDocumentGenerator:
                 by_domain[domain].append(entity_data)
 
         # Sort entities within each domain
-        for domain in by_domain:  # type: ignore
+        for domain in by_domain:  # type: ignore ; # pylint disable=consider-using-dict-items
             by_domain[domain].sort(key=lambda x: x["name"])
 
         # Calculate statistics
-        total_entities = len(self.target_model.entities)
-        required_entities = sum(1 for e in self.target_model.entities.values() if e.required)
-        total_fks = sum(len(e.foreign_keys) for e in self.target_model.entities.values())
-        total_columns = sum(len(e.columns) for e in self.target_model.entities.values() if e.columns)
+        total_entities: int = len(self.target_model.entities)
+        required_entities: int = sum(1 for e in self.target_model.entities.values() if e.required)
+        total_fks: int = sum(len(e.foreign_keys) for e in self.target_model.entities.values())
+        total_columns: int = sum(len(e.columns) for e in self.target_model.entities.values() if e.columns)
 
         # Project-specific stats
-        used_count = len(used_entities) if self.project else 0
-        unused_required = 0
+        used_count: int = len(used_entities) if self.project else 0
+        unused_required: int = 0
         if self.project:
             unused_required = sum(1 for name, spec in self.target_model.entities.items() if spec.required and name not in used_entities)
 
@@ -114,29 +115,28 @@ class TargetModelDocumentGenerator:
             "has_project_context": self.project is not None,
         }
 
-    def generate_html(self) -> bytes:
-        """Generate interactive HTML documentation.
-
-        Returns:
-            HTML content as UTF-8 encoded bytes.
-        """
-        env = self._get_jinja_env()
-        template = env.get_template("target_model.html.j2")
-        data = self._prepare_model_data()
-        html = template.render(**data)
-        return html.encode("utf-8")
-
     def generate_markdown(self) -> bytes:
         """Generate Markdown documentation.
 
         Returns:
             Markdown content as UTF-8 encoded bytes.
         """
-        env = self._get_jinja_env()
-        template = env.get_template("target_model.md.j2")
-        data = self._prepare_model_data()
-        md = template.render(**data)
-        return md.encode("utf-8")
+        return self._render_template("target_model.md.j2").encode("utf-8")
+
+    def generate_html(self) -> bytes:
+        """Generate interactive HTML documentation.
+
+        Returns:
+            HTML content as UTF-8 encoded bytes.
+        """
+        return self._render_template("target_model.html.j2").encode("utf-8")
+
+    def _render_template(self, template_name: str) -> str:
+        env: Environment = self._get_jinja_env()
+        template: Template = env.get_template(template_name)
+        data: dict[str, Any] = self._prepare_model_data()
+        output: str = template.render(**data)
+        return output
 
     def generate_excel(self) -> bytes:
         """Generate Excel spreadsheet for review and annotation.
@@ -148,7 +148,7 @@ class TargetModelDocumentGenerator:
             ImportError: If pandas or openpyxl not installed.
         """
 
-        used_entities = set(self.project.cfg.get("entities", {}).keys()) if self.project else set()
+        used_entities: set[str] = set(self.project.cfg.get("entities", {}).keys()) if self.project else set()
 
         # Entities sheet
         entities_data = []

@@ -170,7 +170,7 @@ class ShapeShifter:
         # Only the current branch's FK column is populated; others are NULL
         for branch_cfg in table_cfg.branches:
             branch_src: str = branch_cfg.get("source")
-            
+
             # Get source entity's public_id for FK column name
             source_entity_cfg: dict = self.project.cfg.get("entities", {}).get(branch_src, {})
             source_public_id: str | None = source_entity_cfg.get("public_id")
