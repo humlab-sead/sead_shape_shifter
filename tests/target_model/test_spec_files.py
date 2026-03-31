@@ -1,13 +1,16 @@
 from pathlib import Path
+from re import S
 
 import yaml
 
 from src.target_model.models import TargetModel
 from src.target_model.spec_validator import TargetModelSpecValidator
 
+EXAMPLES_DIR = Path( "tests/test_data/examples")
+SPECS_DIR = Path("tests/test_data/specs")
 
 def test_sead_v2_spec_loads_and_validates() -> None:
-    spec_path = Path(__file__).resolve().parents[1] / "specs" / "sead_v2.yml"
+    spec_path: Path = SPECS_DIR / "sead_v2.yml"
     target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
     issues = TargetModelSpecValidator().validate(target_model)

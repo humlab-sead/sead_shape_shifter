@@ -8,8 +8,8 @@ from src.target_model.conformance import TargetModelConformanceValidator
 from src.target_model.models import TargetModel
 
 
-EXAMPLES_DIR = Path(__file__).resolve().parents[1] / "examples"
-SPECS_DIR = Path(__file__).resolve().parents[1] / "specs"
+EXAMPLES_DIR = Path( "tests/test_data/examples")
+SPECS_DIR = Path("tests/test_data/specs")
 
 
 def load_target_model(name: str = "sead_v2.yml") -> TargetModel:
