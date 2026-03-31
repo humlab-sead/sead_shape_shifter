@@ -4,7 +4,7 @@
 
 export type Cardinality = 'one_to_one' | 'many_to_one' | 'one_to_many' | 'many_to_many'
 export type JoinType = 'left' | 'inner' | 'outer' | 'right' | 'cross'
-export type EntityType = 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
+export type EntityType = 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl' | 'merged'
 export type FilterStage = 'extract' | 'after_link' | 'after_unnest'
 
 export interface EntityFileOptions {
@@ -62,6 +62,12 @@ export interface AppendConfig {
   column_mapping?: Record<string, string> | null
 }
 
+export interface BranchConfig {
+  name: string
+  source: string
+  keys?: string[]
+}
+
 export interface Entity {
   name: string
   type?: EntityType | null
@@ -77,6 +83,7 @@ export interface Entity {
   unnest?: UnnestConfig | null
   filters?: FilterConfig[]
   append?: AppendConfig[]
+  branches?: BranchConfig[]
   depends_on?: string[]
   drop_duplicates?: boolean | string[]
   drop_empty_rows?: boolean | string[]
