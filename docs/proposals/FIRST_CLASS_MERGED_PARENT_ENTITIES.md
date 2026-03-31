@@ -564,7 +564,6 @@ All design decisions have been confirmed and are ready for implementation:
 - [x] Add validation for branch name uniqueness within merged entity (MergedEntityFieldsSpecification)
 - [x] Add validation for at least one branch required (MergedEntityFieldsSpecification)
 - [ ] Support optional `branch_discriminator_column` override (future enhancement)
-- [ ] Support optional `branch_key_column` override (future enhancement)
 
 #### API/Backend Layer (`backend/app/`) — **PHASE 1 (minimal API)**
 
@@ -573,7 +572,6 @@ All design decisions have been confirmed and are ready for implementation:
 - [x] Add `BranchConfig` Pydantic model in `backend/app/models/entity.py`
 - [x] Add `branches: list[BranchConfig] | None` to entity configuration model (Entity.branches field)
 - [ ] Add `branch_discriminator_column: str | None` optional field (future enhancement)
-- [ ] Add `branch_key_column: str | None` optional field (future enhancement)
 - [x] Update entity configuration validators to handle merged type (Pydantic auto-validates)
 
 **Validation Service:** [**Phase 1**] ✅ **COMPLETE**
@@ -697,7 +695,6 @@ All design decisions have been confirmed and are ready for implementation:
 - [x] Test merged entity with heterogeneous branch schemas (test_merged_entity_integration.py)
 - [x] Test merged entity with shared columns across branches (test_merged_entity_integration.py)
 - [ ] Test merged entity with optional `branch_discriminator_column` override (future enhancement)
-- [ ] Test merged entity with optional `branch_key_column` override (future enhancement)
 
 **Backend Tests (`backend/tests/`):** [**Phase 1**] ✅ **COMPLETE** (5 API tests)
 - [x] Test API endpoint for creating merged entity (test_create_merged_entity)
