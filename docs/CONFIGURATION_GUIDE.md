@@ -459,16 +459,18 @@ method:
   - Warn if source entity is processed after current entity in dependency order
   - Validate that source entity produces compatible output columns
 #### `type`
-- **Type**: `"entity" | "fixed" | "sql"`
+- **Type**: `"entity" | "fixed" | "sql" | "merged"`
 - **Required**: No (defaults to `"entity"`)
 - **Description**: 
   - `"entity"`: Extract from source data (spreadsheet or another entity)
   - `"fixed"`: Use fixed/hardcoded values defined in `values`
   - `"sql"`: Execute SQL query against a database (requires `data_source` and `query`)
+  - `"merged"`: Merge multiple source entities into a single parent entity with branch tracking (requires `branches`)
 - **Requirements by Type**:
   - `type: fixed` → requires `values` (list of lists)
   - `type: sql` → requires `data_source` and `query`
   - `type: entity` → uses `source` (defaults to root data if omitted)
+  - `type: merged` → requires `branches` (list of branch configurations)
 - **Example**:
   ```yaml
   # Fixed lookup table
@@ -485,7 +487,7 @@ method:
     from tbl_dimensions
   ```
 - **Validation Rules**:
-  - **Type**: Must be one of `"entity"`, `"fixed"`, or `"sql"` if provided
+  - **Type**: Must be one of `"entity"`, `"fixed"`, `"sql"`, or `"merged"` if provided
   - **Default**: Defaults to `"entity"` if omitted
   - **Context-Dependent Requirements**:
     - **When `type: fixed`**:
@@ -504,6 +506,15 @@ method:
     - **When `type: entity`**:
       - Can use `source` field to reference another entity
       - Should not have `values`, `data_source`, or `query` (warning if present)
+    - **When `type: merged`**:
+      - `branches` field is required (error if missing)
+      - `branches` must be non-empty list (error if empty)
+      - `public_id` is required (error if missing)
+      - `source` should be empty (warning if set)
+      - `values` should be empty (warning if set)
+      - `data_source` should be empty (warning if set)
+      - `query` should be empty (warning if set)
+      - `columns` should be empty (warning if set)
 - **Common Issues**:
   - Missing required fields for entity type
   - Conflicting fields (e.g., both `values` and `query`)
@@ -608,6 +619,114 @@ method:
     - ["Type A", "Description A"]
     - ["Type B", "Description B"]
   ```
+
+#### `branches`
+- **Type**: `list[BranchConfig]`
+- **Required**: Yes when `type: merged`; Should be empty for other types
+- **Description**: Defines the branch configurations for a merged entity. Each branch represents a source entity whose data will be merged into the parent entity with branch tracking. The merged entity will contain all rows from all branches, with an additional discriminator column indicating which branch each row came from, plus sparse foreign key columns for each branch's source entity.
+
+- **Branch Configuration Structure**:
+  ```yaml
+  branches:
+    - name: string           # Branch identifier (required, must be unique within entity)
+      source: string         # Source entity name (required, must exist)
+      keys: list[string]     # Business keys for deduplication (optional, defaults to [])
+  ```
+
+- **Example**:
+  ```yaml
+  # Merged parent entity combining dendro and ceramics analysis entities
+  analysis_entity:
+    type: merged
+    public_id: analysis_entity_id
+    branches:
+      - name: dendro
+        source: dendro_analysis
+        keys: [sample_name]
+      - name: ceramics
+        source: ceramics_analysis
+        keys: [sample_name]
+  ```
+
+- **Processing Behavior**:
+  1. **Branch Discriminator**: Adds a column named `{entity}_branch` (e.g., `analysis_entity_branch`) with values matching branch names ("dendro", "ceramics")
+  2. **Foreign Key Propagation**: For each branch, adds a sparse FK column named after the source entity's `public_id` (e.g., `dendro_id`, `ceramics_id`)
+  3. **Data Merging**: Concatenates all branch source data into a single table with branch tracking
+  4. **Null Handling**: Each row only populates the FK column for its branch; other branch FK columns are NULL (using pandas Int64 nullable type)
+
+- **Validation Rules**:
+  - **Required Fields**: Each branch must have `name` and `source` (error if missing)
+  - **Branch Names**: Must be unique within the entity (error if duplicate)
+  - **Source Existence**: Each `source` must reference an existing entity in the project (error if not found)
+  - **Source Public ID**: Each source entity must have `public_id` defined (error if missing)
+  - **Type Check**: `type` must be `"merged"` when `branches` is defined (error otherwise)
+  - **Mutual Exclusion**: Cannot combine `branches` with `values`, `data_source`, `query`, or `source` (error)
+
+- **Use Cases**:
+  - **Parent Entities**: Merge multiple analysis types (dendro, pollen, ceramics) into a unified `analysis_entity` with branch tracking
+  - **Heterogeneous Data**: Combine entities with different column sets but shared identity (sample analysis from different labs)
+  - **Branch-Specific FKs**: Maintain relationships to different source entities based on data origin
+
+- **Common Patterns**:
+  ```yaml
+  # Pattern 1: Analysis entities with different methods
+  analysis_entity:
+    type: merged
+    public_id: analysis_entity_id
+    branches:
+      - name: abundance
+        source: abundance_analysis
+        keys: [sample_id]
+      - name: dating
+        source: dating_analysis
+        keys: []
+  
+  # Pattern 2: Mixed data sources (fixed + entity)
+  location:
+    type: merged
+    public_id: location_id
+    branches:
+      - name: field_data
+        source: field_locations    # From spreadsheet
+        keys: [location_code]
+      - name: database
+        source: sead_locations     # From SQL query
+        keys: [sead_location_id]
+  ```
+
+- **Example Output Structure**:
+  ```yaml
+  # Input configuration
+  analysis_entity:
+    type: merged
+    public_id: analysis_entity_id
+    branches:
+      - name: dendro
+        source: dendro            # dendro.public_id = "dendro_id"
+      - name: ceramics
+        source: ceramics          # ceramics.public_id = "ceramics_id"
+  
+  # Resulting DataFrame columns:
+  # - system_id: 1, 2, 3, 4...                    (local sequential)
+  # - analysis_entity_id: 1, 2, 3, 4...          (public_id column)
+  # - analysis_entity_branch: "dendro", "dendro", "ceramics", "ceramics"...
+  # - dendro_id: 1, 2, NULL, NULL...              (sparse FK, Int64 nullable)
+  # - ceramics_id: NULL, NULL, 1, 2...            (sparse FK, Int64 nullable)
+  # - [other columns from sources...]
+  ```
+
+- **Common Issues**:
+  - Missing `public_id` on source entities (required for FK column naming)
+  - Duplicate branch names (must be unique)
+  - Circular dependencies (branch source cannot depend on merged entity)
+  - Conflicting column names from different branches (later branches overwrite)
+
+- **Best Practices**:
+  - Use descriptive branch names that indicate data origin ("field_survey", "lab_analysis")
+  - Ensure source entities have compatible schemas (or handle column conflicts explicitly)
+  - Always define `public_id` on merged entities (required for FK relationships)
+  - Use `keys` for deduplication when branch sources may have duplicates
+  - Document the meaning of each branch in entity comments
 
 ---
 
@@ -2843,6 +2962,42 @@ identification_level:
   depends_on: []
 ```
 
+### Merged Entity with Branch Tracking
+
+```yaml
+# Branch source entities
+dendro_analysis:
+  type: entity
+  public_id: dendro_id
+  keys: [sample_name]
+  columns: [sample_name, dendro_date, tree_species]
+  source: dendro_data_sheet
+
+ceramics_analysis:
+  type: entity
+  public_id: ceramics_id
+  keys: [sample_name]
+  columns: [sample_name, ceramic_type, pottery_period]
+  source: ceramics_data_sheet
+
+# Merged parent entity combining both analysis types
+analysis_entity:
+  type: merged
+  public_id: analysis_entity_id
+  branches:
+    - name: dendro
+      source: dendro_analysis
+      keys: [sample_name]
+    - name: ceramics
+      source: ceramics_analysis
+      keys: [sample_name]
+  # Processing creates:
+  # - analysis_entity_branch: "dendro" | "ceramics" (discriminator)
+  # - dendro_id: foreign key to dendro_analysis (sparse, NULL for ceramics rows)
+  # - ceramics_id: foreign key to ceramics_analysis (sparse, NULL for dendro rows)
+  # - Merged data from both sources with branch tracking
+```
+
 ### Entity with Foreign Keys
 
 ```yaml
@@ -3512,13 +3667,17 @@ EntityConfig:
   # Identity
   surrogate_id?: string
   surrogate_name?: string
+  public_id?: string
   keys?: list[string]
   
   # Source
   source?: string | null
-  type?: "entity" | "fixed" | "sql"
+  type?: "entity" | "fixed" | "sql" | "merged"
   data_source?: string
   values?: string | list[list]
+  
+  # Merged Entity Configuration
+  branches?: list[BranchConfig]
   
   # Columns
   columns?: list[string] | string
@@ -3540,7 +3699,13 @@ EntityConfig:
   foreign_keys?: list[ForeignKeyConfig]
   
   # Transformations
-  unnest?: UnnestConfig---
+  unnest?: UnnestConfig
+
+# BranchConfig (for merged entities)
+BranchConfig:
+  name: string              # Branch identifier (required)
+  source: string            # Source entity name (required)
+  keys?: list[string]       # Business keys for deduplication (optional)---
 
 ## Validation Rules Summary
 
@@ -3581,6 +3746,36 @@ This section provides a comprehensive overview of all validation rules implement
   - **When `type: sql`**:
     - `data_source` must exist and be non-empty string (error)
     - `query` must exist and be non-empty string (error)
+
+#### MergedEntityFieldsSpecification
+- **Purpose**: Validates merged entity configuration
+- **Applies When**: `type: merged`
+- **Rules**:
+  - **Required fields**:
+    - `public_id` must exist (error code: `MERGED_PUBLIC_ID_REQUIRED`)
+    - `branches` must exist (error code: `MERGED_BRANCHES_REQUIRED`)
+    - `branches` must be non-empty list (error code: `MERGED_BRANCHES_EMPTY`)
+  - **Branch validation**:
+    - Each branch must have `name` field (error code: `MERGED_BRANCH_NAME_REQUIRED`)
+    - Each branch must have `source` field (error code: `MERGED_BRANCH_SOURCE_REQUIRED`)
+    - Branch names must be unique (error code: `MERGED_BRANCH_NAME_DUPLICATE`)
+    - Branch `source` must reference existing entity (error code: `MERGED_BRANCH_SOURCE_NOT_FOUND`)
+    - Source entity must have `public_id` defined (error code: `MERGED_BRANCH_SOURCE_MISSING_PUBLIC_ID`)
+  - **Conflicting fields** (warnings):
+    - `source` should be empty (conflicts with branches)
+    - `values` should be empty (conflicts with merged type)
+    - `data_source` should be empty (conflicts with merged type)
+    - `query` should be empty (conflicts with merged type)
+    - `columns` should be empty (derived from branches)
+- **Error Codes**:
+  - `MERGED_PUBLIC_ID_REQUIRED`: Merged entities require public_id for FK column naming
+  - `MERGED_BRANCHES_REQUIRED`: Merged entities require branches configuration
+  - `MERGED_BRANCHES_EMPTY`: Branches list cannot be empty
+  - `MERGED_BRANCH_NAME_REQUIRED`: Each branch must have a name
+  - `MERGED_BRANCH_SOURCE_REQUIRED`: Each branch must reference a source entity
+  - `MERGED_BRANCH_NAME_DUPLICATE`: Branch names must be unique within entity
+  - `MERGED_BRANCH_SOURCE_NOT_FOUND`: Branch source entity does not exist
+  - `MERGED_BRANCH_SOURCE_MISSING_PUBLIC_ID`: Branch source entity must have public_id defined
 
 #### FixedDataSpecification
 - **Purpose**: Validates fixed entity data structure

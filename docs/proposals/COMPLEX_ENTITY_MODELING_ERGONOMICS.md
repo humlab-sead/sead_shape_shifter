@@ -114,37 +114,11 @@ This works, but it has costs:
 
 ## Proposal 1: First-Class Merged Parent Entities
 
-Add a first-class entity mode for merged parent entities composed from explicit branches.
+**Status: Extracted to standalone proposal**
 
-Illustrative shape:
+See [FIRST_CLASS_MERGED_PARENT_ENTITIES.md](FIRST_CLASS_MERGED_PARENT_ENTITIES.md) for the complete proposal.
 
-```yaml
-analysis_entity:
-  type: merged
-  branches:
-    - name: abundance
-      source: analysis_entity_abundance_branch
-      keys: [Projekt, Befu, ProbNr, PCODE, Fraktion, cf, RTyp, Zust]
-    - name: relative_dating
-      source: analysis_entity_relative_dating_branch
-      keys: [Projekt, Befu, ProbNr, ArchDat]
-```
-
-### Why
-
-Today the model has to simulate this through generic `append` plus author-managed branch markers and branch-local identity logic. A first-class merged parent would:
-
-- make branch structure explicit
-- allow validation per branch before merge
-- allow the merged entity to expose a stable parent identity without relying on implicit append conventions
-- better communicate author intent in the YAML itself
-
-### Expected Behavior
-
-- Each branch produces rows independently
-- Shape Shifter validates branch-local keys and schema before merge
-- Branch identity is retained as metadata or as an explicit branch discriminator
-- The merged parent gets one public ID space after concatenation
+The core issue is providing first-class support for merged parent entities composed from explicit branches. Currently these scenarios require manual `extra_columns` for branch discriminators and synthetic keys, plus generic `append` to merge rows. The recommended approach is a new entity type `type: merged` with explicit `branches:` declaration, automatic branch discriminator and cross-branch key generation, and per-branch validation.
 
 ## Proposal 2: Entity Semantic Roles (Fact vs Lookup)
 
