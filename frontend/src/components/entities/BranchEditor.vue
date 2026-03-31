@@ -173,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import type { BranchConfig } from '@/types/entity'
 
 interface Props {
@@ -235,8 +235,8 @@ function handleRemoveBranch(index: number) {
 function handleMoveBranch(index: number, direction: -1 | 1) {
   const target = index + direction
   if (target < 0 || target >= branches.value.length) return
-  const temp = branches.value[index]
-  branches.value[index] = branches.value[target]
+  const temp = branches.value[index]!
+  branches.value[index] = branches.value[target]!
   branches.value[target] = temp
   emitUpdate()
 }

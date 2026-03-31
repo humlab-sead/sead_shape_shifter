@@ -1,5 +1,5 @@
-import { describe, expect, it, beforeEach } from 'vitest'
-import { mount, VueWrapper } from '@vue/test-utils'
+import { describe, expect, it } from 'vitest'
+import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
@@ -61,16 +61,16 @@ describe('BranchEditor', () => {
 
   it('emits update:modelValue when Add Branch is clicked', async () => {
     const wrapper = mountBranchEditor()
-    const addBtn = wrapper.find('[prepend-icon="mdi-plus"]')
     // Find button by text content
     const buttons = wrapper.findAll('button')
     const addButton = buttons.find((b) => b.text().includes('Add Branch'))
     expect(addButton).toBeDefined()
     await addButton!.trigger('click')
     expect(wrapper.emitted('update:modelValue')).toBeTruthy()
-    const emitted = wrapper.emitted('update:modelValue') as BranchConfig[][]
-    expect(emitted[0][0]).toHaveLength(1)
-    expect(emitted[0][0][0]).toMatchObject({ name: '', source: '' })
+    const emitted = wrapper.emitted('update:modelValue')! as Array<[BranchConfig[]]>
+    expect(emitted.length).toBeGreaterThan(0)
+    expect(emitted[0]![0]).toHaveLength(1)
+    expect(emitted[0]![0][0]).toMatchObject({ name: '', source: '' })
   })
 
   it('shows merged output summary when multiple branches present', () => {
@@ -107,8 +107,8 @@ describe('BranchEditor', () => {
     const buttons = wrapper.findAll('button')
     const addButton = buttons.find((b) => b.text().includes('Add Branch'))
     await addButton!.trigger('click')
-    const emitted = wrapper.emitted('update:modelValue') as BranchConfig[][]
-    const lastEmit = emitted[emitted.length - 1][0]
+    const emitted = wrapper.emitted('update:modelValue')! as Array<[BranchConfig[]]>
+    const lastEmit = emitted[emitted.length - 1]![0]
     // The first branch has empty keys → should be omitted in serialized output
     const dendroEmit = lastEmit.find((b) => b.name === 'dendro')
     expect(dendroEmit).toBeTruthy()
