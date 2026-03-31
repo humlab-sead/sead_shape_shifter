@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
@@ -28,6 +29,10 @@ const mountBranchEditor = (props = {}) => {
       ...props,
     },
   })
+}
+
+const getIconButtons = (wrapper: ReturnType<typeof mountBranchEditor>) => {
+  return wrapper.findAllComponents({ name: 'VBtn' }).filter((button) => typeof button.props('icon') === 'string')
 }
 
 describe('BranchEditor', () => {
@@ -113,5 +118,72 @@ describe('BranchEditor', () => {
     const dendroEmit = lastEmit.find((b) => b.name === 'dendro')
     expect(dendroEmit).toBeTruthy()
     expect(dendroEmit?.keys).toBeUndefined()
+  })
+
+  it('emits updated branches when removing and reordering branches', async () => {
+    const branches: BranchConfig[] = [
+      { name: 'dendro', source: 'dendro_analysis', keys: ['sample_name'] },
+      { name: 'ceramics', source: 'ceramics_analysis', keys: ['sample_name'] },
+    ]
+    const wrapper = mountBranchEditor({ modelValue: branches })
+
+    const iconButtons = getIconButtons(wrapper)
+    const downButtons = iconButtons.filter((button) => button.props('icon') === 'mdi-arrow-down')
+    expect(downButtons).toHaveLength(2)
+
+    await downButtons[0]!.trigger('click')
+
+    const emitted = wrapper.emitted('update:modelValue')! as Array<[BranchConfig[]]>
+    expect(emitted.at(-1)?.[0].map((branch) => branch.name)).toEqual(['ceramics', 'dendro'])
+
+    const updatedBranches = emitted.at(-1)![0]
+    await wrapper.setProps({ modelValue: updatedBranches })
+    await nextTick()
+
+    const deleteButtons = getIconButtons(wrapper).filter((button) => button.props('icon') === 'mdi-delete')
+    expect(deleteButtons).toHaveLength(2)
+
+    await deleteButtons[0]!.trigger('click')
+
+    const removedEmit = (wrapper.emitted('update:modelValue')! as Array<[BranchConfig[]]>).at(-1)?.[0]
+    expect(removedEmit).toHaveLength(1)
+    expect(removedEmit?.[0]).toMatchObject({ name: 'dendro', source: 'dendro_analysis', keys: ['sample_name'] })
+  })
+
+  it('emits inline edits for branch name, source entity, and keys', async () => {
+    const branches: BranchConfig[] = [{ name: 'draft', source: 'dendro_analysis', keys: ['sample_name'] }]
+    const wrapper = mountBranchEditor({ modelValue: branches })
+
+    const expansionTitle = wrapper.find('.v-expansion-panel-title')
+    expect(expansionTitle.exists()).toBe(true)
+    await expansionTitle.trigger('click')
+    await nextTick()
+
+    const textField = wrapper.findComponent({ name: 'VTextField' })
+    const autocomplete = wrapper.findComponent({ name: 'VAutocomplete' })
+    const combobox = wrapper.findComponent({ name: 'VCombobox' })
+
+    expect(textField.exists()).toBe(true)
+    expect(autocomplete.exists()).toBe(true)
+    expect(combobox.exists()).toBe(true)
+
+    textField.vm.$emit('update:modelValue', 'abundance')
+    await nextTick()
+
+    autocomplete.vm.$emit('update:modelValue', 'ceramics_analysis')
+    await nextTick()
+
+    combobox.vm.$emit('update:modelValue', ['sample_name', 'ceramic_type'])
+    await nextTick()
+
+    const emitted = wrapper.emitted('update:modelValue')! as Array<[BranchConfig[]]>
+    const lastEmit = emitted.at(-1)?.[0]
+
+    expect(lastEmit).toHaveLength(1)
+    expect(lastEmit?.[0]).toMatchObject({
+      name: 'abundance',
+      source: 'ceramics_analysis',
+      keys: ['sample_name', 'ceramic_type'],
+    })
   })
 })
