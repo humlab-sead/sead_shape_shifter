@@ -750,6 +750,19 @@
                     {{ livePreviewData.total_rows_in_preview || 0 }} rows
                   </v-chip>
 
+                  <v-select
+                    v-if="mergedPreviewHasBranchFilter"
+                    v-model="selectedPreviewBranch"
+                    :items="previewBranchOptions"
+                    item-title="title"
+                    item-value="value"
+                    label="Branch"
+                    density="compact"
+                    variant="outlined"
+                    style="max-width: 190px"
+                    hide-details
+                  />
+
                   <v-chip v-if="livePreviewLastRefresh" size="small" variant="text">
                     <v-icon start size="x-small">mdi-clock-outline</v-icon>
                     {{ formatRefreshTime(livePreviewLastRefresh) }}
@@ -797,6 +810,26 @@
 
             <div class="preview-content">
               <v-progress-linear v-if="previewLoading" indeterminate color="primary" />
+
+              <div
+                v-if="!previewLoading && mergedPreviewHasBranchFilter"
+                class="d-flex flex-wrap align-center ga-2 px-2 pt-2"
+              >
+                <v-chip size="small" color="secondary" variant="tonal">
+                  <v-icon start size="x-small">mdi-source-branch</v-icon>
+                  {{ mergedPreviewBranchColumn }} discriminator
+                </v-chip>
+                <v-chip
+                  v-for="fkColumn in mergedPreviewFkColumns"
+                  :key="fkColumn"
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                >
+                  <v-icon start size="x-small">mdi-link-variant</v-icon>
+                  {{ fkColumn }} lineage FK
+                </v-chip>
+              </div>
 
               <div v-if="livePreviewData && !previewLoading" class="preview-table-container">
                 <div class="preview-grid-wrapper">
@@ -1265,6 +1298,60 @@ const canPreview = computed(() => {
   return props.mode === 'edit' && formData.value.name
 })
 
+const ALL_BRANCH_PREVIEW_VALUE = '__all__'
+const selectedPreviewBranch = ref<string>(ALL_BRANCH_PREVIEW_VALUE)
+
+const mergedPreviewBranchColumn = computed(() => {
+  if (formData.value.type !== 'merged' || !formData.value.name || !livePreviewData.value?.columns) {
+    return null
+  }
+
+  const candidate = `${formData.value.name}_branch`
+  return livePreviewData.value.columns.some((column) => column.name === candidate) ? candidate : null
+})
+
+const mergedPreviewFkColumns = computed(() => {
+  if (formData.value.type !== 'merged') return []
+
+  const visibleColumns = new Set(livePreviewData.value?.columns.map((column) => column.name) || [])
+
+  return (formData.value.advanced.branches || [])
+    .map((branch: any) => {
+      const source = branch?.source
+      if (!source) return null
+      return sourceEntityPublicIdMap.value[source] || `${source}_id`
+    })
+    .filter((columnName): columnName is string => {
+      if (typeof columnName !== 'string' || columnName.length === 0) {
+        return false
+      }
+      return visibleColumns.has(columnName)
+    })
+})
+
+const mergedPreviewHasBranchFilter = computed(() => {
+  return Boolean(mergedPreviewBranchColumn.value && livePreviewData.value?.rows?.length)
+})
+
+const previewBranchOptions = computed(() => {
+  if (!mergedPreviewHasBranchFilter.value || !mergedPreviewBranchColumn.value) {
+    return []
+  }
+
+  const branchValues = Array.from(
+    new Set(
+      (livePreviewData.value?.rows || [])
+        .map((row) => row[mergedPreviewBranchColumn.value!])
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    )
+  ).sort()
+
+  return [
+    { title: 'All branches', value: ALL_BRANCH_PREVIEW_VALUE },
+    ...branchValues.map((branch) => ({ title: branch, value: branch })),
+  ]
+})
+
 // Ag-grid project for preview
 const previewColumnDefs = computed<ColDef[]>(() => {
   if (!livePreviewData.value?.columns) return []
@@ -1277,7 +1364,21 @@ const previewColumnDefs = computed<ColDef[]>(() => {
     resizable: true,
     minWidth: 40,
     flex: 1,
-    cellClass: col.is_key ? 'key-column' : '',
+    headerClass: [
+      col.name === mergedPreviewBranchColumn.value ? 'merged-preview-branch-header' : '',
+      mergedPreviewFkColumns.value.includes(col.name) ? 'merged-preview-fk-header' : '',
+    ].filter(Boolean),
+    headerTooltip:
+      col.name === mergedPreviewBranchColumn.value
+        ? 'Auto-generated branch discriminator for merged entities'
+        : mergedPreviewFkColumns.value.includes(col.name)
+          ? 'Sparse lineage foreign key back to the source branch row'
+          : undefined,
+    cellClass: [
+      col.is_key ? 'key-column' : '',
+      col.name === mergedPreviewBranchColumn.value ? 'merged-preview-branch-cell' : '',
+      mergedPreviewFkColumns.value.includes(col.name) ? 'merged-preview-fk-cell' : '',
+    ].filter(Boolean).join(' '),
     headerComponent: undefined,
     headerComponentParams: {
       columnInfo: col,
@@ -1286,7 +1387,17 @@ const previewColumnDefs = computed<ColDef[]>(() => {
 })
 
 const previewRowData = computed(() => {
-  return livePreviewData.value?.rows || []
+  const rows = livePreviewData.value?.rows || []
+
+  if (!mergedPreviewHasBranchFilter.value || selectedPreviewBranch.value === ALL_BRANCH_PREVIEW_VALUE) {
+    return rows
+  }
+
+  if (!mergedPreviewBranchColumn.value) {
+    return rows
+  }
+
+  return rows.filter((row) => row[mergedPreviewBranchColumn.value!] === selectedPreviewBranch.value)
 })
 
 const previewDefaultColDef: ColDef = {
@@ -1823,6 +1934,13 @@ watch(
     }
   },
   { deep: true }
+)
+
+watch(
+  [mergedPreviewBranchColumn, () => formData.value.name],
+  () => {
+    selectedPreviewBranch.value = ALL_BRANCH_PREVIEW_VALUE
+  }
 )
 
 // Watch for source entity changes (entity type) to hydrate columns
@@ -3303,6 +3421,23 @@ function handleRejectDependency(dep: DependencySuggestion) {
   font-weight: 500;
   background: rgba(var(--v-theme-warning), 0.05) !important;
   color: rgb(var(--v-theme-on-background)) !important;
+}
+
+.preview-ag-grid :deep(.merged-preview-branch-header) {
+  background: rgba(var(--v-theme-secondary), 0.12) !important;
+}
+
+.preview-ag-grid :deep(.merged-preview-fk-header) {
+  background: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.preview-ag-grid :deep(.merged-preview-branch-cell) {
+  background: rgba(var(--v-theme-secondary), 0.08) !important;
+  font-weight: 600;
+}
+
+.preview-ag-grid :deep(.merged-preview-fk-cell) {
+  background: rgba(var(--v-theme-primary), 0.05) !important;
 }
 
 /* Dark mode support for ag-grid */
