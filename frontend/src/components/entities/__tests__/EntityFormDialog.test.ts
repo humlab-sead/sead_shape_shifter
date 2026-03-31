@@ -254,10 +254,11 @@ describe('EntityFormDialog', () => {
     mockState.updateValues.mockReset()
   })
 
-  it('shows the branches tab when type changes to merged and keeps it disabled in create mode', async () => {
+  it('shows the branches tab when type changes to merged, enables it in create mode, and hides append', async () => {
     const wrapper = mountEntityFormDialog()
 
     expect(findTabByValue(wrapper, 'branches')).toBeUndefined()
+    expect(findTabByValue(wrapper, 'append')).toBeTruthy()
 
     const typeSelect = findSelectByLabel(wrapper, 'Type *')
     expect(typeSelect).toBeTruthy()
@@ -268,7 +269,10 @@ describe('EntityFormDialog', () => {
 
     const branchesTab = findTabByValue(wrapper, 'branches')
     expect(branchesTab).toBeTruthy()
-    expect(branchesTab?.props('disabled')).toBe(true)
+    expect(branchesTab?.props('disabled')).toBe(false)
+    expect(findTabByValue(wrapper, 'append')).toBeUndefined()
+    expect(wrapper.text()).toContain('Merged entity configuration')
+    expect(wrapper.text()).toContain('Use the Branches tab as the primary configuration surface')
   })
 
   it('renders the branches tab enabled for an existing merged entity in edit mode', async () => {

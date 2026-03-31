@@ -488,7 +488,7 @@ All design decisions have been confirmed and are ready for implementation:
 ## Implementation Checklist
 
 **Phase 1 Status:** 🎉 **COMPLETE** (100%)  
-**Phase 2 Status:** ⏳ **Partially Complete** (~65%)
+**Phase 2 Status:** ⏳ **Partially Complete** (~70%)
 
 **Phase 1 Focus:** Core Layer (complete), Backend API (minimal), Frontend (YAML only), Core Tests, Essential Documentation  
 **Phase 2 Focus:** Frontend UX (visual editor), Comprehensive Tests, Complete Documentation, Release
@@ -502,9 +502,10 @@ All design decisions have been confirmed and are ready for implementation:
 - ✅ Phase 2 frontend branch editor: complete (`BranchEditor.vue`, merged entity type support, `EntityFormDialog` integration)
 - ✅ Phase 2 frontend branch-editor tests: complete (`BranchEditor.test.ts`)
 - ✅ Phase 2 dependency graph: merged nodes and branch edges rendered distinctly, branch labels shown, branch sources highlighted on merged-node selection
-- ✅ Phase 2 preview panel: merged-result/branch-source preview toggle added, merged-entity branch filter added, discriminator/FK columns highlighted in live preview
+- ✅ Phase 2 preview panel: merged-result/branch-source preview toggle added, merged-entity branch filter added, discriminator/FK columns highlighted in live preview, and column provenance/null-fill cues shown in preview headers
 - ✅ Phase 2 validation panel: per-entity/per-branch grouping added, branch metadata surfaced in issue rows, branch/entity separation shown before post-merge issues
 - ✅ Phase 2 focused validation tests: backend branch-metadata mapping plus frontend validation grouping utilities/stores covered
+- ✅ Phase 2 merged editor ergonomics: Branches tab promoted to primary configuration for merged entities, incompatible append/source-loading UI hidden, merged-specific guidance/tooltips added
 - ⏳ User guide and release prep remain incomplete
 - ✅ **All Phase 1 deliverables achieved**
 - 📊 Test Results: 2590 total tests passing (1346 core + 1239 backend + 5 new API)
@@ -631,7 +632,7 @@ All design decisions have been confirmed and are ready for implementation:
 - [x] Hide source/data-source panels for merged entities
 - [ ] **ONHOLD** Show branch configuration in read-only summary view
 - [x] Update entity form state/serialization to handle merged type
-- [ ] Disable incompatible configuration sections (data_source, append, etc.)
+- [x] Disable incompatible configuration sections (data_source, append, etc.)
 
 **Validation Panel:** [**Phase 2**]
 - [x] Display per-branch validation results separately
@@ -650,21 +651,21 @@ All design decisions have been confirmed and are ready for implementation:
 - [x] Add tab/toggle to preview individual branches vs. merged result
 - [x] Highlight branch discriminator column in preview table
 - [x] Highlight branch FK columns in preview table (with source entity tooltips)
-- [ ] Show column source (which branch) in column headers or tooltips
-- [ ] Indicate null-filled columns for each branch
+- [x] Show column source (which branch) in column headers or tooltips
+- [x] Indicate null-filled columns for each branch
 
 **Configuration Keys Panel:** [**Phase 2**]
-- [ ] Update available/unavailable keys display for merged entities
-- [ ] Show "Branches" as primary configuration section
-- [ ] Gray out or hide incompatible keys (data_source, append, etc.)
-- [ ] Add helpful tooltips explaining branch-specific constraints
+- [x] Update available/unavailable keys display for merged entities
+- [x] Show "Branches" as primary configuration section
+- [x] Gray out or hide incompatible keys (data_source, append, etc.)
+- [x] Add helpful tooltips explaining branch-specific constraints
 
 **Backend Enhancements:** [**Phase 2**]
 - [x] Preview Service: Support preview of individual branch sources (via existing generic entity preview endpoint, surfaced in merged preview UI)
 - [x] Preview Service: Support merged result preview with branch toggle
-- [ ] Preview Service: Cache merged previews (invalidate on branch source changes)
+- [ ] **ONHOLD** Preview Service: Cache merged previews (invalidate on branch source changes)
 - [ ] **ONHOLD** Dependency Service: Enhanced topological sort display
-- [ ] Conversion support for existing append-based patterns (optional)
+- [ ] **NOT NEEDED** Conversion support for existing append-based patterns (optional)
 
 #### Testing — **PHASE 1 (core) + PHASE 2 (comprehensive)**
 
@@ -679,8 +680,8 @@ All design decisions have been confirmed and are ready for implementation:
   - [x] Test FK columns use nullable Int64 dtype
   - [x] Test FK column naming matches source entity `public_id` field
 - [x] Test column union (all columns from all branches) (test_merged_entity_integration.py)
-  - [ ] Test column type upcast when same column has different types across branches (future)
-  - [ ] Test warning emission on type upcast (future)
+  - [ ] **ONHOLD** Test column type upcast when same column has different types across branches (future)
+  - [ ] **ONHOLD** Test warning emission on type upcast (future)
   - [x] Test shared columns merged correctly
 - [x] Test null-filling for branch-only columns using `pd.NA` (test_merged_entity_integration.py)
 - [x] Test row ordering preserves branch declaration order (test_merged_entity_integration.py)
@@ -701,7 +702,7 @@ All design decisions have been confirmed and are ready for implementation:
 - [x] Test topological sort with branch sources (ProcessState handles automatically)
 - [x] Test merged entity with heterogeneous branch schemas (test_merged_entity_integration.py)
 - [x] Test merged entity with shared columns across branches (test_merged_entity_integration.py)
-- [ ] Test merged entity with optional `branch_discriminator_column` override (future enhancement)
+- [ ] **ONHOLD** Test merged entity with optional `branch_discriminator_column` override (future enhancement)
 
 **Backend Tests (`backend/tests/`):** [**Phase 1**] ✅ **COMPLETE** (5 API tests)
 - [x] Test API endpoint for creating merged entity (test_create_merged_entity)
