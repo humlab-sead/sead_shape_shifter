@@ -96,6 +96,39 @@ class TestDependencyGraphAnalysis:
         # FK edges go from child to parent (child references parent)
         assert any(e["source"] == "child" and e["target"] == "parent" for e in fk_edges)
 
+    def test_dependency_graph_marks_merged_branch_dependencies(self):
+        """Merged entities expose branch dependency metadata for graph rendering."""
+        project = Project(
+            entities={
+                "abundance": {"type": "fixed", "values": []},
+                "relative_dating": {"type": "fixed", "values": []},
+                "analysis_entity": {
+                    "type": "merged",
+                    "public_id": "analysis_entity_id",
+                    "branches": [
+                        {"name": "abundance", "source": "abundance", "keys": ["sample_id"]},
+                        {"name": "relative_dating", "source": "relative_dating", "keys": ["sample_id"]},
+                    ],
+                },
+            },
+            options={},
+        )
+
+        service = DependencyService()
+        graph = service.analyze_dependencies(project)
+
+        merged_node = next(n for n in graph["nodes"] if n["name"] == "analysis_entity")
+        assert merged_node["type"] == "merged"
+        assert sorted(merged_node["depends_on"]) == ["abundance", "relative_dating"]
+
+        branch_edges = [
+            e for e in graph["edges"]
+            if e["target"] == "analysis_entity" and e.get("is_branch_dependency")
+        ]
+        assert len(branch_edges) == 2
+        assert {e["branch_name"] for e in branch_edges} == {"abundance", "relative_dating"}
+        assert {e["label"] for e in branch_edges} == {"branch: abundance", "branch: relative_dating"}
+
     def test_dependency_graph_includes_todo_placeholders_from_task_list(self):
         """Sidecar-backed task_list todo entries should appear as placeholder graph nodes."""
         project = Project(

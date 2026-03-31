@@ -326,8 +326,17 @@
                           <span style="font-size: 10px;">&nbsp;Derived</span>
                         </div>
                         <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 10px; height: 10px; background-color: #AD1457; border-radius: 2px;" />
+                          <span style="font-size: 10px;">&nbsp;Merged</span>
+                        </div>
+                        <div class="d-flex align-center gap-1 mb-1">
                           <div style="width: 10px; height: 10px; background-color: #ef5350; border-radius: 50%;" />
                           <span style="font-size: 10px;">&nbsp;Cyclic error</span>
+                        </div>
+                        <div class="mt-2" style="font-size: 10px; font-weight: 500;">Edge Semantics</div>
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 14px; height: 0; border-top: 2px dashed #C2185B;" />
+                          <span style="font-size: 10px;">&nbsp;Merged branch</span>
                         </div>
                       </div>
                     </v-card-text>
@@ -1296,6 +1305,7 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
   isDark,
   onNodeClick: async (nodeId: string) => {
     selectedNode.value = nodeId
+    applyBranchSelectionHighlights(nodeId)
     detailsDrawerTab.value = 'note'
     await loadDrawerNote(nodeId)
     showDetailsDrawer.value = true
@@ -1323,6 +1333,7 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
     })
   },
   onBackgroundClick: () => {
+    clearBranchSelectionHighlights()
     selectedNode.value = null
     showDetailsDrawer.value = false
   },
@@ -2110,6 +2121,30 @@ function applyTaskStatusToNodes() {
   })
 }
 
+function clearBranchSelectionHighlights() {
+  if (!cy.value) return
+  cy.value.nodes().removeClass('related-branch-node')
+  cy.value.edges().removeClass('related-branch-edge')
+}
+
+function applyBranchSelectionHighlights(nodeId: string | null) {
+  clearBranchSelectionHighlights()
+
+  if (!cy.value || !nodeId) return
+
+  const selected = cy.value.getElementById(nodeId)
+  if (!selected || selected.length === 0) return
+
+  if (selected.data('type') !== 'merged') return
+
+  const branchEdges = cy.value
+    .edges()
+    .filter((edge) => edge.target().id() === nodeId && edge.hasClass('branch-edge'))
+
+  branchEdges.addClass('related-branch-edge')
+  branchEdges.sources().addClass('related-branch-node')
+}
+
 async function handleRefreshDependencies() {
   clearDependenciesError()
   if (projectName.value) {
@@ -2150,6 +2185,7 @@ async function syncGraphViewState() {
   renderGraph()
   await nextTick()
   applyTaskStatusToNodes()
+  applyBranchSelectionHighlights(selectedNode.value)
   applyTaskFilter()
 }
 
