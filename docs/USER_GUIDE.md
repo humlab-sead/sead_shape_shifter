@@ -226,6 +226,7 @@ The current editor supports these main entity types:
 | `entity`   | another entity    | derived entities get their data from another configured entity.        |
 | `sql`      | database          | for query-based entities that reads data from en external data source. |
 | `fixed`    | inline            | for manually added static values (also frozen dynamic entities)        |
+| `merged`   | one or more entities | for shared parent entities built from explicit branches with branch tracking and sparse lineage foreign keys |
 | `csv`      | CSV/TSV file      | for loading data from delimited files                                  |
 | `xlsx`     | Excel spreadsheet | for loading Excel spreadsheet using Pandas                             |
 | `openpyxl` | Excel spreadsheet | for loading Excel spreadsheet with range support                       |
@@ -245,6 +246,7 @@ The split view can be toggled with **Ctrl+Shift+P**.
 The entity editor is divided into focused tabs:
 
 - **Basic**
+- **Branches** for `merged` entities
 - **Foreign Keys**
 - **Filters**
 - **Unnest**
@@ -300,6 +302,13 @@ It includes:
 
 Use preview to confirm that your columns, filters, unnest configuration, and replacements are doing what you expect before saving larger changes.
 
+For merged entities, preview has two useful modes:
+
+- **Merged Result** to inspect the assembled parent table with branch discriminator and sparse branch FK columns
+- **Branch Source** to inspect the current branch source rows directly when a merged preview looks wrong
+
+Merged preview also highlights discriminator and lineage FK columns and shows which branch contributes each preview column.
+
 ### Common Editing Patterns
 
 **Create from scratch**
@@ -325,6 +334,48 @@ Use preview to confirm that your columns, filters, unnest configuration, and rep
 2. Switch to the **YAML** tab.
 3. Edit the raw entity configuration.
 4. Save from the dialog.
+
+### Working with Merged Entities
+
+Use `type: merged` when a single target-facing parent should receive rows from multiple source entities that share some meaning but do not share the exact same shape.
+
+Typical example:
+
+```yaml
+analysis_entity:
+  type: merged
+  public_id: analysis_entity_id
+  branches:
+    - name: abundance
+      source: abundance
+      keys: [Projekt, Befu, ProbNr]
+    - name: relative_dating
+      source: _analysis_entity_relative_dating
+      keys: [Projekt, Befu, ProbNr]
+```
+
+What the editor does for you:
+
+- The **Branches** tab becomes the primary configuration surface.
+- Source-loading fields that do not apply to merged entities stay hidden.
+- The preview can switch between the assembled merged result and a specific branch source.
+- The graph renders merged branch-source edges distinctly.
+- Validation groups branch-scoped issues separately from post-merge issues.
+
+What the pipeline produces:
+
+- `{entity_name}_branch` discriminator column, for example `analysis_entity_branch`
+- One sparse FK column per branch source, for example `abundance_id`
+- A new local `system_id` sequence for the merged parent itself
+- A `public_id` column that remains empty until reconciliation assigns target IDs
+
+Practical workflow:
+
+1. Define each branch source entity first and make sure it previews correctly on its own.
+2. Create the merged parent and add branches in declaration order.
+3. Use merged preview to inspect discriminator and sparse FK columns.
+4. Switch preview to **Branch Source** when you need to isolate one branch.
+5. Run YAML validation, then review the **By Entity** validation view for branch-scoped issues.
 
 ---
 
@@ -373,6 +424,7 @@ Validation results are grouped into:
 - **All Issues**
 - **Errors**
 - **Warnings**
+- **By Entity**
 - **By Category**
 
 Categories currently shown in the results panel are:
@@ -385,11 +437,20 @@ Each issue can include:
 
 - severity
 - entity
+- branch name and branch source for merged-entity branch issues
 - field
 - category
 - code
 - message
 - suggestion
+
+For merged entities, the **By Entity** view separates:
+
+- branch-scoped issues, such as a bad branch source or invalid branch keys
+- entity-level merged issues, such as missing `public_id`
+- post-merge issues that apply to the assembled result
+
+The validation rows also surface branch/source chips when the issue belongs to a specific merged branch.
 
 ### Copying Results
 
@@ -740,6 +801,31 @@ Check:
 - the configured columns still exist in the source
 - sample mode is not masking a complete-data issue
 
+### Merged Entity Validation Fails
+
+Check:
+
+- every branch `source` points to an existing entity
+- each branch source previews successfully on its own
+- branch `keys` reference columns that actually exist on the branch source
+- the merged entity has a `public_id`
+
+If the issue appears only in the merged result, switch preview to **Branch Source** to isolate the branch before debugging the assembled table.
+
+### Merged Preview Shows Many Null Values
+
+This is often expected. Merged entities use column union semantics:
+
+- shared columns are populated across branches
+- branch-only columns are null-filled for rows from other branches
+- sparse lineage FK columns are populated only for the matching branch
+
+Use the preview header tooltips to see which branch provides each column and which branches receive null-filled values.
+
+### Why Are Source, Query, or Append Fields Hidden for a Merged Entity?
+
+Because `type: merged` assembles rows from `branches:`. Source-loading settings belong on the branch source entities, not on the merged parent itself.
+
 ### Execute Succeeds but Output Looks Wrong
 
 Review:
@@ -805,6 +891,6 @@ GitHub Releases also carry a short version of these notes with a link to the ful
 
 ---
 
-**Document Version**: 2.1
-**Last Updated**: March 14, 2026
+**Document Version**: 2.2
+**Last Updated**: March 31, 2026
 **For**: Shape Shifter Project Editor

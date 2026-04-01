@@ -29,17 +29,56 @@ router = APIRouter()
 
 
 # Request/Response Models
+_MERGED_ENTITY_EXAMPLE = {
+    "type": "merged",
+    "public_id": "analysis_entity_id",
+    "keys": ["Projekt", "Befu", "ProbNr"],
+    "branches": [
+        {"name": "abundance", "source": "abundance", "keys": ["PCODE", "Fraktion"]},
+        {"name": "relative_dating", "source": "_analysis_entity_relative_dating", "keys": ["ArchDat"]},
+    ],
+}
+
+_ENTITY_DATA_EXAMPLES = [
+    {"type": "sql", "data_source": "my_db", "query": "SELECT * FROM my_table"},
+    {"type": "fixed", "public_id": "status_id", "keys": ["name"], "values": [["active"], ["inactive"]], "columns": ["name"]},
+    _MERGED_ENTITY_EXAMPLE,
+]
+
+
 class EntityCreateRequest(BaseModel):
-    """Request to create new entity."""
+    """Request to create new entity.
+
+    The ``entity_data`` payload is a free-form entity configuration dict. Its shape depends on ``type``.
+    Supported types: ``sql``, ``csv``, ``xlsx``, ``fixed``, ``merged``.
+
+    For ``type: merged`` entities, ``entity_data`` must include:
+
+    - ``public_id`` (required — merged entities act as FK targets)
+    - ``branches`` — list of ``{name, source, keys}`` objects declaring contributing source entities
+
+    Auto-generated output columns:
+
+    - ``{entity_name}_branch`` — discriminator column (one value per branch name)
+    - ``{source_entity}_id`` per branch — sparse FK column back to source ``system_id``
+    """
 
     name: str = Field(..., description="Entity name")
-    entity_data: dict[str, Any] = Field(..., description="Entity configuration data")
+    entity_data: dict[str, Any] = Field(
+        ...,
+        description="Entity configuration data. Shape depends on `type`. See model description for merged entity shape.",
+        examples=_ENTITY_DATA_EXAMPLES,
+    )
 
 
 class EntityUpdateRequest(BaseModel):
-    """Request to update entity."""
+    """Request to update entity. See ``EntityCreateRequest`` for ``entity_data`` shape details."""
 
-    entity_data: dict[str, Any] = Field(..., description="Updated entity configuration data")
+    entity_data: dict[str, Any] = Field(
+        ...,
+        description="Updated entity configuration data. Shape depends on `type`.",
+        examples=_ENTITY_DATA_EXAMPLES,
+    )
 
 
 class EntityResponse(BaseModel):
