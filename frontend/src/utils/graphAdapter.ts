@@ -116,6 +116,10 @@ export function toCytoscapeElements(
       classes.push('materialized')
     }
 
+      if (node.type === 'merged') {
+        classes.push('merged-node')
+      }
+
     return {
       data: {
         id: node.name,
@@ -209,6 +213,7 @@ export function toCytoscapeElements(
     .map((edge, index) => {
     const classes: string[] = []
     const isProvidesEdge = edge.type === 'provides'
+    const isBranchEdge = edge.is_branch_dependency === true || Boolean(edge.branch_name)
 
     if (!showEdgeLabels) {
       classes.push('hide-label')
@@ -222,11 +227,17 @@ export function toCytoscapeElements(
       classes.push('source-edge')
     }
 
+    if (isBranchEdge) {
+      classes.push('branch-edge')
+    }
+
     return {
       data: {
         id: `edge-${edge.source}-${edge.target}-${index}`,
         source: edge.source,
         target: edge.target,
+        branchName: edge.branch_name || null,
+        isBranchDependency: isBranchEdge,
         label: edge.label || (isProvidesEdge ? 'provides' : ''),
       },
       classes,

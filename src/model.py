@@ -291,7 +291,7 @@ class TableConfig:
         assert self.entity_cfg, f"No configuration found for entity '{entity_name}'"
 
     @property
-    def type(self) -> Literal["entity", "sql", "fixed", "csv", "xlsx", "openpyxl"] | None:
+    def type(self) -> Literal["entity", "sql", "fixed", "csv", "xlsx", "openpyxl", "merged"] | None:
         return self.entity_cfg.get("type", None)
 
     @property
@@ -423,6 +423,12 @@ class TableConfig:
             if isinstance(append_cfg.get("source"), str):
                 append_sources.add(append_cfg["source"])
 
+        # Collect branch source dependencies for merged entities
+        branch_sources: set[str] = set()
+        for branch_cfg in self.branches:
+            if isinstance(branch_cfg.get("source"), str):
+                branch_sources.add(branch_cfg["source"])
+
         # Collect entities referenced in filters via 'other_entity'
         filter_dependencies: set[str] = set()
         for filter_cfg in self.filters:
@@ -434,6 +440,7 @@ class TableConfig:
             | ({self.source} if self.source else set())
             | {fk.remote_entity for fk in self.foreign_keys if not fk.defer_dependency}
             | append_sources
+            | branch_sources
             | filter_dependencies
         )
 
@@ -481,6 +488,18 @@ class TableConfig:
                     if isinstance(append_cfg, dict) and append_cfg.get("source") == self.entity_name:
                         yield entity_name
                         break
+
+                # Check branch sources (for merged entities)
+                branches_raw = entity_cfg.get("branches", []) or []
+                if isinstance(branches_raw, dict):
+                    branch_cfgs = [branches_raw]
+                else:
+                    branch_cfgs = branches_raw
+
+                for branch_cfg in branch_cfgs:
+                    if isinstance(branch_cfg, dict) and branch_cfg.get("source") == self.entity_name:
+                        yield entity_name
+                        break
             except KeyError:
                 continue
 
@@ -488,6 +507,20 @@ class TableConfig:
     def append_configs(self) -> list[dict[str, Any]]:
         # Parse append configuration for union operations
         value: list[dict[str, Any]] = self.entity_cfg.get("append", []) or []
+        if value and isinstance(value, dict):
+            value = [value]
+        return value
+
+    @cached_property
+    def branches(self) -> list[dict[str, Any]]:
+        """Get branch configurations for merged parent entities.
+
+        Each branch defines a source entity that contributes rows to the merged parent.
+        Returns empty list if entity is not type='merged'.
+        """
+        if self.type != "merged":
+            return []
+        value: list[dict[str, Any]] = self.entity_cfg.get("branches", []) or []
         if value and isinstance(value, dict):
             value = [value]
         return value
@@ -896,24 +929,71 @@ class TableConfig:
     def get_sub_table_configs(self) -> Generator[Self | "TableConfig", Any, None]:
         """Yield a sequence of resolved TableConfig objects.
 
-        Each item orginates from the base entity and its append configurations.
+        Each item originates from the base entity and its append configurations,
+        or from branch sources for merged entities.
 
-        Yields self first (the base configuration), then creates and yields
-        a TableConfig for each append item, if any, with inherited properties.
+        For standard/append entities:
+            Yields self first (the base configuration), then creates and yields
+            a TableConfig for each append item, if any, with inherited properties.
+
+        For merged entities:
+            Yields one TableConfig per branch source (no base config).
+            Each branch config references the source entity and includes metadata
+            for FK propagation and branch discriminator.
 
         This allows the shapeshifter to treat the base table and append items
-        uniformly through the same processing pipeline.
+        (or branch sources) uniformly through the same processing pipeline.
 
         Yields:
-            TableConfig: Base config first, then one per append item
+            TableConfig: For standard entities: base config first, then one per append item.
+                        For merged entities: one per branch source.
         """
-        yield self
+        # Handle merged entities differently - they have no base data, only branch sources
+        if self.type == "merged":
+            for idx, branch_data in enumerate(self.branches):
+                branch_name: str = branch_data.get("name", f"branch_{idx}")
+                branch_source: str | None = branch_data.get("source")
 
-        for idx, append_data in enumerate(self.append_configs):
-            append_entity_name: str = f"{self.entity_name}__append_{idx}"
-            self.entities_cfg[append_entity_name] = self.create_append_config(append_data)
-            yield TableConfig(entities_cfg=self.entities_cfg, entity_name=append_entity_name)
-            del self.entities_cfg[append_entity_name]
+                # Skip if source is not defined (validation should catch this)
+                if not branch_source:
+                    continue
+
+                branch_keys: list[str] = branch_data.get("keys", [])
+
+                # Create a temporary config for this branch that references the source entity
+                branch_entity_name: str = f"{self.entity_name}__branch_{branch_name}"
+
+                # Get the source entity's configuration
+                source_cfg: dict[str, Any] = self.entities_cfg.get(branch_source, {})
+
+                # Include the source entity's system_id column so _process_merged_branch
+                # can use it as the FK value for this branch's rows.
+                source_system_id: str = source_cfg.get("system_id", "system_id")
+
+                # Create branch config that includes metadata for processing.
+                # Deliberately omit type/data_source/query so resolve_loader returns None
+                # and resolve_source falls through to table_store (source already processed).
+                branch_cfg: dict[str, Any] = {
+                    "source": branch_source,  # Reference to actual source entity in table_store
+                    "columns": ([source_system_id] + source_cfg.get("columns", [])) if source_system_id else source_cfg.get("columns", []),
+                    # Branch-specific metadata for processor
+                    "_branch_name": branch_name,  # Used for discriminator column
+                    "_branch_keys": branch_keys,  # Used for validation
+                    "_merged_entity": self.entity_name,  # Back-reference to merged entity
+                }
+
+                self.entities_cfg[branch_entity_name] = branch_cfg
+                yield TableConfig(entities_cfg=self.entities_cfg, entity_name=branch_entity_name)
+                del self.entities_cfg[branch_entity_name]
+        else:
+            # Standard/append entity processing
+            yield self
+
+            for idx, append_data in enumerate(self.append_configs):
+                append_entity_name: str = f"{self.entity_name}__append_{idx}"
+                self.entities_cfg[append_entity_name] = self.create_append_config(append_data)
+                yield TableConfig(entities_cfg=self.entities_cfg, entity_name=append_entity_name)
+                del self.entities_cfg[append_entity_name]
 
     def get_key_columns(self) -> set[str]:
         """Get all key columns including system_id and public_id."""

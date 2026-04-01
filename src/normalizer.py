@@ -115,6 +115,11 @@ class ShapeShifter:
             # Apply column renaming for append items (align_by_position or column_mapping)
             # Pass parent's columns for align_by_position
             sub_data = sub_table_cfg.apply_column_renaming(sub_data, parent_columns=table_cfg.columns)
+
+            # Special processing for merged entity branches
+            if table_cfg.type == "merged":
+                sub_data = self._process_merged_branch(entity, table_cfg, sub_table_cfg, sub_data)
+
             dfs.append(sub_data)
 
         # Concatenate all dataframes while excluding all-NA columns from dtype inference.
@@ -133,6 +138,61 @@ class ShapeShifter:
         )
 
         return data
+
+    def _process_merged_branch(
+        self, entity: str, table_cfg: TableConfig, sub_table_cfg: TableConfig, sub_data: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Process a single branch for a merged entity.
+
+        Adds:
+        - Branch discriminator column (e.g., 'analysis_entity_branch')
+        - FK propagation columns (sparse, nullable Int64 FKs)
+
+        Args:
+            entity: Name of the merged entity
+            table_cfg: Configuration for the merged entity
+            sub_table_cfg: Configuration for this specific branch
+            sub_data: DataFrame containing branch data
+
+        Returns:
+            DataFrame with added columns for merging
+        """
+        # Extract branch metadata from sub_table_cfg
+        branch_name: str = sub_table_cfg.entity_cfg.get("_branch_name", "unknown")
+        branch_source: str = sub_table_cfg.entity_cfg.get("source")
+
+        # 1. Add branch discriminator column
+        discriminator_column: str = f"{entity}_branch"
+        sub_data[discriminator_column] = branch_name
+
+        # 2. Add sparse FK propagation columns — one per branch source, named from the
+        # source entity's public_id when available, otherwise {source_entity}_id.
+        # The current branch's column is populated from the source entity's system_id;
+        # all other branches receive NULL (sparse pattern).
+        # system_id is available in sub_data because get_sub_table_configs() explicitly
+        # includes it in the branch column list, and normalize() adds it per-entity before
+        # downstream merged entities are processed.
+        for branch_cfg in table_cfg.branches:
+            branch_src: str = branch_cfg.get("source")
+            source_cfg: dict[str, Any] = table_cfg.entities_cfg.get(branch_src, {}) if branch_src else {}
+            fk_column_name: str = source_cfg.get("public_id") or f"{branch_src}_id"
+
+            if branch_src == branch_source:
+                # Populate from the source entity's system_id carried through sub_data
+                if "system_id" in sub_data.columns:
+                    sub_data[fk_column_name] = sub_data["system_id"].astype("Int64")
+                else:
+                    sub_data[fk_column_name] = pd.array(pd.NA, dtype="Int64")
+            else:
+                sub_data[fk_column_name] = pd.NA
+
+            sub_data[fk_column_name] = sub_data[fk_column_name].astype("Int64")
+
+        # Drop the source system_id so it doesn't pollute the merged entity's own identity column
+        if "system_id" in sub_data.columns:
+            sub_data = sub_data.drop(columns=["system_id"])
+
+        return sub_data
 
     async def normalize(self) -> Self:
         """Extract all configured entities and store them."""
@@ -221,6 +281,9 @@ class ShapeShifter:
             if table_cfg.system_id and table_cfg.system_id not in self.table_store[entity].columns:
                 self.table_store[entity] = add_system_id(self.table_store[entity], table_cfg.system_id)
 
+            # Add public_id column immediately so downstream merged entities see a complete source table
+            self.table_store[entity] = table_cfg.add_public_id_column(self.table_store[entity])
+
             self.retry_linking()
 
             # Verify extra_columns were evaluated for this entity
@@ -237,12 +300,10 @@ class ShapeShifter:
 
                 self.extra_col_evaluator.verify_extra_columns(self.table_store[entity], table_cfg.extra_columns, entity)
 
+            # Reorder columns immediately so each entity is fully formed before downstream entities process it
+            self.table_store[entity] = self.project.reorder_columns(entity, self.table_store[entity])
+
         self._link_deferred_foreign_keys()
-        # Add identity columns to all entities after normalization
-        # This ensures materialized entities get proper identity columns
-        self.add_system_id_columns()
-        self.add_public_id_columns()
-        self.move_keys_to_front()
 
         return self
 

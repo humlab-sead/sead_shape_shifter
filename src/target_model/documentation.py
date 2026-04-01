@@ -18,6 +18,7 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from jinja2.environment import Template
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 
@@ -35,20 +36,101 @@ class DocumentFormat(str, Enum):
     EXCEL = "excel"
 
 
-class TargetModelDocumentGenerator:
-    """Generate human-readable documentation from target models with optional project context."""
+class ExcelGenerator:
+    """Helper class to generate Excel documentation."""
 
-    def __init__(self, target_model: TargetModel, project: ShapeShiftProject | None = None):
-        """
-        Initialize documentation generator.
+    def generate(self, project: ShapeShiftProject | None, target_model: TargetModel) -> bytes:
+        """Generate Excel spreadsheet for review and annotation.
 
-        Args:
-            target_model: Target model specification to document.
-            project: Optional project for context (entity usage, validation status).
+        Returns:
+            Excel workbook as bytes.
+
+        Raises:
+            ImportError: If pandas or openpyxl not installed.
         """
-        self.target_model = target_model
-        self.project = project
-        self._template_dir = Path(__file__).parent / "templates"
+
+        used_entities: set[str] = set(project.cfg.get("entities", {}).keys()) if project else set()
+
+        sheets: dict[str, pd.DataFrame] = {
+            "Entities": pd.DataFrame(
+                [
+                    {
+                        "Entity": entity_name,
+                        "Used in Project": "Yes" if entity_name in used_entities else "No",
+                        "Target Table": entity_spec.target_table or f"tbl_{entity_name}",
+                        "Required": "Yes" if entity_spec.required else "No",
+                        "Role": entity_spec.role or "",
+                        "Public ID": entity_spec.public_id or "",
+                        "Domains": ", ".join(entity_spec.domains) if entity_spec.domains else "",
+                        "Column Count": len(entity_spec.columns) if entity_spec.columns else 0,
+                        "FK Count": len(entity_spec.foreign_keys) if entity_spec.foreign_keys else 0,
+                        "Description": entity_spec.description or "",
+                    }
+                    for entity_name, entity_spec in sorted(target_model.entities.items())
+                ]
+            ),
+            "Columns": pd.DataFrame(
+                [
+                    {
+                        "Entity": entity_name,
+                        "Used in Project": "Yes" if entity_name in used_entities else "No",
+                        "Column": col_name,
+                        "Type": col_spec.type,
+                        "Required": "Yes" if col_spec.required else "No",
+                        "Nullable": "Yes" if col_spec.nullable else "No",
+                        "Description": col_spec.description or "",
+                    }
+                    for entity_name, entity_spec in sorted(target_model.entities.items())
+                    if entity_spec.columns
+                    for col_name, col_spec in entity_spec.columns.items()
+                ]
+            ),
+            "Relationships": pd.DataFrame(
+                [
+                    {
+                        "From Entity": entity_name,
+                        "Used in Project": "Yes" if entity_name in used_entities else "No",
+                        "To Entity": fk.entity,
+                        "Via Bridge": fk.via or "",
+                        "Required": "Yes" if fk.required else "No",
+                    }
+                    for entity_name, entity_spec in sorted(target_model.entities.items())
+                    if entity_spec.foreign_keys
+                    for fk in entity_spec.foreign_keys
+                ]
+            ),
+        }
+
+        # Write to bytes buffer
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+            for sheet_name, df in sheets.items():
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+            self.auto_resize_columns(writer)
+
+        buffer.seek(0)
+        return buffer.read()
+
+    def auto_resize_columns(self, writer: pd.ExcelWriter):
+        for sheet_name, worksheet in writer.sheets.items():
+            for column in worksheet.columns:
+                column_letter = column[0].column_letter
+                max_length: int = max(
+                    [len(str(cell.value)) for cell in column if cell.value is not None],
+                    default=0,
+                )
+                worksheet.column_dimensions[column_letter].width = min(max_length + 2, 50)
+
+
+class TextDocumentGenerator:
+    """Base class for text-based documentation generators (Markdown, HTML)."""
+
+    def __init__(self):
+        self._template_dir: Path = Path(__file__).parent / "templates"
+
+    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> str:
+        """Generate documentation content as a string."""
+        raise NotImplementedError("Subclasses must implement generate() method")
 
     def _get_jinja_env(self) -> Environment:
         """Create Jinja2 environment with custom filters."""
@@ -61,13 +143,20 @@ class TargetModelDocumentGenerator:
         env.filters["pluralize"] = lambda n, singular, plural: singular if n == 1 else plural
         return env
 
-    def _prepare_model_data(self) -> dict[str, Any]:
+    def _render_template(self, template_name: str, target_model: TargetModel, project: ShapeShiftProject | None = None) -> str:
+        env: Environment = self._get_jinja_env()
+        template: Template = env.get_template(template_name)
+        data: dict[str, Any] = self._prepare_model_data(target_model, project)
+        output: str = template.render(**data)
+        return output
+
+    def _prepare_model_data(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> dict[str, Any]:
         """Prepare model data for templates with project context."""
         # Group entities by domain
         by_domain: dict[str, list[dict[str, Any]]] = {}
-        used_entities = set(self.project.cfg.get("entities", {}).keys()) if self.project else set()
+        used_entities: set[str] = set(project.cfg.get("entities", {}).keys()) if project else set()
 
-        for entity_name, entity_spec in self.target_model.entities.items():
+        for entity_name, entity_spec in target_model.entities.items():
             entity_data = {
                 "name": entity_name,
                 "spec": entity_spec,
@@ -80,24 +169,24 @@ class TargetModelDocumentGenerator:
                 by_domain[domain].append(entity_data)
 
         # Sort entities within each domain
-        for domain in by_domain:  # type: ignore
+        for domain in by_domain:  # type: ignore ; # pylint disable=consider-using-dict-items
             by_domain[domain].sort(key=lambda x: x["name"])
 
         # Calculate statistics
-        total_entities = len(self.target_model.entities)
-        required_entities = sum(1 for e in self.target_model.entities.values() if e.required)
-        total_fks = sum(len(e.foreign_keys) for e in self.target_model.entities.values())
-        total_columns = sum(len(e.columns) for e in self.target_model.entities.values() if e.columns)
+        total_entities: int = len(target_model.entities)
+        required_entities: int = sum(1 for e in target_model.entities.values() if e.required)
+        total_fks: int = sum(len(e.foreign_keys) for e in target_model.entities.values())
+        total_columns: int = sum(len(e.columns) for e in target_model.entities.values() if e.columns)
 
         # Project-specific stats
-        used_count = len(used_entities) if self.project else 0
-        unused_required = 0
-        if self.project:
-            unused_required = sum(1 for name, spec in self.target_model.entities.items() if spec.required and name not in used_entities)
+        used_count: int = len(used_entities) if project else 0
+        unused_required: int = 0
+        if project:
+            unused_required = sum(1 for name, spec in target_model.entities.items() if spec.required and name not in used_entities)
 
         return {
-            "model": self.target_model.model,
-            "entities": self.target_model.entities,
+            "model": target_model.model,
+            "entities": target_model.entities,
             "by_domain": by_domain,
             "stats": {
                 "total_entities": total_entities,
@@ -109,126 +198,42 @@ class TargetModelDocumentGenerator:
                 "used_count": used_count,
                 "unused_required": unused_required,
             },
-            "project_name": self.project.metadata.name if self.project else None,
-            "project_version": self.project.metadata.version if self.project else None,
-            "has_project_context": self.project is not None,
+            "project_name": project.metadata.name if project else None,
+            "project_version": project.metadata.version if project else None,
+            "has_project_context": project is not None,
         }
 
-    def generate_html(self) -> bytes:
-        """Generate interactive HTML documentation.
 
-        Returns:
-            HTML content as UTF-8 encoded bytes.
+class MarkdownDocumentGenerator(TextDocumentGenerator):
+    """Generate Markdown documentation."""
+
+    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> str:
+        """Generate Markdown content."""
+        return self._render_template("target_model.md.j2", target_model=target_model, project=project)
+
+
+class HTMLDocumentGenerator(TextDocumentGenerator):
+    """Generate interactive HTML documentation."""
+
+    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> str:
+        """Generate HTML content."""
+        return self._render_template("target_model.html.j2", target_model=target_model, project=project)
+
+
+class TargetModelDocumentGenerator:
+    """Generate human-readable documentation from target models with optional project context."""
+
+    def __init__(self, target_model: TargetModel, project: ShapeShiftProject | None = None):
         """
-        env = self._get_jinja_env()
-        template = env.get_template("target_model.html.j2")
-        data = self._prepare_model_data()
-        html = template.render(**data)
-        return html.encode("utf-8")
+        Initialize documentation generator.
 
-    def generate_markdown(self) -> bytes:
-        """Generate Markdown documentation.
-
-        Returns:
-            Markdown content as UTF-8 encoded bytes.
+        Args:
+            target_model: Target model specification to document.
+            project: Optional project for context (entity usage, validation status).
         """
-        env = self._get_jinja_env()
-        template = env.get_template("target_model.md.j2")
-        data = self._prepare_model_data()
-        md = template.render(**data)
-        return md.encode("utf-8")
-
-    def generate_excel(self) -> bytes:
-        """Generate Excel spreadsheet for review and annotation.
-
-        Returns:
-            Excel workbook as bytes.
-
-        Raises:
-            ImportError: If pandas or openpyxl not installed.
-        """
-
-        used_entities = set(self.project.cfg.get("entities", {}).keys()) if self.project else set()
-
-        # Entities sheet
-        entities_data = []
-        for entity_name, entity_spec in sorted(self.target_model.entities.items()):
-            entities_data.append(
-                {
-                    "Entity": entity_name,
-                    "Used in Project": "Yes" if entity_name in used_entities else "No",
-                    "Target Table": entity_spec.target_table or f"tbl_{entity_name}",
-                    "Required": "Yes" if entity_spec.required else "No",
-                    "Role": entity_spec.role or "",
-                    "Public ID": entity_spec.public_id or "",
-                    "Domains": ", ".join(entity_spec.domains) if entity_spec.domains else "",
-                    "Column Count": len(entity_spec.columns) if entity_spec.columns else 0,
-                    "FK Count": len(entity_spec.foreign_keys) if entity_spec.foreign_keys else 0,
-                    "Description": entity_spec.description or "",
-                }
-            )
-
-        entities_df = pd.DataFrame(entities_data)
-
-        # Columns sheet
-        columns_data = []
-        for entity_name, entity_spec in sorted(self.target_model.entities.items()):
-            if entity_spec.columns:
-                for col_name, col_spec in entity_spec.columns.items():
-                    columns_data.append(
-                        {
-                            "Entity": entity_name,
-                            "Used in Project": "Yes" if entity_name in used_entities else "No",
-                            "Column": col_name,
-                            "Type": col_spec.type,
-                            "Required": "Yes" if col_spec.required else "No",
-                            "Nullable": "Yes" if col_spec.nullable else "No",
-                            "Description": col_spec.description or "",
-                        }
-                    )
-
-        columns_df = pd.DataFrame(columns_data)
-
-        # Foreign keys sheet
-        fks_data = []
-        for entity_name, entity_spec in sorted(self.target_model.entities.items()):
-            if entity_spec.foreign_keys:
-                for fk in entity_spec.foreign_keys:
-                    fks_data.append(
-                        {
-                            "From Entity": entity_name,
-                            "Used in Project": "Yes" if entity_name in used_entities else "No",
-                            "To Entity": fk.entity,
-                            "Via Bridge": fk.via or "",
-                            "Required": "Yes" if fk.required else "No",
-                        }
-                    )
-
-        fks_df = pd.DataFrame(fks_data)
-
-        # Write to bytes buffer
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            entities_df.to_excel(writer, sheet_name="Entities", index=False)
-            columns_df.to_excel(writer, sheet_name="Columns", index=False)
-            fks_df.to_excel(writer, sheet_name="Relationships", index=False)
-
-            # Auto-adjust column widths
-            for sheet_name in writer.sheets:
-                worksheet = writer.sheets[sheet_name]
-                for column in worksheet.columns:
-                    max_length = 0
-                    column_letter = column[0].column_letter
-                    for cell in column:
-                        try:
-                            max_length = max(max_length, len(str(cell.value)))
-                        except:  # noqa: E722 ; # pylint: disable=bare-except
-                            pass
-                    adjusted_width = min(max_length + 2, 50)
-                    worksheet.column_dimensions[column_letter].width = adjusted_width
-
-        buffer.seek(0)
-        return buffer.read()
+        self.target_model: TargetModel = target_model
+        self.project: ShapeShiftProject | None = project
+        self._template_dir: Path = Path(__file__).parent / "templates"
 
     def generate(self, format: DocumentFormat) -> bytes:  # pylint: disable=redefined-builtin
         """Generate documentation in specified format.
@@ -239,12 +244,16 @@ class TargetModelDocumentGenerator:
         Returns:
             Document content as bytes.
         """
+
         if format == DocumentFormat.HTML:
-            return self.generate_html()
+            return HTMLDocumentGenerator().generate(self.target_model, self.project).encode("utf-8")
+
         if format == DocumentFormat.MARKDOWN:
-            return self.generate_markdown()
+            return MarkdownDocumentGenerator().generate(self.target_model, self.project).encode("utf-8")
+
         if format == DocumentFormat.EXCEL:
-            return self.generate_excel()
+            return ExcelGenerator().generate(self.project, self.target_model)
+
         raise ValueError(f"Unsupported format: {format}")
 
     def write_to_file(self, format: DocumentFormat, output_path: Path) -> None:  # pylint: disable=redefined-builtin

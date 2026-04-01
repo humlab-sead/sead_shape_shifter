@@ -5,7 +5,7 @@
 export interface GraphNode {
   id: string
   label: string
-  type?: 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
+  type?: 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl' | 'merged'
   status?: 'valid' | 'warning' | 'error'
   topological_order?: number
   data?: any
@@ -21,6 +21,8 @@ export interface GraphEdge {
   target: string
   type?: 'dependency' | 'foreign_key' | 'provides'
   label?: string
+  branch_name?: string | null
+  is_branch_dependency?: boolean
   data?: any
 }
 
@@ -29,7 +31,7 @@ export interface DependencyNode {
   name: string
   depends_on: string[]
   depth: number
-  type?: 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
+  type?: 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl' | 'merged'
   materialized?: boolean
 }
 
@@ -40,6 +42,8 @@ export interface DependencyEdge {
   remote_keys?: string[]
   type?: 'dependency' | 'foreign_key' | 'provides'
   label?: string
+  branch_name?: string | null
+  is_branch_dependency?: boolean
   frozen?: boolean  // True for edges from materialized entities showing historical dependencies
   via_source_entity?: boolean  // True for edges that go through source entities (table/sheet), false for direct source->entity
 }

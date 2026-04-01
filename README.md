@@ -57,6 +57,7 @@ A FastAPI service providing programmatic access to transformation operations:
 
 - Monaco Editor integration for YAML editing
 - Dual-mode entity editor (visual form and code editor)
+- First-class merged parent entities with explicit branches, branch-aware preview, validation grouping, and dependency-graph support
 - Multi-type validation (structural, data, entity-specific, comprehensive)
 - Automated fix suggestions with preview and rollback
 - Visual dependency tree and properties panel

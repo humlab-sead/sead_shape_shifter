@@ -325,6 +325,37 @@ describe('graphAdapter', () => {
       expect(edges).toHaveLength(1)
       expect(edges[0]?.data.label).toBe('contains')
     })
+
+    it('should mark merged branch dependencies with dedicated classes and metadata', () => {
+      const graph: DependencyGraph = {
+        nodes: [
+          { name: 'abundance', depends_on: [], depth: 0, type: 'fixed' },
+          { name: 'analysis_entity', depends_on: ['abundance'], depth: 1, type: 'merged' },
+        ],
+        edges: [
+          {
+            source: 'abundance',
+            target: 'analysis_entity',
+            type: 'provides',
+            label: 'branch: abundance',
+            branch_name: 'abundance',
+            is_branch_dependency: true,
+          },
+        ],
+        has_cycles: false,
+        cycles: [],
+        topological_order: ['analysis_entity', 'abundance'],
+      }
+
+      const elements = toCytoscapeElements(graph)
+      const mergedNode = elements.find((element) => element.data.id === 'analysis_entity')
+      const branchEdge = elements.find((element) => element.data.source === 'abundance')
+
+      expect(mergedNode?.classes).toContain('merged-node')
+      expect(branchEdge?.classes).toContain('branch-edge')
+      expect(branchEdge?.data.branchName).toBe('abundance')
+      expect(branchEdge?.data.isBranchDependency).toBe(true)
+    })
   })
 
   describe('getLayoutConfig', () => {
