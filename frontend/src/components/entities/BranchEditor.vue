@@ -57,7 +57,7 @@
               <!-- Branch Name -->
               <v-col cols="12" sm="4">
                 <v-text-field
-                  v-model="item.name"
+                  :model-value="item.name"
                   label="Branch Name *"
                   variant="outlined"
                   density="compact"
@@ -69,14 +69,14 @@
                     (v: string) => /^[a-z][a-z0-9_]*$/.test(v) || 'Must be snake_case (lowercase letters, digits, underscores)',
                     (v: string) => !isDuplicateName(v, index) || 'Branch names must be unique',
                   ]"
-                  @update:model-value="emitUpdate"
+                  @update:model-value="handleBranchNameUpdate(index, $event)"
                 />
               </v-col>
 
               <!-- Source Entity -->
               <v-col cols="12" sm="4">
                 <v-autocomplete
-                  v-model="item.source"
+                  :model-value="item.source"
                   :items="availableEntities"
                   label="Source Entity *"
                   variant="outlined"
@@ -85,14 +85,14 @@
                   persistent-hint
                   clearable
                   :rules="[(v: string) => !!v || 'Source entity is required']"
-                  @update:model-value="emitUpdate"
+                  @update:model-value="handleBranchSourceUpdate(index, $event)"
                 />
               </v-col>
 
               <!-- Business Keys -->
               <v-col cols="12" sm="4">
                 <v-combobox
-                  v-model="item.keys"
+                  :model-value="item.keys"
                   :items="getSourceColumns(item.source)"
                   label="Branch Keys"
                   variant="outlined"
@@ -102,7 +102,7 @@
                   closable-chips
                   persistent-hint
                   hint="Business keys for pre-merge validation (optional)"
-                  @update:model-value="emitUpdate"
+                  @update:model-value="handleBranchKeysUpdate(index, $event)"
                 />
               </v-col>
             </v-row>
@@ -199,46 +199,70 @@ const emit = defineEmits<{
 const branches = ref<BranchConfig[]>([])
 const lastEmittedValue = ref<string>('[]')
 
-// Sync incoming prop
-watch(
-  () => props.modelValue,
-  (incoming) => {
-    const serialized = JSON.stringify(incoming ?? [])
-    if (serialized !== lastEmittedValue.value) {
-      branches.value = (incoming ?? []).map((b) => ({ ...b, keys: b.keys ?? [] }))
-    }
-  },
-  { immediate: true, deep: true }
-)
-
-function emitUpdate() {
+function normalizeForEmit(): BranchConfig[] | undefined {
   const cleaned = branches.value.map((b) => {
     const out: BranchConfig = { name: b.name, source: b.source }
-    if (b.keys && b.keys.length > 0) out.keys = b.keys
+    if (b.keys && b.keys.length > 0) out.keys = [...b.keys]
     return out
   })
-  const serialized = JSON.stringify(cleaned)
-  lastEmittedValue.value = serialized
-  emit('update:modelValue', cleaned)
+
+  return cleaned.length > 0 ? cleaned : undefined
+}
+
+function initializeBranches(): void {
+  branches.value = (props.modelValue ?? []).map((branch) => ({
+    ...branch,
+    keys: branch.keys ?? [],
+  }))
 }
 
 function handleAddBranch() {
-  branches.value.push({ name: '', source: '', keys: [] })
-  emitUpdate()
+  branches.value = [...branches.value, { name: '', source: '', keys: [] }]
 }
 
 function handleRemoveBranch(index: number) {
-  branches.value.splice(index, 1)
-  emitUpdate()
+  branches.value = branches.value.filter((_, branchIndex) => branchIndex !== index)
 }
 
 function handleMoveBranch(index: number, direction: -1 | 1) {
   const target = index + direction
   if (target < 0 || target >= branches.value.length) return
-  const temp = branches.value[index]!
-  branches.value[index] = branches.value[target]!
-  branches.value[target] = temp
-  emitUpdate()
+
+  const updatedBranches = [...branches.value]
+  const temp = updatedBranches[index]!
+  updatedBranches[index] = updatedBranches[target]!
+  updatedBranches[target] = temp
+  branches.value = updatedBranches
+}
+
+function handleBranchNameUpdate(index: number, value: string) {
+  const branch = branches.value[index]
+  if (!branch) return
+
+  branches.value[index] = {
+    ...branch,
+    name: value,
+  }
+}
+
+function handleBranchSourceUpdate(index: number, value: string) {
+  const branch = branches.value[index]
+  if (!branch) return
+
+  branches.value[index] = {
+    ...branch,
+    source: value,
+  }
+}
+
+function handleBranchKeysUpdate(index: number, value: string[] | undefined) {
+  const branch = branches.value[index]
+  if (!branch) return
+
+  branches.value[index] = {
+    ...branch,
+    keys: Array.isArray(value) ? [...value] : [],
+  }
 }
 
 function getSourceColumns(source: string | undefined): string[] {
@@ -255,6 +279,27 @@ function isDuplicateName(name: string, currentIndex: number): boolean {
   if (!name) return false
   return branches.value.some((b, i) => i !== currentIndex && b.name === name)
 }
+
+watch(
+  branches,
+  () => {
+    const emitValue = normalizeForEmit()
+    lastEmittedValue.value = JSON.stringify(emitValue)
+    emit('update:modelValue', emitValue ?? [])
+  },
+  { deep: true }
+)
+
+watch(
+  () => props.modelValue,
+  (incoming) => {
+    const serialized = JSON.stringify(incoming ?? [])
+    if (serialized !== lastEmittedValue.value) {
+      initializeBranches()
+    }
+  },
+  { immediate: true, deep: true }
+)
 </script>
 
 <style scoped>
