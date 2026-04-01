@@ -335,6 +335,34 @@ Merged preview also highlights discriminator and lineage FK columns and shows wh
 3. Edit the raw entity configuration.
 4. Save from the dialog.
 
+### Editing Fixed Values
+
+Use `type: fixed` when you want to maintain a small table of inline values directly in the project.
+
+The fixed-values editor uses a grid. You can type values cell by cell, add rows manually, or paste tabular data directly from a spreadsheet.
+
+**Pasting tabular data**
+
+1. Open the fixed entity in the editor.
+2. Click the cell where the pasted block should start.
+3. Copy a rectangular range from Excel, LibreOffice, Google Sheets, or another tabular source.
+4. Paste with the normal system shortcut.
+
+What happens when you paste:
+
+- Shape Shifter fills the selected cell and the cells to the right and downward from it.
+- If the pasted block needs more rows than currently exist, the grid adds new rows automatically.
+- Blank pasted cells clear existing values in those positions.
+- Extra pasted columns that do not fit in the grid are ignored.
+- Internal blank lines inside the pasted block are preserved as blank rows.
+
+`system_id` is managed by Shape Shifter:
+
+- Existing `system_id` values are not overwritten by paste.
+- New rows created during paste receive the next available `system_id` automatically.
+
+In practice, this means you can paste names, labels, lookup codes, and other editable columns in bulk, while Shape Shifter keeps the local identity column stable.
+
 ### Working with Merged Entities
 
 Use `type: merged` when a single target-facing parent should receive rows from multiple source entities that share some meaning but do not share the exact same shape.
@@ -863,6 +891,10 @@ That badge means the entity loads values from external storage instead of storin
 ### Why do I see a Materialized badge?
 
 That badge indicates the entity is using frozen cached data rather than recalculating live output every time.
+
+### Can I paste spreadsheet data into a fixed entity?
+
+Yes. In a `fixed` entity, click the starting cell in the values grid and paste a rectangular block from a spreadsheet. Shape Shifter fills matching cells, adds rows if needed, leaves existing `system_id` values intact, and assigns new `system_id` values to any new rows it creates.
 
 ### Where do I upload source files for a project?
 
