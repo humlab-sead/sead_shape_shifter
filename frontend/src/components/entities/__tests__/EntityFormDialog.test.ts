@@ -323,9 +323,6 @@ describe('EntityFormDialog', () => {
     await flushPromises()
     await nextTick()
 
-    expect(wrapper.text()).toContain('analysis_entity_branch discriminator')
-    expect(wrapper.text()).toContain('abundance_id lineage FK')
-
     const previewTargetSelect = findSelectByLabel(wrapper, 'Preview')
     expect(previewTargetSelect).toBeTruthy()
 

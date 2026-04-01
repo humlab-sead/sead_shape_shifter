@@ -880,26 +880,6 @@
                 </v-chip>
               </div>
 
-              <div
-                v-else-if="!previewLoading && mergedPreviewHasBranchFilter"
-                class="d-flex flex-wrap align-center ga-2 px-2 pt-2"
-              >
-                <v-chip size="small" color="secondary" variant="tonal">
-                  <v-icon start size="x-small">mdi-source-branch</v-icon>
-                  {{ mergedPreviewBranchColumn }} discriminator
-                </v-chip>
-                <v-chip
-                  v-for="fkColumn in mergedPreviewFkColumns"
-                  :key="fkColumn"
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                >
-                  <v-icon start size="x-small">mdi-link-variant</v-icon>
-                  {{ fkColumn }} lineage FK
-                </v-chip>
-              </div>
-
               <div v-if="livePreviewData && !previewLoading" class="preview-table-container">
                 <div class="preview-grid-wrapper">
                   <ag-grid-vue
