@@ -115,6 +115,7 @@ This works, but it has costs:
 ## Proposal 1: First-Class Merged Parent Entities
 
 **Status: Extracted to standalone proposal**
+**Status: Completed — see [done/TARGET_SCHEMA_AWARE_VALIDATION.md](done/TARGET_SCHEMA_AWARE_VALIDATION.md)**
 
 See [FIRST_CLASS_MERGED_PARENT_ENTITIES.md](FIRST_CLASS_MERGED_PARENT_ENTITIES.md) for the complete proposal.
 
@@ -198,7 +199,7 @@ This would make multi-branch parent modeling less error-prone while preserving t
 
 ## Proposal 6: Target-Schema-Aware Validation
 
-**Status: Completed — see [done/TARGET_SCHEMA_AWARE_VALIDATION.md](done/TARGET_SCHEMA_AWARE_VALIDATION.md)**
+**Status: Completed — see **[done/FIRST_CLASS_MERGED_PARENT_ENTITIES](done/FIRST_CLASS_MERGED_PARENT_ENTITIES.md)**
 
 Conformance validation is implemented and wired into the UX. The final delivered scope covers structural conformance (column presence, naming conventions, FK requirements, induced requirements), standalone target-model checks, and a registry-based conformance validator architecture. Remaining enhancement backlog is tracked in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
@@ -232,7 +233,7 @@ See [COMMENT_PRESERVING_SAVE_PATH.md](COMMENT_PRESERVING_SAVE_PATH.md) for the c
 
 The core issue is preserving author comments across ordinary save operations so complex modeling rationale is not stripped from YAML during editor round trips. The recommended approach is a comment-preserving persistence path, not a generic entity-level `note` field as a substitute.
 
-## Proposal 9: Reusable Entity Macros or Templates
+## Proposal 9: ONHOLD Reusable Entity Macros or Templates
 
 Add a macro or template mechanism for repeated modeling patterns.
 
@@ -266,8 +267,8 @@ Templates would reduce repetition and keep the pattern consistent across project
 
 If only a few improvements are pursued next, the recommended order is:
 
-1. first-class merged parent entities
-2. branch-scoped consumers
+1. **COMPLETED** first-class merged parent entities
+2. **COMPLETED** branch-scoped consumers
 3. explicit fact-to-lookup mapping
 
 ### Why these first
@@ -303,14 +304,14 @@ The delivery order below is organized by implementation risk, not only by concep
   Completed in Phase 1. Phase 2 expansion rules (branch-aware conformance) are tracked in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ### Phase 3: First-Class Modeling Constructs
-
-- **Proposal 1: First-Class Merged Parent Entities**
+docs/proposals/done/FIRST_CLASS_MERGED_PARENT_ENTITIES.md
+- ✔️ COMPLETED **[Proposal 1: First-Class Merged Parent Entities](done/FIRST_CLASS_MERGED_PARENT_ENTITIES.md)**
   Dependency: should build on lessons from Proposal 5 and, ideally, Proposal 4. Schema-aware append and branch-scoped consumers provide the lower-risk proving ground for branch semantics before introducing a first-class merged entity type.
 - **Proposal 2: Explicit Fact-to-Lookup Mapping**
   Dependency: benefits from [Proposal 6](done/TARGET_SCHEMA_AWARE_VALIDATION.md), because validation is the main mechanism that turns declarative fact-to-lookup intent into actionable guidance. It does not strictly depend on Proposal 1, but the two proposals complement each other in shared-parent fact models.
 - **Proposal 7: Derived Lookup Helpers**
   Dependency: should follow Proposal 2, because lookup derivation or lookup coverage checks are clearer once explicit fact-to-lookup relationships exist.
-- **Proposal 9: Reusable Entity Macros or Templates**
+- **Proposal 9: ONHOLD Reusable Entity Macros or Templates**
   Dependency: should come last. It depends on the stabilization of Proposal 1, Proposal 2, Proposal 4, and Proposal 5; otherwise it risks freezing patterns that are still changing.
 
 ## Benefits
