@@ -84,6 +84,7 @@ class ProjectService:
             save_project_callback=self.save_project,
             load_project_callback=self.load_project,
             cache_invalidator=self._invalidate_all_caches,
+            save_metadata_boundary_callback=self.save_metadata_boundary,
         )
 
         # Initialize entity operations component
@@ -92,6 +93,7 @@ class ProjectService:
             load_project_callback=self.load_project,
             save_project_callback=self.save_project,
             persistence_strategy_registry=EntityPersistenceStrategyRegistry(),
+            save_entity_boundary_callback=self.save_entity_boundary,
         )
 
         # Initialize file manager component
@@ -330,6 +332,80 @@ class ProjectService:
             logger.error(f"Failed to save project: {e}")
             raise ConfigurationError(message=f"Failed to save project: {e}") from e
 
+    # ------------------------------------------------------------------
+    # Boundary save methods (preserve comments, replace one section only)
+    # ------------------------------------------------------------------
+
+    def _resolve_project_file_path(self, project_name: str) -> Path:
+        """Return the shapeshifter.yml path for *project_name*.
+
+        Raises:
+            ResourceNotFoundError: If the project file does not exist on disk.
+        """
+        file_path = self.projects_dir / ProjectNameMapper.to_path(project_name) / "shapeshifter.yml"
+        if not file_path.exists():
+            raise ResourceNotFoundError(resource_type="project", resource_id=project_name, message=f"Project not found: {project_name}")
+        return file_path
+
+    def save_metadata_boundary(self, project_name: str, metadata_dict: dict[str, Any]) -> None:
+        """
+        Replace only the ``metadata`` section on disk.
+
+        All other project sections (options, entities, …) and their YAML
+        comments are left untouched.
+
+        Args:
+            project_name: Project name
+            metadata_dict: New metadata as a plain dict (serialised from ProjectMetadata)
+        """
+        file_path = self._resolve_project_file_path(project_name)
+        logger.info(f"save_metadata_boundary: '{project_name}'")
+        self.yaml_service.merge_boundary(file_path, "metadata", metadata_dict)
+        self.state.invalidate(project_name)
+
+    def save_options_boundary(self, project_name: str, options: dict[str, Any]) -> None:
+        """
+        Replace only the ``options`` section on disk.
+
+        All other project sections (metadata, entities, …) and their YAML
+        comments are left untouched.
+
+        Args:
+            project_name: Project name
+            options: New options dict
+        """
+        file_path = self._resolve_project_file_path(project_name)
+        logger.info(f"save_options_boundary: '{project_name}'")
+        self.yaml_service.merge_boundary(file_path, "options", options)
+        self.state.invalidate(project_name)
+
+    def save_entity_boundary(
+        self,
+        project_name: str,
+        entity_name: str,
+        entity_dict: dict[str, Any] | None,
+    ) -> None:
+        """
+        Replace or delete one entity on disk without touching other entities.
+
+        Pass ``entity_dict=None`` to remove the entity from the YAML file.
+        All other entities (and any comments in the file) are preserved.
+
+        Callers that need serialization should hold the per-project lock for
+        the full duration of their read-modify-write cycle.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity key under ``entities:``
+            entity_dict: Replacement entity dict, or ``None`` to delete.
+        """
+        file_path = self._resolve_project_file_path(project_name)
+        logger.info(f"save_entity_boundary: '{project_name}' entity='{entity_name}' delete={entity_dict is None}")
+        self.yaml_service.merge_boundary(file_path, ("entities", entity_name), entity_dict)
+        self.state.invalidate(project_name)
+
+    # ------------------------------------------------------------------
+
     def _verify_save(self, name: str, expected_entities: list[str], file_path: Path, corr: str) -> None:
         """Read back the saved file and verify entity count matches.
 
@@ -470,6 +546,8 @@ class ProjectService:
         description: str | None = None,
         version: str | None = None,
         default_entity: str | None = None,
+        target_model: str | None = None,
+        target_model_provided: bool = False,
     ) -> Project:
         """
         Update project metadata.
@@ -483,6 +561,12 @@ class ProjectService:
             description: Project description (optional)
             version: Project version (optional)
             default_entity: Default entity name (optional)
+            target_model: Target model path string (e.g. '@include: target.yml').  Pass
+                ``None`` with ``target_model_provided=False`` to leave unchanged.  Pass
+                ``None`` with ``target_model_provided=True`` to clear the field.
+                Pass an empty string to also clear the field.
+            target_model_provided: Whether *target_model* was explicitly included in
+                the request (distinguishes "not sent" from "sent as null").
 
         Returns:
             Updated project
@@ -490,7 +574,15 @@ class ProjectService:
         Raises:
             ProjectNotFoundError: If project not found
         """
-        return self.operations.update_metadata(name, new_name, description, version, default_entity)
+        return self.operations.update_metadata(
+            name,
+            new_name,
+            description,
+            version,
+            default_entity,
+            target_model=target_model,
+            target_model_provided=target_model_provided,
+        )
 
     @staticmethod
     def _serialize_entity(entity: Entity) -> dict[str, Any]:
@@ -593,22 +685,33 @@ class ProjectService:
         """
         return self.entities.add_entity_by_name(project_name, entity_name, entity_data)
 
-    def update_entity_by_name(self, project_name: str, entity_name: str, entity_data: dict[str, Any]) -> None:
+    def update_entity_by_name(
+        self,
+        project_name: str,
+        entity_name: str,
+        entity_data: dict[str, Any],
+        *,
+        expected_etag: str | None = None,
+    ) -> None:
         """
         Update entity in project by project name.
 
         Serialized per-project to prevent lost-update race conditions.
+        Pass *expected_etag* for conditional (ETag-based) compare-and-swap;
+        omit for an unconditional update (backward compatible).
 
         Args:
             project_name: Project name
             entity_name: Entity name
             entity_data: Updated entity data as dict
+            expected_etag: When provided, raises EntityConflictError on ETag mismatch
 
         Raises:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
+            EntityConflictError: If *expected_etag* is given and does not match
         """
-        return self.entities.update_entity_by_name(project_name, entity_name, entity_data)
+        return self.entities.update_entity_by_name(project_name, entity_name, entity_data, expected_etag=expected_etag)
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:
         """
@@ -642,6 +745,10 @@ class ProjectService:
             ResourceNotFoundError: If entity not found
         """
         return self.entities.get_entity_by_name(project_name, entity_name)
+
+    def get_entity_etag_by_name(self, project_name: str, entity_name: str) -> str:
+        """Return the current ETag for an entity."""
+        return self.entities.get_entity_etag_by_name(project_name, entity_name)
 
     def activate_project(self, name: str) -> Project:
         """

@@ -6,6 +6,7 @@ These JSON Schema files provide **autocomplete and IntelliSense** for the Monaco
 
 - **entitySchema.json** - Schema for entity definitions
 - **projectSchema.json** - Schema for project configuration
+- **targetModelSchema.json** - Schema for target model specifications
 
 ## Usage
 
@@ -28,6 +29,7 @@ make check-schemas
 **Never edit these files manually** - they will be overwritten. Instead, update the source Pydantic models:
 - `backend/app/models/entity.py`
 - `backend/app/models/project.py`
+- `src/target_model/models.py`
 
 ## Source of Truth
 

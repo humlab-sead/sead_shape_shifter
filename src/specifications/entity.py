@@ -166,6 +166,136 @@ class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
         return not self.has_errors()
 
 
+@ENTITY_TYPE_SPECIFICATION.register(key="merged")
+class MergedEntityFieldsSpecification(ProjectSpecification):
+    """Validates that fields are present and valid for a merged entity.
+
+    Note: Merged entities have different validation rules than standard entities:
+    - keys/columns are defined per branch, not at entity level
+    - branches field is required and validated separately
+    - public_id is required since merged entities often act as FK targets
+    """
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that merged entity configuration is valid."""
+        self.clear()
+
+        table: TableConfig = self.get_entity(entity_name)
+
+        if table.type != "merged":
+            self.add_error(f"Entity '{entity_name}' is not of type 'merged'", entity=entity_name, field="type")
+            return not self.has_errors()
+
+        entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
+
+        # Check for public_id (required for merged entities since they act as FK targets)
+        public_id = entity_cfg.get("public_id") or entity_cfg.get("surrogate_id")
+        if not public_id:
+            self.add_error(
+                f"Entity '{entity_name}': Field 'public_id' is required for merged entities.",
+                entity=entity_name,
+                field="public_id",
+            )
+
+        # Validate branches field exists and is not empty
+        self.check_fields(entity_name, ["branches"], "exists/E")
+
+        branches_raw = entity_cfg.get("branches")
+        if not branches_raw:
+            self.add_error(
+                f"Entity '{entity_name}': merged entities must define at least one branch in 'branches' field.",
+                entity=entity_name,
+                field="branches",
+            )
+            return not self.has_errors()
+
+        # Normalize branches to list
+        branches: list[dict[str, Any]] = branches_raw if isinstance(branches_raw, list) else [branches_raw]
+
+        # Validate branches is a list
+        self.check_fields(entity_name, ["branches"], "of_type/E", expected_types=(list,))
+
+        # Track branch names for uniqueness validation
+        branch_names: set[str] = set()
+
+        # Validate each branch configuration
+        for idx, branch_cfg in enumerate(branches):
+            branch_id = f"Entity '{entity_name}', branch #{idx + 1}"
+
+            # Validate branch is a dict
+            if not isinstance(branch_cfg, dict):
+                self.add_error(
+                    f"{branch_id}: branch configuration must be a dictionary",
+                    entity=entity_name,
+                    field="branches",
+                    branch_source=None,
+                )
+                continue
+
+            branch_name = branch_cfg.get("name")
+            branch_source = branch_cfg.get("source")
+
+            # Validate required fields
+            self.check_fields(entity_name, ["name", "source"], "of_type/E", expected_types=(str,), target_cfg=branch_cfg, message=branch_id)
+
+            if not branch_name:
+                self.add_error(
+                    f"{branch_id}: 'name' field is required",
+                    entity=entity_name,
+                    field="branches",
+                    branch_source=branch_source,
+                )
+                continue
+
+            if not branch_source:
+                self.add_error(
+                    f"{branch_id}: 'source' field is required",
+                    entity=entity_name,
+                    field="branches",
+                    branch_name=branch_name,
+                )
+                continue
+
+            # Validate name uniqueness
+            if branch_name in branch_names:
+                self.add_error(
+                    f"{branch_id}: duplicate branch name '{branch_name}' - branch names must be unique",
+                    entity=entity_name,
+                    field="branches",
+                    branch_name=branch_name,
+                    branch_source=branch_source,
+                )
+            else:
+                branch_names.add(branch_name)
+
+            # Validate source entity exists
+            if not self.entity_exists(branch_source):
+                self.add_error(
+                    f"{branch_id} (source='{branch_source}'): source entity '{branch_source}' does not exist",
+                    entity=entity_name,
+                    field="branches",
+                    branch_name=branch_name,
+                    branch_source=branch_source,
+                    source=branch_source,
+                )
+
+            # Validate keys field if present
+            if "keys" in branch_cfg:
+                self.check_fields(
+                    entity_name,
+                    ["keys"],
+                    "of_type/E",
+                    expected_types=(list,),
+                    target_cfg=branch_cfg,
+                    message=f"{branch_id} (source='{branch_source}')",
+                )
+
+        # Warn if merged entity also has incompatible source/data_source/query fields
+        self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
+
+        return not self.has_errors()
+
+
 @ENTITY_SPECIFICATION.register(key="sql_column_configuration")
 class SqlColumnConfigurationSpecification(ProjectSpecification):
     """Validates SQL column configuration that can be checked without executing the query."""
@@ -589,7 +719,7 @@ class ExtraColumnsExpressionSpecification(ProjectSpecification):
     ) -> None:
         try:
             ast = self.formula_engine.parse(expression)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             self.add_error(
                 f"Invalid formula for extra_columns '{new_col}': {exc}. Expression: {expression!r}",
                 entity=entity_name,
@@ -624,7 +754,7 @@ class ExtraColumnsExpressionSpecification(ProjectSpecification):
 
         try:
             self.formula_engine.validate(ast, eventual_available)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             self.add_error(
                 f"Invalid formula for extra_columns '{new_col}': {exc}. Expression: {expression!r}",
                 entity=entity_name,
@@ -679,7 +809,11 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
     """
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
-        """Check that extra_columns don't conflict with existing columns."""
+        """Check that extra_columns don't conflict with existing columns.
+
+        Note: Keys can be a mix of source columns and extra_columns. Only prevent
+        overriding columns that actually exist in the source data or are system-generated.
+        """
         self.clear()
 
         entities_cfg: dict[str, Any] = self.project_cfg.get("entities", {})
@@ -688,8 +822,9 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
         if not table_cfg.extra_columns:
             return True
 
+        # Only check actual source columns, not keys (keys can be added via extra_columns)
         existing_columns: set[str] = set(
-            table_cfg.get_columns(include_keys=True, include_fks=False, include_extra=False, include_unnest=True)
+            table_cfg.get_columns(include_keys=False, include_fks=False, include_extra=False, include_unnest=True)
         )
         existing_columns.add(table_cfg.system_id)
         if table_cfg.public_id:
@@ -701,7 +836,7 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
             for conflict in sorted(conflicts):
                 self.add_error(
                     f"extra_columns '{conflict}' conflicts with an existing result column in entity '{entity_name}'. "
-                    "Rename the derived column instead of overriding source, key, ID, FK, or unnest output columns.",
+                    "Rename the derived column instead of overriding source, system_id, public_id, or unnest output columns.",
                     entity=entity_name,
                     field="extra_columns",
                     expression=table_cfg.extra_columns.get(conflict),
@@ -713,6 +848,22 @@ class ExtraColumnsConflictsSpecification(ProjectSpecification):
 @ENTITY_SPECIFICATION.register(key="append")
 class AppendSpecification(ProjectSpecification):
     """Validates append configuration settings."""
+
+    @staticmethod
+    def _get_alignable_columns(columns: list[str] | None, public_id: str | None) -> tuple[list[str], list[str]]:
+        """Split columns into alignable payload columns and excluded identity columns."""
+        excluded_names = {"system_id"}
+        if public_id:
+            excluded_names.add(public_id)
+
+        alignable: list[str] = []
+        excluded: list[str] = []
+        for column in columns or []:
+            if column in excluded_names:
+                excluded.append(column)
+            else:
+                alignable.append(column)
+        return alignable, excluded
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that append configurations are valid."""
@@ -741,22 +892,30 @@ class AppendSpecification(ProjectSpecification):
 
             append_type = append_cfg.get("type")
             append_source = append_cfg.get("source")
+            align_by_position = append_cfg.get("align_by_position", False)
+            column_mapping = append_cfg.get("column_mapping")
 
             self.check_fields(
                 entity_name, ["type", "source"], "of_type/E", expected_types=(str, None), target_cfg=append_cfg, message=append_id
             )
 
-            # Must have either type or source, but not both
+            # Validate append form: either type-only, source-only, or type+source
             if not append_type and not append_source:
                 self.add_error(f"{append_id}: must specify either 'type' or 'source'", entity=entity_name, field="append")
                 continue
 
+            # If both type and source are specified, type MUST be "entity"
             if append_type and append_source:
-                self.add_error(f"{append_id}: cannot specify both 'type' and 'source'", entity=entity_name, field="append")
-                continue
+                if append_type != "entity":
+                    self.add_error(
+                        f"{append_id}: when both 'type' and 'source' are specified, type must be 'entity' (got '{append_type}')",
+                        entity=entity_name,
+                        field="append",
+                    )
+                    continue
 
-            # Validate type-based append
-            if append_type:
+            # Validate type-based append (fixed, sql)
+            if append_type and not append_source:
                 self.check_fields(
                     entity_name,
                     ["type"],
@@ -778,16 +937,43 @@ class AppendSpecification(ProjectSpecification):
                         entity_name, ["query"], "exists/E,of_type/E", expected_types=(str,), target_cfg=append_cfg, message=append_id
                     )
 
-            # Validate source-based append
+            # Validate source-based append (source alone or type: entity + source)
             if append_source:
                 self.check_fields(entity_name, ["source"], "of_type/E", expected_types=(str,), target_cfg=append_cfg, message=append_id)
                 self.check_fields(entity_name, ["source"], "is_existing_entity/E", target_cfg=append_cfg, message=append_id)
                 self.check_fields(entity_name, ["columns"], "exists/W", target_cfg=append_cfg, message=append_id)
 
-            # Validate column renaming options
-            align_by_position = append_cfg.get("align_by_position", False)
-            column_mapping = append_cfg.get("column_mapping")
+                source_entity_cfg = self.project_cfg.get("entities", {}).get(append_source, {}) if isinstance(append_source, str) else {}
+                target_columns, target_excluded = self._get_alignable_columns(
+                    entity_cfg.get("columns", []) or [], entity_cfg.get("public_id")
+                )
 
+                source_columns_cfg = append_cfg.get("columns")
+                if not isinstance(source_columns_cfg, list):
+                    source_columns_cfg = source_entity_cfg.get("columns", []) or []
+
+                source_columns, source_excluded = self._get_alignable_columns(source_columns_cfg, source_entity_cfg.get("public_id"))
+
+                if align_by_position and len(target_columns) != len(source_columns):
+                    self.add_error(
+                        f"{append_id}: align_by_position requires equal payload column counts after excluding identity columns "
+                        f"(target={target_columns}, source={source_columns}, excluded_target={target_excluded}, "
+                        f"excluded_source={source_excluded})",
+                        entity=entity_name,
+                        field="append",
+                    )
+
+                if not align_by_position and not column_mapping:
+                    missing_columns = [column for column in target_columns if column not in source_columns]
+                    if missing_columns:
+                        self.add_error(
+                            f"{append_id}: match-by-name is not possible because source entity '{append_source}' is missing target columns "
+                            f"{missing_columns}; use column_mapping or align_by_position",
+                            entity=entity_name,
+                            field="append",
+                        )
+
+            # Validate column renaming options
             if align_by_position and column_mapping:
                 self.add_error(
                     f"{append_id}: cannot specify both 'align_by_position' and 'column_mapping'",

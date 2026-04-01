@@ -46,37 +46,6 @@ create table tbl_age_types (
     description text
 );
 
-
-create table tbl_aggregate_datasets (
-    aggregate_dataset_id integer not null,
-    aggregate_order_type_id integer not null,
-    biblio_id integer,
-    aggregate_dataset_name character varying(255),
-    description text,
-    aggregate_dataset_uuid uuid default public.uuid_generate_v4() not null
-);
-
-create table tbl_aggregate_order_types (
-    aggregate_order_type_id integer not null,
-    aggregate_order_type character varying(60) not null,
-    description text
-);
-
-
-create table tbl_aggregate_samples (
-    aggregate_sample_id integer not null,
-    aggregate_dataset_id integer not null,
-    analysis_entity_id bigint not null,
-    aggregate_sample_name character varying(50)
-);
-
-
-create table tbl_aggregate_sample_ages (
-    aggregate_sample_age_id integer not null,
-    aggregate_dataset_id integer not null,
-    analysis_entity_age_id integer not null
-);
-
 create table tbl_alt_ref_types (
     alt_ref_type_id integer not null,
     alt_ref_type character varying(50) not null,
@@ -261,29 +230,6 @@ create table tbl_biblio (
     biblio_uuid uuid default public.uuid_generate_v4() not null
 );
 
-
-create table tbl_ceramics (
-    ceramics_id integer not null,
-    analysis_entity_id integer not null,
-    measurement_value character varying not null,
-    ceramics_lookup_id integer not null
-);
-
-
-create table tbl_ceramics_lookup (
-    ceramics_lookup_id integer not null,
-    method_id integer not null,
-    description text,
-    name character varying not null
-);
-
-
-create table tbl_ceramics_measurements (
-    ceramics_measurement_id integer not null,
-    method_id integer
-);
-
-
 create table tbl_chronologies (
     chronology_id integer not null,
     age_model text,
@@ -428,45 +374,6 @@ create table tbl_dating_uncertainty (
 );
 
 
-create table tbl_dendro (
-    dendro_id integer not null,
-    analysis_entity_id integer not null,
-    measurement_value character varying not null,
-    dendro_lookup_id integer not null
-);
-
-create table tbl_dendro_dates (
-    dendro_date_id integer not null,
-    season_id integer,
-    dating_uncertainty_id integer,
-    dendro_lookup_id integer not null,
-    age_type_id integer not null,
-    analysis_entity_id integer not null,
-    age_older integer,
-    age_younger integer,
-    age_range int4range generated always as (
-        case
-            when ((age_younger is null) and (age_older is null)) then null::int4range
-            else int4range(coalesce(age_older, age_younger), (coalesce(age_younger, age_older) + 1))
-        end
-    ) stored
-);
-
-
-create table tbl_dendro_date_notes (
-    dendro_date_note_id integer not null,
-    dendro_date_id integer not null,
-    note text
-);
-
-create table tbl_dendro_lookup (
-    dendro_lookup_id integer not null,
-    method_id integer,
-    name character varying not null,
-    description text
-);
-
-
 create table tbl_dimensions (
     dimension_id integer not null,
     dimension_abbrev character varying(40),
@@ -567,61 +474,12 @@ create table tbl_identification_levels (
 );
 
 
-create table tbl_image_types (
-    image_type_id integer not null,
-    description text,
-    image_type character varying(40) not null
-);
-
-
 create table tbl_imported_taxa_replacements (
     imported_taxa_replacement_id integer not null,
     imported_name_replaced character varying(100) not null,
     taxon_id integer not null
 );
 
-create table tbl_isotopes (
-    isotope_id integer not null,
-    analysis_entity_id integer not null,
-    isotope_measurement_id integer not null,
-    isotope_standard_id integer,
-    measurement_value text,
-    unit_id integer not null,
-    isotope_value_specifier_id integer not null
-);
-
-create table tbl_isotope_measurements (
-    isotope_measurement_id integer not null,
-    isotope_standard_id integer,
-    method_id integer,
-    isotope_type_id integer
-);
-
-create table tbl_isotope_standards (
-    isotope_standard_id integer not null,
-    isotope_ration character varying,
-    international_scale character varying,
-    accepted_ratio_xe6 character varying,
-    error_of_ratio character varying,
-    reference character varying
-);
-
-
-create table tbl_isotope_types (
-    isotope_type_id integer not null,
-    designation character varying,
-    abbreviation character varying,
-    atomic_number numeric,
-    description text,
-    alternative_designation character varying
-);
-
-
-create table tbl_isotope_value_specifiers (
-    isotope_value_specifier_id integer not null,
-    name character varying not null,
-    description text not null
-);
 
 create table tbl_languages (
     language_id integer not null,
@@ -653,37 +511,6 @@ create table tbl_location_types (
     location_type_id integer not null,
     description text,
     location_type character varying(40)
-);
-
-
-create table tbl_mcr_names (
-    taxon_id integer not null,
-    comparison_notes character varying(255) default null::character varying,
-    mcr_name_trim character varying(80) default null::character varying,
-    mcr_number smallint default 0,
-    mcr_species_name character varying(200) default null::character varying
-);
-
-
-create table tbl_mcr_summary_data (
-    mcr_summary_data_id integer not null,
-    cog_mid_tmax smallint default 0,
-    cog_mid_trange smallint default 0,
-    taxon_id integer not null,
-    tmax_hi smallint default 0,
-    tmax_lo smallint default 0,
-    tmin_hi smallint default 0,
-    tmin_lo smallint default 0,
-    trange_hi smallint default 0,
-    trange_lo smallint default 0
-);
-
-
-create table tbl_mcrdata_birmbeetledat (
-    mcrdata_birmbeetledat_id integer not null,
-    mcr_data text,
-    mcr_row smallint not null,
-    taxon_id integer not null
 );
 
 
@@ -952,16 +779,6 @@ create table tbl_sample_group_dimensions (
 );
 
 
-create table tbl_sample_group_images (
-    sample_group_image_id integer not null,
-    description text,
-    image_location text not null,
-    image_name character varying(80),
-    image_type_id integer not null,
-    sample_group_id integer not null
-);
-
-
 create table tbl_sample_group_notes (
     sample_group_note_id integer not null,
     sample_group_id integer not null,
@@ -987,16 +804,6 @@ create table tbl_sample_group_sampling_contexts (
 create table tbl_sample_horizons (
     sample_horizon_id integer not null,
     horizon_id integer not null,
-    physical_sample_id integer not null
-);
-
-
-create table tbl_sample_images (
-    sample_image_id integer not null,
-    description text,
-    image_location text not null,
-    image_name character varying(80),
-    image_type_id integer not null,
     physical_sample_id integer not null
 );
 
@@ -1068,19 +875,6 @@ create table tbl_sites (
 );
 
 
-create table tbl_site_images (
-    site_image_id integer not null,
-    contact_id integer,
-    credit character varying(100),
-    date_taken date,
-    description text,
-    image_location text not null,
-    image_name character varying(80),
-    image_type_id integer not null,
-    site_id integer not null
-);
-
-
 create table tbl_site_locations (
     site_location_id integer not null,
     location_id integer not null,
@@ -1147,16 +941,6 @@ create table tbl_taxa_common_names (
     common_name character varying(255) default null::character varying,
     language_id integer default 0,
     taxon_id integer default 0
-);
-
-
-create table tbl_taxa_images (
-    taxa_images_id integer not null,
-    image_name character varying,
-    description text,
-    image_location text,
-    image_type_id integer,
-    taxon_id integer not null
 );
 
 
@@ -1276,36 +1060,6 @@ create table tbl_temperatures (
 );
 
 
-create table tbl_tephras (
-    tephra_id integer not null,
-    c14_age numeric(20, 5),
-    c14_age_older numeric(20, 5),
-    c14_age_younger numeric(20, 5),
-    cal_age numeric(20, 5),
-    cal_age_older numeric(20, 5),
-    cal_age_younger numeric(20, 5),
-    notes text,
-    tephra_name character varying(80),
-    tephra_uuid uuid default public.uuid_generate_v4() not null
-);
-
-
-create table tbl_tephra_dates (
-    tephra_date_id integer not null,
-    analysis_entity_id bigint not null,
-    notes text,
-    tephra_id integer not null,
-    dating_uncertainty_id integer
-);
-
-
-create table tbl_tephra_refs (
-    tephra_ref_id integer not null,
-    biblio_id integer not null,
-    tephra_id integer not null
-);
-
-
 create table tbl_text_biology (
     biology_id integer not null,
     biblio_id integer not null,
@@ -1340,12 +1094,6 @@ create table tbl_units (
     unit_name character varying(50) not null
 );
 
-
-create table tbl_updates_log (
-    updates_log_id integer not null,
-    table_name character varying(150) not null,
-    last_updated date not null
-);
 
 create table tbl_value_classes (
     value_class_id integer not null,

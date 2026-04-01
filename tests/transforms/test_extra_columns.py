@@ -569,9 +569,9 @@ class TestCollectSourceDependencies:
         """Empty extra_columns returns empty set."""
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1], "b": [2]})
-        
+
         deps = evaluator.collect_source_dependencies(df, {}, case_sensitive=True)
-        
+
         assert deps == set()
 
     def test_constant_no_dependencies(self):
@@ -579,9 +579,9 @@ class TestCollectSourceDependencies:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1], "b": [2]})
         extra = {"const": 99, "literal": "text"}
-        
+
         deps = evaluator.collect_source_dependencies(df, extra, case_sensitive=True)
-        
+
         assert deps == set()
 
     def test_interpolation_dependencies(self):
@@ -589,9 +589,9 @@ class TestCollectSourceDependencies:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"first": [1], "last": [2], "age": [30]})
         extra = {"fullname": "{first} {last}"}
-        
+
         deps = evaluator.collect_source_dependencies(df, extra, case_sensitive=True)
-        
+
         assert deps == {"first", "last"}
 
     def test_formula_dependencies(self):
@@ -599,9 +599,9 @@ class TestCollectSourceDependencies:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1], "b": [2], "c": [3]})
         extra = {"result": "=concat(a, b)"}
-        
+
         deps = evaluator.collect_source_dependencies(df, extra, case_sensitive=True)
-        
+
         assert deps == {"a", "b"}
 
     def test_column_copy_dependency(self):
@@ -609,25 +609,19 @@ class TestCollectSourceDependencies:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"source_col": [1, 2]})
         extra = {"copy": "source_col"}
-        
+
         deps = evaluator.collect_source_dependencies(df, extra, case_sensitive=True)
-        
+
         assert deps == {"source_col"}
 
     def test_mixed_dependencies(self):
         """Mixed extra_columns collect all dependencies."""
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1], "b": [2], "c": [3], "d": [4]})
-        extra = {
-            "const": 99,
-            "interp": "{a} {b}",
-            "formula": "=upper(c)",
-            "copy": "d",
-            "literal": "text"
-        }
-        
+        extra = {"const": 99, "interp": "{a} {b}", "formula": "=upper(c)", "copy": "d", "literal": "text"}
+
         deps = evaluator.collect_source_dependencies(df, extra, case_sensitive=True)
-        
+
         assert deps == {"a", "b", "c", "d"}
 
     def test_case_insensitive_matching(self):
@@ -635,9 +629,9 @@ class TestCollectSourceDependencies:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"First_Name": [1], "Last_Name": [2]})
         extra = {"full": "{first_name} {last_name}"}  # Lowercase references
-        
+
         deps = evaluator.collect_source_dependencies(df, extra, case_sensitive=False)
-        
+
         # Should return actual column names from DataFrame
         assert deps == {"First_Name", "Last_Name"}
 
@@ -646,9 +640,9 @@ class TestCollectSourceDependencies:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"First_Name": [1]})
         extra = {"full": "{first_name}"}  # Lowercase
-        
+
         deps = evaluator.collect_source_dependencies(df, extra, case_sensitive=True)
-        
+
         # No match because case differs
         assert deps == set()
 
@@ -657,9 +651,9 @@ class TestCollectSourceDependencies:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1]})
         extra = {"x": "{a} {missing}"}
-        
+
         deps = evaluator.collect_source_dependencies(df, extra, case_sensitive=True)
-        
+
         # Only 'a' exists in df
         assert deps == {"a"}
 
@@ -668,9 +662,9 @@ class TestCollectSourceDependencies:
         evaluator = ExtraColumnEvaluator()
         columns = ["first", "last", "age"]
         extra = {"fullname": "{first} {last}"}
-        
+
         deps = evaluator.collect_source_dependencies(columns, extra, case_sensitive=True)
-        
+
         assert deps == {"first", "last"}
 
     def test_escaped_equals_no_dependency(self):
@@ -678,9 +672,9 @@ class TestCollectSourceDependencies:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1]})
         extra = {"literal": "==not_a_formula"}
-        
+
         deps = evaluator.collect_source_dependencies(df, extra, case_sensitive=True)
-        
+
         assert deps == set()
 
     def test_complex_formula_dependencies(self):
@@ -688,9 +682,9 @@ class TestCollectSourceDependencies:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1], "b": [2], "c": [3]})
         extra = {"result": "=concat(upper(a), ' ', lower(b), coalesce(c, 'default'))"}
-        
+
         deps = evaluator.collect_source_dependencies(df, extra, case_sensitive=True)
-        
+
         assert deps == {"a", "b", "c"}
 
 
@@ -701,9 +695,9 @@ class TestGetUnresolvedExtraColumns:
         """Empty extra_columns returns empty dict."""
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1]})
-        
+
         unresolved = evaluator.get_unresolved_extra_columns(df, {})
-        
+
         assert unresolved == {}
 
     def test_all_resolved(self):
@@ -711,9 +705,9 @@ class TestGetUnresolvedExtraColumns:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1], "b": [2], "result": [3]})
         extra = {"result": "{a}"}  # This would have been evaluated
-        
+
         unresolved = evaluator.get_unresolved_extra_columns(df, extra)
-        
+
         assert unresolved == {}
 
     def test_interpolation_missing_dependencies(self):
@@ -721,9 +715,9 @@ class TestGetUnresolvedExtraColumns:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1]})
         extra = {"full": "{a} {missing}"}
-        
+
         unresolved = evaluator.get_unresolved_extra_columns(df, extra)
-        
+
         assert "full" in unresolved
         assert unresolved["full"]["expression"] == "{a} {missing}"
         assert unresolved["full"]["missing_dependencies"] == ["missing"]
@@ -733,9 +727,9 @@ class TestGetUnresolvedExtraColumns:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1]})
         extra = {"result": "=concat(a, missing_col)"}
-        
+
         unresolved = evaluator.get_unresolved_extra_columns(df, extra)
-        
+
         assert "result" in unresolved
         assert unresolved["result"]["expression"] == "=concat(a, missing_col)"
         assert unresolved["result"]["missing_dependencies"] == ["missing_col"]
@@ -745,9 +739,9 @@ class TestGetUnresolvedExtraColumns:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1]})
         extra = {"result": "=concat(a, b, c)"}
-        
+
         unresolved = evaluator.get_unresolved_extra_columns(df, extra)
-        
+
         assert unresolved["result"]["missing_dependencies"] == ["b", "c"]
 
     def test_column_copy_missing(self):
@@ -755,9 +749,9 @@ class TestGetUnresolvedExtraColumns:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1]})
         extra = {"copy": "missing_col"}
-        
+
         unresolved = evaluator.get_unresolved_extra_columns(df, extra)
-        
+
         assert "copy" in unresolved
         assert unresolved["copy"]["expression"] == "missing_col"
         assert unresolved["copy"]["missing_dependencies"] == ["missing_col"]
@@ -770,9 +764,9 @@ class TestGetUnresolvedExtraColumns:
             "good": "{a}",  # This was evaluated (column exists)
             "bad": "{a} {missing}",  # This wasn't (column missing)
         }
-        
+
         unresolved = evaluator.get_unresolved_extra_columns(df, extra)
-        
+
         # Only "bad" should be unresolved
         assert len(unresolved) == 1
         assert "bad" in unresolved
@@ -783,9 +777,9 @@ class TestGetUnresolvedExtraColumns:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1], "const": [99]})
         extra = {"const": 99}  # Would have been set as constant
-        
+
         unresolved = evaluator.get_unresolved_extra_columns(df, extra)
-        
+
         # Constant column exists (was evaluated), so not unresolved
         assert unresolved == {}
 
@@ -794,9 +788,9 @@ class TestGetUnresolvedExtraColumns:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1], "b": [2]})
         extra = {"label": "{a} {b} {c}"}
-        
+
         unresolved = evaluator.get_unresolved_extra_columns(df, extra)
-        
+
         assert unresolved["label"]["missing_dependencies"] == ["c"]
 
     def test_formula_parse_error_empty_dependencies(self):
@@ -804,9 +798,9 @@ class TestGetUnresolvedExtraColumns:
         evaluator = ExtraColumnEvaluator()
         df = pd.DataFrame({"a": [1]})
         extra = {"bad": "=invalid_function(a)"}  # Might cause parse error
-        
+
         unresolved = evaluator.get_unresolved_extra_columns(df, extra)
-        
+
         # Should be tracked as unresolved
         assert "bad" in unresolved
         # Dependencies might be empty if parsing failed
@@ -821,9 +815,8 @@ class TestGetUnresolvedExtraColumns:
             "y": "{missing2}",
             "z": "=concat(missing3, missing4)",
         }
-        
+
         unresolved = evaluator.get_unresolved_extra_columns(df, extra)
-        
+
         assert len(unresolved) == 3
         assert all(col in unresolved for col in ["x", "y", "z"])
-

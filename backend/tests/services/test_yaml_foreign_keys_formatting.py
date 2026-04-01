@@ -53,5 +53,64 @@ def test_foreign_keys_block_style():
         temp_path.unlink()
 
 
+def test_append_uses_block_style_but_preserves_compact_columns():
+    """Verify append entries use block style while nested columns stay flow style."""
+    yaml_service = YamlService()
+
+    data = {
+        "entities": {
+            "analysis_entity": {
+                "type": "fixed",
+                "append": [
+                    {
+                        "source": "abundance",
+                        "columns": [
+                            "PCODE",
+                            "Fraktion",
+                            "cf",
+                            "RTyp",
+                            "Zust",
+                            "ArchDat",
+                            "analysis_entity_type",
+                            "analysis_entity_value",
+                        ],
+                    },
+                    {
+                        "source": "_analysis_entity_relative_dating",
+                        "columns": [
+                            "PCODE",
+                            "Fraktion",
+                            "cf",
+                            "RTyp",
+                            "Zust",
+                            "ArchDat",
+                            "analysis_entity_type",
+                            "analysis_entity_value",
+                        ],
+                    },
+                ],
+            }
+        }
+    }
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        temp_path = Path(f.name)
+
+    try:
+        yaml_service.save(data, temp_path, create_backup=False)
+        content: str = temp_path.read_text(encoding="utf-8")
+
+        assert "append:" in content, "Missing append key"
+        assert "append: [{source:" not in content, "Append should not be serialized as a flow-style JSON-like list"
+        assert "append:\n    - source: abundance" in content, "Append entries should use block style"
+        assert "    - source: _analysis_entity_relative_dating" in content, "Second append entry should use block style"
+        assert (
+            "columns: [PCODE, Fraktion, cf, RTyp, Zust, ArchDat, analysis_entity_type, analysis_entity_value]" in content
+        ), "Nested columns list should remain compact flow style"
+
+    finally:
+        temp_path.unlink()
+
+
 if __name__ == "__main__":
     test_foreign_keys_block_style()

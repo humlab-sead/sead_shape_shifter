@@ -147,6 +147,27 @@ describe('useValidationStore', () => {
       expect(store.messagesByEntity.entity2).toHaveLength(1)
     })
 
+    it('should group messages by entity scope with branch metadata', () => {
+      const store = useValidationStore()
+      const errors = [
+        {
+          message: 'Branch error',
+          severity: 'error',
+          entity: 'analysis_entity',
+          branch_name: 'abundance',
+          branch_source: 'abundance_source',
+        } as ValidationError,
+      ]
+      const warnings = [{ message: 'Entity warning', severity: 'warning', entity: 'analysis_entity' } as ValidationError]
+
+      store.validationResult = { errors, warnings } as ValidationResult
+
+      expect(store.messagesByEntityScope).toHaveLength(1)
+      expect(store.messagesByEntityScope[0]?.entityMessages).toHaveLength(1)
+      expect(store.messagesByEntityScope[0]?.branchGroups).toHaveLength(1)
+      expect(store.messagesByEntityScope[0]?.branchGroups[0]?.branchName).toBe('abundance')
+    })
+
     it('should detect circular dependencies from dependency graph', () => {
       const store = useValidationStore()
 

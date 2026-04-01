@@ -33,6 +33,7 @@ export function useValidation(options: UseValidationOptions = {}) {
   const allMessages = computed(() => store.allMessages)
   const messagesBySeverity = computed(() => store.messagesBySeverity)
   const messagesByEntity = computed(() => store.messagesByEntity)
+  const messagesByEntityScope = computed(() => store.messagesByEntityScope)
   const isValid = computed(() => store.isValid)
 
   // Actions
@@ -123,6 +124,7 @@ export function useValidation(options: UseValidationOptions = {}) {
     allMessages,
     messagesBySeverity,
     messagesByEntity,
+    messagesByEntityScope,
     isValid,
     validationSummary,
     isStale,

@@ -12,6 +12,7 @@ class ValidationCategory(str, Enum):
     STRUCTURAL = "structural"  # Configuration structure issues
     DATA = "data"  # Issues found in actual data
     PERFORMANCE = "performance"  # Performance-related warnings
+    CONFORMANCE = "conformance"  # Target-model conformance issues
 
 
 class DataValidationMode(str, Enum):
@@ -35,6 +36,8 @@ class ValidationError(BaseModel):
 
     severity: Literal["error", "warning", "info"] = Field(..., description="Severity level")
     entity: str | None = Field(default=None, description="Entity name where error occurred")
+    branch_name: str | None = Field(default=None, description="Merged-entity branch name, if issue is branch-scoped")
+    branch_source: str | None = Field(default=None, description="Merged-entity branch source, if issue is branch-scoped")
     field: str | None = Field(default=None, description="Field name where error occurred")
     message: str = Field(..., description="Error message")
     code: str | None = Field(default=None, description="Error code for programmatic handling")

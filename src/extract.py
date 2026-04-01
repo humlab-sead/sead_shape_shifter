@@ -23,7 +23,7 @@ class SubsetService:
 
     def get_subset_columns(self, table_cfg: TableConfig) -> list[str]:
         """Get the list of columns to extract from the table configuration.
-        Excludes un-nested columns and extra columns from remote FK tables."""
+        Excludes un-nested columns, extra columns from remote FK tables, and keys added via extra_columns."""
         columns: list[str] = table_cfg.keys_columns_and_fks
         # Ignore columns that will be added via un-nesting
         if table_cfg.unnest:
@@ -32,6 +32,9 @@ class SubsetService:
         for fk in table_cfg.foreign_keys:
             if fk.extra_columns:
                 columns = [col for col in columns if col not in fk.extra_columns.keys()]
+        # Ignore keys that will be added via extra_columns (they don't exist in source yet)
+        if table_cfg.extra_columns:
+            columns = [col for col in columns if col not in table_cfg.extra_columns.keys()]
         return columns
 
     def get_subset(

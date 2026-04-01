@@ -106,11 +106,40 @@ class AppendConfig(BaseModel):
     column_mapping: dict[str, str] | None = Field(default=None, description="Explicit column name mapping (source_col: target_col)")
 
 
+class BranchConfig(BaseModel):
+    """Configuration for a branch in a merged parent entity.
+
+    Each branch defines a source entity that contributes rows to the merged parent.
+    Branches are merged sequentially in declaration order with automatic:
+    - Branch discriminator column ({entity}_branch)
+    - Branch FK propagation (sparse FK columns for lineage tracking)
+    - Column union (all columns from all branches)
+    - Type conflict handling (safe numeric upcasts, datetime→string, fail fast)
+    """
+
+    name: str = Field(..., description="Branch identifier (must be unique within merged parent)")
+    source: str = Field(..., description="Source entity name providing rows for this branch")
+    keys: list[str] = Field(
+        default_factory=list,
+        description="Business keys to validate against source (optional, used for branch-level validation)",
+    )
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        """Validate branch name is snake_case."""
+        if not v.islower() or " " in v:
+            raise ValueError(f"Branch name must be snake_case: {v}")
+        return v
+
+
 class Entity(BaseModel):
     """Entity (table) configuration."""
 
     name: str = Field(..., description="Entity name (snake_case)")
-    type: Literal["entity", "sql", "fixed", "csv", "xlsx", "openpyxl"] | None = Field(default=None, description="Data source type")
+    type: Literal["entity", "sql", "fixed", "csv", "xlsx", "openpyxl", "merged"] | None = Field(
+        default=None, description="Data source type"
+    )
     source: str | None = Field(default=None, description="Source entity name")
     data_source: str | None = Field(default=None, description="Data source name for SQL type")
     query: str | None = Field(default=None, description="SQL query for SQL type")
@@ -131,6 +160,10 @@ class Entity(BaseModel):
     unnest: UnnestConfig | None = Field(default=None, description="Unnest configuration")
     filters: list[FilterConfig] = Field(default_factory=list, description="Entity filters with optional staged execution")
     append: list[AppendConfig] = Field(default_factory=list, description="Data to append")
+    branches: list[BranchConfig] = Field(
+        default_factory=list,
+        description="Branch configurations for merged parent entities (type='merged' only)",
+    )
     depends_on: list[str] = Field(default_factory=list, description="Processing dependencies")
     drop_duplicates: bool | list[str] = Field(default=False, description="Drop duplicate rows")
     drop_empty_rows: bool | list[str] = Field(default=False, description="Drop empty rows")

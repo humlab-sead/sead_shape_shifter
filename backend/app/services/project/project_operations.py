@@ -1,6 +1,7 @@
 """Project operations: create, copy, delete, update metadata."""
 
 import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -37,6 +38,7 @@ class ProjectOperations:
         save_project_callback,  # Callable to save project
         load_project_callback,  # Callable to load project
         cache_invalidator,  # Callable[[str, str], None]
+        save_metadata_boundary_callback=None,  # Optional: Callable[[str, dict], None]
     ):
         """Initialize project operations.
 
@@ -49,6 +51,10 @@ class ProjectOperations:
             save_project_callback: Function to save project
             load_project_callback: Function to load project
             cache_invalidator: Function to invalidate all caches
+            save_metadata_boundary_callback: Optional boundary save for metadata only.
+                When provided, update_metadata() writes only the metadata section,
+                preserving comments in options/entities.  Falls back to full
+                save_project when absent.
         """
         self.yaml_service = yaml_service
         self.projects_dir = projects_dir
@@ -58,6 +64,7 @@ class ProjectOperations:
         self._save_project = save_project_callback
         self._load_project = load_project_callback
         self._invalidate_all_caches = cache_invalidator
+        self._save_metadata_boundary = save_metadata_boundary_callback
 
     def create_project(self, name: str, entities: dict[str, Any] | None = None, task_list: dict[str, Any] | None = None) -> Project:
         """
@@ -104,7 +111,13 @@ class ProjectOperations:
 
     def delete_project(self, name: str) -> None:
         """
-        Delete project directory and all its contents.
+        Archive and delete project directory and all its contents.
+
+        Before deletion, creates a zip archive of the full project folder in:
+            self.projects_dir / "archived"
+
+        Archive name format:
+            <project_name>_<yyyymmddhhmmss>.zip
 
         Clears ALL caches (ApplicationState, ShapeShiftCache, ShapeShiftProjectCache)
         to prevent ghost entities when a new project is created with the same name.
@@ -116,12 +129,16 @@ class ProjectOperations:
             ResourceNotFoundError: If project not found
         """
         corr: str = get_correlation_id()
-        # Structure: projects_dir/name/shapeshifter.yml (convert : to /)
+
         project_dir: Path = self.projects_dir / ProjectNameMapper.to_path(name)
         file_path: Path = project_dir / "shapeshifter.yml"
 
         if not file_path.exists():
-            raise ResourceNotFoundError(resource_type="project", resource_id=name, message=f"Project not found: {name}")
+            raise ResourceNotFoundError(
+                resource_type="project",
+                resource_id=name,
+                message=f"Project not found: {name}",
+            )
 
         lock = self._get_lock(name)
         logger.info("[{}] delete_project: ACQUIRING lock for '{}'", corr, name)
@@ -131,12 +148,28 @@ class ProjectOperations:
             try:
                 # Backup the main config file before deletion
                 self.yaml_service.create_backup(file_path)
+
+                # Ensure archive directory exists
+                archive_dir: Path = self.projects_dir / "archived"
+                archive_dir.mkdir(parents=True, exist_ok=True)
+
+                # Build archive name from project "name" + timestamp
+                timestamp: str = datetime.now().strftime("%Y%m%d%H%M%S")
+                archive_base_name: str = f"{project_dir.name}_{timestamp}"
+                archive_base_path: Path = archive_dir / archive_base_name
+
+                # Create zip archive of the full project directory
+                archive_path: str = shutil.make_archive(
+                    base_name=str(archive_base_path), format="zip", root_dir=str(project_dir.parent), base_dir=project_dir.name
+                )
+                logger.info("[{}] delete_project: archive created for '{}' at '{}'", corr, name, archive_path)
+
                 # Delete entire project directory
                 shutil.rmtree(project_dir)
                 logger.info("[{}] delete_project: directory deleted for '{}'", corr, name)
 
             except Exception as e:
-                logger.error("[{}] delete_project: failed to delete file for '{}': {}", corr, name, e)
+                logger.error("[{}] delete_project: failed for '{}': {}", corr, name, e)
                 raise ProjectServiceError(f"Failed to delete project: {e}") from e
 
             # CRITICAL FIX: Clear ALL caches to prevent ghost entities
@@ -235,6 +268,8 @@ class ProjectOperations:
         description: str | None = None,
         version: str | None = None,
         default_entity: str | None = None,
+        target_model: str | None = None,
+        target_model_provided: bool = False,
     ) -> Project:
         """
         Update project metadata.
@@ -248,6 +283,9 @@ class ProjectOperations:
             description: Project description (optional)
             version: Project version (optional)
             default_entity: Default entity name (optional)
+            target_model: Target model path.  Ignored unless ``target_model_provided``
+                is True.  Pass ``None`` or ``""`` to clear the field.
+            target_model_provided: Whether target_model was explicitly sent.
 
         Returns:
             Updated project
@@ -271,11 +309,27 @@ class ProjectOperations:
             project.metadata.version = version
         if default_entity is not None:
             project.metadata.default_entity = default_entity
+        if target_model_provided:
+            # Empty string or null both mean "clear the field"
+            project.metadata.target_model = target_model or None
 
         # Ensure metadata.name matches filename (filename is source of truth)
         project.metadata.name = name
 
-        # Save project using original file path to prevent duplicate files
-        saved_config: Project = self._save_project(project, create_backup=True, original_file_path=original_file_path)
+        if self._save_metadata_boundary:
+            # Build the metadata dict using the same sparse format as ProjectMapper.to_core_dict
+            metadata_out: dict[str, Any] = {
+                "name": name,
+                "type": project.metadata.type or "shapeshifter-project",
+                "description": project.metadata.description,
+                "version": project.metadata.version,
+                "default_entity": project.metadata.default_entity,
+            }
+            if project.metadata.target_model is not None:
+                metadata_out["target_model"] = project.metadata.target_model
+            self._save_metadata_boundary(name, metadata_out)
+            return self._load_project(name)
 
+        # Fallback: full project save (preserves behaviour when no boundary callback)
+        saved_config: Project = self._save_project(project, create_backup=True, original_file_path=original_file_path)
         return saved_config

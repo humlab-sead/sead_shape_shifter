@@ -5,9 +5,9 @@ export interface MaterializationRoundTripState {
 }
 
 /**
- * Fixed-entity columns in YAML already include identity columns and keys.
- * The form edits keys separately, so strip those columns out of the editable
- * columns array to avoid duplicating them on save.
+ * Fixed-entity columns in YAML include the full persisted row schema.
+ * The form hides identity columns, but keeps business-key columns visible so
+ * the editable grid shape remains obvious to users.
  */
 export function normalizeEditableFixedColumns(
   columns: string[],
@@ -18,12 +18,6 @@ export function normalizeEditableFixedColumns(
 
   if (publicId && publicId.trim().length > 0) {
     hiddenColumns.add(publicId)
-  }
-
-  for (const key of keys) {
-    if (typeof key === 'string' && key.trim().length > 0) {
-      hiddenColumns.add(key)
-    }
   }
 
   return columns.filter((column) => !hiddenColumns.has(column))
@@ -59,6 +53,98 @@ export function buildFixedValuesColumns(
   }
 
   return canonical
+}
+
+/**
+ * Normalize inline fixed rows for the editor/grid.
+ *
+ * Older project files may store fixed rows in a data-only layout that matches
+ * the persisted `columns` array exactly, without an explicit `system_id` column.
+ * The editor grid, preview override config, and external values update flow all
+ * operate on the canonical full column order, so expand those legacy rows here.
+ */
+export function normalizeFixedValuesRowsForForm(
+  values: any[][],
+  storedColumns: string[],
+  keys: string[],
+  publicId: string | null | undefined
+): any[][] {
+  if (!Array.isArray(values) || values.length === 0) {
+    return values
+  }
+
+  const fullColumns = buildFixedValuesColumns(storedColumns, keys, publicId)
+  const rowLength = Array.isArray(values[0]) ? values[0].length : 0
+
+  if (rowLength === 0 || values.some((row) => !Array.isArray(row) || row.length !== rowLength)) {
+    return values
+  }
+
+  if (rowLength === fullColumns.length) {
+    return values
+  }
+
+  if (rowLength !== storedColumns.length) {
+    return values
+  }
+
+  return values.map((row, rowIndex) => {
+    const expandedRow = fullColumns.map((columnName) => {
+      const storedIndex = storedColumns.indexOf(columnName)
+      if (storedIndex >= 0) {
+        return row[storedIndex] ?? null
+      }
+
+      if (columnName === 'system_id') {
+        return rowIndex + 1
+      }
+
+      return null
+    })
+
+    return expandedRow
+  })
+}
+
+/**
+ * Remap fixed rows when the editor schema changes in memory.
+ *
+ * The grid stores rows positionally, but users expect edits to follow column
+ * names. When keys/columns move in or out of the fixed schema, rebuild rows by
+ * column name so surviving fields keep their values.
+ */
+export function remapFixedValuesRowsToColumns(
+  values: any[][],
+  fromColumns: string[],
+  toColumns: string[]
+): any[][] {
+  if (!Array.isArray(values) || values.length === 0) {
+    return values
+  }
+
+  if (JSON.stringify(fromColumns) === JSON.stringify(toColumns)) {
+    return values
+  }
+
+  return values.map((row, rowIndex) => {
+    const rowByColumn = new Map<string, any>()
+
+    fromColumns.forEach((columnName, index) => {
+      rowByColumn.set(columnName, row[index] ?? null)
+    })
+
+    return toColumns.map((columnName) => {
+      if (rowByColumn.has(columnName)) {
+        return rowByColumn.get(columnName)
+      }
+
+      if (columnName === 'system_id') {
+        return rowByColumn.get('system_id') ?? rowIndex + 1
+      }
+
+      return null
+    })
+  })
 }
 
 /**

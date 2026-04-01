@@ -21,6 +21,7 @@ export interface FixedSchema {
 export interface EntityResponse {
   name: string
   entity_data: Record<string, unknown>
+  etag: string
   materialized?: MaterializedMetadata
   fixed_schema?: FixedSchema | null
 }
@@ -91,13 +92,19 @@ export const entitiesApi = {
   },
 
   /**
-   * Update entity
+   * Update entity (conditional when ifMatch is supplied)
    */
-  update: async (projectName: string, entityName: string, data: EntityUpdateRequest): Promise<EntityResponse> => {
+  update: async (
+    projectName: string,
+    entityName: string,
+    data: EntityUpdateRequest,
+    ifMatch?: string,
+  ): Promise<EntityResponse> => {
     return apiRequest<EntityResponse>({
       method: 'PUT',
       url: `/projects/${projectName}/entities/${entityName}`,
       data,
+      headers: ifMatch ? { 'If-Match': ifMatch } : undefined,
     })
   },
 

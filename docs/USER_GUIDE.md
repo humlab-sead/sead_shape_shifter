@@ -72,6 +72,12 @@ aspect of an entity resembles a SQL query or an SQL UDF.
 **Public ID** (`public_id`)
 : The target-side (i.e. SEAD) primary key column name. It must end with `_id` and determines foreign-key column names in child entities. This is currently limited to an integer ID, but future version will allow compound keys and UUIDs 
 
+**Target Model**
+: An optional YAML specification file describing what an external destination system (such as SEAD) expects from a project: which entities are required, which columns and foreign-key relationships they must have, and what naming conventions apply. When a project references a target model via `metadata.target_model`, the editor can run **conformance validation** to check whether the project satisfies those requirements. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the full format reference.
+
+**Conformance Validation**
+: A validation pass that checks the project entities against the requirements declared in the referenced target model. Unlike structural validation (YAML consistency) and data validation (column contents), conformance validation reasons about *semantic modeling intent*: are the right entities present? Do they expose the right columns and foreign keys? Does `public_id` follow the expected naming convention?
+
 **Execute**
 : Runs the full normalization workflow and exports data through a dispatcher such as Excel, ZIP CSV, folder CSV, or to a database (e.g. SEAD ClearingHouse). Dispatcher's are pluggable components that can be tailor-made for specific needs. 
 
@@ -183,7 +189,7 @@ The graph also shows task completion, dependency counts, and cycle warnings when
 
 These tabs support project setup around the entities themselves:
 
-- **Metadata** edits project description, version, and default entity.
+- **Metadata** edits project description, version, default entity, and the optional **Target Model** reference.
 - **Files** uploads project-local `.csv`, `.xls`, and `.xlsx` files.
 - **Data Sources** connects shared/global data source definitions into the current project and can launch entity creation from a selected source table.
 
@@ -220,6 +226,7 @@ The current editor supports these main entity types:
 | `entity`   | another entity    | derived entities get their data from another configured entity.        |
 | `sql`      | database          | for query-based entities that reads data from en external data source. |
 | `fixed`    | inline            | for manually added static values (also frozen dynamic entities)        |
+| `merged`   | one or more entities | for shared parent entities built from explicit branches with branch tracking and sparse lineage foreign keys |
 | `csv`      | CSV/TSV file      | for loading data from delimited files                                  |
 | `xlsx`     | Excel spreadsheet | for loading Excel spreadsheet using Pandas                             |
 | `openpyxl` | Excel spreadsheet | for loading Excel spreadsheet with range support                       |
@@ -239,6 +246,7 @@ The split view can be toggled with **Ctrl+Shift+P**.
 The entity editor is divided into focused tabs:
 
 - **Basic**
+- **Branches** for `merged` entities
 - **Foreign Keys**
 - **Filters**
 - **Unnest**
@@ -294,6 +302,13 @@ It includes:
 
 Use preview to confirm that your columns, filters, unnest configuration, and replacements are doing what you expect before saving larger changes.
 
+For merged entities, preview has two useful modes:
+
+- **Merged Result** to inspect the assembled parent table with branch discriminator and sparse branch FK columns
+- **Branch Source** to inspect the current branch source rows directly when a merged preview looks wrong
+
+Merged preview also highlights discriminator and lineage FK columns and shows which branch contributes each preview column.
+
 ### Common Editing Patterns
 
 **Create from scratch**
@@ -319,6 +334,76 @@ Use preview to confirm that your columns, filters, unnest configuration, and rep
 2. Switch to the **YAML** tab.
 3. Edit the raw entity configuration.
 4. Save from the dialog.
+
+### Editing Fixed Values
+
+Use `type: fixed` when you want to maintain a small table of inline values directly in the project.
+
+The fixed-values editor uses a grid. You can type values cell by cell, add rows manually, or paste tabular data directly from a spreadsheet.
+
+**Pasting tabular data**
+
+1. Open the fixed entity in the editor.
+2. Click the cell where the pasted block should start.
+3. Copy a rectangular range from Excel, LibreOffice, Google Sheets, or another tabular source.
+4. Paste with the normal system shortcut.
+
+What happens when you paste:
+
+- Shape Shifter fills the selected cell and the cells to the right and downward from it.
+- If the pasted block needs more rows than currently exist, the grid adds new rows automatically.
+- Blank pasted cells clear existing values in those positions.
+- Extra pasted columns that do not fit in the grid are ignored.
+- Internal blank lines inside the pasted block are preserved as blank rows.
+
+`system_id` is managed by Shape Shifter:
+
+- Existing `system_id` values are not overwritten by paste.
+- New rows created during paste receive the next available `system_id` automatically.
+
+In practice, this means you can paste names, labels, lookup codes, and other editable columns in bulk, while Shape Shifter keeps the local identity column stable.
+
+### Working with Merged Entities
+
+Use `type: merged` when a single target-facing parent should receive rows from multiple source entities that share some meaning but do not share the exact same shape.
+
+Typical example:
+
+```yaml
+analysis_entity:
+  type: merged
+  public_id: analysis_entity_id
+  branches:
+    - name: abundance
+      source: abundance
+      keys: [Projekt, Befu, ProbNr]
+    - name: relative_dating
+      source: _analysis_entity_relative_dating
+      keys: [Projekt, Befu, ProbNr]
+```
+
+What the editor does for you:
+
+- The **Branches** tab becomes the primary configuration surface.
+- Source-loading fields that do not apply to merged entities stay hidden.
+- The preview can switch between the assembled merged result and a specific branch source.
+- The graph renders merged branch-source edges distinctly.
+- Validation groups branch-scoped issues separately from post-merge issues.
+
+What the pipeline produces:
+
+- `{entity_name}_branch` discriminator column, for example `analysis_entity_branch`
+- One sparse FK column per branch source, for example `abundance_id`
+- A new local `system_id` sequence for the merged parent itself
+- A `public_id` column that remains empty until reconciliation assigns target IDs
+
+Practical workflow:
+
+1. Define each branch source entity first and make sure it previews correctly on its own.
+2. Create the merged parent and add branches in declaration order.
+3. Use merged preview to inspect discriminator and sparse FK columns.
+4. Switch preview to **Branch Source** when you need to isolate one branch.
+5. Run YAML validation, then review the **By Entity** validation view for branch-scoped issues.
 
 ---
 
@@ -367,6 +452,7 @@ Validation results are grouped into:
 - **All Issues**
 - **Errors**
 - **Warnings**
+- **By Entity**
 - **By Category**
 
 Categories currently shown in the results panel are:
@@ -379,24 +465,66 @@ Each issue can include:
 
 - severity
 - entity
+- branch name and branch source for merged-entity branch issues
 - field
 - category
 - code
 - message
 - suggestion
 
+For merged entities, the **By Entity** view separates:
+
+- branch-scoped issues, such as a bad branch source or invalid branch keys
+- entity-level merged issues, such as missing `public_id`
+- post-merge issues that apply to the assembled result
+
+The validation rows also surface branch/source chips when the issue belongs to a specific merged branch.
+
 ### Copying Results
 
 Use **Copy** in the validation panel to copy the current issues to the clipboard in a tabular format. This is useful when sharing results in tickets, chat, or review notes.
 
+
+### Conformance Validation
+
+If the project has a `target_model` reference in its metadata, the Validate tab shows a third action: **Check Conformance**.
+
+Conformance validation checks whether the project entities satisfy the requirements declared in the referenced target model specification:
+
+- Are all required entities present?
+- Do entities expose the required columns?
+- Are the required foreign-key targets declared?
+- Do `public_id` values match the expected naming convention?
+
+**Running conformance:**
+
+1. Set the **Target Model** field in the Metadata tab (e.g., `@include: target_models/specs/sead_v2.yml`).
+2. Go to the **Validate** tab and click **Check Conformance**.
+3. Review results in the **Conformance** expansion panel.
+
+Conformance issues are grouped in their own panel under the *By Category* tab and use a distinct deep-purple colour to tell them apart from structural (grey) and data (blue) issues. If the project has no target model, the button is still safe to press — it returns an empty result without error.
+
+### Conformance Issue Codes
+
+| Code | What it means |
+|------|---------------|
+| `MISSING_REQUIRED_ENTITY` | An entity the target model requires is absent from the project |
+| `MISSING_PUBLIC_ID` | The target model expects a `public_id` on an entity, but none is set |
+| `UNEXPECTED_PUBLIC_ID` | The project entity has a `public_id` the target model does not expect |
+| `MISSING_REQUIRED_FOREIGN_KEY_TARGET` | A required FK target is not declared on the entity |
+| `MISSING_REQUIRED_COLUMN` | A required column is not present in the entity's target-facing columns |
+| `PUBLIC_ID_NAMING_VIOLATION` | A `public_id` value does not end with the required suffix (e.g., `_id`) |
+
+See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for a full description of how conformance validation works.
 
 ### Recommended Validation Workflow
 
 1. Run **YAML Validation** after structural changes.
 2. Run **Sample Data** validation while iterating.
 3. Run **Complete Data** validation before executing.
-4. Fix errors first.
-5. Review warnings before treating the project as ready.
+4. If the project targets a known destination system, run **Check Conformance** to catch semantic modeling errors early.
+5. Fix errors first.
+6. Review warnings before treating the project as ready.
 
 ---
 
@@ -524,6 +652,72 @@ If the selected dispatcher writes a file, the dialog also shows **Download resul
 4. Download or inspect the output.
 5. If needed, continue with **Dispatch**.
 
+### Command Line Execution
+
+For automation, scripting, or batch processing, Shape Shifter can be run from the command line using the `shapeshift` module.
+
+**Basic usage:**
+
+```bash
+python -m src.shapeshift OUTPUT_PATH --project PROJECT_FILE.yml [OPTIONS]
+```
+
+**Common examples:**
+
+```bash
+# Export to Excel
+python -m src.shapeshift output.xlsx \
+  --project data/projects/my_project.yml \
+  --mode xlsx
+
+# Validate configuration only (no processing)
+python -m src.shapeshift output.xlsx \
+  --project data/projects/my_project.yml \
+  --validate-then-exit
+
+# Export to CSV folder with verbose logging
+python -m src.shapeshift output/ \
+  --project data/projects/my_project.yml \
+  --mode csv \
+  --verbose \
+  --log-file logs/transform.log
+
+# With environment variables
+python -m src.shapeshift output.xlsx \
+  --project data/projects/my_project.yml \
+  --env-file .env \
+  --mode xlsx
+```
+
+**Available options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--project FILE` | `-p` | Path to project YAML file (required) |
+| `--mode [xlsx\|csv\|db]` | `-m` | Output format (default: xlsx) |
+| `--env-file FILE` | `-e` | Path to environment variables file |
+| `--verbose` | `-v` | Enable verbose logging output |
+| `--translate` | `-t` | Enable translation/mapping rules |
+| `--drop-foreign-keys` | `-d` | Remove FK columns from output |
+| `--log-file PATH` | `-l` | Write logs to specified file |
+| `--validate-then-exit` | | Validate config and exit (no processing) |
+| `--default-entity TEXT` | `-de` | Default entity when none specified |
+| `--help` | | Show all options and exit |
+
+**When to use CLI:**
+
+- Automated workflows and scheduled processing
+- CI/CD pipelines and testing
+- Batch processing multiple projects
+- Server-side or headless environments
+- Scripted validation checks
+
+**Exit codes:**
+
+- `0` - Success
+- `1` - Validation failure (when using `--validate-then-exit`)
+- Non-zero - Processing error
+
 ---
 
 ## 8. Tips & Best Practices
@@ -549,6 +743,33 @@ If the selected dispatcher writes a file, the dialog also shows **Download resul
 ### Use Previews Early
 
 Preview catches many mistakes faster than a full execute run. Check row shape, data types, and dependency joins while you edit.
+
+### Declare Foreign Keys Explicitly
+
+Even when columns are inherited from parent entities, always declare foreign key relationships in the `foreign_keys` section:
+
+```yaml
+sample_group:
+  type: entity
+  source: feature
+  keys: [site_id, Projekt, Befu]
+  foreign_keys:
+    - entity: site
+      local_keys: [site_id]
+      remote_keys: [site_id]
+    - entity: method
+      local_keys: [method_id]
+      remote_keys: [method_id]
+```
+
+**Why declare FKs explicitly?**
+
+- **Documentation** - Makes entity relationships clear to anyone reading the configuration
+- **Conformance validation** - Satisfies target model requirements and avoids validation errors
+- **Referential integrity** - Enables constraint validation and relationship checking
+- **Future-proofing** - Supports advanced features like cascade operations and graph analysis
+
+**Self-referential FKs are fine** - When a column already exists via inheritance (e.g., `site_id` from parent `feature`), declaring a FK with matching local and remote keys is a documentation no-op but provides validation benefits.
 
 ### Use Backups Before Risky Changes
 
@@ -608,6 +829,31 @@ Check:
 - the configured columns still exist in the source
 - sample mode is not masking a complete-data issue
 
+### Merged Entity Validation Fails
+
+Check:
+
+- every branch `source` points to an existing entity
+- each branch source previews successfully on its own
+- branch `keys` reference columns that actually exist on the branch source
+- the merged entity has a `public_id`
+
+If the issue appears only in the merged result, switch preview to **Branch Source** to isolate the branch before debugging the assembled table.
+
+### Merged Preview Shows Many Null Values
+
+This is often expected. Merged entities use column union semantics:
+
+- shared columns are populated across branches
+- branch-only columns are null-filled for rows from other branches
+- sparse lineage FK columns are populated only for the matching branch
+
+Use the preview header tooltips to see which branch provides each column and which branches receive null-filled values.
+
+### Why Are Source, Query, or Append Fields Hidden for a Merged Entity?
+
+Because `type: merged` assembles rows from `branches:`. Source-loading settings belong on the branch source entities, not on the merged parent itself.
+
 ### Execute Succeeds but Output Looks Wrong
 
 Review:
@@ -646,6 +892,10 @@ That badge means the entity loads values from external storage instead of storin
 
 That badge indicates the entity is using frozen cached data rather than recalculating live output every time.
 
+### Can I paste spreadsheet data into a fixed entity?
+
+Yes. In a `fixed` entity, click the starting cell in the values grid and paste a rectangular block from a spreadsheet. Shape Shifter fills matching cells, adds rows if needed, leaves existing `system_id` values intact, and assigns new `system_id` values to any new rows it creates.
+
 ### Where do I upload source files for a project?
 
 Use the **Files** tab for project-local CSV and Excel files.
@@ -663,8 +913,16 @@ Use these documents:
 - [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
 - [other/USER_GUIDE_APPENDIX.md](other/USER_GUIDE_APPENDIX.md)
 
+### Where can I see what changed in a new version?
+
+Each release publishes a short, user-facing summary in `docs/whats-new/`. These notes are written for normal users and focus on visible improvements, workflow changes, and anything worth knowing before upgrading. They are separate from the full technical `CHANGELOG.md`, which is aimed at developers.
+
+To find notes for a specific version, open `docs/whats-new/vX.Y.Z.md` or browse [docs/whats-new/](whats-new/).
+
+GitHub Releases also carry a short version of these notes with a link to the full changelog.
+
 ---
 
-**Document Version**: 2.1
-**Last Updated**: March 14, 2026
+**Document Version**: 2.2
+**Last Updated**: March 31, 2026
 **For**: Shape Shifter Project Editor

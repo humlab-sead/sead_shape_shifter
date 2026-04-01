@@ -3,13 +3,15 @@
  */
 
 export type ValidationSeverity = 'error' | 'warning' | 'info'
-export type ValidationCategory = 'structural' | 'data' | 'performance'
+export type ValidationCategory = 'structural' | 'data' | 'performance' | 'conformance'
 export type ValidationPriority = 'low' | 'medium' | 'high' | 'critical'
 export type DataValidationMode = 'sample' | 'complete'
 
 export interface ValidationError {
   severity: ValidationSeverity
   entity?: string | null
+  branch_name?: string | null
+  branch_source?: string | null
   field?: string | null
   message: string
   code?: string | null
@@ -17,6 +19,21 @@ export interface ValidationError {
   category?: ValidationCategory
   priority?: ValidationPriority
   auto_fixable?: boolean
+}
+
+export interface ValidationBranchGroup {
+  key: string
+  branchName: string | null
+  branchSource: string | null
+  messages: ValidationError[]
+}
+
+export interface ValidationEntityGroup {
+  key: string
+  entity: string | null
+  messages: ValidationError[]
+  entityMessages: ValidationError[]
+  branchGroups: ValidationBranchGroup[]
 }
 
 export interface ValidationResult {
@@ -60,6 +77,51 @@ export function groupByEntity(errors: ValidationError[]): Map<string, Validation
     grouped.get(key)!.push(error)
   }
   return grouped
+}
+
+export function groupByEntityScope(messages: ValidationError[]): ValidationEntityGroup[] {
+  const entityGroups = new Map<string, ValidationEntityGroup>()
+
+  for (const message of messages) {
+    const entityKey = message.entity || 'general'
+    if (!entityGroups.has(entityKey)) {
+      entityGroups.set(entityKey, {
+        key: entityKey,
+        entity: message.entity || null,
+        messages: [],
+        entityMessages: [],
+        branchGroups: [],
+      })
+    }
+
+    const entityGroup = entityGroups.get(entityKey)!
+    entityGroup.messages.push(message)
+
+    if (!message.branch_name && !message.branch_source) {
+      entityGroup.entityMessages.push(message)
+      continue
+    }
+
+    const branchKey = `${message.branch_name || ''}::${message.branch_source || ''}`
+    let branchGroup = entityGroup.branchGroups.find((group) => group.key === branchKey)
+    if (!branchGroup) {
+      branchGroup = {
+        key: branchKey,
+        branchName: message.branch_name || null,
+        branchSource: message.branch_source || null,
+        messages: [],
+      }
+      entityGroup.branchGroups.push(branchGroup)
+    }
+
+    branchGroup.messages.push(message)
+  }
+
+  return Array.from(entityGroups.values()).sort((left, right) => {
+    if (left.entity === null) return -1
+    if (right.entity === null) return 1
+    return left.key.localeCompare(right.key)
+  })
 }
 
 export function groupBySeverity(result: ValidationResult): Record<ValidationSeverity, ValidationError[]> {

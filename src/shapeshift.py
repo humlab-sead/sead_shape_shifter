@@ -50,7 +50,7 @@ def main(
     """
     Normalize data from various data sources into structured tables.
     Write them as CSVs or sheets in a single Excel file at TARGET location."""
-    if project_filename or not Path(project_filename or "").exists():
+    if not project_filename or not Path(project_filename).exists():
         raise FileNotFoundError(f"Project file not found: {project_filename or 'undefined'}")
 
     click.echo(f"Using project file: {project_filename}")
@@ -78,24 +78,3 @@ def main(
 
 if __name__ == "__main__":
     main()
-
-    # PYTHONPATH=. python src/arbodat/shapeshift.py  --sep ";" --translate --config-file
-    # src/arbodat/config.yml src/arbodat/arbodat_mal_elena_input.csv output.xlsx
-
-    # from click.testing import CliRunner
-
-    # runner = CliRunner()
-    # result = runner.invoke(
-    #     main,
-    #     [
-    #         "--sep",
-    #         ";",
-    #         "--translate",
-    #         "--config-file",
-    #         "src/arbodat/config.yml",
-    #         "src/arbodat/arbodat_mal_elena_input.csv",
-    #         "output.xlsx",
-    #     ],
-    # )
-
-    # print(result.output)

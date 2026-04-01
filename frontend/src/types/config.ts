@@ -14,6 +14,7 @@ export interface ProjectMetadata {
   modified_at?: string | null
   is_valid?: boolean
   default_entity?: string | null
+  target_model?: string | null
 }
 
 export interface Project {

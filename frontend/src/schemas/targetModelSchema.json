@@ -1,0 +1,282 @@
+{
+  "$defs": {
+    "ColumnSpec": {
+      "properties": {
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Type"
+        },
+        "nullable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nullable"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        }
+      },
+      "title": "ColumnSpec",
+      "type": "object"
+    },
+    "EntitySpec": {
+      "properties": {
+        "role": {
+          "anyOf": [
+            {
+              "enum": [
+                "fact",
+                "lookup",
+                "classifier",
+                "bridge"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "domains": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Domains",
+          "type": "array"
+        },
+        "target_table": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Table"
+        },
+        "public_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Public Id"
+        },
+        "identity_columns": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Identity Columns",
+          "type": "array"
+        },
+        "columns": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ColumnSpec"
+          },
+          "title": "Columns",
+          "type": "object"
+        },
+        "unique_sets": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Unique Sets",
+          "type": "array"
+        },
+        "foreign_keys": {
+          "items": {
+            "$ref": "#/$defs/ForeignKeySpec"
+          },
+          "title": "Foreign Keys",
+          "type": "array"
+        }
+      },
+      "title": "EntitySpec",
+      "type": "object"
+    },
+    "ForeignKeySpec": {
+      "properties": {
+        "entity": {
+          "title": "Entity",
+          "type": "string"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "via": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Via"
+        }
+      },
+      "required": [
+        "entity"
+      ],
+      "title": "ForeignKeySpec",
+      "type": "object"
+    },
+    "GlobalConstraint": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "GlobalConstraint",
+      "type": "object"
+    },
+    "ModelMetadata": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "ModelMetadata",
+      "type": "object"
+    },
+    "NamingConventions": {
+      "properties": {
+        "public_id_suffix": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Public Id Suffix"
+        }
+      },
+      "title": "NamingConventions",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "model": {
+      "$ref": "#/$defs/ModelMetadata"
+    },
+    "entities": {
+      "additionalProperties": {
+        "$ref": "#/$defs/EntitySpec"
+      },
+      "title": "Entities",
+      "type": "object"
+    },
+    "naming": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/NamingConventions"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "constraints": {
+      "items": {
+        "$ref": "#/$defs/GlobalConstraint"
+      },
+      "title": "Constraints",
+      "type": "array"
+    }
+  },
+  "required": [
+    "model"
+  ],
+  "title": "ShapeShifter Target Model Specification",
+  "type": "object",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Schema for target model specifications defining target database schema constraints and entity relationships"
+}

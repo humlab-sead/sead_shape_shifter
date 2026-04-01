@@ -67,6 +67,7 @@ class ProjectMapper:
             description=metadata_dict.get("description", ""),
             version=metadata_dict.get("version", "1.0.0"),
             default_entity=metadata_dict.get("default_entity"),
+            target_model=metadata_dict.get("target_model"),
             file_path=filename,
             entity_count=len(cfg_dict.get("entities", {})),
             created_at=0,
@@ -114,14 +115,18 @@ class ProjectMapper:
         assert api_config.metadata is not None
         logger.debug(f"Converting API config to core dict: {api_config.metadata.name}")
 
+        metadata_out: dict[str, Any] = {
+            "name": api_config.metadata.name,
+            "type": api_config.metadata.type or "shapeshifter-project",
+            "description": api_config.metadata.description,
+            "version": api_config.metadata.version,
+            "default_entity": api_config.metadata.default_entity,
+        }
+        if api_config.metadata.target_model is not None:
+            metadata_out["target_model"] = api_config.metadata.target_model
+
         cfg_dict: dict[str, Any] = {
-            "metadata": {
-                "name": api_config.metadata.name,
-                "type": api_config.metadata.type or "shapeshifter-project",
-                "description": api_config.metadata.description,
-                "version": api_config.metadata.version,
-                "default_entity": api_config.metadata.default_entity,
-            },
+            "metadata": metadata_out,
             "entities": {},
             "options": api_config.options or {},
         }

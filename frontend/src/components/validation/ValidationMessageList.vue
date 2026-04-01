@@ -34,6 +34,9 @@
         >
           {{ message.entity }}
         </v-chip>
+        <v-chip v-if="message.branch_name || message.branch_source" size="x-small" color="teal" variant="outlined" class="mr-1">
+          {{ formatBranchLabel(message.branch_name, message.branch_source) }}
+        </v-chip>
         <v-chip v-if="message.field" size="x-small" variant="outlined" prepend-icon="mdi-table-column" class="mr-1">
           {{ message.field }}
         </v-chip>
@@ -98,6 +101,18 @@ function getPriorityColor(priority: ValidationPriority): string {
     low: 'grey',
   }
   return colors[priority] || 'grey'
+}
+
+function formatBranchLabel(branchName: string | null | undefined, branchSource: string | null | undefined): string {
+  if (branchName && branchSource) {
+    return `branch: ${branchName} (${branchSource})`
+  }
+
+  if (branchName) {
+    return `branch: ${branchName}`
+  }
+
+  return `source: ${branchSource}`
 }
 </script>
 

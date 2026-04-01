@@ -1,39 +1,20 @@
 <template>
-  <div class="fixed-values-grid">
+  <div class="fixed-values-grid" @paste="onPaste">
     <div class="d-flex justify-space-between align-center mb-2">
       <span class="text-caption">Fixed Values Data</span>
       <div>
         <v-btn size="small" variant="outlined" prepend-icon="mdi-plus" @click="addRow" class="mr-2"> Add Row </v-btn>
-        <v-btn
-          size="small"
-          variant="outlined"
-          prepend-icon="mdi-delete"
-          color="error"
-          @click="deleteSelectedRows"
-          :disabled="!hasSelection"
-        >
+        <v-btn size="small" variant="outlined" prepend-icon="mdi-delete" color="error" @click="deleteSelectedRows"
+          :disabled="!hasSelection">
           Delete Selected
         </v-btn>
       </div>
     </div>
-    <ag-grid-vue
-      class="ag-theme-alpine compact-grid"
-      :style="{ height: gridHeight }"
-      :columnDefs="columnDefs"
-      :rowData="rowData"
-      :getRowId="getRowId"
-      :defaultColDef="defaultColDef"
-      :rowSelection="'multiple'"
-      :suppressRowClickSelection="true"
-      :animateRows="true"
-      :headerHeight="28"
-      :rowHeight="26"
-      :singleClickEdit="true"
-      :stopEditingWhenCellsLoseFocus="true"
-      @grid-ready="onGridReady"
-      @cell-value-changed="onCellValueChanged"
-      @selection-changed="onSelectionChanged"
-    />
+    <ag-grid-vue class="ag-theme-alpine compact-grid" :style="{ height: gridHeight }" :columnDefs="columnDefs"
+      :rowData="rowData" :getRowId="getRowId" :defaultColDef="defaultColDef" :rowSelection="'multiple'"
+      :suppressRowClickSelection="true" :animateRows="true" :headerHeight="28" :rowHeight="26" :singleClickEdit="true"
+      :stopEditingWhenCellsLoseFocus="true" @grid-ready="onGridReady" @cell-value-changed="onCellValueChanged"
+      @selection-changed="onSelectionChanged" />
   </div>
 </template>
 
@@ -41,6 +22,7 @@
 import { ref, computed, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import type { ColDef, GridApi, GridReadyEvent, CellValueChangedEvent, GetRowIdParams } from 'ag-grid-community'
+import { applyClipboardMatrix, buildGridRowData, parseClipboardTable } from './fixedValuesGridClipboard'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
@@ -101,7 +83,7 @@ const columnDefs = computed<ColDef[]>(() => {
     ...props.columns.map((col, index) => {
       const isSystemId = col === 'system_id'
       const isPublicId = col === props.publicId
-      
+
       return {
         field: `col_${index}`,
         headerName: col,
@@ -132,19 +114,7 @@ const rowData = computed(() => {
     return []
   }
 
-  return props.modelValue.map((row, rowIndex) => {
-    const stableSystemId = systemIdColumnIndex.value >= 0 ? row[systemIdColumnIndex.value] : undefined
-    const rowObj: any = {
-      id: stableSystemId !== null && stableSystemId !== undefined ? stableSystemId : `row-${rowIndex}`,
-    }
-    row.forEach((value, colIndex) => {
-      // CRITICAL: Use actual system_id values from YAML, not rowIndex+1
-      // system_id must remain stable when rows are added/deleted/reordered
-      // to maintain FK relationship integrity
-      rowObj[`col_${colIndex}`] = value
-    })
-    return rowObj
-  })
+  return buildGridRowData(props.modelValue, systemIdColumnIndex.value)
 })
 
 function onGridReady(params: GridReadyEvent) {
@@ -206,7 +176,7 @@ function getMaxSystemId(): number {
    */
   if (!gridApi.value) return 0
 
-  const systemIdIndex = props.columns.findIndex(col => col === 'system_id')
+  const systemIdIndex = props.columns.findIndex((col) => col === 'system_id')
   if (systemIdIndex === -1) return 0
 
   let maxId = 0
@@ -219,32 +189,38 @@ function getMaxSystemId(): number {
       }
     }
   })
-  
+
   return maxId
 }
 
-function addRow() {
-  if (!gridApi.value) return
-
-  // Stop any active editing before adding a new row
-  gridApi.value.stopEditing()
-
-  // Get max system_id and increment (critical for FK stability)
-  const maxSystemId = getMaxSystemId()
-  const nextSystemId = maxSystemId + 1
-
-  // Create a new row with null values for all columns
-  const newRow: any = { id: nextSystemId }
+function createEmptyRowValues(nextSystemId: number): any[] {
+  const newRow: any[] = []
   for (let i = 0; i < props.columns.length; i++) {
     const columnName = props.columns[i]
     // CRITICAL: Use max(system_id) + 1, not rowCount + 1
     // This maintains stable identity even when rows are deleted
     if (columnName === 'system_id') {
-      newRow[`col_${i}`] = nextSystemId
+      newRow.push(nextSystemId)
     } else {
-      newRow[`col_${i}`] = null
+      newRow.push(null)
     }
   }
+
+  return newRow
+}
+
+function createEmptyRow(nextSystemId: number): any {
+  return buildGridRowData([createEmptyRowValues(nextSystemId)], systemIdColumnIndex.value)[0] ?? { id: nextSystemId }
+}
+
+function addRow() {
+  if (!gridApi.value) return
+
+  gridApi.value.stopEditing()
+
+  const maxSystemId = getMaxSystemId()
+  const nextSystemId = maxSystemId + 1
+  const newRow = createEmptyRow(nextSystemId)
 
   gridApi.value.applyTransaction({ add: [newRow] })
 
@@ -269,6 +245,63 @@ function deleteSelectedRows() {
   emitModelValueUpdate(allRows)
 
   hasSelection.value = false
+}
+
+function getFocusedGridColumnIndex(): number {
+  if (!gridApi.value) return -1
+
+  const focusedCell = gridApi.value.getFocusedCell()
+  if (!focusedCell?.column) return -1
+
+  const colId = focusedCell.column.getColId()
+
+  // Ignore the checkbox selection column
+  if (!colId.startsWith('col_')) return -1
+
+  const match = colId.match(/^col_(\d+)$/)
+  const indexText = match?.[1]
+  return indexText ? parseInt(indexText, 10) : -1
+}
+
+function onPaste(event: ClipboardEvent) {
+  if (!gridApi.value) return
+
+  const text = event.clipboardData?.getData('text/plain')
+  if (!text) return
+
+  const focusedCell = gridApi.value.getFocusedCell()
+  if (!focusedCell) return
+
+  const startRowIndex = focusedCell.rowIndex
+  const startColIndex = getFocusedGridColumnIndex()
+
+  if (startRowIndex == null || startColIndex < 0) {
+    return
+  }
+
+  const matrix = parseClipboardTable(text)
+  if (matrix.length === 0) {
+    return
+  }
+
+  event.preventDefault()
+  gridApi.value.stopEditing()
+
+  let nextSystemId = getMaxSystemId()
+  const allRows = applyClipboardMatrix({
+    rows: getAllRows(false),
+    columns: props.columns,
+    startRowIndex,
+    startColIndex,
+    matrix,
+    createEmptyRow: () => {
+      nextSystemId += 1
+      return createEmptyRowValues(nextSystemId)
+    },
+  })
+
+  gridApi.value.setGridOption('rowData', buildGridRowData(allRows, systemIdColumnIndex.value))
+  emitModelValueUpdate(allRows)
 }
 
 // Watch for external changes to modelValue

@@ -111,6 +111,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="List release versions available in CHANGELOG.md and exit.",
     )
+    version_group.add_argument(
+        "--generate-missing",
+        action="store_true",
+        help="Generate release notes for all versions since the last generated note.",
+    )
     parser.add_argument(
         "--repo-root",
         default=Path(__file__).resolve().parents[1],
@@ -259,6 +264,62 @@ def dedupe_preserve_order(items: list[str]) -> list[str]:
         seen.add(key)
         result.append(item)
     return result
+
+
+def get_latest_generated_version(whats_new_dir: Path) -> str | None:
+    """Find the latest version that has a generated release note."""
+    if not whats_new_dir.exists():
+        return None
+    
+    version_pattern = re.compile(r"^v(\d+\.\d+\.\d+)\.md$")
+    versions: list[tuple[int, int, int, str]] = []
+    
+    for file_path in whats_new_dir.iterdir():
+        if not file_path.is_file():
+            continue
+        match = version_pattern.match(file_path.name)
+        if match:
+            version_str = match.group(1)
+            parts = version_str.split(".")
+            if len(parts) == 3:
+                try:
+                    major, minor, patch = int(parts[0]), int(parts[1]), int(parts[2])
+                    versions.append((major, minor, patch, version_str))
+                except ValueError:
+                    continue
+    
+    if not versions:
+        return None
+    
+    versions.sort(reverse=True)
+    return versions[0][3]
+
+
+def get_missing_versions(changelog_path: Path, whats_new_dir: Path) -> list[tuple[str, str]]:
+    """Get all versions from changelog that don't have generated release notes."""
+    all_versions = list_available_versions(changelog_path)
+    latest_generated = get_latest_generated_version(whats_new_dir)
+    
+    if latest_generated is None:
+        return all_versions
+    
+    # Parse latest generated version
+    latest_parts = latest_generated.split(".")
+    latest_tuple = (int(latest_parts[0]), int(latest_parts[1]), int(latest_parts[2]))
+    
+    missing: list[tuple[str, str]] = []
+    for version, date in all_versions:
+        parts = version.split(".")
+        if len(parts) == 3:
+            try:
+                version_tuple = (int(parts[0]), int(parts[1]), int(parts[2]))
+                if version_tuple > latest_tuple:
+                    missing.append((version, date))
+            except ValueError:
+                continue
+    
+    # Return in chronological order (oldest first)
+    return list(reversed(missing))
 
 
 def classify_sections(parsed_sections: dict[str, list[str]]) -> tuple[list[str], list[str], list[str], list[str]]:
@@ -457,11 +518,55 @@ def update_github_release(version: str, output_path: Path, repo_root: Path) -> b
     return True
 
 
+def generate_release_notes_for_version(
+    version: str,
+    repo_root: Path,
+    changelog_path: Path,
+    output_dir: Path,
+    github_repository: str,
+    force_heuristic: bool,
+    update_github: bool,
+) -> bool:
+    """Generate release notes for a single version. Returns True on success."""
+    try:
+        output_path = output_dir / f"v{version}.md"
+        section_text, release_date = read_release_section(changelog_path, version)
+        parsed_sections = parse_sections(section_text)
+        highlights, features, improvements, fixes = classify_sections(parsed_sections)
+        heuristic_content = build_release_notes(
+            version=version,
+            release_date=release_date,
+            github_repository=github_repository,
+            highlights=highlights,
+            features=features,
+            improvements=improvements,
+            fixes=fixes,
+        )
+        content, mode = maybe_generate_ai_draft(
+            version=version,
+            release_date=release_date,
+            github_repository=github_repository,
+            parsed_sections=parsed_sections,
+            heuristic_draft=heuristic_content,
+            force_heuristic=force_heuristic,
+        )
+        write_output(output_path, content)
+
+        if update_github:
+            update_github_release(version, output_path, repo_root)
+
+        print(f"Generated {output_path} (mode={mode})", file=sys.stderr)
+        return True
+    except Exception as error:  # pylint: disable=broad-except
+        print(f"Failed to generate release notes for version {version}: {error}", file=sys.stderr)
+        return False
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
     changelog_path = repo_root / "CHANGELOG.md"
-    output_path = args.output or repo_root / "docs" / "whats-new" / f"v{args.version}.md"
+    whats_new_dir = repo_root / "docs" / "whats-new"
 
     load_local_env(repo_root)
 
@@ -470,6 +575,33 @@ def main() -> int:
             print(f"{version}\t{release_date}")
         return 0
 
+    if args.generate_missing:
+        missing_versions = get_missing_versions(changelog_path, whats_new_dir)
+        
+        if not missing_versions:
+            latest = get_latest_generated_version(whats_new_dir)
+            print(f"No missing versions found. Latest generated: {latest or 'none'}", file=sys.stderr)
+            return 0
+        
+        print(f"Found {len(missing_versions)} missing version(s): {', '.join(v for v, _ in missing_versions)}", file=sys.stderr)
+        
+        success_count = 0
+        for version, _ in missing_versions:
+            if generate_release_notes_for_version(
+                version=version,
+                repo_root=repo_root,
+                changelog_path=changelog_path,
+                output_dir=whats_new_dir,
+                github_repository=args.github_repository,
+                force_heuristic=args.force_heuristic,
+                update_github=args.update_github_release,
+            ):
+                success_count += 1
+        
+        print(f"\nSuccessfully generated {success_count}/{len(missing_versions)} release notes", file=sys.stderr)
+        return 0 if success_count == len(missing_versions) else 1
+
+    # Single version mode
     output_path = args.output or repo_root / "docs" / "whats-new" / f"v{args.version}.md"
     section_text, release_date = read_release_section(changelog_path, args.version)
     parsed_sections = parse_sections(section_text)

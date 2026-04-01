@@ -1,0 +1,151 @@
+metadata:
+  name: arbodat:sead-core
+  type: shapeshifter-project
+  description: Trimmed standalone SEAD-oriented fixture derived from the Arbodat project.
+  version: 1.0.0
+
+entities:
+  analysis_entity:
+    type: fixed
+    public_id: analysis_entity_id
+    keys: [Projekt, Befu, ProbNr, analysis_entity_type, analysis_entity_value]
+    columns: [PCODE, Fraktion, cf, RTyp, Zust]
+    values: []
+    foreign_keys:
+      - entity: sample
+        local_keys: [Projekt, Befu, ProbNr]
+        remote_keys: [Projekt, Befu, ProbNr]
+      - entity: method
+        local_keys: [Fraktion]
+        remote_keys: [arbodat_code]
+        how: left
+    depends_on: [method, sample]
+
+  dataset:
+    type: entity
+    source: analysis_entity
+    public_id: dataset_id
+    keys: [Projekt, Fraktion]
+    columns: []
+    foreign_keys:
+      - entity: method
+        local_keys: [Fraktion]
+        remote_keys: [arbodat_code]
+        how: left
+    depends_on: [analysis_entity, method]
+    drop_duplicates: true
+    drop_empty_rows: [Fraktion]
+    extra_columns:
+      dataset_name: method_name
+      data_type_id:
+      master_set_id: 1
+
+  location:
+    type: sql
+    public_id: location_id
+    keys: []
+    columns: [Ort, Kreis, Land, Staat, FlurStr]
+    foreign_keys:
+      - entity: location_type
+        local_keys: [location_type]
+        remote_keys: [location_type]
+    depends_on: [location_type]
+    unnest:
+      value_vars: [Ort, Kreis, Land, Staat, FlurStr]
+      var_name: location_type
+      value_name: location_name
+      id_vars: []
+    extra_columns:
+      default_lat_dd:
+      default_long_dd:
+    data_source: arbodat_data
+    query: select distinct [Ort], [Kreis], [Land], [Staat], [FlurStr] from [Projekte];
+
+  location_type:
+    type: fixed
+    public_id: location_type_id
+    keys: []
+    columns: [system_id, location_type_id, location_type]
+    values:
+      - [1, null, Ort]
+      - [2, null, Kreis]
+      - [3, null, Land]
+
+  method:
+    type: fixed
+    public_id: method_id
+    keys: []
+    columns: [system_id, method_id, description, method_name, method_abbrev_or_alt_name, sead_method_group_id, arbodat_code]
+    values:
+      - [1, null, Organic remains larger than 2.0 mm, ORG 2,0, ORG 2,0, null, ORG 2,0]
+      - [2, null, Organic remains 1.0-2.0 mm, ORG 1,0, ORG 1,0, null, ORG 1,0]
+
+  sample:
+    type: sql
+    public_id: physical_sample_id
+    keys: [Projekt, Befu, ProbNr]
+    columns: [Projekt, Befu, ProbNr, ProbTyp, ArchDat, ChronoDat]
+    foreign_keys:
+      - entity: sample_group
+        local_keys: [Projekt, Befu]
+        remote_keys: [Projekt, Befu]
+      - entity: sample_type
+        local_keys: [ProbTyp]
+        remote_keys: [ProbTyp]
+    depends_on: [sample_type, sample_group]
+    drop_duplicates: [Projekt, Befu, ProbNr]
+    extra_columns:
+      sample_name: ProbNr
+      alt_ref_type_id:
+    data_source: arbodat_data
+    query: select [Projekt], [Befu], [ProbNr], [ProbTyp], [ArchDat], [ChronoDat] from [Proben];
+
+  sample_group:
+    type: entity
+    source: feature
+    public_id: sample_group_id
+    keys: [site_id, Projekt, Befu]
+    columns: [Projekt, Befu]
+    foreign_keys:
+      - entity: site
+        local_keys: [site_id]
+        remote_keys: [site_id]
+      - entity: method
+        local_keys: [method_id]
+        remote_keys: [method_id]
+        how: left
+    depends_on: [site, method]
+    drop_duplicates: true
+    extra_columns:
+      sample_group_name: Befu
+      sample_group_description:
+      sampling_context_id:
+      method_id:
+
+  sample_type:
+    type: sql
+    public_id: sample_type_id
+    keys: [ProbTyp]
+    columns: [ProbTyp, PrTyp, Nummer]
+    depends_on: []
+    drop_duplicates: [ProbTyp]
+    extra_columns:
+      sample_type_name: ProbTyp
+      sample_type_description: PrTyp
+    data_source: arbodat_lookup
+    query: select distinct [ProbTyp], [PrTyp], [Nummer] from [Probentypen];
+
+  site:
+    type: fixed
+    public_id: site_id
+    keys: [EVNr, Fustel]
+    columns: [system_id, site_id, EVNr, Fustel, altitude, national_site_identifier, site_name]
+    values:
+      - [1, null, '224073', Blaker kirkegard, 143.0, '224073', Blaker kirkegard]
+    foreign_keys:
+      - entity: location
+        local_keys: [site_name]
+        remote_keys: [location_name]
+        how: left
+
+options: {}
