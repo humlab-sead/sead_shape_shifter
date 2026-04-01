@@ -78,6 +78,7 @@ Important note for the downstream consumer fixture:
 ### Baseline Project Setup
 
 Create the project with the following setup. You can either to this manually via the visual editor or by pasting the entitre YAML into a new project's YAML editor.
+``
 
 ```yaml
 metadata:
@@ -129,6 +130,31 @@ entities:
         how: left
 options: {}
 
+```
+
+#### Copy-Pastable Data
+
+**abundance_source**
+
+```tsv
+S1	Oak	12	count
+S2	Pine	8	count
+```
+
+**relative_dating_source**
+
+```
+sample_code	dating_label	older_than_bp
+S1	Early Iron Age	2450
+S3	Roman Period	1800
+```
+
+**abundance_note**
+
+```
+note_code	abundance_id	note_text
+NOTE-1	1	Linked to first abundance branch row
+NOTE-2	2	Linked to second abundance branch row
 ```
 
 ### Expected Behavior of the Fixture
