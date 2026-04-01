@@ -2,7 +2,7 @@
 
 ## Context
 
-The current `sead_v2.yml` target model specification covers ~36 entities, but the actual SEAD Clearinghouse database contains 100+ tables. Analysis of the Arbodat Shape Shifter project reveals significant gaps in entity coverage that prevent effective conformance validation.
+The `sead_v2.yml` target model specification covers ~36 entities. An extended model `sead_v2_extended.yml` has been created that adds Phase 1 spatial, sample-metadata, and dating entities, bringing coverage to 49 entities. The actual SEAD Clearinghouse database contains 100+ tables. Analysis of the Arbodat Shape Shifter project reveals significant remaining gaps in entity coverage that prevent effective conformance validation.
 
 ## Problem Statement
 
@@ -11,7 +11,7 @@ The current `sead_v2.yml` target model specification covers ~36 entities, but th
 - No formal specification for spatial coordinates, dating details, site properties, sample dimensions, or taxon metadata
 - Inconsistent entity naming and relationship documentation
 
-**Current Coverage (36 entities):**
+**Coverage in `sead_v2.yml` (36 entities):**
 Core: location, location_type, site, site_location, sample_group, sample, analysis_entity, dataset, method, project, citation, contact
 
 Abundance: abundance, abundance_element, abundance_element_group, abundance_modification, abundance_property
@@ -24,13 +24,19 @@ Classifiers: sample_type, sample_description_type, site_type, site_type_group, c
 
 Bridges: dataset_contact, sample_feature
 
+**Coverage in `sead_v2_extended.yml` (49 entities — adds 13):**
+
+*Fully specified additions (13):* dimension, coordinate_method_dimension, sample_coordinate, alt_ref_type, sample_alt_ref, sample_dimension, identification_level, abundance_ident_level, age_type, relative_age_type, chronology, dating_uncertainty, dating_material
+
 **Arbodat Project Uses (54 entities):**
 Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimension, sample_coordinate, dating (general), dating_period, archaeological_period, chronological_period, epoch, cultural_group, feature_property, feature_property_type, site_property, site_property_type, site_natural_region, natural_region, natural_region_group, dataset_submission, dataset_submission_type, abundance_property_type, identification_level, taxa (general taxon), taxa_use_categories, taxa_plant_sociological_behaviour
 
 ## Gap Analysis by Domain
 
 ### 1. Spatial/Coordinate Domain (High Priority)
-**Missing:** coordinate_system, coordinate_method_dimension, dimension, sample_coordinate, sample_group_coordinate, site_natgridref
+**Addressed in `sead_v2_extended.yml`:** dimension ✅, coordinate_method_dimension ✅, sample_coordinate ✅
+
+**Still missing:** coordinate_system, sample_group_coordinate, site_natgridref
 
 **Impact:** Cannot validate spatial metadata for samples or sample groups
 
@@ -42,7 +48,9 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 - `tbl_site_natgridrefs` - national grid references for sites
 
 ### 2. Dating Domain (Medium Priority)
-**Missing:** dating_material, dating_uncertainty, dating_period (analysis_entity → archaeological/chronological period), chronology, age_type
+**Fully specified in `sead_v2_extended.yml`:** dating_material ✅, dating_uncertainty ✅, chronology ✅, age_type ✅, relative_age_type ✅
+
+**Still missing:** dating_period (analysis_entity → archaeological/chronological period)
 
 **Impact:** Cannot validate complete dating workflows or period assignments
 
@@ -73,7 +81,9 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 - Site properties would follow description pattern
 
 ### 5. Sample Domain (High Priority)
-**Missing:** sample_dimension, sample_horizon, sample_location, sample_location_type, sample_alt_ref, alt_ref_type, sample_note, sample_colour, colour
+**Addressed in `sead_v2_extended.yml`:** sample_dimension ✅, sample_alt_ref ✅, alt_ref_type ✅
+
+**Still missing:** sample_horizon, sample_location, sample_location_type, sample_note, sample_colour, colour
 
 **Impact:** Cannot validate sample physical characteristics and alternate identifiers
 
@@ -127,7 +137,9 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 - `tbl_seasons` - seasonal classifications
 
 ### 9. Abundance Domain (Low Priority)
-**Missing:** identification_level (abundance_ident_level), abundance_property_type
+**Fully specified in `sead_v2_extended.yml`:** identification_level ✅, abundance_ident_level ✅
+
+**Still missing:** abundance_property_type
 
 **Impact:** Cannot validate identification confidence or typed abundance properties
 
@@ -953,11 +965,12 @@ entities:
 ## Implementation Plan
 
 ### Phase 1: Core Enhancements (Immediately needed for Arbodat)
-- [ ] Add spatial/coordinate entities (dimension, coordinate_method_dimension, sample_coordinate)
-- [ ] Add sample metadata entities (alt_ref_type, sample_alt_ref, sample_dimension)
-- [ ] Add abundance precision (identification_level, abundance_ident_level)
-- [ ] Add dating metadata (dating_material, dating_uncertainty, age_type, relative_age_type)
-- [ ] Update existing entity specs with missing columns and FKs
+- [x] Add spatial/coordinate entities (dimension, coordinate_method_dimension, sample_coordinate) — fully specified in `sead_v2_extended.yml`
+- [x] Add sample metadata entities (alt_ref_type, sample_alt_ref, sample_dimension) — fully specified in `sead_v2_extended.yml`
+- [x] Add abundance precision entities (identification_level, abundance_ident_level) — fully specified in `sead_v2_extended.yml`
+- [x] Add dating metadata entities (dating_material, dating_uncertainty, age_type, relative_age_type, chronology) — fully specified in `sead_v2_extended.yml`
+- [x] All Phase 1 entities fully specified in `sead_v2_extended.yml` — 13 additions complete (49 total)
+- [x] Update key existing entity specs (sample now includes sample_type_id, alt_ref_type_id, date_sampled; method includes method_group_id, biblio_id)
 
 ### Phase 2: Metadata Completeness
 - [ ] Add sample group entities (description, dimension, lithology, sampling_context)
