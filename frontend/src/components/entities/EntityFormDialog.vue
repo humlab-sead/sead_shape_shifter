@@ -748,7 +748,7 @@
           <div v-show="viewMode === 'both' || viewMode === 'preview'" class="preview-panel">
             <div class="preview-header">
               <div class="d-flex align-center justify-space-between pa-2">
-                <div class="d-flex align-center gap-2">
+                <div class="preview-toolbar-controls d-flex align-center">
                   <v-select
                     v-model="previewLimit"
                     :items="previewLimitOptions"
@@ -3641,6 +3641,11 @@ function handleRejectDependency(dep: DependencySuggestion) {
   flex: 0 0 auto;
   background: rgb(var(--v-theme-surface));
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.preview-toolbar-controls {
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .preview-content {

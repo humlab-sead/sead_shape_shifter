@@ -909,15 +909,10 @@
 
     <!-- Entity Editor Overlay (for graph double-click) -->
     <entity-form-dialog
-      v-if="entityStore.overlayEntityName"
+      v-if="entityStore.overlayEntityName && overlayEntity"
       v-model="entityStore.showEditorOverlay"
       :project-name="projectName"
-      :entity="
-        entityStore.entities.find((e) => e.name === entityStore.overlayEntityName) || {
-          name: entityStore.overlayEntityName,
-          entity_data: {},
-        }
-      "
+      :entity="overlayEntity"
       :initial-tab="entityStore.overlayInitialTab"
       mode="edit"
       @saved="handleOverlayEntitySaved"
@@ -950,7 +945,6 @@ import { useEntityPreview } from '@/composables/useEntityPreview'
 import { useSession } from '@/composables/useSession'
 import { getTaskStatusNodeClasses, shouldShowNodeForTaskFilter } from '@/utils/taskGraph'
 import { useEntityStore } from '@/stores/entity'
-import { useProjectStore } from '@/stores'
 import { useTaskStatusStore } from '@/stores/taskStatus'
 import type { CustomGraphLayout } from '@/types'
 import type { GraphColorByMode } from '@/utils/taskGraph'
@@ -988,6 +982,7 @@ const {
   hasUnsavedChanges,
   backups,
   select,
+  refresh,
   clearError,
   fetchBackups,
   restore,
@@ -1221,10 +1216,17 @@ const activeDrawerError = computed(() => detailsDrawerTab.value === 'note' ? dra
 
 // Cytoscape integration
 const entityStore = useEntityStore()
-const projectStore = useProjectStore()
 const taskStatusStore = useTaskStatusStore()
 
 const normalizedCreateTodoName = computed(() => createTodoEntityName.value.trim())
+
+const overlayEntity = computed(() => {
+  if (!entityStore.overlayEntityName) {
+    return null
+  }
+
+  return entityStore.entities.find((entity) => entity.name === entityStore.overlayEntityName) || null
+})
 
 const createTodoNameError = computed(() => {
   const entityName = normalizedCreateTodoName.value
@@ -1528,7 +1530,7 @@ async function handleRefresh() {
   clearError()
   if (projectName.value) {
     try {
-      await projectStore.refreshProject(projectName.value)
+      await refresh(projectName.value)
       // Also refresh entity list to sync with updated project
       await fetchEntities()
 
@@ -1554,10 +1556,19 @@ async function handleRefresh() {
 }
 
 async function handleEntityUpdated() {
+  if (projectName.value) {
+    await refresh(projectName.value)
+  }
+
   await fetchEntities()
 
-  if (activeTab.value === 'dependencies' && projectName.value) {
+  if (projectName.value) {
     await fetchDependencies(projectName.value)
+
+    if (activeTab.value === 'dependencies') {
+      await nextTick()
+      renderGraph()
+    }
   }
 }
 
@@ -1743,16 +1754,14 @@ async function handleContextMenuDelete(entityName: string) {
   try {
     console.debug('[ProjectDetailView] Deleting entity:', entityName)
     await entityStore.deleteEntity(projectName.value, entityName)
-    
-    console.log('[ProjectDetailView] Entity deleted, refreshing dependencies...')
-    // Refresh dependencies to update the graph (silently, without showing loading state)
-    await fetchDependencies(projectName.value)
-    console.log('[ProjectDetailView] Dependencies refreshed, graph data:', dependencyGraph.value)
+
+    console.log('[ProjectDetailView] Entity deleted, syncing project state...')
+    await handleEntityUpdated()
+    console.log('[ProjectDetailView] Project state synced, graph data:', dependencyGraph.value)
     
     console.log('[ProjectDetailView] Setting success message first...')
     successMessage.value = `Entity "${entityName}" deleted`
     showSuccessSnackbar.value = true
-    markAsChanged()
     
     console.log('[ProjectDetailView] Waiting for Vue updates to settle...')
     await nextTick()
@@ -2532,15 +2541,15 @@ watch(activeYamlSubTab, async (newSubTab) => {
 // Watch for project changes to reload YAML when project is externally refreshed
 // This keeps YAML in sync when entities are created/updated/deleted
 watch(
-  () => projectStore.selectedProject,
+  () => selectedProject.value,
   async (newProject, oldProject) => {
-    // Only reload if:
-    // 1. On YAML tab
-    // 2. No local unsaved changes
-    // 3. Project actually changed (not just initial load)
+    const hasLocalYamlEdits = rawYamlContent.value !== originalYamlContent.value
+
+    // Reload the raw YAML buffer if it has been loaded already and there are no
+    // local YAML edits to preserve.
     if (
-      activeTab.value === 'yaml' &&
-      !yamlHasChanges.value &&
+      rawYamlContent.value !== null &&
+      !hasLocalYamlEdits &&
       oldProject !== null &&
       newProject !== null &&
       newProject !== oldProject
