@@ -3,7 +3,9 @@
 import pytest
 
 from src.model import ShapeShiftProject
+from src.normalizer import ShapeShifter
 from src.specifications.entity import MergedEntityFieldsSpecification
+from tests.decorators import with_test_config
 
 
 @pytest.mark.asyncio
@@ -65,6 +67,65 @@ async def test_merged_entity_basic_processing():
     branch_names = {cfg.entity_cfg.get("_branch_name") for cfg in sub_configs}
     assert "abundance" in branch_names
     assert "relative_dating" in branch_names
+
+
+@pytest.mark.asyncio
+@with_test_config
+async def test_merged_entity_branch_fk_columns_use_source_public_ids(test_provider):
+    """Merged lineage columns should use source public_id names while storing source system_id values."""
+    config = {
+        "metadata": {"name": "test_merged_lineage", "version": "1.0.0"},
+        "entities": {
+            "abundance_source": {
+                "type": "fixed",
+                "public_id": "abundance_id",
+                "keys": ["sample_code", "taxon_name"],
+                "columns": ["sample_code", "taxon_name", "abundance"],
+                "values": [
+                    ["S1", "Oak", 12],
+                    ["S2", "Pine", 8],
+                ],
+            },
+            "relative_dating_source": {
+                "type": "fixed",
+                "public_id": "relative_dating_id",
+                "keys": ["sample_code", "dating_label"],
+                "columns": ["sample_code", "dating_label"],
+                "values": [
+                    ["S1", "Early Iron Age"],
+                    ["S3", "Roman Period"],
+                ],
+            },
+            "analysis_entity": {
+                "type": "merged",
+                "public_id": "analysis_entity_id",
+                "branches": [
+                    {"name": "abundance", "source": "abundance_source", "keys": ["sample_code"]},
+                    {"name": "relative_dating", "source": "relative_dating_source", "keys": ["sample_code"]},
+                ],
+            },
+        },
+    }
+
+    project = ShapeShiftProject(cfg=config)
+    normalizer = ShapeShifter(project=project)
+
+    await normalizer.normalize()
+
+    merged = normalizer.table_store["analysis_entity"]
+
+    assert "abundance_id" in merged.columns
+    assert "relative_dating_id" in merged.columns
+    assert "abundance_source_id" not in merged.columns
+    assert "relative_dating_source_id" not in merged.columns
+
+    abundance_rows = merged[merged["analysis_entity_branch"] == "abundance"].reset_index(drop=True)
+    relative_rows = merged[merged["analysis_entity_branch"] == "relative_dating"].reset_index(drop=True)
+
+    assert abundance_rows["abundance_id"].tolist() == [1, 2]
+    assert abundance_rows["relative_dating_id"].isna().all()
+    assert relative_rows["relative_dating_id"].tolist() == [1, 2]
+    assert relative_rows["abundance_id"].isna().all()
 
 
 @pytest.mark.asyncio
