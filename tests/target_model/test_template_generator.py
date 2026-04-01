@@ -5,8 +5,7 @@ import yaml
 from src.target_model.models import TargetModel
 from src.target_model.template_generator import generate_project_template, render_project_template_yaml
 
-
-EXAMPLES_DIR = Path( "tests/test_data/examples")
+EXAMPLES_DIR = Path("tests/test_data/examples")
 SPECS_DIR = Path("tests/test_data/specs")
 
 SPEC_PATH: Path = SPECS_DIR / "sead_v2.yml"

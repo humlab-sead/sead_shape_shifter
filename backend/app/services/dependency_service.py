@@ -187,7 +187,7 @@ class DependencyService:
         # Calculate depths for visualization
         depths: dict[str, int] = calculate_depths(dependency_map, topological_order)
 
-        allowed_entity_types = {"entity", "sql", "fixed", "csv", "xlsx", "openpyxl"}
+        allowed_entity_types = {"entity", "sql", "fixed", "csv", "xlsx", "openpyxl", "merged"}
         nodes: list[DependencyNode] = []
         for name, deps in dependency_map.items():
             entity_config = api_project.entities.get(name, {})
@@ -214,17 +214,34 @@ class DependencyService:
         # Build edges with foreign key information
         edges: list[dict[str, Any]] = []
 
+        merged_branch_lookup: dict[str, dict[str, str]] = {}
+        for entity_name, entity_config in api_project.entities.items():
+            if entity_config.get("type") != "merged":
+                continue
+
+            branches = entity_config.get("branches") or []
+            merged_branch_lookup[entity_name] = {
+                branch.get("source"): branch.get("name")
+                for branch in branches
+                if branch.get("source") and branch.get("name")
+            }
+
         # Add dependency edges from depends_on relationships
         for entity_name, deps in dependency_map.items():
+            branch_sources = merged_branch_lookup.get(entity_name, {})
             for dep in deps:
-                edges.append(
-                    {
-                        "source": dep,
-                        "target": entity_name,
-                        "type": "provides",
-                        "label": "provides",
-                    }
-                )
+                branch_name = branch_sources.get(dep)
+                edge: dict[str, Any] = {
+                    "source": dep,
+                    "target": entity_name,
+                    "type": "provides",
+                    "label": f"branch: {branch_name}" if branch_name else "provides",
+                }
+                if branch_name:
+                    edge["is_branch_dependency"] = True
+                    edge["branch_name"] = branch_name
+
+                edges.append(edge)
 
         # Add foreign key edges
         for entity_name in api_project.entities:

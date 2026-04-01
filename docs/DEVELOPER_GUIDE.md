@@ -1384,7 +1384,113 @@ DELETE /api/v1/projects/{name}    # Delete
 # Validation
 POST   /api/v1/validate                 # Validate
 GET    /api/v1/validate/{name}/results  # Get cached
+
+# Entities
+GET    /api/v1/projects/{project_name}/entities                     # List entities
+GET    /api/v1/projects/{project_name}/entities/{entity_name}       # Get entity
+POST   /api/v1/projects/{project_name}/entities                     # Create entity
+PUT    /api/v1/projects/{project_name}/entities/{entity_name}       # Update entity
+DELETE /api/v1/projects/{project_name}/entities/{entity_name}       # Delete entity
+
+# Preview / graph
+POST   /api/v1/projects/{project_name}/entities/{entity_name}/preview   # Preview entity or unsaved override
+POST   /api/v1/projects/{name}/entities/{entity_name}/validate          # Structural validation for one entity
+GET    /api/v1/projects/{name}/dependencies                             # Dependency graph
 ```
+
+### Merged Entity API Example
+
+Merged entities use the normal entity CRUD endpoints. The important part is the `entity_data` payload.
+
+```json
+POST /api/v1/projects/arbodat/entities
+
+{
+    "name": "analysis_entity",
+    "entity_data": {
+        "type": "merged",
+        "public_id": "analysis_entity_id",
+        "branches": [
+            {
+                "name": "abundance",
+                "source": "abundance",
+                "keys": ["Projekt", "Befu", "ProbNr"]
+            },
+            {
+                "name": "relative_dating",
+                "source": "_analysis_entity_relative_dating",
+                "keys": ["Projekt", "Befu", "ProbNr"]
+            }
+        ],
+        "foreign_keys": [
+            {
+                "entity": "sample",
+                "local_keys": ["Projekt", "Befu", "ProbNr"],
+                "remote_keys": ["Projekt", "Befu", "ProbNr"]
+            }
+        ]
+    }
+}
+```
+
+The branch shape comes from `backend/app/models/entity.py`:
+
+- `name`: unique snake_case identifier inside the merged parent
+- `source`: entity that contributes rows for that branch
+- `keys`: optional business keys used for branch-level validation
+
+### Previewing Unsaved Merged Changes
+
+Use the normal preview endpoint. For merged entities the same endpoint can preview:
+
+- the saved merged entity
+- an unsaved merged configuration passed as `entity_config`
+- a branch source entity directly, by previewing the source entity name instead of the merged parent
+
+```json
+POST /api/v1/projects/arbodat/entities/analysis_entity/preview?limit=50
+
+{
+    "entity_config": {
+        "type": "merged",
+        "public_id": "analysis_entity_id",
+        "branches": [
+            { "name": "abundance", "source": "abundance", "keys": ["Projekt", "Befu", "ProbNr"] },
+            { "name": "relative_dating", "source": "_analysis_entity_relative_dating", "keys": ["Projekt", "Befu", "ProbNr"] }
+        ]
+    }
+}
+```
+
+The preview response is the standard `PreviewResult`. For merged entities, the resulting rows include:
+
+- `{entity_name}_branch` discriminator column
+- one sparse lineage FK column per branch source
+- branch-only columns null-filled for rows from other branches
+
+### Merged Validation Response Shape
+
+Merged-entity validation uses the normal `ValidationResult` and `ValidationError` models. What is different is the branch metadata:
+
+```json
+{
+    "severity": "error",
+    "entity": "analysis_entity",
+    "branch_name": "relative_dating",
+    "branch_source": "_analysis_entity_relative_dating",
+    "field": "branches",
+    "message": "Entity 'analysis_entity', branch #2 (source='_analysis_entity_relative_dating'): source entity '_analysis_entity_relative_dating' does not exist",
+    "code": null,
+    "category": "structural",
+    "priority": "medium"
+}
+```
+
+Notes for client developers:
+
+- `branch_name` and `branch_source` are populated when an issue is branch-scoped
+- structural validation issues may not populate `code`; clients should not rely on `code` alone to identify merged-entity issues
+- the frontend groups merged issues by `entity`, then by `branch_name` / `branch_source`, before showing post-merge issues
 
 ### Adding New Endpoints
 

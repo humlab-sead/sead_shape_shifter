@@ -7,6 +7,8 @@ This guide provides step-by-step functional testing procedures for the Shape Shi
 **Related Guides:**
 - [Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md) - Browser compatibility, performance, accessibility
 - [Accessibility Testing Guide](testing/ACCESSIBILITY_TESTING_GUIDE.md) - WCAG compliance, screen readers, keyboard navigation
+- [Merged Entity Manual Test Checklist](testing/MERGED_ENTITY_MANUAL_TEST_CHECKLIST.md) - Feature-specific merged entity setup and manual verification steps
+- [Target Model Conformance Manual Test Checklist](testing/TARGET_MODEL_CONFORMANCE_MANUAL_TEST_CHECKLIST.md) - End-to-end conformance validation checks using custom and SEAD-based fixtures
 
 
 ## Table of Contents
@@ -24,6 +26,8 @@ This guide provides step-by-step functional testing procedures for the Shape Shi
 
 **Additional Testing Resources:**
 - [Error Scenario Testing](testing/ERROR_SCENARIO_TESTING.md) - Error handling and recovery testing
+- [Merged Entity Manual Test Checklist](testing/MERGED_ENTITY_MANUAL_TEST_CHECKLIST.md) - End-to-end merged entity checklist with concrete fixture entities
+- [Target Model Conformance Manual Test Checklist](testing/TARGET_MODEL_CONFORMANCE_MANUAL_TEST_CHECKLIST.md) - Conformance-validation checklist covering include, inline, SEAD, and strictness scenarios
 - [Test Results Template](testing/TEST_RESULTS_TEMPLATE.md) - Documentation templates and checklists
 - [Testing Appendix](testing/APPENDIX.md) - Shortcuts, troubleshooting, tools
 - [Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md) - Browser compatibility, performance

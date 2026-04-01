@@ -116,6 +116,19 @@ function createBaseStyles(options: CytoscapeStyleOptions = {}): StylesheetCSS[] 
     },
   },
 
+  // Node types - merged parent entities
+  {
+    selector: 'node[type="merged"], node.merged-node',
+    css: {
+      shape: 'round-rectangle',
+      'background-color': '#AD1457',
+      'border-color': '#F06292',
+      'border-width': 3,
+      width: 46,
+      height: 40,
+    },
+  },
+
   // Status indicators
   {
     selector: 'node[status="error"]',
@@ -253,6 +266,36 @@ function createBaseStyles(options: CytoscapeStyleOptions = {}): StylesheetCSS[] 
       width: 1.5,
       opacity: 0.7,
       'arrow-scale': 1,
+    },
+  },
+
+  // Branch dependency edges into merged parents
+  {
+    selector: 'edge.branch-edge',
+    css: {
+      'line-style': 'dashed',
+      'line-color': '#C2185B',
+      'target-arrow-color': '#C2185B',
+      width: 2.5,
+      'arrow-scale': 1.1,
+      color: '#880E4F',
+    },
+  },
+
+  {
+    selector: 'node.related-branch-node',
+    css: {
+      'border-color': '#C2185B',
+      'border-width': 5,
+    },
+  },
+
+  {
+    selector: 'edge.related-branch-edge',
+    css: {
+      width: 4,
+      'line-color': '#E91E63',
+      'target-arrow-color': '#E91E63',
     },
   },
 

@@ -2,7 +2,14 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
 import { getErrorMessage } from '@/utils/errors'
-import type { ValidationResult, ValidationError, DependencyGraph, CircularDependencyCheck } from '@/types'
+import { groupByEntityScope } from '@/types'
+import type {
+  ValidationResult,
+  ValidationError,
+  ValidationEntityGroup,
+  DependencyGraph,
+  CircularDependencyCheck,
+} from '@/types'
 
 export const useValidationStore = defineStore('validation', () => {
   // State
@@ -67,6 +74,10 @@ export const useValidationStore = defineStore('validation', () => {
       }
     })
     return grouped
+  })
+
+  const messagesByEntityScope = computed<ValidationEntityGroup[]>(() => {
+    return groupByEntityScope(allMessages.value)
   })
 
   const hasCircularDependencies = computed(() => {
@@ -202,6 +213,7 @@ export const useValidationStore = defineStore('validation', () => {
     allMessages,
     messagesBySeverity,
     messagesByEntity,
+    messagesByEntityScope,
     hasCircularDependencies,
     cycles,
     cycleCount,
