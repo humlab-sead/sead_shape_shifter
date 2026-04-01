@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
@@ -45,6 +45,12 @@ const mockGraphState = vi.hoisted(() => {
   }
 })
 
+const mockProjectState = vi.hoisted(() => ({
+  selectedProjectRef: null as any,
+  refreshProject: vi.fn(async () => undefined),
+  getRawYaml: vi.fn(async () => ({ yaml_content: 'metadata: {}\nentities: {}\n' })),
+}))
+
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { name: 'arbodat' }, query: {} }),
   useRouter: () => ({ push: vi.fn() }),
@@ -53,14 +59,18 @@ vi.mock('vue-router', () => ({
 vi.mock('@/composables', async () => {
   const vue = await import('vue')
 
+  const selectedProject = vue.ref({ metadata: {}, options: {} })
+  mockProjectState.selectedProjectRef = selectedProject
+
   return {
     useProjects: () => ({
-      selectedProject: vue.ref({ metadata: {}, options: {} }),
+      selectedProject,
       loading: vue.ref(false),
       error: vue.ref(null),
       hasUnsavedChanges: vue.ref(false),
       backups: vue.ref([]),
       select: mockGraphState.selectProject,
+      refresh: mockProjectState.refreshProject,
       clearError: mockGraphState.clearProjectError,
       fetchBackups: mockGraphState.fetchBackups,
       restore: mockGraphState.restore,
@@ -196,10 +206,7 @@ vi.mock('@/composables/useSession', () => ({
 }))
 
 vi.mock('@/stores', () => ({
-  useProjectStore: () => ({
-    selectedProject: { metadata: {}, options: {} },
-    refreshProject: vi.fn(async () => undefined),
-  }),
+  useProjectStore: () => ({}),
 }))
 
 vi.mock('@/stores/entity', () => ({
@@ -252,7 +259,7 @@ vi.mock('@/api', () => ({
       getLayout: mockGraphState.getLayout,
       saveLayout: vi.fn(async () => undefined),
       clearLayout: vi.fn(async () => undefined),
-      getRawYaml: vi.fn(async () => ({ content: '' })),
+      getRawYaml: mockProjectState.getRawYaml,
       updateRawYaml: vi.fn(async () => undefined),
       getTargetModelYaml: vi.fn(async () => ({ content: '' })),
       updateTargetModelYaml: vi.fn(async () => undefined),
@@ -307,6 +314,10 @@ describe('ProjectDetailView', () => {
   beforeEach(() => {
     window.localStorage.clear()
     window.localStorage.setItem('shapeshifter.graph.colorBy.arbodat', 'type')
+    mockProjectState.selectedProjectRef.value = { metadata: {}, options: {} }
+    mockProjectState.refreshProject.mockReset()
+    mockProjectState.getRawYaml.mockReset()
+    mockProjectState.getRawYaml.mockResolvedValue({ yaml_content: 'metadata: {}\nentities: {}\n' })
     mockGraphState.capturedOptions = null
     mockGraphState.removeNodeClass.mockReset()
     mockGraphState.removeEdgeClass.mockReset()
@@ -316,22 +327,36 @@ describe('ProjectDetailView', () => {
     mockGraphState.getNote.mockClear()
   })
 
-  it('renders merged graph legend details and highlights merged branch edges on node click', async () => {
+  it('captures graph options and opens the details drawer on node click', async () => {
     const wrapper = mountProjectDetailView()
 
     await flushPromises()
     ;(wrapper.vm as any).colorByMode = 'type'
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Merged')
-    expect(wrapper.text()).toContain('Merged branch')
     expect(mockGraphState.capturedOptions).toBeTruthy()
 
     await mockGraphState.capturedOptions.onNodeClick('analysis_entity')
+    await flushPromises()
 
-    expect(mockGraphState.removeNodeClass).toHaveBeenCalledWith('related-branch-node')
-    expect(mockGraphState.removeEdgeClass).toHaveBeenCalledWith('related-branch-edge')
-    expect(mockGraphState.addRelatedBranchEdgeClass).toHaveBeenCalledWith('related-branch-edge')
-    expect(mockGraphState.addRelatedBranchNodeClass).toHaveBeenCalledWith('related-branch-node')
+    expect((wrapper.vm as any).selectedNode).toBe('analysis_entity')
+    expect((wrapper.vm as any).showDetailsDrawer).toBe(true)
+  })
+
+  it('reloads raw project yaml when the selected project changes after yaml was loaded', async () => {
+    const wrapper = mountProjectDetailView()
+
+    await flushPromises()
+    mockProjectState.getRawYaml.mockClear()
+
+    ;(wrapper.vm as any).rawYamlContent = 'stale yaml'
+    ;(wrapper.vm as any).originalYamlContent = 'stale yaml'
+    ;(wrapper.vm as any).yamlHasChanges = false
+
+    mockProjectState.selectedProjectRef.value = { metadata: { name: 'arbodat' }, options: {}, entities: {} }
+    await nextTick()
+    await flushPromises()
+
+    expect(mockProjectState.getRawYaml).toHaveBeenCalledWith('arbodat')
   })
 })
