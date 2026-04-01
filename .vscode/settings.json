@@ -115,6 +115,9 @@
     "python.analysis.typeEvaluation.disableBytesTypePromotions": false,
     "python.analysis.indexing": true,
     "python.analysis.userFileIndexingLimit": 2000,
+    "search.useIndexing": true,
+    "search.maintainFileSearchCache": true,
+    "search.maxResults": 20000,
     "files.watcherExclude": {
         "**/.git/objects/**": true,
         "**/.git/subtree-cache/**": true,
