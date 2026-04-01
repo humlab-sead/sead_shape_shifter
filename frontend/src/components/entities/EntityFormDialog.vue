@@ -255,8 +255,8 @@
                       </div>
                       <ul class="text-caption mt-2 pl-4">
                         <li>
-                          Available post-merge: <code>keys</code>, <code>foreign_keys</code>, <code>extra_columns</code>,
-                          <code>depends_on</code>, and <code>drop_duplicates</code>
+                          Available post-merge: <code>columns</code>, <code>keys</code>, <code>foreign_keys</code>,
+                          <code>extra_columns</code>, <code>depends_on</code>, and <code>drop_duplicates</code>
                         </li>
                         <li>
                           Hidden because they do not apply to merged entities: <code>source</code>,
@@ -357,8 +357,8 @@
                       </v-row>
                     </div>
 
-                    <!-- Columns (for entity/fixed types) with Depends On -->
-                    <div class="form-row" v-if="formData.type === 'entity' || formData.type === 'fixed' || isFileType">
+                    <!-- Columns (for entity/fixed/file/merged types) with Depends On -->
+                    <div class="form-row" v-if="formData.type === 'entity' || formData.type === 'fixed' || isFileType || isMergedEntityType">
                       <v-row no-gutters>
                         <v-col cols="8" class="pr-2">
                           <v-combobox
@@ -375,6 +375,9 @@
                             <template #message>
                               <span class="text-caption" v-if="formData.type === 'fixed'">
                                 Additional columns beyond system_id/public_id (which are auto-added to saved config)
+                              </span>
+                              <span class="text-caption" v-else-if="isMergedEntityType">
+                                Optional post-merge column restriction. Leave empty to keep the full union returned by all branches.
                               </span>
                               <span class="text-caption" v-else-if="formData.type === 'entity'">
                                 Select from source columns or add new names (type to filter suggestions)
@@ -2439,6 +2442,37 @@ const sourceEntityPublicIdMap = computed<Record<string, string | null>>(() => {
   )
 })
 
+const mergedAvailableColumns = computed(() => {
+  if (!isMergedEntityType.value) {
+    return [] as string[]
+  }
+
+  const outputColumns = new Set<string>()
+
+  if (formData.value.name) {
+    outputColumns.add(`${formData.value.name}_branch`)
+  }
+
+  for (const branch of mergedBranchConfigs.value) {
+    if (!branch.source) {
+      continue
+    }
+
+    for (const column of getColumnsFromEntity(branch.source)) {
+      if (column && column !== 'system_id') {
+        outputColumns.add(column)
+      }
+    }
+
+    const branchFkColumn = sourceEntityPublicIdMap.value[branch.source] || `${branch.source}_id`
+    if (branchFkColumn && branchFkColumn !== 'system_id') {
+      outputColumns.add(branchFkColumn)
+    }
+  }
+
+  return Array.from(outputColumns)
+})
+
 const availableDataSources = computed(() => {
   // Get entity source names from project's options.data_sources (e.g., "arbodat_data", "sead")
   const dataSources = projectStore.selectedProject?.options?.data_sources
@@ -2458,7 +2492,7 @@ const isExcelType = computed(() => {
 })
 
 const availableColumns = computed(() => {
-  const cols = columnsOptions.value
+  const cols = isMergedEntityType.value ? mergedAvailableColumns.value : columnsOptions.value
   const directives = directivePaths.value
   if (directives.length === 0) return cols
   // Show regular columns first, then @value: directive paths as additional options

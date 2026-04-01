@@ -289,6 +289,31 @@ describe('EntityFormDialog', () => {
     expect(branchesTab?.props('disabled')).toBe(false)
   })
 
+  it('shows the columns picker for merged entities and seeds it with branch-union columns', async () => {
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: mergedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const columnsCombobox = wrapper.findAllComponents({ name: 'VCombobox' }).find((component) => component.props('label') === 'Columns')
+
+    expect(columnsCombobox).toBeTruthy()
+    expect(columnsCombobox?.props('items')).toEqual(
+      expect.arrayContaining([
+        'analysis_entity_branch',
+        'sample_name',
+        'abundance_value',
+        'dating_value',
+        'abundance_id',
+        'relative_dating_id',
+      ])
+    )
+    expect(wrapper.text()).toContain('Available post-merge: columns')
+  })
+
   it('supports toggling preview between merged rows and branch source rows', async () => {
     const wrapper = mountEntityFormDialog({
       mode: 'edit',
