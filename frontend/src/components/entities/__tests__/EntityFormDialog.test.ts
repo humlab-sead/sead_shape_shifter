@@ -6,6 +6,7 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
 import type { EntityResponse } from '@/api/entities'
+import BranchEditor from '../BranchEditor.vue'
 import EntityFormDialog from '../EntityFormDialog.vue'
 
 const mockState = vi.hoisted(() => ({
@@ -193,7 +194,10 @@ const sourceEntities = [
   mergedEntity,
 ]
 
-function mountEntityFormDialog(props: Partial<InstanceType<typeof EntityFormDialog>['$props']> = {}) {
+function mountEntityFormDialog(
+  props: Partial<InstanceType<typeof EntityFormDialog>['$props']> = {},
+  globalOverrides: Record<string, unknown> = {}
+) {
   return mount(EntityFormDialog, {
     props: {
       modelValue: true,
@@ -204,8 +208,13 @@ function mountEntityFormDialog(props: Partial<InstanceType<typeof EntityFormDial
     global: {
       plugins: [vuetify],
       stubs: childStubs,
+      ...globalOverrides,
     },
   })
+}
+
+function getButtonByText(wrapper: ReturnType<typeof mountEntityFormDialog>, text: string) {
+  return wrapper.findAll('button').find((button) => button.text().trim() === text)
 }
 
 function findSelectByLabel(wrapper: ReturnType<typeof mountEntityFormDialog>, label: string) {
@@ -333,5 +342,83 @@ describe('EntityFormDialog', () => {
     expect(mockState.previewEntity).toHaveBeenCalledWith('arbodat', 'abundance_source', 100)
     expect(wrapper.text()).toContain('Previewing source rows for abundance')
     expect(wrapper.text()).toContain('abundance_source')
+  })
+
+  it('enables save in edit mode when a merged entity gets a new branch', async () => {
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: mergedEntity,
+    })
+
+    await flushPromises()
+    await nextTick()
+
+    const saveButtonBefore = getButtonByText(wrapper, 'Save')
+    expect(saveButtonBefore).toBeTruthy()
+    expect(saveButtonBefore?.attributes('disabled')).toBeDefined()
+
+    ;(wrapper.vm as any).formData.advanced.branches = [
+      ...(wrapper.vm as any).formData.advanced.branches,
+      {
+        name: 'new_branch',
+        source: 'abundance_source',
+        keys: ['sample_name'],
+      },
+    ]
+
+    await flushPromises()
+    await nextTick()
+
+    expect((wrapper.vm as any).hasPendingChanges).toBe(true)
+
+    const saveButtonAfter = getButtonByText(wrapper, 'Save')
+    expect(saveButtonAfter).toBeTruthy()
+    expect(saveButtonAfter?.attributes('disabled')).toBeUndefined()
+  })
+
+  it('enables save after adding and completing a branch through the branch editor UI', async () => {
+    const stubsWithoutBranchEditor = { ...childStubs }
+    delete (stubsWithoutBranchEditor as Record<string, unknown>).BranchEditor
+
+    const wrapper = mountEntityFormDialog(
+      {
+        mode: 'edit',
+        entity: mergedEntity,
+      },
+      {
+        stubs: stubsWithoutBranchEditor,
+      }
+    )
+
+    await flushPromises()
+    await nextTick()
+
+    const saveButtonBefore = getButtonByText(wrapper, 'Save')
+    expect(saveButtonBefore?.attributes('disabled')).toBeDefined()
+
+    const branchEditor = wrapper.findComponent(BranchEditor)
+    expect(branchEditor.exists()).toBe(true)
+
+    const addBranchButton = branchEditor.findAll('button').find((button) => button.text().includes('Add Branch'))
+    expect(addBranchButton).toBeTruthy()
+    await addBranchButton!.trigger('click')
+    await flushPromises()
+    await nextTick()
+
+    const branchNameFields = branchEditor.findAllComponents({ name: 'VTextField' }).filter((component) => component.props('label') === 'Branch Name *')
+    const branchSourceFields = branchEditor.findAllComponents({ name: 'VAutocomplete' }).filter((component) => component.props('label') === 'Source Entity *')
+    const branchKeyFields = branchEditor.findAllComponents({ name: 'VCombobox' }).filter((component) => component.props('label') === 'Branch Keys')
+
+    branchNameFields.at(-1)?.vm.$emit('update:modelValue', 'new_branch')
+    branchSourceFields.at(-1)?.vm.$emit('update:modelValue', 'abundance_source')
+    branchKeyFields.at(-1)?.vm.$emit('update:modelValue', ['sample_name'])
+
+    await flushPromises()
+    await nextTick()
+
+    expect((wrapper.vm as any).hasPendingChanges).toBe(true)
+
+    const saveButtonAfter = getButtonByText(wrapper, 'Save')
+    expect(saveButtonAfter?.attributes('disabled')).toBeUndefined()
   })
 })

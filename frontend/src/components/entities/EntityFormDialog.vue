@@ -696,11 +696,12 @@
 
               <v-window-item value="branches">
                 <branch-editor
-                  v-model="formData.advanced.branches"
+                  :model-value="formData.advanced.branches"
                   :available-entities="availableSourceEntities"
                   :parent-entity="formData.name"
                   :source-entity-columns="sourceEntityColumnsMap"
                   :source-entity-public-ids="sourceEntityPublicIdMap"
+                  @update:model-value="handleBranchesUpdate"
                 />
               </v-window-item>
 
@@ -2847,6 +2848,17 @@ async function handleForeignKeysUpdate(value: any[]) {
   await nextTick()
   const result = await formRef.value?.validate()
   formValid.value = result?.valid ?? formValid.value
+}
+
+async function handleBranchesUpdate(value: any[]) {
+  formData.value.advanced.branches = value
+
+  // Branch edits also happen outside the main v-form. Refresh validity and dirty
+  // state explicitly so Save/Save & Close react immediately in edit mode.
+  await nextTick()
+  const result = await formRef.value?.validate()
+  formValid.value = result?.valid ?? formValid.value
+  refreshDirtyState()
 }
 
 function applyDetectedSqlColumns() {
