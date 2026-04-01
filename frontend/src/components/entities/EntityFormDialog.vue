@@ -374,7 +374,7 @@
                           >
                             <template #message>
                               <span class="text-caption" v-if="formData.type === 'fixed'">
-                                Additional columns beyond system_id/public_id (which are auto-added to saved config)
+                                Fixed values grid fields. Business keys should be chosen from these fields; system_id and public_id stay implicit in the stored schema.
                               </span>
                               <span class="text-caption" v-else-if="isMergedEntityType">
                                 Optional post-merge column restriction. Leave empty to keep the full union returned by all branches.
@@ -1057,6 +1057,8 @@ import {
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
   getExternalValuesUpdateColumns,
+  normalizeFixedValuesRowsForForm,
+  remapFixedValuesRowsToColumns,
   normalizeEditableFixedColumns,
 } from './entityFormMaterialization'
 
@@ -1104,7 +1106,6 @@ const { entities, create, update } = useEntities({
 })
 
 const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions()
-
 const appSettings = useSettings()
 const fkSuggestionsEnabled = computed(() => appSettings.enableFkSuggestions.value)
 
@@ -1173,6 +1174,7 @@ const externalValuesDirective = ref<string | null>(null)
 const materializedConfig = ref<Record<string, any> | null>(null)
 const initialFormSnapshot = ref<string | null>(null)
 const hasPendingChanges = ref(false)
+const suppressFixedSchemaRemap = ref(false)
 
 interface FormData {
   name: string
@@ -2329,7 +2331,65 @@ watch(
       if (filtered.length !== newColumns.length) {
         // Auto-remove forbidden columns
         formData.value.columns = filtered
+        return
       }
+
+      const filteredKeys = normalizeChipField(formData.value.keys).filter((key) => {
+        if (key.trim().startsWith('@')) {
+          return true
+        }
+        return filtered.includes(key)
+      })
+
+      if (JSON.stringify(filteredKeys) !== JSON.stringify(formData.value.keys)) {
+        formData.value.keys = filteredKeys
+      }
+    }
+  },
+  { deep: true }
+)
+
+watch(
+  () => formData.value.keys,
+  (newKeys) => {
+    if (formData.value.type !== 'fixed' || !Array.isArray(newKeys)) {
+      return
+    }
+
+    const publicId = formData.value.public_id
+    const existingColumns = normalizeChipField(formData.value.columns)
+    const missingKeyColumns = normalizeChipField(newKeys).filter((key) => {
+      if (!key || key.trim().startsWith('@')) {
+        return false
+      }
+      if (key === 'system_id' || key === publicId) {
+        return false
+      }
+      return !existingColumns.includes(key)
+    })
+
+    if (missingKeyColumns.length > 0) {
+      formData.value.columns = [...existingColumns, ...missingKeyColumns]
+    }
+  },
+  { deep: true }
+)
+
+watch(
+  () => fixedValuesColumns.value,
+  (newColumns, oldColumns) => {
+    if (
+      suppressFixedSchemaRemap.value
+      || formData.value.type !== 'fixed'
+      || !Array.isArray(formData.value.values)
+      || oldColumns.length === 0
+    ) {
+      return
+    }
+
+    const remappedRows = remapFixedValuesRowsToColumns(formData.value.values, oldColumns, newColumns)
+    if (JSON.stringify(remappedRows) !== JSON.stringify(formData.value.values)) {
+      formData.value.values = remappedRows
     }
   },
   { deep: true }
@@ -2492,7 +2552,12 @@ const isExcelType = computed(() => {
 })
 
 const availableColumns = computed(() => {
-  const cols = isMergedEntityType.value ? mergedAvailableColumns.value : columnsOptions.value
+  const cols = isMergedEntityType.value
+    ? mergedAvailableColumns.value
+    : formData.value.type === 'fixed'
+      ? Array.from(new Set([...normalizeChipField(formData.value.columns), ...normalizeChipField(formData.value.keys)]))
+          .filter((column) => column && column !== 'system_id' && column !== formData.value.public_id)
+      : columnsOptions.value
   const directives = directivePaths.value
   if (directives.length === 0) return cols
   // Show regular columns first, then @value: directive paths as additional options
@@ -2694,6 +2759,9 @@ function yamlToFormData(yamlString: string): boolean {
     const roundTrip = extractMaterializationRoundTripState(data)
     externalValuesDirective.value = roundTrip.externalValuesDirective
     materializedConfig.value = roundTrip.materializedConfig
+    const normalizedFixedRows = (data.type || 'entity') === 'fixed'
+      ? normalizeFixedValuesRowsForForm(roundTrip.inlineValues, normalizedColumns, normalizedKeys, publicId)
+      : roundTrip.inlineValues
 
     const dropDuplicates = data.drop_duplicates
     const dropDuplicatesData = {
@@ -2718,41 +2786,46 @@ function yamlToFormData(yamlString: string): boolean {
           ? nestedCheckFunctionalDependency
           : dropDuplicates !== undefined && dropDuplicates !== null
 
-    formData.value = {
-      name: data.name || formData.value.name,
-      type: data.type || 'entity',
-      system_id: 'system_id', // Always standardized
-      public_id: publicId, // Migrate surrogate_id → public_id
-      surrogate_id: data.surrogate_id || '', // Keep for backward compat
-      keys: normalizedKeys,
-      columns:
-        (data.type || 'entity') === 'fixed'
-          ? normalizeEditableFixedColumns(normalizedColumns, normalizedKeys, publicId)
-          : normalizedColumns,
-      values: roundTrip.inlineValues,
-      source: data.source || null,
-      data_source: data.data_source || '',
-      query: data.query || '',
-      options: {
-        filename: data.options?.filename || '',
-        sep: data.options?.sep || ',',
-        encoding: data.options?.encoding || 'utf-8',
-        sheet_name: data.options?.sheet_name || '',
-        range: data.options?.range || '',
-        location: data.options?.location || 'global',
-      },
-      foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
-      depends_on: normalizeChipField(data.depends_on),
-      drop_duplicates: dropDuplicatesData,
-      drop_empty_rows: dropEmptyRowsData,
-      check_functional_dependency: effectiveCheckFunctionalDependency,
-      advanced: {
-        filters: Array.isArray(data.filters) ? data.filters : [],
-        unnest: data.unnest || null,
-        append: Array.isArray(data.append) ? data.append : [],
-        extra_columns: data.extra_columns || undefined,
-        replacements: data.replacements || undefined,
-      },
+    suppressFixedSchemaRemap.value = true
+    try {
+      formData.value = {
+        name: data.name || formData.value.name,
+        type: data.type || 'entity',
+        system_id: 'system_id', // Always standardized
+        public_id: publicId, // Migrate surrogate_id → public_id
+        surrogate_id: data.surrogate_id || '', // Keep for backward compat
+        keys: normalizedKeys,
+        columns:
+          (data.type || 'entity') === 'fixed'
+            ? normalizeEditableFixedColumns(normalizedColumns, normalizedKeys, publicId)
+            : normalizedColumns,
+        values: normalizedFixedRows,
+        source: data.source || null,
+        data_source: data.data_source || '',
+        query: data.query || '',
+        options: {
+          filename: data.options?.filename || '',
+          sep: data.options?.sep || ',',
+          encoding: data.options?.encoding || 'utf-8',
+          sheet_name: data.options?.sheet_name || '',
+          range: data.options?.range || '',
+          location: data.options?.location || 'global',
+        },
+        foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
+        depends_on: normalizeChipField(data.depends_on),
+        drop_duplicates: dropDuplicatesData,
+        drop_empty_rows: dropEmptyRowsData,
+        check_functional_dependency: effectiveCheckFunctionalDependency,
+        advanced: {
+          filters: Array.isArray(data.filters) ? data.filters : [],
+          unnest: data.unnest || null,
+          append: Array.isArray(data.append) ? data.append : [],
+          extra_columns: data.extra_columns || undefined,
+          replacements: data.replacements || undefined,
+        },
+      }
+    } finally {
+      suppressFixedSchemaRemap.value = false
     }
 
     yamlError.value = null
@@ -3109,13 +3182,23 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   // since they're auto-managed and will be auto-added on save
   const keys = normalizeChipField(entity.entity_data.keys)
   const normalizedColumns = normalizeChipField(entity.entity_data.columns)
+  const publicId = (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || ''
   let columns = normalizedColumns
   if (entity.entity_data.type === 'fixed') {
-    columns = entity.fixed_schema?.editable_columns || []
+    const fixedFullColumns = entity.fixed_schema?.full_columns || normalizedColumns
+    columns = normalizeEditableFixedColumns(fixedFullColumns, keys, publicId)
   }
 
   // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
   const roundTrip = extractMaterializationRoundTripState(entity.entity_data)
+  const normalizedFixedRows = entity.entity_data.type === 'fixed'
+    ? normalizeFixedValuesRowsForForm(
+        roundTrip.inlineValues,
+        normalizedColumns,
+        keys,
+        publicId
+      )
+    : roundTrip.inlineValues
   hasExternalValues.value = Boolean(roundTrip.externalValuesDirective)
   externalValuesDirective.value = roundTrip.externalValuesDirective
   materializedConfig.value = roundTrip.materializedConfig
@@ -3128,11 +3211,11 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     name: entity.name,
     type: (entity.entity_data.type as string) || 'entity',
     system_id: 'system_id', // Always standardized
-    public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '', // Migrate
+    public_id: publicId, // Migrate
     surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
     keys,
     columns: columns,
-    values: roundTrip.inlineValues,
+    values: normalizedFixedRows,
     source: (entity.entity_data.source as string) || null,
     data_source: (entity.entity_data.data_source as string) || '',
     query: (entity.entity_data.query as string) || '',
@@ -3183,11 +3266,16 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
       const response = await api.entities.getValues(props.projectName, entity.name)
 
       // Populate form data with fetched values
-      formData.value.values = response.values
-      if (formData.value.type === 'fixed') {
-        formData.value.columns = entity.fixed_schema?.editable_columns || []
-      } else {
-        formData.value.columns = response.columns
+      suppressFixedSchemaRemap.value = true
+      try {
+        formData.value.values = response.values
+        if (formData.value.type === 'fixed') {
+          formData.value.columns = normalizeEditableFixedColumns(response.columns, formData.value.keys, formData.value.public_id)
+        } else {
+          formData.value.columns = response.columns
+        }
+      } finally {
+        suppressFixedSchemaRemap.value = false
       }
 
       // Store etag for optimistic locking
@@ -3296,6 +3384,7 @@ watch(
         if (props.entity) {
           console.log('[EntityFormDialog] Using entity from props (reactive store):', entityName)
           currentEntity.value = props.entity
+          suppressFixedSchemaRemap.value = true
           formData.value = buildFormDataFromEntity(props.entity)
           yamlContent.value = formDataToYaml()
 
@@ -3309,6 +3398,7 @@ watch(
 
           await refreshFormValidity()
           captureInitialSnapshot()
+          suppressFixedSchemaRemap.value = false
         } else {
           // Fallback: fetch from API if entity not provided (shouldn't happen in normal flow)
           loading.value = true
@@ -3317,6 +3407,7 @@ watch(
             const freshEntity = await api.entities.get(props.projectName, entityName)
             console.log('[EntityFormDialog] API response received for:', freshEntity.name)
             currentEntity.value = freshEntity
+            suppressFixedSchemaRemap.value = true
             formData.value = buildFormDataFromEntity(freshEntity)
             yamlContent.value = formDataToYaml()
 
@@ -3334,6 +3425,7 @@ watch(
             error.value = err instanceof Error ? err.message : 'Failed to load entity data'
             console.error('Failed to fetch entity data:', err)
           } finally {
+            suppressFixedSchemaRemap.value = false
             loading.value = false
           }
         }
