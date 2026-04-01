@@ -4,36 +4,17 @@
       <span class="text-caption">Fixed Values Data</span>
       <div>
         <v-btn size="small" variant="outlined" prepend-icon="mdi-plus" @click="addRow" class="mr-2"> Add Row </v-btn>
-        <v-btn
-          size="small"
-          variant="outlined"
-          prepend-icon="mdi-delete"
-          color="error"
-          @click="deleteSelectedRows"
-          :disabled="!hasSelection"
-        >
+        <v-btn size="small" variant="outlined" prepend-icon="mdi-delete" color="error" @click="deleteSelectedRows"
+          :disabled="!hasSelection">
           Delete Selected
         </v-btn>
       </div>
     </div>
-    <ag-grid-vue
-      class="ag-theme-alpine compact-grid"
-      :style="{ height: gridHeight }"
-      :columnDefs="columnDefs"
-      :rowData="rowData"
-      :getRowId="getRowId"
-      :defaultColDef="defaultColDef"
-      :rowSelection="'multiple'"
-      :suppressRowClickSelection="true"
-      :animateRows="true"
-      :headerHeight="28"
-      :rowHeight="26"
-      :singleClickEdit="true"
-      :stopEditingWhenCellsLoseFocus="true"
-      @grid-ready="onGridReady"
-      @cell-value-changed="onCellValueChanged"
-      @selection-changed="onSelectionChanged"
-    />
+    <ag-grid-vue class="ag-theme-alpine compact-grid" :style="{ height: gridHeight }" :columnDefs="columnDefs"
+      :rowData="rowData" :getRowId="getRowId" :defaultColDef="defaultColDef" :rowSelection="'multiple'"
+      :suppressRowClickSelection="true" :animateRows="true" :headerHeight="28" :rowHeight="26" :singleClickEdit="true"
+      :stopEditingWhenCellsLoseFocus="true" @grid-ready="onGridReady" @cell-value-changed="onCellValueChanged"
+      @selection-changed="onSelectionChanged" />
   </div>
 </template>
 
@@ -101,7 +82,7 @@ const columnDefs = computed<ColDef[]>(() => {
     ...props.columns.map((col, index) => {
       const isSystemId = col === 'system_id'
       const isPublicId = col === props.publicId
-      
+
       return {
         field: `col_${index}`,
         headerName: col,
@@ -219,7 +200,7 @@ function getMaxSystemId(): number {
       }
     }
   })
-  
+
   return maxId
 }
 
