@@ -5,6 +5,8 @@ import {
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
   getExternalValuesUpdateColumns,
+  normalizeFixedValuesRowsForForm,
+  remapFixedValuesRowsToColumns,
   normalizeEditableFixedColumns,
 } from '../entityFormMaterialization'
 
@@ -88,7 +90,7 @@ describe('entityFormMaterialization', () => {
     expect(result).toEqual(['a', 'b'])
   })
 
-  it('strips identity and key columns from editable fixed columns', () => {
+  it('strips only identity columns from editable fixed columns', () => {
     const result = normalizeEditableFixedColumns(
       [
         'system_id',
@@ -109,6 +111,8 @@ describe('entityFormMaterialization', () => {
     )
 
     expect(result).toEqual([
+      'Fustel',
+      'EVNr',
       'site_type_id',
       'altitude',
       'coordinate_system',
@@ -151,6 +155,55 @@ describe('entityFormMaterialization', () => {
       'site_name',
       'FustelTyp',
       'KoordSys',
+    ])
+  })
+
+  it('expands legacy fixed rows to full grid columns using stored column names', () => {
+    const result = normalizeFixedValuesRowsForForm(
+      [
+        [null, 'S1', 'Oak', 12, 'count'],
+        [null, 'S2', 'Pine', 8, 'count'],
+      ],
+      ['abundance_id', 'sample_code', 'taxon_name', 'abundance', 'unit'],
+      ['sample_code', 'taxon_name'],
+      'abundance_id'
+    )
+
+    expect(result).toEqual([
+      [1, null, 'S1', 'Oak', 12, 'count'],
+      [2, null, 'S2', 'Pine', 8, 'count'],
+    ])
+  })
+
+  it('keeps already-normalized fixed rows unchanged', () => {
+    const rows = [
+      [1, null, 'S1', 'Oak', 12, 'count'],
+      [2, null, 'S2', 'Pine', 8, 'count'],
+    ]
+
+    const result = normalizeFixedValuesRowsForForm(
+      rows,
+      ['abundance_id', 'sample_code', 'taxon_name', 'abundance', 'unit'],
+      ['sample_code', 'taxon_name'],
+      'abundance_id'
+    )
+
+    expect(result).toEqual(rows)
+  })
+
+  it('remaps fixed rows by column name when schema changes', () => {
+    const result = remapFixedValuesRowsToColumns(
+      [
+        [1, null, 'S1', 'Oak', 12, 'count'],
+        [2, null, 'S2', 'Pine', 8, 'count'],
+      ],
+      ['system_id', 'abundance_id', 'sample_code', 'taxon_name', 'abundance', 'unit'],
+      ['system_id', 'abundance_id', 'taxon_name', 'abundance', 'unit']
+    )
+
+    expect(result).toEqual([
+      [1, null, 'Oak', 12, 'count'],
+      [2, null, 'Pine', 8, 'count'],
     ])
   })
 })
