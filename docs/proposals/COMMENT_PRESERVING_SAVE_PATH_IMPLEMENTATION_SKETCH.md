@@ -10,13 +10,13 @@
 
 This document turns the proposal into an implementation-oriented sketch.
 
-It assumes the limited subtree-merge capability described in [BOUNDARY_BASED_PROJECT_PERSISTENCE.md](BOUNDARY_BASED_PROJECT_PERSISTENCE.md), rather than proposing a broader persistence redesign here.
+It assumes the limited subtree-merge capability described in [done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md](done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md), rather than proposing a broader persistence redesign here.
 
 The key recommendations are:
 
 1. keep the current plain `Project` model flow for validation, services, and API work,
 2. reload the latest YAML from disk at save time instead of keeping a separate comment-aware YAML cache in memory,
-3. merge semantic changes from the in-memory project into the freshly loaded YAML tree using the stable boundaries defined in [BOUNDARY_BASED_PROJECT_PERSISTENCE.md](BOUNDARY_BASED_PROJECT_PERSISTENCE.md),
+3. merge semantic changes from the in-memory project into the freshly loaded YAML tree using the stable boundaries defined in [done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md](done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md),
 4. write the merged YAML back with the existing `ruamel.yaml`-based save path.
 
 In short:
@@ -264,4 +264,4 @@ Implement the feature as a save-time reload and merge flow at stable subtree bou
 
 Do not introduce a second long-lived cache for comment-aware YAML documents unless real performance data later shows that reload-on-save is too expensive.
 
-Do not turn this sketch into the place where boundary-based persistence is justified in general. Treat [BOUNDARY_BASED_PROJECT_PERSISTENCE.md](BOUNDARY_BASED_PROJECT_PERSISTENCE.md) as the foundation proposal, and treat this document as the feature-specific plan that uses that foundation for comment-preserving save behavior.
+Do not turn this sketch into the place where boundary-based persistence is justified in general. Treat [done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md](done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md) as the foundation proposal, and treat this document as the feature-specific plan that uses that foundation for comment-preserving save behavior.
