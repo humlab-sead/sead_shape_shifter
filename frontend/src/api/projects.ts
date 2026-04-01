@@ -30,6 +30,7 @@ export interface MetadataUpdateRequest {
   description?: string | null
   version?: string | null
   default_entity?: string | null
+  target_model?: string | null
 }
 
 /**
@@ -215,10 +216,18 @@ export const projectsApi = {
    * List files available for a project (uploads directory)
    */
   listFiles: async (name: string, extensions?: string[]): Promise<ProjectFileInfo[]> => {
+    // Build query string manually to handle multiple ext parameters correctly
+    const params = new URLSearchParams()
+    if (extensions && extensions.length > 0) {
+      extensions.forEach((ext) => params.append('ext', ext))
+    }
+    
+    const query = params.toString()
+    const url = query ? `/projects/${name}/files?${query}` : `/projects/${name}/files`
+
     return apiRequest<ProjectFileInfo[]>({
       method: 'GET',
-      url: `/projects/${name}/files`,
-      params: extensions && extensions.length > 0 ? { ext: extensions } : undefined,
+      url,
     })
   },
 
@@ -254,6 +263,38 @@ export const projectsApi = {
       url: `/projects/${name}/raw-yaml`,
       data: { yaml_content: yamlContent },
     })
+  },
+
+  /**
+   * Get the project-local target model file as raw YAML
+   */
+  getTargetModelYaml: async (name: string): Promise<{ yaml_content: string }> => {
+    return apiRequest<{ yaml_content: string }>({
+      method: 'GET',
+      url: `/projects/${name}/target-model-yaml`,
+    })
+  },
+
+  /**
+   * Update the project-local target model file with raw YAML content
+   */
+  updateTargetModelYaml: async (name: string, yamlContent: string): Promise<Project> => {
+    return apiRequest<Project>({
+      method: 'PUT',
+      url: `/projects/${name}/target-model-yaml`,
+      data: { yaml_content: yamlContent },
+    })
+  },
+
+  /**
+   * Download target model documentation in specified format
+   */
+  downloadTargetModelDocs: async (name: string, format: 'html' | 'markdown' | 'excel'): Promise<Blob> => {
+    const response = await apiClient.get(`/projects/${name}/target-model-docs`, {
+      params: { format },
+      responseType: 'blob',
+    })
+    return response.data
   },
 
   /**

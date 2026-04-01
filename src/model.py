@@ -132,6 +132,19 @@ class ForeignKeyConfig:
         return self.fk_cfg.get("drop_remote_id", False)
 
     @property
+    def defer_dependency(self) -> bool:
+        """Whether to defer hard dependency on the remote entity.
+
+        When True, the FK target is not treated as a hard dependency during
+        topological sorting, allowing circular references. The FK will be linked
+        in a final linking pass after all entities are processed.
+
+        Default: False (safe, backward compatible)
+        Use with caution: Only enable when circular references are unavoidable.
+        """
+        return self.fk_cfg.get("defer_dependency", False)
+
+    @property
     def remote_entity(self) -> str:
         return self.fk_cfg.get("entity", "")
 
@@ -278,7 +291,7 @@ class TableConfig:
         assert self.entity_cfg, f"No configuration found for entity '{entity_name}'"
 
     @property
-    def type(self) -> Literal["entity", "sql", "fixed", "csv", "xlsx", "openpyxl"] | None:
+    def type(self) -> Literal["entity", "sql", "fixed", "csv", "xlsx", "openpyxl", "merged"] | None:
         return self.entity_cfg.get("type", None)
 
     @property
@@ -347,6 +360,14 @@ class TableConfig:
         return set(self.entity_cfg.get("keys", []) or [])
 
     @property
+    def safe_keys(self) -> list[str]:
+        """Return keys as an ordered list, converting scalar values if necessary."""
+        keys: str | list[Any] = self.entity_cfg.get("keys", []) or []
+        if isinstance(keys, str):
+            return [keys]
+        return [key for key in keys if isinstance(key, str)]
+
+    @property
     def columns(self) -> list[str]:
         return unique(self.entity_cfg.get("columns"))
 
@@ -402,6 +423,12 @@ class TableConfig:
             if isinstance(append_cfg.get("source"), str):
                 append_sources.add(append_cfg["source"])
 
+        # Collect branch source dependencies for merged entities
+        branch_sources: set[str] = set()
+        for branch_cfg in self.branches:
+            if isinstance(branch_cfg.get("source"), str):
+                branch_sources.add(branch_cfg["source"])
+
         # Collect entities referenced in filters via 'other_entity'
         filter_dependencies: set[str] = set()
         for filter_cfg in self.filters:
@@ -411,8 +438,9 @@ class TableConfig:
         return (
             set(self.entity_cfg.get("depends_on", []) or [])
             | ({self.source} if self.source else set())
-            | {fk.remote_entity for fk in self.foreign_keys}
+            | {fk.remote_entity for fk in self.foreign_keys if not fk.defer_dependency}
             | append_sources
+            | branch_sources
             | filter_dependencies
         )
 
@@ -460,6 +488,18 @@ class TableConfig:
                     if isinstance(append_cfg, dict) and append_cfg.get("source") == self.entity_name:
                         yield entity_name
                         break
+
+                # Check branch sources (for merged entities)
+                branches_raw = entity_cfg.get("branches", []) or []
+                if isinstance(branches_raw, dict):
+                    branch_cfgs = [branches_raw]
+                else:
+                    branch_cfgs = branches_raw
+
+                for branch_cfg in branch_cfgs:
+                    if isinstance(branch_cfg, dict) and branch_cfg.get("source") == self.entity_name:
+                        yield entity_name
+                        break
             except KeyError:
                 continue
 
@@ -467,6 +507,20 @@ class TableConfig:
     def append_configs(self) -> list[dict[str, Any]]:
         # Parse append configuration for union operations
         value: list[dict[str, Any]] = self.entity_cfg.get("append", []) or []
+        if value and isinstance(value, dict):
+            value = [value]
+        return value
+
+    @cached_property
+    def branches(self) -> list[dict[str, Any]]:
+        """Get branch configurations for merged parent entities.
+
+        Each branch defines a source entity that contributes rows to the merged parent.
+        Returns empty list if entity is not type='merged'.
+        """
+        if self.type != "merged":
+            return []
+        value: list[dict[str, Any]] = self.entity_cfg.get("branches", []) or []
         if value and isinstance(value, dict):
             value = [value]
         return value
@@ -538,9 +592,19 @@ class TableConfig:
     @property
     def unnest_columns(self) -> set[str]:
         """Get set of columns that are pending (e.g., from unnesting)."""
-        if self.unnest:
-            return {self.unnest.var_name, self.unnest.value_name}
-        return set()
+        if not self.unnest:
+            return set()
+
+        return {self.unnest.var_name, self.unnest.value_name}
+
+    @property
+    def surviving_unnest_columns(self) -> set[str]:
+        """Return the columns that remain immediately after unnest."""
+
+        if not self.unnest:
+            return set()
+
+        return (set(self.unnest.id_vars) - {self.system_id}) | self.unnest_columns
 
     @property
     def append_mode(self) -> str:
@@ -682,13 +746,24 @@ class TableConfig:
             # Position-based renaming: map current columns to parent's columns by position
             current_columns: list[str] = list(table.columns)
 
-            # Filter out system_id and public_id from both lists for alignment
-            system_id_col = self.system_id
-            public_id_col = self.public_id
-            exclude_cols = {system_id_col, public_id_col} if public_id_col else {system_id_col}
+            # Filter out system_id and identity/public_id columns from both lists for alignment.
+            # For source-based append, the source entity may have a different public_id than the target.
+            system_id_col: str = self.system_id
+            target_public_id_col: str = self.public_id
+            source_public_id_col: str = self.get_source_public_id()
 
-            parent_cols_filtered = [c for c in parent_columns if c not in exclude_cols]
-            current_cols_filtered = [c for c in current_columns if c not in exclude_cols]
+            parent_exclude_cols: set[str] = {system_id_col}
+            current_exclude_cols: set[str] = {system_id_col}
+
+            if target_public_id_col:
+                parent_exclude_cols.add(target_public_id_col)
+                current_exclude_cols.add(target_public_id_col)
+
+            if source_public_id_col:
+                current_exclude_cols.add(source_public_id_col)
+
+            parent_cols_filtered: list[str] = [c for c in parent_columns if c not in parent_exclude_cols]
+            current_cols_filtered: list[str] = [c for c in current_columns if c not in current_exclude_cols]
 
             if len(parent_cols_filtered) != len(current_cols_filtered):
                 raise ValueError(
@@ -698,17 +773,25 @@ class TableConfig:
                 )
 
             # Create rename mapping
-            rename_map = dict(zip(current_cols_filtered, parent_cols_filtered))
+            rename_map: dict[str, str] = dict(zip(current_cols_filtered, parent_cols_filtered))
             table = table.rename(columns=rename_map)
 
         elif column_mapping:
             # Explicit column mapping
-            missing_cols = set(column_mapping.keys()) - set(table.columns)
+            missing_cols: set[str] = set(column_mapping.keys()) - set(table.columns)
             if missing_cols:
                 raise ValueError(f"Columns specified in column_mapping not found in {self.entity_name}: {missing_cols}")
             table = table.rename(columns=column_mapping)
 
         return table
+
+    def get_source_public_id(self) -> str:
+        """Get the public_id of the source entity, if this config references one."""
+        source_entity: str | None = self.source
+        if not source_entity or source_entity not in self.entities_cfg:
+            return ""
+        source_cfg = self.entities_cfg[source_entity] or {}
+        return source_cfg.get("public_id") or ""
 
     def is_drop_duplicate_dependent_on_unnesting(self) -> bool:
         """Check if `drop_duplicates` is dependent on columns created during unnesting."""
@@ -722,6 +805,7 @@ class TableConfig:
         """Create a merged configuration for an append item, inheriting parent properties.
 
         Special handling:
+        - Source-based append (when 'source' is present) blocks inheritance of loader-driving fields
         - Filters out public_id from columns list (will be added after concatenation)
         - Inherits most properties except foreign_keys, unnest, append, append_mode, depends_on
         - Passes through align_by_position and column_mapping from append item
@@ -736,11 +820,15 @@ class TableConfig:
         }
 
         # Check if we're using column renaming with entity source
-        has_source = "source" in append_data
-        has_align = append_data.get("align_by_position", False)
-        has_mapping = "column_mapping" in append_data
-        use_source_columns = has_source and (has_align or has_mapping) and "columns" not in append_data
-        use_source_keys = has_source and (has_align or has_mapping) and "keys" not in append_data
+        has_source: bool = "source" in append_data and append_data["source"] is not None
+        has_align: bool = append_data.get("align_by_position", False)
+        has_mapping: bool = "column_mapping" in append_data
+        use_source_columns: bool = has_source and (has_align or has_mapping) and "columns" not in append_data
+        use_source_keys: bool = has_source and (has_align or has_mapping) and "keys" not in append_data
+
+        # Source-based append shouldn't inherit loader-related fields from parent
+        if has_source:
+            non_inheritable_keys |= {"type", "values", "query", "data_source", "sql"}
 
         for key in all_keys:
 
@@ -756,9 +844,9 @@ class TableConfig:
             # When using column renaming with entity source and no explicit columns/keys,
             # get them from the source entity instead of parent
             if (key == "columns" and use_source_columns) or (key == "keys" and use_source_keys):
-                source_entity = append_data.get("source")
+                source_entity: str | None = append_data.get("source")
                 if source_entity and source_entity in self.entities_cfg:
-                    source_value = self.entities_cfg[source_entity].get(key, [])
+                    source_value: list[Any] = self.entities_cfg[source_entity].get(key, [])
                     if source_value:
                         merged[key] = source_value
                     continue
@@ -779,31 +867,137 @@ class TableConfig:
 
         return merged
 
+    def get_target_facing_foreign_key_targets(self) -> set[str]:
+        """Return FK target entities that contribute to target-facing output."""
+
+        if self.unnest:
+            targets: list[str] = []
+            avaliable_columns: list[str] = sorted(self.surviving_unnest_columns)
+            for foreign_key in self.foreign_keys:
+                if not set(foreign_key.local_keys).issubset(avaliable_columns):
+                    continue
+
+                targets.append(foreign_key.remote_entity)
+                # Add FK remote extra columns to available columns for subsequent FKs in case of chaining
+                avaliable_columns.extend(foreign_key.resolved_extra_columns().values())
+            return set(targets)
+
+        return {foreign_key.remote_entity for foreign_key in self.foreign_keys if foreign_key.remote_entity}
+
+    def get_target_facing_columns(self) -> list[str]:
+        """Return the columns this entity presents to a target model.
+
+        Contract in v1:
+        - without unnest: includes business keys, explicit `columns`, `public_id`,
+        configured `extra_columns`, and generated FK-facing columns
+        - with unnest: first collapse the current table shape the same way `pd.melt`
+        does, so only surviving `id_vars`, `var_name`, and `value_name` count as
+        direct outputs from that stage
+        - with unnest: FK-generated columns only count if the FK local keys still
+        exist after unnest, allowing the post-unnest relink pass to recreate them
+        - append branches do not widen the target-facing schema; they must conform
+        to the parent entity's output contract rather than add new columns
+
+        It intentionally excludes the internal `system_id` column unless it is exposed
+        explicitly through some other target-facing mechanism.
+        """
+
+        target_columns: list[str] = []
+
+        if self.unnest:
+            target_columns.extend(sorted(self.surviving_unnest_columns))
+        else:
+            system_id: str = self.system_id
+            target_columns.extend(column for column in self.safe_keys if column != system_id)
+            target_columns.extend(column for column in self.safe_columns if column != system_id)
+            target_columns.extend(self.extra_column_names)
+
+        if self.public_id:
+            target_columns.append(self.public_id)
+
+        for foreign_key in self.foreign_keys:
+            if self.unnest and not set(foreign_key.local_keys).issubset(target_columns):
+                continue
+
+            remote_cfg: TableConfig = TableConfig(entities_cfg=self.entities_cfg, entity_name=foreign_key.remote_entity)
+            target_columns.append(remote_cfg.public_id)
+
+            target_columns.extend(foreign_key.resolved_extra_columns().values())
+
+        return unique([column for column in target_columns if column])
+
     def get_sub_table_configs(self) -> Generator[Self | "TableConfig", Any, None]:
         """Yield a sequence of resolved TableConfig objects.
 
-        Each item orginates from the base entity and its append configurations.
+        Each item originates from the base entity and its append configurations,
+        or from branch sources for merged entities.
 
-        Yields self first (the base configuration), then creates and yields
-        a TableConfig for each append item, if any, with inherited properties.
+        For standard/append entities:
+            Yields self first (the base configuration), then creates and yields
+            a TableConfig for each append item, if any, with inherited properties.
+
+        For merged entities:
+            Yields one TableConfig per branch source (no base config).
+            Each branch config references the source entity and includes metadata
+            for FK propagation and branch discriminator.
 
         This allows the shapeshifter to treat the base table and append items
-        uniformly through the same processing pipeline.
+        (or branch sources) uniformly through the same processing pipeline.
 
         Yields:
-            TableConfig: Base config first, then one per append item
+            TableConfig: For standard entities: base config first, then one per append item.
+                        For merged entities: one per branch source.
         """
-        yield self
+        # Handle merged entities differently - they have no base data, only branch sources
+        if self.type == "merged":
+            for idx, branch_data in enumerate(self.branches):
+                branch_name: str = branch_data.get("name", f"branch_{idx}")
+                branch_source: str | None = branch_data.get("source")
 
-        for idx, append_data in enumerate(self.append_configs):
-            append_entity_name: str = f"{self.entity_name}__append_{idx}"
-            self.entities_cfg[append_entity_name] = self.create_append_config(append_data)
-            yield TableConfig(entities_cfg=self.entities_cfg, entity_name=append_entity_name)
-            del self.entities_cfg[append_entity_name]
+                # Skip if source is not defined (validation should catch this)
+                if not branch_source:
+                    continue
+
+                branch_keys: list[str] = branch_data.get("keys", [])
+
+                # Create a temporary config for this branch that references the source entity
+                branch_entity_name: str = f"{self.entity_name}__branch_{branch_name}"
+
+                # Get the source entity's configuration
+                source_cfg: dict[str, Any] = self.entities_cfg.get(branch_source, {})
+
+                # Include the source entity's system_id column so _process_merged_branch
+                # can use it as the FK value for this branch's rows.
+                source_system_id: str = source_cfg.get("system_id", "system_id")
+
+                # Create branch config that includes metadata for processing.
+                # Deliberately omit type/data_source/query so resolve_loader returns None
+                # and resolve_source falls through to table_store (source already processed).
+                branch_cfg: dict[str, Any] = {
+                    "source": branch_source,  # Reference to actual source entity in table_store
+                    "columns": ([source_system_id] + source_cfg.get("columns", [])) if source_system_id else source_cfg.get("columns", []),
+                    # Branch-specific metadata for processor
+                    "_branch_name": branch_name,  # Used for discriminator column
+                    "_branch_keys": branch_keys,  # Used for validation
+                    "_merged_entity": self.entity_name,  # Back-reference to merged entity
+                }
+
+                self.entities_cfg[branch_entity_name] = branch_cfg
+                yield TableConfig(entities_cfg=self.entities_cfg, entity_name=branch_entity_name)
+                del self.entities_cfg[branch_entity_name]
+        else:
+            # Standard/append entity processing
+            yield self
+
+            for idx, append_data in enumerate(self.append_configs):
+                append_entity_name: str = f"{self.entity_name}__append_{idx}"
+                self.entities_cfg[append_entity_name] = self.create_append_config(append_data)
+                yield TableConfig(entities_cfg=self.entities_cfg, entity_name=append_entity_name)
+                del self.entities_cfg[append_entity_name]
 
     def get_key_columns(self) -> set[str]:
         """Get all key columns including system_id and public_id."""
-        key_columns = set(self.keys or [])
+        key_columns: set[str] = set(self.keys or [])
         if self.system_id:
             key_columns.add(self.system_id)
         if self.public_id:
@@ -842,6 +1036,10 @@ class Metadata:
     def default_entity(self) -> str | None:
         """Configuration version."""
         return self.data.get("default_entity")  # e.g. "survey"
+
+    @property
+    def target_model(self) -> dict[str, Any] | None:
+        return self.data.get("target_model")
 
 
 class LayoutPosition:

@@ -47,10 +47,15 @@
 
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="basic">Basic</v-tab>
+        <v-tab v-if="isMergedEntityType" value="branches" :disabled="false">
+          <v-icon icon="mdi-source-branch" class="mr-1" size="small" />
+          Branches
+          <v-tooltip activator="parent" location="bottom">Primary configuration for merged entities</v-tooltip>
+        </v-tab>
         <v-tab value="relationships" :disabled="mode === 'create'">Foreign Keys</v-tab>
         <v-tab value="filters" :disabled="mode === 'create'">Filters</v-tab>
         <v-tab value="unnest" :disabled="mode === 'create'">Unnest</v-tab>
-        <v-tab value="append" :disabled="mode === 'create'">Append</v-tab>
+        <v-tab v-if="!isMergedEntityType" value="append" :disabled="mode === 'create'">Append</v-tab>
         <v-tab value="extra_columns" :disabled="mode === 'create'">Extra Columns</v-tab>
         <v-tab value="replacements" :disabled="mode === 'create'">Replace</v-tab>
         <v-tab value="yaml" :disabled="mode === 'create'">
@@ -243,6 +248,26 @@
                       </v-row>
                     </div>
 
+                    <v-alert v-if="isMergedEntityType" type="info" variant="tonal" density="compact" class="mb-4">
+                      <div class="text-caption">
+                        <strong>Merged entity configuration</strong><br />
+                        Use the <strong>Branches</strong> tab as the primary configuration surface for merged entities.
+                      </div>
+                      <ul class="text-caption mt-2 pl-4">
+                        <li>
+                          Available post-merge: <code>columns</code>, <code>keys</code>, <code>foreign_keys</code>,
+                          <code>extra_columns</code>, <code>depends_on</code>, and <code>drop_duplicates</code>
+                        </li>
+                        <li>
+                          Hidden because they do not apply to merged entities: <code>source</code>,
+                          <code>data_source</code>, <code>query</code>, file options, and <code>append</code>
+                        </li>
+                        <li>
+                          Preview headers describe which branch provides each column and which branches receive null-filled values.
+                        </li>
+                      </ul>
+                    </v-alert>
+
                     <!-- Identity Section: system_id (info), public_id (required), keys (required) -->
                     <div class="form-row">
                       <v-row no-gutters>
@@ -332,8 +357,8 @@
                       </v-row>
                     </div>
 
-                    <!-- Columns (for entity/fixed types) with Depends On -->
-                    <div class="form-row" v-if="formData.type === 'entity' || formData.type === 'fixed' || isFileType">
+                    <!-- Columns (for entity/fixed/file/merged types) with Depends On -->
+                    <div class="form-row" v-if="formData.type === 'entity' || formData.type === 'fixed' || isFileType || isMergedEntityType">
                       <v-row no-gutters>
                         <v-col cols="8" class="pr-2">
                           <v-combobox
@@ -349,7 +374,10 @@
                           >
                             <template #message>
                               <span class="text-caption" v-if="formData.type === 'fixed'">
-                                Additional columns beyond system_id/public_id (which are auto-added to saved config)
+                                Fixed values grid fields. Business keys should be chosen from these fields; system_id and public_id stay implicit in the stored schema.
+                              </span>
+                              <span class="text-caption" v-else-if="isMergedEntityType">
+                                Optional post-merge column restriction. Leave empty to keep the full union returned by all branches.
                               </span>
                               <span class="text-caption" v-else-if="formData.type === 'entity'">
                                 Select from source columns or add new names (type to filter suggestions)
@@ -653,8 +681,27 @@
                 <unnest-editor v-model="formData.advanced.unnest" :available-columns="availableColumnsForUnnest" />
               </v-window-item>
 
-              <v-window-item value="append">
-                <append-editor v-model="formData.advanced.append" :available-entities="availableSourceEntities" />
+              <v-window-item v-if="!isMergedEntityType" value="append">
+                <append-editor
+                  v-model="formData.advanced.append"
+                  :available-entities="availableSourceEntities"
+                  :data-source-names="availableDataSources"
+                  :parent-columns="effectiveEntityColumns"
+                  :parent-public-id="formData.public_id"
+                  :fixed-values-columns="fixedValuesColumns"
+                  :source-entity-columns="sourceEntityColumnsMap"
+                  :source-entity-public-ids="sourceEntityPublicIdMap"
+                />
+              </v-window-item>
+
+              <v-window-item value="branches">
+                <branch-editor
+                  v-model="formData.advanced.branches"
+                  :available-entities="availableSourceEntities"
+                  :parent-entity="formData.name"
+                  :source-entity-columns="sourceEntityColumnsMap"
+                  :source-entity-public-ids="sourceEntityPublicIdMap"
+                />
               </v-window-item>
 
               <v-window-item value="extra_columns">
@@ -701,7 +748,7 @@
           <div v-show="viewMode === 'both' || viewMode === 'preview'" class="preview-panel">
             <div class="preview-header">
               <div class="d-flex align-center justify-space-between pa-2">
-                <div class="d-flex align-center gap-2">
+                <div class="preview-toolbar-controls d-flex align-center">
                   <v-select
                     v-model="previewLimit"
                     :items="previewLimitOptions"
@@ -729,6 +776,47 @@
                   <v-chip v-if="livePreviewData" size="small" color="primary" variant="tonal">
                     {{ livePreviewData.total_rows_in_preview || 0 }} rows
                   </v-chip>
+
+                  <v-select
+                    v-if="formData.type === 'merged'"
+                    v-model="previewTargetMode"
+                    :items="previewTargetOptions"
+                    item-title="title"
+                    item-value="value"
+                    label="Preview"
+                    density="compact"
+                    variant="outlined"
+                    style="max-width: 190px"
+                    hide-details
+                    @update:model-value="refreshPreview"
+                  />
+
+                  <v-select
+                    v-if="previewTargetMode === 'source' && previewSourceBranchOptions.length > 0"
+                    v-model="selectedPreviewSourceBranch"
+                    :items="previewSourceBranchOptions"
+                    item-title="title"
+                    item-value="value"
+                    label="Source branch"
+                    density="compact"
+                    variant="outlined"
+                    style="max-width: 240px"
+                    hide-details
+                    @update:model-value="refreshPreview"
+                  />
+
+                  <v-select
+                    v-if="mergedPreviewHasBranchFilter"
+                    v-model="selectedPreviewBranch"
+                    :items="previewBranchOptions"
+                    item-title="title"
+                    item-value="value"
+                    label="Branch"
+                    density="compact"
+                    variant="outlined"
+                    style="max-width: 190px"
+                    hide-details
+                  />
 
                   <v-chip v-if="livePreviewLastRefresh" size="small" variant="text">
                     <v-icon start size="x-small">mdi-clock-outline</v-icon>
@@ -777,6 +865,20 @@
 
             <div class="preview-content">
               <v-progress-linear v-if="previewLoading" indeterminate color="primary" />
+
+              <div
+                v-if="!previewLoading && isPreviewingBranchSource && selectedPreviewSourceBranchOption"
+                class="d-flex flex-wrap align-center ga-2 px-2 pt-2"
+              >
+                <v-chip size="small" color="teal" variant="tonal">
+                  <v-icon start size="x-small">mdi-source-branch</v-icon>
+                  Previewing source rows for {{ selectedPreviewSourceBranchOption.value }}
+                </v-chip>
+                <v-chip size="small" color="secondary" variant="outlined">
+                  <v-icon start size="x-small">mdi-database-eye</v-icon>
+                  {{ selectedPreviewSourceBranchOption.source }}
+                </v-chip>
+              </div>
 
               <div v-if="livePreviewData && !previewLoading" class="preview-table-container">
                 <div class="preview-grid-wrapper">
@@ -917,6 +1019,7 @@ import ForeignKeyEditor from './ForeignKeyEditor.vue'
 import FiltersEditor from './FiltersEditor.vue'
 import UnnestEditor from './UnnestEditor.vue'
 import AppendEditor from './AppendEditor.vue'
+import BranchEditor from './BranchEditor.vue'
 import ExtraColumnsEditor from './ExtraColumnsEditor.vue'
 import ReplacementsEditor from './ReplacementsEditor.vue'
 import SuggestionsPanel from './SuggestionsPanel.vue'
@@ -934,6 +1037,8 @@ import {
   applyMaterializationRoundTripToFixedEntity,
   extractMaterializationRoundTripState,
   getExternalValuesUpdateColumns,
+  normalizeFixedValuesRowsForForm,
+  remapFixedValuesRowsToColumns,
   normalizeEditableFixedColumns,
 } from './entityFormMaterialization'
 
@@ -981,7 +1086,6 @@ const { entities, create, update } = useEntities({
 })
 
 const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions()
-
 const appSettings = useSettings()
 const fkSuggestionsEnabled = computed(() => appSettings.enableFkSuggestions.value)
 
@@ -991,6 +1095,7 @@ const projectStore = useProjectStore()
 
 // Split-pane and preview state
 type ViewMode = 'form' | 'both' | 'preview'
+type PreviewTargetMode = 'merged' | 'source'
 const viewMode = ref<ViewMode>('form')
 const autoRefreshEnabled = ref(false)
 const previewLimit = ref<number | null>(100)
@@ -1049,6 +1154,7 @@ const externalValuesDirective = ref<string | null>(null)
 const materializedConfig = ref<Record<string, any> | null>(null)
 const initialFormSnapshot = ref<string | null>(null)
 const hasPendingChanges = ref(false)
+const suppressFixedSchemaRemap = ref(false)
 
 interface FormData {
   name: string
@@ -1085,6 +1191,7 @@ interface FormData {
     filters?: any[]
     unnest?: any | null
     append?: any[]
+    branches?: any[]
     extra_columns?: Record<string, string | null>
     replacements?: Record<string, any>
   }
@@ -1147,6 +1254,7 @@ const formData = ref<FormData>({
     filters: [],
     unnest: null,
     append: [],
+    branches: [],
     extra_columns: undefined,
     replacements: undefined,
   },
@@ -1242,6 +1350,164 @@ const canPreview = computed(() => {
   return props.mode === 'edit' && formData.value.name
 })
 
+const isMergedEntityType = computed(() => formData.value.type === 'merged')
+
+const ALL_BRANCH_PREVIEW_VALUE = '__all__'
+const selectedPreviewBranch = ref<string>(ALL_BRANCH_PREVIEW_VALUE)
+const previewTargetMode = ref<PreviewTargetMode>('merged')
+const selectedPreviewSourceBranch = ref<string | null>(null)
+
+const mergedBranchConfigs = computed(() => {
+  if (formData.value.type !== 'merged') {
+    return [] as Array<{ name?: string; source?: string; keys?: string[] }>
+  }
+
+  return (formData.value.advanced.branches || []).filter(
+    (branch): branch is { name?: string; source?: string; keys?: string[] } => typeof branch === 'object' && branch !== null
+  )
+})
+
+const previewTargetOptions = computed(() => {
+  const options = [{ title: 'Merged result', value: 'merged' as PreviewTargetMode }]
+  if (mergedBranchConfigs.value.length > 0) {
+    options.push({ title: 'Branch source rows', value: 'source' as PreviewTargetMode })
+  }
+  return options
+})
+
+const previewSourceBranchOptions = computed(() => {
+  return mergedBranchConfigs.value
+    .filter((branch) => typeof branch.name === 'string' && branch.name.length > 0 && typeof branch.source === 'string' && branch.source.length > 0)
+    .map((branch) => ({
+      title: `${branch.name} (${branch.source})`,
+      value: branch.name as string,
+      source: branch.source as string,
+    }))
+})
+
+const selectedPreviewSourceBranchOption = computed(() => {
+  return previewSourceBranchOptions.value.find((branch) => branch.value === selectedPreviewSourceBranch.value) || null
+})
+
+const isPreviewingBranchSource = computed(() => {
+  return formData.value.type === 'merged' && previewTargetMode.value === 'source' && !!selectedPreviewSourceBranchOption.value
+})
+
+const mergedPreviewBranchColumn = computed(() => {
+  if (isPreviewingBranchSource.value || formData.value.type !== 'merged' || !formData.value.name || !livePreviewData.value?.columns) {
+    return null
+  }
+
+  const candidate = `${formData.value.name}_branch`
+  return livePreviewData.value.columns.some((column) => column.name === candidate) ? candidate : null
+})
+
+const mergedPreviewFkColumns = computed(() => {
+  if (formData.value.type !== 'merged') return []
+
+  const visibleColumns = new Set(livePreviewData.value?.columns.map((column) => column.name) || [])
+
+  return (formData.value.advanced.branches || [])
+    .map((branch: any) => {
+      const source = branch?.source
+      if (!source) return null
+      return sourceEntityPublicIdMap.value[source] || `${source}_id`
+    })
+    .filter((columnName): columnName is string => {
+      if (typeof columnName !== 'string' || columnName.length === 0) {
+        return false
+      }
+      return visibleColumns.has(columnName)
+    })
+})
+
+const mergedPreviewColumnCoverage = computed<Record<string, { presentIn: string[]; absentIn: string[] }>>(() => {
+  if (isPreviewingBranchSource.value || formData.value.type !== 'merged' || !mergedPreviewBranchColumn.value || !livePreviewData.value?.columns) {
+    return {}
+  }
+
+  const rows = livePreviewData.value.rows || []
+  const branchColumn = mergedPreviewBranchColumn.value
+  const branchNames = Array.from(
+    new Set(
+      rows
+        .map((row) => row[branchColumn])
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    )
+  )
+
+  if (branchNames.length === 0) {
+    return {}
+  }
+
+  const hasValue = (value: unknown): boolean => value !== null && value !== undefined && !(typeof value === 'string' && value.length === 0)
+
+  return Object.fromEntries(
+    livePreviewData.value.columns.map((column) => {
+      const presentIn = branchNames.filter((branch) => rows.some((row) => row[branchColumn] === branch && hasValue(row[column.name])))
+      const absentIn = branchNames.filter((branch) => !presentIn.includes(branch))
+      return [column.name, { presentIn, absentIn }]
+    })
+  )
+})
+
+function describeMergedPreviewColumn(columnName: string): string | undefined {
+  const coverage = mergedPreviewColumnCoverage.value[columnName]
+  if (!coverage || coverage.presentIn.length === 0) {
+    return undefined
+  }
+
+  if (coverage.absentIn.length === 0) {
+    return coverage.presentIn.length > 1
+      ? `Present in all visible branches: ${coverage.presentIn.join(', ')}`
+      : `Present in visible branch: ${coverage.presentIn[0]}`
+  }
+
+  return `Present in: ${coverage.presentIn.join(', ')}. Null-filled for: ${coverage.absentIn.join(', ')}`
+}
+
+function isMergedPreviewNullFillCell(columnName: string | undefined, row: Record<string, unknown> | undefined): boolean {
+  if (!columnName || !row || !mergedPreviewBranchColumn.value) {
+    return false
+  }
+
+  const branch = row[mergedPreviewBranchColumn.value]
+  if (typeof branch !== 'string' || branch.length === 0) {
+    return false
+  }
+
+  const coverage = mergedPreviewColumnCoverage.value[columnName]
+  if (!coverage || !coverage.absentIn.includes(branch)) {
+    return false
+  }
+
+  const value = row[columnName]
+  return value === null || value === undefined || (typeof value === 'string' && value.length === 0)
+}
+
+const mergedPreviewHasBranchFilter = computed(() => {
+  return previewTargetMode.value === 'merged' && Boolean(mergedPreviewBranchColumn.value && livePreviewData.value?.rows?.length)
+})
+
+const previewBranchOptions = computed(() => {
+  if (!mergedPreviewHasBranchFilter.value || !mergedPreviewBranchColumn.value) {
+    return []
+  }
+
+  const branchValues = Array.from(
+    new Set(
+      (livePreviewData.value?.rows || [])
+        .map((row) => row[mergedPreviewBranchColumn.value!])
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    )
+  ).sort()
+
+  return [
+    { title: 'All branches', value: ALL_BRANCH_PREVIEW_VALUE },
+    ...branchValues.map((branch) => ({ title: branch, value: branch })),
+  ]
+})
+
 // Ag-grid project for preview
 const previewColumnDefs = computed<ColDef[]>(() => {
   if (!livePreviewData.value?.columns) return []
@@ -1254,7 +1520,24 @@ const previewColumnDefs = computed<ColDef[]>(() => {
     resizable: true,
     minWidth: 40,
     flex: 1,
-    cellClass: col.is_key ? 'key-column' : '',
+    headerClass: [
+      col.name === mergedPreviewBranchColumn.value ? 'merged-preview-branch-header' : '',
+      mergedPreviewFkColumns.value.includes(col.name) ? 'merged-preview-fk-header' : '',
+      mergedPreviewColumnCoverage.value[col.name]?.absentIn.length ? 'merged-preview-partial-header' : '',
+    ].filter(Boolean),
+    headerTooltip: [
+      col.name === mergedPreviewBranchColumn.value ? 'Auto-generated branch discriminator for merged entities' : '',
+      mergedPreviewFkColumns.value.includes(col.name) ? 'Sparse lineage foreign key back to the source branch row' : '',
+      describeMergedPreviewColumn(col.name) || '',
+    ].filter(Boolean).join(' | ') || undefined,
+    cellClass: [
+      col.is_key ? 'key-column' : '',
+      col.name === mergedPreviewBranchColumn.value ? 'merged-preview-branch-cell' : '',
+      mergedPreviewFkColumns.value.includes(col.name) ? 'merged-preview-fk-cell' : '',
+    ].filter(Boolean).join(' '),
+    cellClassRules: {
+      'merged-preview-null-fill-cell': (params: any) => isMergedPreviewNullFillCell(col.name, params.data),
+    },
     headerComponent: undefined,
     headerComponentParams: {
       columnInfo: col,
@@ -1263,7 +1546,17 @@ const previewColumnDefs = computed<ColDef[]>(() => {
 })
 
 const previewRowData = computed(() => {
-  return livePreviewData.value?.rows || []
+  const rows = livePreviewData.value?.rows || []
+
+  if (!mergedPreviewHasBranchFilter.value || selectedPreviewBranch.value === ALL_BRANCH_PREVIEW_VALUE) {
+    return rows
+  }
+
+  if (!mergedPreviewBranchColumn.value) {
+    return rows
+  }
+
+  return rows.filter((row) => row[mergedPreviewBranchColumn.value!] === selectedPreviewBranch.value)
 })
 
 const previewDefaultColDef: ColDef = {
@@ -1562,8 +1855,11 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
   if (formData.value.advanced.unnest) {
     entityData.unnest = formData.value.advanced.unnest
   }
-  if (formData.value.advanced.append?.length) {
+  if (formData.value.type !== 'merged' && formData.value.advanced.append?.length) {
     entityData.append = formData.value.advanced.append
+  }
+  if (formData.value.type === 'merged' && formData.value.advanced.branches?.length) {
+    entityData.branches = formData.value.advanced.branches
   }
   if (formData.value.advanced.extra_columns) {
     entityData.extra_columns = formData.value.advanced.extra_columns
@@ -1580,6 +1876,15 @@ async function refreshPreview() {
   if (!canPreview.value) return
 
   previewError.value = null
+
+  if (isPreviewingBranchSource.value && selectedPreviewSourceBranchOption.value) {
+    await previewEntity(props.projectName, selectedPreviewSourceBranchOption.value.source, previewLimit.value)
+
+    if (livePreviewError.value) {
+      previewError.value = livePreviewError.value
+    }
+    return
+  }
 
   // Convert form data to entity config format (same as handleSubmit)
   const entityConfig = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
@@ -1791,12 +2096,39 @@ watch(
   formData,
   () => {
     if (autoRefreshEnabled.value && viewMode.value !== 'form' && canPreview.value) {
-      // Convert form data to entity config before previewing
-      const entityConfig = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
-      debouncedPreviewEntity(props.projectName, formData.value.name, 100, entityConfig)
+      if (isPreviewingBranchSource.value && selectedPreviewSourceBranchOption.value) {
+        debouncedPreviewEntity(props.projectName, selectedPreviewSourceBranchOption.value.source, 100)
+      } else {
+        // Convert form data to entity config before previewing
+        const entityConfig = buildEntityConfigFromFormData({ includeDerivedSqlColumns: true })
+        debouncedPreviewEntity(props.projectName, formData.value.name, 100, entityConfig)
+      }
     }
   },
   { deep: true }
+)
+
+watch(
+  [mergedPreviewBranchColumn, () => formData.value.name],
+  () => {
+    selectedPreviewBranch.value = ALL_BRANCH_PREVIEW_VALUE
+  }
+)
+
+watch(
+  previewSourceBranchOptions,
+  (options) => {
+    if (options.length === 0) {
+      previewTargetMode.value = 'merged'
+      selectedPreviewSourceBranch.value = null
+      return
+    }
+
+    if (!selectedPreviewSourceBranch.value || !options.some((option) => option.value === selectedPreviewSourceBranch.value)) {
+      selectedPreviewSourceBranch.value = options[0]?.value || null
+    }
+  },
+  { immediate: true }
 )
 
 // Watch for source entity changes (entity type) to hydrate columns
@@ -1921,6 +2253,12 @@ watch(
       hydrateColumnsFromSource()
     }
 
+    if (newType === 'merged') {
+      activeTab.value = 'branches'
+    } else if (oldType === 'merged' && activeTab.value === 'branches') {
+      activeTab.value = 'basic'
+    }
+
     if (isExcelType.value && formData.value.options.filename) {
       await fetchSheetOptions()
     } else {
@@ -1973,7 +2311,65 @@ watch(
       if (filtered.length !== newColumns.length) {
         // Auto-remove forbidden columns
         formData.value.columns = filtered
+        return
       }
+
+      const filteredKeys = normalizeChipField(formData.value.keys).filter((key) => {
+        if (key.trim().startsWith('@')) {
+          return true
+        }
+        return filtered.includes(key)
+      })
+
+      if (JSON.stringify(filteredKeys) !== JSON.stringify(formData.value.keys)) {
+        formData.value.keys = filteredKeys
+      }
+    }
+  },
+  { deep: true }
+)
+
+watch(
+  () => formData.value.keys,
+  (newKeys) => {
+    if (formData.value.type !== 'fixed' || !Array.isArray(newKeys)) {
+      return
+    }
+
+    const publicId = formData.value.public_id
+    const existingColumns = normalizeChipField(formData.value.columns)
+    const missingKeyColumns = normalizeChipField(newKeys).filter((key) => {
+      if (!key || key.trim().startsWith('@')) {
+        return false
+      }
+      if (key === 'system_id' || key === publicId) {
+        return false
+      }
+      return !existingColumns.includes(key)
+    })
+
+    if (missingKeyColumns.length > 0) {
+      formData.value.columns = [...existingColumns, ...missingKeyColumns]
+    }
+  },
+  { deep: true }
+)
+
+watch(
+  () => fixedValuesColumns.value,
+  (newColumns, oldColumns) => {
+    if (
+      suppressFixedSchemaRemap.value
+      || formData.value.type !== 'fixed'
+      || !Array.isArray(formData.value.values)
+      || oldColumns.length === 0
+    ) {
+      return
+    }
+
+    const remappedRows = remapFixedValuesRowsToColumns(formData.value.values, oldColumns, newColumns)
+    if (JSON.stringify(remappedRows) !== JSON.stringify(formData.value.values)) {
+      formData.value.values = remappedRows
     }
   },
   { deep: true }
@@ -2060,10 +2456,61 @@ const entityTypeOptions = [
   { title: 'CSV File', value: 'csv', subtitle: 'Load from CSV file' },
   { title: 'Excel File (Pandas)', value: 'xlsx', subtitle: 'Load Excel with pandas' },
   { title: 'Excel File (OpenPyXL)', value: 'openpyxl', subtitle: 'Load Excel with OpenPyXL (supports ranges)' },
+  { title: 'Merged (Multi-Branch)', value: 'merged', subtitle: 'Combine multiple source entities into one' },
 ]
 
 const availableSourceEntities = computed(() => {
   return entities.value.filter((e) => e.name !== formData.value.name).map((e) => e.name)
+})
+
+const sourceEntityColumnsMap = computed<Record<string, string[]>>(() => {
+  return Object.fromEntries(
+    entities.value
+      .filter((entity) => entity.name !== formData.value.name)
+      .map((entity) => [entity.name, normalizeChipField(entity.entity_data.columns)])
+  )
+})
+
+const sourceEntityPublicIdMap = computed<Record<string, string | null>>(() => {
+  return Object.fromEntries(
+    entities.value
+      .filter((entity) => entity.name !== formData.value.name)
+      .map((entity) => {
+        const publicId = typeof entity.entity_data.public_id === 'string' ? entity.entity_data.public_id.trim() : ''
+        return [entity.name, publicId || null]
+      })
+  )
+})
+
+const mergedAvailableColumns = computed(() => {
+  if (!isMergedEntityType.value) {
+    return [] as string[]
+  }
+
+  const outputColumns = new Set<string>()
+
+  if (formData.value.name) {
+    outputColumns.add(`${formData.value.name}_branch`)
+  }
+
+  for (const branch of mergedBranchConfigs.value) {
+    if (!branch.source) {
+      continue
+    }
+
+    for (const column of getColumnsFromEntity(branch.source)) {
+      if (column && column !== 'system_id') {
+        outputColumns.add(column)
+      }
+    }
+
+    const branchFkColumn = sourceEntityPublicIdMap.value[branch.source] || `${branch.source}_id`
+    if (branchFkColumn && branchFkColumn !== 'system_id') {
+      outputColumns.add(branchFkColumn)
+    }
+  }
+
+  return Array.from(outputColumns)
 })
 
 const availableDataSources = computed(() => {
@@ -2085,7 +2532,12 @@ const isExcelType = computed(() => {
 })
 
 const availableColumns = computed(() => {
-  const cols = columnsOptions.value
+  const cols = isMergedEntityType.value
+    ? mergedAvailableColumns.value
+    : formData.value.type === 'fixed'
+      ? Array.from(new Set([...normalizeChipField(formData.value.columns), ...normalizeChipField(formData.value.keys)]))
+          .filter((column) => column && column !== 'system_id' && column !== formData.value.public_id)
+      : columnsOptions.value
   const directives = directivePaths.value
   if (directives.length === 0) return cols
   // Show regular columns first, then @value: directive paths as additional options
@@ -2287,6 +2739,9 @@ function yamlToFormData(yamlString: string): boolean {
     const roundTrip = extractMaterializationRoundTripState(data)
     externalValuesDirective.value = roundTrip.externalValuesDirective
     materializedConfig.value = roundTrip.materializedConfig
+    const normalizedFixedRows = (data.type || 'entity') === 'fixed'
+      ? normalizeFixedValuesRowsForForm(roundTrip.inlineValues, normalizedColumns, normalizedKeys, publicId)
+      : roundTrip.inlineValues
 
     const dropDuplicates = data.drop_duplicates
     const dropDuplicatesData = {
@@ -2311,41 +2766,46 @@ function yamlToFormData(yamlString: string): boolean {
           ? nestedCheckFunctionalDependency
           : dropDuplicates !== undefined && dropDuplicates !== null
 
-    formData.value = {
-      name: data.name || formData.value.name,
-      type: data.type || 'entity',
-      system_id: 'system_id', // Always standardized
-      public_id: publicId, // Migrate surrogate_id → public_id
-      surrogate_id: data.surrogate_id || '', // Keep for backward compat
-      keys: normalizedKeys,
-      columns:
-        (data.type || 'entity') === 'fixed'
-          ? normalizeEditableFixedColumns(normalizedColumns, normalizedKeys, publicId)
-          : normalizedColumns,
-      values: roundTrip.inlineValues,
-      source: data.source || null,
-      data_source: data.data_source || '',
-      query: data.query || '',
-      options: {
-        filename: data.options?.filename || '',
-        sep: data.options?.sep || ',',
-        encoding: data.options?.encoding || 'utf-8',
-        sheet_name: data.options?.sheet_name || '',
-        range: data.options?.range || '',
-        location: data.options?.location || 'global',
-      },
-      foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
-      depends_on: normalizeChipField(data.depends_on),
-      drop_duplicates: dropDuplicatesData,
-      drop_empty_rows: dropEmptyRowsData,
-      check_functional_dependency: effectiveCheckFunctionalDependency,
-      advanced: {
-        filters: Array.isArray(data.filters) ? data.filters : [],
-        unnest: data.unnest || null,
-        append: Array.isArray(data.append) ? data.append : [],
-        extra_columns: data.extra_columns || undefined,
-        replacements: data.replacements || undefined,
-      },
+    suppressFixedSchemaRemap.value = true
+    try {
+      formData.value = {
+        name: data.name || formData.value.name,
+        type: data.type || 'entity',
+        system_id: 'system_id', // Always standardized
+        public_id: publicId, // Migrate surrogate_id → public_id
+        surrogate_id: data.surrogate_id || '', // Keep for backward compat
+        keys: normalizedKeys,
+        columns:
+          (data.type || 'entity') === 'fixed'
+            ? normalizeEditableFixedColumns(normalizedColumns, normalizedKeys, publicId)
+            : normalizedColumns,
+        values: normalizedFixedRows,
+        source: data.source || null,
+        data_source: data.data_source || '',
+        query: data.query || '',
+        options: {
+          filename: data.options?.filename || '',
+          sep: data.options?.sep || ',',
+          encoding: data.options?.encoding || 'utf-8',
+          sheet_name: data.options?.sheet_name || '',
+          range: data.options?.range || '',
+          location: data.options?.location || 'global',
+        },
+        foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
+        depends_on: normalizeChipField(data.depends_on),
+        drop_duplicates: dropDuplicatesData,
+        drop_empty_rows: dropEmptyRowsData,
+        check_functional_dependency: effectiveCheckFunctionalDependency,
+        advanced: {
+          filters: Array.isArray(data.filters) ? data.filters : [],
+          unnest: data.unnest || null,
+          append: Array.isArray(data.append) ? data.append : [],
+          extra_columns: data.extra_columns || undefined,
+          replacements: data.replacements || undefined,
+        },
+      }
+    } finally {
+      suppressFixedSchemaRemap.value = false
     }
 
     yamlError.value = null
@@ -2702,13 +3162,23 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   // since they're auto-managed and will be auto-added on save
   const keys = normalizeChipField(entity.entity_data.keys)
   const normalizedColumns = normalizeChipField(entity.entity_data.columns)
+  const publicId = (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || ''
   let columns = normalizedColumns
   if (entity.entity_data.type === 'fixed') {
-    columns = entity.fixed_schema?.editable_columns || []
+    const fixedFullColumns = entity.fixed_schema?.full_columns || normalizedColumns
+    columns = normalizeEditableFixedColumns(fixedFullColumns, keys, publicId)
   }
 
   // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
   const roundTrip = extractMaterializationRoundTripState(entity.entity_data)
+  const normalizedFixedRows = entity.entity_data.type === 'fixed'
+    ? normalizeFixedValuesRowsForForm(
+        roundTrip.inlineValues,
+        normalizedColumns,
+        keys,
+        publicId
+      )
+    : roundTrip.inlineValues
   hasExternalValues.value = Boolean(roundTrip.externalValuesDirective)
   externalValuesDirective.value = roundTrip.externalValuesDirective
   materializedConfig.value = roundTrip.materializedConfig
@@ -2721,11 +3191,11 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     name: entity.name,
     type: (entity.entity_data.type as string) || 'entity',
     system_id: 'system_id', // Always standardized
-    public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '', // Migrate
+    public_id: publicId, // Migrate
     surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
     keys,
     columns: columns,
-    values: roundTrip.inlineValues,
+    values: normalizedFixedRows,
     source: (entity.entity_data.source as string) || null,
     data_source: (entity.entity_data.data_source as string) || '',
     query: (entity.entity_data.query as string) || '',
@@ -2752,6 +3222,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       filters: (entity.entity_data.filters as any[]) || [],
       unnest: entity.entity_data.unnest || null,
       append: (entity.entity_data.append as any[]) || [],
+      branches: (entity.entity_data.branches as any[]) || [],
       extra_columns: (entity.entity_data.extra_columns as Record<string, string | null>) || undefined,
     },
   }
@@ -2775,11 +3246,16 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
       const response = await api.entities.getValues(props.projectName, entity.name)
 
       // Populate form data with fetched values
-      formData.value.values = response.values
-      if (formData.value.type === 'fixed') {
-        formData.value.columns = entity.fixed_schema?.editable_columns || []
-      } else {
-        formData.value.columns = response.columns
+      suppressFixedSchemaRemap.value = true
+      try {
+        formData.value.values = response.values
+        if (formData.value.type === 'fixed') {
+          formData.value.columns = normalizeEditableFixedColumns(response.columns, formData.value.keys, formData.value.public_id)
+        } else {
+          formData.value.columns = response.columns
+        }
+      } finally {
+        suppressFixedSchemaRemap.value = false
       }
 
       // Store etag for optimistic locking
@@ -2846,6 +3322,7 @@ function buildDefaultFormData(): FormData {
       filters: [],
       unnest: null,
       append: [],
+      branches: [],
       extra_columns: undefined,
     },
   }
@@ -2887,6 +3364,7 @@ watch(
         if (props.entity) {
           console.log('[EntityFormDialog] Using entity from props (reactive store):', entityName)
           currentEntity.value = props.entity
+          suppressFixedSchemaRemap.value = true
           formData.value = buildFormDataFromEntity(props.entity)
           yamlContent.value = formDataToYaml()
 
@@ -2900,6 +3378,7 @@ watch(
 
           await refreshFormValidity()
           captureInitialSnapshot()
+          suppressFixedSchemaRemap.value = false
         } else {
           // Fallback: fetch from API if entity not provided (shouldn't happen in normal flow)
           loading.value = true
@@ -2908,6 +3387,7 @@ watch(
             const freshEntity = await api.entities.get(props.projectName, entityName)
             console.log('[EntityFormDialog] API response received for:', freshEntity.name)
             currentEntity.value = freshEntity
+            suppressFixedSchemaRemap.value = true
             formData.value = buildFormDataFromEntity(freshEntity)
             yamlContent.value = formDataToYaml()
 
@@ -2925,6 +3405,7 @@ watch(
             error.value = err instanceof Error ? err.message : 'Failed to load entity data'
             console.error('Failed to fetch entity data:', err)
           } finally {
+            suppressFixedSchemaRemap.value = false
             loading.value = false
           }
         }
@@ -3162,6 +3643,11 @@ function handleRejectDependency(dep: DependencySuggestion) {
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
+.preview-toolbar-controls {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .preview-content {
   flex: 1 1 auto;
   overflow: hidden;
@@ -3256,6 +3742,33 @@ function handleRejectDependency(dep: DependencySuggestion) {
   font-weight: 500;
   background: rgba(var(--v-theme-warning), 0.05) !important;
   color: rgb(var(--v-theme-on-background)) !important;
+}
+
+.preview-ag-grid :deep(.merged-preview-branch-header) {
+  background: rgba(var(--v-theme-secondary), 0.12) !important;
+}
+
+.preview-ag-grid :deep(.merged-preview-fk-header) {
+  background: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.preview-ag-grid :deep(.merged-preview-partial-header) {
+  box-shadow: inset 0 -2px 0 rgba(var(--v-theme-warning), 0.65);
+}
+
+.preview-ag-grid :deep(.merged-preview-branch-cell) {
+  background: rgba(var(--v-theme-secondary), 0.08) !important;
+  font-weight: 600;
+}
+
+.preview-ag-grid :deep(.merged-preview-fk-cell) {
+  background: rgba(var(--v-theme-primary), 0.05) !important;
+}
+
+.preview-ag-grid :deep(.merged-preview-null-fill-cell) {
+  color: rgba(var(--v-theme-on-surface), 0.55) !important;
+  background: linear-gradient(90deg, rgba(var(--v-theme-warning), 0.08), transparent) !important;
+  font-style: italic;
 }
 
 /* Dark mode support for ag-grid */

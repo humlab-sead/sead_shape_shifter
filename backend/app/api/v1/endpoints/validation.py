@@ -82,6 +82,30 @@ async def validate_entity(name: str, entity_name: str) -> ValidationResult:
     return result
 
 
+@router.post("/projects/{name}/validate/target-model", response_model=ValidationResult)
+@handle_endpoint_errors
+async def validate_target_model(name: str) -> ValidationResult:
+    """
+    Run target-model conformance validation for a project.
+
+    Checks that the project's entities conform to the target model specification
+    declared in ``metadata.target_model``.  If the project has no target model,
+    returns an empty valid result.
+
+    Args:
+        name: Project name
+
+    Returns:
+        Validation result with conformance errors (severity="error").
+        ``is_valid`` is True when there are zero conformance issues.
+    """
+    validation_service: ValidationService = get_validation_service()
+    result: ValidationResult = validation_service.validate_target_model(name)
+
+    logger.info(f"Target-model conformance for '{name}': valid={result.is_valid}, errors={result.error_count}")
+    return result
+
+
 @router.get("/projects/{name}/dependencies")
 @handle_endpoint_errors
 async def get_dependencies(name: str) -> dict[str, Any]:

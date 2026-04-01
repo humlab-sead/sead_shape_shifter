@@ -106,28 +106,16 @@ These are the primary system documentation files:
   - Proposes adding an explicit `engine` field to `type: query` filters for advanced pandas query behavior
   - Recommends `engine: python` over prefix forms like `query: "python:..."`
 
-- **[proposals/USER_FACING_RELEASE_NOTES_STRATEGY.md](proposals/USER_FACING_RELEASE_NOTES_STRATEGY.md)**
-  - Recommends keeping the technical `CHANGELOG.md` while adding curated user-facing release notes
-  - Covers both the documentation strategy and the semantic-release workflow for publishing shorter GitHub Release summaries
-
 - **[proposals/ENTITY_EDITOR_OPTIMISTIC_LOCKING.md](proposals/ENTITY_EDITOR_OPTIMISTIC_LOCKING.md)**
   - Shape Shifter currently has optimistic locking at the project level for the entire project.
   - The most frequent use case in the UI, is where a user opens, edits, and saves one entity at a time.
   - This proposal introduces optimistic locking at an entity level increasing collaborative work.
 
-### Done Proposals
-
-- **[proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)**
-  - Defines the Phase 1 lookup-join default for null handling in alternative-key foreign key joins.
-  - Recommends leaving the FK unresolved instead of raising when lookup-style joins have missing alternative keys.
-
-- **[proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md)**
-  - Records the completed derived-value follow-through work around `extra_columns`.
-  - Concludes that the current `extra_columns` plus DSL path is sufficient for lightweight derived values and closes the question of a second overlapping derived-value feature for now.
-
-- **[proposals/FK_NULL_KEY_POLICY_MODEL.md](proposals/FK_NULL_KEY_POLICY_MODEL.md)**
-  - Placeholder for a future Phase 2 proposal about an explicit missing-key policy model.
-  - Outlines the open design questions for a broader user-facing null-key strategy.
+- **[proposals/OPT_IN_PRESERVE_SYSTEM_ID_FILE_BACKED.md](proposals/OPT_IN_PRESERVE_SYSTEM_ID_FILE_BACKED.md)**
+  - Introduce an explicit, validated opt-in mechanism to allow file-backed reference entities (e.g., loaded via openpyxl, csv) to preserve externally curated `system_id` values. This will:
+    - Enable stable identity for reference tables curated outside Shape Shifter
+    - Prevent accidental acceptance of user-supplied IDs without review
+    - Maintain strict validation and integrity for all other entity types
 
 - **[proposals/VUETIFY_4_MIGRATION_RESUME_PLAN.md](proposals/VUETIFY_4_MIGRATION_RESUME_PLAN.md)**
   - Records the current Vuetify 4 migration findings, including what is safe and unsafe to pre-apply.
@@ -145,13 +133,31 @@ These are the primary system documentation files:
   - Proposes preserving YAML comments across ordinary project saves so local modeling rationale is not lost during editor round trips.
   - Recommends a comment-preserving persistence path instead of treating a generic entity-level `note` field as a substitute.
 
-- **[proposals/BOUNDARY_BASED_PROJECT_PERSISTENCE.md](proposals/BOUNDARY_BASED_PROJECT_PERSISTENCE.md)**
-  - Proposes explicit persistence boundaries for `metadata`, `options`, and `entities[entity_name]` instead of treating every save as whole-document regeneration.
-  - Positions that narrower subtree-merge capability as a foundation for comment-preserving saves, entity-level optimistic locking, and future collaboration improvements.
-
 - **[proposals/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md](proposals/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md)**
   - Companion technical sketch for implementing the comment-preserving save proposal.
   - Compares the current save flow with a save-time reload and merge flow that preserves comments without adding another long-lived cache layer.
+
+### Done Proposals
+
+- **[proposals/done/USER_FACING_RELEASE_NOTES_STRATEGY.md](proposals/done/USER_FACING_RELEASE_NOTES_STRATEGY.md)**
+  - Recommends keeping the technical `CHANGELOG.md` while adding curated user-facing release notes
+  - Covers both the documentation strategy and the semantic-release workflow for publishing shorter GitHub Release summaries
+
+- **[proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)**
+  - Defines the Phase 1 lookup-join default for null handling in alternative-key foreign key joins.
+  - Recommends leaving the FK unresolved instead of raising when lookup-style joins have missing alternative keys.
+
+- **[proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md)**
+  - Records the completed derived-value follow-through work around `extra_columns`.
+  - Concludes that the current `extra_columns` plus DSL path is sufficient for lightweight derived values and closes the question of a second overlapping derived-value feature for now.
+
+- **[proposals/done/FK_NULL_KEY_POLICY_MODEL.md](proposals/done/FK_NULL_KEY_POLICY_MODEL.md)**
+  - Placeholder for a future Phase 2 proposal about an explicit missing-key policy model.
+  - Outlines the open design questions for a broader user-facing null-key strategy.
+
+- **[proposals/done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md](proposals/done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md)**
+  - Proposes explicit persistence boundaries for `metadata`, `options`, and `entities[entity_name]` instead of treating every save as whole-document regeneration.
+  - Positions that narrower subtree-merge capability as a foundation for comment-preserving saves, entity-level optimistic locking, and future collaboration improvements.
 
 - **[proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md](proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md)**
   - Proposes a small, safe DSL layered on top of `extra_columns` for lightweight derived-value transforms.
@@ -168,6 +174,8 @@ These are the primary system documentation files:
 - **[proposals/done/MATERIALIZED_DEPENDENCY_VISUALIZATION.md](proposals/done/MATERIALIZED_DEPENDENCY_VISUALIZATION.md)**
   - Documents the implemented dependency-graph support for showing frozen historical source dependencies on materialized fixed entities.
   - Covers the backend extractor, frozen edge metadata, Cytoscape styling, and validation coverage.
+
+### Other Documents
 
 - **[other/DSL_EXTENSIBILITY_GUIDE.md](other/DSL_EXTENSIBILITY_GUIDE.md)**
   - Extension guide for adding new expression types or functions to the tiny DSL after the initial implementation.

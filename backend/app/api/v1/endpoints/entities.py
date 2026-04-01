@@ -15,6 +15,7 @@ from backend.app.services.entity_values_service import (
     EntityValuesService,
     get_entity_values_service,
 )
+from backend.app.services.project.entity_operations import compute_entity_etag
 from backend.app.services.project_service import (
     ProjectService,
     get_project_service,
@@ -28,17 +29,56 @@ router = APIRouter()
 
 
 # Request/Response Models
+_MERGED_ENTITY_EXAMPLE = {
+    "type": "merged",
+    "public_id": "analysis_entity_id",
+    "keys": ["Projekt", "Befu", "ProbNr"],
+    "branches": [
+        {"name": "abundance", "source": "abundance", "keys": ["PCODE", "Fraktion"]},
+        {"name": "relative_dating", "source": "_analysis_entity_relative_dating", "keys": ["ArchDat"]},
+    ],
+}
+
+_ENTITY_DATA_EXAMPLES = [
+    {"type": "sql", "data_source": "my_db", "query": "SELECT * FROM my_table"},
+    {"type": "fixed", "public_id": "status_id", "keys": ["name"], "values": [["active"], ["inactive"]], "columns": ["name"]},
+    _MERGED_ENTITY_EXAMPLE,
+]
+
+
 class EntityCreateRequest(BaseModel):
-    """Request to create new entity."""
+    """Request to create new entity.
+
+    The ``entity_data`` payload is a free-form entity configuration dict. Its shape depends on ``type``.
+    Supported types: ``sql``, ``csv``, ``xlsx``, ``fixed``, ``merged``.
+
+    For ``type: merged`` entities, ``entity_data`` must include:
+
+    - ``public_id`` (required — merged entities act as FK targets)
+    - ``branches`` — list of ``{name, source, keys}`` objects declaring contributing source entities
+
+    Auto-generated output columns:
+
+    - ``{entity_name}_branch`` — discriminator column (one value per branch name)
+    - ``{source_entity}_id`` per branch — sparse FK column back to source ``system_id``
+    """
 
     name: str = Field(..., description="Entity name")
-    entity_data: dict[str, Any] = Field(..., description="Entity configuration data")
+    entity_data: dict[str, Any] = Field(
+        ...,
+        description="Entity configuration data. Shape depends on `type`. See model description for merged entity shape.",
+        examples=_ENTITY_DATA_EXAMPLES,
+    )
 
 
 class EntityUpdateRequest(BaseModel):
-    """Request to update entity."""
+    """Request to update entity. See ``EntityCreateRequest`` for ``entity_data`` shape details."""
 
-    entity_data: dict[str, Any] = Field(..., description="Updated entity configuration data")
+    entity_data: dict[str, Any] = Field(
+        ...,
+        description="Updated entity configuration data. Shape depends on `type`.",
+        examples=_ENTITY_DATA_EXAMPLES,
+    )
 
 
 class EntityResponse(BaseModel):
@@ -46,6 +86,7 @@ class EntityResponse(BaseModel):
 
     name: str = Field(..., description="Entity name")
     entity_data: dict[str, Any] = Field(..., description="Entity configuration data")
+    etag: str = Field(..., description="Content-based ETag for optimistic locking")
     materialized: dict[str, Any] | None = Field(default=None, description="Materialization metadata (if entity is materialized)")
     fixed_schema: FixedSchema | None = Field(default=None, description="Authoritative fixed-schema metadata for fixed entities")
 
@@ -55,6 +96,7 @@ def _build_entity_response(name: str, entity_data: dict[str, Any]) -> EntityResp
     return EntityResponse(
         name=name,
         entity_data=entity_data,
+        etag=compute_entity_etag(entity_data),
         materialized=entity_data.get("materialized"),
         fixed_schema=derive_fixed_schema(entity_data),
     )
@@ -154,20 +196,31 @@ async def create_entity(project_name: str, request: EntityCreateRequest) -> Enti
 
 @router.put("/projects/{project_name}/entities/{entity_name}", response_model=EntityResponse)
 @handle_endpoint_errors
-async def update_entity(project_name: str, entity_name: str, request: EntityUpdateRequest) -> EntityResponse:
+async def update_entity(
+    project_name: str,
+    entity_name: str,
+    request: EntityUpdateRequest,
+    if_match: str | None = Header(None, alias="If-Match"),
+) -> EntityResponse:
     """
     Update existing entity in configuration.
+
+    When an ``If-Match`` header is supplied the update is conditional:
+    the server computes the current entity ETag and rejects the request
+    with **409 Conflict** if it does not match (optimistic locking).
+    Omitting the header performs an unconditional update (backward compatible).
 
     Args:
         project_name: Project name
         entity_name: Entity name
         request: Entity update request
+        if_match: Optional ETag from a previous GET/PUT response
 
     Returns:
-        Updated entity data
+        Updated entity data with a fresh ETag
     """
     project_service: ProjectService = get_project_service()
-    project_service.update_entity_by_name(project_name, entity_name, request.entity_data)
+    project_service.update_entity_by_name(project_name, entity_name, request.entity_data, expected_etag=if_match)
     entity_data: dict[str, Any] = project_service.get_entity_by_name(project_name, entity_name)
     logger.info(f"Updated entity '{entity_name}' in '{project_name}'")
     return _build_entity_response(entity_name, entity_data)

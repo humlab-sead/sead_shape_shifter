@@ -316,6 +316,34 @@ class TestValidationServiceErrorParsing:
         assert "Entity 'sample', field 'extra_columns.sample_label':" in matching_errors[0].message
         assert "=unknown_func(sample_name)" in matching_errors[0].message
 
+    def test_merged_entity_branch_errors_include_branch_metadata(self, validation_service):
+        """Merged entity branch-scoped validation should expose branch metadata for UI grouping."""
+        config = {
+            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "entities": {
+                "source": {
+                    "type": "entity",
+                    "keys": ["sample_id"],
+                    "columns": ["sample_id"],
+                    "public_id": "source_id",
+                },
+                "analysis_entity": {
+                    "type": "merged",
+                    "public_id": "analysis_entity_id",
+                    "branches": [
+                        {"name": "abundance", "source": "missing_entity", "keys": ["sample_id"]},
+                    ],
+                },
+            },
+        }
+
+        result = validation_service.validate_project(config)
+
+        matching_errors = [error for error in result.errors if error.entity == "analysis_entity" and error.branch_name == "abundance"]
+        assert len(matching_errors) == 1
+        assert matching_errors[0].branch_source == "missing_entity"
+        assert "missing_entity" in matching_errors[0].message
+
 
 class TestValidationServiceIntegration:
     """Integration tests with complex configurations."""

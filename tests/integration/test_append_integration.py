@@ -456,6 +456,130 @@ class TestAppendIntegration:
         assert result["category"].tolist()[2:] == ["C", "D"]
 
     @pytest.mark.asyncio
+    async def test_append_with_align_by_position_ignores_public_id_columns(self):
+        """Position alignment should ignore source and target public_id columns.
+
+        This allows union-style appends across entities that expose different public_id
+        column names while still aligning the actual payload columns by position.
+        """
+        survey_df = pd.DataFrame(
+            {
+                "id": ["1", "2"],
+                "name": ["Alice", "Bob"],
+                "category": ["A", "B"],
+            }
+        )
+
+        legacy_df = pd.DataFrame(
+            {
+                "legacy_name": ["Charlie", "Diana"],
+                "legacy_category": ["C", "D"],
+            }
+        )
+
+        cfg = {
+            "entities": {
+                "survey": {
+                    "keys": ["name"],
+                    "columns": ["name", "category"],
+                },
+                "legacy_survey": {
+                    "keys": ["legacy_name"],
+                    "public_id": "legacy_id",
+                    "columns": ["system_id", "legacy_id", "legacy_name", "legacy_category"],
+                },
+                "target_entity": {
+                    "keys": ["name"],
+                    "public_id": "target_id",
+                    "columns": ["system_id", "target_id", "name", "category"],
+                    "depends_on": ["legacy_survey"],
+                    "append": [
+                        {
+                            "source": "legacy_survey",
+                            "align_by_position": True,
+                        }
+                    ],
+                },
+            }
+        }
+
+        normalizer: ShapeShifter = ShapeShifter(
+            table_store={"survey": survey_df, "legacy_survey": legacy_df},
+            project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
+            default_entity="survey",
+        )
+
+        await normalizer.normalize()
+
+        result = normalizer.table_store["target_entity"]
+
+        assert len(result) == 4
+        assert set(result.columns) >= {"system_id", "target_id", "name", "category"}
+        assert result["target_id"].isna().all()
+        assert result["name"].tolist() == ["Alice", "Bob", "Charlie", "Diana"]
+        assert result["category"].tolist() == ["A", "B", "C", "D"]
+
+    @pytest.mark.asyncio
+    async def test_append_with_explicit_columns_align_by_position_ignores_public_id_columns(self):
+        """Explicit source columns should still exclude identity columns from position matching."""
+        survey_df = pd.DataFrame(
+            {
+                "name": ["Alice", "Bob"],
+                "category": ["A", "B"],
+            }
+        )
+
+        legacy_df = pd.DataFrame(
+            {
+                "legacy_name": ["Charlie", "Diana"],
+                "legacy_category": ["C", "D"],
+            }
+        )
+
+        cfg = {
+            "entities": {
+                "survey": {
+                    "keys": ["name"],
+                    "columns": ["name", "category"],
+                },
+                "legacy_survey": {
+                    "keys": ["legacy_name"],
+                    "public_id": "legacy_id",
+                    "columns": ["system_id", "legacy_id", "legacy_name", "legacy_category"],
+                },
+                "target_entity": {
+                    "keys": ["name"],
+                    "public_id": "target_id",
+                    "columns": ["system_id", "target_id", "name", "category"],
+                    "depends_on": ["legacy_survey"],
+                    "append": [
+                        {
+                            "source": "legacy_survey",
+                            "columns": ["system_id", "legacy_id", "legacy_name", "legacy_category"],
+                            "align_by_position": True,
+                        }
+                    ],
+                },
+            }
+        }
+
+        normalizer: ShapeShifter = ShapeShifter(
+            table_store={"survey": survey_df, "legacy_survey": legacy_df},
+            project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
+            default_entity="survey",
+        )
+
+        await normalizer.normalize()
+
+        result = normalizer.table_store["target_entity"]
+
+        assert len(result) == 4
+        assert set(result.columns) >= {"system_id", "target_id", "name", "category"}
+        assert result["target_id"].isna().all()
+        assert result["name"].tolist() == ["Alice", "Bob", "Charlie", "Diana"]
+        assert result["category"].tolist() == ["A", "B", "C", "D"]
+
+    @pytest.mark.asyncio
     async def test_append_with_column_mapping(self):
         """Test column_mapping explicitly renames specific columns from append source.
 
@@ -579,3 +703,83 @@ class TestAppendIntegration:
         # Should raise ValueError due to column count mismatch
         with pytest.raises(ValueError, match="Column count mismatch"):
             await normalizer.normalize()
+
+    @pytest.mark.asyncio
+    async def test_source_append_from_fixed_parent_does_not_inherit_type(self):
+        """Test that source append from fixed parent entity doesn't inherit type=fixed.
+
+        This is the critical bug fix: when a parent entity has type=fixed with values=[],
+        append items with source should NOT inherit type and values, otherwise they
+        load empty data instead of fetching from table_store.
+
+        Regression test for proposal: SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md
+        """
+        # Create source entities with data
+        a_df = pd.DataFrame(
+            {
+                "system_id": [1],
+                "a_id": [1],
+                "a_type": ["A"],
+                "a_value": ["a"],
+            }
+        )
+
+        b_df = pd.DataFrame(
+            {
+                "system_id": [1],
+                "b_id": [1],
+                "b_type": ["B"],
+                "b_value": ["b"],
+            }
+        )
+
+        # Parent is fixed entity with empty values, expecting append to populate it
+        cfg = {
+            "entities": {
+                "a": {
+                    "public_id": "a_id",
+                    "keys": [],
+                    "columns": ["system_id", "a_type", "a_id", "a_value"],
+                },
+                "b": {
+                    "public_id": "b_id",
+                    "keys": [],
+                    "columns": ["system_id", "b_type", "b_id", "b_value"],
+                },
+                "ab": {
+                    "type": "fixed",
+                    "values": [],  # Empty values - union pattern
+                    "public_id": "ab_id",
+                    "keys": [],
+                    "columns": ["system_id", "ab_type", "ab_id", "ab_value"],
+                    "depends_on": [],
+                    "append": [
+                        {
+                            "source": "a",
+                            "columns": ["system_id", "a_type", "a_id", "a_value"],
+                        },
+                        {
+                            "source": "b",
+                            "columns": ["system_id", "b_type", "b_id", "b_value"],
+                        },
+                    ],
+                },
+            }
+        }
+
+        normalizer: ShapeShifter = ShapeShifter(
+            table_store={"a": a_df, "b": b_df},
+            project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
+            default_entity="a",
+        )
+
+        await normalizer.normalize()
+
+        result = normalizer.table_store["ab"]
+
+        # Should have 2 rows: 1 from a, 1 from b
+        assert len(result) == 2, f"Expected 2 rows, got {len(result)}"
+
+        # Verify data came from both sources
+        assert result["a_type"].notna().any(), "Missing data from entity 'a'"
+        assert result["b_type"].notna().any(), "Missing data from entity 'b'"

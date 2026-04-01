@@ -82,6 +82,26 @@ check-schemas:
 	@PYTHONPATH=.:backend uv run python scripts/generate_schemas.py --check
 
 ################################################################################
+# Target-model template generation
+################################################################################
+
+ARBODAT_TEMPLATE_OUTPUT ?= target_models/examples/generated/arbodat.generated.yml
+
+.PHONY: generate-arbodat-yaml
+generate-arbodat-yaml:
+	@echo "Generating Arbodat starter project YAML at $(ARBODAT_TEMPLATE_OUTPUT)..."
+	@mkdir -p $(dir $(ARBODAT_TEMPLATE_OUTPUT))
+	@PYTHONPATH=target_models/src uv run python target_models/scripts/generate_project_template.py \
+		--spec target_models/specs/sead_v2.yml \
+		--project-name arbodat:generated-template \
+		--domain abundance \
+		--domain dating \
+		--domain taxonomy \
+		--domain contacts \
+		--output $(ARBODAT_TEMPLATE_OUTPUT)
+	@echo "✓ Arbodat starter project YAML written to $(ARBODAT_TEMPLATE_OUTPUT)"
+
+################################################################################
 # Backend & frontend recipes
 ################################################################################
 
@@ -290,6 +310,43 @@ arbodat-lookup-schema:
 
 arbodat-schema: arbodat-data-schema arbodat-lookup-schema
 	@echo "✅ Schema extraction complete!"
+
+################################################################################
+# Release Notes
+################################################################################
+
+.PHONY: release-notes-list
+release-notes-list:
+	@echo "Available versions in CHANGELOG.md:"
+	@uv run python scripts/generate_user_release_notes.py --list-versions
+
+.PHONY: release-notes-missing
+release-notes-missing:
+	@echo "Generating release notes for all missing versions..."
+	@uv run python scripts/generate_user_release_notes.py --generate-missing --force-heuristic
+
+.PHONY: release-notes-missing-ai
+release-notes-missing-ai:
+	@echo "Generating release notes for all missing versions (with AI)..."
+	@uv run python scripts/generate_user_release_notes.py --generate-missing
+
+.PHONY: release-notes
+release-notes:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION not specified. Usage: make release-notes VERSION=1.26.0"; \
+		exit 1; \
+	fi
+	@echo "Generating release notes for version $(VERSION)..."
+	@uv run python scripts/generate_user_release_notes.py --version $(VERSION) --force-heuristic
+
+.PHONY: release-notes-ai
+release-notes-ai:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION not specified. Usage: make release-notes-ai VERSION=1.26.0"; \
+		exit 1; \
+	fi
+	@echo "Generating release notes for version $(VERSION) with AI..."
+	@uv run python scripts/generate_user_release_notes.py --version $(VERSION)
 
 ################################################################################
 # Presentation

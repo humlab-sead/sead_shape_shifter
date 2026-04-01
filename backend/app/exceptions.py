@@ -465,6 +465,47 @@ class ResourceConflictError(ResourceError):
         super().__init__(message, recoverable=True, context=context, **kwargs)
 
 
+class EntityConflictError(ResourceConflictError):
+    """
+    Entity was concurrently modified; ETag mismatch.
+
+    Raised when a PUT /entities/{name} request supplies an ``If-Match`` header
+    that no longer matches the latest persisted entity.  The exception carries
+    the current server-side ETag and entity data so the client can present a
+    reload-before-saving prompt without a second round-trip.
+    """
+
+    error_code = "ENTITY_CONFLICT"
+
+    def __init__(
+        self,
+        message: str,
+        entity_name: str,
+        current_etag: str,
+        current_entity: dict[str, Any],
+        **kwargs: Any,
+    ):
+        """
+        Initialize entity conflict error.
+
+        Args:
+            message: Error description
+            entity_name: Name of the conflicting entity
+            current_etag: Current server-side ETag
+            current_entity: Current server-side entity data
+        """
+        context = kwargs.pop("context", {})
+        context["current_etag"] = current_etag
+        context["current_entity"] = current_entity
+        super().__init__(
+            message,
+            resource_type="entity",
+            resource_id=entity_name,
+            context=context,
+            **kwargs,
+        )
+
+
 # ============================================================================
 # Query Execution Errors
 # ============================================================================

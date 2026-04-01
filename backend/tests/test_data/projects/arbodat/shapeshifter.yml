@@ -141,7 +141,7 @@ entities:
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: taxa
       local_keys: [PCODE]
       remote_keys: [PCODE]
@@ -155,7 +155,7 @@ entities:
       how: left
       constraints:
         allow_unmatched_left: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     depends_on: [method, taxa, sample]
     data_source: arbodat_data
     query: select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust] from [Details];
@@ -669,14 +669,14 @@ entities:
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: sample_group
       local_keys: [Projekt, Befu]
       remote_keys: [Projekt, Befu]
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: sample_type
       local_keys: [ProbTyp]
       remote_keys: [ProbTyp]
@@ -812,7 +812,7 @@ entities:
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
       how: left
     depends_on: [site_type]
     drop_duplicates: [Fustel, EVNr]
@@ -937,7 +937,7 @@ entities:
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     depends_on: [site_type_group]
     drop_duplicates: '@value: entities.site_type.keys'
     extra_columns:

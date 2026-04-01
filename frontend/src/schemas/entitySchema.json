@@ -1,16 +1,24 @@
 {
   "$defs": {
     "AppendConfig": {
-      "description": "Configuration for appending data to an entity.",
+      "description": "Configuration for appending data to an entity.\n\nSupports three append strategies:\n1. type='fixed': Hardcoded values to append\n2. type='sql': SQL query results to append\n3. source: Rows from another entity to append",
       "properties": {
         "type": {
-          "description": "Type of data to append",
-          "enum": [
-            "fixed",
-            "sql"
+          "anyOf": [
+            {
+              "enum": [
+                "fixed",
+                "sql"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ],
-          "title": "Type",
-          "type": "string"
+          "default": null,
+          "description": "Type of data to append (fixed or sql)",
+          "title": "Type"
         },
         "values": {
           "anyOf": [
@@ -26,7 +34,7 @@
             }
           ],
           "default": null,
-          "description": "Fixed values to append",
+          "description": "Fixed values to append (for type='fixed')",
           "title": "Values"
         },
         "data_source": {
@@ -39,7 +47,7 @@
             }
           ],
           "default": null,
-          "description": "Data source name for SQL",
+          "description": "Data source name for SQL (for type='sql')",
           "title": "Data Source"
         },
         "query": {
@@ -52,13 +60,61 @@
             }
           ],
           "default": null,
-          "description": "SQL query for appending data",
+          "description": "SQL query for appending data (for type='sql')",
           "title": "Query"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Entity name to append rows from",
+          "title": "Source"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Columns to append (inherits from parent if not specified)",
+          "title": "Columns"
+        },
+        "align_by_position": {
+          "default": false,
+          "description": "Align columns by position instead of name",
+          "title": "Align By Position",
+          "type": "boolean"
+        },
+        "column_mapping": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Explicit column name mapping (source_col: target_col)",
+          "title": "Column Mapping"
         }
       },
-      "required": [
-        "type"
-      ],
       "title": "AppendConfig",
       "type": "object"
     },
@@ -290,8 +346,7 @@
         },
         "allow_null_keys": {
           "default": false,
-          "description": "When enabled, missing join keys are tolerated explicitly. For lookup-style left joins, leaving this unset uses the default unresolved-link behavior.",
-          "title": "Allow Missing Join Keys",
+          "title": "Allow Null Keys",
           "type": "boolean"
         }
       },
@@ -466,8 +521,7 @@
       "type": "array"
     },
     "extra_columns": {
-      "additionalProperties": true,
-      "description": "Canonical derived-value columns for copies, constants, interpolation, and lightweight formulas",
+      "description": "Additional computed columns",
       "title": "Extra Columns",
       "type": "object"
     },

@@ -2,9 +2,10 @@
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Type
 
 from pydantic import BaseModel, Field, field_serializer
+from pydantic.json_schema import GenerateJsonSchema
 
 from src.configuration.config import Config
 
@@ -41,11 +42,16 @@ class ProjectMetadata(BaseModel):
     description: str | None = Field(default=None, description="Project description")
     version: str | None = Field(default=None, description="Project version")
     file_path: str | None = Field(default=None, description="File path if loaded from file")
-    entity_count: int = Field(..., description="Number of entities")
+    entity_count: int = Field(
+        ...,
+        description="Number of entities (computed)",
+        json_schema_extra={"exclude_from_schema": True},
+    )
     created_at: float = Field(default=0, description="Creation timestamp (Unix timestamp)")
     modified_at: float = Field(default=0, description="Last modification timestamp (Unix timestamp)")
     is_valid: bool = Field(default=True, description="Whether project is valid")
     default_entity: str | None = Field(default=None, description="Default source entity name")
+    target_model: str | dict[str, Any] | None = Field(default=None, description="Target model spec: inline dict or @include: path string")
 
     @field_serializer("created_at", "modified_at")
     def serialize_timestamp(self, value: float) -> str | None:
@@ -53,6 +59,40 @@ class ProjectMetadata(BaseModel):
         if value <= 0:
             return None
         return datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
+
+    @classmethod
+    def model_json_schema(
+        cls,
+        by_alias: bool = True,
+        ref_template: str = "{model}",
+        schema_generator: Type[GenerateJsonSchema] = GenerateJsonSchema,
+        mode: Literal["validation", "serialization"] = "validation",
+        *,
+        union_format: Literal["any_of", "primitive_type_array"] = "any_of",
+    ) -> dict[str, Any]:
+        """Customize JSON schema to exclude fields marked with exclude_from_schema."""
+        schema = super().model_json_schema(
+            by_alias=by_alias,
+            ref_template=ref_template,
+            schema_generator=schema_generator,
+            mode=mode,
+            union_format=union_format,
+        )
+
+        # Remove fields marked with exclude_from_schema=True
+        if "properties" in schema:
+            fields_to_remove: list[str] = [
+                field_name
+                for field_name, field_info in cls.model_fields.items()
+                if isinstance(field_info.json_schema_extra, dict) and field_info.json_schema_extra.get("exclude_from_schema")
+            ]
+
+            for field_name in fields_to_remove:
+                schema["properties"].pop(field_name, None)
+                if "required" in schema and field_name in schema["required"]:
+                    schema["required"].remove(field_name)
+
+        return schema
 
 
 class Project(BaseModel):
@@ -66,7 +106,7 @@ class Project(BaseModel):
     @property
     def ingesters(self) -> dict[str, Any]:
         """Get ingester configurations from options."""
-        return self.options.get("ingesters", {}) or {}
+        return self.options.get("ingesters", {}) or {}  # pylint: disable=no-member
 
     def get_entity(self, name: str) -> dict[str, Any] | None:
         """Get entity by name."""
@@ -115,4 +155,4 @@ class Project(BaseModel):
     @property
     def data_sources(self) -> dict[str, Any]:
         """Get data source configurations from options."""
-        return self.options.get("data_sources", {}) or {}
+        return self.options.get("data_sources", {}) or {}  # pylint: disable=no-member

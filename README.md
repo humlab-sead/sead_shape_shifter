@@ -57,6 +57,7 @@ A FastAPI service providing programmatic access to transformation operations:
 
 - Monaco Editor integration for YAML editing
 - Dual-mode entity editor (visual form and code editor)
+- First-class merged parent entities with explicit branches, branch-aware preview, validation grouping, and dependency-graph support
 - Multi-type validation (structural, data, entity-specific, comprehensive)
 - Automated fix suggestions with preview and rollback
 - Visual dependency tree and properties panel
@@ -226,25 +227,50 @@ Process data transformations using the CLI:
 
 ```bash
 # Basic transformation to Excel
-python src/shapeshift.py output.xlsx \
+python -m src.shapeshift output.xlsx \
   --project projects/my_project.yml \
   --mode xlsx
 
-# Transform with validation
-python src/shapeshift.py output.xlsx \
+# Validate configuration and exit (no processing)
+python -m src.shapeshift output.xlsx \
   --project projects/my_project.yml \
   --validate-then-exit
 
-# Export to CSV
-python src/shapeshift.py output/ \
+# Export to CSV directory
+python -m src.shapeshift output/ \
   --project projects/my_project.yml \
   --mode csv
 
-# With environment variables
-python src/shapeshift.py output.xlsx \
+# With environment variables and verbose logging
+python -m src.shapeshift output.xlsx \
   --project projects/my_project.yml \
   --env-file projects/.env \
-  --mode xlsx
+  --mode xlsx \
+  --verbose
+
+# With log file and FK column cleanup
+python -m src.shapeshift output.xlsx \
+  --project projects/my_project.yml \
+  --mode xlsx \
+  --drop-foreign-keys \
+  --log-file logs/transform.log
+```
+
+**Available CLI Options:**
+
+```
+Options:
+  -de, --default-entity TEXT  Default entity name to use as source when none
+                              is specified.
+  -p, --project FILE          Path to project file.
+  -e, --env-file FILE         Path to environment variables file.
+  -v, --verbose               Enable verbose output.
+  -t, --translate             Enable translation.
+  -m, --mode [xlsx|csv|db]    Output file format.  [default: xlsx]
+  -d, --drop-foreign-keys     Drop foreign key columns after linking.
+  -l, --log-file PATH         Path to log file (optional).
+  --validate-then-exit        Validate configuration and exit if invalid.
+  --help                      Show this message and exit.
 ```
 
 ### Configuration Example

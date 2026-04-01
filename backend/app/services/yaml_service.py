@@ -29,7 +29,7 @@ from typing import Any
 
 from loguru import logger
 from ruamel.yaml import YAML
-from ruamel.yaml.comments import CommentedSeq
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.scalarstring import LiteralScalarString, SingleQuotedScalarString
 
 
@@ -167,6 +167,163 @@ class YamlService:
                 temp_path.unlink()
             raise YamlSaveError(f"Failed to save YAML file {path}: {e}") from e
 
+    # ------------------------------------------------------------------
+    # Comment-preserving boundary API
+    # ------------------------------------------------------------------
+
+    def load_commented(self, filename: str | Path) -> CommentedMap:
+        """
+        Load YAML file and return the raw ruamel.yaml CommentedMap.
+
+        Unlike ``load()``, this method does NOT convert to plain Python objects.
+        Comment metadata and node identity are preserved for use with
+        ``save_commented()`` and ``merge_boundary()``.
+
+        Args:
+            filename: Path to YAML file
+
+        Returns:
+            CommentedMap with ruamel comment metadata intact
+
+        Raises:
+            YamlLoadError: If file cannot be loaded or parsed
+        """
+        path = Path(filename)
+
+        if not path.exists():
+            raise YamlLoadError(f"File not found: {path}")
+        if not path.is_file():
+            raise YamlLoadError(f"Not a file: {path}")
+
+        try:
+            logger.debug(f"Loading YAML (commented) file: {path}")
+            with path.open("r", encoding="utf-8") as f:
+                data = self.yaml.load(f)
+
+            if data is None:
+                logger.warning(f"Empty YAML file (commented load): {path}")
+                return CommentedMap()
+
+            if not isinstance(data, dict):
+                raise YamlLoadError(f"YAML root must be a dictionary, got {type(data).__name__}")
+
+            return data  # type: ignore[return-value]
+
+        except YamlLoadError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to load YAML file (commented) {path}: {e}")
+            raise YamlLoadError(f"Failed to parse YAML file {path}: {e}") from e
+
+    def save_commented(
+        self,
+        data: CommentedMap,
+        filename: str | Path,
+        create_backup: bool = True,
+        flow_style_max_items: int = 5,
+    ) -> Path:
+        """
+        Save a CommentedMap to file with atomic write, preserving comment metadata.
+
+        Applies flow-style and entity-key ordering before writing, same as
+        ``save()``, but the source data keeps its ruamel comment annotations.
+
+        Args:
+            data: CommentedMap to save (ruamel types preserved)
+            filename: Target file path
+            create_backup: Whether to create backup before saving
+            flow_style_max_items: Maximum list length for flow style
+
+        Returns:
+            Path to saved file
+
+        Raises:
+            YamlSaveError: If file cannot be saved
+        """
+        path = Path(filename)
+        temp_path: Path = path.with_suffix(path.suffix + ".tmp")
+
+        try:
+            if create_backup and path.exists():
+                backup_path = self.create_backup(path)
+                logger.info(f"Created backup: {backup_path}")
+
+            path.parent.mkdir(parents=True, exist_ok=True)
+
+            if flow_style_max_items > 0:
+                self._apply_flow_style(data, flow_style_max_items)
+
+            logger.debug(f"Writing commented YAML to temporary file: {temp_path}")
+
+            with temp_path.open("w", encoding="utf-8") as f:
+                self.yaml.dump(data, f)
+
+            temp_path.replace(path)
+            logger.info(f"Successfully saved commented YAML file: {path}")
+            return path
+
+        except Exception as e:
+            logger.error(f"Failed to save commented YAML file {path}: {e}")
+            if temp_path.exists():
+                temp_path.unlink()
+            raise YamlSaveError(f"Failed to save commented YAML file {path}: {e}") from e
+
+    def merge_boundary(
+        self,
+        filename: str | Path,
+        boundary: str | tuple[str, str],
+        new_value: Any,
+        create_backup: bool = True,
+        flow_style_max_items: int = 5,
+    ) -> Path:
+        """
+        Load the current YAML document, replace exactly one boundary, write back atomically.
+
+        This is the core primitive for boundary-based persistence: only the
+        named boundary is modified; all other keys (and their comments /
+        formatting) are preserved.
+
+        ``boundary`` may be:
+            - ``"metadata"``                 → replaces ``doc["metadata"]``
+            - ``"options"``                  → replaces ``doc["options"]``
+            - ``("entities", entity_name)``  → replaces ``doc["entities"][entity_name]``
+                                               (pass ``new_value=None`` to delete the entity)
+
+        Args:
+            filename: YAML file to update
+            boundary: Top-level key string, or (parent_key, child_key) for nested maps.
+            new_value: Replacement value (plain Python dict or None to delete).
+            create_backup: Whether to create backup before saving.
+            flow_style_max_items: Maximum list length for flow style.
+
+        Returns:
+            Path to saved file
+
+        Raises:
+            YamlLoadError: If file cannot be loaded
+            YamlSaveError: If file cannot be saved
+        """
+        doc: CommentedMap = self.load_commented(filename)
+
+        if isinstance(boundary, str):
+            if new_value is None:
+                doc.pop(boundary, None)
+            else:
+                doc[boundary] = new_value
+        else:
+            section_key, child_key = boundary
+            if section_key not in doc or not isinstance(doc[section_key], dict):
+                doc[section_key] = CommentedMap()
+            if new_value is None:
+                doc[section_key].pop(child_key, None)
+            else:
+                doc[section_key][child_key] = new_value
+
+        logger.debug(f"merge_boundary: boundary={boundary!r} file={filename}")
+        return self.save_commented(doc, filename, create_backup=create_backup, flow_style_max_items=flow_style_max_items)
+
+    # ------------------------------------------------------------------
+
     def _order_entity_keys(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Order entity configuration keys for better readability.
@@ -262,7 +419,7 @@ class YamlService:
 
         return data
 
-    def _apply_flow_style(self, obj: Any, max_items: int) -> None:
+    def _apply_flow_style(self, obj: Any, max_items: int, *, in_append_item: bool = False) -> None:
         """
         Recursively mark short lists to use flow style for compact formatting.
 
@@ -271,10 +428,11 @@ class YamlService:
         - item2
 
         Special handling:
-        - 'values' key: Always formatted as list of rows where each row is a
-          flow-style list on its own line, regardless of max_items.
-        - 'foreign_keys' and 'filters' keys: Always use block style for readability
-          since they contain complex nested structures.
+                - 'values' key: Always formatted as list of rows where each row is a
+                    flow-style list on its own line, regardless of max_items.
+                - 'foreign_keys', 'filters', and 'append' keys: Always use block style for readability
+                    since they contain complex nested structures.
+                - 'append[*].columns': Always use flow style so appended payload columns stay compact.
 
         Args:
             obj: Object to process (dict, list, or other)
@@ -324,9 +482,13 @@ class YamlService:
                 elif key in ("foreign_keys", "filters"):
                     # Always use block style for better readability
                     if isinstance(value, (dict, list)):
-                        self._apply_flow_style(value, max_items)
+                        self._apply_flow_style(value, max_items, in_append_item=in_append_item)
+                elif key == "append":
+                    # Keep append entries in block style, but still compact nested payload columns.
+                    if isinstance(value, (dict, list)):
+                        self._apply_flow_style(value, max_items, in_append_item=True)
                 # Regular handling for other keys
-                elif isinstance(value, list) and 0 < len(value) <= max_items:
+                elif isinstance(value, list) and (0 < len(value) <= max_items or (in_append_item and key == "columns")):
                     # Convert to CommentedSeq and mark for flow style
                     if not isinstance(value, CommentedSeq):
                         flow_seq = CommentedSeq(value)
@@ -335,11 +497,11 @@ class YamlService:
                         flow_seq = value
                     flow_seq.fa.set_flow_style()
                 elif isinstance(value, (dict, list)):
-                    self._apply_flow_style(value, max_items)
+                    self._apply_flow_style(value, max_items, in_append_item=in_append_item)
         elif isinstance(obj, list):
             for item in obj:
                 if isinstance(item, (dict, list)):
-                    self._apply_flow_style(item, max_items)
+                    self._apply_flow_style(item, max_items, in_append_item=in_append_item)
 
     def create_backup(self, file_path: str | Path) -> Path:
         """

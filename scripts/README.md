@@ -21,9 +21,35 @@ python3 scripts/prepare_copilot_release_notes.py --list-versions
 
 ## `generate_user_release_notes.py`
 
+### Quick Start
+
+```bash
+# Generate release notes for all missing versions since the last one
+make release-notes-missing           # Uses heuristic mode (fast)
+make release-notes-missing-ai        # Uses AI mode (requires API key)
+
+# Generate release notes for a specific version
+make release-notes VERSION=1.26.0    # Uses heuristic mode
+make release-notes-ai VERSION=1.26.0 # Uses AI mode
+
+# List all available versions
+make release-notes-list
+```
+
+### Direct Usage
+
 ```bash
 # List versions available in CHANGELOG.md
 python3 scripts/generate_user_release_notes.py --list-versions
+
+# Generate release notes for all missing versions (heuristic mode)
+python3 scripts/generate_user_release_notes.py --generate-missing --force-heuristic
+
+# Generate release notes for all missing versions (AI mode)
+python3 scripts/generate_user_release_notes.py --generate-missing
+
+# Generate release notes for a specific version
+python3 scripts/generate_user_release_notes.py --version 1.26.0 --force-heuristic
 ```
 
 ### What It Does

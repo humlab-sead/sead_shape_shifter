@@ -4,7 +4,8 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body, File, UploadFile, status
+from fastapi import APIRouter, Body, File, Query, UploadFile, status
+from fastapi.responses import Response
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -12,12 +13,14 @@ from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
 from backend.app.models.validation import ValidationResult
+from backend.app.services.documentation_service import DocumentationService, get_documentation_service
 from backend.app.services.layout_sidecar_manager import LayoutSidecarManager, get_layout_sidecar_manager
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from backend.app.services.yaml_service import YamlService, get_yaml_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
-from backend.app.utils.exceptions import BadRequestError, NotFoundError
+from backend.app.utils.exceptions import BadRequestError, BaseAPIException, NotFoundError
+from src.target_model import DocumentFormat
 
 router = APIRouter()
 
@@ -67,6 +70,9 @@ class MetadataUpdateRequest(BaseModel):
     description: str | None = Field(default=None, description="Project description")
     version: str | None = Field(default=None, description="Project version (x.y.z format)")
     default_entity: str | None = Field(default=None, description="Default entity name")
+    target_model: str | None = Field(
+        default=None, description="Target model spec path (e.g. @include: target.yml); empty string clears the field"
+    )
 
 
 # Endpoints
@@ -161,19 +167,11 @@ async def update_project(name: str, request: ProjectUpdateRequest) -> Project:
         Updated project with new metadata
     """
     project_service: ProjectService = get_project_service()
-    # CRITICAL: Force reload from disk to get the latest entities.
-    # The cache may be stale (e.g., entity CRUD updates disk but cache
-    # holds an older version). Without force_reload, saving would
-    # overwrite disk entities with the stale cache version.
-    project: Project = project_service.load_project(name, force_reload=True)
-    project.options = request.options
-
-    logger.debug(f"Updating project '{name}': preserving {len(project.entities)} entities from disk, " f"updating options only")
-
-    updated_project: Project = project_service.save_project(project)
-    logger.info(
-        f"Updated project '{name}' options (entities preserved: " f"{list(updated_project.entities.keys())})",
-    )
+    # Boundary save: replaces only the options section on disk, leaving entities
+    # and metadata (and all YAML comments) untouched.  No full-file reload needed.
+    project_service.save_options_boundary(name, request.options or {})
+    updated_project: Project = project_service.load_project(name, force_reload=True)
+    logger.info(f"Updated project '{name}' options via boundary save")
     return updated_project
 
 
@@ -200,6 +198,8 @@ async def update_project_metadata(name: str, request: MetadataUpdateRequest) -> 
         description=request.description,
         version=request.version,
         default_entity=request.default_entity,
+        target_model=request.target_model if "target_model" in request.model_fields_set else None,
+        target_model_provided="target_model" in request.model_fields_set,
     )
     logger.info(f"Updated metadata for project '{name}'")
     return project
@@ -571,6 +571,172 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
     return updated_project
 
 
+# ---------------------------------------------------------------------------
+# Target Model YAML Endpoints
+# ---------------------------------------------------------------------------
+
+
+def _resolve_target_model_path(project: Project, project_name: str) -> Path:
+    """Return the absolute path to the project-local target model file.
+
+    Raises:
+        NotFoundError: if project has no target_model or the file is missing.
+        BadRequestError: if target_model is an inline dict (no backing file).
+        BaseAPIException (403): if the resolved path escapes the project directory.
+    """
+    target_model = project.metadata.target_model if project.metadata else None
+    if target_model is None:
+        raise NotFoundError(f"Project '{project_name}' has no target_model configured")
+    if isinstance(target_model, dict):
+        raise BadRequestError("Target model is defined inline and has no backing file to edit")
+
+    raw = str(target_model).strip()
+    rel_path = raw[len("@include:") :].strip() if raw.startswith("@include:") else raw
+
+    # Security: must stay inside the project directory
+    path_name = ProjectNameMapper.to_path(project_name)
+    project_dir = (settings.PROJECTS_DIR / path_name).resolve()
+
+    # Resolve the file path: simple filenames are project-local, paths with directories use APPLICATION_ROOT
+    if "/" not in rel_path and "\\" not in rel_path:
+        # Simple filename - resolve relative to project directory
+        target_path = (project_dir / rel_path).resolve()
+    else:
+        # Path with directories - resolve relative to APPLICATION_ROOT (for shared specs)
+        target_path = (settings.APPLICATION_ROOT / rel_path).resolve()
+
+    if not target_path.is_relative_to(project_dir):
+        raise BaseAPIException(
+            f"Target model file '{rel_path}' is outside the project directory and cannot be edited here",
+            403,
+        )
+
+    if not target_path.exists():
+        raise NotFoundError(f"Target model file not found: {target_path}")
+
+    return target_path
+
+
+@router.get("/projects/{name}/target-model-yaml", response_model=dict[str, str])
+@handle_endpoint_errors
+async def get_project_target_model_yaml(name: str) -> dict[str, str]:
+    """
+    Get the project-local target model file as a raw YAML string.
+
+    Only project-local files (inside the project directory) are served.
+    Shared/global spec files return 403.
+
+    Args:
+        name: Project name
+
+    Returns:
+        Dictionary containing yaml_content
+    """
+    project_service: ProjectService = get_project_service()
+    project: Project = project_service.load_project(name)
+    target_path: Path = _resolve_target_model_path(project, name)
+    yaml_content: str = target_path.read_text(encoding="utf-8")
+    logger.info(f"Retrieved target model YAML for project '{name}'")
+    return {"yaml_content": yaml_content}
+
+
+@router.put("/projects/{name}/target-model-yaml", response_model=Project)
+@handle_endpoint_errors
+async def update_project_target_model_yaml(name: str, request: RawYamlUpdateRequest) -> Project:
+    """
+    Update the project-local target model file with raw YAML content.
+
+    Content is written verbatim to preserve comments. Syntax is validated
+    but the file is never re-serialised through PyYAML.
+
+    Only project-local files can be updated; shared files return 403.
+
+    Args:
+        name: Project name
+        request: Raw YAML content
+
+    Returns:
+        Updated project
+    """
+    yaml_service: YamlService = get_yaml_service()
+    project_service: ProjectService = get_project_service()
+
+    project: Project = project_service.load_project(name)
+    target_path: Path = _resolve_target_model_path(project, name)
+
+    # Validate YAML syntax only — never re-serialise; write verbatim to preserve comments
+    is_valid, error_msg = yaml_service.validate_yaml(request.yaml_content)
+    if not is_valid:
+        raise BadRequestError(f"Invalid YAML syntax: {error_msg}")
+
+    yaml_service.create_backup(target_path)
+    target_path.write_text(request.yaml_content, encoding="utf-8")
+
+    updated_project: Project = project_service.load_project(name, force_reload=True)
+    logger.info(f"Updated target model YAML for project '{name}'")
+    return updated_project
+
+
+@router.get("/projects/{name}/target-model-docs")
+@handle_endpoint_errors
+async def download_target_model_docs(
+    name: str,
+    format: str = Query("html", description="Documentation format: html, markdown, or excel"),  # pylint: disable=redefined-builtin
+) -> Response:
+    """
+    Generate and download target model documentation for a project.
+
+    Generates human-readable documentation from the project's target_model specification
+    with project context (which entities are actually used).
+
+    Supported formats:
+    - html: Interactive web page with entity cards, search, and visual indicators
+    - markdown: Static documentation for GitHub/wikis
+    - excel: Spreadsheet with 3 sheets (Entities, Columns, Relationships)
+
+    Args:
+        name: Project name
+        format: Output format (default: html)
+
+    Returns:
+        Documentation file as downloadable response
+
+    Raises:
+        NotFoundError: If project has no target_model configured
+        BadRequestError: If format is invalid or target_model is malformed
+    """
+    documentation_service: DocumentationService = get_documentation_service()
+
+    # Validate and normalize format
+    format_lower: str = format.lower()
+    try:
+        doc_format = DocumentFormat(format_lower)
+    except ValueError as e:
+        raise BadRequestError(f"Invalid format '{format}'. Supported: html, markdown, excel") from e
+
+    # Generate documentation
+    content: bytes = documentation_service.generate_target_model_docs(name, doc_format)
+
+    # Determine content type and file extension
+    content_types: dict[DocumentFormat, str] = {
+        DocumentFormat.HTML: "text/html",
+        DocumentFormat.MARKDOWN: "text/markdown",
+        DocumentFormat.EXCEL: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }
+    extensions: dict[DocumentFormat, str] = {
+        DocumentFormat.HTML: "html",
+        DocumentFormat.MARKDOWN: "md",
+        DocumentFormat.EXCEL: "xlsx",
+    }
+
+    media_type: str = content_types[doc_format]
+    filename: str = f"{name}_target_model.{extensions[doc_format]}"
+
+    logger.info(f"Serving {doc_format.value} target model documentation for project '{name}' ({len(content)} bytes)")
+
+    return Response(content=content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
 # Layout Management Models
 class LayoutPositionResponse(BaseModel):
     """Node position in graph layout."""
@@ -775,13 +941,20 @@ async def upload_project_file(
 @handle_endpoint_errors
 async def list_project_files(
     name: str,
+    ext: list[str] | None = Query(default=None, description="Filter by extension(s), e.g. ext=yml&ext=yaml"),
 ) -> list[ProjectFileInfo]:
-    """List data files in project directory.
+    """List files in project directory.
 
-    Returns all Excel and CSV files stored in the project's directory.
+    By default returns Excel and CSV data files.  Pass one or more ``ext``
+    query parameters (without the leading dot) to filter by extension instead,
+    e.g. ``?ext=yml&ext=yaml`` for YAML files only.
     """
     project_service: ProjectService = get_project_service()
+    if ext:
+        extensions = [f".{e.lstrip('.')}" for e in ext]
+    else:
+        extensions = [".xlsx", ".xls", ".csv"]
     return project_service.list_project_files(
         project_name=name,
-        extensions=[".xlsx", ".xls", ".csv"],
+        extensions=extensions,
     )

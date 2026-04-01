@@ -62,7 +62,7 @@ Shape Shifter is a data transformation system that harmonizes heterogeneous inpu
 
 **Key Abstractions**:
 - **Pipeline**: Multi-phase processing (Extract → Filter → Link → Unnest → Translate → Store)
-- **Entities**: Logical datasets with identity, relationships, and transformations
+- **Entities**: Logical datasets with identity, relationships, and transformations. Supported types: `sql`, `csv`, `xlsx`, `fixed`, `merged`
 - **Loaders**: Pluggable data source connectors (SQL, CSV, Excel, fixed values)
 - **Validators**: Constraint checking (cardinality, foreign keys, functional dependencies)
 - **Dispatchers**: Output format handlers (Excel, CSV, database)
@@ -225,17 +225,26 @@ Backend: ProjectMapper.to_core() [resolve]
 Core: ShapeShifter.normalize()
   ├─ ProcessState: Topological sort
   ├─ For each entity (dependency order):
-  │   ├─ Extract (via DataLoader)
-  │   ├─ Filter (post-load filters)
-  │   ├─ Link (FK relationships)
-  │   ├─ Unnest (wide → long)
-  │   └─ Translate (column mapping)
+  │   ├─ If type == "merged":
+  │   │   ├─ Collect branch source DataFrames (already processed)
+  │   │   ├─ Inject branch discriminator column ({entity}_branch)
+  │   │   ├─ Propagate sparse branch FK columns ({source}_id → system_id)
+  │   │   ├─ Concatenate (union of columns, null-fill branch-only columns)
+  │   │   └─ Apply post-merge: extra_columns, foreign_keys, drop_duplicates, columns
+  │   └─ Otherwise (standard entity):
+  │       ├─ Extract (via DataLoader)
+  │       ├─ Filter (post-load filters)
+  │       ├─ Link (FK relationships)
+  │       ├─ Unnest (wide → long)
+  │       └─ Translate (column mapping)
   └─ Store (via Dispatcher)
   ↓
 Backend: Return execution result
   ↓
 Frontend: Show completion status
 ```
+
+**Merged entity branch FK propagation**: Each branch produces an `{source_entity}_id` column containing the source row's `system_id` for rows from that branch, and `pd.NA` for all other branches. This gives downstream entities a typed, integer FK path back to each source branch without requiring synthetic string keys.
 
 ---
 
@@ -493,6 +502,7 @@ normalizer.store(target="output.xlsx", mode="xlsx")
 ### Stable Interfaces
 
 - Core pipeline phases (Extract → Filter → Link → Unnest → Translate → Store)
+- Merged entity processing (branch concatenation, discriminator and FK propagation)
 - Registry pattern for extensibility
 - Three-tier identity system
 - Layer boundary architecture (API → Mapper → Core)

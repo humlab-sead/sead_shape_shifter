@@ -607,9 +607,11 @@
               :validation-result="mergedValidationResult"
               :loading="validationLoading"
               :data-validation-loading="dataValidationLoading"
+              :conformance-validation-loading="conformanceValidationLoading"
               :available-entities="entityNames"
               @validate="handleValidate"
               @validate-data="handleDataValidate"
+              @validate-target-model="handleConformanceValidate"
               @open-entity="handleOpenValidationEntity"
               @apply-fix="handleApplyFix"
               @apply-all-fixes="handleApplyAllFixes"
@@ -648,61 +650,156 @@
 
           <!-- YAML Tab -->
           <v-window-item value="yaml">
-            <v-card variant="outlined">
-              <v-card-title class="d-flex align-center justify-space-between">
-                <div>
-                  <v-icon icon="mdi-code-braces" class="mr-2" />
-                  Edit Project YAML
-                </div>
-                <div class="d-flex gap-2">
-                  <v-btn
-                    variant="outlined"
-                    prepend-icon="mdi-refresh"
-                    size="small"
-                    :loading="yamlLoading"
-                    @click="handleLoadYaml"
-                  >
-                    Reload
-                  </v-btn>
-                  <v-btn
-                    color="primary"
-                    prepend-icon="mdi-content-save"
-                    size="small"
-                    :loading="yamlSaving"
-                    :disabled="!yamlHasChanges"
-                    @click="handleSaveYaml"
-                  >
-                    Save YAML
-                  </v-btn>
-                </div>
-              </v-card-title>
-              <v-card-text>
-                <!-- <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-                  <div class="text-caption">
-                    <strong>Direct YAML editing:</strong> Edit the complete project YAML file. Changes are saved to
-                    the file immediately. A backup is created automatically before saving.
-                  </div>
-                </v-alert> -->
+            <!-- Sub-tab bar: only shown when project has a project-local target model file reference -->
+            <v-tabs
+              v-if="typeof selectedProject?.metadata?.target_model === 'string'"
+              v-model="activeYamlSubTab"
+              density="compact"
+              class="mb-3"
+            >
+              <v-tab value="project-yaml" prepend-icon="mdi-code-braces">Project YAML</v-tab>
+              <v-tab value="target-model-yaml" prepend-icon="mdi-target">Target Model</v-tab>
+            </v-tabs>
 
-                <v-alert v-if="yamlError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="yamlError = null">
-                  {{ yamlError }}
-                </v-alert>
+            <v-window v-model="activeYamlSubTab">
+              <!-- Project YAML sub-tab (always present) -->
+              <v-window-item value="project-yaml">
+                <v-card variant="outlined">
+                  <v-card-title class="d-flex align-center justify-space-between">
+                    <div>
+                      <v-icon icon="mdi-code-braces" class="mr-2" />
+                      Edit Project YAML
+                    </div>
+                    <div class="d-flex gap-2">
+                      <v-btn
+                        variant="outlined"
+                        prepend-icon="mdi-refresh"
+                        size="small"
+                        :loading="yamlLoading"
+                        @click="handleLoadYaml"
+                      >
+                        Reload
+                      </v-btn>
+                      <v-btn
+                        color="primary"
+                        prepend-icon="mdi-content-save"
+                        size="small"
+                        :loading="yamlSaving"
+                        :disabled="!yamlHasChanges"
+                        @click="handleSaveYaml"
+                      >
+                        Save YAML
+                      </v-btn>
+                    </div>
+                  </v-card-title>
+                  <v-card-text>
+                    <v-alert v-if="yamlError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="yamlError = null">
+                      {{ yamlError }}
+                    </v-alert>
 
-                <yaml-editor
-                  v-if="rawYamlContent !== null"
-                  v-model="rawYamlContent"
-                  height="600px"
-                  :readonly="false"
-                  :validate-on-change="true"
-                  @change="handleYamlChange"
-                />
+                    <yaml-editor
+                      v-if="rawYamlContent !== null"
+                      v-model="rawYamlContent"
+                      height="calc(100vh - 450px)"
+                      :readonly="false"
+                      :validate-on-change="true"
+                      @change="handleYamlChange"
+                    />
 
-                <div v-else class="text-center py-12">
-                  <v-progress-circular indeterminate color="primary" />
-                  <p class="mt-4 text-grey">Loading YAML content...</p>
-                </div>
-              </v-card-text>
-            </v-card>
+                    <div v-else class="text-center py-12">
+                      <v-progress-circular indeterminate color="primary" />
+                      <p class="mt-4 text-grey">Loading YAML content...</p>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-window-item>
+
+              <!-- Target Model sub-tab (only mounted when project has a string target_model file reference) -->
+              <v-window-item
+                v-if="typeof selectedProject?.metadata?.target_model === 'string'"
+                value="target-model-yaml"
+              >
+                <v-card variant="outlined">
+                  <v-card-title class="d-flex align-center justify-space-between">
+                    <div>
+                      <v-icon icon="mdi-target" class="mr-2" />
+                      Edit Target Model YAML
+                    </div>
+                    <div class="d-flex gap-2">
+                      <v-menu>
+                        <template v-slot:activator="{ props }">
+                          <v-btn
+                            variant="outlined"
+                            prepend-icon="mdi-download"
+                            size="small"
+                            :loading="targetModelDocsDownloading"
+                            v-bind="props"
+                          >
+                            Download Docs
+                          </v-btn>
+                        </template>
+                        <v-list density="compact">
+                          <v-list-item @click="handleDownloadTargetModelDocs('html')">
+                            <v-list-item-title>
+                              <v-icon icon="mdi-web" size="small" class="mr-2" />HTML (Interactive)
+                            </v-list-item-title>
+                          </v-list-item>
+                          <v-list-item @click="handleDownloadTargetModelDocs('markdown')">
+                            <v-list-item-title>
+                              <v-icon icon="mdi-language-markdown" size="small" class="mr-2" />Markdown
+                            </v-list-item-title>
+                          </v-list-item>
+                          <v-list-item @click="handleDownloadTargetModelDocs('excel')">
+                            <v-list-item-title>
+                              <v-icon icon="mdi-file-excel" size="small" class="mr-2" />Excel Spreadsheet
+                            </v-list-item-title>
+                          </v-list-item>
+                        </v-list>
+                      </v-menu>
+                      <v-btn
+                        variant="outlined"
+                        prepend-icon="mdi-refresh"
+                        size="small"
+                        :loading="targetModelYamlLoading"
+                        @click="handleLoadTargetModelYaml"
+                      >
+                        Reload
+                      </v-btn>
+                      <v-btn
+                        color="primary"
+                        prepend-icon="mdi-content-save"
+                        size="small"
+                        :loading="targetModelYamlSaving"
+                        :disabled="!targetModelYamlHasChanges"
+                        @click="handleSaveTargetModelYaml"
+                      >
+                        Save YAML
+                      </v-btn>
+                    </div>
+                  </v-card-title>
+                  <v-card-text>
+                    <v-alert v-if="targetModelYamlError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="targetModelYamlError = null">
+                      {{ targetModelYamlError }}
+                    </v-alert>
+
+                    <yaml-editor
+                      v-if="targetModelYamlContent !== null"
+                      v-model="targetModelYamlContent"
+                      height="calc(100vh - 450px)"
+                      :readonly="false"
+                      :validate-on-change="true"
+                      mode="target-model"
+                      @change="handleTargetModelYamlChange"
+                    />
+
+                    <div v-else class="text-center py-12">
+                      <v-progress-circular indeterminate color="primary" />
+                      <p class="mt-4 text-grey">Loading target model YAML content...</p>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-window-item>
+            </v-window>
           </v-window-item>
         </v-window>
       </v-col>
@@ -812,15 +909,10 @@
 
     <!-- Entity Editor Overlay (for graph double-click) -->
     <entity-form-dialog
-      v-if="entityStore.overlayEntityName"
+      v-if="entityStore.overlayEntityName && overlayEntity"
       v-model="entityStore.showEditorOverlay"
       :project-name="projectName"
-      :entity="
-        entityStore.entities.find((e) => e.name === entityStore.overlayEntityName) || {
-          name: entityStore.overlayEntityName,
-          entity_data: {},
-        }
-      "
+      :entity="overlayEntity"
       :initial-tab="entityStore.overlayInitialTab"
       mode="edit"
       @saved="handleOverlayEntitySaved"
@@ -848,11 +940,11 @@ import { useTheme } from 'vuetify'
 import { api } from '@/api'
 import { useProjects, useEntities, useValidation, useDependencies, useCytoscape } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
+import { useConformanceValidation } from '@/composables/useConformanceValidation'
 import { useEntityPreview } from '@/composables/useEntityPreview'
 import { useSession } from '@/composables/useSession'
 import { getTaskStatusNodeClasses, shouldShowNodeForTaskFilter } from '@/utils/taskGraph'
 import { useEntityStore } from '@/stores/entity'
-import { useProjectStore } from '@/stores'
 import { useTaskStatusStore } from '@/stores/taskStatus'
 import type { CustomGraphLayout } from '@/types'
 import type { GraphColorByMode } from '@/utils/taskGraph'
@@ -890,6 +982,7 @@ const {
   hasUnsavedChanges,
   backups,
   select,
+  refresh,
   clearError,
   fetchBackups,
   restore,
@@ -950,8 +1043,15 @@ const {
   autoFixableIssues,
 } = useDataValidation()
 
+const {
+  loading: conformanceValidationLoading,
+  result: conformanceValidationResult,
+  validateConformance,
+} = useConformanceValidation()
+
 // Local state
 const activeTab = ref('entities')
+const activeYamlSubTab = ref('project-yaml')
 const showBackupsDialog = ref(false)
 const showExecuteDialog = ref(false)
 const showSuccessSnackbar = ref(false)
@@ -1050,25 +1150,35 @@ const yamlSaving = ref(false)
 const yamlError = ref<string | null>(null)
 const yamlHasChanges = ref(false)
 
+const targetModelYamlContent = ref<string | null>(null)
+const originalTargetModelYamlContent = ref<string | null>(null)
+const targetModelYamlLoading = ref(false)
+const targetModelYamlSaving = ref(false)
+const targetModelYamlError = ref<string | null>(null)
+const targetModelYamlHasChanges = ref(false)
+const targetModelDocsDownloading = ref(false)
+
 // Computed
 const mergedValidationResult = computed(() => {
-  if (!validationResult.value && !dataValidationResult.value) return null
+  if (!validationResult.value && !dataValidationResult.value && !conformanceValidationResult.value) return null
 
   const structural = validationResult.value
   const data = dataValidationResult.value
+  const conformance = conformanceValidationResult.value
 
-  if (!structural && data) return data
-  if (structural && !data) return structural
-  if (!structural || !data) return null
+  // Collect all non-null results
+  const results = [structural, data, conformance].filter(Boolean)
+  if (results.length === 0) return null
+  if (results.length === 1) return results[0]!
 
-  // Merge both results
+  // Merge all results
   return {
-    is_valid: structural.is_valid && data.is_valid,
-    errors: [...structural.errors, ...data.errors],
-    warnings: [...structural.warnings, ...data.warnings],
-    info: [...(structural.info || []), ...(data.info || [])],
-    error_count: structural.error_count + data.error_count,
-    warning_count: structural.warning_count + data.warning_count,
+    is_valid: results.every((r) => r!.is_valid),
+    errors: results.flatMap((r) => r!.errors),
+    warnings: results.flatMap((r) => r!.warnings),
+    info: results.flatMap((r) => r!.info || []),
+    error_count: results.reduce((sum, r) => sum + r!.error_count, 0),
+    warning_count: results.reduce((sum, r) => sum + r!.warning_count, 0),
   }
 })
 
@@ -1106,10 +1216,17 @@ const activeDrawerError = computed(() => detailsDrawerTab.value === 'note' ? dra
 
 // Cytoscape integration
 const entityStore = useEntityStore()
-const projectStore = useProjectStore()
 const taskStatusStore = useTaskStatusStore()
 
 const normalizedCreateTodoName = computed(() => createTodoEntityName.value.trim())
+
+const overlayEntity = computed(() => {
+  if (!entityStore.overlayEntityName) {
+    return null
+  }
+
+  return entityStore.entities.find((entity) => entity.name === entityStore.overlayEntityName) || null
+})
 
 const createTodoNameError = computed(() => {
   const entityName = normalizedCreateTodoName.value
@@ -1310,6 +1427,17 @@ async function handleDataValidate(config?: any) {
   }
 }
 
+async function handleConformanceValidate() {
+  try {
+    await validateConformance(projectName.value)
+    await taskStatusStore.refresh()
+    successMessage.value = 'Conformance check completed'
+    showSuccessSnackbar.value = true
+  } catch (err) {
+    console.error('Conformance validation failed:', err)
+  }
+}
+
 async function handleApplyFix(issue: any) {
   // Single fix - show preview modal
   await handlePreviewFixes([issue])
@@ -1402,7 +1530,7 @@ async function handleRefresh() {
   clearError()
   if (projectName.value) {
     try {
-      await projectStore.refreshProject(projectName.value)
+      await refresh(projectName.value)
       // Also refresh entity list to sync with updated project
       await fetchEntities()
 
@@ -1428,10 +1556,19 @@ async function handleRefresh() {
 }
 
 async function handleEntityUpdated() {
+  if (projectName.value) {
+    await refresh(projectName.value)
+  }
+
   await fetchEntities()
 
-  if (activeTab.value === 'dependencies' && projectName.value) {
+  if (projectName.value) {
     await fetchDependencies(projectName.value)
+
+    if (activeTab.value === 'dependencies') {
+      await nextTick()
+      renderGraph()
+    }
   }
 }
 
@@ -1617,16 +1754,14 @@ async function handleContextMenuDelete(entityName: string) {
   try {
     console.debug('[ProjectDetailView] Deleting entity:', entityName)
     await entityStore.deleteEntity(projectName.value, entityName)
-    
-    console.log('[ProjectDetailView] Entity deleted, refreshing dependencies...')
-    // Refresh dependencies to update the graph (silently, without showing loading state)
-    await fetchDependencies(projectName.value)
-    console.log('[ProjectDetailView] Dependencies refreshed, graph data:', dependencyGraph.value)
+
+    console.log('[ProjectDetailView] Entity deleted, syncing project state...')
+    await handleEntityUpdated()
+    console.log('[ProjectDetailView] Project state synced, graph data:', dependencyGraph.value)
     
     console.log('[ProjectDetailView] Setting success message first...')
     successMessage.value = `Entity "${entityName}" deleted`
     showSuccessSnackbar.value = true
-    markAsChanged()
     
     console.log('[ProjectDetailView] Waiting for Vue updates to settle...')
     await nextTick()
@@ -2204,6 +2339,80 @@ async function handleSaveYaml() {
   }
 }
 
+async function handleLoadTargetModelYaml() {
+  if (!projectName.value) return
+
+  targetModelYamlLoading.value = true
+  targetModelYamlError.value = null
+  try {
+    const response = await api.projects.getTargetModelYaml(projectName.value)
+    targetModelYamlContent.value = response.yaml_content
+    originalTargetModelYamlContent.value = response.yaml_content
+    targetModelYamlHasChanges.value = false
+  } catch (err) {
+    targetModelYamlError.value = err instanceof Error ? err.message : 'Failed to load target model YAML'
+    console.error('Failed to load target model YAML:', err)
+  } finally {
+    targetModelYamlLoading.value = false
+  }
+}
+
+function handleTargetModelYamlChange(content: string) {
+  targetModelYamlHasChanges.value = content !== originalTargetModelYamlContent.value
+}
+
+async function handleSaveTargetModelYaml() {
+  if (!projectName.value || !targetModelYamlContent.value) return
+
+  targetModelYamlSaving.value = true
+  targetModelYamlError.value = null
+  try {
+    await api.projects.updateTargetModelYaml(projectName.value, targetModelYamlContent.value)
+    originalTargetModelYamlContent.value = targetModelYamlContent.value
+    targetModelYamlHasChanges.value = false
+
+    successMessage.value = 'Target model YAML saved successfully'
+    showSuccessSnackbar.value = true
+
+    await handleValidate()
+  } catch (err) {
+    targetModelYamlError.value = err instanceof Error ? err.message : 'Failed to save target model YAML'
+    console.error('Failed to save target model YAML:', err)
+  } finally {
+    targetModelYamlSaving.value = false
+  }
+}
+
+async function handleDownloadTargetModelDocs(format: 'html' | 'markdown' | 'excel') {
+  if (!projectName.value) return
+
+  targetModelDocsDownloading.value = true
+  try {
+    const blob = await api.projects.downloadTargetModelDocs(projectName.value, format)
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    
+    const extensions = { html: 'html', markdown: 'md', excel: 'xlsx' }
+    link.download = `${projectName.value}_target_model.${extensions[format]}`
+    
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    successMessage.value = `Target model documentation downloaded (${format})`
+    showSuccessSnackbar.value = true
+  } catch (err) {
+    targetModelYamlError.value = err instanceof Error ? err.message : 'Failed to download documentation'
+    console.error('Failed to download target model docs:', err)
+  } finally {
+    targetModelDocsDownloading.value = false
+  }
+}
+
 async function handleDataSourcesUpdated() {
   // Reload project after data source changes
   await handleRefresh()
@@ -2323,18 +2532,24 @@ watch(activeTab, async (newTab) => {
   }
 })
 
+watch(activeYamlSubTab, async (newSubTab) => {
+  if (newSubTab === 'target-model-yaml' && targetModelYamlContent.value === null) {
+    await handleLoadTargetModelYaml()
+  }
+})
+
 // Watch for project changes to reload YAML when project is externally refreshed
 // This keeps YAML in sync when entities are created/updated/deleted
 watch(
-  () => projectStore.selectedProject,
+  () => selectedProject.value,
   async (newProject, oldProject) => {
-    // Only reload if:
-    // 1. On YAML tab
-    // 2. No local unsaved changes
-    // 3. Project actually changed (not just initial load)
+    const hasLocalYamlEdits = rawYamlContent.value !== originalYamlContent.value
+
+    // Reload the raw YAML buffer if it has been loaded already and there are no
+    // local YAML edits to preserve.
     if (
-      activeTab.value === 'yaml' &&
-      !yamlHasChanges.value &&
+      rawYamlContent.value !== null &&
+      !hasLocalYamlEdits &&
       oldProject !== null &&
       newProject !== null &&
       newProject !== oldProject
@@ -2484,9 +2699,12 @@ function applyTaskFilter() {
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+  pointer-events: none;
 }
 
 .stats-card {
+  display: inline-block;
+  align-self: flex-start;
   background: transparent !important;
   backdrop-filter: blur(8px);
   box-shadow: none;
@@ -2500,7 +2718,7 @@ function applyTaskFilter() {
 }
 
 .stats-card--legend {
-  width: fit-content;
+  width: max-content;
   max-width: calc(100vw - 32px);
 }
 

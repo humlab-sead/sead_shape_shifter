@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ model.name }} - Data Model Documentation</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { margin: 0 0 10px 0; color: #2c3e50; }
+        .subtitle { color: #7f8c8d; margin: 5px 0; }
+        .search-box {
+            width: 100%;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .domain-section {
+            margin-bottom: 40px;
+        }
+        .domain-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px 8px 0 0;
+            font-size: 20px;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        .entity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .entity-card {
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            background: #f9fafb;
+        }
+        .entity-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+        .entity-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+        }
+        .entity-table {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        .entity-description {
+            color: #555;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 6px;
+            margin-bottom: 6px;
+        }
+        .badge-required { background: #fee; color: #c33; }
+        .badge-optional { background: #efe; color: #3a3; }
+        .badge-role { background: #e3f2fd; color: #1976d2; }
+        .badge-used { background: #c8e6c9; color: #2e7d32; }
+        .badge-unused { background: #f5f5f5; color: #999; }
+        .fk-list {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e1e8ed;
+            font-size: 13px;
+        }
+        .fk-item {
+            padding: 4px 0;
+            color: #555;
+        }
+        .fk-arrow {
+            color: #667eea;
+            font-weight: bold;
+            margin: 0 6px;
+        }
+        .column-count {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 8px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>{{ model.name }}</h1>
+        <div class="subtitle">Version {{ model.version }}</div>
+        <div class="subtitle">{{ model.description }}</div>
+        {% if has_project_context %}
+        <div class="subtitle" style="margin-top: 15px; font-weight: 600; color: #667eea;">📊 Project: {{ project_name }} (v{{ project_version or '1.0.0' }})</div>
+        {% endif %}
+    </header>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_entities }}</div>
+            <div class="stat-label">Total {{ stats.total_entities|pluralize('Entity', 'Entities') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_fks }}</div>
+            <div class="stat-label">Foreign {{ stats.total_fks|pluralize('Key', 'Keys') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.domain_count }}</div>
+            <div class="stat-label">{{ stats.domain_count|pluralize('Domain', 'Domains') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.required_entities }}</div>
+            <div class="stat-label">Required {{ stats.required_entities|pluralize('Entity', 'Entities') }}</div>
+        </div>
+        {% if has_project_context %}
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.used_count }}</div>
+            <div class="stat-label">Used in Project</div>
+        </div>
+        {% if stats.unused_required > 0 %}
+        <div class="stat-card" style="border: 2px solid #f44336;">
+            <div class="stat-value" style="color: #f44336;">{{ stats.unused_required }}</div>
+            <div class="stat-label">Missing Required</div>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <input type="text" class="search-box" id="search" placeholder="Search entities by name, description, or domain..." />
+
+    {% for domain, entities in by_domain.items()|sort %}
+    <div class="domain-section" data-domain="{{ domain }}">
+        <div class="domain-header">{{ domain }}</div>
+        <div class="entity-grid">
+            {% for entity in entities %}
+            <div class="entity-card" data-entity="{{ entity.name }}" data-description="{{ entity.spec.description or '' }}">
+                <div class="entity-name">{{ entity.name }}</div>
+                <div class="entity-table">→ {{ entity.spec.target_table or 'tbl_' + entity.name }}</div>
+                <div>
+                    {% if has_project_context %}
+                    {% if entity.used %}
+                    <span class="badge badge-used">✓ Used</span>
+                    {% else %}
+                    <span class="badge badge-unused">Unused</span>
+                    {% endif %}
+                    {% endif %}
+                    {% if entity.spec.required %}
+                    <span class="badge badge-required">Required</span>
+                    {% else %}
+                    <span class="badge badge-optional">Optional</span>
+                    {% endif %}
+                    {% if entity.spec.role %}
+                    <span class="badge badge-role">{{ entity.spec.role }}</span>
+                    {% endif %}
+                </div>
+                <div class="entity-description">{{ entity.spec.description or 'No description available' }}</div>
+                <div class="column-count">📊 {{ entity.spec.columns|length if entity.spec.columns else 0 }} column(s)</div>
+                {% if entity.spec.foreign_keys %}
+                <div class="fk-list">
+                    {% for fk in entity.spec.foreign_keys %}
+                    <div class="fk-item">
+                        {{ entity.name }} <span class="fk-arrow">→</span> {{ fk.entity }}
+                        {%- if fk.via %} via {{ fk.via }}{% endif %}
+                        {%- if fk.required %} (required){% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <script>
+        const search = document.getElementById('search');
+        const cards = document.querySelectorAll('.entity-card');
+        const sections = document.querySelectorAll('.domain-section');
+        
+        search.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            
+            sections.forEach(section => {
+                let hasVisibleCards = false;
+                const sectionCards = section.querySelectorAll('.entity-card');
+                
+                sectionCards.forEach(card => {
+                    const name = card.dataset.entity.toLowerCase();
+                    const desc = card.dataset.description.toLowerCase();
+                    const domain = section.dataset.domain.toLowerCase();
+                    const matches = name.includes(term) || desc.includes(term) || domain.includes(term);
+                    
+                    card.style.display = matches ? 'block' : 'none';
+                    if (matches) hasVisibleCards = true;
+                });
+                
+                section.style.display = hasVisibleCards ? 'block' : 'none';
+            });
+        });
+    </script>
+</body>
+</html>

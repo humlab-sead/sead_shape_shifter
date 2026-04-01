@@ -11,6 +11,9 @@ entities:
     public_id: abundance_id
     keys: '@value: entities.analysis_entity.keys'
     columns:
+    - Projekt
+    - Befu
+    - ProbNr
     - PCODE
     - Fraktion
     - cf
@@ -30,29 +33,32 @@ entities:
     - entity: analysis_entity
       local_keys: '@value: entities.analysis_entity.keys'
       remote_keys: '@value: entities.analysis_entity.keys'
+      defer_dependency: true
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: taxa
       local_keys: [PCODE]
       remote_keys: [PCODE]
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: abundance_element
       local_keys: [RTyp]
       remote_keys: [RTyp]
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
-    depends_on: [analysis_entity]
+        cardinality: many_to_one
+    depends_on: [taxa, abundance_element]
     extra_columns:
       abundance: FAnzahl
+      analysis_entity_type: abundance
+      analysis_entity_value: "{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}"
     data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       'abundance' as [analysis_entity_type],\n       Nz([PCODE],'') & '|' & Nz([Fraktion],'') & '|' & Nz([cf],'') & '|' & Nz([RTyp],'') & '|' & Nz([Zust],'') as [analysis_entity_value],\n       [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl], [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]\nfrom [Details];"
+    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl], [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]\nfrom [Details];"
   abundance_element:
     type: fixed
     public_id: abundance_element_id
@@ -197,12 +203,7 @@ entities:
     type: sql
     source:
     public_id: analysis_entity_id
-    keys:
-    - Projekt
-    - Befu
-    - ProbNr
-    - analysis_entity_type
-    - analysis_entity_value
+    keys: [Projekt, Befu, ProbNr, analysis_entity_type, analysis_entity_value]
     columns:
     - PCODE
     - Fraktion
@@ -212,31 +213,24 @@ entities:
     - ArchDat
     depends_on: []
     drop_duplicates: true
+    extra_columns:
+      analysis_entity_type: relative_dating
+      analysis_entity_value: "{ArchDat}"
     data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr],\n       'relative_dating' as [analysis_entity_type],\n       [ArchDat] as [analysis_entity_value],\n       null as [PCODE],\n       null as [Fraktion],\n       null as [cf],\n       null as [RTyp],\n       null as [Zust],\n       [ArchDat]\nfrom [Proben]\nwhere [ArchDat] is not null and [ArchDat] <> '';"
+    query: "select [Projekt], [Befu], [ProbNr], null as [PCODE], null as [Fraktion], null as [cf], null as [RTyp], null as [Zust], [ArchDat]\nfrom [Proben]\nwhere [ArchDat] is not null and [ArchDat] <> '';"
   analysis_entity:
-    type: sql
+    type: fixed
     source:
     public_id: analysis_entity_id
-    keys:
-    - Projekt
-    - Befu
-    - ProbNr
-    - analysis_entity_type
-    - analysis_entity_value
-    columns:
-    - PCODE
-    - Fraktion
-    - cf
-    - RTyp
-    - Zust
-    - ArchDat
+    keys: [Projekt, Befu, ProbNr, analysis_entity_type, analysis_entity_value]
+    columns: [PCODE, Fraktion, cf, RTyp, Zust]
+    values: []
     foreign_keys:
     - entity: sample
       local_keys: [Projekt, Befu, ProbNr]
       remote_keys: [Projekt, Befu, ProbNr]
       constraints:
-        cardinality: many-to-one
+        cardinality: many_to_one
         allow_unmatched_right: true
         require_unique_left: false
         require_unique_right: false
@@ -254,26 +248,26 @@ entities:
         require_unique_right: false
         allow_null_keys: true
         allow_row_decrease: true
-        allow_unmatched_left: false
+        allow_unmatched_left: true
     - entity: method
       local_keys: [Fraktion]
       remote_keys: [arbodat_code]
       how: left
       constraints:
-        cardinality: many-to-one
+        cardinality: many_to_one
         allow_unmatched_right: true
         require_unique_left: false
         require_unique_right: false
         allow_null_keys: true
         allow_row_decrease: true
-        allow_unmatched_left: false
-    depends_on: [method, taxa, sample, _analysis_entity_relative_dating]
+        allow_unmatched_left: true
+    depends_on: [method, taxa, sample, abundance, _analysis_entity_relative_dating]
     append:
+    - source: abundance
+      columns: [PCODE, Fraktion, cf, RTyp, Zust, ArchDat, analysis_entity_type, analysis_entity_value]
     - source: _analysis_entity_relative_dating
-      columns: [PCODE, Fraktion, cf, RTyp, Zust, ArchDat]
+      columns: [PCODE, Fraktion, cf, RTyp, Zust, ArchDat, analysis_entity_type, analysis_entity_value]
     append_mode: distinct
-    data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       'abundance' as [analysis_entity_type],\n       Nz([PCODE],'') & '|' & Nz([Fraktion],'') & '|' & Nz([cf],'') & '|' & Nz([RTyp],'') & '|' & Nz([Zust],'') as [analysis_entity_value],\n       null as [ArchDat]\nfrom [Details];"
   archaeological_period:
     type: sql
     source:
@@ -392,7 +386,7 @@ entities:
       contraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
       constraints:
         cardinality: many_to_one
         require_unique_left: false
@@ -402,8 +396,8 @@ entities:
       remote_keys: [arbodat_code]
       how: left
       constraints:
-        allow_unmatched_left: false
-        cardinality: many-to-one
+        allow_unmatched_left: true
+        cardinality: many_to_one
         allow_null_keys: true
     - entity: master_dataset
       local_keys: [master_set_id]
@@ -743,7 +737,7 @@ entities:
     - description
     - method_name
     - method_abbrev_or_alt_name
-    - method_group_id
+    - sead_method_group_id
     - arbodat_code
     values:
     - [1, null, null, Organic remains >2.0 mm, 'ORG 2,0', 'ORG 2,0', null, 'ORG 2,0']
@@ -758,23 +752,17 @@ entities:
     - [10, 76, null, null, Altitude above sea level, null, null, null]
     foreign_keys:
     - entity: method_group
-      local_keys: [method_group_id]
-      remote_keys: [system_id]
+      local_keys: [sead_method_group_id]
+      remote_keys: [method_group_id]
+      how: left
+      constraints:
+        allow_null_keys: true
     depends_on: []
-    arbodat_codes:
-    - ORG2,0
-    - ORG1,0
-    - ORG0,5
-    - ORG0,25
-    - MIN2,0
-    - MIN1,0
-    - MIN0,5
-    - MIN0,25
   method_group:
     type: sql
     public_id: method_group_id
     keys: [method_group_id]
-    columns: [method_group_id, group_name, description]
+    columns: [group_name, description]
     depends_on: []
     data_source: sead
     query: select "method_group_id", "group_name", "description" from public.tbl_method_groups
@@ -830,15 +818,14 @@ entities:
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: relative_ages
       local_keys: [ArchDat]
       remote_keys: [archdat]
       how: left
       constraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-        cardinality: many-to-one
+        allow_unmatched_left: true
+        cardinality: many_to_one
     depends_on: [analysis_entity, relative_ages]
     drop_duplicates: true
     extra_columns:
@@ -863,14 +850,14 @@ entities:
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: sample_group
       local_keys: [Projekt, Befu]
       remote_keys: [Projekt, Befu]
       constraints:
         allow_unmatched_left: false
         allow_null_keys: false
-        cardinality: many-to-one
+        cardinality: many_to_one
     - entity: sample_type
       local_keys: [ProbTyp]
       remote_keys: [ProbTyp]
@@ -1063,7 +1050,7 @@ entities:
           constraints:
             allow_unmatched_left: false
             allow_null_keys: false
-            cardinality: many-to-one
+            cardinality: many_to_one
         depends_on: [site_type]
         drop_duplicates: [Fustel, EVNr]
         check_functional_dependency: false
@@ -1251,7 +1238,7 @@ entities:
           constraints:
             allow_unmatched_left: false
             allow_null_keys: false
-            cardinality: many-to-one
+            cardinality: many_to_one
         depends_on: [site_type_group]
         drop_duplicates: [FustelTyp]
         check_functional_dependency: true
@@ -1288,7 +1275,6 @@ entities:
       other_entity: _pcodes
       other_column: PCODE
     extra_columns:
-      system_id:
       author_id:
       genus_id:
       species: BNam
@@ -1565,7 +1551,7 @@ entities:
     type: sql
     public_id: ecocode_definition_id
     keys: [Ökogruppe]
-    columns: []
+    columns: [Ökogruppe, Bezeichnung, Reihenfolge, Eco_EN, Eco_FR]
     foreign_keys:
     - entity: ecocode_group
       local_keys: [ecocode_group_id]

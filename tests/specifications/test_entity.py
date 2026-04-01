@@ -1131,12 +1131,51 @@ class TestAppendSpecification:
         """Sample project configuration."""
         return {
             "entities": {
-                "valid_fixed_append": {"append": [{"type": "fixed", "values": [["a"], ["b"]]}], "append_mode": "all"},
-                "valid_sql_append": {"append": [{"type": "sql", "query": "SELECT * FROM table"}]},
-                "valid_source_append": {"append": [{"source": "other_entity"}]},
-                "both_type_and_source": {"append": [{"type": "fixed", "source": "other", "values": []}]},
+                "valid_fixed_append": {
+                    "columns": ["system_id", "target_id", "value"],
+                    "public_id": "target_id",
+                    "append": [{"type": "fixed", "values": [["a"], ["b"]]}],
+                    "append_mode": "all",
+                },
+                "valid_sql_append": {
+                    "columns": ["system_id", "target_id", "value"],
+                    "public_id": "target_id",
+                    "append": [{"type": "sql", "query": "SELECT * FROM table"}],
+                },
+                "valid_source_append": {
+                    "columns": ["system_id", "target_id", "value"],
+                    "public_id": "target_id",
+                    "append": [{"source": "other_entity"}],
+                },
+                "valid_source_with_type_entity": {
+                    "columns": ["system_id", "target_id", "value"],
+                    "public_id": "target_id",
+                    "append": [{"type": "entity", "source": "other_entity"}],
+                },
+                "invalid_source_with_wrong_type": {"append": [{"type": "fixed", "source": "other_entity", "values": []}]},
                 "neither_type_nor_source": {"append": [{}]},
-                "invalid_mode": {"append": [{"type": "fixed", "values": []}], "append_mode": "invalid"},
+                "invalid_mode": {"columns": ["value"], "append": [{"type": "fixed", "values": []}], "append_mode": "invalid"},
+                "source_name_mismatch": {
+                    "columns": ["system_id", "target_id", "name", "category"],
+                    "public_id": "target_id",
+                    "append": [{"source": "legacy_entity"}],
+                },
+                "source_position_match": {
+                    "columns": ["system_id", "target_id", "name", "category"],
+                    "public_id": "target_id",
+                    "append": [{"source": "legacy_entity", "align_by_position": True}],
+                },
+                "source_position_count_mismatch": {
+                    "columns": ["system_id", "target_id", "name", "category"],
+                    "public_id": "target_id",
+                    "append": [{"source": "short_entity", "align_by_position": True}],
+                },
+                "other_entity": {"columns": ["system_id", "other_id", "value"], "public_id": "other_id"},
+                "legacy_entity": {
+                    "columns": ["system_id", "legacy_id", "legacy_name", "legacy_category"],
+                    "public_id": "legacy_id",
+                },
+                "short_entity": {"columns": ["system_id", "short_id", "legacy_name"], "public_id": "short_id"},
             }
         }
 
@@ -1157,24 +1196,29 @@ class TestAppendSpecification:
         assert result is True
 
     def test_valid_source_append(self, project_cfg):
-        """Test validation passes for valid source append."""
-        # Need to add the referenced entity
-        project_cfg["entities"]["other_entity"] = {"columns": ["col1"]}
-
+        """Test validation passes for valid source append (shorthand form)."""
         spec = AppendSpecification(project_cfg)
 
         result = spec.is_satisfied_by(entity_name="valid_source_append")
 
         assert result is True
 
-    def test_both_type_and_source(self, project_cfg):
-        """Test validation fails when both type and source specified."""
+    def test_valid_source_with_type_entity(self, project_cfg):
+        """Test validation passes for source append with type: entity (explicit form)."""
         spec = AppendSpecification(project_cfg)
 
-        result = spec.is_satisfied_by(entity_name="both_type_and_source")
+        result = spec.is_satisfied_by(entity_name="valid_source_with_type_entity")
+
+        assert result is True
+
+    def test_invalid_source_with_wrong_type(self, project_cfg):
+        """Test validation fails when type is not 'entity' but source is specified."""
+        spec = AppendSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="invalid_source_with_wrong_type")
 
         assert result is False
-        assert any("cannot specify both" in str(e) for e in spec.errors)
+        assert any("type must be 'entity'" in str(e) for e in spec.errors)
 
     def test_neither_type_nor_source(self, project_cfg):
         """Test validation fails when neither type nor source specified."""
@@ -1192,6 +1236,32 @@ class TestAppendSpecification:
         result = spec.is_satisfied_by(entity_name="invalid_mode")
 
         assert result is False
+
+    def test_source_append_match_by_name_rejects_missing_payload_columns(self, project_cfg):
+        """Name-based source append should fail when payload columns do not match."""
+        spec = AppendSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="source_name_mismatch")
+
+        assert result is False
+        assert any("match-by-name is not possible" in str(e) for e in spec.errors)
+
+    def test_source_append_align_by_position_ignores_identity_columns(self, project_cfg):
+        """Position matching should compare payload columns only."""
+        spec = AppendSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="source_position_match")
+
+        assert result is True, spec.get_report()
+
+    def test_source_append_align_by_position_requires_equal_payload_counts(self, project_cfg):
+        """Position matching should fail when payload column counts differ."""
+        spec = AppendSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="source_position_count_mismatch")
+
+        assert result is False
+        assert any("equal payload column counts" in str(e) for e in spec.errors)
 
 
 class TestFilterSpecification:

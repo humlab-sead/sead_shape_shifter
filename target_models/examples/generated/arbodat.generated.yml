@@ -1,0 +1,154 @@
+metadata:
+  name: arbodat:generated-template
+  type: shapeshifter-project
+  version: 0.1.0
+  description: Starter scaffold generated from target model 'SEAD Clearinghouse'
+entities:
+  location:
+    type: TODO
+    public_id: location_id
+    columns:
+    - location_name
+    - location_type_id
+    foreign_keys:
+    - entity: location_type
+  location_type:
+    type: TODO
+    public_id: location_type_id
+    columns:
+    - location_type
+  site:
+    type: TODO
+    public_id: site_id
+    columns:
+    - site_name
+    foreign_keys:
+    - entity: location
+  sample_group:
+    type: TODO
+    public_id: sample_group_id
+    columns:
+    - site_id
+    - method_id
+    foreign_keys:
+    - entity: site
+    - entity: method
+  sample:
+    type: TODO
+    public_id: physical_sample_id
+    columns:
+    - sample_group_id
+    - sample_type_id
+    - sample_name
+    foreign_keys:
+    - entity: sample_group
+    - entity: sample_type
+  sample_type:
+    type: TODO
+    public_id: sample_type_id
+    columns:
+    - type_name
+  method:
+    type: TODO
+    public_id: method_id
+    columns:
+    - method_name
+    - description
+    - method_group_id
+  dataset:
+    type: TODO
+    public_id: dataset_id
+    columns:
+    - dataset_name
+    - data_type_id
+    - method_id
+    foreign_keys:
+    - entity: method
+  analysis_entity:
+    type: TODO
+    public_id: analysis_entity_id
+    columns:
+    - physical_sample_id
+    - dataset_id
+    foreign_keys:
+    - entity: sample
+    - entity: dataset
+  abundance:
+    type: TODO
+    public_id: abundance_id
+    columns:
+    - analysis_entity_id
+    - abundance
+    foreign_keys:
+    - entity: analysis_entity
+    - entity: taxa_tree_master
+  abundance_element:
+    type: TODO
+    public_id: abundance_element_id
+    columns:
+    - element_name
+  abundance_element_group:
+    type: TODO
+    public_id: abundance_element_group_id
+    columns:
+    - abundance_element_group_name
+  abundance_modification:
+    type: TODO
+    public_id: abundance_modification_id
+    columns:
+    - abundance_id
+  abundance_property:
+    type: TODO
+    public_id: abundance_property_id
+    columns:
+    - abundance_id
+  taxa_tree_master:
+    type: TODO
+    public_id: taxon_id
+    columns:
+    - genus_id
+    - species
+  taxa_common_names:
+    type: TODO
+    public_id: taxon_common_name_id
+    columns:
+    - taxon_id
+    - common_name
+    foreign_keys:
+    - entity: taxa_tree_master
+  relative_ages:
+    type: TODO
+    public_id: relative_age_id
+    columns:
+    - relative_age_name
+  relative_dating:
+    type: TODO
+    public_id: relative_date_id
+    columns:
+    - analysis_entity_id
+    foreign_keys:
+    - entity: analysis_entity
+  geochronology:
+    type: TODO
+    public_id: geochron_id
+    columns:
+    - analysis_entity_id
+    foreign_keys:
+    - entity: analysis_entity
+  dating_lab:
+    type: TODO
+    public_id: dating_lab_id
+    columns:
+    - international_lab_id
+  method_group:
+    type: TODO
+    public_id: method_group_id
+    columns:
+    - group_name
+    - description
+  contact:
+    type: TODO
+    public_id: contact_id
+  contact_type:
+    type: TODO
+    public_id: contact_type_id

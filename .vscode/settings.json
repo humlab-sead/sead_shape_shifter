@@ -2,7 +2,8 @@
     "python.testing.pytestArgs": [
         "tests",
         "backend/tests",
-        "ingesters/sead/tests"
+        "ingesters/sead/tests",
+        "target_models/tests"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
@@ -22,13 +23,18 @@
         "statusBarItem.remoteForeground": "#e7e7e7",
         "titleBar.activeBackground": "#445740",
         "titleBar.activeForeground": "#e7e7e7",
-        "titleBar.inactiveBackground": "#66830299",
+        "titleBar.inactiveBackground": "#44574099",
         "titleBar.inactiveForeground": "#e7e7e799",
         "editor.background": "#000000",
         "sideBar.background": "#000000",
         "panel.background": "#000000"
     },
     "yaml.keyOrdering": false,
+    "yaml.schemas": {
+        "/home/roger/source/sead_shape_shifter/frontend/src/schemas/projectSchema.json": [
+            "**/shapeshifter.yml"
+        ]
+    },
     "yaml.format.enable": true,
     "yaml.format.singleQuote": false,
     "yaml.format.bracketSpacing": false,
@@ -70,7 +76,8 @@
     "python.analysis.extraPaths": [
         ".",
         "src",
-        "tests"
+        "tests",
+        "target_models/src"
     ],
     "python.analysis.generateWithTypeAnnotation": true,
     "python.analysis.ignore": [
@@ -96,7 +103,8 @@
     "python.analysis.include": [
         "src/**",
         "backend/**",
-        "tests/**"
+        "tests/**",
+        "target_models/**"
     ],
     "python.analysis.inlayHints.callArgumentNames": "off",
     "python.analysis.inlayHints.functionReturnTypes": true,

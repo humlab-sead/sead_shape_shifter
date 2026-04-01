@@ -107,6 +107,22 @@
           "default": null,
           "description": "Default source entity name",
           "title": "Default Entity"
+        },
+        "target_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Target model spec: inline dict or @include: path string",
+          "title": "Target Model"
         }
       },
       "required": [
@@ -121,7 +137,6 @@
   "properties": {
     "entities": {
       "additionalProperties": {
-        "additionalProperties": true,
         "type": "object"
       },
       "description": "Map of entity name to entity (raw dicts)",
@@ -129,7 +144,6 @@
       "type": "object"
     },
     "options": {
-      "additionalProperties": true,
       "description": "Global options",
       "title": "Options",
       "type": "object"
@@ -137,7 +151,6 @@
     "task_list": {
       "anyOf": [
         {
-          "additionalProperties": true,
           "type": "object"
         },
         {
