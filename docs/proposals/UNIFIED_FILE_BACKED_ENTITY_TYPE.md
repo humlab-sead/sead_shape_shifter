@@ -14,11 +14,11 @@ Replace the three file-backed entity types (`csv`, `xlsx`, `openpyxl`) with a si
 
 Shape Shifter currently has three separate registered loader keys that represent the same conceptual thing — a file-backed reference entity:
 
-| Type key | Loader class | Registered aliases |
-|---|---|---|
-| `csv` | `CsvLoader` | `csv`, `tsv` |
-| `xlsx` | `PandasLoader` | `xlsx`, `xls` |
-| `openpyxl` | `OpenPyxlLoader` | `openpyxl` |
+| Type key   | Loader class     | Registered aliases |
+|------------|------------------|--------------------|
+| `csv`      | `CsvLoader`      | `csv`, `tsv`       |
+| `xlsx`     | `PandasLoader`   | `xlsx`, `xls`      |
+| `openpyxl` | `OpenPyxlLoader` | `openpyxl`         |
 
 All three return `LoaderType.FILE` and all share the same structural role. The distinction between them is purely about file format and parsing backend, yet the type key is the only mechanism to specify it. This has several consequences:
 
