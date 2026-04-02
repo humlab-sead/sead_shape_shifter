@@ -10,7 +10,7 @@ SPECS_DIR = Path("tests/test_data/specs")
 
 
 def test_sead_v2_spec_loads_and_validates() -> None:
-    spec_path: Path = SPECS_DIR / "sead_v2.yml"
+    spec_path: Path = SPECS_DIR / "sead_standard_model.yml"
     target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
     issues = TargetModelSpecValidator().validate(target_model)

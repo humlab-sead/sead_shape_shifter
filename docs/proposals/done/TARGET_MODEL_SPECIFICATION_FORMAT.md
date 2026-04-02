@@ -3,7 +3,7 @@
 ## Status
 
 - **Format: v1 implemented and stable** — Pydantic domain model, spec validator, and conformance engine are all in `src/target_model/`
-- **SEAD specification: active** — `resources/target_models/sead_v2.yml` covers 35 entities across core, spatial, abundance, dating, taxonomy, method/contact, and provenance domains
+- **SEAD specification: active** — `resources/target_models/sead_standard_model.yml` covers 35 entities across core, spatial, abundance, dating, taxonomy, method/contact, and provenance domains
 - **Validator integration: done** — `TargetModelConformanceValidator` runs against resolved `ShapeShiftProject`; backend endpoint and frontend Check Conformance button are wired (see [TARGET_SCHEMA_AWARE_VALIDATION](TARGET_SCHEMA_AWARE_VALIDATION.md))
 - Scope: Specification format (YAML schema + semantics) and initial SEAD model definition
 - Goal: Define a reusable, system-independent format for describing target data model requirements, and produce a concrete SEAD specification as the first consumer
@@ -36,7 +36,7 @@ This means:
 This proposal covers two deliverables developed in parallel:
 
 1. **The format** — A YAML schema defining how to express target model requirements: entities, roles, columns, relationships, naming rules, and constraints.
-2. **SEAD v2 specification** — A concrete file (`sead_v2.yml`) that describes the SEAD archaeological database using this format, covering the entities and patterns most commonly used in Shape Shifter projects. Until Shape Shifter integration is completed, the working version lives at `resources/target_models/sead_v2.yml`.
+2. **SEAD v2 specification** — A concrete file (`sead_standard_model.yml`) that describes the SEAD archaeological database using this format, covering the entities and patterns most commonly used in Shape Shifter projects. Until Shape Shifter integration is completed, the working version lives at `resources/target_models/sead_standard_model.yml`.
 
 ## Non-Goals
 
@@ -59,7 +59,7 @@ This proposal covers two deliverables developed in parallel:
 ### Top-Level Structure
 
 ```yaml
-# resources/target_models/sead_v2.yml
+# resources/target_models/sead_standard_model.yml
 model:
   name: "SEAD Clearinghouse"
   version: "2.0.0"
@@ -344,7 +344,7 @@ The format and the SEAD specification should be iterated together:
 After that initial Milestone 2 package is complete, the same standalone pre-integration track can continue with a follow-on expansion phase. That follow-on work can resolve remaining proposal-versus-implementation drift and draft the next most commonly mapped entities before the format is treated as Milestone 3 stable.
 
 Milestone 2 should be completed as far as practical before backend-service integration becomes the primary focus.
-That means expanding the working `resources/target_models/sead_v2.yml`, tightening the documentation around the expanded scope, and documenting the expected template-generation outcome before shifting effort toward backend wiring.
+That means expanding the working `resources/target_models/sead_standard_model.yml`, tightening the documentation around the expanded scope, and documenting the expected template-generation outcome before shifting effort toward backend wiring.
 
 **Milestone 3: Stability**
 - Format considered stable for v1
@@ -526,7 +526,7 @@ Rejected because it defeats reusability. The whole point is that target model re
 
 **Under-specification risk.** The format may not cover all SEAD patterns. Mitigation: iterate format and SEAD spec in parallel; add fields when real need emerges, not speculatively.
 
-**Over-specification risk.** The format may accumulate fields that only SEAD uses, making it less generic. Mitigation: only add fields that would make sense for a non-SEAD target model. SEAD-specific semantics go in the *content* of `sead_v2.yml`, not in the *format*.
+**Over-specification risk.** The format may accumulate fields that only SEAD uses, making it less generic. Mitigation: only add fields that would make sense for a non-SEAD target model. SEAD-specific semantics go in the *content* of `sead_standard_model.yml`, not in the *format*.
 
 **DDL leakage risk.** Pulling too much from database constraints would turn the format into a lossy copy of physical schema details instead of a useful semantic contract. Mitigation: include only nullability and uniqueness rules that matter to conforming data; keep defaults, generated values, and physical constraint names out of scope.
 
@@ -536,7 +536,7 @@ Rejected because it defeats reusability. The whole point is that target model re
 
 ## Testing and Validation
 
-- **Round-trip:** The working spec at `resources/target_models/sead_v2.yml` loads, serializes, and reloads identically.
+- **Round-trip:** The working spec at `resources/target_models/sead_standard_model.yml` loads, serializes, and reloads identically.
 - **Coverage:** SEAD spec covers all entities used in at least two existing Shape Shifter projects.
 - **Cross-check:** Every `target_table` in the spec exists in `docs/sead/01_tables.sql`.
 - **Consumer test:** TARGET_SCHEMA_AWARE_VALIDATION validator can consume the spec and produce correct errors for a known-bad project.
@@ -544,7 +544,7 @@ Rejected because it defeats reusability. The whole point is that target model re
 ## Acceptance Criteria
 
 1. ✅ YAML format is documented with field definitions and semantics.
-2. ✅ A working `sead_v2.yml` exists and covers core SEAD entities plus all expansion packages (35 entities). The working version lives at `resources/target_models/sead_v2.yml`.
+2. ✅ A working `sead_standard_model.yml` exists and covers core SEAD entities plus all expansion packages (35 entities). The working version lives at `resources/target_models/sead_standard_model.yml`.
 3. ✅ Required entities are expressed via `required: true` on entity specs (no redundant top-level list).
 4. ✅ Global constraints use typed objects, not untyped dicts.
 5. ✅ A non-SEAD hypothetical model (museum specimen database) is expressed and tested in `target_models/tests/test_spec_files.py::test_non_sead_target_model_expresses_cleanly`.

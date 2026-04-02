@@ -2,7 +2,7 @@
 
 ## Context
 
-The `sead_v2.yml` target model specification covers ~36 entities. An extended model `sead_standard_model.yml` has been created that adds Phase 1-4 entities (spatial, sample-metadata, dating, taxonomy, ecology, and analysis), bringing coverage to 70 entities. The actual SEAD Clearinghouse database contains 100+ tables. Analysis of the Arbodat Shape Shifter project reveals significant remaining gaps in entity coverage that prevent effective conformance validation.
+The `sead_standard_model.yml` target model specification covers ~36 entities. An extended model `sead_standard_model.yml` has been created that adds Phase 1-4 entities (spatial, sample-metadata, dating, taxonomy, ecology, and analysis), bringing coverage to 70 entities. The actual SEAD Clearinghouse database contains 100+ tables. Analysis of the Arbodat Shape Shifter project reveals significant remaining gaps in entity coverage that prevent effective conformance validation.
 
 ## Problem Statement
 
@@ -11,7 +11,7 @@ The `sead_v2.yml` target model specification covers ~36 entities. An extended mo
 - No formal specification for spatial coordinates, dating details, site properties, sample dimensions, or taxon metadata
 - Inconsistent entity naming and relationship documentation
 
-**Coverage in `sead_v2.yml` (36 entities):**
+**Coverage in `sead_standard_model.yml` (36 entities):**
 Core: location, location_type, site, site_location, sample_group, sample, analysis_entity, dataset, method, project, citation, contact
 
 Abundance: abundance, abundance_element, abundance_element_group, abundance_modification, abundance_property
@@ -252,5 +252,5 @@ For entity specifications, constraints, and relationship details, refer directly
 - SEAD Database Schema: `docs/sead/01_tables.sql`, `05_constraints.sql`, `07_comments.sql`
 - Arbodat Project: `sead-tools/sead_shape_shifter/data/projects/arbodat/arbodat-rebecka/shapeshifter.yml`
 - Current Target Model (Extended): `resources/target_models/sead_standard_model.yml`
-- Base Target Model: `resources/target_models/sead_v2.yml`
+- Base Target Model: `resources/target_models/sead_standard_model.yml`
 - Target Model Guide: `docs/TARGET_MODEL_GUIDE.md`

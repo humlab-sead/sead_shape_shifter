@@ -8,7 +8,7 @@ from src.target_model.template_generator import generate_project_template, rende
 EXAMPLES_DIR = Path("tests/test_data/examples")
 SPECS_DIR = Path("tests/test_data/specs")
 
-SPEC_PATH: Path = SPECS_DIR / "sead_v2.yml"
+SPEC_PATH: Path = SPECS_DIR / "sead_standard_model.yml"
 
 
 def load_target_model() -> TargetModel:
