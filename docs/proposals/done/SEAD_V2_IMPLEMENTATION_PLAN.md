@@ -104,7 +104,7 @@ Current status:
 - The working spec stands at 35 entities, exceeding the ~30-entity threshold.
 - The v1 format contract is frozen: the `TargetModel` Pydantic schema in `src/target_model/models.py` covers all fields defined in this proposal and requires no further schema changes to satisfy either the SEAD specification or the validation consumer.
 - Backend endpoint (`POST /projects/{name}/validate/target-model`) and frontend Check Conformance button are wired; conformance issues reach the UI via `ValidationCategory.CONFORMANCE`.
-- All acceptance criteria in `TARGET_MODEL_SPECIFICATION_FORMAT.md` are satisfied, including the non-SEAD generality criterion (test added in `target_models/tests/test_spec_files.py`).
+- All acceptance criteria in `TARGET_MODEL_SPECIFICATION_FORMAT.md` are satisfied, including the non-SEAD generality criterion.
 - Naming convention conformance (`PUBLIC_ID_NAMING_VIOLATION`) is now checked by `NamingConventionConformanceValidator` in `src/target_model/conformance.py`.
 
 ## Phase 0: Pre-Draft Decisions
@@ -346,7 +346,7 @@ Goals:
 
 ### Checklist
 
-- [x] Create a `target_models/examples/` area for standalone project fixtures
+- [x] ~~Create a `target_models/examples/` area for standalone project fixtures~~
 - [x] Add at least one real SEAD-oriented project fixture
 - [x] Add at least one intentionally non-conforming or partially conforming fixture
 - [x] Document fixture provenance and any simplifications made for standalone testing
@@ -355,7 +355,7 @@ Goals:
 Deliverables:
 - `target_models/examples/`
 - Standalone project fixtures derived from real `shapeshifter.yml` files
-- Fixture-loading tests under `target_models/tests/`
+- ~~Fixture-loading tests under `target_models/tests/`~~
 
 Exit criteria:
 - Real project configurations can be loaded and exercised from within `target_models/` alone
@@ -386,7 +386,7 @@ Goals:
 Deliverables:
 - `src/target_model/conformance.py` or equivalent
 - A lightweight project model or adapter for standalone `shapeshifter.yml` validation
-- Conformance tests under `target_models/tests/`
+~~- Conformance tests under `target_models/tests/`~~
 
 Exit criteria:
 - A standalone conformance validator can detect obvious project-versus-target mismatches using real project fixtures
@@ -519,7 +519,7 @@ Dating semantics note:
 
 Current implementation status:
 - Implemented in `src/target_model/template_generator.py` with CLI wrapper `target_models/scripts/generate_project_template.py`.
-- Covered by standalone tests in `target_models/tests/test_template_generator.py`.
+~~- Covered by standalone tests in `target_models/tests/test_template_generator.py`.~~
 
 Exit criteria:
 - Milestone 2 is complete or reduced to a clearly bounded remainder with explicit deferred items
