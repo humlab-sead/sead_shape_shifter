@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Conformance validation comparison between original (`sead_v2.yml` v2.0.0) and extended (`sead_standard_model.yml` v2.1.0) target models against the Arbodat project demonstrates that the Phase 1 enhancements successfully validate real-world usage patterns while identifying configuration gaps.
+Conformance validation comparison between original (`sead_standard_model.yml` v2.0.0) and extended (`sead_standard_model.yml` v2.1.0) target models against the Arbodat project demonstrates that the Phase 1 enhancements successfully validate real-world usage patterns while identifying configuration gaps.
 
 **Key Metrics:**
 - **Original Model**: 36 entities, 8 errors across 6 entities
@@ -14,7 +14,7 @@ Conformance validation comparison between original (`sead_v2.yml` v2.0.0) and ex
 
 ### Test Setup
 - **Target Models**:
-  - Original: `resources/target_models/sead_v2.yml` (v2.0.0, 36 entities)
+  - Original: `resources/target_models/sead_standard_model.yml` (v2.0.0, 36 entities)
   - Extended: `resources/target_models/sead_standard_model.yml` (v2.1.0, 49 entities)
 - **Project**: Arbodat dendrochronology project (67 configured entities)
 - **Validator**: `TargetModelConformanceValidator` with 6 registered validators
@@ -217,4 +217,4 @@ python scripts/compare_target_models.py
 
 *Generated*: 2025-01-29
 *Validator Version*: TargetModelConformanceValidator with 6 registered validators
-*Target Models Compared*: sead_v2.yml v2.0.0 vs sead_standard_model.yml v2.1.0
+*Target Models Compared*: sead_standard_model.yml v2.0.0 vs sead_standard_model.yml v2.1.0

@@ -243,7 +243,7 @@ Add to your CI/CD pipeline to regenerate docs on model changes:
 # In .github/workflows/docs.yml
 - name: Generate target model docs
   run: |
-    python scripts/generate_target_model_docs.py resources/target_models/sead_v2.yml --format all
+    python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format all
     python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format all
 ```
 

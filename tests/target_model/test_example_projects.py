@@ -10,7 +10,7 @@ EXAMPLES_DIR = Path("tests/test_data/examples")
 SPECS_DIR = Path("tests/test_data/specs")
 
 
-def load_target_model(name: str = "sead_v2.yml") -> TargetModel:
+def load_target_model(name: str = "sead_standard_model.yml") -> TargetModel:
     spec_path = SPECS_DIR / name
     return TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
@@ -84,7 +84,7 @@ def test_broken_example_preserves_intended_conformance_gaps() -> None:
 
 
 class TestExampleProjectConformance:
-    """Use TargetModelConformanceValidator to check example projects against sead_v2.yml."""
+    """Use TargetModelConformanceValidator to check example projects against sead_standard_model.yml."""
 
     def test_arbodat_core_conforms_to_sead_v2(self) -> None:
         """The complete arbodat example should produce no critical conformance errors."""

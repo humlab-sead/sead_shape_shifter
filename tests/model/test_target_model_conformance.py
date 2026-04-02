@@ -8,7 +8,7 @@ from src.target_model.conformance import TargetModelConformanceValidator
 from src.target_model.models import TargetModel
 
 TEST_DATA_DIR = Path(__file__).resolve().parent.parent / "test_data"
-SPEC_PATH = TEST_DATA_DIR / "specs" / "sead_v2.yml"
+SPEC_PATH = TEST_DATA_DIR / "specs" / "sead_standard_model.yml"
 EXAMPLES_DIR = TEST_DATA_DIR / "examples"
 REAL_PROJECTS_DIR = TEST_DATA_DIR / "projects"
 

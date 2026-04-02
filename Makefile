@@ -92,7 +92,7 @@ generate-arbodat-yaml:
 	@echo "Generating Arbodat starter project YAML at $(ARBODAT_TEMPLATE_OUTPUT)..."
 	@mkdir -p $(dir $(ARBODAT_TEMPLATE_OUTPUT))
 	@PYTHONPATH=target_models/src uv run python target_models/scripts/generate_project_template.py \
-		--spec resources/target_models/sead_v2.yml \
+		--spec resources/target_models/sead_standard_model.yml \
 		--project-name arbodat:generated-template \
 		--domain abundance \
 		--domain dating \

@@ -12,7 +12,7 @@ It exists to separate low-noise rules that are safe to keep from heuristic check
 - `target_models/examples/sead_missing_sample_group.yml`
 - `tests/test_data/projects/arbodat/shapeshifter.yml`
 
-All were validated against `resources/target_models/sead_v2.yml` using the standalone `TargetModelConformanceValidator`.
+All were validated against `resources/target_models/sead_standard_model.yml` using the standalone `TargetModelConformanceValidator`.
 
 ## Current Stable Findings
 
@@ -93,7 +93,7 @@ These may be genuine conformance failures, but the validator should not silently
 
 For the current Phase 6 iteration, keep both the target model and the validator strict.
 
-- Do not change `sead_v2.yml` to encode project-specific aliases.
+- Do not change `sead_standard_model.yml` to encode project-specific aliases.
 - Do not teach the validator implicit alias equivalence.
 - Treat these as real conformance failures unless a later target-model extension introduces explicit alias metadata.
 
@@ -122,7 +122,7 @@ If a subset of the standalone validator is later integrated into backend validat
 
 ## Current Phase 6 Conclusion
 
-At this point, the evidence still supports keeping `sead_v2.yml` strict and leaving alias metadata out of the format.
+At this point, the evidence still supports keeping `sead_standard_model.yml` strict and leaving alias metadata out of the format.
 
 - The full Arbodat project confirms the same mismatch families already visible in the standalone fixtures.
 - Those mismatches are explainable as either direct target-model gaps in the project or intentional source-specific naming choices.

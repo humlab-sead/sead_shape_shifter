@@ -79,7 +79,7 @@ def print_validation_summary(name: str, results: dict):
 def main():
     """Compare conformance validation between original and extended target models."""
     # Paths
-    original_model_path = project_root / "target_models" / "specs" / "sead_v2.yml"
+    original_model_path = project_root / "target_models" / "specs" / "sead_standard_model.yml"
     extended_model_path = project_root / "target_models" / "specs" / "sead_standard_model.yml"
     arbodat_project_path = project_root / "tests" / "test_data" / "projects" / "arbodat" / "shapeshifter.yml"
     
