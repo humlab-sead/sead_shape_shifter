@@ -547,7 +547,7 @@ Rejected because it defeats reusability. The whole point is that target model re
 2. ✅ A working `sead_standard_model.yml` exists and covers core SEAD entities plus all expansion packages (35 entities). The working version lives at `resources/target_models/sead_standard_model.yml`.
 3. ✅ Required entities are expressed via `required: true` on entity specs (no redundant top-level list).
 4. ✅ Global constraints use typed objects, not untyped dicts.
-5. ✅ A non-SEAD hypothetical model (museum specimen database) is expressed and tested in `target_models/tests/test_spec_files.py::test_non_sead_target_model_expresses_cleanly`.
+5. ✅ ~~A non-SEAD hypothetical model (museum specimen database) is expressed and tested in `target_models/tests/test_spec_files.py::test_non_sead_target_model_expresses_cleanly`.~~
 6. ✅ Format is consumed by the target-schema-aware validation proposal without schema modifications.
 
 ## Open Questions

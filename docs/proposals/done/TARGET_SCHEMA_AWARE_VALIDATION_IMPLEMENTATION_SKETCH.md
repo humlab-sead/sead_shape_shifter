@@ -234,7 +234,7 @@ Phase 4 advanced semantic rules, future enhancements, and remaining deferred ite
 ### Current coverage
 
 - `tests/model/test_target_model_conformance.py` — 11 tests, 98% branch coverage of `src/target_model/conformance.py`
-- `target_models/tests/` — standalone spec and example-project tests (still using the pre-core-integration path)
+- ~~`target_models/tests/` — standalone spec and example-project tests (still using the pre-core-integration path)~~
 
 ### Remaining test areas
 

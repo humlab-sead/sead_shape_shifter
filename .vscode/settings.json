@@ -2,8 +2,7 @@
     "python.testing.pytestArgs": [
         "tests",
         "backend/tests",
-        "ingesters/sead/tests",
-        "target_models/tests"
+        "ingesters/sead/tests"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
