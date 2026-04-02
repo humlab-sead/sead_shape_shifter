@@ -22,7 +22,7 @@ from jinja2.environment import Template
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 
-from src.target_model.models import TargetModel
+from src.target_model.models import EntitySpec, TargetModel
 
 if TYPE_CHECKING:
     from src.model import ShapeShiftProject
@@ -34,6 +34,7 @@ class DocumentFormat(str, Enum):
     HTML = "html"
     MARKDOWN = "markdown"
     EXCEL = "excel"
+    SIMS = "sims"
 
 
 class ExcelGenerator:
@@ -220,6 +221,148 @@ class HTMLDocumentGenerator(TextDocumentGenerator):
         return self._render_template("target_model.html.j2", target_model=target_model, project=project)
 
 
+class SimsDocumentGenerator(TextDocumentGenerator):
+    """Generate SIMS entity register documentation from target model."""
+
+    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> str:
+        """Generate SIMS entity register Markdown."""
+        env: Environment = self._get_jinja_env()
+        template: Template = env.get_template("sims_entity_register.md.j2")
+        data: dict[str, Any] = self._prepare_sims_data(target_model)
+        return template.render(**data)
+
+    @staticmethod
+    def _resolve_effective_sims(spec: EntitySpec) -> dict[str, str | None]:
+        """Compute effective SIMS properties, applying defaults from entity role."""
+        identity_tracking: str | None = spec.identity_tracking
+        reconciliation: str | None = spec.reconciliation
+        aggregate_parent: str | None = spec.aggregate_parent
+
+        if identity_tracking is None:
+            if aggregate_parent:
+                identity_tracking = "child"
+            elif spec.role == "fact":
+                identity_tracking = "tracked"
+            elif spec.role in ("lookup", "classifier"):
+                identity_tracking = "reconciled"
+            elif spec.role == "bridge":
+                identity_tracking = "derived"
+
+        if reconciliation is None:
+            if identity_tracking == "child":
+                reconciliation = None
+            elif identity_tracking == "tracked":
+                reconciliation = "allocate"
+            elif spec.role == "lookup":
+                reconciliation = "reconcile-exact"
+            elif spec.role == "classifier":
+                reconciliation = "lookup-only"
+            elif identity_tracking == "derived":
+                reconciliation = "derive"
+
+        return {
+            "identity_tracking": identity_tracking,
+            "reconciliation": reconciliation,
+            "aggregate_parent": aggregate_parent,
+        }
+
+    @staticmethod
+    def _classify_sims_subtype(effective: dict[str, str | None]) -> str:
+        """Map effective SIMS properties to a display subtype."""
+        it = effective["identity_tracking"]
+        recon = effective["reconciliation"]
+        parent = effective["aggregate_parent"]
+
+        if parent:
+            return "provider_owned_children"
+        if it == "tracked":
+            return "provider_owned_roots"
+        if it == "reconciled" and recon in ("reconcile-exact", "reconcile-fuzzy"):
+            return "provider_extensible"
+        if it == "reconciled" and recon in ("lookup-only", "lookup-extensible"):
+            return "sead_administered"
+        if it == "derived":
+            return "bridges"
+        return "unclassified"
+
+    def _prepare_sims_data(self, target_model: TargetModel) -> dict[str, Any]:
+        """Prepare SIMS-specific template data with effective identity properties."""
+        entities: list[dict[str, Any]] = []
+        for name, spec in target_model.entities.items():
+            effective = self._resolve_effective_sims(spec)
+            subtype = self._classify_sims_subtype(effective)
+            entities.append({
+                "name": name,
+                "spec": spec,
+                "identity_tracking": effective["identity_tracking"],
+                "reconciliation": effective["reconciliation"],
+                "aggregate_parent": effective["aggregate_parent"],
+                "sims_subtype": subtype,
+            })
+
+        entities.sort(key=lambda e: e["name"])
+
+        group_order: list[str] = [
+            "provider_owned_roots",
+            "provider_owned_children",
+            "provider_extensible",
+            "sead_administered",
+            "bridges",
+        ]
+        group_labels: dict[str, str] = {
+            "provider_owned_roots": "Provider-Owned Root Entities",
+            "provider_owned_children": "Provider-Owned Child Entities (Value Objects)",
+            "provider_extensible": "Shared Metadata \u2014 Provider-Extensible",
+            "sead_administered": "Shared Metadata \u2014 SEAD-Administered",
+            "bridges": "Relationship Entities (Bridges)",
+        }
+        groups: dict[str, list[dict[str, Any]]] = {g: [] for g in group_order}
+        for entity in entities:
+            subtype = entity["sims_subtype"]
+            if subtype in groups:
+                groups[subtype].append(entity)
+
+        aggregates: dict[str, list[dict[str, Any]]] = {}
+        for entity in entities:
+            parent = entity["aggregate_parent"]
+            if parent:
+                aggregates.setdefault(parent, []).append(entity)
+
+        reconciliation_strategies: list[tuple[str, str]] = [
+            ("allocate", "Fresh identity allocation per submission"),
+            ("reconcile-exact", "Exact business key match; allocate new if no match"),
+            ("reconcile-fuzzy", "Fuzzy matching with human review for ambiguous cases"),
+            ("lookup-only", "Must match existing record; reject if not found"),
+            ("lookup-extensible", "Match existing; propose new values for admin review"),
+            ("derive", "Identity composed from foreign key references"),
+        ]
+        reconciliation_groups: dict[str, list[str]] = {}
+        for entity in entities:
+            recon = entity["reconciliation"]
+            if recon:
+                reconciliation_groups.setdefault(recon, []).append(entity["name"])
+
+        stats: dict[str, int] = {
+            "total_entities": len(entities),
+            "tracked_count": sum(1 for e in entities if e["identity_tracking"] == "tracked"),
+            "reconciled_count": sum(1 for e in entities if e["identity_tracking"] == "reconciled"),
+            "derived_count": sum(1 for e in entities if e["identity_tracking"] == "derived"),
+            "child_count": sum(1 for e in entities if e["identity_tracking"] == "child"),
+        }
+
+        return {
+            "model": target_model.model,
+            "entities": entities,
+            "groups": groups,
+            "group_order": group_order,
+            "group_labels": group_labels,
+            "aggregates": aggregates,
+            "reconciliation_strategies": reconciliation_strategies,
+            "reconciliation_groups": reconciliation_groups,
+            "stats": stats,
+        }
+
+
 class TargetModelDocumentGenerator:
     """Generate human-readable documentation from target models with optional project context."""
 
@@ -253,6 +396,9 @@ class TargetModelDocumentGenerator:
 
         if format == DocumentFormat.EXCEL:
             return ExcelGenerator().generate(self.project, self.target_model)
+
+        if format == DocumentFormat.SIMS:
+            return SimsDocumentGenerator().generate(self.target_model, self.project).encode("utf-8")
 
         raise ValueError(f"Unsupported format: {format}")
 

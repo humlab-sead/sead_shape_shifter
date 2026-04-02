@@ -262,6 +262,7 @@ entities:
     role: fact
     required: false
     description: Typed free-text or coded description attached to a physical sample.
+    aggregate_parent: sample
     domains: [core, sample-metadata]
     target_table: tbl_sample_descriptions
     public_id: sample_description_id
@@ -369,6 +370,7 @@ entities:
     role: fact
     required: false
     description: Spatial coordinate measurement for a physical sample
+    aggregate_parent: sample
     domains: [spatial, sample-metadata]
     target_table: tbl_sample_coordinates
     public_id: sample_coordinate_id
@@ -420,6 +422,7 @@ entities:
     role: fact
     required: false
     description: Alternative reference identifier for a sample
+    aggregate_parent: sample
     domains: [sample-metadata]
     target_table: tbl_sample_alt_refs
     public_id: sample_alt_ref_id
@@ -449,6 +452,7 @@ entities:
     role: fact
     required: false
     description: Physical dimension measurement of a sample
+    aggregate_parent: sample
     domains: [sample-metadata, physical-properties]
     target_table: tbl_sample_dimensions
     public_id: sample_dimension_id
@@ -482,6 +486,7 @@ entities:
     role: classifier
     required: true
     description: Analytical or collection method referenced by datasets.
+    reconciliation: lookup-extensible
     domains: [core]
     target_table: tbl_methods
     public_id: method_id
@@ -620,6 +625,7 @@ entities:
     role: lookup
     required: false
     description: Bibliographic reference reused by datasets, methods, and other SEAD entities.
+    reconciliation: reconcile-fuzzy
     domains: [provenance, bibliography]
     target_table: tbl_biblio
     public_id: biblio_id
@@ -657,6 +663,8 @@ entities:
     role: bridge
     required: true
     description: Analytical observation context connecting sample and dataset.
+    identity_tracking: tracked
+    reconciliation: allocate
     domains: [core]
     target_table: tbl_analysis_entities
     public_id: analysis_entity_id
@@ -679,6 +687,7 @@ entities:
     role: fact
     required: false
     description: Biological abundance observation linked to an analysis entity and typically to a taxon.
+    aggregate_parent: analysis_entity
     domains: [abundance, taxonomy]
     target_table: tbl_abundances
     public_id: abundance_id
@@ -710,6 +719,7 @@ entities:
     role: classifier
     required: false
     description: Controlled vocabulary for the element or remain type attached to an abundance observation.
+    reconciliation: lookup-extensible
     domains: [abundance]
     target_table: tbl_abundance_elements
     public_id: abundance_element_id
@@ -788,6 +798,7 @@ entities:
     role: fact
     required: false
     description: Property/value observation attached to an abundance record.
+    aggregate_parent: abundance
     domains: [abundance]
     target_table: tbl_abundance_properties
     public_id: abundance_property_id
@@ -861,6 +872,7 @@ entities:
     role: classifier
     required: false
     description: Canonical SEAD taxonomy entity referenced by abundance and other taxon-linked observations.
+    reconciliation: lookup-extensible
     domains: [taxonomy]
     target_table: tbl_taxa_tree_master
     public_id: taxon_id
@@ -882,6 +894,7 @@ entities:
     role: lookup
     required: false
     description: Human-readable taxon names associated with SEAD taxonomy records.
+    aggregate_parent: taxa_tree_master
     domains: [taxonomy]
     target_table: tbl_taxa_common_names
     public_id: taxon_common_name_id
@@ -1058,6 +1071,7 @@ entities:
     role: fact
     required: false
     description: Relative or archaeological dating observation linked to an analysis entity and optionally to a relative age vocabulary entry; Arbodat archaeological dating facts map here.
+    aggregate_parent: analysis_entity
     domains: [dating]
     target_table: tbl_relative_dates
     public_id: relative_date_id
@@ -1093,6 +1107,7 @@ entities:
     role: fact
     required: false
     description: Absolute or chronology dating observation linked to an analysis entity and optionally to a dating laboratory; Arbodat chronology/lab dating facts map here even when the project-local entity is named `dating`.
+    aggregate_parent: analysis_entity
     domains: [dating]
     target_table: tbl_geochronology
     public_id: geochron_id
@@ -1181,6 +1196,7 @@ entities:
     role: lookup
     required: false
     description: Person or organization contact metadata used by datasets, projects, and dating laboratories.
+    reconciliation: lookup-only
     domains: [contacts]
     target_table: tbl_contacts
     public_id: contact_id

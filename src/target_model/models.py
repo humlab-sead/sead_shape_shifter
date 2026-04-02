@@ -30,6 +30,11 @@ class EntitySpec(BaseModel):
     unique_sets: list[list[str]] = Field(default_factory=list)
     foreign_keys: list[ForeignKeySpec] = Field(default_factory=list)
 
+    # SIMS identity properties (defaults derived from role when None)
+    identity_tracking: Literal["tracked", "reconciled", "derived", "child"] | None = None
+    reconciliation: Literal["allocate", "reconcile-exact", "reconcile-fuzzy", "lookup-only", "lookup-extensible", "derive"] | None = None
+    aggregate_parent: str | None = None
+
 
 class NamingConventions(BaseModel):
     public_id_suffix: str | None = None
