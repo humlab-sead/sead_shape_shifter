@@ -1,0 +1,84 @@
+# SIMS Entity Register
+
+> Auto-generated from {{ model.name }} v{{ model.version }}
+
+## Summary
+
+| Category | Count |
+|----------|-------|
+| Total entities | {{ stats.total_entities }} |
+| Provider-owned (tracked) | {{ stats.tracked_count }} |
+| Provider-owned (children) | {{ stats.child_count }} |
+| Shared metadata (reconciled) | {{ stats.reconciled_count }} |
+| Relationship (derived) | {{ stats.derived_count }} |
+
+---
+
+## Entity Register
+
+{% for group_key in group_order %}
+{% set group_entities = groups[group_key] %}
+{% if group_entities %}
+### {{ group_labels[group_key] }}
+
+{% if group_key == "provider_owned_roots" %}
+Entities receiving fresh UUID + sequential PK allocation per submission.
+{% elif group_key == "provider_owned_children" %}
+Value objects owned by an aggregate root; identity inherited from parent context.
+{% elif group_key == "provider_extensible" %}
+Shared metadata matched by business key; providers may propose new entries.
+{% elif group_key == "sead_administered" %}
+Controlled vocabularies maintained by SEAD administrators; providers reference existing entries.
+{% elif group_key == "bridges" %}
+Association entities whose identity is derived from their foreign key references.
+{% endif %}
+
+| Entity | Role | Reconciliation | Aggregate Parent | Domains |
+|--------|------|----------------|------------------|---------|
+{% for e in group_entities %}
+| {{ e.name }} | {{ e.spec.role or '-' }} | {{ e.reconciliation or '-' }} | {{ e.aggregate_parent or '-' }} | {{ e.spec.domains|join(', ') }} |
+{% endfor %}
+
+{% endif %}
+{% endfor %}
+
+---
+
+## Aggregate Boundaries
+
+{% if aggregates %}
+| Root Entity | Child Entities |
+|-------------|----------------|
+{% for parent, children in aggregates.items()|sort %}
+| **{{ parent }}** | {{ children|map(attribute='name')|join(', ') }} |
+{% endfor %}
+{% else %}
+_No aggregate boundaries defined._
+{% endif %}
+
+---
+
+## Cross-Aggregate Associations
+
+Bridge entities that connect different aggregate roots.
+
+{% set bridge_entities = groups["bridges"] %}
+{% if bridge_entities %}
+| Bridge | Connected Entities |
+|--------|--------------------|
+{% for e in bridge_entities %}
+| {{ e.name }} | {{ e.spec.foreign_keys|map(attribute='entity')|join(' ↔ ') }} |
+{% endfor %}
+{% else %}
+_No bridge entities defined._
+{% endif %}
+
+---
+
+## Reconciliation Strategies
+
+| Strategy | Description | Entities |
+|----------|-------------|----------|
+{% for key, desc in reconciliation_strategies %}
+| {{ key }} | {{ desc }} | {{ reconciliation_groups.get(key, [])|join(', ') or '-' }} |
+{% endfor %}
