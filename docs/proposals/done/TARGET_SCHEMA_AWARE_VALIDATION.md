@@ -153,11 +153,11 @@ Naming conventions are target-model rules about identifiers and columns, such as
 
 Introduce target model specification files that define target system requirements independently from project data mappings.
 
-**File location during iteration:** `target_models/specs/<target_system_name>.yml`
+**File location during iteration:** `resources/target_models/<target_system_name>.yml`
 
 **Structure:**
 ```yaml
-# target_models/specs/sead_v2.yml
+# resources/target_models/sead_v2.yml
 model:
   name: "SEAD Clearinghouse"
   version: "2.0.0"
@@ -209,7 +209,7 @@ Projects reference target models using existing `@include:` pattern:
 metadata:
   type: shapeshifter-project
   name: "Arbodat Dendrochronology Import"
-  target_model: "@include: target_models/specs/sead_v2.yml"
+  target_model: "@include: resources/target_models/sead_v2.yml"
   
 entities:
   location:
@@ -283,10 +283,10 @@ Deferred items and open technical questions are tracked in [TARGET_MODEL_CONFORM
 
 ```yaml
 # This (recommended):
-target_model: "@include: target_models/specs/sead_v2.yml"
+target_model: "@include: resources/target_models/sead_v2.yml"
 
 # Not this:
-target_model: "target_models/specs/sead_v2.yml"
+target_model: "resources/target_models/sead_v2.yml"
 ```
 
 Reasons:
@@ -362,7 +362,7 @@ If the project has no `target_model` declared, the endpoint returns an empty val
 
 ### Metadata Editor — Target Model field
 
-A **Target Model** combobox is added below the Default Entity selector. On mount the editor fetches the project's uploaded YAML files (`GET /projects/{name}/files?ext=yml,yaml`) and presents them as `@include: <filename>` options. Users can also type a path directly, which is the idiomatic way to reference a spec file that lives outside the uploads directory (e.g. `@include: target_models/specs/sead_v2.yml`). The field is clearable; clearing it and saving removes `target_model` from the project metadata entirely. The value is always included in the PATCH payload so the backend can distinguish an intentional clear from a field that was simply not sent.
+A **Target Model** combobox is added below the Default Entity selector. On mount the editor fetches the project's uploaded YAML files (`GET /projects/{name}/files?ext=yml,yaml`) and presents them as `@include: <filename>` options. Users can also type a path directly, which is the idiomatic way to reference a spec file that lives outside the uploads directory (e.g. `@include: resources/target_models/sead_v2.yml`). The field is clearable; clearing it and saving removes `target_model` from the project metadata entirely. The value is always included in the PATCH payload so the backend can distinguish an intentional clear from a field that was simply not sent.
 
 ## Alternatives Considered
 
@@ -451,7 +451,7 @@ Implement target-schema-aware validation using separate, reusable target model s
 - Define target model schema around top-level `model`, `entities`, `naming`, and `constraints`
 - Add `metadata.target_model` field
 - Implement basic validation (required entities, columns, and foreign keys)
-- Ship with `target_models/specs/sead_v2.yml` as reference
+- Ship with `resources/target_models/sead_v2.yml` as reference
 
 **Benefits:**
 - Makes Shape Shifter truly generic (no hardcoded SEAD assumptions)

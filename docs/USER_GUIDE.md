@@ -498,7 +498,7 @@ Conformance validation checks whether the project entities satisfy the requireme
 
 **Running conformance:**
 
-1. Set the **Target Model** field in the Metadata tab (e.g., `@include: target_models/specs/sead_v2.yml`).
+1. Set the **Target Model** field in the Metadata tab (e.g., `@include: resources/target_models/sead_v2.yml`).
 2. Go to the **Validate** tab and click **Check Conformance**.
 3. Review results in the **Conformance** expansion panel.
 

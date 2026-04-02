@@ -2,7 +2,7 @@
 
 ## Context
 
-The `sead_v2.yml` target model specification covers ~36 entities. An extended model `sead_v2_extended.yml` has been created that adds Phase 1 spatial, sample-metadata, and dating entities, bringing coverage to 49 entities. The actual SEAD Clearinghouse database contains 100+ tables. Analysis of the Arbodat Shape Shifter project reveals significant remaining gaps in entity coverage that prevent effective conformance validation.
+The `sead_v2.yml` target model specification covers ~36 entities. An extended model `sead_standard_model.yml` has been created that adds Phase 1-4 entities (spatial, sample-metadata, dating, taxonomy, ecology, and analysis), bringing coverage to 70 entities. The actual SEAD Clearinghouse database contains 100+ tables. Analysis of the Arbodat Shape Shifter project reveals significant remaining gaps in entity coverage that prevent effective conformance validation.
 
 ## Problem Statement
 
@@ -24,9 +24,17 @@ Classifiers: sample_type, sample_description_type, site_type, site_type_group, c
 
 Bridges: dataset_contact, sample_feature
 
-**Coverage in `sead_v2_extended.yml` (49 entities — adds 13):**
+**Coverage in `sead_standard_model.yml` (70 entities — adds 34):**
 
-*Fully specified additions (13):* dimension, coordinate_method_dimension, sample_coordinate, alt_ref_type, sample_alt_ref, sample_dimension, identification_level, abundance_ident_level, age_type, relative_age_type, chronology, dating_uncertainty, dating_material
+*Phase 1 additions (13):* dimension, coordinate_method_dimension, sample_coordinate, alt_ref_type, sample_alt_ref, sample_dimension, identification_level, abundance_ident_level, age_type, relative_age_type, chronology, dating_uncertainty, dating_material
+
+*Phase 2 additions (9):* sample_group_description_type, sample_group_description, sampling_context, lithology, site_preservation_status, site_other_record, dataset_method, dataset_submission_type, dataset_submission
+
+*Phase 3 additions (7):* ecocode_system, ecocode_group, ecocode_definition, ecocode, activity_type, season_type, season
+
+*Phase 4 additions (5):* record_type, unit, data_type_group, data_type, measured_value
+
+**Total in `sead_standard_model.yml`: 70 entities (all fully specified)**
 
 **Arbodat Project Uses (54 entities):**
 Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimension, sample_coordinate, dating (general), dating_period, archaeological_period, chronological_period, epoch, cultural_group, feature_property, feature_property_type, site_property, site_property_type, site_natural_region, natural_region, natural_region_group, dataset_submission, dataset_submission_type, abundance_property_type, identification_level, taxa (general taxon), taxa_use_categories, taxa_plant_sociological_behaviour
@@ -34,7 +42,7 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 ## Gap Analysis by Domain
 
 ### 1. Spatial/Coordinate Domain (High Priority)
-**Addressed in `sead_v2_extended.yml`:** dimension ✅, coordinate_method_dimension ✅, sample_coordinate ✅
+**Addressed in `sead_standard_model.yml`:** dimension ✅, coordinate_method_dimension ✅, sample_coordinate ✅
 
 **Still missing:** coordinate_system, sample_group_coordinate, site_natgridref
 
@@ -48,7 +56,7 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 - `tbl_site_natgridrefs` - national grid references for sites
 
 ### 2. Dating Domain (Medium Priority)
-**Fully specified in `sead_v2_extended.yml`:** dating_material ✅, dating_uncertainty ✅, chronology ✅, age_type ✅, relative_age_type ✅
+**Fully specified in `sead_standard_model.yml`:** dating_material ✅, dating_uncertainty ✅, chronology ✅, age_type ✅, relative_age_type ✅
 
 **Still missing:** dating_period (analysis_entity → archaeological/chronological period)
 
@@ -71,7 +79,9 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 - Feature properties would use `tbl_sample_description_types` pattern
 
 ### 4. Site Domain (Medium Priority)
-**Missing:** site_property, site_property_type, site_natural_region, natural_region, natural_region_group, site_preservation_status, site_other_records, site_reference
+**Addressed in `sead_standard_model.yml`:** site_preservation_status ✅, site_other_record ✅
+
+**Still missing:** site_property, site_property_type, site_natural_region, natural_region, natural_region_group, site_reference
 
 **Impact:** Cannot validate rich site metadata present in archaeological projects
 
@@ -81,7 +91,7 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 - Site properties would follow description pattern
 
 ### 5. Sample Domain (High Priority)
-**Addressed in `sead_v2_extended.yml`:** sample_dimension ✅, sample_alt_ref ✅, alt_ref_type ✅
+**Addressed in `sead_standard_model.yml`:** sample_dimension ✅, sample_alt_ref ✅, alt_ref_type ✅
 
 **Still missing:** sample_horizon, sample_location, sample_location_type, sample_note, sample_colour, colour
 
@@ -97,7 +107,9 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 - `tbl_sample_colours` - Munsell/colour classifications
 
 ### 6. Sample Group Domain (Medium Priority)
-**Missing:** sample_group_description, sample_group_description_type, sample_group_dimension, sample_group_note, sample_group_reference, sampling_context, lithology
+**Addressed in `sead_standard_model.yml`:** sample_group_description_type ✅, sample_group_description ✅, sampling_context ✅, lithology ✅
+
+**Still missing:** sample_group_dimension, sample_group_note, sample_group_reference
 
 **Impact:** Cannot validate sample group metadata and context
 
@@ -111,7 +123,7 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 - `tbl_lithology` - lithological descriptions linked to sample groups
 
 ### 7. Dataset Domain (Low Priority)
-**Missing:** dataset_method (methods beyond primary method), dataset_submission, dataset_submission_type
+**Fully addressed in `sead_standard_model.yml`:** dataset_method ✅, dataset_submission ✅, dataset_submission_type ✅
 
 **Impact:** Cannot validate multi-method datasets or submission workflow
 
@@ -121,7 +133,9 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 - `tbl_dataset_submission_types` - submission type classifier
 
 ### 8. Taxon Domain (Medium Priority)
-**Missing:** taxon (general), taxon_synonyms, taxon_common_name (vs taxa_common_names), ecocode, ecocode_definition, ecocode_group, ecocode_system, rdb (red data book), activity_type, season, taxon_measured_attributes
+**Addressed in `sead_standard_model.yml`:** ecocode_system ✅, ecocode_group ✅, ecocode_definition ✅, ecocode ✅, activity_type ✅, season_type ✅, season ✅
+
+**Still missing:** taxon_synonyms, rdb (red data book), taxon_measured_attributes
 
 **Impact:** Cannot validate taxon metadata, ecological classifications, or conservation status
 
@@ -137,7 +151,7 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 - `tbl_seasons` - seasonal classifications
 
 ### 9. Abundance Domain (Low Priority)
-**Fully specified in `sead_v2_extended.yml`:** identification_level ✅, abundance_ident_level ✅
+**Fully specified in `sead_standard_model.yml`:** identification_level ✅, abundance_ident_level ✅
 
 **Still missing:** abundance_property_type
 
@@ -174,7 +188,7 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 - `tbl_project_stages` - project workflow stages
 
 ### 12. Method Domain (Low Priority)
-**Missing:** record_type, unit, data_type, data_type_group
+**Fully addressed in `sead_standard_model.yml`:** record_type ✅, unit ✅, data_type_group ✅, data_type ✅
 
 **Impact:** Cannot validate method classification and result typing
 
@@ -184,806 +198,37 @@ Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimensi
 - `tbl_data_types` - data type produced by method
 - `tbl_data_type_groups` - data type grouping
 
-## Proposed Additions
+## Reference Implementation
 
-### Priority 1: Essential for Arbodat Conformance
+**Authoritative Source:** `resources/target_models/sead_standard_model.yml`
 
-```yaml
-entities:
-  # Spatial/Coordinate Domain
-  dimension:
-    role: classifier
-    required: false
-    description: Measurement dimension type (X, Y, Z, depth, altitude, thickness, etc.)
-    domains: [spatial, physical-properties]
-    target_table: tbl_dimensions
-    public_id: dimension_id
-    identity_columns: [dimension_name]
-    columns:
-      dimension_abbrev:
-        required: true
-        type: string
-      dimension_name:
-        required: true
-        type: string
-      method_group_id:
-        type: integer
-        nullable: true
-      unit_id:
-        type: integer
-        nullable: true
-    unique_sets:
-      - [dimension_abbrev]
-    foreign_keys:
-      - entity: method_group
-        required: false
-      - entity: unit
-        required: false
+This file contains the complete and current SEAD v2 target model specification developed through Arbodat requirements analysis. All entity definitions, foreign keys, column specifications, and domain classifications are maintained in this YAML file to avoid duplication and synchronization issues.
 
-  coordinate_method_dimension:
-    role: classifier
-    required: false
-    description: Coordinate measurement method with dimensional constraints
-    domains: [spatial]
-    target_table: tbl_coordinate_method_dimensions
-    public_id: coordinate_method_dimension_id
-    identity_columns: [method_id, dimension_id]
-    columns:
-      method_id:
-        required: true
-        type: integer
-      dimension_id:
-        required: true
-        type: integer
-      limit_upper:
-        type: decimal
-        nullable: true
-      limit_lower:
-        type: decimal
-        nullable: true
-    unique_sets:
-      - [method_id, dimension_id]
-    foreign_keys:
-      - entity: method
-        required: true
-      - entity: dimension
-        required: true
-
-  sample_coordinate:
-    role: fact
-    required: false
-    description: Spatial coordinate measurement for a physical sample
-    domains: [spatial, sample-metadata]
-    target_table: tbl_sample_coordinates
-    public_id: sample_coordinate_id
-    identity_columns: [physical_sample_id, coordinate_method_dimension_id]
-    columns:
-      physical_sample_id:
-        required: true
-        type: integer
-      coordinate_method_dimension_id:
-        required: true
-        type: integer
-      measurement:
-        required: true
-        type: decimal
-      accuracy:
-        type: decimal
-        nullable: true
-    foreign_keys:
-      - entity: sample
-        required: true
-      - entity: coordinate_method_dimension
-        required: true
-
-  # Sample Metadata Domain
-  alt_ref_type:
-    role: classifier
-    required: false
-    description: Type of alternative reference (lab number, field ID, museum number)
-    domains: [sample-metadata]
-    target_table: tbl_alt_ref_types
-    public_id: alt_ref_type_id
-    identity_columns: [alt_ref_type]
-    columns:
-      alt_ref_type:
-        required: true
-        type: string
-      description:
-        type: string
-        nullable: true
-    unique_sets:
-      - [alt_ref_type]
-
-  sample_alt_ref:
-    role: fact
-    required: false
-    description: Alternative reference identifier for a sample
-    domains: [sample-metadata]
-    target_table: tbl_sample_alt_refs
-    public_id: sample_alt_ref_id
-    identity_columns: [physical_sample_id, alt_ref_type_id, alt_ref]
-    columns:
-      physical_sample_id:
-        required: true
-        type: integer
-      alt_ref_type_id:
-        required: true
-        type: integer
-      alt_ref:
-        required: true
-        type: string
-    unique_sets:
-      - [physical_sample_id, alt_ref_type_id, alt_ref]
-    foreign_keys:
-      - entity: sample
-        required: true
-      - entity: alt_ref_type
-        required: true
-
-  sample_dimension:
-    role: fact
-    required: false
-    description: Physical dimension measurement of a sample
-    domains: [sample-metadata, physical-properties]
-    target_table: tbl_sample_dimensions
-    public_id: sample_dimension_id
-    identity_columns: [physical_sample_id, dimension_id, method_id]
-    columns:
-      physical_sample_id:
-        required: true
-        type: integer
-      dimension_id:
-        required: true
-        type: integer
-      method_id:
-        required: true
-        type: integer
-      dimension_value:
-        required: true
-        type: decimal
-    foreign_keys:
-      - entity: sample
-        required: true
-      - entity: dimension
-        required: true
-      - entity: method
-        required: true
-
-  # Abundance Domain
-  identification_level:
-    role: classifier
-    required: false
-    description: Taxonomic identification confidence level (Family, Genus, Species, cf. X)
-    domains: [taxonomy, abundance]
-    target_table: tbl_identification_levels
-    public_id: identification_level_id
-    identity_columns: [identification_level_abbrev]
-    columns:
-      identification_level_abbrev:
-        required: true
-        type: string
-      identification_level_name:
-        required: true
-        type: string
-      notes:
-        type: string
-        nullable: true
-    unique_sets:
-      - [identification_level_abbrev]
-
-  abundance_ident_level:
-    role: bridge
-    required: false
-    description: Links abundance records to identification confidence levels
-    domains: [taxonomy, abundance]
-    target_table: tbl_abundance_ident_levels
-    public_id: abundance_ident_level_id
-    identity_columns: [abundance_id, identification_level_id]
-    columns:
-      abundance_id:
-        required: true
-        type: integer
-      identification_level_id:
-        required: true
-        type: integer
-    unique_sets:
-      - [abundance_id, identification_level_id]
-    foreign_keys:
-      - entity: abundance
-        required: true
-      - entity: identification_level
-        required: true
-
-  # Dating Domain
-  dating_material:
-    role: lookup
-    required: false
-    description: Material dated in geochronological analysis
-    domains: [dating]
-    target_table: tbl_dating_material
-    public_id: dating_material_id
-    identity_columns: [dating_material_name]
-    columns:
-      dating_material_name:
-        required: true
-        type: string
-      description:
-        type: string
-        nullable: true
-      abundance_element_id:
-        type: integer
-        nullable: true
-    unique_sets:
-      - [dating_material_name]
-    foreign_keys:
-      - entity: abundance_element
-        required: false
-
-  dating_uncertainty:
-    role: classifier
-    required: false
-    description: Uncertainty qualifiers for dating results
-    domains: [dating]
-    target_table: tbl_dating_uncertainty
-    public_id: dating_uncertainty_id
-    identity_columns: [uncertainty]
-    columns:
-      uncertainty:
-        required: true
-        type: string
-    unique_sets:
-      - [uncertainty]
-
-  age_type:
-    role: classifier
-    required: false
-    description: Chronological notation system (AD, BC, BP, cal BP)
-    domains: [dating]
-    target_table: tbl_age_types
-    public_id: age_type_id
-    identity_columns: [age_type]
-    columns:
-      age_type:
-        required: true
-        type: string
-      description:
-        type: string
-        nullable: true
-    unique_sets:
-      - [age_type]
-
-  relative_age_type:
-    role: classifier
-    required: false
-    description: Type of relative age system (archaeological period, geological epoch)
-    domains: [dating]
-    target_table: tbl_relative_age_types
-    public_id: relative_age_type_id
-    identity_columns: [age_type]
-    columns:
-      age_type:
-        required: true
-        type: string
-      description:
-        type: string
-        nullable: true
-    unique_sets:
-      - [age_type]
-
-  chronology:
-    role: lookup
-    required: false
-    description: Chronological framework or dating system
-    domains: [dating]
-    target_table: tbl_chronologies
-    public_id: chronology_id
-    identity_columns: [chronology_name]
-    columns:
-      chronology_name:
-        required: true
-        type: string
-      location_id:
-        type: integer
-        nullable: true
-      notes:
-        type: string
-        nullable: true
-    unique_sets:
-      - [chronology_name]
-    foreign_keys:
-      - entity: location
-        required: false
-```
-
-### Priority 2: Complete Sample Group & Site Metadata
-
-```yaml
-  # Sample Group Domain
-  sample_group_description_type:
-    role: classifier
-    required: false
-    description: Type of sample group description
-    domains: [sample-metadata]
-    target_table: tbl_sample_group_description_types
-    public_id: sample_group_description_type_id
-    identity_columns: [type_name]
-    columns:
-      type_name:
-        required: true
-        type: string
-      type_description:
-        type: string
-        nullable: true
-    unique_sets:
-      - [type_name]
-
-  sample_group_description:
-    role: fact
-    required: false
-    description: Typed description attached to a sample group
-    domains: [sample-metadata]
-    target_table: tbl_sample_group_descriptions
-    public_id: sample_group_description_id
-    identity_columns: [sample_group_id, sample_group_description_type_id]
-    columns:
-      sample_group_id:
-        required: true
-        type: integer
-      sample_group_description_type_id:
-        required: true
-        type: integer
-      group_description:
-        type: string
-        nullable: true
-    foreign_keys:
-      - entity: sample_group
-        required: true
-      - entity: sample_group_description_type
-        required: true
-
-  sampling_context:
-    role: classifier
-    required: false
-    description: Sampling context or strategy (archaeological excavation, core, etc.)
-    domains: [sample-metadata]
-    target_table: tbl_sample_group_sampling_contexts
-    public_id: sampling_context_id
-    identity_columns: [sampling_context]
-    columns:
-      sampling_context:
-        required: true
-        type: string
-      description:
-        type: string
-        nullable: true
-      sort_order:
-        type: integer
-        nullable: true
-    unique_sets:
-      - [sampling_context]
-
-  lithology:
-    role: fact
-    required: false
-    description: Lithological description of sediment layers in a sample group
-    domains: [sample-metadata, geology]
-    target_table: tbl_lithology
-    public_id: lithology_id
-    identity_columns: [sample_group_id, depth_top]
-    columns:
-      sample_group_id:
-        required: true
-        type: integer
-      depth_top:
-        required: true
-        type: decimal
-      depth_bottom:
-        type: decimal
-        nullable: true
-      description:
-        required: true
-        type: string
-      lower_boundary:
-        type: string
-        nullable: true
-    foreign_keys:
-      - entity: sample_group
-        required: true
-
-  # Site Domain
-  site_preservation_status:
-    role: classifier
-    required: false
-    description: Preservation status of archaeological site
-    domains: [site-metadata]
-    target_table: tbl_site_preservation_status
-    public_id: site_preservation_status_id
-    identity_columns: [preservation_status]
-    columns:
-      preservation_status:
-        required: true
-        type: string
-      description:
-        type: string
-        nullable: true
-
-  site_other_record:
-    role: fact
-    required: false
-    description: Additional documentation or records for a site
-    domains: [site-metadata, provenance]
-    target_table: tbl_site_other_records
-    public_id: site_other_records_id
-    identity_columns: [site_id, biblio_id, record_type_id]
-    columns:
-      site_id:
-        required: true
-        type: integer
-      biblio_id:
-        type: integer
-        nullable: true
-      record_type_id:
-        type: integer
-        nullable: true
-      description:
-        type: string
-        nullable: true
-    foreign_keys:
-      - entity: site
-        required: true
-      - entity: citation
-        required: false
-      - entity: record_type
-        required: false
-```
-
-### Priority 3: Taxonomy & Ecology
-
-```yaml
-  # Taxon Domain
-  ecocode_system:
-    role: lookup
-    required: false
-    description: Ecological classification system (e.g., Ellenberg, Hill-Ellenberg)
-    domains: [taxonomy, ecology]
-    target_table: tbl_ecocode_systems
-    public_id: ecocode_system_id
-    identity_columns: [ecocode_system_name]
-    columns:
-      biblio_id:
-        type: integer
-        nullable: true
-      definition:
-        type: string
-        nullable: true
-      notes:
-        type: string
-        nullable: true
-    foreign_keys:
-      - entity: citation
-        required: false
-
-  ecocode_group:
-    role: classifier
-    required: false
-    description: Ecological code category (moisture, nitrogen, light, temperature)
-    domains: [taxonomy, ecology]
-    target_table: tbl_ecocode_groups
-    public_id: ecocode_group_id
-    identity_columns: [ecocode_group_name]
-    columns:
-      ecocode_group_name:
-        required: true
-        type: string
-      definition:
-        type: string
-        nullable: true
-      abbreviation:
-        type: string
-        nullable: true
-    unique_sets:
-      - [ecocode_group_name]
-
-  ecocode_definition:
-    role: classifier
-    required: false
-    description: Specific ecocode value definition within a group and system
-    domains: [taxonomy, ecology]
-    target_table: tbl_ecocode_definitions
-    public_id: ecocode_definition_id
-    identity_columns: [ecocode_system_id, ecocode_group_id, abbreviation]
-    columns:
-      ecocode_system_id:
-        required: true
-        type: integer
-      ecocode_group_id:
-        required: true
-        type: integer
-      abbreviation:
-        required: true
-        type: string
-      definition:
-        type: string
-        nullable: true
-      sort_order:
-        type: integer
-        nullable: true
-    unique_sets:
-      - [ecocode_system_id, ecocode_group_id, abbreviation]
-    foreign_keys:
-      - entity: ecocode_system
-        required: true
-      - entity: ecocode_group
-        required: true
-
-  ecocode:
-    role: fact
-    required: false
-    description: Ecological indicator value assigned to a taxon
-    domains: [taxonomy, ecology]
-    target_table: tbl_ecocodes
-    public_id: ecocode_id
-    identity_columns: [ecocode_definition_id, taxon_id]
-    columns:
-      ecocode_definition_id:
-        required: true
-        type: integer
-      taxon_id:
-        required: true
-        type: integer
-    unique_sets:
-      - [ecocode_definition_id, taxon_id]
-    foreign_keys:
-      - entity: ecocode_definition
-        required: true
-      - entity: taxa_tree_master
-        required: true
-
-  activity_type:
-    role: classifier
-    required: false
-    description: Life stage or phenological state (adult, flowering, fruiting)
-    domains: [taxonomy, phenology]
-    target_table: tbl_activity_types
-    public_id: activity_type_id
-    identity_columns: [activity_type]
-    columns:
-      activity_type:
-        required: true
-        type: string
-      description:
-        type: string
-        nullable: true
-    unique_sets:
-      - [activity_type]
-
-  season_type:
-    role: classifier
-    required: false
-    description: Type of seasonal classification system
-    domains: [phenology]
-    target_table: tbl_season_types
-    public_id: season_type_id
-    identity_columns: [season_type]
-    columns:
-      season_type:
-        required: true
-        type: string
-      description:
-        type: string
-        nullable: true
-    unique_sets:
-      - [season_type]
-
-  season:
-    role: classifier
-    required: false
-    description: Seasonal classification (spring, summer, early flowering, etc.)
-    domains: [phenology]
-    target_table: tbl_seasons
-    public_id: season_id
-    identity_columns: [season_type_id, season_name]
-    columns:
-      season_type_id:
-        type: integer
-        nullable: true
-      season_type:
-        type: string
-        nullable: true
-      season_name:
-        required: true
-        type: string
-      sort_order:
-        type: integer
-        nullable: true
-    foreign_keys:
-      - entity: season_type
-        required: false
-```
-
-### Priority 4: Method & Analysis Metadata
-
-```yaml
-  # Method Domain
-  record_type:
-    role: classifier
-    required: false
-    description: Type of record produced by analytical method
-    domains: [methodology]
-    target_table: tbl_record_types
-    public_id: record_type_id
-    identity_columns: [record_type_name]
-    columns:
-      record_type_name:
-        required: true
-        type: string
-      record_type_description:
-        type: string
-        nullable: true
-    unique_sets:
-      - [record_type_name]
-
-  unit:
-    role: classifier
-    required: false
-    description: Measurement unit (mm, cm, grams, percent, ppm)
-    domains: [methodology, physical-properties]
-    target_table: tbl_units
-    public_id: unit_id
-    identity_columns: [unit_abbrev]
-    columns:
-      unit_abbrev:
-        required: true
-        type: string
-      unit_name:
-        type: string
-        nullable: true
-      description:
-        type: string
-        nullable: true
-    unique_sets:
-      - [unit_abbrev]
-
-  data_type_group:
-    role: classifier
-    required: false
-    description: Grouping of data types (abundance, measurement, observation)
-    domains: [methodology]
-    target_table: tbl_data_type_groups
-    public_id: data_type_group_id
-    identity_columns: [data_type_group_name]
-    columns:
-      data_type_group_name:
-        required: true
-        type: string
-      description:
-        type: string
-        nullable: true
-    unique_sets:
-      - [data_type_group_name]
-
-  data_type:
-    role: classifier
-    required: false
-    description: Type of data produced by method (count, presence, MNI, percent)
-    domains: [methodology]
-    target_table: tbl_data_types
-    public_id: data_type_id
-    identity_columns: [data_type_name]
-    columns:
-      data_type_group_id:
-        required: true
-        type: integer
-      data_type_name:
-        required: true
-        type: string
-      definition:
-        type: string
-        nullable: true
-    unique_sets:
-      - [data_type_name]
-    foreign_keys:
-      - entity: data_type_group
-        required: true
-
-  # Dataset Domain
-  dataset_method:
-    role: bridge
-    required: false
-    description: Association of multiple methods with a dataset
-    domains: [provenance]
-    target_table: tbl_dataset_methods
-    public_id: dataset_method_id
-    identity_columns: [dataset_id, method_id]
-    columns:
-      dataset_id:
-        required: true
-        type: integer
-      method_id:
-        required: true
-        type: integer
-    unique_sets:
-      - [dataset_id, method_id]
-    foreign_keys:
-      - entity: dataset
-        required: true
-      - entity: method
-        required: true
-
-  dataset_submission_type:
-    role: classifier
-    required: false
-    description: Type of dataset submission (initial, update, correction)
-    domains: [provenance]
-    target_table: tbl_dataset_submission_types
-    public_id: submission_type_id
-    identity_columns: [submission_type]
-    columns:
-      submission_type:
-        required: true
-        type: string
-      description:
-        type: string
-        nullable: true
-    unique_sets:
-      - [submission_type]
-
-  dataset_submission:
-    role: fact
-    required: false
-    description: Submission tracking for datasets
-    domains: [provenance]
-    target_table: tbl_dataset_submissions
-    public_id: dataset_submission_id
-    identity_columns: [dataset_id, submission_type_id, contact_id]
-    columns:
-      dataset_id:
-        required: true
-        type: integer
-      submission_type_id:
-        required: true
-        type: integer
-      contact_id:
-        required: true
-        type: integer
-      submission_date:
-        type: date
-        nullable: true
-      notes:
-        type: string
-        nullable: true
-    foreign_keys:
-      - entity: dataset
-        required: true
-      - entity: dataset_submission_type
-        required: true
-      - entity: contact
-        required: true
-```
+For entity specifications, constraints, and relationship details, refer directly to `sead_standard_model.yml`.
 
 ## Implementation Plan
 
 ### Phase 1: Core Enhancements (Immediately needed for Arbodat)
-- [x] Add spatial/coordinate entities (dimension, coordinate_method_dimension, sample_coordinate) — fully specified in `sead_v2_extended.yml`
-- [x] Add sample metadata entities (alt_ref_type, sample_alt_ref, sample_dimension) — fully specified in `sead_v2_extended.yml`
-- [x] Add abundance precision entities (identification_level, abundance_ident_level) — fully specified in `sead_v2_extended.yml`
-- [x] Add dating metadata entities (dating_material, dating_uncertainty, age_type, relative_age_type, chronology) — fully specified in `sead_v2_extended.yml`
-- [x] All Phase 1 entities fully specified in `sead_v2_extended.yml` — 13 additions complete (49 total)
+- [x] Add spatial/coordinate entities (dimension, coordinate_method_dimension, sample_coordinate) — fully specified in `sead_standard_model.yml`
+- [x] Add sample metadata entities (alt_ref_type, sample_alt_ref, sample_dimension) — fully specified in `sead_standard_model.yml`
+- [x] Add abundance precision entities (identification_level, abundance_ident_level) — fully specified in `sead_standard_model.yml`
+- [x] Add dating metadata entities (dating_material, dating_uncertainty, age_type, relative_age_type, chronology) — fully specified in `sead_standard_model.yml`
+- [x] All Phase 1 entities fully specified in `sead_standard_model.yml` — 13 additions complete
 - [x] Update key existing entity specs (sample now includes sample_type_id, alt_ref_type_id, date_sampled; method includes method_group_id, biblio_id)
 
 ### Phase 2: Metadata Completeness
-- [ ] Add sample group entities (description, dimension, lithology, sampling_context)
-- [ ] Add site entities (preservation_status, other_records)
-- [ ] Add dataset workflow (dataset_method, dataset_submission, submission_type)
+- [x] Add sample group entities (description, description_type, sampling_context, lithology) — fully specified in `sead_standard_model.yml`
+- [x] Add site entities (site_preservation_status, site_other_record) — fully specified in `sead_standard_model.yml`
+- [x] Add dataset workflow (dataset_method, dataset_submission, dataset_submission_type) — fully specified in `sead_standard_model.yml`
 
 ### Phase 3: Taxonomy & Ecology
-- [ ] Add ecocode system (system, group, definition, ecocode)
-- [ ] Add phenology (activity_type, season_type, season)
-- [ ] Enhance taxa_tree_master specification
+- [x] Add ecocode system (ecocode_system, ecocode_group, ecocode_definition, ecocode) — fully specified in `sead_standard_model.yml`
+- [x] Add phenology (activity_type, season_type, season) — fully specified in `sead_standard_model.yml`
+- [ ] Enhance taxa_tree_master specification (genus hierarchy, synonym support)
 
 ### Phase 4: Advanced Analysis
-- [ ] Add method classification (record_type, unit, data_type, data_type_group)
+- [x] Add method classification (record_type, unit, data_type, data_type_group) — fully specified in `sead_standard_model.yml`
+- [x] Add measured_value entity — fully specified in `sead_standard_model.yml`
 - [ ] Add analysis value types (categorical, boolean, integer, numerical, date_range)
 - [ ] Add project classification (project_type, project_stage)
 
@@ -1006,5 +251,6 @@ entities:
 
 - SEAD Database Schema: `docs/sead/01_tables.sql`, `05_constraints.sql`, `07_comments.sql`
 - Arbodat Project: `sead-tools/sead_shape_shifter/data/projects/arbodat/arbodat-rebecka/shapeshifter.yml`
-- Current Target Model: `target_models/specs/sead_v2.yml`
+- Current Target Model (Extended): `resources/target_models/sead_standard_model.yml`
+- Base Target Model: `resources/target_models/sead_v2.yml`
 - Target Model Guide: `docs/TARGET_MODEL_GUIDE.md`

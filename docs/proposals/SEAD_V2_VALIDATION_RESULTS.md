@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Conformance validation comparison between original (`sead_v2.yml` v2.0.0) and extended (`sead_v2_extended.yml` v2.1.0) target models against the Arbodat project demonstrates that the Phase 1 enhancements successfully validate real-world usage patterns while identifying configuration gaps.
+Conformance validation comparison between original (`sead_v2.yml` v2.0.0) and extended (`sead_standard_model.yml` v2.1.0) target models against the Arbodat project demonstrates that the Phase 1 enhancements successfully validate real-world usage patterns while identifying configuration gaps.
 
 **Key Metrics:**
 - **Original Model**: 36 entities, 8 errors across 6 entities
@@ -14,8 +14,8 @@ Conformance validation comparison between original (`sead_v2.yml` v2.0.0) and ex
 
 ### Test Setup
 - **Target Models**:
-  - Original: `target_models/specs/sead_v2.yml` (v2.0.0, 36 entities)
-  - Extended: `target_models/specs/sead_v2_extended.yml` (v2.1.0, 49 entities)
+  - Original: `resources/target_models/sead_v2.yml` (v2.0.0, 36 entities)
+  - Extended: `resources/target_models/sead_standard_model.yml` (v2.1.0, 49 entities)
 - **Project**: Arbodat dendrochronology project (67 configured entities)
 - **Validator**: `TargetModelConformanceValidator` with 6 registered validators
 - **Script**: `scripts/compare_target_models.py`
@@ -35,14 +35,14 @@ Conformance validators check:
 
 **Total Errors**: 8 errors across 6 entities
 
-| Entity | Error Count | Issues |
-|--------|-------------|--------|
-| abundance | 1 | Missing required FK target 'taxa_tree_master' |
-| analysis_entity | 2 | Missing FK 'dataset', missing column 'dataset_id' |
-| sample_group | 2 | Missing FK 'site', missing FK 'method' |
-| sample_type | 1 | Missing column 'type_name' |
-| site | 1 | Missing bridge entity 'site_location' for FK to 'location' |
-| taxa_tree_master | 1 | Induced requirement from 'abundance' FK chain |
+| Entity           | Error Count | Issues                                                     |
+|------------------|-------------|------------------------------------------------------------|
+| abundance        | 1           | Missing required FK target 'taxa_tree_master'              |
+| analysis_entity  | 2           | Missing FK 'dataset', missing column 'dataset_id'          |
+| sample_group     | 2           | Missing FK 'site', missing FK 'method'                     |
+| sample_type      | 1           | Missing column 'type_name'                                 |
+| site             | 1           | Missing bridge entity 'site_location' for FK to 'location' |
+| taxa_tree_master | 1           | Induced requirement from 'abundance' FK chain              |
 
 **Analysis**: These errors represent known gaps in the Arbodat project configuration that predate the target model extension work.
 
@@ -60,10 +60,10 @@ Conformance validators check:
 
 **New Errors** (2 entities):
 
-| Entity | Error Count | Issues |
-|--------|-------------|--------|
-| abundance_ident_level | 2 | Missing FK 'abundance', missing column 'abundance_id' |
-| sample_coordinate | 1 | Missing required column 'measurement' |
+| Entity                | Error Count | Issues                                                |
+|-----------------------|-------------|-------------------------------------------------------|
+| abundance_ident_level | 2           | Missing FK 'abundance', missing column 'abundance_id' |
+| sample_coordinate     | 1           | Missing required column 'measurement'                 |
 
 **Analysis**: New errors indicate real configuration issues in the Arbodat project that were not detectable with the original model. These are valuable findings that improve data quality.
 
@@ -71,21 +71,21 @@ Conformance validators check:
 
 ### New Entities in Extended Model (13 total)
 
-| Entity | In Project | Status | Domain |
-|--------|-----------|--------|--------|
-| **abundance_ident_level** | ✓ | ❌ Needs fix | Abundance precision |
-| **coordinate_method_dimension** | ✓ | ✅ Valid | Spatial/coordinate |
-| **dimension** | ✓ | ✅ Valid | Spatial/coordinate |
-| **identification_level** | ✓ | ✅ Valid | Abundance precision |
-| **sample_coordinate** | ✓ | ❌ Needs fix | Spatial/coordinate |
-| age_type | ✗ | N/A | Dating |
-| alt_ref_type | ✗ | N/A | Sample metadata |
-| chronology | ✗ | N/A | Dating |
-| dating_material | ✗ | N/A | Dating |
-| dating_uncertainty | ✗ | N/A | Dating |
-| relative_age_type | ✗ | N/A | Dating |
-| sample_alt_ref | ✗ | N/A | Sample metadata |
-| sample_dimension | ✗ | N/A | Sample metadata |
+| Entity                          | In Project | Status      | Domain              |
+|---------------------------------|------------|-------------|---------------------|
+| **abundance_ident_level**       | ✓          | ❌ Needs fix | Abundance precision |
+| **coordinate_method_dimension** | ✓          | ✅ Valid     | Spatial/coordinate  |
+| **dimension**                   | ✓          | ✅ Valid     | Spatial/coordinate  |
+| **identification_level**        | ✓          | ✅ Valid     | Abundance precision |
+| **sample_coordinate**           | ✓          | ❌ Needs fix | Spatial/coordinate  |
+| age_type                        | ✗          | N/A         | Dating              |
+| alt_ref_type                    | ✗          | N/A         | Sample metadata     |
+| chronology                      | ✗          | N/A         | Dating              |
+| dating_material                 | ✗          | N/A         | Dating              |
+| dating_uncertainty              | ✗          | N/A         | Dating              |
+| relative_age_type               | ✗          | N/A         | Dating              |
+| sample_alt_ref                  | ✗          | N/A         | Sample metadata     |
+| sample_dimension                | ✗          | N/A         | Sample metadata     |
 
 **Success Rate**: 3 of 5 used entities (60%) pass validation with zero configuration changes.
 
@@ -159,12 +159,12 @@ This aligns with the principle: **A good specification finds more problems early
 
 ### What the Extended Model Adds
 
-| Domain | Original | Extended | Improvement |
-|--------|----------|----------|-------------|
-| Spatial/Coordinate | 1 (location) | 4 (location, dimension, coordinate_method_dimension, sample_coordinate) | +300% |
-| Abundance Precision | 0 | 2 (identification_level, abundance_ident_level) | NEW |
-| Dating | 1 (age) | 6 (age, age_type, relative_age_type, chronology, dating_uncertainty, dating_material) | +500% |
-| Sample Metadata | 2 (sample, sample_type) | 5 (sample, sample_type, alt_ref_type, sample_alt_ref, sample_dimension) | +150% |
+| Domain              | Original                | Extended                                                                              | Improvement |
+|---------------------|-------------------------|---------------------------------------------------------------------------------------|-------------|
+| Spatial/Coordinate  | 1 (location)            | 4 (location, dimension, coordinate_method_dimension, sample_coordinate)               | +300%       |
+| Abundance Precision | 0                       | 2 (identification_level, abundance_ident_level)                                       | NEW         |
+| Dating              | 1 (age)                 | 6 (age, age_type, relative_age_type, chronology, dating_uncertainty, dating_material) | +500%       |
+| Sample Metadata     | 2 (sample, sample_type) | 5 (sample, sample_type, alt_ref_type, sample_alt_ref, sample_dimension)               | +150%       |
 
 ### Coverage Gaps Remaining
 
@@ -217,4 +217,4 @@ python scripts/compare_target_models.py
 
 *Generated*: 2025-01-29
 *Validator Version*: TargetModelConformanceValidator with 6 registered validators
-*Target Models Compared*: sead_v2.yml v2.0.0 vs sead_v2_extended.yml v2.1.0
+*Target Models Compared*: sead_v2.yml v2.0.0 vs sead_standard_model.yml v2.1.0

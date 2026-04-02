@@ -54,7 +54,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [ ] Remote target model references (SSRF-safe, with caching)
 - [ ] Curated target model registry (bundled YAML short-name resolution)
 
-### SEAD spec coverage (`target_models/specs/sead_v2.yml`)
+### SEAD spec coverage (`resources/target_models/sead_v2.yml`)
 - [x] Abundance chain — `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `modification_type`, `abundance_property`
 - [x] Dating — `relative_dating`, `relative_ages`, `geochronology` (abs/radiocarbon), `dating_lab`
 - [x] Method/contacts — `method_group`, `citation` (`tbl_biblio`), `contact`, `contact_type`, `dataset_contact`
@@ -283,7 +283,7 @@ The project-level YAML view currently shows only the `shapeshifter.yml` file. Wh
 
 **Constraints:**
 - Raw YAML only — no structured form or entity-level UI.
-- Tab visible only when the project has a `target_model:` reference that resolves to a **project-local file** (i.e. the `@include:` path lives inside the project's own directory). Shared/global spec files (e.g. `target_models/specs/sead_v2.yml`) are read-only in this view.
+- Tab visible only when the project has a `target_model:` reference that resolves to a **project-local file** (i.e. the `@include:` path lives inside the project's own directory). Shared/global spec files (e.g. `resources/target_models/sead_v2.yml`) are read-only in this view.
 - API passes the YAML file content as raw text; the server validates syntax but **never re-serialises** it, so comments and formatting survive the round-trip.
 - Save writes directly to the referenced target model YAML file.
 - Changing the file triggers a re-run of conformance validation (same as editing the project YAML).
@@ -584,7 +584,7 @@ These test areas were identified in the implementation sketch but not yet covere
 ### `@include:` Resolution (Backend Boundary)
 
 - Inline `target_model: {...}` dict passes through mapper unchanged
-- `target_model: "@include: target_models/specs/sead_v2.yml"` resolves to dict at mapper boundary
+- `target_model: "@include: resources/target_models/sead_v2.yml"` resolves to dict at mapper boundary
 - Missing include file produces a clear error, not a cryptic KeyError
 - Relative path resolution from project file location
 
@@ -670,11 +670,11 @@ Allow `target_model: "https://registry.example.com/sead/v2.yml"` in addition to 
 A registry of community-contributed target models distributed alongside Shape Shifter or via a companion package.
 
 **Candidates:**
-- `sead_v2` — SEAD Clearinghouse v2 (already exists in `target_models/specs/`)
+- `sead_v2` — SEAD Clearinghouse v2 (already exists in `resources/target_models/`)
 - Generic archaeological site model
 - Museum specimen model
 
-**Approach:** Bundled YAML files in `target_models/specs/`, referenced by short name without a path. The mapper resolves short names to the bundled file before resolving `@include:`.
+**Approach:** Bundled YAML files in `resources/target_models/`, referenced by short name without a path. The mapper resolves short names to the bundled file before resolving `@include:`.
 
 ### Target Model Documentation Downloads
 
@@ -730,7 +730,7 @@ Generate human-readable documentation for target models in HTML, Markdown, or Ex
 
 ## SEAD Coverage Backlog
 
-Lower-frequency SEAD tables not yet represented in `target_models/specs/sead_v2.yml`:
+Lower-frequency SEAD tables not yet represented in `resources/target_models/sead_v2.yml`:
 
 - Abundance chain entities (`abundance`, `abundance_element`, `abundance_modification`)
 - Dating entities (`relative_dating`, `relative_age`, `radiocarbon_dating`)
