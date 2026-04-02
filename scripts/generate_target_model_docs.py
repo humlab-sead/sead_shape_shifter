@@ -53,7 +53,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Generate human-readable documentation from target model YAML")
-    parser.add_argument("input", type=Path, help="Input YAML file (e.g., sead_v2_extended.yml)")
+    parser.add_argument("input", type=Path, help="Input YAML file (e.g., sead_standard_model.yml)")
     parser.add_argument("--format", choices=["html", "markdown", "excel", "all"], default="all", help="Output format")
     parser.add_argument("--output-dir", type=Path, default=Path("docs/generated"), help="Output directory")
 

@@ -6,19 +6,19 @@ This guide explains how to generate human-readable documentation from the SEAD t
 
 ```bash
 # Generate all formats (HTML, Markdown, Excel)
-python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extended.yml
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml
 
 # Generate only HTML (recommended for stakeholders)
-python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extended.yml --format html
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format html
 
 # Generate Excel for spreadsheet review
-python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extended.yml --format excel
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format excel
 ```
 
 Output files are created in `docs/generated/`:
-- `sead_v2_extended.html` - Interactive web page
-- `sead_v2_extended.md` - Markdown documentation
-- `sead_v2_extended.xlsx` - Excel workbook
+- `sead_standard_model.html` - Interactive web page
+- `sead_standard_model.md` - Markdown documentation
+- `sead_standard_model.xlsx` - Excel workbook
 
 ## Documentation Formats
 
@@ -36,8 +36,8 @@ Output files are created in `docs/generated/`:
 
 **Usage:**
 ```bash
-python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extended.yml --format html
-open docs/generated/sead_v2_extended.html
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format html
+open docs/generated/sead_standard_model.html
 ```
 
 **What non-technical users see:**
@@ -60,7 +60,7 @@ open docs/generated/sead_v2_extended.html
 
 **Usage:**
 ```bash
-python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extended.yml --format excel
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format excel
 ```
 
 **Sheets included:**
@@ -93,7 +93,7 @@ python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extende
 
 **Usage:**
 ```bash
-python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extended.yml --format markdown
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format markdown
 ```
 
 ## Use Cases
@@ -105,8 +105,8 @@ python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extende
 **Recommended format:** HTML
 
 **Workflow:**
-1. Generate HTML: `python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extended.yml --format html`
-2. Open in browser: `open docs/generated/sead_v2_extended.html`
+1. Generate HTML: `python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format html`
+2. Open in browser: `open docs/generated/sead_standard_model.html`
 3. Use search to demonstrate entity lookup ("search for 'dendro'")
 4. Show domain groupings (spatial, dating, taxonomy)
 5. Click through relationships to show data flow
@@ -124,8 +124,8 @@ python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extende
 **Recommended format:** Excel
 
 **Workflow:**
-1. Generate Excel: `python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extended.yml --format excel`
-2. Distribute to archaeologists: `docs/generated/sead_v2_extended.xlsx`
+1. Generate Excel: `python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format excel`
+2. Distribute to archaeologists: `docs/generated/sead_standard_model.xlsx`
 3. Experts add columns: "Coverage Assessment", "Priority", "Comments"
 4. Review in group session with screenshare
 5. Collect feedback via updated Excel file
@@ -143,9 +143,9 @@ python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extende
 **Recommended format:** Markdown + Excel
 
 **Workflow:**
-1. Generate both: `python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extended.yml --format all`
-2. Share Markdown on wiki: Copy `sead_v2_extended.md` to project wiki
-3. Distribute Excel: Send `sead_v2_extended.xlsx` for detailed review
+1. Generate both: `python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format all`
+2. Share Markdown on wiki: Copy `sead_standard_model.md` to project wiki
+3. Distribute Excel: Send `sead_standard_model.xlsx` for detailed review
 4. Update both as model evolves
 
 **Benefits:**
@@ -243,8 +243,8 @@ Add to your CI/CD pipeline to regenerate docs on model changes:
 # In .github/workflows/docs.yml
 - name: Generate target model docs
   run: |
-    python scripts/generate_target_model_docs.py target_models/specs/sead_v2.yml --format all
-    python scripts/generate_target_model_docs.py target_models/specs/sead_v2_extended.yml --format all
+    python scripts/generate_target_model_docs.py resources/target_models/sead_v2.yml --format all
+    python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format all
 ```
 
 ## Feedback Collection

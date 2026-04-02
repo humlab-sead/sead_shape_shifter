@@ -147,7 +147,7 @@ Use the existing file [target_models/examples/sead_missing_sample_group.yml](../
 Before testing, add this field to the `metadata` block:
 
 ```yaml
-target_model: "@include: target_models/specs/sead_v2.yml"
+target_model: "@include: resources/target_models/sead_v2.yml"
 ```
 
 Why this fixture matters:
@@ -162,7 +162,7 @@ Use the existing file [target_models/examples/sead_arbodat_core.yml](../../targe
 Before testing, add this field to the `metadata` block:
 
 ```yaml
-target_model: "@include: target_models/specs/sead_v2.yml"
+target_model: "@include: resources/target_models/sead_v2.yml"
 ```
 
 Why this fixture matters:
@@ -449,7 +449,7 @@ This section confirms both a missing direct target relationship and the loss of 
 ### Steps
 
 1. Open Fixture B: [target_models/examples/sead_missing_sample_group.yml](../../target_models/examples/sead_missing_sample_group.yml).
-2. Ensure the metadata block includes `target_model: "@include: target_models/specs/sead_v2.yml"`.
+2. Ensure the metadata block includes `target_model: "@include: resources/target_models/sead_v2.yml"`.
 3. Save the project under a disposable test name if you do not want to edit the example directly.
 4. Run **Check Conformance**.
 5. Review the **Conformance** results by code and by entity.
@@ -475,7 +475,7 @@ This fixture is the main manual regression check for the proposal's core rule fa
 ### Steps
 
 1. Open Fixture C: [target_models/examples/sead_arbodat_core.yml](../../target_models/examples/sead_arbodat_core.yml).
-2. Ensure the metadata block includes `target_model: "@include: target_models/specs/sead_v2.yml"`.
+2. Ensure the metadata block includes `target_model: "@include: resources/target_models/sead_v2.yml"`.
 3. Save the project under a disposable name if needed.
 4. Run **Check Conformance**.
 5. Compare the actual issues to the expected narrow set below.
@@ -539,7 +539,7 @@ Run the same project through the CLI conformance entry point:
 
 ```bash
 python -m src.target_model.conformance \
-  --spec target_models/specs/sead_v2.yml \
+  --spec resources/target_models/sead_v2.yml \
   --project target_models/examples/sead_missing_sample_group.yml
 ```
 

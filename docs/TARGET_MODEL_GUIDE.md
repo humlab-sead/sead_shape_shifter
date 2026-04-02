@@ -12,14 +12,14 @@ Target model specs are optional. Existing projects without a `target_model` refe
 
 ## Quick Start
 
-1. Pick or create a spec file — e.g., `target_models/specs/sead_v2.yml` (the SEAD Clearinghouse spec ships with Shape Shifter).
+1. Pick or create a spec file — e.g., `resources/target_models/sead_v2.yml` (the SEAD Clearinghouse spec ships with Shape Shifter).
 2. Add a `target_model` reference to your project's `metadata` section:
 
 ```yaml
 metadata:
   type: 'shapeshifter-project'
   name: "Dendrochronology Import"
-  target_model: "@include: target_models/specs/sead_v2.yml"
+  target_model: "@include: resources/target_models/sead_v2.yml"
 ```
 
 3. Open your project in the editor, go to the **Validate** tab, and click **Check Conformance**.
@@ -29,7 +29,7 @@ metadata:
 
 ## File Location
 
-The built-in SEAD spec lives at `target_models/specs/sead_v2.yml`. Custom or project-specific specs can live anywhere; reference them with a path relative to the project file or an absolute path.
+The built-in SEAD spec lives at `resources/target_models/sead_v2.yml`. Custom or project-specific specs can live anywhere; reference them with a path relative to the project file or an absolute path.
 
 Recommended layout for project-specific specs:
 
@@ -50,7 +50,7 @@ Use the `metadata.target_model` field. The value may be either a file reference 
 ```yaml
 metadata:
   type: 'shapeshifter-project'
-  target_model: "@include: target_models/specs/sead_v2.yml"
+  target_model: "@include: resources/target_models/sead_v2.yml"
 ```
 
 **Inline definition (for small custom models):**
@@ -291,7 +291,7 @@ The conformance engine can also be used from the CLI for quick checks:
 
 ```bash
 python -m src.target_model.conformance \
-  --spec target_models/specs/sead_v2.yml \
+  --spec resources/target_models/sead_v2.yml \
   --project data/projects/my_project/shapeshifter.yml
 ```
 
@@ -303,18 +303,18 @@ The template generator creates a starter project YAML pre-populated with the ent
 
 ```bash
 python -m src.target_model.template_generator \
-  --spec target_models/specs/sead_v2.yml \
+  --spec resources/target_models/sead_v2.yml \
   --output my_project_scaffold.yml
 
 # Filter to a specific domain
 python -m src.target_model.template_generator \
-  --spec target_models/specs/sead_v2.yml \
+  --spec resources/target_models/sead_v2.yml \
   --domain core \
   --output core_entities.yml
 
 # Include only specific entities
 python -m src.target_model.template_generator \
-  --spec target_models/specs/sead_v2.yml \
+  --spec resources/target_models/sead_v2.yml \
   --entities location,site,sample \
   --output minimal.yml
 ```
@@ -375,7 +375,7 @@ naming:
 
 ## SEAD Clearinghouse Spec (`sead_v2.yml`)
 
-The bundled SEAD spec at `target_models/specs/sead_v2.yml` currently covers 35 entities organized across these domains:
+The bundled SEAD spec at `resources/target_models/sead_v2.yml` currently covers 35 entities organized across these domains:
 
 | Domain | Entities |
 |--------|----------|

@@ -53,15 +53,15 @@ Checklist:
 - [x] Spec validation exists for the current standalone target-model format
 - [x] Standalone conformance validation exists for project-versus-target checks
 - [x] The current standalone format supports entities, roles, required, nullability, identity_columns, unique_sets, domains, foreign_keys, naming, and constraint declarations
-- [x] The current standalone SEAD spec covers the Milestone 1 core spine and additional iteration-1 entities in `target_models/specs/sead_v2.yml`
-- [x] The proposal now treats `target_models/specs/sead_v2.yml` as the working version until Shape Shifter integration is completed
+- [x] The current standalone SEAD spec covers the Milestone 1 core spine and additional iteration-1 entities in `resources/target_modelsdels/sead_v2.yml`
+- [x] The proposal now treats `resources/target_modelsdels/sead_v2.yml` as the working version until Shape Shifter integration is completed
 - [x] Implementation matches the current proposal column contract (mapping-based `columns` with logical `type` metadata)
 - [x] Proposal and implementation are aligned tightly enough to claim "without schema changes"
 
 Current status:
 - **Milestone 1 is complete.**
 - The parser, standalone validators, and working core SEAD spec all exist.
-- The proposal now matches the current standalone reality: until integration is completed, the working `sead_v2.yml` remains in `target_models/specs/sead_v2.yml` and uses the implemented mapping-based column contract with logical `type` metadata.
+- The proposal now matches the current standalone reality: until integration is completed, the working `sead_v2.yml` remains in `resources/target_modelsdels/sead_v2.yml` and uses the implemented mapping-based column contract with logical `type` metadata.
 
 ### Milestone 2: Expanded Coverage
 
@@ -73,7 +73,7 @@ Proposal intent:
 Checklist:
 - [x] Resolve the Milestone 1 proposal-versus-implementation alignment gaps
 - [x] Expand the canonical SEAD spec toward the current Milestone 2 backlog: abundance, dating, method/contact, and taxonomy coverage
-- [x] Reach the explicit Milestone 2 target of 20-24 total entities in `target_models/specs/sead_v2.yml`
+- [x] Reach the explicit Milestone 2 target of 20-24 total entities in `resources/target_modelsdels/sead_v2.yml`
 - [x] Reach the preferred planning target of 23 total entities if all currently named Milestone 2 backlog entities remain in scope
 - [x] Add a template-generation proof of concept using the target model, optionally filtered by domain/profile
 - [x] Validate the expanded model with parser, spec-validation, and conformance tests
@@ -151,7 +151,7 @@ Decision:
 ### 0.2 Canonical spec location
 
 Decision:
-- During format iteration, the SEAD spec lives at `target_models/specs/sead_v2.yml`
+- During format iteration, the SEAD spec lives at `resources/target_modelsdels/sead_v2.yml`
 - Phase documents and implementation notes live under `target_models/docs/`
 
 ### 0.3 Iteration-1 entity set
@@ -269,7 +269,7 @@ Goals:
 - [x] Format proposal points to the implementation plan
 - [x] Format proposal no longer carries phased rollout content
 - [x] Validation proposal uses the canonical top-level target-model shape
-- [x] Validation proposal points to `target_models/specs/sead_v2.yml`
+- [x] Validation proposal points to `resources/target_modelsdels/sead_v2.yml`
 - [x] Implementation sketch is aligned with the current format
 - [x] All phase-related cross-references are consistent
 
@@ -306,12 +306,12 @@ Exit criteria:
 ## Phase 3: Author First SEAD Draft
 
 Goals:
-- Produce the first usable `target_models/specs/sead_v2.yml`
+- Produce the first usable `resources/target_modelsdels/sead_v2.yml`
 - Cover only the iteration-1 core entities with minimal metadata
 
 ### Checklist
 
-- [x] `target_models/specs/sead_v2.yml` created
+- [x] `resources/target_modelsdels/sead_v2.yml` created
 - [x] Iteration-1 core entities present in the draft
 - [x] `target_table` mappings added for iteration-1 entities
 - [x] `public_id` mappings added for iteration-1 entities
@@ -323,7 +323,7 @@ Goals:
 - [x] Draft cross-checked against SEAD source schema and a real Shape Shifter project
 
 Deliverables:
-- `target_models/specs/sead_v2.yml`
+- `resources/target_modelsdels/sead_v2.yml`
 
 Iteration-1 content rules:
 - Prefer minimal but correct metadata over broad but speculative coverage
@@ -440,10 +440,10 @@ Goals:
 
 ### Checklist
 
-- [x] Draft the abundance package in `target_models/specs/sead_v2.yml`: `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `abundance_property`
-- [x] Draft the dating package in `target_models/specs/sead_v2.yml`: `relative_ages`, `relative_dating`, `geochronology`, `dating_lab`
-- [x] Draft the method/contact package in `target_models/specs/sead_v2.yml`: `method_group`, `contact`, `contact_type`
-- [x] Draft the taxonomy package in `target_models/specs/sead_v2.yml`: `taxa_tree_master`, `taxa_common_names`
+- [x] Draft the abundance package in `resources/target_modelsdels/sead_v2.yml`: `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `abundance_property`
+- [x] Draft the dating package in `resources/target_modelsdels/sead_v2.yml`: `relative_ages`, `relative_dating`, `geochronology`, `dating_lab`
+- [x] Draft the method/contact package in `resources/target_modelsdels/sead_v2.yml`: `method_group`, `contact`, `contact_type`
+- [x] Draft the taxonomy package in `resources/target_modelsdels/sead_v2.yml`: `taxa_tree_master`, `taxa_common_names`
 - [x] Reach the explicit Milestone 2 target of 20-24 total entities in the working SEAD spec
 - [x] Reach the preferred planning target of 23 total entities if all currently named backlog entities remain in scope
 - [x] Update `docs/proposals/TARGET_MODEL_SPECIFICATION_FORMAT.md` so its milestone language, examples, and success criteria reflect the expanded-coverage target
@@ -455,7 +455,7 @@ Goals:
 ### Milestone 2 Backlog Basis
 
 Current baseline:
-- 23 entities now exist in `target_models/specs/sead_v2.yml`
+- 23 entities now exist in `resources/target_modelsdels/sead_v2.yml`
 
 Remaining named expansion backlog:
 - 0 additional entities remain in scope for Milestone 2
@@ -466,7 +466,7 @@ Planning arithmetic:
 - Treat 23 entities as the preferred planning target because it corresponds to the full currently named Milestone 2 backlog
 
 Deliverables:
-- Expanded `target_models/specs/sead_v2.yml`
+- Expanded `resources/target_modelsdels/sead_v2.yml`
 - Updated milestone and roadmap documentation in `docs/proposals/` and `target_models/docs/`
 - Test coverage proving the expanded target model still loads and validates cleanly
 - A working standalone template-generation proof of concept plus its documentation
@@ -478,7 +478,7 @@ Purpose:
 
 Minimum scope:
 - A standalone script or notebook is sufficient; backend integration is not required for Milestone 2.
-- Input is the working target model at `target_models/specs/sead_v2.yml` plus an optional domain filter or explicit entity allowlist/profile.
+- Input is the working target model at `resources/target_modelsdels/sead_v2.yml` plus an optional domain filter or explicit entity allowlist/profile.
 - Output is a non-runnable starter scaffold in `shapeshifter.yml` style that is meant to be completed by a human author.
 
 Required output content:
@@ -536,9 +536,9 @@ Goals:
 
 - [x] Add a follow-on roadmap phase before backend integration so expanded standalone coverage is represented explicitly
 - [x] Update proposal and implementation-plan text so the current coverage and next-step sequencing match the implementation
-- [x] Draft a first common-entity package in `target_models/specs/sead_v2.yml`: `project`, `feature`, `feature_type`, `modification_type`, `sample_description`, `sample_description_type`, `site_type`, `site_type_group`
+- [x] Draft a first common-entity package in `resources/target_modelsdels/sead_v2.yml`: `project`, `feature`, `feature_type`, `modification_type`, `sample_description`, `sample_description_type`, `site_type`, `site_type_group`
 - [x] Improve related existing entities where the new package adds clearer target-model relationships (`dataset -> project`, `site -> site_type`, `abundance_modification -> modification_type`)
-- [x] Draft a second common/provenance bridge package in `target_models/specs/sead_v2.yml`: `citation`, `master_dataset`, `dataset_contact`, `sample_feature`
+- [x] Draft a second common/provenance bridge package in `resources/target_modelsdels/sead_v2.yml`: `citation`, `master_dataset`, `dataset_contact`, `sample_feature`
 - [x] Improve related existing entities where the new package adds clearer target-model relationships (`dataset -> master_dataset`, `dataset -> citation`, `method -> citation`, `sample <-> feature` via `sample_feature`, `dataset <-> contact` via `dataset_contact`)
 - [x] Reach roughly 30 total entities in the working SEAD spec without promoting Milestone 3 to complete
 - [x] Update standalone validation tests to cover the new common-entity package
@@ -551,7 +551,7 @@ Current status:
 - Still-deferred entities such as `sample_coordinate` and other alias-heavy mappings remain good candidates for later work, but they need either richer target metadata or broader conformance semantics to avoid noisy false positives.
 
 Deliverables:
-- A 35-entity working `target_models/specs/sead_v2.yml`
+- A 35-entity working `resources/target_modelsdels/sead_v2.yml`
 - Updated proposal and implementation-plan language for the post-23-entity standalone expansion
 - Updated standalone spec-validation coverage for the new entity package
 

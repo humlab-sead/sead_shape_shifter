@@ -12,7 +12,7 @@ It exists to separate low-noise rules that are safe to keep from heuristic check
 - `target_models/examples/sead_missing_sample_group.yml`
 - `tests/test_data/projects/arbodat/shapeshifter.yml`
 
-All were validated against `target_models/specs/sead_v2.yml` using the standalone `TargetModelConformanceValidator`.
+All were validated against `resources/target_models/sead_v2.yml` using the standalone `TargetModelConformanceValidator`.
 
 ## Current Stable Findings
 
