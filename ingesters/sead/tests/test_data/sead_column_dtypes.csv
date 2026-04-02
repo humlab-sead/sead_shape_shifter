@@ -305,13 +305,6 @@ master_notes,text
 master_set_id,integer
 master_set_uuid,uuid
 material_dated,character varying
-mcr_data,text
-mcr_name_trim,character varying
-mcr_number,smallint
-mcr_row,smallint
-mcr_species_name,character varying
-mcr_summary_data_id,integer
-mcrdata_birmbeetledat_id,integer
 measured_attribute_id,integer
 measured_value,numeric
 measured_value_dimension_id,integer

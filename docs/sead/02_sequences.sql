@@ -295,14 +295,6 @@ cache 1;
 alter sequence public.tbl_biblio_biblio_id_seq owner to sead_master;
 alter sequence public.tbl_biblio_biblio_id_seq owned by public.tbl_biblio.biblio_id;
 
-create sequence public.tbl_ceramics_ceramics_id_seq
-as integer
-start with 1
-increment by 1
-no minvalue
-no maxvalue
-cache 1;
-
 
 alter sequence public.tbl_chronologies_chronology_id_seq owner to sead_master;
 alter sequence public.tbl_chronologies_chronology_id_seq owned by public.tbl_chronologies.chronology_id;
@@ -666,14 +658,6 @@ cache 1;
 
 alter sequence public.tbl_locations_location_id_seq owner to sead_master;
 alter sequence public.tbl_locations_location_id_seq owned by public.tbl_locations.location_id;
-
-create sequence public.tbl_mcr_names_taxon_id_seq
-as integer
-start with 1
-increment by 1
-no minvalue
-no maxvalue
-cache 1;
 
 
 alter sequence public.tbl_measured_values_measured_value_id_seq owner to sead_master;
@@ -1498,14 +1482,6 @@ cache 1;
 
 alter sequence public.tbl_temperatures_record_id_seq owner to sead_master;
 alter sequence public.tbl_temperatures_record_id_seq owned by public.tbl_temperatures.record_id;
-
-create sequence public.tbl_tephra_dates_tephra_date_id_seq
-as integer
-start with 1
-increment by 1
-no minvalue
-no maxvalue
-cache 1;
 
 
 alter sequence public.tbl_text_biology_biology_id_seq owner to sead_master;
