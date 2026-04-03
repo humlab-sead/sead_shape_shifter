@@ -14,15 +14,17 @@ When provided with a ShapeShiftProject, enhances documentation with:
 from __future__ import annotations
 
 import io
+from abc import ABC
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from jinja2.environment import Template
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader
+from jinja2.environment import Template
 
 from src.target_model.models import EntitySpec, TargetModel
+from utility import Registry
 
 if TYPE_CHECKING:
     from src.model import ShapeShiftProject
@@ -37,10 +39,28 @@ class DocumentFormat(str, Enum):
     SIMS = "sims"
 
 
-class ExcelGenerator:
+class DocumentGenerator(ABC):
+    """Base class for documentation generators."""
+
+    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> bytes:
+        """Generate documentation content as bytes."""
+        raise NotImplementedError("Subclasses must implement generate() method")
+
+
+class DocumentGeneratorRegistry(Registry[type[DocumentGenerator]]):
+    """Registry for documentation generators."""
+
+    items: dict[str, type[DocumentGenerator]] = {}
+
+
+DOCUMENT_GENERATORS = DocumentGeneratorRegistry()
+
+
+@DOCUMENT_GENERATORS.register(key=DocumentFormat.EXCEL)
+class ExcelGenerator(DocumentGenerator):
     """Helper class to generate Excel documentation."""
 
-    def generate(self, project: ShapeShiftProject | None, target_model: TargetModel) -> bytes:
+    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> bytes:
         """Generate Excel spreadsheet for review and annotation.
 
         Returns:
@@ -123,14 +143,14 @@ class ExcelGenerator:
                 worksheet.column_dimensions[column_letter].width = min(max_length + 2, 50)
 
 
-class TextDocumentGenerator:
+class TextDocumentGenerator(DocumentGenerator):
     """Base class for text-based documentation generators (Markdown, HTML)."""
 
     def __init__(self):
         self._template_dir: Path = Path(__file__).parent / "templates"
 
-    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> str:
-        """Generate documentation content as a string."""
+    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> bytes:
+        """Generate documentation content as bytes."""
         raise NotImplementedError("Subclasses must implement generate() method")
 
     def _get_jinja_env(self) -> Environment:
@@ -144,12 +164,12 @@ class TextDocumentGenerator:
         env.filters["pluralize"] = lambda n, singular, plural: singular if n == 1 else plural
         return env
 
-    def _render_template(self, template_name: str, target_model: TargetModel, project: ShapeShiftProject | None = None) -> str:
+    def _render_template(self, template_name: str, target_model: TargetModel, project: ShapeShiftProject | None = None) -> bytes:
         env: Environment = self._get_jinja_env()
         template: Template = env.get_template(template_name)
         data: dict[str, Any] = self._prepare_model_data(target_model, project)
         output: str = template.render(**data)
-        return output
+        return output.encode("utf-8")
 
     def _prepare_model_data(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> dict[str, Any]:
         """Prepare model data for templates with project context."""
@@ -205,31 +225,34 @@ class TextDocumentGenerator:
         }
 
 
+@DOCUMENT_GENERATORS.register(key=DocumentFormat.MARKDOWN)
 class MarkdownDocumentGenerator(TextDocumentGenerator):
     """Generate Markdown documentation."""
 
-    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> str:
+    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> bytes:
         """Generate Markdown content."""
         return self._render_template("target_model.md.j2", target_model=target_model, project=project)
 
 
+@DOCUMENT_GENERATORS.register(key=DocumentFormat.HTML)
 class HTMLDocumentGenerator(TextDocumentGenerator):
     """Generate interactive HTML documentation."""
 
-    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> str:
+    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> bytes:
         """Generate HTML content."""
         return self._render_template("target_model.html.j2", target_model=target_model, project=project)
 
 
+@DOCUMENT_GENERATORS.register(key=DocumentFormat.SIMS)
 class SimsDocumentGenerator(TextDocumentGenerator):
     """Generate SIMS entity register documentation from target model."""
 
-    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> str:
+    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> bytes:
         """Generate SIMS entity register Markdown."""
         env: Environment = self._get_jinja_env()
         template: Template = env.get_template("sims_entity_register.md.j2")
         data: dict[str, Any] = self._prepare_sims_data(target_model)
-        return template.render(**data)
+        return template.render(**data).encode("utf-8")
 
     @staticmethod
     def _resolve_effective_sims(spec: EntitySpec) -> dict[str, str | None]:
@@ -291,14 +314,16 @@ class SimsDocumentGenerator(TextDocumentGenerator):
         for name, spec in target_model.entities.items():
             effective = self._resolve_effective_sims(spec)
             subtype = self._classify_sims_subtype(effective)
-            entities.append({
-                "name": name,
-                "spec": spec,
-                "identity_tracking": effective["identity_tracking"],
-                "reconciliation": effective["reconciliation"],
-                "aggregate_parent": effective["aggregate_parent"],
-                "sims_subtype": subtype,
-            })
+            entities.append(
+                {
+                    "name": name,
+                    "spec": spec,
+                    "identity_tracking": effective["identity_tracking"],
+                    "reconciliation": effective["reconciliation"],
+                    "aggregate_parent": effective["aggregate_parent"],
+                    "sims_subtype": subtype,
+                }
+            )
 
         entities.sort(key=lambda e: e["name"])
 
@@ -387,20 +412,12 @@ class TargetModelDocumentGenerator:
         Returns:
             Document content as bytes.
         """
-
-        if format == DocumentFormat.HTML:
-            return HTMLDocumentGenerator().generate(self.target_model, self.project).encode("utf-8")
-
-        if format == DocumentFormat.MARKDOWN:
-            return MarkdownDocumentGenerator().generate(self.target_model, self.project).encode("utf-8")
-
-        if format == DocumentFormat.EXCEL:
-            return ExcelGenerator().generate(self.project, self.target_model)
-
-        if format == DocumentFormat.SIMS:
-            return SimsDocumentGenerator().generate(self.target_model, self.project).encode("utf-8")
-
-        raise ValueError(f"Unsupported format: {format}")
+        try:
+            return DOCUMENT_GENERATORS.get(format)().generate(self.target_model, self.project)
+        except KeyError:
+            raise ValueError(f"Unsupported format: {format}")
+        except Exception as e:
+            raise RuntimeError(f"Error generating documentation: {e}") from e
 
     def write_to_file(self, format: DocumentFormat, output_path: Path) -> None:  # pylint: disable=redefined-builtin
         """Generate documentation and write to file.
