@@ -121,10 +121,7 @@ class TestDependencyGraphAnalysis:
         assert merged_node["type"] == "merged"
         assert sorted(merged_node["depends_on"]) == ["abundance", "relative_dating"]
 
-        branch_edges = [
-            e for e in graph["edges"]
-            if e["target"] == "analysis_entity" and e.get("is_branch_dependency")
-        ]
+        branch_edges = [e for e in graph["edges"] if e["target"] == "analysis_entity" and e.get("is_branch_dependency")]
         assert len(branch_edges) == 2
         assert {e["branch_name"] for e in branch_edges} == {"abundance", "relative_dating"}
         assert {e["label"] for e in branch_edges} == {"branch: abundance", "branch: relative_dating"}
