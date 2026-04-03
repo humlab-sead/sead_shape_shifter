@@ -221,9 +221,7 @@ class DependencyService:
 
             branches = entity_config.get("branches") or []
             merged_branch_lookup[entity_name] = {
-                branch.get("source"): branch.get("name")
-                for branch in branches
-                if branch.get("source") and branch.get("name")
+                branch.get("source"): branch.get("name") for branch in branches if branch.get("source") and branch.get("name")
             }
 
         # Add dependency edges from depends_on relationships
