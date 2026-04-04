@@ -1338,6 +1338,48 @@ entities:
       - entity: feature
         required: true
 
+  data_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for the type of data produced by an analytical method.
+    domains: [core]
+    target_table: tbl_data_types
+    public_id: data_type_id
+    identity_columns: [data_type_name]
+    columns:
+      data_type_name:
+        required: true
+        type: string
+        nullable: false
+      definition:
+        type: string
+        nullable: true
+    unique_sets:
+      - [data_type_name]
+
+  unit:
+    role: classifier
+    required: false
+    description: Unit of measurement referenced by dimensions, methods, and analytical values.
+    domains: [core]
+    target_table: tbl_units
+    public_id: unit_id
+    identity_columns: [unit_name]
+    columns:
+      unit_name:
+        required: true
+        type: string
+        nullable: false
+      unit_abbrev:
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [unit_name]
+      - [unit_abbrev]
+
 naming:
   public_id_suffix: _id
 
