@@ -903,6 +903,10 @@ This is the right fit when the derived value depends on cleanup, fallback handli
     - `replace(str, old, new)` - Replace all occurrences of substring `old` with `new` (literal, not regex)
     - `regex_extract(str, pattern[, group])` - Extract first regex match; `group` selects capture group (default 0 = full match); returns null when no match
     - `to_decimal(value[, precision])` - Convert a numeric value (float, int, str, Decimal) or null to `Decimal` rounded to `precision` decimal places (default 10)
+    - `to_int(value)` - Convert value to int; null/NaN pass through as null
+    - `to_float(value)` - Convert value to float; null/NaN pass through as null
+    - `to_str(value)` - Convert value to string; null/NaN pass through as null
+    - `to_date(value[, format])` - Parse string to `date` using `format` (default `%Y-%m-%d`); null/NaN pass through as null
   - **Literals**: String literals (`"text"` or `'text'`), integers (`42`, `-10`), booleans (`true`, `false`), null (`null`)
   - **Security**: No arbitrary code execution - only whitelisted functions, bounded complexity (max depth 20, max 500 nodes)
   - **Type Handling**: All functions operate on pandas Series for vectorized evaluation
