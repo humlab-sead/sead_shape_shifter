@@ -38,6 +38,8 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any, Callable, Iterable, Protocol
 
+from decimal import Decimal, ROUND_HALF_UP
+
 import pandas as pd
 
 # ============================================================================
@@ -591,6 +593,9 @@ class PandasStringBackend:
             "trim": self._fn_trim,
             "substr": self._fn_substr,
             "coalesce": self._fn_coalesce,
+            "to_decimal": self._fn_to_decimal,
+            "replace": self._fn_replace,
+            "regex_extract": self._fn_regex_extract,
         }
 
     def get_column(self, name: str) -> pd.Series:
@@ -677,6 +682,61 @@ class PandasStringBackend:
             result = result.where(result.notna(), other)
         return result
 
+    def _fn_to_decimal(self, value: Any, precision: Any = 10) -> pd.Series:
+        precision_i: int = self._require_scalar_int(precision, "to_decimal")
+        if precision_i < 0:
+            raise DSLEvaluationError("Function 'to_decimal' requires non-negative precision")
+        quantizer = Decimal(10) ** -precision_i
+
+        def _convert(v: Any) -> Decimal | None:
+            if v is None or (isinstance(v, float) and v != v):  # None or NaN
+                return None
+            try:
+                return Decimal(str(v)).quantize(quantizer, rounding=ROUND_HALF_UP)
+            except Exception as exc:
+                raise DSLEvaluationError(f"to_decimal: cannot convert {v!r}: {exc}") from exc
+
+        s = self._ensure_series(value)
+        return s.map(_convert, na_action="ignore")
+
+    def _fn_replace(self, value: Any, old: Any, new: Any) -> pd.Series:
+        """Replace all occurrences of *old* with *new* in each element."""
+        if isinstance(old, pd.Series) or isinstance(new, pd.Series):
+            raise DSLEvaluationError("Function 'replace' requires string literal arguments for old and new")
+        old_s = str(old)
+        new_s = str(new) if new is not None else ""
+        return self._to_nullable_string_series(value).str.replace(old_s, new_s, regex=False)
+
+    def _fn_regex_extract(self, value: Any, pattern: Any, group: Any = 0) -> pd.Series:
+        """Extract the first match of *pattern* (a regex literal) from each element.
+
+        *group* selects the capture group (default 0 = full match).
+        Returns None for elements that do not match.
+        """
+        if isinstance(pattern, pd.Series):
+            raise DSLEvaluationError("Function 'regex_extract' requires a string literal for pattern")
+        group_i: int = self._require_scalar_int(group, "regex_extract")
+        try:
+            compiled = re.compile(str(pattern))
+        except re.error as exc:
+            raise DSLEvaluationError(f"regex_extract: invalid pattern {pattern!r}: {exc}") from exc
+
+        def _extract(v: Any) -> str | None:
+            if v is None:
+                return None
+            m = compiled.search(str(v))
+            if m is None:
+                return None
+            try:
+                return m.group(group_i)
+            except IndexError as exc:
+                raise DSLEvaluationError(
+                    f"regex_extract: pattern has no group {group_i}"
+                ) from exc
+
+        s = self._ensure_series(value)
+        return s.map(_extract, na_action="ignore")
+
 
 # ============================================================================
 # Evaluator
@@ -752,6 +812,26 @@ DEFAULT_FUNCTIONS: dict[str, FunctionSpec] = {
         impl_name="coalesce",
         min_args=1,
         description="Return first non-null value",
+    ),
+    "to_decimal": FunctionSpec(
+        name="to_decimal",
+        impl_name="to_decimal",
+        min_args=1,
+        max_args=2,
+        description="Convert a numeric value (float, int, str, Decimal) or None to Decimal with specified precision (default 10)",
+    ),
+    "replace": FunctionSpec(
+        name="replace",
+        impl_name="replace",
+        exact_args=3,
+        description="Replace all occurrences of a substring with another string",
+    ),
+    "regex_extract": FunctionSpec(
+        name="regex_extract",
+        impl_name="regex_extract",
+        min_args=2,
+        max_args=3,
+        description="Extract the first regex match (or capture group) from a string",
     ),
 }
 

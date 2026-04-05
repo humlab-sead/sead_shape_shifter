@@ -748,7 +748,7 @@ This is the canonical mechanism for four common cases:
 - **Copy** when you just need another column name for an existing value
 - **Constant** when every row should receive the same value, `null`, number, or boolean
 - **Interpolation** when you are assembling a label, synthetic identifier, or display string from several columns
-- **Formula** when interpolation is not enough and you need a small expression such as `upper(...)`, `trim(...)`, `substr(...)`, or `coalesce(...)`
+- **Formula** when interpolation is not enough and you need a small expression such as `upper(...)`, `trim(...)`, `substr(...)`, `coalesce(...)`, `replace(...)`, `regex_extract(...)`, or `to_decimal(...)`
 
 Quick examples:
 
@@ -877,6 +877,14 @@ This is the right fit when the derived value depends on cleanup, fallback handli
     initials: "=concat(upper(substr(first_name, 0, 1)), upper(substr(last_name, 0, 1)))"
     # DSL formula with coalesce for null handling
     display_name: "=coalesce(preferred_name, concat(first_name, ' ', last_name))"
+    # Replace a sentinel value used as missing marker
+    status_clean: "=replace(status, 'N/A', '')"
+    # Extract a numeric code embedded in a source ID string (e.g. 'SITE-042' → '042')
+    site_code: "=regex_extract(site_id, '[0-9]+')"
+    # Extract a named capture group to pull a prefix
+    country_code: "=regex_extract(location_key, '^([A-Z]{2})', 1)"
+    # Convert a float measurement column to Decimal with 4 decimal places
+    latitude_decimal: "=to_decimal(latitude, 4)"
     # Create constant null column
     feature_type_description: null
     # Create constant value column
@@ -892,6 +900,9 @@ This is the right fit when the derived value depends on cleanup, fallback handli
     - `trim(str)` - Remove leading/trailing whitespace
     - `substr(str, start, length)` - Extract substring (0-indexed)
     - `coalesce(...)` - Return first non-null value
+    - `replace(str, old, new)` - Replace all occurrences of substring `old` with `new` (literal, not regex)
+    - `regex_extract(str, pattern[, group])` - Extract first regex match; `group` selects capture group (default 0 = full match); returns null when no match
+    - `to_decimal(value[, precision])` - Convert a numeric value (float, int, str, Decimal) or null to `Decimal` rounded to `precision` decimal places (default 10)
   - **Literals**: String literals (`"text"` or `'text'`), integers (`42`, `-10`), booleans (`true`, `false`), null (`null`)
   - **Security**: No arbitrary code execution - only whitelisted functions, bounded complexity (max depth 20, max 500 nodes)
   - **Type Handling**: All functions operate on pandas Series for vectorized evaluation
