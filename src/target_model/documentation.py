@@ -24,7 +24,7 @@ from jinja2 import Environment, FileSystemLoader
 from jinja2.environment import Template
 
 from src.target_model.models import EntitySpec, TargetModel
-from utility import Registry
+from src.utility import Registry
 
 if TYPE_CHECKING:
     from src.model import ShapeShiftProject
