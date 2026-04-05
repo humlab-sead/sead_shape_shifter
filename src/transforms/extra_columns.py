@@ -105,13 +105,13 @@ class ExtraColumnEvaluator:
 
         # Get available source columns
         if isinstance(source, pd.DataFrame):
-            source_columns = set(source.columns)
+            source_columns: set[str] = set(source.columns)
         else:
             source_columns = set(source)
 
         # Build case-insensitive column lookup if needed
         if not case_sensitive:
-            col_map = {str(c).lower(): c for c in source_columns}
+            col_map: dict[str, str] = {str(c).lower(): c for c in source_columns}
         else:
             col_map = {c: c for c in source_columns}
 
