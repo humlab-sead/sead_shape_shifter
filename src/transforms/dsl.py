@@ -38,6 +38,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any, Callable, Iterable, Protocol
 
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
 import pandas as pd
@@ -594,6 +595,10 @@ class PandasStringBackend:
             "substr": self._fn_substr,
             "coalesce": self._fn_coalesce,
             "to_decimal": self._fn_to_decimal,
+            "to_int": self._fn_to_int,
+            "to_float": self._fn_to_float,
+            "to_str": self._fn_to_str,
+            "to_date": self._fn_to_date,
             "replace": self._fn_replace,
             "regex_extract": self._fn_regex_extract,
         }
@@ -698,6 +703,60 @@ class PandasStringBackend:
 
         s = self._ensure_series(value)
         return s.map(_convert, na_action="ignore")
+
+    def _fn_to_int(self, value: Any) -> pd.Series:
+        """Convert each element to int, passing None/NaN through as None."""
+
+        def _convert(v: Any) -> int | None:
+            if v is None:
+                return None
+            try:
+                return int(v)
+            except Exception as exc:
+                raise DSLEvaluationError(f"to_int: cannot convert {v!r}: {exc}") from exc
+
+        return self._ensure_series(value).map(_convert, na_action="ignore")
+
+    def _fn_to_float(self, value: Any) -> pd.Series:
+        """Convert each element to float, passing None/NaN through as None."""
+
+        def _convert(v: Any) -> float | None:
+            if v is None:
+                return None
+            try:
+                return float(v)
+            except Exception as exc:
+                raise DSLEvaluationError(f"to_float: cannot convert {v!r}: {exc}") from exc
+
+        return self._ensure_series(value).map(_convert, na_action="ignore")
+
+    def _fn_to_str(self, value: Any) -> pd.Series:
+        """Convert each element to str, passing None/NaN through as None."""
+
+        def _convert(v: Any) -> str | None:
+            return None if v is None else str(v)
+
+        return self._ensure_series(value).map(_convert, na_action="ignore")
+
+    def _fn_to_date(self, value: Any, fmt: Any = "%Y-%m-%d") -> pd.Series:
+        """Parse each element as a date string using *fmt* (default ``%Y-%m-%d``).
+
+        Returns a ``datetime.date`` object or None.
+        """
+        if isinstance(fmt, pd.Series):
+            raise DSLEvaluationError("Function 'to_date' requires a string literal for format")
+        fmt_s = str(fmt)
+
+        def _convert(v: Any) -> date | None:
+            if v is None:
+                return None
+            try:
+                import datetime as _dt
+                return _dt.datetime.strptime(str(v).strip(), fmt_s).date()
+            except Exception as exc:
+                raise DSLEvaluationError(f"to_date: cannot parse {v!r} with format {fmt_s!r}: {exc}") from exc
+
+        return self._ensure_series(value).map(_convert, na_action="ignore")
 
     def _fn_replace(self, value: Any, old: Any, new: Any) -> pd.Series:
         """Replace all occurrences of *old* with *new* in each element."""
@@ -819,6 +878,31 @@ DEFAULT_FUNCTIONS: dict[str, FunctionSpec] = {
         min_args=1,
         max_args=2,
         description="Convert a numeric value (float, int, str, Decimal) or None to Decimal with specified precision (default 10)",
+    ),
+    "to_int": FunctionSpec(
+        name="to_int",
+        impl_name="to_int",
+        exact_args=1,
+        description="Convert value to int (None/NaN pass through as None)",
+    ),
+    "to_float": FunctionSpec(
+        name="to_float",
+        impl_name="to_float",
+        exact_args=1,
+        description="Convert value to float (None/NaN pass through as None)",
+    ),
+    "to_str": FunctionSpec(
+        name="to_str",
+        impl_name="to_str",
+        exact_args=1,
+        description="Convert value to str (None/NaN pass through as None)",
+    ),
+    "to_date": FunctionSpec(
+        name="to_date",
+        impl_name="to_date",
+        min_args=1,
+        max_args=2,
+        description="Parse string to date using optional format (default '%Y-%m-%d')",
     ),
     "replace": FunctionSpec(
         name="replace",
