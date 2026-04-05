@@ -909,7 +909,7 @@
 
     <!-- Entity Editor Overlay (for graph double-click) -->
     <entity-form-dialog
-      v-if="entityStore.overlayEntityName && overlayEntity"
+      v-if="entityStore.overlayEntityName"
       v-model="entityStore.showEditorOverlay"
       :project-name="projectName"
       :entity="overlayEntity"
