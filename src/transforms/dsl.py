@@ -1,16 +1,10 @@
 """
 dsl.py
 
-A hand-written recursive descent parser for the formula DSL used in extra_columns.
-
-Implementation:
-- Zero dependencies (stdlib + pandas only)
-- Hand-written tokenizer and recursive descent parser
-- ~300 lines of parsing logic
-- Fast and transparent
+A recursive descent parser for the formula DSL used in extra_columns.
 
 Features:
-- Narrow formula syntax: =concat(first_name, ' ', last_name)
+- Narrow syntax: =concat(first_name, ' ', last_name)
 - No Python eval
 - No Pandas API exposure
 - Whitelisted functions only
