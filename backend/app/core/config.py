@@ -63,6 +63,7 @@ class Settings(BaseSettings):
 
     # Services
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
+    SIMS_SERVICE_URL: str = "http://localhost:8000"  # sead_authority_service base URL for /identity endpoints
 
     # Suggestions
     ENABLE_FK_SUGGESTIONS: bool = False

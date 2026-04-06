@@ -1110,6 +1110,9 @@ export const useExampleStore = defineStore('example', () => {
 - `backend/app/main.py` - FastAPI application entry point
 - `backend/app/services/validation_service.py` - Multi-type validation
 - `backend/app/services/shapeshift_service.py` - Entity preview with 3-tier cache
+- `backend/app/clients/reconciliation_client.py` - OpenRefine reconciliation HTTP client
+- `backend/app/clients/sims_client.py` - SIMS identity HTTP client (wraps `/identity` endpoints of sead_authority_service)
+- `backend/app/models/sims.py` - Client-side Pydantic DTOs for SIMS API
 - `backend/app/ingesters/protocol.py` - Ingester interface definition
 - `backend/app/ingesters/registry.py` - Dynamic ingester discovery system
 - `ingesters/sead/` - SEAD Clearinghouse ingester implementation
@@ -1185,3 +1188,20 @@ See `ingesters/README.md` for detailed guide. Basic steps:
 - **UCanAccess**: MS Access via JDBC (install: `scripts/install-uncanccess.sh`)
 - **Java JRE**: Required for UCanAccess
 - **pnpm**: Frontend package manager
+
+## SIMS Client (`backend/app/clients/sims_client.py`)
+
+`SimsClient` is an async `httpx` client that wraps the six `/identity` endpoints of `sead_authority_service`.
+DTOs are defined in `backend/app/models/sims.py` (client-side Pydantic models mirroring the authority service contracts).
+
+**Configuration**: `SHAPE_SHIFTER_SIMS_SERVICE_URL` env var (default `http://localhost:8000`) — exposed as `Settings.SIMS_SERVICE_URL` in `backend/app/core/config.py`.
+
+**Methods**:
+- `resolve(request)` → `ResolveResponse` — POST `/identity/resolve`
+- `get_binding_set(uuid)` → `BindingSetResponse` — GET `/identity/binding-sets/{uuid}`
+- `confirm_binding_set(uuid)` → `BindingSetResponse` — POST `/identity/binding-sets/{uuid}/confirm`
+- `associate_change_request(uuid, name)` → `BindingSetResponse` — POST `/identity/binding-sets/{uuid}/change-request`
+- `detect_change(request)` → `ChangeDetectionResult` — POST `/identity/detect-change`
+- `list_scopes()` → `list[SourceScope]` — GET `/identity/scopes`
+
+**Pattern**: same lazy-singleton `httpx.AsyncClient` as `ReconciliationClient`; call `await client.close()` in teardown.
