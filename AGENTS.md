@@ -395,3 +395,20 @@ Then use with `--config ingest_config.json`. CLI options override config file va
 - Install UCanAccess via `scripts/install-uncanccess.sh` when Access support is required.
 - Ensure Java JRE is available for UCanAccess integrations.
 - Use `pnpm` as the frontend package manager whenever Node dependencies are involved.
+
+## SIMS Client (`backend/app/clients/sims_client.py`)
+
+`SimsClient` is an async `httpx` client that wraps the six `/identity` endpoints of `sead_authority_service`.
+DTOs are defined in `backend/app/models/sims.py` (client-side Pydantic models mirroring the authority service contracts).
+
+**Configuration**: `SHAPE_SHIFTER_SIMS_SERVICE_URL` env var (default `http://localhost:8000`) — set in `backend/app/core/config.py` as `Settings.SIMS_SERVICE_URL`.
+
+**Methods**:
+- `resolve(request)` → `ResolveResponse` — POST `/identity/resolve`
+- `get_binding_set(uuid)` → `BindingSetResponse` — GET `/identity/binding-sets/{uuid}`
+- `confirm_binding_set(uuid)` → `BindingSetResponse` — POST `/identity/binding-sets/{uuid}/confirm`
+- `associate_change_request(uuid, name)` → `BindingSetResponse` — POST `/identity/binding-sets/{uuid}/change-request`
+- `detect_change(request)` → `ChangeDetectionResult` — POST `/identity/detect-change`
+- `list_scopes()` → `list[SourceScope]` — GET `/identity/scopes`
+
+**Pattern**: same lazy-singleton `httpx.AsyncClient` as `ReconciliationClient`; call `await client.close()` in teardown.
