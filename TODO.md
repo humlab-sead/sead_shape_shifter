@@ -21,7 +21,6 @@
 ### New features
 
  - [] TODO: [Frontend/Backend] Edit data source configuration in a dual-mode editor (Form/YAML).
- - [] TODO: Add additional frontend/backend options (e.g., themes, temp directory, logging level, etc.)
  - [] TODO: Add capability to generate a default reconciliation YAML based on service manifest received from calling services /reconcile endpoint.
  - [] TODO: #68 Add a "finally" step that removes intermediate tables and columns.
  - [] TODO: #66 Introduce a "transformations" section with more advance columnar transforms (e.g. toWSG84).
