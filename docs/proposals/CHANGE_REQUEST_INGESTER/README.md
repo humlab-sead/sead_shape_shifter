@@ -13,13 +13,13 @@ This folder contains the proposal for replacing the current SEAD Clearinghouse i
 
 ### What exists today
 
-| Component | Status | Location |
-|-----------|--------|----------|
-| **Current SEAD ingester** | Production | `ingesters/sead/` — Clearinghouse CSV-based ingestion into staging tables |
-| **SIMS** | Fully implemented | `sead_authority_service/src/identity/` — Identity resolution, UUID allocation, binding lifecycle |
-| **SimsClient** | Fully implemented | `backend/app/clients/sims_client.py` — Async HTTP client wrapping SIMS `/identity` endpoints |
-| **Target model conformance** | Implemented | `sead_standard_model.yml` + six registered conformance validators |
-| **Ingester framework** | Implemented | `backend/app/ingesters/` — Protocol, registry, dynamic discovery |
+| Component                    | Status            | Location                                                                                         |
+|------------------------------|-------------------|--------------------------------------------------------------------------------------------------|
+| **Current SEAD ingester**    | Production        | `ingesters/sead/` — Clearinghouse CSV-based ingestion into staging tables                        |
+| **SIMS**                     | Fully implemented | `sead_authority_service/src/identity/` — Identity resolution, UUID allocation, binding lifecycle |
+| **SimsClient**               | Fully implemented | `backend/app/clients/sims_client.py` — Async HTTP client wrapping SIMS `/identity` endpoints     |
+| **Target model conformance** | Implemented       | `sead_standard_model.yml` + six registered conformance validators                                |
+| **Ingester framework**       | Implemented       | `backend/app/ingesters/` — Protocol, registry, dynamic discovery                                 |
 
 ### What this proposal adds
 
@@ -37,12 +37,12 @@ A new ingester registered under the same framework that:
 
 ## Boundary
 
-| Concern | Owner |
-|---------|-------|
-| Identity resolution, allocation, policy, binding lifecycle | SIMS (sead_authority_service) |
-| SIMS API consumption, SQL generation, FK resolution, Sqitch output | This ingester (Shape Shifter) |
-| Target model metadata (entity roles, identity columns, FKs) | `sead_standard_model.yml` (Shape Shifter) |
-| Core ETL pipeline (extract, filter, link, unnest, translate) | Shape Shifter core (unchanged) |
+| Concern                                                            | Owner                                     |
+|--------------------------------------------------------------------|-------------------------------------------|
+| Identity resolution, allocation, policy, binding lifecycle         | SIMS (sead_authority_service)             |
+| SIMS API consumption, SQL generation, FK resolution, Sqitch output | This ingester (Shape Shifter)             |
+| Target model metadata (entity roles, identity columns, FKs)        | `sead_standard_model.yml` (Shape Shifter) |
+| Core ETL pipeline (extract, filter, link, unnest, translate)       | Shape Shifter core (unchanged)            |
 
 ## Related documentation
 
@@ -87,13 +87,13 @@ A new ingester registered under the same framework that:
 
 ## ⚠️ Risk Mitigation
 
-| Risk | Mitigation |
-|------|-----------|
-| **API downtime** | Queue-based retry, fallback workflow |
-| **FK errors** | Extensive validation, dry-run mode |
+| Risk              | Mitigation                                |
+|-------------------|-------------------------------------------|
+| **API downtime**  | Queue-based retry, fallback workflow      |
+| **FK errors**     | Extensive validation, dry-run mode        |
 | **SQL injection** | Parameterized queries, input sanitization |
-| **Data loss** | Atomic transactions, rollback tests |
-| **Performance** | Batch allocation, connection pooling |
+| **Data loss**     | Atomic transactions, rollback tests       |
+| **Performance**   | Batch allocation, connection pooling      |
 
 See individual documents for detailed risk analysis.
 
@@ -108,19 +108,9 @@ See individual documents for detailed risk analysis.
 - Schema introspection (auto-generate table_mapping)
 
 ### Long-Term Vision
-- Federated ingestion (multi-SEAD instances)
-- Event sourcing (stream-based ingestion)
 - Natural key integration (DOIs, ORCIDs)
-- Blockchain audit trail (if compliance requires)
 
 ---
-
-## 📞 Contacts & Resources
-
-### Key Stakeholders
-- **SEAD Team:** Identity System implementation, API deployment
-- **Shape Shifter Team:** Ingester component, integration
-- **Data Managers:** Testing, validation, reconciliation rules
 
 ### Related Documentation
 - [Shape Shifter Architecture](../ARCHITECTURE.md)
