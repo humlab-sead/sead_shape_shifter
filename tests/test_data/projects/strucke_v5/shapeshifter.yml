@@ -1,0 +1,115 @@
+metadata:
+  name: Riia-Strucke-V5
+  type: shapeshifter-project
+  description: 'Project started 2026-05-04 for mapping of the newly delivered version of the Strucke data: c14_master_v05.xlsx'
+  version: 1.0.0
+  default_entity:
+  target_model: '@include: sead_standard_model.yml'
+entities:
+  datasets:
+    type: fixed
+    keys: []
+    columns: [system_id, dataset_id, dataset_name]
+    public_id: dataset_id
+    values:
+    - [1, null, Strucke data]
+  datasheet:
+    type: xlsx
+    keys: []
+    columns:
+    - fid
+    - parish
+    - village_farm
+    - raa_id
+    - site_type
+    - site_id
+    - project_id
+    - province
+    - lab_no
+    - c14_age_bp
+    - c14_error
+    - d13c
+    - modern_date
+    - comment
+    - assessed_relevant
+    - material
+    - species_1
+    - species_2
+    - context_id
+    - context_type
+    - northing
+    - easting
+    - longitude
+    - latitude
+    - spatial_accuracy
+    - cal_68_min
+    - cal_68_max
+    - cal_95_min
+    - cal_95_max
+    - author
+    - publication_year
+    - title
+    - journal
+    - place_of_publication
+    public_id: datasheet_id
+    options:
+      filename: c14_master_v05.xlsx
+      location: local
+      sheet_name: c14_master_v05
+  site:
+    type: entity
+    keys: []
+    columns:
+    - parish
+    - village_farm
+    - raa_id
+    - site_type
+    - site_id
+    - project_id
+    - province
+    - lab_no
+    public_id: site_id
+    source: datasheet
+  abundances:
+    type: entity
+    keys: []
+    columns: [lab_no, species_1, material, species_2]
+    public_id: abundance_id
+    source: datasheet
+    drop_empty_rows: [species_1]
+    extra_columns:
+      abundances: '1'
+  physical_samples:
+    type: entity
+    keys: []
+    columns: [lab_no]
+    public_id: physical_sample_id
+    source: datasheet
+  analysis_entities:
+    type: entity
+    keys: []
+    columns: [lab_no]
+    public_id: analysis_entity_id
+    source: datasheet
+    foreign_keys:
+    - entity: physical_samples
+      local_keys: [lab_no]
+      remote_keys: [lab_no]
+      how: inner
+      constraints:
+        cardinality: many_to_one
+        allow_unmatched_right: true
+        require_unique_left: false
+        require_unique_right: false
+        allow_row_decrease: true
+  biblio:
+    type: entity
+    keys: []
+    columns: [author, publication_year, title, place_of_publication, village_farm]
+    public_id: biblio_id
+    source: datasheet
+    drop_duplicates: [full_reference]
+    check_functional_dependency: false
+    extra_columns:
+      full_reference: '{author} {publication_year}{title} {journal} {place_of_publication}'
+options: {}
