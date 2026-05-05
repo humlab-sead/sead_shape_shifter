@@ -3,14 +3,18 @@
 ## Status
 
 - Proposed replacement for the current Clearinghouse ingester (`ingesters/sead/`)
-- Scope: New ingester that generates Sqitch-ready SQL DML from normalized DataFrames
-- Goal: Eliminate the Clearinghouse staging layer and generate change requests directly
+- Scope: New ingester that generates SEAD Change Control System-ready SQL DML from normalized DataFrames
+- Goal: Eliminate the Clearinghouse staging layer and the Transport System; generate change requests directly
 
 ## Summary
 
-Replace the current SEAD Clearinghouse ingester with a new ingester that transforms normalized DataFrames directly into Sqitch-ready SQL change requests. The new ingester uses the fully implemented SIMS API (via `SimsClient`) to resolve all entity identities before SQL generation — reconciling existing entities and allocating IDs for new ones. This eliminates the Clearinghouse CSV staging layer, the Transport System, and the manual ID reconciliation steps.
+Replace the current SEAD Clearinghouse ingester with a new ingester that transforms normalized DataFrames directly into SEAD Change Control System change requests. As part of the Shape Shifter workflow, the new ingester uses the SEAD Authority Service to resolve all entity identities before SQL generation.
 
-The building blocks exist: SIMS is live in `sead_authority_service`, `SimsClient` is implemented in Shape Shifter, target model conformance validators are active, and the ingester framework supports pluggable discovery. What remains is the ingester implementation itself.
+The SEAD Authority Service includes the SIMS API (via `SimsClient`) for resolving data-provider-owned entities: reconciling existing ones and allocating IDs for new ones. It also includes a reconciliation API, implementing the OpenRefine protocol (via `ReconciliationClient`), which is already used in the existing Shape Shifter workflow to match SEAD-managed entities.
+
+This new ingester eliminates the Clearinghouse CSV staging layer, the Transport System, and the manual ID reconciliation steps. Because it bypasses SEAD Clearinghouse by creating complete SEAD Change Control System change requests directly, it would effectively replace the entire SEAD Clearinghouse system.
+
+The building blocks already exist: SIMS is live in `sead_authority_service`, `SimsClient` is implemented in Shape Shifter, the reconciliation API and `ReconciliationClient` are already active in the Shape Shifter workflow, target-model conformance validators are active, and the ingester framework supports pluggable discovery. What remains is only the implementation of the new ingester.
 
 ## Problem
 
@@ -24,8 +28,8 @@ This workflow has several problems:
 
 1. **Indirect path.** DataFrames are serialized to CSV, loaded into staging tables, then moved to public tables via stored procedures. Each step is a failure point.
 2. **No identity resolution.** The Clearinghouse uses `system_id`/`public_id` conventions to distinguish new vs. existing records, but has no formal identity resolution. Reconciliation is manual and error-prone.
-3. **No change control integration.** The output is a database state change, not a versioned change request. There is no Sqitch script, no rollback plan, no audit trail.
-4. **Tight coupling to Clearinghouse schema.** The ingester depends on `clearing_house.tbl_clearinghouse_submission_*` tables and PostgreSQL stored procedures that are specific to the Clearinghouse design.
+3. **No change control integration.** The output is a Clearinghouse submission, not a versioned change request. The SEAD Change Control System — which governs all DML and DDL changes to the SEAD database using Sqitch for migrations, Git for version control, and Bash-driven workflows — is only reached indirectly via the Transport System.
+4. **Tight coupling to Clearinghouse schema and Transport System.** The ingester depends on `clearing_house.tbl_clearinghouse_submission_*` tables and PostgreSQL stored procedures specific to the Clearinghouse. The Transport System's sole purpose is to convert a Clearinghouse submission into a SEAD Change Control System change request — it exists only because the ingester does not produce one directly.
 5. **No idempotency guarantee.** Re-running the same data can create duplicate records because identity is not tracked across submissions.
 
 SIMS solves the identity problem. This ingester uses SIMS to close the remaining gaps.
@@ -35,10 +39,11 @@ SIMS solves the identity problem. This ingester uses SIMS to close the remaining
 This proposal covers:
 
 - A new ingester registered as `sead_cr` (or similar) under the existing ingester framework
-- Identity resolution for all entities via SIMS (`SimsClient`)
+- Identity resolution for all entities via SIMS (`SimsClient`) for provider-owned entities
+- SEAD-managed entity matching via the OpenRefine reconciliation API (`ReconciliationClient`)
 - Foreign key resolution from local `system_id` to SIMS-allocated SEAD integer IDs
 - SQL DML generation (INSERT statements) with topological ordering
-- Sqitch change request output (deploy/revert scripts)
+- SEAD Change Control System change request output (deploy/revert SQL scripts managed via Sqitch, Git, and Bash workflows)
 - Binding Set confirmation and change request association via SIMS
 
 ## Non-Goals
@@ -51,6 +56,19 @@ This proposal covers:
 
 ## Current Behavior
 
+### Current end-to-end SEAD ingestion workflow
+
+```
+Data provider's data                --> Shape Shifter [ USER ]              --> Project YAML
+Data provider's data + Project YAML --> Shape Shifter [ NORMALIZER ]        --> Normalized DataFrames
+Normalized DataFrames               --> Shape Shifter [ DISPATCHER ]        --> SEAD-conforming Data (CSV or Excel)
+SEAD-conforming Data                --> Shape Shifter [ INGESTER ]          --> SEAD Clearinghouse Submission
+SEAD Clearinghouse Submission       --> SEAD Transport System               --> SEAD Change Request (SQL DML scripts)
+SEAD Change Request                 --> SEAD Change Control System          --> SEAD database
+```
+
+The SEAD Clearinghouse is a legacy staging system. A submission is dispatched by the Transport System as a change request in the SEAD Change Control System, which governs all DML and DDL changes to the SEAD database using Sqitch for migrations, Git for version control, and Bash-driven workflows. The Transport System's sole purpose is this dispatch step.
+
 ### Current ingester pipeline (`ingesters/sead/`)
 
 ```
@@ -59,7 +77,7 @@ Excel → Submission (DataFrames)
   → Specifications (validate schema, types, FKs)
   → CsvProcessor (generate 4 CSV files: tables, columns, records, recordvalues)
   → SubmissionRepository (upload CSV to Clearinghouse staging tables)
-  → Explode (stored procedures copy staging → public schema)
+  → Transport System → Explode (stored procedures copy staging → public schema)
 ```
 
 Key characteristics:
@@ -70,15 +88,18 @@ Key characteristics:
 
 ### What exists and is reusable
 
-| Component | Location | Reuse in new ingester |
-|-----------|----------|-----------------------|
-| SIMS (identity resolution, allocation, binding) | `sead_authority_service/src/identity/` | Consumed via `SimsClient` |
-| `SimsClient` (async HTTP client) | `backend/app/clients/sims_client.py` | Direct use — wraps all 6 SIMS endpoints |
-| SIMS DTOs | `backend/app/models/sims.py` | Direct use — request/response models |
-| Target model metadata | `sead_standard_model.yml` | Entity roles, identity columns, FK specs, target tables |
-| Ingester framework | `backend/app/ingesters/` | Protocol, registry, discovery |
-| Topological sort | `backend/app/utils/graph.py` | Entity dependency ordering |
-| `mappings.yml` reconciliation | Shape Shifter core | Pre-resolved identities for known entities |
+| Component                                       | Location                               | Reuse in new ingester                                                          |
+|-------------------------------------------------|----------------------------------------|--------------------------------------------------------------------------------|
+| SIMS (identity resolution, allocation, binding) | `sead_authority_service/src/identity/` | Consumed via `SimsClient` — provider-owned entity resolution and ID allocation |
+| `SimsClient` (async HTTP client)                | `backend/app/clients/sims_client.py`   | Direct use — wraps all 6 SIMS endpoints                                        |
+| SIMS DTOs                                       | `backend/app/models/sims.py`           | Direct use — request/response models                                           |
+| OpenRefine reconciliation API                   | `sead_authority_service` `/reconcile`  | Already active in Shape Shifter reconciliation workflow; reused here for SEAD-managed entity matching |
+| `ReconciliationClient`                          | `backend/app/clients/reconciliation_client.py` | Already in use (`backend/app/services/reconciliation/`); reused directly     |
+| Target model metadata                           | `sead_standard_model.yml`              | Entity roles, identity columns, FK specs, target tables                        |
+| Target-model conformance validators             | Shape Shifter core (`src/validators/`) | Active validation of DataFrames against target schema before ingestion         |
+| Ingester framework                              | `backend/app/ingesters/`               | Protocol, registry, discovery                                                  |
+| Topological sort                                | `backend/app/utils/graph.py`           | Entity dependency ordering                                                     |
+| `mappings.yml` reconciliation                   | Shape Shifter core                     | Pre-resolved identities for known entities                                     |
 
 ## Proposed Design
 
@@ -101,11 +122,13 @@ Normalized DataFrames (from Shape Shifter core)
 │  8. Emit Sqitch change request              │
 │  9. Associate CR name with Binding Set      │
 │                                             │
-│  SimsClient ◄──── HTTP ────► SIMS API      │
-└─────────────────────────────────────────────┘
+│  SimsClient ◄──── HTTP ────► SIMS API           │
+│  ReconciliationClient ◄─ HTTP ─► Reconcile API  │
+└─────────────────────────────────────────────────┘
         │
         ▼
-Sqitch deploy/revert SQL scripts
+SEAD Change Control System change request
+(deploy/revert SQL scripts)
 ```
 
 ### Key principle: all identities resolved before SQL generation
@@ -136,9 +159,14 @@ For each entity row, construct a SIMS `ResolutionRequest`:
 
 Entities already fully mapped in `mappings.yml` (i.e., all rows have a known SEAD ID) can skip SIMS resolution — they are pre-resolved.
 
-#### 3. Resolve all identities via SIMS
+#### 3. Resolve all identities
 
-Call `SimsClient.resolve()` with a batch of `ResolutionRequest` items:
+Resolution strategy depends on entity role:
+
+- **Provider-owned entities** (fact, lookup): resolved directly via SIMS.
+- **SEAD-managed entities** (classifier): matched via the reconciliation API (`ReconciliationClient`), which is already active in the Shape Shifter reconciliation workflow. A successful match yields the SEAD integer ID, which is then bound via SIMS. Failure aborts the submission with diagnostics.
+
+**Provider-owned resolution** — call `SimsClient.resolve()` with a batch of `ResolutionRequest` items:
 
 ```python
 response: ResolveResponse = await sims_client.resolve(ResolveRequest(
@@ -206,9 +234,9 @@ VALUES (8301, 4821, 'Context 1', ...);
 - Parameterized generation to prevent SQL injection
 - NULL handling per column spec
 
-#### 8. Emit Sqitch change request
+#### 8. Emit SEAD Change Control System change request
 
-Wrap the SQL in Sqitch deploy and revert scripts:
+Wrap the SQL in deploy and revert scripts conforming to the SEAD Change Control System. The system uses Sqitch for data migrations, Git for version control, and Bash-driven workflows.
 
 **Deploy** (`deploy/CR_dendro_2026_01.sql`):
 ```sql
@@ -250,12 +278,12 @@ This links the identity resolution to the specific database change, enabling aud
 
 The target model assigns roles to entities. Resolution behavior varies by role:
 
-| Role | SIMS behavior | Example entities |
-|------|---------------|------------------|
-| **fact** | Provider-owned. Allocate new ID, auto-confirm. | sample, abundance, geochronology |
-| **lookup** | Provider-owned. Allocate new ID, auto-confirm. | site, sample_group, dataset |
-| **classifier** | Shared metadata. Must match existing SEAD entity. Allocation blocked. | sample_type, method, taxa_tree_master |
-| **bridge** | Relationship. Derived from parent identities. | analysis_entity, site_location |
+| Role | Resolution approach | Example entities |
+|------|---------------------|------------------|
+| **fact** | Provider-owned. SIMS allocates new ID and auto-confirms. | sample, abundance, geochronology |
+| **lookup** | Provider-owned. SIMS allocates new ID and auto-confirms. | site, sample_group, dataset |
+| **classifier** | SEAD-managed. Matched to existing SEAD record via the reconciliation API (already used in the Shape Shifter reconciliation workflow). Allocation blocked — must match or abort. | sample_type, method, taxa_tree_master |
+| **bridge** | Relationship. Identity derived from resolved parent identities. | analysis_entity, site_location |
 
 The ingester must handle all four cases. Classifiers that cannot be matched cause the submission to fail with diagnostics.
 
@@ -371,4 +399,4 @@ The new ingester replaces `ingesters/sead/` over time:
 
 ## Final Recommendation
 
-Build the new ingester as `ingesters/sead_cr/` alongside the existing Clearinghouse ingester. Use `SimsClient` for all identity resolution. Enforce the invariant that no SQL is generated until every identity is resolved. Start with INSERT-only SQL and Sqitch script packaging. Iterate on change detection and UPDATE support after the core flow is validated with pilot data.
+Build the new ingester as `ingesters/sead_cr/` alongside the existing Clearinghouse ingester. Use `SimsClient` for all provider-owned entity resolution and `ReconciliationClient` for SEAD-managed entity matching (reusing the reconciliation integration already present in Shape Shifter). Enforce the invariant that no SQL is generated until every identity is resolved. Emit complete SEAD Change Control System change requests (deploy and revert SQL scripts managed via Sqitch, Git, and Bash). Start with INSERT-only SQL. Iterate on change detection and UPDATE support after the core flow is validated with pilot data.
