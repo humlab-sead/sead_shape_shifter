@@ -387,8 +387,9 @@ Then use with `--config ingest_config.json`. CLI options override config file va
 - Use `src/model.py`, `src/constraints.py`, and `src/specifications.py` for Core models, constraints, and config rules.
 - Touch backend behavior via `backend/app/main.py` and `backend/app/services/validation_service.py`.
 - Manage frontend state under `frontend/src/stores/` and related composables.
-- Consult docs: `docs/CONFIGURATION_GUIDE.md`, `docs/SYSTEM_DOCUMENTATION.md`, `docs/BACKEND_API.md`, `docs/DEVELOPMENT_GUIDE.md` before major changes.
+- Consult docs: `docs/CONFIGURATION_GUIDE.md`, `docs/DESIGN.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md` before major changes.
 - For testing: `docs/TESTING.md` (concise functional testing), `docs/testing/` subfolder (error scenarios, templates, non-functional, accessibility).
+- **For deployment and operational procedures**: `docs/OPERATIONS.md` (environments, build, deploy, rollback, health checks).
 - **For YAML validation**: `.github/instructions/shapeshifter-configuration.instructions.md` (concise AI-focused validation rules, common patterns, error detection).
 - **For Mermaid diagrams**: `.github/instructions/diagrams.instructions.md` (style, layout, and diagram-type conventions).
 

@@ -10,6 +10,7 @@ Start with:
 - `docs/DESIGN.md`
 - `docs/CONFIGURATION_GUIDE.md`
 - `docs/DEVELOPMENT.md`
+- `docs/OPERATIONS.md`
 - `docs/USER_GUIDE.md`
 - `docs/REQUIREMENTS.md`
 - `docs/TESTING.md`

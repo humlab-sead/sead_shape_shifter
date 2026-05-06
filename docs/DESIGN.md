@@ -456,28 +456,15 @@ normalizer.store(target="output.xlsx", mode="xlsx")
 
 ---
 
-## Deployment Considerations
+## Deployment Constraints
 
-### Single Worker Requirement
+The backend must run with a **single Uvicorn worker** (`--workers 1`). In-memory state (project cache, singletons) is per-process; multiple workers each maintain independent caches and will silently serve stale data after writes. Multiple workers require a shared state backend (Redis or database) before they can be enabled.
 
-**Constraint**: Backend must run with single uvicorn worker.
+**Optional runtime dependencies**:
+- PostgreSQL: `psycopg2-binary`
+- MS Access: Java JRE + UCanAccess (JDBC) — included in the production Docker image
 
-**Reason**: In-memory state (singletons, caches) incompatible with multi-process workers.
-
-**Production Alternative**: Use Redis/database for shared state if multiple workers needed.
-
-### File System Requirements
-
-- **Projects Directory**: YAML configurations
-- **Backups Directory**: Automatic backups before edits
-- **Output Directory**: Execution results
-- **Logs Directory**: Application logs
-
-### Database Connectivity
-
-**Optional Dependencies**:
-- PostgreSQL: Install `psycopg2-binary`
-- MS Access: Requires Java JRE + UCanAccess (JDBC)
+For environments, data layout, build process, and operational procedures see [OPERATIONS.md](OPERATIONS.md).
 
 ---
 
@@ -527,6 +514,7 @@ For implementation details, configuration syntax, and usage instructions, consul
 
 - **CONFIGURATION_GUIDE.md** - Complete YAML reference
 - **DEVELOPMENT.md** - Development setup and patterns
+- **OPERATIONS.md** - Deployment, CI/CD, and operational procedures
 - **USER_GUIDE.md** - End-user workflows
 - **REQUIREMENTS.md** - Feature specifications
 - **TESTING.md** - Testing procedures

@@ -64,6 +64,18 @@ These are the primary system documentation files:
   - Troubleshooting and debugging
   - Contributing guidelines
 
+- **[OPERATIONS.md](OPERATIONS.md)**
+  - Environments and operational assumptions
+  - Configuration and secrets model
+  - Data layout and mounted paths
+  - Build artifacts and image tagging
+  - Deployment flow and deploy scripts
+  - CI pipeline and release process
+  - Post-deployment verification and smoke checks
+  - Rollback procedure
+  - Health checks, observability, and log management
+  - Backup and recovery
+
 - **[proposal-writing-guide.instructions.md](../.github/instructions/proposal-writing-guide.instructions.md)**
   - Rules for writing short, problem-focused design proposals
   - Keeps proposal documents precise, concrete, and decision-oriented

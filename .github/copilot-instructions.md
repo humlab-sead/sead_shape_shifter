@@ -7,7 +7,7 @@ This file should stay small and always-on. Put task-specific guidance in `.githu
 - Use current documentation in `docs/`.
 - Ignore `docs/archive/`.
 - Treat `docs/features/` as future backlog, not authoritative implementation guidance, unless the user asks about roadmap or planned features.
-- Start with `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/USER_GUIDE.md`, `docs/REQUIREMENTS.md`, `docs/TESTING.md`, and `.github/instructions/shapeshifter-configuration.instructions.md`.
+- Start with `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/USER_GUIDE.md`, `docs/REQUIREMENTS.md`, `docs/TESTING.md`, `docs/OPERATIONS.md`, and `.github/instructions/shapeshifter-configuration.instructions.md`.
 - For proposal work, follow `.github/instructions/proposal-writing-guide.instructions.md` and use `docs/templates/PROPOSAL_TEMPLATE.md` unless asked otherwise.
 
 ## Repository structure
@@ -102,3 +102,4 @@ Use the targeted files under `.github/instructions/` for detailed guidance inste
 - `github-workflow.instructions.md`: issue + commit workflow and commit hygiene
 - `ingesters.instructions.md`: ingester structure, discovery, config, and testing
 - `diagrams.instructions.md`: Mermaid diagram style and conventions
+- `operations.instructions.md`: rules for writing and maintaining `docs/OPERATIONS.md`
