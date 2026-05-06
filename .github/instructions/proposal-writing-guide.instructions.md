@@ -1,3 +1,9 @@
+---
+description: "Use when writing or updating design proposals. Covers style, structure, naming, and Copilot workflow for proposals."
+name: "Proposal Writing Guide"
+applyTo:
+  - "docs/proposals/**"
+---
 # Proposal Writing Guide
 
 Use this guide when writing or updating design proposals for this repository.
@@ -44,7 +50,7 @@ Use this guide when writing or updating design proposals for this repository.
 
 ## Structure
 
-Use the template in [templates/PROPOSAL_TEMPLATE.md](templates/PROPOSAL_TEMPLATE.md) by default.
+Use the template in [docs/templates/PROPOSAL_TEMPLATE.md](../../docs/templates/PROPOSAL_TEMPLATE.md) by default.
 
 Not every section must be used. The default expectation is that proposals are organized around a small core:
 
