@@ -66,19 +66,19 @@ python scripts/generate_target_model_docs.py resources/target_models/sead_standa
 **Sheets included:**
 
 **Entities Sheet:**
-| Entity | Target Table | Required | Role | Public ID | Domains | Column Count | FK Count | Description |
-|--------|--------------|----------|------|-----------|---------|--------------|----------|-------------|
-| site | tbl_sites | Yes | data | site_id | spatial | 8 | 2 | Archaeological site location |
+| Entity | Target Table | Required | Role | Public ID | Domains | Column Count | FK Count | Description                  |
+|--------|--------------|----------|------|-----------|---------|--------------|----------|------------------------------|
+| site   | tbl_sites    | Yes      | data | site_id   | spatial | 8            | 2        | Archaeological site location |
 
 **Columns Sheet:**
-| Entity | Column | Type | Required | Nullable | Description |
-|--------|--------|------|----------|----------|-------------|
-| site | site_name | string | Yes | No | Site name or identifier |
+| Entity | Column    | Type   | Required | Nullable | Description             |
+|--------|-----------|--------|----------|----------|-------------------------|
+| site   | site_name | string | Yes      | No       | Site name or identifier |
 
 **Relationships Sheet:**
-| From Entity | To Entity | Via Bridge | Required |
-|-------------|-----------|------------|----------|
-| site | location | site_location | Yes |
+| From Entity | To Entity | Via Bridge    | Required |
+|-------------|-----------|---------------|----------|
+| site        | location  | site_location | Yes      |
 
 ### 3. Markdown Documentation
 
@@ -263,4 +263,3 @@ Use Excel format to collect structured feedback:
 
 ---
 
-**For questions:** Contact the Shape Shifter development team
