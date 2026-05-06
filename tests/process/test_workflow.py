@@ -128,6 +128,34 @@ async def test_full_data_validation():
     error_count: int = sum(1 for issue in issues if issue.severity == "error")
     assert error_count == 0, f"Expected no validation errors, found {error_count}\n{issue_report}"
 
+@pytest.mark.asyncio
+async def test_full_data_validation2():
+    """Test full data validation using normalized table store.
+
+    This test:
+    1. Loads a project configuration
+    2. Runs full normalization to create table store
+    3. Validates all entities using the normalized data
+    4. Checks that validation passes for well-formed data
+    """
+    config_file: str = "data/projects/Riia-Strucke-V5/shapeshifter.yml"
+    project: ShapeShiftProject = ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file=".env")
+
+    normalizer = ShapeShifter(project)
+    await normalizer.normalize()
+
+    assert len(normalizer.table_store) > 0, "Table store should contain normalized entities"
+
+    strategy = TableStoreDataFetchStrategy(table_store=normalizer.table_store)
+    orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+
+    # Run validation on all entities
+    issues: list[ValidationIssue] = await orchestrator.validate_all_entities(
+        core_project=project, project_name="arbodat", entity_names=None
+    )
+    issue_report: str = "\n".join(f"{issue.severity} [{issue.code}] {issue.entity}: {issue.message}" for issue in issues)
+    error_count: int = sum(1 for issue in issues if issue.severity == "error")
+    assert error_count == 0, f"Expected no validation errors, found {error_count}\n{issue_report}"
 
 @pytest.mark.asyncio
 async def test_full_data_validation_with_unresolved_extra_columns():

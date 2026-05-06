@@ -173,12 +173,15 @@ class ProjectService:
             ResourceNotFoundError: If project not found
             ConfigurationError: If project is invalid
         """
-        # Force reload: invalidate cache before loading
-        if force_reload:
-            self.state.invalidate(name)
-            logger.info(f"Force reload requested for '{name}', cache invalidated")
-
         corr: str = get_correlation_id()
+
+        # Force reload: invalidate ALL caches before loading (not just ApplicationState).
+        # Without this, ShapeShiftProjectCache can serve stale data when the project was
+        # loaded via the disk-fallback path (stored with version=0). A subsequent REFRESH
+        # also results in version=0, causing a false cache hit in ShapeShiftProjectCache.
+        if force_reload:
+            self._invalidate_all_caches(name, corr)
+            logger.info(f"[{corr}] Force reload requested for '{name}', all caches invalidated")
 
         # Check ApplicationState cache first (actively edited projects)
         cached_project: Project | None = self.state.get(name)
