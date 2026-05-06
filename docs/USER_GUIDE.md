@@ -17,7 +17,7 @@
 
 ## 1. Introduction
 
-### What Problem does Shape Shifter Solve?
+?
 
 Shape Shifter exists to solve a common data-integration problem: data provider's data is usually collected for one purpose, but needs to be delivered in a different structure for another system. In practice, that means spreadsheets, databases, and exports often contain the right information in the wrong shape, with different names, different identifiers, and different relationship rules.
 
@@ -691,18 +691,18 @@ python -m src.shapeshift output.xlsx \
 
 **Available options:**
 
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--project FILE` | `-p` | Path to project YAML file (required) |
-| `--mode [xlsx\|csv\|db]` | `-m` | Output format (default: xlsx) |
-| `--env-file FILE` | `-e` | Path to environment variables file |
-| `--verbose` | `-v` | Enable verbose logging output |
-| `--translate` | `-t` | Enable translation/mapping rules |
-| `--drop-foreign-keys` | `-d` | Remove FK columns from output |
-| `--log-file PATH` | `-l` | Write logs to specified file |
-| `--validate-then-exit` | | Validate config and exit (no processing) |
-| `--default-entity TEXT` | `-de` | Default entity when none specified |
-| `--help` | | Show all options and exit |
+| Option                   | Short | Description                              |
+|--------------------------|-------|------------------------------------------|
+| `--project FILE`         | `-p`  | Path to project YAML file (required)     |
+| `--mode [xlsx\|csv\|db]` | `-m`  | Output format (default: xlsx)            |
+| `--env-file FILE`        | `-e`  | Path to environment variables file       |
+| `--verbose`              | `-v`  | Enable verbose logging output            |
+| `--translate`            | `-t`  | Enable translation/mapping rules         |
+| `--drop-foreign-keys`    | `-d`  | Remove FK columns from output            |
+| `--log-file PATH`        | `-l`  | Write logs to specified file             |
+| `--validate-then-exit`   |       | Validate config and exit (no processing) |
+| `--default-entity TEXT`  | `-de` | Default entity when none specified       |
+| `--help`                 |       | Show all options and exit                |
 
 **When to use CLI:**
 
