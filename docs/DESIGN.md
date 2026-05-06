@@ -526,10 +526,10 @@ normalizer.store(target="output.xlsx", mode="xlsx")
 For implementation details, configuration syntax, and usage instructions, consult:
 
 - **CONFIGURATION_GUIDE.md** - Complete YAML reference
-- **DEVELOPER_GUIDE.md** - Development setup and patterns
+- **DEVELOPMENT.md** - Development setup and patterns
 - **USER_GUIDE.md** - End-user workflows
 - **REQUIREMENTS.md** - Feature specifications
-- **TESTING_GUIDE.md** - Testing procedures
+- **TESTING.md** - Testing procedures
 
 # Copilot ML Instructions for this document
 

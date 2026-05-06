@@ -1,3 +1,11 @@
+---
+description: "Use when validating or editing shapeshifter.yml project files. Covers required structure, entity types, identity system, foreign keys, extra columns, dependency rules, data sources, common errors, and valid patterns."
+name: "Shape Shifter Configuration Validation"
+applyTo:
+  - "**/shapeshifter.yml"
+  - "data/projects/**/*.yml"
+  - "data/projects/**/*.yaml"
+---
 # Shape Shifter YAML Validation Guide for AI Agents
 
 **Purpose**: Quick reference for AI agents validating shapeshifter.yml project files. Concise, rule-focused, no explanatory prose.
@@ -530,31 +538,3 @@ some_field: '@value: path.to.config.key'
 - Directives preserved in API/YAML layer
 - Resolved at API → Core boundary
 - Core layer always has resolved values
-
----
-
-## Integration Notes
-
-This guide should be referenced from main AI instruction files:
-
-**In `.github/copilot-instructions.md`**:
-```markdown
-## YAML Validation
-When validating shapeshifter.yml files, refer to [docs/AI_VALIDATION_GUIDE.md](docs/AI_VALIDATION_GUIDE.md) for:
-- Quick validation checklist
-- Common error patterns
-- Valid configuration examples
-```
-
-**In `AGENTS.md`**:
-```markdown
-### Project Validation
-Use [docs/AI_VALIDATION_GUIDE.md](docs/AI_VALIDATION_GUIDE.md) when analyzing project configurations.
-Focus on structural issues, not intentional design patterns (e.g., extra_columns + FK is valid).
-```
-
----
-
-## Version History
-
-- **v1.0** (2026-02-19): Initial version for AI agent validation guidance

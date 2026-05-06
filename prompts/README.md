@@ -57,9 +57,9 @@ Add to **User Snippets** for ultra-fast access:
 
 All prompts reference:
 - **AGENTS.md** - Architectural patterns and conventions
-- **docs/AI_VALIDATION_GUIDE.md** - Entity validation rules
+- **`.github/instructions/shapeshifter-configuration.instructions.md`** - Entity validation rules
 - **docs/CONFIGURATION_GUIDE.md** - Complete YAML reference
-- **docs/TESTING_GUIDE.md** - Testing procedures
+- **docs/TESTING.md** - Testing procedures
 - **prompts/reference/sead-database.md** - SEAD database schema reference
 
 ## Contributing

@@ -70,5 +70,5 @@ See backend implementation:
 - `src/normalizer.py` - ProcessState topological sorting
 
 ## Related Documentation
-- [ARCHITECTURE.md](../../docs/ARCHITECTURE.md#core-processing-pipeline)
+- [DESIGN.md](../../docs/DESIGN.md#core-processing-pipeline)
 - [AGENTS.md](../../AGENTS.md#architecture-awareness)

@@ -190,6 +190,6 @@ Scenarios:
 ```
 
 ## Related Documentation
-- [TESTING_GUIDE.md](../../docs/TESTING_GUIDE.md)
+- [TESTING.md](../../docs/TESTING.md)
 - [Test Patterns](../../AGENTS.md#test-patterns)
 - [Async/Await](../../AGENTS.md#asyncawait)

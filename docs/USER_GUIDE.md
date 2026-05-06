@@ -909,8 +909,8 @@ Shared/global data source definitions are managed outside the project and connec
 Use these documents:
 
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)
-- [ARCHITECTURE.md](ARCHITECTURE.md)
-- [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
+- [DESIGN.md](DESIGN.md)
+- [DEVELOPER_GUIDE.md](DEVELOPMENT.md)
 - [other/USER_GUIDE_APPENDIX.md](other/USER_GUIDE_APPENDIX.md)
 
 ### Where can I see what changed in a new version?

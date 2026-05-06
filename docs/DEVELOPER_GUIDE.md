@@ -36,7 +36,7 @@ This guide is for developers who are:
 
 ### Related Documentation
 
-- [Architecture](ARCHITECTURE.md) - Detailed architecture
+- [Design](DESIGN.md) - Detailed architecture
 - [User Guide](USER_GUIDE.md) - End-user documentation
 - [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures
@@ -2040,7 +2040,7 @@ For complete details, see the **Conventional Commit Messages** section in [TODO.
 
 ## Related Documentation
 
-- [Architecture](ARCHITECTURE.md) - Detailed architecture
+- [Design](DESIGN.md) - Detailed architecture
 - [User Guide](USER_GUIDE.md) - End-user documentation
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures
 - [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax

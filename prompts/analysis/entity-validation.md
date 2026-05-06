@@ -5,7 +5,7 @@ Analyze entity configuration following Shape Shifter's three-tier identity syste
 ## Prompt Template
 
 ```
-Analyze the entity "{ENTITY_NAME}" in {PROJECT_FILE} following docs/AI_VALIDATION_GUIDE.md:
+Analyze the entity "{ENTITY_NAME}" in {PROJECT_FILE} following .github/instructions/shapeshifter-configuration.instructions.md:
 
 ### Identity System Check
 - [ ] `system_id` is standardized to "system_id" (required)
@@ -54,11 +54,11 @@ Provide:
 ## Example Usage
 
 ```
-Analyze the entity "site" in projects/dendro/shapeshifter.yml following docs/AI_VALIDATION_GUIDE.md:
+Analyze the entity "site" in projects/dendro/shapeshifter.yml following .github/instructions/shapeshifter-configuration.instructions.md:
 [... full checklist ...]
 ```
 
 ## Related Documentation
-- [AI_VALIDATION_GUIDE.md](../../docs/AI_VALIDATION_GUIDE.md)
+- [shapeshifter-configuration.instructions.md](../../.github/instructions/shapeshifter-configuration.instructions.md)
 - [CONFIGURATION_GUIDE.md](../../docs/CONFIGURATION_GUIDE.md)
 - [Three-Tier Identity System](../../AGENTS.md#three-tier-identity-system)

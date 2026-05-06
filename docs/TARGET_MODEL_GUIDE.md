@@ -111,11 +111,11 @@ model:
   description: "SEAD archaeological research data model"
 ```
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | Yes | Display name of the target system |
-| `version` | Yes | Version of *this spec file* (semantic versioning) |
-| `description` | No | Free-text description shown in tooling |
+| Field         | Required | Description                                       |
+|---------------|----------|---------------------------------------------------|
+| `name`        | Yes      | Display name of the target system                 |
+| `version`     | Yes      | Version of *this spec file* (semantic versioning) |
+| `description` | No       | Free-text description shown in tooling            |
 
 ---
 
@@ -147,18 +147,18 @@ entities:
 
 #### Entity Spec Fields
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `role` | No | Semantic role: `fact`, `lookup`, `classifier`, or `bridge` |
-| `required` | No | `true` means the project must include this entity (default: `false`) |
-| `description` | No | Human-readable description for tooling and documentation |
-| `domains` | No | List of domain tags; used to filter entities when generating project templates |
-| `target_table` | No | Physical table name in the target system (informational, e.g. `tbl_sites`) |
-| `public_id` | No | Expected `public_id` value in the project entity |
-| `identity_columns` | No | Columns that form the natural key in the target system |
-| `columns` | No | Map of column name → column spec; conformance checks these against the project |
-| `unique_sets` | No | List of unique-set column groups |
-| `foreign_keys` | No | List of foreign key specs |
+| Field              | Required | Description                                                                    |
+|--------------------|----------|--------------------------------------------------------------------------------|
+| `role`             | No       | Semantic role: `fact`, `lookup`, `classifier`, or `bridge`                     |
+| `required`         | No       | `true` means the project must include this entity (default: `false`)           |
+| `description`      | No       | Human-readable description for tooling and documentation                       |
+| `domains`          | No       | List of domain tags; used to filter entities when generating project templates |
+| `target_table`     | No       | Physical table name in the target system (informational, e.g. `tbl_sites`)     |
+| `public_id`        | No       | Expected `public_id` value in the project entity                               |
+| `identity_columns` | No       | Columns that form the natural key in the target system                         |
+| `columns`          | No       | Map of column name → column spec; conformance checks these against the project |
+| `unique_sets`      | No       | List of unique-set column groups                                               |
+| `foreign_keys`     | No       | List of foreign key specs                                                      |
 
 ---
 
@@ -166,12 +166,12 @@ entities:
 
 The `role` field describes the meaning of an entity in the target model. Roles are informational in v1 and help humans understand the model; future validators will use them for advanced semantic checks.
 
-| Role | Meaning |
-|------|---------|
-| `fact` | A primary observational or transactional record (e.g., a sample, an analysis result). Usually depends on surrounding lookups and classifiers. |
-| `lookup` | Reference data providing stable parent context (e.g., locations, sites, methods). Commonly referenced by many facts. |
-| `classifier` | A controlled vocabulary or typology entity (e.g., site types, sample types). Best loaded from `fixed` or `sql` sources. |
-| `bridge` | An association entity connecting two or more entities in a many-to-many relationship. |
+| Role         | Meaning                                                                                                                                       |
+|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| `fact`       | A primary observational or transactional record (e.g., a sample, an analysis result). Usually depends on surrounding lookups and classifiers. |
+| `lookup`     | Reference data providing stable parent context (e.g., locations, sites, methods). Commonly referenced by many facts.                          |
+| `classifier` | A controlled vocabulary or typology entity (e.g., site types, sample types). Best loaded from `fixed` or `sql` sources.                       |
+| `bridge`     | An association entity connecting two or more entities in a many-to-many relationship.                                                         |
 
 ---
 
@@ -191,11 +191,11 @@ columns:
     nullable: true
 ```
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `required` | No | `true` means the project entity must expose this column |
-| `type` | No | Hint type: `string`, `integer`, `decimal`, `boolean` (informational; no hard type enforcement in v1) |
-| `nullable` | No | Whether the column is expected to allow null values (informational) |
+| Field      | Required | Description                                                                                          |
+|------------|----------|------------------------------------------------------------------------------------------------------|
+| `required` | No       | `true` means the project entity must expose this column                                              |
+| `type`     | No       | Hint type: `string`, `integer`, `decimal`, `boolean` (informational; no hard type enforcement in v1) |
+| `nullable` | No       | Whether the column is expected to allow null values (informational)                                  |
 
 Shape Shifter counts a column as present in a project entity when it appears as:
 - an explicit entry in `columns` or `keys`
@@ -216,10 +216,10 @@ foreign_keys:
     required: false
 ```
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `entity` | Yes | Name of the target entity this FK must point to |
-| `required` | No | `true` means the project entity must declare a FK to this entity (default: `false`) |
+| Field      | Required | Description                                                                         |
+|------------|----------|-------------------------------------------------------------------------------------|
+| `entity`   | Yes      | Name of the target entity this FK must point to                                     |
+| `required` | No       | `true` means the project entity must declare a FK to this entity (default: `false`) |
 
 Conformance checks whether the project entity has at least one foreign key whose target matches the required entity name.
 
@@ -232,8 +232,8 @@ naming:
   public_id_suffix: "_id"
 ```
 
-| Field | Description |
-|-------|-------------|
+| Field              | Description                                                                                          |
+|--------------------|------------------------------------------------------------------------------------------------------|
 | `public_id_suffix` | Every `public_id` value in project entities must end with this string. The SEAD standard is `"_id"`. |
 
 ---
@@ -264,26 +264,26 @@ Conformance results appear in their own **Conformance** panel in the Validate ta
 
 ### Issue Codes
 
-| Code | Severity | What It Means |
-|------|----------|---------------|
-| `MISSING_REQUIRED_ENTITY` | error | An entity marked `required: true` in the target model is absent from the project |
-| `MISSING_PUBLIC_ID` | error | The target model declares a `public_id` for an entity, but the project entity has none |
-| `UNEXPECTED_PUBLIC_ID` | warning | The project entity has a `public_id` that the target model does not expect |
-| `MISSING_REQUIRED_FOREIGN_KEY_TARGET` | error | A required FK target is not declared on the project entity |
-| `MISSING_REQUIRED_COLUMN` | error | A required column is not present in the project entity's target-facing columns |
-| `PUBLIC_ID_NAMING_VIOLATION` | warning | A `public_id` value does not end with the `naming.public_id_suffix` |
+| Code                                  | Severity | What It Means                                                                          |
+|---------------------------------------|----------|----------------------------------------------------------------------------------------|
+| `MISSING_REQUIRED_ENTITY`             | error    | An entity marked `required: true` in the target model is absent from the project       |
+| `MISSING_PUBLIC_ID`                   | error    | The target model declares a `public_id` for an entity, but the project entity has none |
+| `UNEXPECTED_PUBLIC_ID`                | warning  | The project entity has a `public_id` that the target model does not expect             |
+| `MISSING_REQUIRED_FOREIGN_KEY_TARGET` | error    | A required FK target is not declared on the project entity                             |
+| `MISSING_REQUIRED_COLUMN`             | error    | A required column is not present in the project entity's target-facing columns         |
+| `PUBLIC_ID_NAMING_VIOLATION`          | warning  | A `public_id` value does not end with the `naming.public_id_suffix`                    |
 
 ### Validators
 
 Five validators run in sequence. All are enabled by default; there is no per-project override mechanism in v1.
 
-| Validator key | What it checks |
-|---------------|---------------|
-| `required_entity` | Checks that every entity with `required: true` exists in the project |
-| `public_id` | Checks that each project entity has (or doesn't have) the `public_id` declared in the target spec |
-| `foreign_key` | Checks that each required FK target is declared on the project entity |
-| `required_columns` | Checks that each required column is in the project entity's target-facing column set |
-| `naming_convention` | Checks that all `public_id` values end with `naming.public_id_suffix` |
+| Validator key       | What it checks                                                                                    |
+|---------------------|---------------------------------------------------------------------------------------------------|
+| `required_entity`   | Checks that every entity with `required: true` exists in the project                              |
+| `public_id`         | Checks that each project entity has (or doesn't have) the `public_id` declared in the target spec |
+| `foreign_key`       | Checks that each required FK target is declared on the project entity                             |
+| `required_columns`  | Checks that each required column is in the project entity's target-facing column set              |
+| `naming_convention` | Checks that all `public_id` values end with `naming.public_id_suffix`                             |
 
 ### Checking Conformance Without the UI
 
@@ -377,16 +377,16 @@ naming:
 
 The bundled SEAD spec at `resources/target_models/sead_standard_model.yml` currently covers 35 entities organized across these domains:
 
-| Domain | Entities |
-|--------|----------|
-| `core` | location, location_type, site, site_type, site_type_group, sample_group, sample, sample_type, method, dataset, master_dataset, project, citation |
-| `spatial` | location, location_type, site, site_type |
-| `analysis` | dataset, analysis_entity, abundance, abundance_element, abundance_element_group, abundance_modification, modification_type, abundance_property, abundance_element_group |
-| `taxa` | taxa_tree_master, taxa_common_names |
-| `dating` | relative_ages, relative_dating, geochronology, dating_lab |
-| `method` | method, method_group |
-| `contact` | contact, contact_type, dataset_contact |
-| `excavation` | feature_type, feature, sample_feature |
+| Domain       | Entities                                                                                                                                                                |
+|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `core`       | location, location_type, site, site_type, site_type_group, sample_group, sample, sample_type, method, dataset, master_dataset, project, citation                        |
+| `spatial`    | location, location_type, site, site_type                                                                                                                                |
+| `analysis`   | dataset, analysis_entity, abundance, abundance_element, abundance_element_group, abundance_modification, modification_type, abundance_property, abundance_element_group |
+| `taxa`       | taxa_tree_master, taxa_common_names                                                                                                                                     |
+| `dating`     | relative_ages, relative_dating, geochronology, dating_lab                                                                                                               |
+| `method`     | method, method_group                                                                                                                                                    |
+| `contact`    | contact, contact_type, dataset_contact                                                                                                                                  |
+| `excavation` | feature_type, feature, sample_feature                                                                                                                                   |
 
 The SEAD spec uses `naming.public_id_suffix: "_id"` and declares `constraints: [{type: no_orphan_facts}]`.
 

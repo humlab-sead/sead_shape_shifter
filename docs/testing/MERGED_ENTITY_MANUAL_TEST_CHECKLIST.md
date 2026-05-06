@@ -10,7 +10,7 @@ It is intentionally:
 - **easy to follow** by using a small fixed-data fixture instead of external databases or files
 - **specific** about expected rows, branch names, sparse FK columns, and validation outcomes
 
-Use this together with [../TESTING_GUIDE.md](../TESTING_GUIDE.md) and record outcomes in [TEST_RESULTS_TEMPLATE.md](TEST_RESULTS_TEMPLATE.md) if needed.
+Use this together with [../TESTING.md](../TESTING.md) and record outcomes in [TEST_RESULTS_TEMPLATE.md](TEST_RESULTS_TEMPLATE.md) if needed.
 
 ---
 

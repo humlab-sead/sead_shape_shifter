@@ -8,7 +8,7 @@ applyTo:
 ---
 # Project Config Validation
 
-- Validate project YAML against `docs/AI_VALIDATION_GUIDE.md` before declaring a configuration invalid.
+- Validate project YAML against `.github/instructions/shapeshifter-configuration.instructions.md` before declaring a configuration invalid.
 - Not every unusual pattern is an error; examples that can be valid include `extra_columns` with FK references, business-key joins, and hierarchical fixed entities.
 - Keep directives such as `@include:` and `@value:` in YAML and API-layer models; resolve them only when mapping into core models.
 - All internal relationships use local `system_id` values.

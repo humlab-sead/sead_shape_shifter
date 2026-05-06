@@ -7,8 +7,8 @@ This file should stay small and always-on. Put task-specific guidance in `.githu
 - Use current documentation in `docs/`.
 - Ignore `docs/archive/`.
 - Treat `docs/features/` as future backlog, not authoritative implementation guidance, unless the user asks about roadmap or planned features.
-- Start with `docs/ARCHITECTURE.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPER_GUIDE.md`, `docs/USER_GUIDE.md`, `docs/REQUIREMENTS.md`, `docs/TESTING_GUIDE.md`, and `docs/AI_VALIDATION_GUIDE.md`.
-- For proposal work, follow `docs/PROPOSAL_WRITING_GUIDE.md` and use `docs/templates/PROPOSAL_TEMPLATE.md` unless asked otherwise.
+- Start with `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/USER_GUIDE.md`, `docs/REQUIREMENTS.md`, `docs/TESTING.md`, and `.github/instructions/shapeshifter-configuration.instructions.md`.
+- For proposal work, follow `.github/instructions/proposal-writing-guide.instructions.md` and use `docs/templates/PROPOSAL_TEMPLATE.md` unless asked otherwise.
 
 ## Repository structure
 
@@ -75,7 +75,7 @@ Core pipeline order matters: Extract → Filter → Link → Unnest → Translat
   - `make tidy`
 - Run targeted tests for the changed area before finishing.
 - Run broader tests when a change crosses layers.
-- When touching project YAML, validate against `docs/AI_VALIDATION_GUIDE.md`.
+- When touching project YAML, validate against `.github/instructions/shapeshifter-configuration.instructions.md`.
 
 ## Code conventions
 
@@ -98,5 +98,7 @@ Use the targeted files under `.github/instructions/` for detailed guidance inste
 - `python.instructions.md`: Python architecture, loaders, validators, and test patterns
 - `frontend.instructions.md`: Vue, Pinia, and frontend API conventions
 - `project-config.instructions.md`: `shapeshifter.yml` and configuration validation
+- `shapeshifter-configuration.instructions.md`: full YAML validation rules, entity types, identity system, FK patterns, and common errors
 - `github-workflow.instructions.md`: issue + commit workflow and commit hygiene
 - `ingesters.instructions.md`: ingester structure, discovery, config, and testing
+- `diagrams.instructions.md`: Mermaid diagram style and conventions

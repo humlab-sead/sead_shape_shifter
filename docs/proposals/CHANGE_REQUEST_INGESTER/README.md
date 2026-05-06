@@ -113,9 +113,9 @@ See individual documents for detailed risk analysis.
 ---
 
 ### Related Documentation
-- [Shape Shifter Architecture](../ARCHITECTURE.md)
+- [Shape Shifter Design](../DESIGN.md)
 - [Configuration Guide](../CONFIGURATION_GUIDE.md)
-- [Developer Guide](../DEVELOPER_GUIDE.md)
+- [Developer Guide](../DEVELOPMENT.md)
 - [Ingester System](../../backend/app/ingesters/README.md)
 
 ---

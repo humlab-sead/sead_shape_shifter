@@ -339,9 +339,9 @@ A: In `/backups/` directory with timestamp in filename.
 
 - [User Guide](USER_GUIDE.md) - Main workflow documentation
 - [Configuration Guide](CONFIGURATION_GUIDE.md) - Complete YAML reference
-- [Architecture](ARCHITECTURE.md) - Technical architecture
-- [Developer Guide](DEVELOPER_GUIDE.md) - Development information
-- [Testing Guide](TESTING_GUIDE.md) - Testing procedures
+- [Architecture](../DESIGN.md) - Technical architecture
+- [Developer Guide](DEVELOPMENT.md) - Development information
+- [Testing Guide](TESTING.md) - Testing procedures
 
 ---
 
