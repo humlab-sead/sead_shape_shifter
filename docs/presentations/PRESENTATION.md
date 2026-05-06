@@ -12,9 +12,9 @@ footer: 'SEAD Development Team | March 2026'
 This presentation uses Marp.
 
 Suggested export commands:
-  marp docs/PRESENTATION.md --html
-  marp docs/PRESENTATION.md --pdf
-  marp docs/PRESENTATION.md --pptx
+  marp docs/presentations/PRESENTATION.md --html
+  marp docs/presentations/PRESENTATION.md --pdf
+  marp docs/presentations/PRESENTATION.md --pptx
 
 Suggested visuals to add later:
   - Graph tab screenshot
