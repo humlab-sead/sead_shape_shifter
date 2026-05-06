@@ -15,7 +15,7 @@ def test_sead_v2_spec_loads_and_validates() -> None:
 
     issues = TargetModelSpecValidator().validate(target_model)
 
-    assert target_model.model.name == "SEAD Clearinghouse"
+    assert target_model.model.name == "SEAD Clearinghouse Extended"
     assert "sample_group" in target_model.entities
     assert {"abundance", "abundance_element", "abundance_element_group", "abundance_modification", "abundance_property"}.issubset(
         target_model.entities
