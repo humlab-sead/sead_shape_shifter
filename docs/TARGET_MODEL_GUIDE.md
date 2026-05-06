@@ -392,6 +392,34 @@ The SEAD spec uses `naming.public_id_suffix: "_id"` and declares `constraints: [
 
 ---
 
+## Generating Documentation from a Target Model
+
+`scripts/generate_target_model_docs.py` produces human-readable output from any target model YAML spec. Three formats are supported:
+
+| Format     | Best for                              | Output file   |
+|------------|---------------------------------------|---------------|
+| `html`     | Stakeholder presentations, reference  | `<stem>.html` |
+| `excel`    | Review workshops, gap analysis        | `<stem>.xlsx` |
+| `markdown` | GitHub wikis, version-controlled docs | `<stem>.md`   |
+
+```bash
+# Generate all formats (default)
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml
+
+# HTML only — recommended for sharing with archaeologists and data managers
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format html
+
+# Excel for gap-analysis workshops
+python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format excel
+
+# Custom output directory
+python scripts/generate_target_model_docs.py my_model.yml --format all --output-dir /tmp/model-docs
+```
+
+Output files are written to `docs/generated/` by default. Run `python scripts/generate_target_model_docs.py --help` for the full option reference, format descriptions, and badge/relationship-arrow glossary.
+
+---
+
 ## Related Documentation
 
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — full project YAML reference, including the `metadata.target_model` field
