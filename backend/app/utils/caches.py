@@ -1,6 +1,7 @@
 import hashlib
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 import pandas as pd
 from loguru import logger
@@ -278,6 +279,27 @@ class ShapeShiftProjectCache:
         self.project_service: ProjectService = project_service
         self._cache: dict[str, ShapeShiftProject] = {}
         self._versions: dict[str, int] = {}
+        self._file_paths: dict[str, str] = {}   # file path at cache time, for mtime checks
+        self._file_mtimes: dict[str, float] = {}  # file mtime at cache time, for external-change detection
+
+    def _current_file_mtime(self, project_name: str) -> float | None:
+        """Return the on-disk mtime of a cached project's YAML file, or None if unavailable."""
+        file_path = self._file_paths.get(project_name)
+        if not file_path:
+            return None
+        try:
+            return Path(file_path).stat().st_mtime
+        except OSError:
+            return None
+
+    def _store_file_meta(self, project_name: str, api_project: Project) -> None:
+        """Record file path and mtime from a freshly loaded API project."""
+        if api_project.metadata and api_project.metadata.file_path:
+            self._file_paths[project_name] = api_project.metadata.file_path
+            try:
+                self._file_mtimes[project_name] = float(api_project.metadata.modified_at or 0.0)
+            except (TypeError, ValueError):
+                self._file_mtimes[project_name] = 0.0
 
     async def get_project(self, project_name: str) -> ShapeShiftProject:
         """
@@ -299,12 +321,36 @@ class ShapeShiftProjectCache:
 
             # Check if cached version is still valid
             if project_name in self._cache and cached_version == current_version:
-                logger.trace(f"ShapeShiftProject cache hit for '{project_name}' (version {current_version})")
-                return self._cache[project_name]
+                # Version matches — also check file mtime to detect external YAML edits.
+                # Without this, a project loaded via the disk-fallback path (version=0) will
+                # never be reloaded even if the file changes, because version stays 0 forever.
+                disk_mtime: float | None = self._current_file_mtime(project_name)
+                cached_mtime: float | None = self._file_mtimes.get(project_name)
 
-            # Version mismatch or no cache - reload
-            logger.trace(
-                f"ShapeShiftProject cache miss/invalid for '{project_name}' (cached: {cached_version}, current: {current_version})"
+                if disk_mtime is not None and cached_mtime is not None and disk_mtime > cached_mtime:
+                    logger.info(
+                        "ShapeShiftProjectCache: '{}' file changed on disk "
+                        "(version={} unchanged, disk_mtime={:.3f} > cached_mtime={:.3f}) — reloading",
+                        project_name,
+                        current_version,
+                        disk_mtime,
+                        cached_mtime,
+                    )
+                    # Fall through to reload below
+                else:
+                    logger.trace(
+                        "ShapeShiftProjectCache: cache HIT '{}' (version={}, mtime_changed=False)",
+                        project_name,
+                        current_version,
+                    )
+                    return self._cache[project_name]
+
+            # Version mismatch, no cache, or stale mtime — reload
+            logger.info(
+                "ShapeShiftProjectCache: cache MISS '{}' (cached_version={}, current_version={})",
+                project_name,
+                cached_version,
+                current_version,
             )
             api_project: Project | None = get_app_state().get_project(project_name)
 
@@ -313,7 +359,12 @@ class ShapeShiftProjectCache:
                 shapeshift: ShapeShiftProject = ProjectMapper.to_core(api_project)
                 self._cache[project_name] = shapeshift
                 self._versions[project_name] = current_version
-                logger.trace(f"Loaded ShapeShiftProject from ApplicationState for '{project_name}'")
+                self._store_file_meta(project_name, api_project)
+                logger.info(
+                    "ShapeShiftProjectCache: loaded '{}' from ApplicationState (version={})",
+                    project_name,
+                    current_version,
+                )
                 return shapeshift
 
         except RuntimeError:
@@ -321,13 +372,19 @@ class ShapeShiftProjectCache:
             pass
 
         # Fallback: Load from disk
-        logger.trace(f"Loading ShapeShiftProject from disk for '{project_name}'")
+        logger.info("ShapeShiftProjectCache: loading '{}' from disk (fallback/no ApplicationState)", project_name)
         api_project = self.project_service.load_project(project_name)
         shapeshift: ShapeShiftProject = ProjectMapper.to_core(api_project)
 
         # Cache it (version 0 since not in active editing)
         self._cache[project_name] = shapeshift
         self._versions[project_name] = 0
+        self._store_file_meta(project_name, api_project)
+        logger.info(
+            "ShapeShiftProjectCache: cached '{}' from disk (version=0, mtime={:.3f})",
+            project_name,
+            self._file_mtimes.get(project_name, 0.0),
+        )
 
         return shapeshift
 
@@ -342,6 +399,8 @@ class ShapeShiftProjectCache:
         had_version = project_name in self._versions
         self._cache.pop(project_name, None)
         self._versions.pop(project_name, None)
+        self._file_paths.pop(project_name, None)
+        self._file_mtimes.pop(project_name, None)
         logger.info(
             "[{}] ShapeShiftProjectCache.invalidate_project: '{}' had_cache={} had_version={}",
             corr,
