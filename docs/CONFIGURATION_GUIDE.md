@@ -3661,7 +3661,7 @@ This guide consolidates the following previously separate documents:
 
 **Additional Resources:**
 - **[USER_GUIDE.md](USER_GUIDE.md)**: Complete user guide for Shape Shifter
-- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)**: Development and architecture documentation
+- **[DEVELOPMENT.md](DEVELOPMENT.md)**: Development and architecture documentation
 - **[VALIDATION_IMPROVEMENTS.md](VALIDATION_IMPROVEMENTS.md)**: Validation system design and improvements
 - **[README.md](README.md)**: Documentation index and navigation
 

@@ -387,11 +387,11 @@ presentation-all: presentation-pdf presentation-html presentation-pptx
 
 .PHONY: diagrams-extract
 diagrams-extract:
-	@echo "Extracting Mermaid diagrams from SYSTEM_DIAGRAMS.md..."
+	@echo "Extracting Mermaid diagrams from DIAGRAMS.md..."
 	@mkdir -p tmp/mermaid
 	@python3 tmp/extract_mermaid.py 2>/dev/null || python3 -c " \
 		import re, os; \
-		content = open('docs/SYSTEM_DIAGRAMS.md').read(); \
+		content = open('docs/DIAGRAMS.md').read(); \
 		matches = re.findall(r'## (\d+)\.\s+([^\n]+)\n\n\`\`\`mermaid\n(.*?)\`\`\`', content, re.DOTALL); \
 		os.makedirs('tmp/mermaid', exist_ok=True); \
 		[open(f'tmp/mermaid/{num}-{re.sub(r\"[^\\w\\s-]\", \"\", title).strip().lower().replace(\" \", \"-\").replace(\"--\", \"-\")}.mmd', 'w').write(diagram.strip()) for num, title, diagram in matches]; \

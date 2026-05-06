@@ -88,4 +88,4 @@ Quick validation check for {PROJECT_FILE}:
 
 ## Related Documentation
 - [CONFIGURATION_GUIDE.md](../../docs/CONFIGURATION_GUIDE.md)
-- [AI_VALIDATION_GUIDE.md](../../docs/AI_VALIDATION_GUIDE.md)
+- [shapeshifter-configuration.instructions.md](../../.github/instructions/shapeshifter-configuration.instructions.md)

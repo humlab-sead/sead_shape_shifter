@@ -10,7 +10,7 @@ It is intentionally:
 - easy to follow by using one small custom fixture plus two existing SEAD example projects
 - specific about expected issue codes, exact mutations, and what should still be treated as non-conformant
 
-Use this together with [../TESTING_GUIDE.md](../TESTING_GUIDE.md), [../TARGET_MODEL_GUIDE.md](../TARGET_MODEL_GUIDE.md), and [TEST_RESULTS_TEMPLATE.md](TEST_RESULTS_TEMPLATE.md) if you need to record outcomes.
+Use this together with [../TESTING.md](../TESTING.md), [../TARGET_MODEL_GUIDE.md](../TARGET_MODEL_GUIDE.md), and [TEST_RESULTS_TEMPLATE.md](TEST_RESULTS_TEMPLATE.md) if you need to record outcomes.
 
 ---
 

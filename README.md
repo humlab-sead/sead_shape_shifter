@@ -423,11 +423,11 @@ Vue 3 application with Composition API:
 Comprehensive documentation is available in the `docs/` directory:
 
 - [CONFIGURATION_GUIDE.md](docs/CONFIGURATION_GUIDE.md) - Complete YAML configuration reference
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture and component overview
-- [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) - Development setup and contribution guidelines
+- [DESIGN.md](docs/DESIGN.md) - System architecture and component overview
+- [DEVELOPMENT.md](docs/DEVELOPMENT.md) - Development setup and contribution guidelines
 - [USER_GUIDE.md](docs/USER_GUIDE.md) - End-user documentation
-- [TESTING_GUIDE.md](docs/TESTING_GUIDE.md) - Testing procedures and guidelines
-- [AI_VALIDATION_GUIDE.md](docs/AI_VALIDATION_GUIDE.md) - AI-focused validation rules for project files
+- [TESTING.md](docs/TESTING.md) - Testing procedures and guidelines
+- [shapeshifter-configuration.instructions.md](.github/instructions/shapeshifter-configuration.instructions.md) - AI-focused validation rules for project files
 
 ## Testing
 

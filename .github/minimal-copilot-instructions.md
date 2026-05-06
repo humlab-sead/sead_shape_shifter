@@ -7,18 +7,21 @@ Ignore `docs/archive/`.
 Treat `docs/features/` as future backlog, not authoritative implementation guidance, unless the user asks about roadmap or planned features.
 
 Start with:
-- `docs/ARCHITECTURE.md`
+- `docs/DESIGN.md`
 - `docs/CONFIGURATION_GUIDE.md`
-- `docs/DEVELOPER_GUIDE.md`
+- `docs/DEVELOPMENT.md`
 - `docs/USER_GUIDE.md`
 - `docs/REQUIREMENTS.md`
-- `docs/TESTING_GUIDE.md`
-- `docs/AI_VALIDATION_GUIDE.md`
+- `docs/TESTING.md`
+- `.github/instructions/shapeshifter-configuration.instructions.md`
 
 For proposal work:
-- follow `docs/PROPOSAL_WRITING_GUIDE.md`
+- follow `.github/instructions/proposal-writing-guide.instructions.md`
 - use `docs/templates/PROPOSAL_TEMPLATE.md` unless asked otherwise
 - keep proposals concise and decision-oriented
+
+For Mermaid diagrams:
+- follow `.github/instructions/diagrams.instructions.md`
 
 ## Repository structure
 
@@ -116,7 +119,7 @@ Before finishing:
 - run targeted tests for the changed area
 - run broader tests when changes cross layers
 - preserve architecture boundaries
-- validate `shapeshifter.yml` changes against `docs/AI_VALIDATION_GUIDE.md`
+- validate `shapeshifter.yml` changes against `.github/instructions/shapeshifter-configuration.instructions.md`
 
 Common commands:
 

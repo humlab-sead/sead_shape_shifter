@@ -28,7 +28,7 @@ These are the primary system documentation files:
   - Success criteria and constraints
   - Comprehensive glossary
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** (1,000+ lines)
+- **[DESIGN.md](DESIGN.md)** (1,000+ lines)
   - System architecture (Vue3 + FastAPI)
   - Backend and frontend architecture details
   - Design patterns and best practices
@@ -52,7 +52,7 @@ These are the primary system documentation files:
 
 ### Development
 
-- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** (10,000+ lines)
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** (10,000+ lines)
   - Development environment setup
   - System architecture deep-dive
   - Backend development with Python/FastAPI
@@ -75,7 +75,7 @@ These are the primary system documentation files:
 
 ### Testing
 
-- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** (3,800+ lines)
+- **[TESTING.md](TESTING.md)** (3,800+ lines)
   - Testing philosophy and strategy
   - Backend testing with pytest
   - Frontend testing with Vitest
@@ -227,17 +227,17 @@ Previously consolidated source documents are available in the [archive/](archive
 - Configure transformations: [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)
 
 **Develop on Shape Shifter:**
-- Start here: [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
-- Architecture overview: [ARCHITECTURE.md](ARCHITECTURE.md)
+- Start here: [DEVELOPMENT.md](DEVELOPMENT.md)
+- Architecture overview: [DESIGN.md](DESIGN.md)
 - Backend integration: [BACKEND_INTEGRATION.md](BACKEND_INTEGRATION.md)
 
 **Test Shape Shifter:**
-- Testing procedures: [TESTING_GUIDE.md](TESTING_GUIDE.md)
+- Testing procedures: [TESTING.md](TESTING.md)
 - Project validation: [CONFIGURATION_GUIDE.md - Project Validation section](CONFIGURATION_GUIDE.md#project-validation)
 
 **Understand Requirements:**
 - Feature requirements: [REQUIREMENTS.md](REQUIREMENTS.md)
-- System architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
+- System architecture: [DESIGN.md](DESIGN.md)
 
 **Configure Relationships:**
 - Foreign keys & constraints: [CONFIGURATION_GUIDE.md - Foreign Key Constraints section](CONFIGURATION_GUIDE.md#foreign-key-constraints)

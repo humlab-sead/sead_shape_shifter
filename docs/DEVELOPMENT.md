@@ -39,7 +39,7 @@ This guide is for developers who are:
 - [Design](DESIGN.md) - Detailed architecture
 - [User Guide](USER_GUIDE.md) - End-user documentation
 - [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax
-- [Testing Guide](TESTING_GUIDE.md) - Testing procedures
+- [Testing Guide](TESTING.md) - Testing procedures
 - [AI Notice To Devs](AI_NOTICE_TO_DEVS.md) - Guidance for keeping the repo AI-friendly as it grows
 
 ---
@@ -2042,7 +2042,7 @@ For complete details, see the **Conventional Commit Messages** section in [TODO.
 
 - [Design](DESIGN.md) - Detailed architecture
 - [User Guide](USER_GUIDE.md) - End-user documentation
-- [Testing Guide](TESTING_GUIDE.md) - Testing procedures
+- [Testing Guide](TESTING.md) - Testing procedures
 - [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax
 - [API Reference](API_REFERENCE.md) - API documentation
 
