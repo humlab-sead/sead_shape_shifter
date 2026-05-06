@@ -1,2093 +1,271 @@
-# Shape Shifter Project Editor - Developer Guide
+# Shape Shifter - Developer Guide
 
-## Table of Contents
+## Purpose
 
-1. [Introduction](#1-introduction)
-2. [Getting Started](#2-getting-started)
-3. [System Architecture](#3-system-architecture)
-4. [Backend Development](#4-backend-development)
-5. [Frontend Development](#5-frontend-development)
-6. [Testing Strategy](#6-testing-strategy)
-7. [API Development](#7-api-development)
-8. [Best Practices](#8-best-practices)
-9. [Troubleshooting](#9-troubleshooting)
-10. [AI-Friendly Development](#10-ai-friendly-development)
-11. [Contributing](#11-contributing)
+This guide covers everything a developer needs to set up, run, modify, and validate the Shape Shifter codebase day-to-day. For architecture and design decisions see [DESIGN.md](DESIGN.md). For deployment and operations see [OPERATIONS.md](OPERATIONS.md).
 
 ---
 
-## 1. Introduction
-
-### Project Overview
-
-Shape Shifter Project Editor is a full-stack web application for managing data transformation configurations. The system uses:
-- **Backend:** FastAPI (Python 3.11+)
-- **Frontend:** Vue3 + TypeScript
-- **Testing:** pytest + Vitest
-- **Deployment:** Docker + Uvicorn
-
-### Target Audience
-
-This guide is for developers who are:
-- Contributing to the project
-- Extending features
-- Fixing bugs
-- Understanding architecture
-- Writing tests
-
-### Related Documentation
-
-- [Design](DESIGN.md) - Detailed architecture
-- [User Guide](USER_GUIDE.md) - End-user documentation
-- [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax
-- [Testing Guide](TESTING.md) - Testing procedures
-- [AI-Friendly Development](#10-ai-friendly-development) - Guidance for keeping the repo AI-friendly as it grows
-
----
-
-## 2. Getting Started
-
-### Prerequisites
+## Prerequisites
 
 **Required:**
-- Python 3.13 or higher
-- Node.js 18 or higher
+- Python 3.13+
+- [uv](https://docs.astral.sh/uv/) (Python package manager)
+- Node.js 18+ and [pnpm](https://pnpm.io/)
 - Git
-- uv (Python package manager)
-- npm
 
 **Optional:**
-- Docker & Docker Compose
-- PostgreSQL (future)
-- Redis (future)
+- Docker and Docker Compose (for containerized runs)
+- Java JRE (`default-jre-headless`) — required to query MS Access sources via UCanAccess
+- PostgreSQL — required when using SQL data sources
 
-### Installation
+---
 
-#### Clone Repository
+## Local Setup
 
 ```bash
+# Clone and bootstrap (installs core + API + dev dependencies into .venv)
 git clone https://github.com/humlab-sead/sead_shape_shifter.git
 cd sead_shape_shifter
+make install
+
+# Install frontend dependencies
+make frontend-install
 ```
 
-#### Backend Setup
+`make install` creates `.venv/` and runs `uv pip install -e ".[all]"`. The virtual environment is shared across the whole monorepo; there is no separate backend venv.
 
-```bash
-cd backend
+---
 
-# Create virtual environment
-uv venv
+## Local Configuration
 
-# Install dependencies (including dev tools)
-uv pip install -e ".[dev]"
+The backend reads configuration from environment variables prefixed with `SHAPE_SHIFTER_`. For local development, create `backend.env` (not committed) and set any values that differ from defaults:
 
-# Verify installation
-uv run pytest --version
-uv run ruff --version
+```ini
+SHAPE_SHIFTER_PROJECTS_DIR=./projects
+SHAPE_SHIFTER_LOG_LEVEL=DEBUG
+SHAPE_SHIFTER_ENVIRONMENT=development
 ```
 
-#### Frontend Setup
+See `backend/app/core/config.py` for all available settings and their defaults. For production environment variables and secrets layout see [OPERATIONS.md](OPERATIONS.md).
 
-```bash
-cd frontend
+For PostgreSQL access, configure `~/.pgpass` rather than putting passwords in environment variables.
 
-# Install dependencies
-npm install
+---
 
-# Verify installation
-npm run --version
-```
-
-### Running Development Servers
-
-#### Start Backend
-
-```bash
-cd backend
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Backend available at: `http://localhost:8000`  
-API docs at: `http://localhost:8000/docs`
-
-#### Start Frontend
-
-```bash
-cd frontend
-npm run dev
-```
-
-Frontend available at: `http://localhost:5173`
-
-### Development Tools
-
-#### Backend Tools
-
-```bash
-# Run tests
-cd backend
-uv run pytest tests/ -v
-
-# Run tests with coverage
-uv run pytest tests/ --cov=app --cov-report=html
-
-# Lint code
-uv run ruff check app/ tests/
-
-# Format code
-uv run ruff format app/ tests/
-
-# Type checking (if using mypy)
-uv run mypy app/
-```
-
-#### Frontend Tools
-
-```bash
-cd frontend
-
-# Start dev server
-npm run dev
-
-# Lint code
-npm run lint
-
-# Format code
-npm run format
-
-# Build for production (includes vue-tsc type-check)
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-### Project Structure
+## Project Structure
 
 ```
 sead_shape_shifter/
-├── backend/                    # FastAPI backend
-│   ├── app/
-│   │   ├── api/                # API endpoints
-│   │   ├── core/               # Core functionality
-│   │   ├── models/             # Pydantic models
-│   │   ├── services/           # Business logic
-│   │   └── main.py             # Application entry
-│   ├── tests/                  # Backend tests
-│   └── pyproject.toml          # Dependencies
-├── frontend/                   # Vue3 frontend
-│   ├── src/
-│   │   ├── api/                # Axios client + per-resource modules
-│   │   ├── components/         # Reusable Vue components
-│   │   ├── composables/        # Reusable composition functions
-│   │   ├── stores/             # Pinia state management
-│   │   ├── views/              # Route-level views
-│   │   ├── router/             # Vue Router configuration
-│   │   ├── plugins/            # Vuetify + other plugins
-│   │   ├── styles/             # Global styles and variables
-│   │   ├── types/              # TypeScript types
-│   │   ├── App.vue             # Root component
-│   │   └── main.ts             # App bootstrap
-│   └── package.json            # Dependencies
-├── docs/                       # Documentation
-├── projects/                   # Sample projects
-├── tests/                      # Shape Shifter core tests
-└── src/                        # Shape Shifter core library
+├── src/                    # Core transformation engine (framework-independent)
+│   ├── normalizer.py       # ShapeShifter orchestrator
+│   ├── model.py            # Domain models
+│   ├── loaders/            # DataLoader implementations (sql, csv, xlsx, fixed)
+│   ├── validators/         # Constraint validators
+│   ├── dispatchers/        # Output format handlers
+│   └── specifications/     # Project-level structural validation
+├── backend/
+│   └── app/
+│       ├── api/v1/endpoints/ # FastAPI routers (one module per resource)
+│       ├── services/         # Business logic
+│       ├── mappers/          # API ↔ Core translation + env var resolution
+│       ├── models/           # Pydantic v2 request/response schemas
+│       ├── clients/          # httpx clients (SIMS, reconciliation)
+│       └── core/             # Config, logging, state manager
+├── frontend/src/
+│   ├── api/                # Axios client modules (one per resource)
+│   ├── stores/             # Pinia stores
+│   ├── composables/        # Reusable composition functions
+│   ├── components/         # Vue components
+│   └── views/              # Route-level screens
+├── ingesters/              # Pluggable ingesters (top-level, auto-discovered)
+├── tests/                  # Core tests
+├── backend/tests/          # Backend API tests
+├── docs/                   # Documentation
+├── docker/                 # Container build and deploy scripts
+├── scripts/                # Developer and admin scripts
+├── pyproject.toml          # Python dependencies and tool config
+└── Makefile                # All supported development commands
 ```
+
+The core layer (`src/`) has no dependency on FastAPI or Pydantic API models. See [DESIGN.md](DESIGN.md) for the layer boundary architecture.
 
 ---
 
-## 3. System Architecture
+## Common Development Commands
 
-### Layer Boundary Architecture (Awesome Principles) ⭐
+All supported commands are defined in `Makefile`. The most common:
 
-**Shape Shifter follows a strict layer separation pattern that is both awesome and essential for maintainability.**
+### Running locally
 
-#### The Three Layers
-
-```
-┌─────────────────────────────────────────┐
-│  API Layer (backend/app/models/)        │  ← HTTP interface
-│  - Pydantic models for request/response │
-│  - Data validation & serialization      │
-│  - Raw environment variables (${VAR})   │
-└─────────────────────────────────────────┘
-              ↕ ProjectMapper
-┌─────────────────────────────────────────┐
-│  Core Layer (src/model.py)              │  ← Domain logic
-│  - ShapeShiftProject business logic     │
-│  - TaskList state manipulation          │
-│  - Resolved configuration data          │
-│  - Framework-independent                │
-└─────────────────────────────────────────┘
-              ↕ ConfigStore
-┌─────────────────────────────────────────┐
-│  Persistence (YAML files)               │  ← Source of truth
-│  - Project configuration                │
-│  - Task list state                      │
-└─────────────────────────────────────────┘
+```bash
+make backend-run          # Start backend on http://localhost:8013
+make frontend-run         # Start frontend on http://localhost:5173
+make br                   # Kill + restart backend only
+make fr                   # Kill + restart frontend only
+make br+fr                # Kill + restart both
 ```
 
-#### Why This Architecture is Awesome
+API docs are available at `http://localhost:8013/api/v1/docs` when the backend is running.
 
-**1. Domain-Driven Design**
-- Business logic (like `TaskList`) belongs in the domain (Core), not the API
-- Domain state is persisted in YAML, making Core the natural owner
-- API layer is just for HTTP concerns - validation, serialization, routing
+### Testing
 
-**2. Separation of Concerns**
-- **Core** = Pure business logic, zero framework dependencies
-- **API** = HTTP/REST interface, Pydantic validation
-- **Mappers** = Translation between layers
-- Mixing these creates "smart DTOs" (anti-pattern) and tight coupling
+```bash
+make test                              # All tests (core + backend + ingesters)
+make backend-test                      # Backend tests only
+uv run pytest tests -v                 # Core tests only
+uv run pytest backend/tests -v         # Backend tests only
 
-**3. Reusability**
-```python
-# Core can be used independently of FastAPI
-from src.model import ShapeShiftProject
+# Run a single test
+uv run pytest tests/test_mapping.py::test_name -v -s
 
-# CLI tools
-project = ShapeShiftProject.load("project.yml")
-project.task_list.mark_completed("site")
-project.save()
-
-# Scripts, ingesters, batch processors - all use same core
+# With explicit PYTHONPATH when import resolution fails
+PYTHONPATH=.:backend uv run pytest backend/tests -v
 ```
 
-**4. Framework Independence**
-- Swap FastAPI for Flask/Django without touching domain logic
-- Core has zero dependency on Pydantic/FastAPI
-- Better long-term maintainability and testability
+Frontend tests:
 
-**5. Testing Benefits**
-- Test domain logic without HTTP mocking
-- Pure business logic tests are faster and clearer
-- API tests focus on HTTP concerns only
-
-#### The Mapper Pattern (Critical)
-
-**Never bypass the mapper.** Services must convert between layers explicitly:
-
-```python
-# ✅ CORRECT: Service uses mapper for layer conversion
-from backend.app.mappers.project_mapper import ProjectMapper
-from backend.app.models.project import Project
-from src.model import ShapeShiftProject
-
-class TaskService:
-    async def mark_complete(self, project_name: str, entity_name: str):
-        # 1. Load from API layer
-        api_project: Project = self.project_service.load_project(project_name)
-        
-        # 2. Convert to core layer for business logic
-        project: ShapeShiftProject = ProjectMapper.to_core(api_project)
-        
-        # 3. Execute domain logic
-        project.task_list.mark_completed(entity_name)
-        
-        # 4. Convert back to API layer
-        updated_api_project: Project = ProjectMapper.to_api_config(
-            project.cfg, project_name
-        )
-        
-        # 5. Save via API layer
-        self.project_service.save_project(updated_api_project)
+```bash
+make frontend-test        # Run Vitest tests
+make frontend-coverage    # Run with coverage report
 ```
 
-```python
-# ❌ WRONG: Type confusion, bypassing mapper
-class TaskService:
-    async def mark_complete(self, project_name: str, entity_name: str):
-        # This returns API Project, not ShapeShiftProject!
-        project: ShapeShiftProject = self.project_service.load_project(project_name)
-        project.task_list.mark_completed(entity_name)  # AttributeError!
+### Code quality
+
+```bash
+make tidy                 # Format: isort + black
+make ruff                 # Lint + auto-fix with ruff
+make pylint               # Pylint check
+make lint                 # tidy + ruff + pylint (full pass)
+make frontend-lint        # ESLint for frontend
 ```
 
-#### Mapper Responsibilities
-
-**Data Source Mapper** (`backend/app/mappers/data_source_mapper.py`):
-- Converts API models ↔ Core configuration
-- **Resolves environment variables at API→Core boundary**
-- Never resolve in services - always in mapper
-
-**Project Mapper** (`backend/app/mappers/project_mapper.py`):
-- Converts `Project` (API) ↔ `ShapeShiftProject` (Core)
-- Handles entity dict transformations
-- Preserves sparse YAML structure
-
-**Environment Variable Resolution:**
-```python
-# ✅ CORRECT: Mapper resolves variables
-class DataSourceMapper:
-    @staticmethod
-    def to_core_config(api_config):
-        api_config = api_config.resolve_config_env_vars()  # HERE!
-        return CoreDataSourceConfig(...)
-
-# ❌ WRONG: Service resolving variables
-class SomeService:
-    def do_something(self, config):
-        config = config.resolve_config_env_vars()  # NO! Mapper's job
-```
-
-#### Layer Communication Rules
-
-1. **Services** work with API models, call mapper when needing Core
-2. **Mappers** are the ONLY place for layer translation
-3. **Core** knows nothing about API models or HTTP
-4. **API models** are DTOs - no business logic
-5. **Environment variables** resolved in mapper, never in services
-
-#### When to Use Each Layer
-
-**Use Core (ShapeShiftProject) when:**
-- Manipulating domain state (task_list, entities)
-- Business logic that should work in CLI/scripts
-- Need access to framework-independent logic
-
-**Use API (Project) when:**
-- Receiving HTTP requests
-- Validating user input with Pydantic
-- Serializing responses
-- Storing in ApplicationState
-
-**Use Mapper when:**
-- Converting between API ↔ Core
-- Resolving environment variables
-- Translating data structures between layers
-
-#### Performance Note
-
-The mapper "cost" (object construction) is negligible:
-- One-time per request (not in loops)
-- No I/O overhead
-- Enforces contracts and prevents bugs
-- Architectural benefits far outweigh minimal conversion cost
-
-**This pattern is awesome because it saves you from pain later.** 🎉
-
-## 3. System Architecture (Continued)
-
-### High-Level Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Frontend (Vue3)                     │
-│  ┌──────────┬──────────┬──────────┬──────────────────┐  │
-│  │  Editor  │  Panels  │  Config  │  Validation      │  │
-│  │  Monaco  │ Vuetify  │  State   │  UI Components   │  │
-│  └──────────┴──────────┴──────────┴──────────────────┘  │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │                  API Client (axios)                │ │
-│  └────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
-                           │ HTTP/REST
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│                    Backend (FastAPI)                    │
-│  ┌──────────┬──────────┬──────────┬──────────────────┐  │
-│  │  Routes  │  Models  │ Services │  Validation      │  │
-│  │  /api/v1 │ Pydantic │ Business │  Engine          │  │
-│  └──────────┴──────────┴──────────┴──────────────────┘  │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │        Core Systems (Config, YAML, Cache)          │ │
-│  └────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│          Shape Shifter Transformation Engine            │
-│  ┌──────────────┬──────────────┬─────────────────────┐  │
-│  │     model    │specifications│     normalizer      │  │
-│  └──────────────┴──────────────┴─────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│                    File System                          │
-│  ┌──────────┬──────────┬──────────┬──────────────────┐  │
-│  │  Configs │  Backups │  Logs    │  Test Data       │  │
-│  └──────────┴──────────┴──────────┴──────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Technology Stack
-
-**Backend:**
-- **FastAPI** - Async web framework
-- **Pydantic** - Data validation
-- **pytest** - Testing framework
-- **Uvicorn** - ASGI server
-- **uv** - Package manager
-
-**Frontend:**
-- **Vue3** - UI library
-- **TypeScript** - Type safety
-- **Monaco Editor** - Code editor
-- **Material-UI** - Component library
-- **Pinia** - Client state
-- **Vite** - Build tool
-
-### Design Principles
-
-1. **Separation of Concerns** - Clear layer boundaries
-2. **Dependency Injection** - Testable components
-3. **Type Safety** - TypeScript + Pydantic
-4. **API-First** - Well-defined REST API
-5. **Cache Strategy** - Performance optimization
-6. **Error Handling** - Comprehensive error management
+Run `make tidy && make lint` before opening a pull request.
 
 ---
 
-## 4. Backend Development
+## Code Conventions
 
-### Directory Structure
+### Python
 
-```
-backend/
-├── app/
-│   ├── api/
-│   │   └── v1/
-│   │       ├── endpoints/
-│   │       │   ├── configurations.py
-│   │       │   ├── validation.py
-│   │       │   └── auto_fix.py
-│   │       └── router.py
-│   ├── core/
-│   │   ├── config.py          # Settings
-│   │   ├── cache.py           # Caching
-│   │   └── errors.py          # Exceptions
-│   ├── models/
-│   │   ├── configuration.py
-│   │   ├── validation.py
-│   │   └── auto_fix.py
-│   ├── services/
-│   │   ├── yaml_service.py
-│   │   ├── validation_service.py
-│   │   └── auto_fix_service.py
-│   └── main.py
-└── tests/
-    ├── unit/
-    ├── integration/
-    ├── fixtures/
-    └── conftest.py
-```
+- Python 3.13+; always run Python via `uv run` to ensure `.venv/` is active.
+- Absolute imports only: `from src.model import ...`, `from backend.app.services import ...`
+- Line length: 140 characters (configured in `pyproject.toml`).
+- Logging: `from loguru import logger` — do not use `print` or stdlib `logging`.
+- Type hints required on all function signatures.
+- Naming: `snake_case` for entities; `_id` suffix for public ID columns; `/api/v1/{resource}` (plural) for endpoints.
 
-### Key Design Patterns
+### Layer boundary rules (critical)
 
-#### 1. Service Layer Pattern
+- **API models** (`backend/app/models/`): hold raw `${ENV_VARS}` and `@directives` — never resolve them here.
+- **Mappers** (`backend/app/mappers/`): the only place that calls `resolve_config_env_vars()` and converts between API and Core types.
+- **Core** (`src/`): always receives fully resolved values; has no dependency on FastAPI or Pydantic API models.
 
-Encapsulate business logic in services. **Important:** Services work with API-layer entities (Pydantic models) which may contain unresolved environment variables.
+See [DESIGN.md](DESIGN.md) for the full layer boundary and identity system design.
 
-```python
-# app/services/validation_service.py
-class ValidationService:
-    """Orchestrates configuration validation."""
-    
-    def __init__(
-        self,
-        yaml_service: YAMLService,
-        cache_service: CacheService
-    ):
-        self.yaml_service = yaml_service
-        self.cache_service = cache_service
-    
-    async def validate_configuration(
-        self,
-        project_name: str,
-        validation_type: ValidationType
-    ) -> ValidationResult:
-        """Validate configuration with caching."""
-        # Check cache
-        cache_key = self._make_cache_key(project_name, validation_type)
-        cached = self.cache_service.get(cache_key)
-        if cached:
-            return cached
-        
-        # Load configuration (API entity with raw ${ENV_VARS})
-        config = await self.yaml_service.load_project(project_name)
-        
-        # Run validation
-        issues = await self._run_validation(config, validation_type)
-        
-        # Cache results
-        result = ValidationResult(
-            project_name=project_name,
-            validation_type=validation_type,
-            issues=issues,
-            timestamp=datetime.now()
-        )
-        self.cache_service.set(cache_key, result)
-        
-        return result
-```
+### Frontend
 
-**Benefits:**
-- Testable (mock dependencies)
-- Reusable across endpoints
-- Clear separation of concerns
-- Easy to maintain
-
-#### 1a. Mapper Pattern for Layer Boundaries
-
-Mappers handle conversion between API and Core layers and **resolve environment variables** at this boundary:
-
-```python
-# app/mappers/data_source_mapper.py
-class DataSourceMapper:
-    """Maps between API and Core data sources.
-    
-    IMPORTANT: Environment variable resolution happens here,
-    at the boundary between API and Core layers.
-    """
-    
-    @staticmethod
-    def to_core_config(api_config: ApiDataSourceConfig) -> CoreDataSourceConfig:
-        """Convert API config to Core config.
-        
-        Resolves environment variables during mapping.
-        API entities remain raw (${VAR}), core entities are resolved.
-        """
-        # Resolution at the layer boundary
-        api_config = api_config.resolve_config_env_vars()
-        
-        # Map to core format
-        return CoreDataSourceConfig(
-            name=api_config.name,
-            cfg={
-                "driver": api_config.driver,
-                "options": {...}  # Fully resolved
-            }
-        )
-```
-
-**Layer Responsibilities:**
-
-| Layer | Entity Type | Env Vars | Where |
-|-------|------------|----------|-------|
-| API | Pydantic models | Raw `${VAR}` | `backend/app/models/` |
-| Mapper | Translation | **Resolves** | `backend/app/mappers/` |
-| Core | Domain objects | Resolved | `src/` |
-
-**Benefits:**
-- Single point of resolution (DRY)
-- Services never need to remember to resolve
-- Clear separation: API = raw, Core = resolved
-- Type-safe boundaries
-
-#### 2. Repository Pattern
-
-Abstract data access:
-
-```python
-# app/services/yaml_service.py
-class YAMLService:
-    """Handles YAML file operations."""
-    
-    def __init__(self, project_dir: Path):
-        self.project_dir = project_dir
-    
-    async def load_project(self, name: str) -> dict:
-        """Load configuration from file."""
-        path = self.project_dir / f"{name}.yml"
-        
-        if not path.exists():
-            raise ProjectNotFoundError(name)
-        
-        try:
-            with open(path, 'r') as f:
-                return yaml.safe_load(f)
-        except yaml.YAMLError as e:
-            raise ValidationError(f"Invalid YAML: {e}")
-    
-    def save_project(self, name: str, data: dict) -> None:
-        """Save configuration to file."""
-        path = self.project_dir / f"{name}.yml"
-        
-        with open(path, 'w') as f:
-            yaml.dump(data, f, default_flow_style=False)
-```
-
-**Benefits:**
-- Abstracts file system
-- Easy to swap implementations
-- Centralized error handling
-- Testable with mocks
-
-#### 3. Dependency Injection
-
-FastAPI's dependency system:
-
-```python
-# app/api/v1/endpoints/validation.py
-from fastapi import Depends
-
-def get_yaml_service() -> YAMLService:
-    """Get YAML service instance."""
-    project_dir = Path("projects")
-    return YAMLService(project_dir)
-
-def get_cache_service() -> CacheService:
-    """Get cache service instance."""
-    return CacheService(ttl=300)
-
-def get_validation_service(
-    yaml_service: YAMLService = Depends(get_yaml_service),
-    cache_service: CacheService = Depends(get_cache_service)
-) -> ValidationService:
-    """Get validation service with dependencies."""
-    return ValidationService(yaml_service, cache_service)
-
-@router.post("/validate")
-async def validate_configuration(
-    request: ValidationRequest,
-    service: ValidationService = Depends(get_validation_service)
-):
-    """Validate configuration endpoint."""
-    return await service.validate_configuration(
-        request.project_name,
-        request.validation_type
-    )
-```
-
-**Benefits:**
-- Clean endpoint code
-- Easy to test (override dependencies)
-- Flexible composition
-- Lifecycle management
-
-#### 4. Strategy Pattern
-
-Different validation strategies:
-
-```python
-# app/services/validation_service.py
-from abc import ABC, abstractmethod
-
-class ValidationStrategy(ABC):
-    """Base validation strategy."""
-    
-    @abstractmethod
-    async def validate(self, config: dict) -> list[ValidationIssue]:
-        """Run validation and return issues."""
-        pass
-
-class StructuralValidator(ValidationStrategy):
-    """Validate YAML structure and syntax."""
-    
-    async def validate(self, config: dict) -> list[ValidationIssue]:
-        issues = []
-        
-        # Check entity definitions
-        if "entities" not in config:
-            issues.append(ValidationIssue(
-                code="MISSING_ENTITIES",
-                severity="error",
-                message="Project missing 'entities' section"
-            ))
-        
-        # More structural checks...
-        return issues
-
-class DataValidator(ValidationStrategy):
-    """Validate against actual data sources."""
-    
-    async def validate(self, config: dict) -> list[ValidationIssue]:
-        issues = []
-        
-        # Check columns exist in data
-        for entity_name, entity in config.get("entities", {}).items():
-            for column in entity.get("columns", []):
-                if not await self._column_exists(entity_name, column):
-                    issues.append(ValidationIssue(
-                        code="COLUMN_NOT_FOUND",
-                        severity="error",
-                        entity=entity_name,
-                        message=f"Column '{column}' not found"
-                    ))
-        
-        return issues
-```
-
-### Caching Architecture
-
-#### Cache Service Implementation
-
-```python
-# app/core/cache.py
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Optional
-
-@dataclass
-class CacheEntry:
-    """Cache entry with expiration."""
-    value: Any
-    expires_at: datetime
-    
-    def is_expired(self) -> bool:
-        """Check if entry has expired."""
-        return datetime.now() > self.expires_at
-
-class CacheService:
-    """In-memory cache with TTL."""
-    
-    def __init__(self, ttl: int = 300):
-        """Initialize cache with TTL in seconds."""
-        self._cache: dict[str, CacheEntry] = {}
-        self._ttl = ttl
-    
-    def get(self, key: str) -> Optional[Any]:
-        """Get value from cache if not expired."""
-        entry = self._cache.get(key)
-        
-        if entry is None:
-            return None
-        
-        if entry.is_expired():
-            self._cache.pop(key)
-            return None
-        
-        return entry.value
-    
-    def set(self, key: str, value: Any) -> None:
-        """Set value in cache with TTL."""
-        self._cache[key] = CacheEntry(
-            value=value,
-            expires_at=datetime.now() + timedelta(seconds=self._ttl)
-        )
-    
-    def invalidate(self, pattern: str) -> None:
-        """Invalidate all keys matching pattern."""
-        keys_to_remove = [
-            k for k in self._cache.keys()
-            if k.startswith(pattern)
-        ]
-        for key in keys_to_remove:
-            self._cache.pop(key)
-    
-    def clear(self) -> None:
-        """Clear all cache entries."""
-        self._cache.clear()
-```
-
-#### Cache Usage
-
-```python
-# In service
-class ValidationService:
-    def _make_cache_key(
-        self,
-        project_name: str,
-        validation_type: ValidationType
-    ) -> str:
-        """Generate cache key."""
-        return f"validation:{project_name}:{validation_type.value}"
-    
-    async def validate_configuration(
-        self,
-        project_name: str,
-        validation_type: ValidationType
-    ) -> ValidationResult:
-        """Validate with caching."""
-        cache_key = self._make_cache_key(project_name, validation_type)
-        
-        # Try cache
-        cached = self.cache_service.get(cache_key)
-        if cached:
-            cached.cache_hit = True
-            return cached
-        
-        # Run validation
-        result = await self._run_validation(project_name, validation_type)
-        
-        # Cache result
-        self.cache_service.set(cache_key, result)
-        result.cache_hit = False
-        
-        return result
-```
-
-#### Cache Invalidation
-
-```python
-# On configuration update
-@router.put("/projects/{name}")
-async def update_configuration(
-    name: str,
-    config: dict,
-    cache: CacheService = Depends(get_cache_service)
-):
-    """Update configuration and invalidate cache."""
-    # Save configuration
-    yaml_service.save_project(name, config)
-    
-    # Invalidate all caches for this config
-    cache.invalidate(f"validation:{name}:")
-    
-    return {"message": "Project updated"}
-```
-
-### Error Handling
-
-#### Custom Exceptions
-
-```python
-# app/core/errors.py
-class BaseAPIException(Exception):
-    """Base exception for all API errors."""
-    
-    def __init__(self, message: str, status_code: int = 500):
-        self.message = message
-        self.status_code = status_code
-        super().__init__(self.message)
-
-class ProjectNotFoundError(BaseAPIException):
-    """Project file not found."""
-    
-    def __init__(self, project_name: str):
-        super().__init__(
-            f"Project '{project_name}' not found",
-            status_code=404
-        )
-
-class ValidationError(BaseAPIException):
-    """Validation failed."""
-    
-    def __init__(self, errors: list[str]):
-        super().__init__(
-            f"Validation failed: {'; '.join(errors)}",
-            status_code=400
-        )
-
-```
-
-#### Exception Handlers
-
-```python
-# app/main.py
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-
-app = FastAPI()
-
-@app.exception_handler(BaseAPIException)
-async def api_exception_handler(request: Request, exc: BaseAPIException):
-    """Handle API exceptions."""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error": exc.message,
-            "type": exc.__class__.__name__,
-            "timestamp": datetime.now().isoformat(),
-            "path": str(request.url.path),
-            "method": request.method
-        }
-    )
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected exceptions."""
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "Internal server error",
-            "type": "InternalServerError",
-            "timestamp": datetime.now().isoformat()
-        }
-    )
-```
+- `<script setup lang="ts">` with `defineProps<T>()` and `defineEmits<T>()`.
+- API calls only in `frontend/src/api/` — never directly in components.
+- State in Pinia stores; use `storeToRefs()` in components.
+- See `.github/instructions/frontend.instructions.md` for detailed conventions.
 
 ---
 
-## 5. Frontend Development
+## Development Workflow
 
-### Directory Structure
-
-```
-frontend/src/
-├── api/                        # API client layer (axios + per-resource modules)
-├── components/                 # Vue components (layout, panels, shared UI)
-│   ├── common/                 # Reusable pieces (YamlEditor/Monaco wrapper, alerts, skeletons)
-│   ├── projects/
-│   ├── validation/
-│   └── ...
-├── composables/                # Reusable composition functions (loading/error guards, etc.)
-├── stores/                     # Pinia stores (configuration, validation, UI)
-├── views/                      # Route-level screens
-├── router/                     # Vue Router configuration
-├── plugins/                    # Vuetify and other plugin setup
-├── styles/                     # Global styles and variables
-├── types/                      # TypeScript types
-├── App.vue                     # Root component
-└── main.ts                     # App bootstrap
-```
-
-### State Management
-
-- **Server state:** Fetch via `frontend/src/api` using axios; keep request/response handling in composables (e.g., `useApiRequest`) to centralize loading/error logic.
-- **Pinia for UI state:** Keep configuration data, validation results, and editor UI flags in stores under `frontend/src/stores`; derive refs with `storeToRefs()` inside components.
-
-### Component Patterns
-
-- Use `<script setup lang="ts">` with `defineProps`/`defineEmits` for typing.
-- Prefer composables over ad-hoc helpers for shared behavior (debounce, error handling, router guards).
-- Build UI with Vuetify components and encapsulate Monaco usage inside dedicated editor components.
-- Keep route views thin: orchestrate stores/composables and delegate UI rendering to child components.
-
-#### Composition Pattern
-
-- Use `computed` for derived state and `watch`/`watchEffect` for side effects.
-- Leverage VueUse utilities (e.g., `useDebounceFn`) for timers and throttling.
-- Co-locate API calls with related Pinia actions or composables rather than directly in templates.
-
-
-
----
-
-## 6. Testing Strategy
-
-### Testing Pyramid
-
-```
-        ┌──────────────────┐
-        │   E2E Tests      │  ~10% (Manual + Automated)
-        └──────────────────┘
-      ┌────────────────────────┐
-      │   Integration Tests    │  ~20% (API + Service)
-      └────────────────────────┘
-    ┌──────────────────────────────┐
-    │      Unit Tests              │  ~70% (Functions + Classes)
-    └──────────────────────────────┘
-```
-
-**Distribution:**
-- **70% Unit Tests** - Fast, isolated, many
-- **20% Integration Tests** - Medium speed, verify interactions
-- **10% E2E Tests** - Slow, expensive, critical paths only
-
-### Backend Testing
-
-#### Unit Test Example
-
-```python
-# backend/tests/unit/test_validation_service.py
-import pytest
-from unittest.mock import AsyncMock, Mock
-from backend.app.services.validation_service import ValidationService
-
-@pytest.fixture
-def mock_yaml_service():
-    """Mock YAML service."""
-    service = Mock()
-    service.load_project = AsyncMock()
-    return service
-
-@pytest.fixture
-def mock_cache_service():
-    """Mock cache service."""
-    service = Mock()
-    service.get = Mock(return_value=None)
-    service.set = Mock()
-    return service
-
-@pytest.fixture
-def validation_service(mock_yaml_service, mock_cache_service):
-    """Create validation service with mocks."""
-    return ValidationService(mock_yaml_service, mock_cache_service)
-
-@pytest.mark.asyncio
-async def test_validate_configuration_success(
-    validation_service,
-    mock_yaml_service
-):
-    """Test successful validation."""
-    # Arrange
-    mock_yaml_service.load_project.return_value = {
-        "entities": {
-            "test_entity": {
-                "columns": ["id", "name"],
-                "keys": ["id"]
-            }
-        }
-    }
-    
-    # Act
-    result = await validation_service.validate_configuration(
-        "test_config",
-        "all"
-    )
-    
-    # Assert
-    assert result.project_name == "test_config"
-    assert isinstance(result.issues, list)
-    mock_yaml_service.load_project.assert_called_once_with("test_config")
-
-@pytest.mark.asyncio
-async def test_validate_uses_cache(validation_service, mock_cache_service):
-    """Test that validation uses cache."""
-    # Arrange
-    cached_result = ValidationResult(
-        project_name="test",
-        issues=[],
-        cache_hit=True
-    )
-    mock_cache_service.get.return_value = cached_result
-    
-    # Act
-    result = await validation_service.validate_configuration("test", "all")
-    
-    # Assert
-    assert result.cache_hit is True
-    mock_cache_service.get.assert_called_once()
-```
-
-#### Integration Test Example
-
-```python
-# backend/tests/integration/test_api_validation.py
-import pytest
-from httpx import AsyncClient
-from backend.app.main import app
-
-@pytest.mark.asyncio
-async def test_validate_endpoint():
-    """Test validation endpoint."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        response = await client.post(
-            "/api/v1/validate",
-            json={
-                "project_name": "test_config",
-                "validation_type": "all"
-            }
-        )
-    
-    assert response.status_code == 200
-    data = response.json()
-    
-    assert "project_name" in data
-    assert "issues" in data
-    assert "summary" in data
-    assert isinstance(data["issues"], list)
-
-@pytest.mark.asyncio
-async def test_validate_nonexistent_config():
-    """Test validating non-existent config returns 404."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        response = await client.post(
-            "/api/v1/validate",
-            json={
-                "project_name": "nonexistent",
-                "validation_type": "all"
-            }
-        )
-    
-    assert response.status_code == 404
-    assert "not found" in response.json()["error"].lower()
-```
-
-### Frontend Testing
-
-Use Vitest with `@vue/test-utils`. Place unit specs under `frontend/tests/unit` and run with `npx vitest`.
-
-#### Component Test Example
-
-```typescript
-// frontend/tests/unit/components/ValidationPanel.spec.ts
-import { mount } from '@vue/test-utils';
-import { describe, it, expect } from 'vitest';
-import ValidationPanel from '@/components/panels/ValidationPanel.vue';
-
-describe('ValidationPanel', () => {
-  it('renders validation issues', () => {
-    const issues = [
-      {
-        id: '1',
-        code: 'COLUMN_NOT_FOUND',
-        severity: 'error',
-        entity: 'test_entity',
-        message: 'Column "missing" not found'
-      }
-    ];
-
-    const wrapper = mount(ValidationPanel, { props: { issues } });
-
-    expect(wrapper.text()).toContain('Column "missing" not found');
-    expect(wrapper.text()).toContain('test_entity');
-  });
-
-  it('emits apply-fix when button clicked', async () => {
-    const issues = [
-      {
-        id: '1',
-        code: 'COLUMN_NOT_FOUND',
-        severity: 'error',
-        auto_fixable: true,
-        message: 'Column "missing" not found'
-      }
-    ];
-
-    const wrapper = mount(ValidationPanel, { props: { issues } });
-
-    await wrapper.get('[data-testid="apply-fix"]').trigger('click');
-
-    expect(wrapper.emitted('apply-fix')).toHaveLength(1);
-  });
-});
-```
-
-#### Composable Test Example
-
-```typescript
-// frontend/tests/unit/composables/useDebouncedSearch.spec.ts
-import { describe, it, expect, vi } from 'vitest';
-import { ref } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
-
-const useDebouncedSearch = (search: (term: string) => Promise<void>) => {
-  const term = ref('');
-  const loading = ref(false);
-
-  const run = useDebounceFn(async (value: string) => {
-    loading.value = true;
-    await search(value);
-    loading.value = false;
-  }, 300);
-
-  const update = (value: string) => {
-    term.value = value;
-    run(value);
-  };
-
-  return { term, loading, update };
-};
-
-describe('useDebouncedSearch', () => {
-  it('debounces value changes', async () => {
-    vi.useFakeTimers();
-
-    const search = vi.fn().mockResolvedValue(undefined);
-    const { update, loading } = useDebouncedSearch(search);
-
-    update('config');
-    update('configu'); // rapid change
-
-    expect(loading.value).toBe(false);
-
-    vi.advanceTimersByTime(300);
-
-    expect(search).toHaveBeenCalledTimes(1);
-    expect(loading.value).toBe(false);
-
-    vi.useRealTimers();
-  });
-});
-```
-
-### Test Coverage
-
-#### Running Coverage
-
-```bash
-# Backend coverage
-cd backend
-uv run pytest tests/ --cov=app --cov-report=html --cov-report=term
-
-# Frontend coverage
-cd frontend
-npx vitest run --coverage
-```
-
-#### Coverage Targets
-
-| Component | Target | Current |
-|-----------|--------|---------|
-| Backend Services | 90%+ | 94% |
-| Backend API | 85%+ | 88% |
-| Backend Models | 100% | 100% |
-| Frontend Components | 85%+ | 88% |
-| Frontend Composables | 90%+ | 92% |
-| **Overall** | **90%+** | **91%** |
-
-### Performance Profiling
-
-#### Finding Performance Bottlenecks
-
-Shape Shifter includes profiling tools to identify slow code paths and optimize performance.
-
-#### Quick Start with py-spy
-
-**Visual profiling** (recommended for most cases):
-
-```bash
-# Profile a specific test
-make profile TEST="tests/process/test_workflow.py::test_access_database_csv_workflow"
-
-# View results
-# Opens profile.svg in browser or upload to speedscope.app
-xdg-open profile.svg
-```
-
-**Statistical profiling** (text-based summary):
-
-```bash
-# Profile with cProfile and show top 30 functions
-make profile-stats TEST="tests/process/test_workflow.py::test_my_test"
-
-# View detailed stats file
-python -c "import pstats; p = pstats.Stats('profile.stats'); p.sort_stats('cumulative').print_stats(50)"
-```
-
-#### Available Profiling Methods
-
-**1. py-spy (Sampling Profiler)**
-- ✅ No code changes required
-- ✅ Low overhead
-- ✅ Beautiful visualizations (flame graphs)
-- 📊 Best for: Finding overall bottlenecks
-
-```bash
-# Record flame graph
-make profile TEST="tests/your_test.py::test_name"
-
-# Upload profile.svg to https://www.speedscope.app/
-```
-
-**2. cProfile (Deterministic Profiler)**
-- ✅ Exact function call counts
-- ✅ Built into Python
-- ⚠️ Higher overhead
-- 📊 Best for: Detailed statistics
-
-```bash
-# Run with statistics
-make profile-stats TEST="tests/your_test.py::test_name"
-```
-
-**3. line_profiler (Line-by-Line Analysis)**
-- ✅ Per-line timing
-- ⚠️ Requires code modification
-- 📊 Best for: Optimizing specific functions
-
-```bash
-# Install line_profiler
-uv pip install line-profiler
-
-# Add @profile decorator to function in your code
-# Then run:
-uv run kernprof -l -v tests/your_test.py
-```
-
-**4. pytest-profiling (Plugin)**
-- ✅ Integrates with pytest
-- ✅ SVG output
-- 📊 Best for: Quick test profiling
-
-```bash
-uv pip install pytest-profiling
-uv run pytest tests/your_test.py --profile --profile-svg
-```
-
-#### Interpreting Results
-
-**Flame Graph (py-spy/speedscope):**
-- **Width** = time spent in function
-- **Height** = call stack depth
-- **Color** = different modules/files
-- Look for **wide horizontal bars** = hotspots
-
-**cProfile Output:**
-```
-ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-```
-- `ncalls` - number of calls
-- `tottime` - time in function only (excluding subcalls)
-- `cumtime` - total time (including subcalls) ← **Most important**
-- `percall` - average time per call
-
-#### Common Bottlenecks
-
-Look for time spent in:
-- **Database queries** - `await loader.load()`
-- **DataFrame operations** - pandas transformations
-- **File I/O** - Excel/CSV reading/writing
-- **Validation** - Foreign key resolution
-- **Deep copies** - Configuration processing
-
-#### Example: Analyzing Workflow Test
-
-```bash
-# Profile the workflow test
-make profile TEST="tests/process/test_workflow.py::test_access_database_csv_workflow"
-
-# Expected output shows:
-# ✓ Profile saved to profile.svg (open in browser or speedscope.app)
-```
-
-**Top time consumers (typical results):**
-1. Database connection/queries (40-50%)
-2. Excel file writing (20-30%)
-3. DataFrame transformations (10-20%)
-4. Validation/linking (5-10%)
-5. Configuration loading (1-5%)
-
-#### Optimization Workflow
-
-1. **Profile first** - Don't guess, measure
-2. **Identify bottlenecks** - Focus on cumulative time
-3. **Fix the biggest issue** - 80/20 rule applies
-4. **Profile again** - Verify improvement
-5. **Iterate** - Repeat until acceptable
-
-#### Advanced Profiling
-
-**Profile specific function:**
-```python
-# Add to your test
-import cProfile
-import pstats
-
-profiler = cProfile.Profile()
-profiler.enable()
-
-# Your code here
-result = expensive_function()
-
-profiler.disable()
-stats = pstats.Stats(profiler)
-stats.sort_stats('cumulative')
-stats.print_stats(20)
-```
-
-**Memory profiling:**
-```bash
-# Install memory_profiler
-uv pip install memory_profiler
-
-# Add @profile decorator
-uv run python -m memory_profiler your_script.py
-```
-
----
-
-## 7. API Development
-
-### RESTful Endpoints
-
-```
-# Projects
-GET    /api/v1/projects           # List all
-GET    /api/v1/projects/{name}    # Get one
-POST   /api/v1/projects           # Create
-PUT    /api/v1/projects/{name}    # Update
-DELETE /api/v1/projects/{name}    # Delete
-
-# Validation
-POST   /api/v1/validate                 # Validate
-GET    /api/v1/validate/{name}/results  # Get cached
-
-# Entities
-GET    /api/v1/projects/{project_name}/entities                     # List entities
-GET    /api/v1/projects/{project_name}/entities/{entity_name}       # Get entity
-POST   /api/v1/projects/{project_name}/entities                     # Create entity
-PUT    /api/v1/projects/{project_name}/entities/{entity_name}       # Update entity
-DELETE /api/v1/projects/{project_name}/entities/{entity_name}       # Delete entity
-
-# Preview / graph
-POST   /api/v1/projects/{project_name}/entities/{entity_name}/preview   # Preview entity or unsaved override
-POST   /api/v1/projects/{name}/entities/{entity_name}/validate          # Structural validation for one entity
-GET    /api/v1/projects/{name}/dependencies                             # Dependency graph
-```
-
-### Merged Entity API Example
-
-Merged entities use the normal entity CRUD endpoints. The important part is the `entity_data` payload.
-
-```json
-POST /api/v1/projects/arbodat/entities
-
-{
-    "name": "analysis_entity",
-    "entity_data": {
-        "type": "merged",
-        "public_id": "analysis_entity_id",
-        "branches": [
-            {
-                "name": "abundance",
-                "source": "abundance",
-                "keys": ["Projekt", "Befu", "ProbNr"]
-            },
-            {
-                "name": "relative_dating",
-                "source": "_analysis_entity_relative_dating",
-                "keys": ["Projekt", "Befu", "ProbNr"]
-            }
-        ],
-        "foreign_keys": [
-            {
-                "entity": "sample",
-                "local_keys": ["Projekt", "Befu", "ProbNr"],
-                "remote_keys": ["Projekt", "Befu", "ProbNr"]
-            }
-        ]
-    }
-}
-```
-
-The branch shape comes from `backend/app/models/entity.py`:
-
-- `name`: unique snake_case identifier inside the merged parent
-- `source`: entity that contributes rows for that branch
-- `keys`: optional business keys used for branch-level validation
-
-### Previewing Unsaved Merged Changes
-
-Use the normal preview endpoint. For merged entities the same endpoint can preview:
-
-- the saved merged entity
-- an unsaved merged configuration passed as `entity_config`
-- a branch source entity directly, by previewing the source entity name instead of the merged parent
-
-```json
-POST /api/v1/projects/arbodat/entities/analysis_entity/preview?limit=50
-
-{
-    "entity_config": {
-        "type": "merged",
-        "public_id": "analysis_entity_id",
-        "branches": [
-            { "name": "abundance", "source": "abundance", "keys": ["Projekt", "Befu", "ProbNr"] },
-            { "name": "relative_dating", "source": "_analysis_entity_relative_dating", "keys": ["Projekt", "Befu", "ProbNr"] }
-        ]
-    }
-}
-```
-
-The preview response is the standard `PreviewResult`. For merged entities, the resulting rows include:
-
-- `{entity_name}_branch` discriminator column
-- one sparse lineage FK column per branch source
-- branch-only columns null-filled for rows from other branches
-
-### Merged Validation Response Shape
-
-Merged-entity validation uses the normal `ValidationResult` and `ValidationError` models. What is different is the branch metadata:
-
-```json
-{
-    "severity": "error",
-    "entity": "analysis_entity",
-    "branch_name": "relative_dating",
-    "branch_source": "_analysis_entity_relative_dating",
-    "field": "branches",
-    "message": "Entity 'analysis_entity', branch #2 (source='_analysis_entity_relative_dating'): source entity '_analysis_entity_relative_dating' does not exist",
-    "code": null,
-    "category": "structural",
-    "priority": "medium"
-}
-```
-
-Notes for client developers:
-
-- `branch_name` and `branch_source` are populated when an issue is branch-scoped
-- structural validation issues may not populate `code`; clients should not rely on `code` alone to identify merged-entity issues
-- the frontend groups merged issues by `entity`, then by `branch_name` / `branch_source`, before showing post-merge issues
-
-### Adding New Endpoints
-
-#### 1. Define Models
-
-```python
-# app/models/my_feature.py
-from pydantic import BaseModel
-from datetime import datetime
-
-class MyFeatureRequest(BaseModel):
-    """Request model."""
-    project_name: str
-    param1: str
-    param2: int = 10
-
-class MyFeatureResponse(BaseModel):
-    """Response model."""
-    status: str
-    data: dict
-    timestamp: datetime
-```
-
-#### 2. Create Service
-
-```python
-# app/services/my_feature_service.py
-class MyFeatureService:
-    """Business logic for my feature."""
-    
-    def __init__(self, yaml_service: YAMLService):
-        self.yaml_service = yaml_service
-    
-    async def process(self, request: MyFeatureRequest) -> MyFeatureResponse:
-        """Process feature request."""
-        # Business logic here
-        config = await self.yaml_service.load_project(request.project_name)
-        
-        # Do something...
-        result = {"key": "value"}
-        
-        return MyFeatureResponse(
-            status="success",
-            data=result,
-            timestamp=datetime.now()
-        )
-```
-
-#### 3. Create Endpoint
-
-```python
-# app/api/v1/endpoints/my_feature.py
-from fastapi import APIRouter, Depends
-from backend.app.models.my_feature import MyFeatureRequest, MyFeatureResponse
-from backend.app.services.my_feature_service import MyFeatureService
-
-router = APIRouter()
-
-def get_my_feature_service() -> MyFeatureService:
-    """Get service instance."""
-    yaml_service = get_yaml_service()
-    return MyFeatureService(yaml_service)
-
-@router.post("/my-feature", response_model=MyFeatureResponse)
-async def my_feature_endpoint(
-    request: MyFeatureRequest,
-    service: MyFeatureService = Depends(get_my_feature_service)
-):
-    """Process my feature request."""
-    return await service.process(request)
-```
-
-#### 4. Register Router
-
-```python
-# app/api/v1/router.py
-from fastapi import APIRouter
-from backend.app.api.v1.endpoints import my_feature
-
-api_router = APIRouter()
-api_router.include_router(my_feature.router, tags=["my-feature"])
-```
-
-#### 5. Write Tests
-
-```python
-# tests/unit/test_my_feature_service.py
-import pytest
-from backend.app.services.my_feature_service import MyFeatureService
-
-@pytest.mark.asyncio
-async def test_my_feature_process():
-    """Test feature processing."""
-    service = MyFeatureService(mock_yaml_service)
-    
-    request = MyFeatureRequest(
-        project_name="test",
-        param1="value",
-        param2=20
-    )
-    
-    result = await service.process(request)
-    
-    assert result.status == "success"
-    assert result.data is not None
-```
-
----
-
-## 8. Best Practices
-
-### Code Style
-
-#### Python (Backend)
-
-```python
-# Good - Clear function names
-async def validate_configuration_structure(config: dict) -> list[Issue]:
-    """Validate configuration structure and return issues."""
-    pass
-
-# Bad - Generic name
-async def check(config: dict):
-    pass
-
-# Good - Type hints
-def get_entities(config: dict) -> dict[str, EntityConfig]:
-    return config.get("entities", {})
-
-# Bad - No type hints
-def get_entities(config):
-    return config.get("entities", {})
-
-# Good - Docstrings
-def create_backup(project_name: str) -> Path:
-    """
-    Create timestamped backup of configuration.
-    
-    Args:
-        project_name: Name of configuration to backup
-        
-    Returns:
-        Path to backup file
-        
-    Raises:
-        ProjectNotFoundError: If config doesn't exist
-    """
-    pass
-```
-
-#### TypeScript (Frontend)
-
-```vue
-<!-- Good - Explicit types and typed props -->
-<script setup lang="ts">
-import ValidationIssueList from '@/components/panels/ValidationIssueList.vue';
-
-interface ValidationIssue {
-  id: string;
-  code: string;
-  severity: 'error' | 'warning' | 'info';
-  entity?: string;
-  message: string;
-}
-
-const props = defineProps<{ issues: ValidationIssue[] }>();
-</script>
-
-<template>
-  <ValidationIssueList :issues="props.issues" />
-</template>
-
-<!-- Bad - Any types and untyped props -->
-<script setup>
-defineProps(['issues']);
-</script>
-
-<template>
-  <ValidationIssueList :issues="issues" />
-</template>
-```
-
-### Error Handling
-
-```python
-# Good - Specific exceptions
-try:
-    config = await yaml_service.load_project(name)
-except FileNotFoundError:
-    raise ProjectNotFoundError(name)
-except yaml.YAMLError as e:
-    raise ValidationError(f"Invalid YAML: {e}")
-
-# Bad - Catch all
-try:
-    config = await yaml_service.load_project(name)
-except Exception as e:
-    raise Exception(f"Error: {e}")
-```
-
-### Testing Best Practices
-
-```python
-# Good - Descriptive test names
-def test_validation_reports_missing_column_for_entity():
-    """Test that validation reports non-existent columns clearly."""
-    pass
-
-# Bad - Generic names
-def test_fix():
-    pass
-
-# Good - Arrange-Act-Assert
-def test_validation_caching():
-    # Arrange
-    service = ValidationService(mock_yaml, mock_cache)
-    mock_cache.get.return_value = None
-    
-    # Act
-    result = await service.validate("test", "all")
-    
-    # Assert
-    assert result.cache_hit is False
-    mock_cache.set.assert_called_once()
-
-# Good - One assertion focus per test
-def test_validation_returns_issues():
-    result = await service.validate("test", "all")
-    assert isinstance(result.issues, list)
-
-def test_validation_includes_project_name():
-    result = await service.validate("test", "all")
-    assert result.project_name == "test"
-
-# Bad - Multiple unrelated assertions
-def test_validation():
-    result = await service.validate("test", "all")
-    assert result.project_name == "test"
-    assert len(result.issues) > 0
-    assert result.cache_hit is False
-    assert result.timestamp is not None
-```
-
-### Performance
-
-```typescript
-// Good - Derived data via computed
-const sortedIssues = computed(() => [...issues.value].sort((a, b) => a.severity.localeCompare(b.severity)));
-
-// Bad - Recompute imperatively on every render
-const sortedIssues = ref([]);
-watchEffect(() => {
-  sortedIssues.value = [...issues.value].sort((a, b) => a.severity.localeCompare(b.severity));
-});
-
-// Good - Debounce user input
-const debouncedSearch = useDebounceFn(() => performSearch(searchTerm.value), 500);
-watch(searchTerm, () => debouncedSearch());
-
-// Bad - Trigger on every keystroke
-watch(searchTerm, (value) => {
-  performSearch(value);
-});
-```
-
----
-
-## 9. Troubleshooting
-
-### Common Development Issues
-
-#### Backend Won't Start
-
-```bash
-# Check Python version
-python --version  # Should be 3.11+
-
-# Check virtual environment
-which python  # Should be in venv
-
-# Reinstall dependencies
-cd backend
-uv pip install -e ".[dev]" --force-reinstall
-
-# Check port availability
-lsof -i :8000
-```
-
-#### Frontend Won't Start
-
-```bash
-# Check Node version
-node --version  # Should be 18+
-
-# Clear cache and reinstall
-cd frontend
-rm -rf node_modules package-lock.json
-npm install
-
-# Check port availability
-lsof -i :5173
-```
-
-#### Tests Failing
-
-```bash
-# Backend - Run single test with verbose output
-cd backend
-uv run pytest tests/test_file.py::test_function -v -s
-
-# Frontend - Run single test
-cd frontend
-npx vitest ValidationPanel.spec.ts
-
-# Check for async issues
-# Ensure @pytest.mark.asyncio decorator present
-```
-
-#### Import Errors
-
-```bash
-# Backend - Check PYTHONPATH
-export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-
-# Verify package installed
-uv pip list | grep shape-shifter
-
-# Reinstall in editable mode
-cd backend
-uv pip install -e .
-```
-
-### Debugging
-
-#### Backend Debugging
-
-```python
-# Add breakpoint
-import pdb; pdb.set_trace()
-
-# Or use debugpy for VS Code
-import debugpy
-debugpy.listen(5678)
-debugpy.wait_for_client()
-```
-
-#### Frontend Debugging
-
-```typescript
-// Browser DevTools
-console.log('Debug:', variable);
-debugger;  // Breakpoint
-
-```
-
----
-
-## 10. AI-Friendly Development
-
-As this project grows, AI-assisted code work is affected less by raw file count and more by how much ambiguity, duplication, and noise exists in the workspace.
-
-### What Degrades AI Performance
-
-- Multiple competing implementations of the same behavior.
-- Stale or conflicting documentation.
-- Large dirty diffs and broad unrelated local changes.
-- Generated files, coverage output, logs, and build artifacts mixed into normal search paths.
-- Deprecated or archived code that looks authoritative.
-- Weak or inconsistent naming across layers.
-- Features whose behavior is spread across many unrelated files.
-
-### What Helps Most
-
-1. Keep architectural boundaries clear.
-2. Exclude generated and deprecated noise from normal search paths.
-3. Maintain concise, current architecture and workflow docs.
-4. Use strong, consistent naming for entities, stores, services, endpoints, and config.
-5. Keep feature logic locally coherent instead of scattering it across layers without clear ownership.
-6. Keep commits and pull requests small and scoped.
-7. Add focused regression tests for bug-prone workflows.
-8. Preserve one source of truth for schemas, mappings, and config structure.
-9. Clearly separate active code from archived, deprecated, or experimental code.
-10. When asking for AI help, include the affected workflow, expected behavior, actual behavior, and likely files.
-
-### Practical Guidance For This Repo
-
-- Keep deprecated and archived material visibly separated from active implementation.
-- Keep docs in `docs/` current and concise, especially architecture and development workflow guidance.
-- Avoid duplicate implementations of frontend state handling, backend mapping logic, and config transformation rules.
-- Prefer focused fixes with tests over broad mixed-purpose changes.
-- When possible, isolate generated output, logs, coverage, and temporary files from normal workspace search.
-
-The biggest performance cost for AI in a large repository is not size alone. It is uncertainty. Reducing ambiguity, duplication, and search noise usually improves AI effectiveness more than simply reducing line count.
-
----
-
-## 11. Contributing
-
-### Workflow
-
-1. **Create Branch**
+1. **Create a branch** from `dev`:
    ```bash
    git checkout -b feature/my-feature
    ```
 
-2. **Make Changes**
-   - Write code
-   - Write tests
-   - Update documentation
+2. **Make changes.** Run the relevant server locally to verify behavior.
 
-3. **Run Tests**
+3. **Run targeted tests** for the changed area. Run broader tests when the change crosses layers.
+
+4. **Format and lint** before committing:
    ```bash
-   # Backend
-   cd backend
-   uv run pytest tests/ -v
-   
-   # Frontend
-   cd frontend
-   npm run test
+   make tidy && make lint
    ```
 
-4. **Lint Code**
-   ```bash
-   # Backend
-   cd backend
-   uv run ruff check app/ tests/
-   
-   # Frontend
-   cd frontend
-   npm run lint
-   ```
+5. **Commit** using [Conventional Commits](https://www.conventionalcommits.org/):
+   - `feat(scope): ...` — new feature (minor release)
+   - `fix(scope): ...` — bug fix (patch release)
+   - `docs`, `refactor`, `test`, `chore` — no release
+   - Append `!` or use `BREAKING CHANGE:` footer for major releases.
 
-5. **Commit Changes**
-   ```bash
-   git add .
-   git commit -m "feat(feature-area): add my feature"
-   ```
-
-6. **Push and Create PR**
-   ```bash
-   git push origin feature/my-feature
-   # Create pull request on GitHub
-   ```
-
-### Commit Convention
-
-This project uses **[Conventional Commits](https://www.conventionalcommits.org/)** with **semantic-release** for automated versioning and changelog generation.
-
-#### Commit Message Format
-
-```
-<type>[optional scope]: <description>
-
-[optional body]
-
-[optional footer(s)]
-```
-
-#### Commit Types and Release Impact
-
-- **feat**: New feature (→ **MINOR** release, e.g., 1.1.0)
-- **fix**: Bug fix (→ **PATCH** release, e.g., 1.0.1)
-- **docs**: Documentation changes (→ **PATCH** if scope is README)
-- **refactor**: Code refactoring (→ **PATCH** release)
-- **perf**: Performance improvements (→ **PATCH** release)
-- **style**: Code style changes (→ **PATCH** release)
-- **test**: Adding or updating tests (no release)
-- **build**: Build system changes (no release)
-- **ci**: CI/CD configuration (no release)
-- **chore**: Other maintenance tasks (no release)
-- **revert**: Revert a previous commit (no release)
-
-#### Common Scopes
-
-- `core`: Core processing pipeline
-- `backend`: Backend API
-- `frontend`: Frontend application
-- `config`: Project handling
-- `validation`: Validation services
-- `cache`: Caching functionality
-- `loaders`: Data loaders
-- `api`: API endpoints
-- `deps`: Dependencies
-
-#### Examples
-
-```bash
-# Features (MINOR release)
-git commit -m "feat(cache): implement 3-tier cache validation"
-git commit -m "feat(frontend): add entity preview with auto-refresh"
-
-# Bug fixes (PATCH release)
-git commit -m "fix(validation): prevent mutation in resolve_references"
-git commit -m "fix(frontend): resolve dark mode text color issue"
-
-# Documentation (PATCH if scope is README)
-git commit -m "docs(README): add installation instructions"
-git commit -m "docs(api): update endpoint examples"
-
-# Refactoring (PATCH release)
-git commit -m "refactor(services): extract validation logic"
-
-# Tests (no release)
-git commit -m "test(loaders): add UCanAccessSqlLoader tests"
-
-# Chores (no release)
-git commit -m "chore(deps): bump pydantic to 2.5.0"
-git commit -m "chore: update pre-commit hooks"
-```
-
-#### Breaking Changes (MAJOR release)
-
-Use `!` or `BREAKING CHANGE:` footer to trigger a **MAJOR** release (e.g., 2.0.0):
-
-```bash
-# With ! notation
-git commit -m "feat(api)!: change validation response format"
-
-# With footer
-git commit -m "feat(api): change validation response format
-
-BREAKING CHANGE: validation errors now return array instead of object.
-Update API clients to handle the new format."
-```
-
-#### Multi-line Commits
-
-Use the body for detailed explanations:
-
-```bash
-git commit -m "feat(cache): implement hash-based invalidation
-
-Add xxhash-based entity hashing to detect changes
-beyond version numbers. Implements 3-tier validation:
-1. TTL check (300s)
-2. Config version comparison  
-3. Entity hash validation
-
-This prevents serving stale cached data when entity
-changes without version bump.
-
-Closes #123"
-```
-
-#### Best Practices
-
-- **Keep subject line under 72 characters**
-- **Use imperative mood**: "add" not "added" or "adds"
-- **Don't capitalize** the first letter
-- **Don't end** with a period
-- **Reference issues**: Use `Closes #123`, `Fixes #456` in footer
-- **Explain why**: Use body to explain **what** and **why**, not **how**
-- **Skip CI when needed**: Add `[skip ci]` to skip CI builds
-- **Add co-authors**: `Co-authored-by: Name <email@example.com>`
-
-#### Common Mistakes
-
-❌ **Avoid**:
-```bash
-git commit -m "Fixed bug"           # No type
-git commit -m "feat: Added feature." # Capitalized + period
-git commit -m "WIP"                 # Not descriptive
-```
-
-✅ **Prefer**:
-```bash
-git commit -m "fix(validation): prevent null pointer in entity resolution"
-git commit -m "feat(api): add batch validation endpoint"
-git commit -m "refactor(core): simplify dependency resolution"
-```
-
-#### Automated Releases
-
-Semantic-release automatically:
-- Analyzes commits on `main` branch
-- Determines next version number
-- Generates `CHANGELOG.md`
-- Updates version in `pyproject.toml`
-- Creates git tags
-
-See `.releaserc.json` for full configuration.
-
-For complete details, see the **Conventional Commit Messages** section in [TODO.md](../TODO.md).
+6. **Open a pull request** against `dev`. Semantic-release runs on merges to `main` and generates version tags and `CHANGELOG.md` automatically.
 
 ---
 
-## Related Documentation
+## Extending the System
 
-- [Design](DESIGN.md) - Detailed architecture
-- [User Guide](USER_GUIDE.md) - End-user documentation
-- [Testing Guide](TESTING.md) - Testing procedures
-- [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax
-- [API Reference](API_REFERENCE.md) - API documentation
+- **New data loader**: subclass `DataLoader` in `src/loaders/`, register with `@DataLoaders.register(key="...")`, define `schema: ClassVar[DriverSchema]`.
+- **New validator**: subclass `ConstraintValidator` in `src/validators/`, register with `@Validators.register(key="...", stage="pre-merge|post-merge")`.
+- **New ingester**: create `ingesters/<name>/ingester.py`, implement the `Ingester` protocol, register with `@Ingesters.register(key="...")`. See `.github/instructions/ingesters.instructions.md`.
+- **New API endpoint**: add router in `backend/app/api/v1/endpoints/`, register in `backend/app/api/v1/api.py`, define Pydantic models in `backend/app/models/`, implement service in `backend/app/services/`.
 
 ---
 
-**Document Version**: 1.1  
-**Last Updated**: December 30, 2025  
-**For**: Shape Shifter Project Editor v0.1.0
+## Debugging and Troubleshooting
+
+**Backend won't start:**
+```bash
+which python            # Should point to .venv/bin/python
+make install            # Reinstall if environment is wrong
+lsof -i :8013          # Check if port is in use
+```
+
+**Import errors:** Always run Python commands through `uv run`, which sets `PYTHONPATH=.` automatically. If still failing:
+```bash
+PYTHONPATH=.:backend uv run pytest backend/tests -v
+```
+
+**Async test failures:** ensure `@pytest.mark.asyncio` is on the test function and `pytest-asyncio` is installed.
+
+**Frontend dev server issues:**
+```bash
+make frontend-clear     # Clear Vite cache and dist
+make frontend-install   # Reinstall pnpm dependencies
+lsof -i :5173          # Check if port is in use
+```
+
+**MS Access / JVM errors:** Java JRE must be installed (`sudo apt install default-jre-headless`). Run `scripts/install-ucanaccess.sh` to install the UCanAccess JAR. The JVM initializes once at backend startup; restart the backend if initialization fails.
+
+**Log output:** logs go to `logs/backend.log` when running via `make backend-run-log`. For pytest debug output, add `-s`.
+
+---
+
+## AI-Friendly Development
+
+As this project grows, AI-assisted code work is affected less by raw file count and more by how much ambiguity, duplication, and noise exists in the workspace.
+
+**What degrades AI performance:**
+- Multiple competing implementations of the same behavior
+- Stale or conflicting documentation
+- Generated files, coverage output, logs, and build artifacts mixed into normal search paths
+- Deprecated or archived code that looks authoritative
+- Features spread across many unrelated files with no clear owner
+
+**What helps most:**
+1. Keep architectural boundaries clear and enforced.
+2. Maintain concise, current docs — especially architecture and workflow guidance.
+3. Use strong, consistent naming across entities, stores, services, endpoints, and config.
+4. Keep feature logic locally coherent rather than scattered across layers.
+5. Keep commits and pull requests small and scoped.
+6. Add focused regression tests for bug-prone workflows.
+7. When asking for AI help, include: affected workflow, expected behavior, actual behavior, and likely files.
+
+The biggest performance cost for AI in a large repository is not size — it is uncertainty. Reducing ambiguity, duplication, and search noise usually improves AI effectiveness more than reducing line count.
+
+---
+
+## Related Documents
+
+- [DESIGN.md](DESIGN.md) — architecture, component responsibilities, key flows, design decisions
+- [TESTING.md](TESTING.md) — test strategy, levels, and repository-specific testing guidance
+- [OPERATIONS.md](OPERATIONS.md) — environments, deployment, CI/CD, rollback, and observability
+- [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — complete YAML project configuration reference
+- [USER_GUIDE.md](USER_GUIDE.md) — end-user documentation for the editor UI
+- `.github/instructions/` — task-specific AI coding guidance (frontend, ingesters, validators, YAML config, etc.)
+- API reference: `http://localhost:8013/api/v1/docs` when running locally
