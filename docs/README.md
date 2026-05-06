@@ -64,9 +64,10 @@ These are the primary system documentation files:
   - Troubleshooting and debugging
   - Contributing guidelines
 
-- **[PROPOSAL_WRITING_GUIDE.md](PROPOSAL_WRITING_GUIDE.md)**
+- **[proposal-writing-guide.instructions.md](../.github/instructions/proposal-writing-guide.instructions.md)**
   - Rules for writing short, problem-focused design proposals
   - Keeps proposal documents precise, concrete, and decision-oriented
+  - Moved to `.github/instructions/` so it loads automatically when editing proposals
 
 - **[templates/PROPOSAL_TEMPLATE.md](templates/PROPOSAL_TEMPLATE.md)**
   - Default template for new design proposals
