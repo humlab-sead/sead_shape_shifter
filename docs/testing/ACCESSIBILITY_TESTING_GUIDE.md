@@ -331,13 +331,13 @@ Document any known accessibility issues:
 
 ### Summary
 
-| Category | Pass | Fail | Notes |
-|----------|------|------|-------|
-| Keyboard Navigation | X/Y | 0 | |
-| Screen Reader | X/Y | 0 | |
-| Color Contrast | X/Y | 0 | |
-| Focus Management | X/Y | 0 | |
-| ARIA Implementation | X/Y | 0 | |
+| Category            | Pass | Fail | Notes |
+|---------------------|------|------|-------|
+| Keyboard Navigation | X/Y  | 0    |       |
+| Screen Reader       | X/Y  | 0    |       |
+| Color Contrast      | X/Y  | 0    |       |
+| Focus Management    | X/Y  | 0    |       |
+| ARIA Implementation | X/Y  | 0    |       |
 
 ### Automated Test Results
 
