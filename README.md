@@ -425,6 +425,7 @@ Comprehensive documentation is available in the `docs/` directory:
 - [CONFIGURATION_GUIDE.md](docs/CONFIGURATION_GUIDE.md) - Complete YAML configuration reference
 - [DESIGN.md](docs/DESIGN.md) - System architecture and component overview
 - [DEVELOPMENT.md](docs/DEVELOPMENT.md) - Development setup and contribution guidelines
+- [OPERATIONS.md](docs/OPERATIONS.md) - Deployment, CI/CD, and operational procedures
 - [USER_GUIDE.md](docs/USER_GUIDE.md) - End-user documentation
 - [TESTING.md](docs/TESTING.md) - Testing procedures and guidelines
 - [shapeshifter-configuration.instructions.md](.github/instructions/shapeshifter-configuration.instructions.md) - AI-focused validation rules for project files
