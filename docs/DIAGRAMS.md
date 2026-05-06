@@ -838,6 +838,380 @@ flowchart LR
     U1 --> UC1 & UC2 & UC3
     U2 --> UC4 & UC5 & UC6
     U3 --> UC7 & UC8 & UC9
+
+---
+
+## 14. Component Architecture
+
+```mermaid
+flowchart TB
+    subgraph Browser["Web Browser"]
+        direction LR
+        subgraph FE["Frontend (Vue 3 + Pinia)"]
+            direction TB
+            FE_VIEWS["Views\nProjects · Entity Editor\nDependency Graph · Validation\nReconciliation · YAML Editor"]
+            FE_STORES["Pinia Stores\nproject · entity · validation\nsession · data-source"]
+            FE_API["API Layer (Axios)\n/api/v1/*"]
+            FE_VIEWS --> FE_STORES --> FE_API
+        end
+    end
+
+    subgraph Container["Docker Container (port 8012)"]
+        direction TB
+        subgraph BE["Backend (FastAPI)"]
+            direction TB
+            BE_ROUTERS["Routers\nprojects · entities · preview\nvalidation · execute · ingesters\nreconciliation · sessions · logs"]
+            BE_SERVICES["Services\nProjectService · ValidationService\nShapeShiftService · SchemaService\nReconciliationService · SessionService"]
+            BE_MAPPERS["Mappers\nProjectMapper\n(env var + directive resolution)"]
+            BE_CLIENTS["Clients\nSimsClient · ReconciliationClient"]
+            BE_STATE["ApplicationState\n(lifespan singleton)"]
+            BE_ROUTERS --> BE_SERVICES --> BE_MAPPERS
+            BE_SERVICES --> BE_STATE
+            BE_SERVICES --> BE_CLIENTS
+        end
+
+        subgraph CORE["Core (src/)"]
+            direction TB
+            CORE_NORM["ShapeShifter / ProcessState\n(orchestrator)"]
+            CORE_LOADERS["DataLoaders\nsql · csv · xlsx · fixed"]
+            CORE_VALID["Validators\nconstraint · cardinality · FK"]
+            CORE_DISPATCH["Dispatchers\nexcel · csv · database"]
+            CORE_SPEC["Specifications\n(DAG, references, identity)"]
+            CORE_NORM --> CORE_LOADERS
+            CORE_NORM --> CORE_VALID
+            CORE_NORM --> CORE_DISPATCH
+            CORE_SPEC --> CORE_NORM
+        end
+
+        BE_MAPPERS --> CORE_NORM
+    end
+
+    subgraph EXT["External Systems"]
+        FS["File System\nYAML · logs · output · backups"]
+        DB["Source Databases\nPostgreSQL · SQLite · MS Access"]
+        SIMS["SIMS Service\n(identity resolution)"]
+        RECON["Reconciliation Service\n(OpenRefine protocol)"]
+    end
+
+    FE_API -->|REST /api/v1| BE_ROUTERS
+    CORE_LOADERS --> DB
+    CORE_DISPATCH --> FS
+    BE_SERVICES --> FS
+    BE_CLIENTS --> SIMS
+    BE_CLIENTS --> RECON
+
+    classDef fe fill:#e8f4fd,stroke:#4a90d9,color:#1a3a5c;
+    classDef be fill:#f0f7e6,stroke:#5a9e3a,color:#1a3c10;
+    classDef core fill:#fdf3e8,stroke:#d48a2a,color:#4a2800;
+    classDef ext fill:#f5f5f5,stroke:#999,color:#333;
+
+    class FE_VIEWS,FE_STORES,FE_API fe;
+    class BE_ROUTERS,BE_SERVICES,BE_MAPPERS,BE_CLIENTS,BE_STATE be;
+    class CORE_NORM,CORE_LOADERS,CORE_VALID,CORE_DISPATCH,CORE_SPEC core;
+    class FS,DB,SIMS,RECON ext;
+```
+
+---
+
+## 15. Project Load – Sequence
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant FE as Frontend (Pinia)
+    participant BE as Backend
+    participant PM as ProjectMapper
+    participant FS as File System
+
+    U->>FE: Select project
+    FE->>BE: GET /api/v1/projects/{name}
+    BE->>FS: Read YAML file
+    FS-->>BE: Raw YAML content
+    BE->>PM: to_api_config(raw_yaml, name)
+    note over PM: Preserve ${ENV_VARS}<br/>and @directives unchanged
+    PM-->>BE: Project (API model, unresolved)
+    BE-->>FE: Project JSON
+    FE->>FE: Store in projectStore
+    FE-->>U: Render entity list and editor
+```
+
+---
+
+## 16. Entity Preview – Sequence
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant ED as Monaco Editor
+    participant FE as Frontend (Pinia)
+    participant BE as Backend
+    participant CACHE as ShapeShiftService (Cache)
+    participant PM as ProjectMapper
+    participant CORE as Core (ShapeShifter)
+    participant DB as Source Database
+
+    U->>ED: Edit entity YAML
+    ED->>FE: onChange (debounced 300 ms)
+    FE->>BE: POST /api/v1/preview
+    BE->>CACHE: Check 3-tier cache
+    alt Cache hit (TTL valid, version unchanged, hash unchanged)
+        CACHE-->>BE: Cached preview rows
+    else Cache miss
+        CACHE->>PM: to_core(api_project)
+        note over PM: Resolve ${ENV_VARS}<br/>and @directives
+        PM-->>CACHE: Resolved core project
+        CACHE->>CORE: preview(entity, limit)
+        CORE->>DB: Execute query / load file
+        DB-->>CORE: Raw data
+        CORE-->>CACHE: Preview DataFrame
+        CACHE->>CACHE: Store with TTL + hash
+        CACHE-->>BE: Preview rows
+    end
+    BE-->>FE: Preview data (JSON)
+    FE-->>U: Update split-view grid
+```
+
+---
+
+## 17. Validation – Sequence
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant FE as Frontend
+    participant BE as Backend
+    participant VS as ValidationService
+    participant PM as ProjectMapper
+    participant CORE as Core (Specifications)
+    participant DB as Source Database
+
+    U->>FE: Click "Check Project"
+    FE->>BE: POST /api/v1/validate
+    BE->>VS: validate(project_name, options)
+
+    VS->>PM: to_core(api_project)
+    PM-->>VS: Resolved core project
+
+    VS->>CORE: Structural validation
+    note over CORE: DAG cycle check<br/>entity references<br/>identity rules<br/>YAML schema
+    CORE-->>VS: Structural issues
+
+    VS->>CORE: Constraint validation
+    note over CORE: FK definitions<br/>cardinality rules<br/>functional dependencies
+    CORE-->>VS: Constraint issues
+
+    opt Data validation enabled
+        VS->>DB: Fetch sample rows
+        DB-->>VS: Row sample
+        VS->>CORE: Data validators (columns, types, FK values)
+        CORE-->>VS: Data issues
+    end
+
+    VS-->>BE: ValidationResult (errors / warnings / info)
+    BE-->>FE: ValidationResult JSON
+    FE-->>U: Show grouped issues in validation panel
+```
+
+---
+
+## 18. Execution – Sequence
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant FE as Frontend
+    participant BE as Backend
+    participant PM as ProjectMapper
+    participant CORE as ShapeShifter
+    participant PROC as ProcessState
+    participant DB as Source Database
+    participant OUT as Output (File / DB)
+
+    U->>FE: Click "Execute"
+    FE->>BE: POST /api/v1/execute
+    BE->>PM: to_core(api_project)
+    note over PM: Resolve all env vars<br/>and directives
+    PM-->>BE: Resolved core project
+    BE->>CORE: normalize()
+    CORE->>PROC: Topological sort entities
+    PROC-->>CORE: Ordered entity list
+
+    loop For each entity (dependency order)
+        alt Entity type == "merged"
+            CORE->>CORE: Collect branch DataFrames
+            CORE->>CORE: Inject discriminator column
+            CORE->>CORE: Propagate sparse FK columns
+            CORE->>CORE: Concatenate branches
+            CORE->>CORE: Apply post-merge transforms
+        else Standard entity
+            CORE->>DB: Extract (DataLoader.load())
+            DB-->>CORE: Raw DataFrame
+            CORE->>CORE: Filter → Link → Unnest → Translate
+        end
+    end
+
+    CORE->>OUT: Store via Dispatcher (Excel / CSV / DB)
+    OUT-->>CORE: Done
+    CORE-->>BE: Execution result
+    BE-->>FE: Result JSON
+    FE-->>U: Show completion status
+```
+
+---
+
+## 19. Project Save – Sequence
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant FE as Frontend
+    participant BE as Backend
+    participant SS as SessionService
+    participant FS as File System
+    participant PM as ProjectMapper
+
+    U->>FE: Save project
+    FE->>BE: PUT /api/v1/projects/{name}
+    BE->>SS: Check session version (optimistic lock)
+    alt Version conflict
+        SS-->>BE: Version mismatch
+        BE-->>FE: 409 Conflict
+        FE-->>U: "Project changed since load – please refresh"
+    else Version OK
+        BE->>PM: to_core_dict(api_project)
+        note over PM: Preserve @directives<br/>and ${ENV_VARS} in output
+        PM-->>BE: YAML-ready dict
+        BE->>FS: Write timestamped backup
+        FS-->>BE: Backup written
+        BE->>FS: Write project YAML
+        FS-->>BE: Saved
+        BE->>SS: Increment version
+        BE-->>FE: 200 OK
+        FE-->>U: Project saved
+    end
+```
+
+---
+
+## 20. Entity Editing State
+
+```mermaid
+stateDiagram-v2
+    direction LR
+
+    [*] --> Unmodified : Project loaded
+    Unmodified --> Editing : User edits field or YAML
+    Editing --> Previewing : Debounce fires (300 ms)
+    Previewing --> Editing : Cache miss – query running
+    Previewing --> Unmodified : Save succeeds
+    Editing --> Unmodified : Save succeeds
+    Editing --> Error : Save fails (conflict / IO error)
+    Error --> Editing : User corrects and retries
+    Unmodified --> [*] : Project closed
+
+    note right of Previewing
+        POST /api/v1/preview
+        3-tier cache checked
+    end note
+
+    note right of Error
+        Version conflict or
+        file system error
+    end note
+
+    classDef clean fill:#dff7e8,stroke:#2e9f5b,color:#1d3a29;
+    classDef active fill:#e8f4fd,stroke:#4a90d9,color:#1a3a5c;
+    classDef running fill:#fff7d6,stroke:#d6a300,color:#2b2b2b;
+    classDef err fill:#ffe0e0,stroke:#d64545,color:#4a1f1f;
+
+    class Unmodified clean;
+    class Editing active;
+    class Previewing running;
+    class Error err;
+```
+
+---
+
+## 21. Preview Cache State
+
+```mermaid
+stateDiagram-v2
+    direction LR
+
+    [*] --> Cold : Application start
+    Cold --> Warming : Preview request received
+    Warming --> Warm : Query succeeds + result cached
+    Warming --> Cold : Query fails
+    Warm --> Stale : Project YAML saved (version changed)
+    Warm --> Stale : Entity config edited (hash changed)
+    Warm --> Expired : TTL elapsed (300 s)
+    Stale --> Warming : Next preview request
+    Expired --> Warming : Next preview request
+
+    note right of Warm
+        TTL valid
+        Version matches
+        Hash matches
+    end note
+
+    note right of Stale
+        Version or hash
+        mismatch detected
+    end note
+
+    classDef cold fill:#eeeeee,stroke:#888,color:#333;
+    classDef warming fill:#fff7d6,stroke:#d6a300,color:#2b2b2b;
+    classDef warm fill:#dff7e8,stroke:#2e9f5b,color:#1d3a29;
+    classDef stale fill:#fde8d0,stroke:#d48a2a,color:#4a2800;
+    classDef expired fill:#ffe0e0,stroke:#d64545,color:#4a1f1f;
+
+    class Cold cold;
+    class Warming warming;
+    class Warm warm;
+    class Stale stale;
+    class Expired expired;
+```
+
+---
+
+## 22. Validation Result State
+
+```mermaid
+stateDiagram-v2
+    direction LR
+
+    [*] --> NotRun : Project opened
+    NotRun --> Running : User triggers validation
+    Running --> Valid : No issues found
+    Running --> Invalid : Issues found
+    Valid --> Stale : Project or entity modified
+    Invalid --> Stale : Project or entity modified
+    Stale --> Running : User re-runs validation
+    Valid --> [*] : Project closed
+    Invalid --> [*] : Project closed
+
+    note right of Invalid
+        Issues grouped by severity:
+        error · warning · info
+    end note
+
+    note right of Stale
+        Results shown but
+        marked out-of-date
+    end note
+
+    classDef notrun fill:#eeeeee,stroke:#888,color:#333;
+    classDef running fill:#fff7d6,stroke:#d6a300,color:#2b2b2b;
+    classDef valid fill:#dff7e8,stroke:#2e9f5b,color:#1d3a29;
+    classDef invalid fill:#ffe0e0,stroke:#d64545,color:#4a1f1f;
+    classDef stale fill:#fde8d0,stroke:#d48a2a,color:#4a2800;
+
+    class NotRun notrun;
+    class Running running;
+    class Valid valid;
+    class Invalid invalid;
+    class Stale stale;
+```
     
     UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC7 & UC8 & UC9 --> RESULT[Clean Data<br/>Ready for SEAD]
     
