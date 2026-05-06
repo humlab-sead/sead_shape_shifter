@@ -178,6 +178,15 @@ These are the primary system documentation files:
 
 ### Other Documents
 
+- **[presentations/PRESENTATION.md](presentations/PRESENTATION.md)**
+  - Marp slide deck: general system overview for the SEAD development team
+
+- **[presentations/PRESENTATION_ARCHAEOLOGISTS.md](presentations/PRESENTATION_ARCHAEOLOGISTS.md)**
+  - Marp slide deck: Shape Shifter overview for archaeologists and domain experts
+
+- **[presentations/EXECUTIVE_SUMMARY.md](presentations/EXECUTIVE_SUMMARY.md)**
+  - Short non-technical summary of Shape Shifter for stakeholders
+
 - **[other/DSL_EXTENSIBILITY_GUIDE.md](other/DSL_EXTENSIBILITY_GUIDE.md)**
   - Extension guide for adding new expression types or functions to the tiny DSL after the initial implementation.
   - Covers AST, parser, validator, evaluator, and backend update points.
