@@ -55,6 +55,7 @@ deploy-shell:
 #   - docker-build-tag TAG=v1.0.0 : Build from specific tag/branch (production)
 ################################################################################guard-user guard-docker-files-exists
 
+.PHONY: update-deploy-scripts
 update-deploy-scripts: guard-user
 	@./rsync-to-sead-tools
 
