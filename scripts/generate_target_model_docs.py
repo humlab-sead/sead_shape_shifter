@@ -52,10 +52,78 @@ def main():
     """Generate documentation in multiple formats using Core generator."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Generate human-readable documentation from target model YAML")
-    parser.add_argument("input", type=Path, help="Input YAML file (e.g., sead_standard_model.yml)")
-    parser.add_argument("--format", choices=["html", "markdown", "excel", "all"], default="all", help="Output format")
-    parser.add_argument("--output-dir", type=Path, default=Path("docs/generated"), help="Output directory")
+    parser = argparse.ArgumentParser(
+        description="Generate human-readable documentation from a target model YAML specification.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Output formats
+--------------
+  html      Interactive web page with entity cards, live search, domain groupings,
+            and relationship arrows. Recommended for stakeholder presentations and
+            reference documentation. Opens in any browser; no software required.
+
+  excel     Excel workbook with three sheets (Entities, Columns, Relationships).
+            Sortable and filterable. Best for review workshops, gap analysis, and
+            collecting structured feedback. Add review columns ("Complete?",
+            "Priority", "Comments") and distribute to domain experts.
+
+  markdown  Plain-text Markdown grouped by domain. Renders on GitHub/GitLab.
+            Version-controlled and can be converted to PDF or Word.
+
+  all       Generates all three formats in one pass (default).
+
+Output files
+------------
+  Files are written to --output-dir (default: docs/generated/) using the input
+  file stem as the base name, e.g.:
+    docs/generated/sead_standard_model.html
+    docs/generated/sead_standard_model.md
+    docs/generated/sead_standard_model.xlsx
+
+Understanding entity cards (HTML)
+----------------------------------
+  ┌─────────────────────────────────────┐
+  │ sample_group                        │  ← entity name
+  │ → tbl_sample_groups                 │  ← target table
+  │ [Required] [data]                   │  ← status / role badges
+  │ Collection of related samples       │  ← description
+  │ 📊 6 column(s)                      │  ← metadata
+  │ sample_group → site (required)      │  ← relationships
+  └─────────────────────────────────────┘
+
+  Badges:
+    Required (red)   – must be included in every project
+    Optional (green) – can be omitted if not needed
+    Role (blue): data | classifier | bridge | lookup
+
+  Relationship arrows:
+    entity_a → entity_b                  entity_a references entity_b
+    entity_a → entity_b (required)       the relationship is mandatory
+    entity_a → entity_b via bridge_tbl   relationship goes through a bridge entity
+
+Examples
+--------
+  # Generate all formats from the bundled SEAD spec
+  python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml
+
+  # HTML only (recommended for stakeholder review)
+  python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format html
+
+  # Excel for gap-analysis workshop
+  python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format excel
+
+  # Custom output directory
+  python scripts/generate_target_model_docs.py my_model.yml --format all --output-dir /tmp/model-docs
+""",
+    )
+    parser.add_argument("input", type=Path, help="Input YAML file (e.g., resources/target_models/sead_standard_model.yml)")
+    parser.add_argument(
+        "--format",
+        choices=["html", "markdown", "excel", "all"],
+        default="all",
+        help="Output format: html (interactive), markdown (plain text), excel (spreadsheet), all (default)",
+    )
+    parser.add_argument("--output-dir", type=Path, default=Path("docs/generated"), help="Output directory (default: docs/generated)")
 
     args = parser.parse_args()
 
