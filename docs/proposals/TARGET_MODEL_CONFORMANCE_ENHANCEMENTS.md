@@ -19,9 +19,9 @@
 - [ ] `schema_aware_append` — appended columns conform to target model column spec
 
 ### Data Conformance Validators
-- [ ] `nullable` — required-not-null columns must have no null values in produced data
-- [ ] `type_compatibility` — column values must be compatible with the declared logical type (integer, string, date, …)
-- [ ] `fk_referential_integrity` — FK values must exist in the parent entity's output
+- [x] `nullable` — required-not-null columns must have no null values in produced data
+- [x] `type_compatibility` — column values must be compatible with the declared logical type (integer, string, date, …)
+- [x] `fk_referential_integrity` — FK values must exist in the parent entity's output
 
 See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) for design rationale and implementation notes.
 
