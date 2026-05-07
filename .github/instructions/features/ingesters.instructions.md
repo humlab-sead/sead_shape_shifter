@@ -1,9 +1,5 @@
 ---
-description: "Use when adding or modifying ingesters or ingester tests. Covers protocol, discovery, config, and test rules for the top-level ingesters system."
-name: "Ingester Development"
-applyTo:
-  - "ingesters/**/*.py"
-  - "backend/tests/ingesters/**/*.py"
+applyTo: "ingesters/**/*.py,backend/tests/ingesters/**/*.py"
 ---
 # Ingester Development
 

@@ -1,21 +1,18 @@
 ---
 description: "Use for DEVELOPMENT.md and other developer-facing documentation in sead_shape_shifter, including local setup, contributor workflow, development practices, code quality checks, and day-to-day implementation guidance."
-name: "Development Docs"
+applyTo: "docs/DEVELOPMENT.md"
 ---
 # Development Docs
 
 ## Purpose
 
-- Use this instruction when editing `docs/DEVELOPMENT.md` or other developer-facing documentation.
-- Keep `docs/DEVELOPMENT.md` focused on how contributors set up, understand, modify, validate, and extend the codebase during day-to-day development.
-- Write for developers working on the repository, not for operators of deployed environments.
-- Treat the current repository structure, configuration, scripts, tool definitions, and documented development conventions as the primary source of truth.
+Keep `docs/DEVELOPMENT.md` focused on how contributors set up, understand, modify, validate, and extend the codebase during day-to-day development. Write for developers working on the repository, not for operators of deployed environments.
+
+When editing an existing document, preserve its structure unless reorganization is explicitly requested.
 
 ## What belongs in `docs/DEVELOPMENT.md`
 
-- Development purpose and intended audience
-- Prerequisites and required tools
-- Local setup and bootstrap steps
+- Prerequisites and local setup and bootstrap steps
 - Local configuration needed for development
 - Project structure and code organization
 - Common development commands
@@ -25,17 +22,6 @@ name: "Development Docs"
 - Database or migration workflow, if relevant to development
 - Debugging and troubleshooting guidance for common development issues
 - Pointers to related design, testing, and operations documentation
-
-## What does not belong in `docs/DEVELOPMENT.md`
-
-- Full production deployment or release procedures
-- Runtime operations, rollback, backup, or incident procedures
-- High-level architecture rationale that belongs in design documentation
-- Endpoint-by-endpoint API reference that should come from code or generated API docs
-- Exhaustive unit-test theory or detailed test-case catalogs
-- General Git or Python tutorials unrelated to repository-specific workflow
-
-Those topics belong in operations documentation, design/architecture documentation, testing documentation, generated API documentation, or code-level documentation.
 
 ## Scope boundaries
 
@@ -48,56 +34,23 @@ Those topics belong in operations documentation, design/architecture documentati
 
 ## Writing rules
 
-- Keep the document scoped, concise, and practical.
 - Include enough detail for a contributor to set up the project, run it locally, validate changes, and follow expected repository practices without unnecessary background reading.
-- Prefer concrete repository-specific wording: commands, scripts, file paths, config files, tools, and validation steps.
-- Prefer short sections, concrete bullets, and explicit procedures over long narrative prose.
-- Avoid repeating information already defined in scripts, config, workflow files, or tool configuration when a short explanation plus a reference is enough.
-- Distinguish one-time setup from day-to-day development workflow.
-- Distinguish local development configuration from runtime or deployment configuration.
-- Distinguish developer validation steps from CI pipeline behavior.
+- Prefer concrete repository-specific wording: commands, scripts, file paths, config files, and tools over generic descriptions.
+- Avoid repeating information already defined in scripts, config, or workflow files when a short explanation plus a reference is enough.
+- Distinguish one-time setup from day-to-day development workflow; distinguish local dev configuration from runtime or deployment configuration; distinguish developer validation from CI behavior.
 - Keep repository-specific conventions explicit when they differ from generic Python or FastAPI practice.
-- Include commands only when they are part of the supported development workflow.
-- Every section should answer a real developer question related to setup, editing, validating, debugging, or contributing.
-- If a section does not support developer action, shorten it or remove it.
-- When a process is intentionally not defined yet, keep the section present and mark it clearly as `TBD` instead of inventing process.
-
-## Concision and size expectations
-
-- Keep `docs/DEVELOPMENT.md` scoped, concise, and useful as the main developer guide and entry point for day-to-day contribution.
-- Target length: about 800-1800 words.
-- Prefer staying under 2500 words.
-- If the document needs to grow beyond that, move detailed or specialized guidance into focused companion documents and keep `docs/DEVELOPMENT.md` as the concise overview and entry point.
-
-## Recommended section shape
-
-- Purpose
-- Audience and scope
-- Prerequisites
-- Local setup
-- Local configuration
-- Project structure
-- Common development commands
-- Code quality checks
-- Development workflow
-- Database and migration workflow
-- Debugging and troubleshooting
-- Related documents
+- Every section should answer a real developer question. If it does not support developer action, shorten it or remove it.
+- Mark intentionally undefined processes `TBD` rather than inventing process.
+- Target 800–1800 words; stay under 2500. Move specialized guidance to companion documents rather than expanding this file.
 
 ## Sources to trust
 
-- `README.md`
-- `pyproject.toml`
-- `requirements*.txt`
-- `.python-version`
-- `.github/workflows/`
-- `.github/scripts/`
-- `Makefile`
-- `docker/`
-- `config/`
-- `AGENTS.md`
-- `docs/DESIGN.md`
-- `docs/TESTING.md` TBD
-- `docs/OPERATIONS.md`
+- `Makefile` — supported development commands
+- `pyproject.toml` — dependencies, tools, and project metadata
+- `.python-version` — required Python version
+- `.github/workflows/` — CI behavior (distinguish from local workflow)
+- `AGENTS.md` — canonical conventions and architecture rules
+- `README.md` — project overview and entry-point links
+- `docs/DESIGN.md`, `docs/OPERATIONS.md` — cross-references for scope boundaries
 
 Verify development claims against current scripts, config, tool definitions, and repository structure before documenting them.

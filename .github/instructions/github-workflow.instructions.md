@@ -1,6 +1,5 @@
 ---
 description: "Use when asked to create a GitHub issue and commit changes, prepare commit messages, or document a change for issue plus commit workflow."
-name: "GitHub Workflow"
 ---
 # GitHub Workflow
 

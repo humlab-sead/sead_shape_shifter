@@ -1,9 +1,6 @@
 ---
 description: "Use when editing Vue 3, Pinia, or frontend API code in frontend/src. Covers script setup, stores, composables, and TypeScript conventions."
-name: "Frontend Conventions"
-applyTo:
-  - "frontend/src/**/*.vue"
-  - "frontend/src/**/*.ts"
+applyTo: "frontend/src/**/*.vue,frontend/src/**/*.ts"
 ---
 # Frontend Conventions
 

@@ -1,6 +1,6 @@
 ---
 description: "Use for OPERATIONS.md, deployment/runbook docs, environments, runtime configuration, CI/CD, observability, rollback, and incident-readiness documentation in sead_shape_shifter."
-name: "Operations Docs"
+applyTo: "docs/OPERATIONS.md"
 ---
 # Operations Docs
 
@@ -67,28 +67,13 @@ Those topics belong in developer-facing documentation, design/architecture docum
 - Prefer staying under 2500 words.
 - If the document needs to grow beyond that, move detailed or exceptional procedures into focused companion runbooks and keep `docs/OPERATIONS.md` as the concise overview and entry point.
 
-## Recommended section shape
-
-- Purpose
-- Environments
-- Operational assumptions and invariants
-- Configuration and secrets model
-- Data layout
-- Build artifacts
-- Deployment flow
-- CI pipeline stages
-- CD triggers and release process
-- Post-deployment verification
-- Rollback procedure
-- Health checks, observability, and alerting
-- Backup, recovery, and incident basics
-
 ## Sources to trust
 
-- `.github/workflows/`
-- `.github/scripts/`
-- `docker/`
-- `AGENTS.md`
-- `docs/DEVELOPMENT.md`
+- `docker/docker-compose.yml`, `docker/Dockerfile` — runtime service definitions
+- `docker/Makefile`, `docker/build.sh` — build and deployment scripts
+- `.github/workflows/` — CI/CD pipeline definitions
+- `backend/app/core/config.py` — runtime configuration and environment variable definitions
+- `AGENTS.md` — canonical architecture and operational rules
+- `docs/DEVELOPMENT.md` — scope boundary for local vs runtime configuration
 
-Verify operational claims against current workflow files, scripts, and runtime configuration before documenting them.
+Verify operational claims against current workflow files, Docker config, and runtime configuration before documenting them.

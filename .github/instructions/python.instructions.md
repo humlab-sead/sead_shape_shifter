@@ -1,11 +1,6 @@
 ---
 description: "Use when editing Python code in src, backend, ingesters, or tests. Covers API/Core boundaries, dependency injection, validators, loaders, and test patterns."
-name: "Python Architecture"
-applyTo:
-  - "src/**/*.py"
-  - "backend/**/*.py"
-  - "ingesters/**/*.py"
-  - "tests/**/*.py"
+applyTo: "src/**/*.py,backend/**/*.py,ingesters/**/*.py,tests/**/*.py"
 ---
 # Python Architecture
 

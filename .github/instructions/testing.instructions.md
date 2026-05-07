@@ -1,6 +1,6 @@
 ---
-description: "Use for TESTING.md and other testing-focused documentation in swedeb-api, including test strategy, test levels, validation scope, quality expectations, and repository-specific testing guidance."
-name: "Testing Docs"
+description: "Use for TESTING.md and other testing-focused documentation in sead_shape_shifter, including test strategy, test levels, validation scope, quality expectations, and repository-specific testing guidance."
+applyTo: "docs/TESTING.md"
 ---
 # Testing Docs
 
@@ -70,33 +70,14 @@ Those topics belong in development documentation, operations documentation, desi
 - Prefer staying under 2500 words.
 - If the document needs to grow beyond that, move detailed or specialized guidance into focused companion documents and keep `docs/TESTING.md` as the concise overview and entry point.
 
-## Recommended section shape
-
-- Purpose
-- Audience and scope
-- Testing goals
-- Test levels and responsibilities
-- Test environment and prerequisites
-- Test data, fixtures, and mocking strategy
-- Common test commands
-- Validation before merge
-- CI test execution
-- Troubleshooting and common pitfalls
-- Related documents
-
 ## Sources to trust
 
-- `tests/`
-- `pyproject.toml`
-- `pytest.ini`
-- `.github/workflows/`
-- `.github/scripts/`
-- `Makefile`
-- `docker/`
-- `config/`
-- `AGENTS.md`
-- `docs/DEVELOPMENT.md`
-- `docs/DESIGN.md`
-- `docs/OPERATIONS.md`
+- `tests/` — core test suite structure and patterns
+- `backend/tests/` — backend integration and API tests
+- `frontend/tests/`, `frontend/vitest.config.ts`, `frontend/playwright.config.ts` — frontend test config
+- `pyproject.toml` — pytest config and coverage settings
+- `.github/workflows/` — CI test execution and gating
+- `Makefile` — test commands in the supported workflow
+- `AGENTS.md` — canonical testing conventions
 
 Verify testing claims against the current test suite, test configuration, scripts, and CI workflows before documenting them.

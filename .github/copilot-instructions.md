@@ -1,105 +1,53 @@
 # Shape Shifter - AI Coding Instructions
 
-This file should stay small and always-on. Put task-specific guidance in `.github/instructions/*.instructions.md` so it loads only when relevant.
-
-## Documentation scope
-
-- Use current documentation in `docs/`.
-- Ignore `docs/archive/`.
-- Treat `docs/features/` as future backlog, not authoritative implementation guidance, unless the user asks about roadmap or planned features.
-- Start with `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/USER_GUIDE.md`, `docs/REQUIREMENTS.md`, `docs/TESTING.md`, `docs/OPERATIONS.md`, and `.github/instructions/shapeshifter-configuration.instructions.md`.
-- For proposal work, follow `.github/instructions/proposal-writing-guide.instructions.md` and use `docs/templates/PROPOSAL_TEMPLATE.md` unless asked otherwise.
+This file is always-on. Put task-specific guidance in `.github/instructions/` so it loads only when relevant.
 
 ## Repository structure
-
-Shape Shifter is a monorepo with these main components:
 
 - `src/`: core Python transformation engine
 - `backend/app/`: FastAPI backend
 - `frontend/`: Vue 3 + Vuetify frontend
 - `ingesters/`: pluggable ingester implementations
+- Python environment: `.venv/` at repo root
 
-Python uses the root `.venv/`.
+Core pipeline order: Extract → Filter → Link → Unnest → Translate → Store. Orchestrated by `ShapeShifter` in `src/normalizer.py` via `ProcessState`.
 
-Core pipeline order matters: Extract → Filter → Link → Unnest → Translate → Store. The orchestrator is `ShapeShifter` in `src/normalizer.py` using `ProcessState`.
+## Architecture invariants
 
-## Always-on architecture rules
-
-### API and Core separation
-
-- Keep API models in `backend/app/models/` and domain logic in `src/`.
-- Convert API ↔ Core with mappers.
-- Resolve environment variables and directives only at the mapper boundary.
-- Do not put business logic in API DTOs.
-- Do not import API-layer models into `src/`.
-
-### Circular dependencies
-
-- Prefer constructor injection or factory functions when services depend on each other.
-- Use `TYPE_CHECKING` imports for type hints.
-- Do not treat lazy imports inside methods as the long-term fix.
-
-### Pure domain validators
-
-- Validators in `src/validators/` must receive data and config; they do not fetch data.
-- Return domain validation issues, not API DTOs.
-- Backend orchestrators may fetch preview/full data and map domain issues to API models.
-
-### Identity and configuration rules
-
-- All relationships use local `system_id` values.
-- `keys` are business keys for matching and deduplication.
-- `public_id` names target/export identity columns and should end with `_id`.
-- Do not use external IDs as internal foreign-key values.
-- Directives such as `@include:` and `@value:` belong in YAML and API-layer models; core models should receive resolved values.
-
-### Core implementation patterns
-
-- Use the registry pattern for validators, loaders, filters, and ingesters.
-- Loader schemas belong on loader classes as `schema: ClassVar[DriverSchema]`.
+- API models in `backend/app/models/`; domain logic in `src/`. Convert between layers with mappers. Never import API models into `src/`.
+- Resolve `@include:`, `@value:`, and `${ENV_VAR}` directives **only** at the mapper boundary (`ProjectMapper.to_core()`). Core always receives resolved values.
+- All FK relationships use local `system_id` values. `keys` are business keys for deduplication. `public_id` names the export column and must end with `_id`.
+- Use the registry pattern for validators, loaders, filters, and ingesters (`@Validators.register(...)` etc.).
 - Use absolute imports only: `from src...` and `from backend.app...`.
-- Await loaders and check sync/async service boundaries carefully.
-
-## Workflow expectations
-
-- Use the unified environment at `.venv/` for Python work.
-- Common commands:
-  - `make install`
-  - `make backend-run`
-  - `make frontend-run`
-  - `make test`
-  - `uv run pytest tests -v`
-  - `uv run pytest backend/tests -v`
-  - `PYTHONPATH=.:backend uv run pytest backend/tests -v`
-  - `make lint`
-  - `make tidy`
-- Run targeted tests for the changed area before finishing.
-- Run broader tests when a change crosses layers.
-- When touching project YAML, validate against `.github/instructions/shapeshifter-configuration.instructions.md`.
 
 ## Code conventions
 
-- Use absolute imports.
-- Keep line length at 140.
-- Use Black and isort via `make tidy`.
-- Use `loguru.logger` for logging.
-- Add type hints to all functions.
+- Line length: 140. Format with `make tidy` (Black + isort).
+- Logging: `loguru.logger`. All functions must have type hints.
+- Naming: `snake_case` entities, `_id` suffix for public IDs, `/api/v1/{resource}` (plural) for endpoints.
 
-Naming:
+## Workflow
 
-- Entity names: `snake_case`
-- Public IDs must end with `_id`
-- API endpoints use `/api/v1/{resource}` with plural nouns
+- Install: `make install`. Backend: `make backend-run`. Frontend: `make frontend-run`.
+- Test: `make test` or `uv run pytest tests -v` (core) / `uv run pytest backend/tests -v` (backend).
+- Lint: `make lint`. Format: `make tidy`.
+- Run targeted tests before finishing; broader tests when a change crosses layers.
 
-## Task-specific instructions
+## Documentation scope
 
-Use the targeted files under `.github/instructions/` for detailed guidance instead of expanding this file again:
+- Use `docs/` (current). Ignore `docs/archive/`. Treat `docs/features/` as future backlog, not authoritative guidance.
+- For proposal work: follow `.github/instructions/proposal-writing-guide.instructions.md` and use `docs/templates/PROPOSAL_TEMPLATE.md`.
 
-- `python.instructions.md`: Python architecture, loaders, validators, and test patterns
-- `frontend.instructions.md`: Vue, Pinia, and frontend API conventions
-- `project-config.instructions.md`: `shapeshifter.yml` and configuration validation
-- `shapeshifter-configuration.instructions.md`: full YAML validation rules, entity types, identity system, FK patterns, and common errors
-- `github-workflow.instructions.md`: issue + commit workflow and commit hygiene
-- `ingesters.instructions.md`: ingester structure, discovery, config, and testing
+## Scoped instructions
+
+Most instruction files auto-load via `applyTo:` when a matching file is open — no manual reference needed:
+
+- `python.instructions.md` — all `src/`, `backend/`, `ingesters/`, `tests/` Python files
+- `frontend.instructions.md` — `frontend/src/**/*.vue` and `.ts`
+- `features/*.instructions.md` — feature-specific paths (entities, transforms, execution, validation, loaders, materialization, reconciliation, graph, ingesters, target-model, specifications)
+- `shapeshifter-configuration.instructions.md` and `project-config.instructions.md` — `**/shapeshifter.yml` and project YAML
+- `design/development/testing/operations/user-guide.instructions.md` — their respective `docs/` files
+
+Cross-cutting (no path trigger — load when relevant):
 - `diagrams.instructions.md`: Mermaid diagram style and conventions
-- `operations.instructions.md`: rules for writing and maintaining `docs/OPERATIONS.md`
+- `github-workflow.instructions.md`: issue creation and commit workflow

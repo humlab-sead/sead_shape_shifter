@@ -1,10 +1,6 @@
 ---
 description: "Use when validating or editing shapeshifter.yml, project YAML, entity configuration, mappings, or foreign-key configuration. Covers identity rules, directives, and common valid patterns."
-name: "Project Config Validation"
-applyTo:
-  - "**/shapeshifter.yml"
-  - "data/projects/**/*.yml"
-  - "data/projects/**/*.yaml"
+applyTo: "**/shapeshifter.yml,data/projects/**/*.yml,data/projects/**/*.yaml"
 ---
 # Project Config Validation
 
