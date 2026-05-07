@@ -136,23 +136,23 @@ def _coerce_compatible_merge_key_dtypes(
     Returns copies of the DataFrames only when a coercion is actually performed;
     otherwise returns the originals unchanged.
     """
-    local_modified = False
-    remote_modified = False
+    local_modified: bool = False
+    remote_modified: bool = False
 
     for left_key, right_key in zip(left_on, right_on):
         if left_key not in local_df.columns or right_key not in remote_df.columns:
             continue
 
-        left_col = local_df[left_key]
-        right_col = remote_df[right_key]
-        left_numeric = pd.api.types.is_numeric_dtype(left_col)
-        right_numeric = pd.api.types.is_numeric_dtype(right_col)
+        left_col: pd.Series  = local_df[left_key]
+        right_col: pd.Series = remote_df[right_key]
+        left_numeric: bool = pd.api.types.is_numeric_dtype(left_col)
+        right_numeric: bool = pd.api.types.is_numeric_dtype(right_col)
 
         if left_numeric == right_numeric:
             continue  # both numeric or both non-numeric — nothing to do
 
         if left_numeric and not right_numeric:
-            coerced = pd.to_numeric(right_col, errors="coerce")
+            coerced: pd.Series = pd.to_numeric(right_col, errors="coerce")
             if coerced.isna().sum() == right_col.isna().sum():
                 if not remote_modified:
                     remote_df = remote_df.copy()
@@ -160,7 +160,7 @@ def _coerce_compatible_merge_key_dtypes(
                 logger.debug(f"Coerced merge key '{right_key}' from object to numeric for join compatibility")
                 remote_df[right_key] = coerced
         else:
-            coerced = pd.to_numeric(left_col, errors="coerce")
+            coerced: pd.Series = pd.to_numeric(left_col, errors="coerce")
             if coerced.isna().sum() == left_col.isna().sum():
                 if not local_modified:
                     local_df = local_df.copy()
