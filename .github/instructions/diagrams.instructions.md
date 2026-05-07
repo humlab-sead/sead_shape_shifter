@@ -1,3 +1,6 @@
+---
+description: "Use when creating or editing Mermaid diagrams anywhere in the repository — style, layout, classDef conventions, and diagram type selection."
+---
 ## Mermaid diagram style guidance
 
 When creating or editing Mermaid diagrams, prefer diagrams that are clean, polished, and easy to scan.

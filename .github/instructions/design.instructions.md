@@ -1,102 +1,66 @@
 ---
-description: "Use for DESIGN.md and other design-focused documentation in sead_shape_shifter, including architecture, system structure, major design decisions, cross-cutting concerns, and technical rationale."
-name: "Design Docs"
+description: "Use for DESIGN.md and other architecture-focused documentation in sead_shape_shifter, including system structure, component boundaries, runtime flows, technical constraints, and major design decisions."
+applyTo: "docs/DESIGN.md"
 ---
 # Design Docs
 
 ## Purpose
 
-- Use this instruction when editing `docs/DESIGN.md` or other design-focused documentation.
-- Keep `docs/DESIGN.md` focused on how the system is structured, what its major components and boundaries are, how key flows work, and which technical decisions shape the design.
-- Write for developers and maintainers who need to understand the architecture and design of the repository.
-- Treat the current codebase, repository structure, configuration, architectural decision records, and generated API definitions as the primary source of truth.
+Keep `docs/DESIGN.md` focused on how the system is structured, how its major components interact, and which design decisions shape the codebase. Write for developers who need to understand architecture — not operators, not new contributors learning workflow.
 
-## What belongs in `docs/DESIGN.md`
+When editing an existing document, preserve its structure unless reorganization is explicitly requested.
 
-- Design purpose and intended audience
-- System scope and boundaries
-- High-level architecture and major components
-- Key runtime flows and interactions
-- Responsibilities and boundaries between modules or subsystems
+## What belongs
+
+- Runtime flows and component interactions
+- Module and subsystem responsibilities and boundaries
 - External dependencies and integration points
-- Data ownership and persistence at a design level
-- Cross-cutting concerns such as authentication, authorization, validation, error handling, logging, configuration, security, and performance
-- Major technical constraints and assumptions
-- Important design decisions and their consequences
-- Known tradeoffs, limitations, and technical debt
-- Pointers to related development, testing, and operations documentation
-
-## What does not belong in `docs/DESIGN.md`
-
-- Full local setup instructions or contributor workflow
-- Production deployment steps, rollback procedures, backup procedures, or incident handling
-- Exhaustive endpoint-by-endpoint API reference that should come from generated API docs or code
-- Low-level code walkthroughs that are better kept close to the code
-- Detailed unit-test patterns, fixture catalogs, or CI pipeline behavior
-- Historical material that only matters for archived or replaced designs unless explicitly marked as historical context
-
-Those topics belong in development documentation, operations documentation, testing documentation, generated API documentation, or code-level documentation.
+- Data ownership and persistence design
+- Cross-cutting concerns: validation, error handling, logging, configuration, security, performance
+- Major technical constraints, design decisions, and known tradeoffs
 
 ## Scope boundaries
 
-- `docs/DESIGN.md`: architecture, system structure, component responsibilities, key flows, cross-cutting concerns, constraints, and major design decisions
-- `docs/DIAGRAMS.md`: visual design diagrams — sequence diagrams, state diagrams, component diagrams, and other structural or behavioral visualizations of the active runtime; historical diagrams belong in `docs/archive/`
-- `docs/DEVELOPMENT.md`: contributor workflow, local setup, common commands, and day-to-day development practices
-- `docs/TESTING.md`: test strategy, test levels, quality expectations, validation workflow, and repository-specific testing guidance
-- `docs/OPERATIONS.md`: runtime environments, deployment, release flow, rollback, recovery, observability, and operational dependencies
-- `README.md`: short overview and entry-point links, not the full design guide
-- `docs/archive/`: historical reference only; do not treat archived docs as the source of truth for current design
+- `docs/DESIGN.md` — architecture, component responsibilities, key flows, cross-cutting concerns, constraints, decisions
+- `docs/DIAGRAMS.md` — visual diagrams of the active runtime; historical diagrams in `docs/archive/`
+- `docs/DEVELOPMENT.md` — contributor workflow, local setup, common commands
+- `docs/TESTING.md` — test strategy, test levels, quality expectations
+- `docs/OPERATIONS.md` — deployment, release flow, rollback, observability
+- `README.md` — short overview and entry-point links only
+- Generated API docs — endpoint request/response details; do not duplicate here
+- `docs/archive/` — historical reference only; not authoritative for current design
 
 ## Writing rules
 
-- Keep the document scoped, concise, and practical.
-- Include enough detail for a contributor or maintainer to understand how the system is organized, how its main parts interact, and which design decisions matter when changing the code.
-- Prefer concrete repository-specific wording: modules, packages, services, boundaries, data stores, integrations, interfaces, flows, and constraints.
-- Prefer short sections, concrete bullets, and focused explanations over long narrative prose.
-- Avoid restating implementation detail that is already obvious from the code unless it clarifies an important design boundary, flow, or constraint.
-- Distinguish current design from planned or aspirational design.
-- Distinguish stable architectural decisions from incidental implementation detail.
-- Distinguish design description from design rationale when ADRs or separate decision records exist.
-- Describe external interfaces and dependencies at the level needed to understand structure and behavior, not as exhaustive operational or API reference material.
-- Every section should answer a real design question related to structure, boundaries, flows, constraints, responsibilities, or technical tradeoffs.
-- If a section does not improve understanding of the system's design, shorten it or remove it.
-- When part of the design is intentionally not finalized yet, keep the section present and mark it clearly as `TBD` instead of inventing structure or rationale.
-- Do not document endpoint request/response details here; link to generated API docs instead.
+- Every section must answer a real design question about structure, boundaries, flows, constraints, or tradeoffs. Remove sections that don't.
+- Prefer bullets and focused explanations over narrative prose.
+- Do not restate implementation detail obvious from the code unless it clarifies a boundary or constraint.
+- Distinguish current design from planned or aspirational. Mark unfinalized areas `TBD`.
+- Do not document endpoint details here; link to generated API docs.
 
-## Concision and size expectations
+## Size expectations
 
-- Keep `docs/DESIGN.md` scoped, concise, and useful as the main design overview and entry point.
-- Target length: about 1000-2200 words.
-- Prefer staying under 3000 words.
-- If the document needs to grow beyond that, move detailed subsystem material into focused companion design notes or ADRs and keep `docs/DESIGN.md` as the concise overview and entry point.
-
-## Recommended section shape
-
-- Purpose
-- Audience and scope
-- System context and boundaries
-- High-level architecture
-- Components and responsibilities
-- Key flows and interactions
-- Data and persistence design
-- Cross-cutting concerns
-- Constraints and assumptions
-- Design decisions and tradeoffs
-- Known limitations or technical debt
-- Related documents
+Target 1000–2200 words. Stay under 3000. Move detailed subsystem material into companion design notes or ADRs rather than expanding this file.
 
 ## Sources to trust
 
-- `backend/`
-- `frontend/`
-- `tests/`
-- `pyproject.toml`
-- `docker/`
-- `AGENTS.md`
-- `README.md`
-- `docs/DEVELOPMENT.md`
-- `docs/TESTING.md`
-- `docs/OPERATIONS.md`
-- Generated OpenAPI schema and FastAPI route definitions
+- `src/` — core domain model and pipeline
+- `backend/app/` — API layer, services, and mappers
+- `frontend/src/` — component and store structure
+- `pyproject.toml` — declared dependencies and package boundaries
+- `docker/` — runtime service topology and build configuration
+- `AGENTS.md` — canonical architecture rules
+- `docs/DIAGRAMS.md` — authoritative visual design
+- `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md` — cross-references for scope boundaries
 
-Verify design claims against the current codebase, repository structure, configuration, ADRs, and generated API definitions before documenting them.
+Verify design claims against the current codebase, configuration, and AGENTS.md before documenting them.
+
+## Common failure modes
+
+- Documenting aspirational architecture as if it is implemented behavior
+- Duplicating operations or development documentation (deployment, commands, workflow)
+- Describing endpoints individually instead of describing API boundaries
+- Over-documenting framework internals rather than system-specific design decisions
+- Treating archived documentation as current design truth
+- Expanding the document into a full developer manual
+

@@ -1,8 +1,6 @@
 ---
 description: "Use when writing or updating design proposals. Covers style, structure, naming, and Copilot workflow for proposals."
-name: "Proposal Writing Guide"
-applyTo:
-  - "docs/proposals/**"
+applyTo: "docs/proposals/**"
 ---
 # Proposal Writing Guide
 
