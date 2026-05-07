@@ -31,7 +31,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [ ] `allowed_values` / `type: enum` on `ColumnSpec`
 - [x] Richer FK semantics — bridge entity support via `via` attribute in FK spec
 - [ ] Advanced FK validation modes — `direct`, `transitive`, explicit path constraints
-- [ ] Entity spec inheritance (`extends:`) — defer until 5+ target models exist
+~~- [ ] Entity spec inheritance (`extends:`) — defer until 5+ target models exist~~
 
 ### Test Coverage
 - [ ] Target model spec parsing — valid, invalid, round-trip
