@@ -12,7 +12,7 @@ Written for developers and maintainers who need to understand how the system is 
 
 ## System Context and Boundaries
 
-Shape Shifter is a data transformation system that harmonizes heterogeneous input data into a target schema through declarative YAML configuration. It is used primarily to prepare archaeological research data for import into the SEAD Clearinghouse.
+Shape Shifter is a **data transformation system** that harmonizes heterogeneous input data into a target schema through declarative YAML configuration. It is used primarily to prepare archaeological research data for import into the SEAD database.
 
 **In scope:** project configuration management, data extraction, transformation pipeline, validation, output dispatch, and the editor UI.
 
@@ -20,13 +20,13 @@ Shape Shifter is a data transformation system that harmonizes heterogeneous inpu
 
 **External integrations:**
 
-| System | Direction | Protocol | Purpose |
-|--------|-----------|----------|---------|
-| SEAD databases (PostgreSQL / MS Access) | Inbound | SQL | Source data for extraction |
-| CSV / Excel files | Inbound | File I/O | Source data for extraction |
-| SIMS (`sead_authority_service`) | Outbound | HTTP | Identity resolution and change detection |
-| OpenRefine reconciliation service | Outbound | HTTP | FK candidate suggestions |
-| Output files (Excel, CSV) or DB | Outbound | File I/O / SQL | Dispatch results |
+| System                                  | Direction | Protocol       | Purpose                                  |
+|-----------------------------------------|-----------|----------------|------------------------------------------|
+| SEAD databases (PostgreSQL / MS Access) | Inbound   | SQL            | Source data for extraction               |
+| CSV / Excel files                       | Inbound   | File I/O       | Source data for extraction               |
+| SIMS (`sead_authority_service`)         | Outbound  | HTTP           | Identity resolution and change detection |
+| OpenRefine reconciliation service       | Outbound  | HTTP           | FK candidate suggestions                 |
+| Output files (Excel, CSV) or DB         | Outbound  | File I/O / SQL | Dispatch results                         |
 
 ---
 
@@ -263,15 +263,15 @@ Data loaders are async (database I/O). Backend services mix sync and async; chec
 
 ## Design Decisions and Tradeoffs
 
-| Decision | Rationale | Tradeoff |
-|----------|-----------|----------|
-| Mapper-only resolution | Prevents env vars from leaking into API responses or persisted YAML | All API→Core paths must go through the mapper; skipping it is a silent bug |
-| In-memory ApplicationState | Simple, no external dependencies | Single-worker constraint; state lost on restart |
-| YAML as sole project store | Human-readable, version-control-friendly, no DB required | No concurrent write safety; large projects can be slow to parse |
-| Registry pattern for loaders/validators/dispatchers | Runtime extensibility without modifying the orchestrator | Registration must happen at import time; missed imports cause silent omissions |
-| `system_id` as the universal FK value | Stable local key unaffected by source-system IDs | External IDs must be mapped separately via `public_id` and reconciliation |
-| Single container (frontend + backend) | Simplified deployment; no separate static asset server | Frontend rebuild required to change any Vite build-time variable |
-| Merged entity sparse FK columns | Gives downstream consumers typed paths to each branch without synthetic keys | Sparse `pd.NA` columns appear in all merged rows for branches that don't apply |
+| Decision                                            | Rationale                                                                    | Tradeoff                                                                       |
+|-----------------------------------------------------|------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| Mapper-only resolution                              | Prevents env vars from leaking into API responses or persisted YAML          | All API→Core paths must go through the mapper; skipping it is a silent bug     |
+| In-memory ApplicationState                          | Simple, no external dependencies                                             | Single-worker constraint; state lost on restart                                |
+| YAML as sole project store                          | Human-readable, version-control-friendly, no DB required                     | No concurrent write safety; large projects can be slow to parse                |
+| Registry pattern for loaders/validators/dispatchers | Runtime extensibility without modifying the orchestrator                     | Registration must happen at import time; missed imports cause silent omissions |
+| `system_id` as the universal FK value               | Stable local key unaffected by source-system IDs                             | External IDs must be mapped separately via `public_id` and reconciliation      |
+| Single container (frontend + backend)               | Simplified deployment; no separate static asset server                       | Frontend rebuild required to change any Vite build-time variable               |
+| Merged entity sparse FK columns                     | Gives downstream consumers typed paths to each branch without synthetic keys | Sparse `pd.NA` columns appear in all merged rows for branches that don't apply |
 
 ---
 
