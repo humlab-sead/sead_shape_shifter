@@ -85,13 +85,19 @@ class ForeignKeyLinker:
         if "right_on" in opts:
             opts["right_on"] = [link_setup.rename_map.get(key, key) for key in opts["right_on"]]
 
-        linked_df: pd.DataFrame = merge_with_null_safety(
-            local_df=local_df,
-            remote_df=remote_df,
-            allow_null_keys=fk.constraints.allow_null_keys,
-            use_null_safe_merge=runtime_options.use_null_safe_merge,
-            **opts,
-        )
+        try:
+            linked_df: pd.DataFrame = merge_with_null_safety(
+                local_df=local_df,
+                remote_df=remote_df,
+                allow_null_keys=fk.constraints.allow_null_keys,
+                use_null_safe_merge=runtime_options.use_null_safe_merge,
+                **opts,
+            )
+        except Exception as e:
+            raise ValueError(
+                f"Failed to link '{fk.local_entity}' to '{fk.remote_entity}' "
+                f"on keys {fk.local_keys} -> {fk.remote_keys}: {e}"
+            ) from e
 
         validator.validate_after_merge(local_df, remote_df, linked_df, merge_indicator_col=validator.merge_indicator_col)
 

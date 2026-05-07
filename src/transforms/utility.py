@@ -1,4 +1,5 @@
 import pandas as pd
+from loguru import logger
 
 
 def add_system_id(target: pd.DataFrame, id_name: str = "system_id") -> pd.DataFrame:
@@ -88,6 +89,12 @@ def merge_with_null_safety(
     if use_null_safe_merge is None:
         use_null_safe_merge = allow_null_keys
 
+    # Coerce incompatible merge-key dtypes before any merge path.
+    # Handles the common case of YAML-sourced string values joining against
+    # integer columns loaded from a database.
+    if left_on and right_on:
+        local_df, remote_df = _coerce_compatible_merge_key_dtypes(local_df, remote_df, left_on, right_on)
+
     if how == "cross" or not use_null_safe_merge or not left_on or not right_on:
         return pd.merge(local_df, remote_df, **opts)
 
@@ -108,6 +115,60 @@ def merge_with_null_safety(
         merged_df = merged_df.drop(columns=temp_columns)
 
     return merged_df
+
+
+def _coerce_compatible_merge_key_dtypes(
+    local_df: pd.DataFrame,
+    remote_df: pd.DataFrame,
+    left_on: list[str],
+    right_on: list[str],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Coerce incompatible merge-key dtypes to compatible types where safely possible.
+
+    When one join-key column is numeric (int/float) and the paired column is object
+    (string), attempts to cast the object column to numeric via ``pd.to_numeric``.
+    The cast is only applied when it introduces no additional null values, i.e. all
+    non-null string values are valid numbers.
+
+    This handles the common case of YAML-sourced integer values that pandas reads as
+    strings (e.g. ``'1'``) joining against database integer columns.
+
+    Returns copies of the DataFrames only when a coercion is actually performed;
+    otherwise returns the originals unchanged.
+    """
+    local_modified = False
+    remote_modified = False
+
+    for left_key, right_key in zip(left_on, right_on):
+        if left_key not in local_df.columns or right_key not in remote_df.columns:
+            continue
+
+        left_col = local_df[left_key]
+        right_col = remote_df[right_key]
+        left_numeric = pd.api.types.is_numeric_dtype(left_col)
+        right_numeric = pd.api.types.is_numeric_dtype(right_col)
+
+        if left_numeric == right_numeric:
+            continue  # both numeric or both non-numeric — nothing to do
+
+        if left_numeric and not right_numeric:
+            coerced = pd.to_numeric(right_col, errors="coerce")
+            if coerced.isna().sum() == right_col.isna().sum():
+                if not remote_modified:
+                    remote_df = remote_df.copy()
+                    remote_modified = True
+                logger.debug(f"Coerced merge key '{right_key}' from object to numeric for join compatibility")
+                remote_df[right_key] = coerced
+        else:
+            coerced = pd.to_numeric(left_col, errors="coerce")
+            if coerced.isna().sum() == left_col.isna().sum():
+                if not local_modified:
+                    local_df = local_df.copy()
+                    local_modified = True
+                logger.debug(f"Coerced merge key '{left_key}' from object to numeric for join compatibility")
+                local_df[left_key] = coerced
+
+    return local_df, remote_df
 
 
 def _create_null_safe_merges(
