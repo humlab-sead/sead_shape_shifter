@@ -1556,10 +1556,6 @@ async function handleRefresh() {
 }
 
 async function handleEntityUpdated() {
-  if (projectName.value) {
-    await refresh(projectName.value)
-  }
-
   await fetchEntities()
 
   if (projectName.value) {
