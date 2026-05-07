@@ -9,25 +9,25 @@ Diagrams showing Shape Shifter's architecture, workflow, and capabilities.
 ```mermaid
 flowchart LR
     subgraph "Data Providers"
-        P1[<b>Provider</b> A<br/>Excel Spreadsheet]
-        P2[<b>Provider</b> B<br/>Access Database]
-        P3[<b>Provider</b> C<br/>CSV Files]
-        P4[<b>Provider</b> D<br/>Database]
+        P1[Provider A<br/>Excel]
+        P2[Provider B<br/>Access DB]
+        P3[Provider C<br/>CSV Files]
+        P4[Provider D<br/>Database]
     end
-    
-    subgraph "Manual Integration Pain Points"
-        M1[❌ Manual Column Mapping]
-        M2[❌ Inconsistent Formats]
-        M3[❌ Manual & Error-Prone Transformations]
-        M4[❌ ID Lookup Nightmares]
-        M5[❌ Weeks of Work Per Dataset]
-        M6[❌ Hard to Reproduce]
+
+    subgraph "Manual Pain Points"
+        M1[Manual Column Mapping]
+        M2[Inconsistent Formats]
+        M3[Error-Prone Transforms]
+        M4[ID Lookup Nightmares]
+        M5[Weeks of Work]
+        M6[Hard to Reproduce]
     end
-    
-    subgraph "<b>SEAD</b>"
-        S[Requires:<br/>✓ Standard Schema<br/>✓ Valid IDs<br/>✓ Clean Data<br/>✓ Documented Provenance]
+
+    subgraph "SEAD"
+        S[Standard Schema<br/>Valid IDs · Clean Data<br/>Documented Provenance]
     end
-    
+
     P1 --> M1
     P2 --> M2
     P3 --> M3
@@ -39,20 +39,13 @@ flowchart LR
     M5 --> S
     M6 --> S
 
-    style P1 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style P2 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style P3 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style P4 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    
-    style M1 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style M2 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style M3 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style M4 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style M5 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style M6 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    classDef provider fill:#f5f5f5,stroke:#aaa,color:#333;
+    classDef pain fill:#ffe0e0,stroke:#d64545,color:#4a1f1f;
+    classDef goal fill:#dff7e8,stroke:#2e9f5b,color:#1d3a29;
 
-    style S fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-
+    class P1,P2,P3,P4 provider;
+    class M1,M2,M3,M4,M5,M6 pain;
+    class S goal;
 ```
 
 ---
@@ -61,49 +54,44 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    subgraph "Data Sources "
-        DS1[<b>Provider</b> A<br/>Excel Spreadsheet]
-        DS2[<b>Provider</b> B<br/>Access Database]
-        DS3[<b>Provider</b> C<br/>CSV Files]
-        DS4[<b>Provider</b> D<br/>Database]
+    subgraph "Data Sources"
+        DS1[Provider A<br/>Excel]
+        DS2[Provider B<br/>Access DB]
+        DS3[Provider C<br/>CSV Files]
+        DS4[Provider D<br/>Database]
     end
-    
+
     subgraph "Shape Shifter Platform"
         direction TB
-        SS1[📝 Configure Once<br/>Declarative YAML]
-        SS2[✅ Automatic Validation<br/>Multi-Level Checks]
-        SS3[🔗 Identity Reconciliation<br/>Auto-Matching + Review]
-        SS4[🔄 Transformation Engine<br/>Reproducible Pipeline]
-        SS5[📊 Preview & Verify<br/>Before Commit]
+        SS1[Configure Once<br/>Declarative YAML]
+        SS2[Automatic Validation<br/>Multi-Level Checks]
+        SS3[Identity Reconciliation<br/>Auto-Match + Review]
+        SS4[Transformation Engine<br/>Reproducible Pipeline]
+        SS5[Preview and Verify<br/>Before Commit]
     end
-    
-    subgraph "<b>SEAD</b>"
-        SEAD[✓ Validated Data<br/>✓ Resolved IDs<br/>✓ Documented Lineage<br/>✓ Ready to Import]
+
+    subgraph "SEAD"
+        SEAD[Validated Data<br/>Resolved IDs<br/>Documented Lineage<br/>Ready to Import]
     end
-    
+
     DS1 --> SS1
     DS2 --> SS1
     DS3 --> SS1
     DS4 --> SS1
-    
+
     SS1 --> SS2
     SS2 --> SS3
     SS3 --> SS4
     SS4 --> SS5
     SS5 --> SEAD
 
-    style DS1 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style DS2 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style DS3 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style DS4 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    
-    style SS1 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style SS2 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style SS3 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style SS4 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
-    style SS5 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    classDef source fill:#f5f5f5,stroke:#aaa,color:#333;
+    classDef platform fill:#e8f4fd,stroke:#4a90d9,color:#1a3a5c;
+    classDef goal fill:#dff7e8,stroke:#2e9f5b,color:#1d3a29;
 
-    style SEAD fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    class DS1,DS2,DS3,DS4 source;
+    class SS1,SS2,SS3,SS4,SS5 platform;
+    class SEAD goal;
 ```
 
 ---
@@ -223,10 +211,14 @@ flowchart TB
     CORE2 --> EXT1
     CORE4 --> EXT1
     CORE5 --> EXT3
-    
-    style UI3 fill:#e6f3ff
-    style SVC3 fill:#fff0e6
-    style CORE4 fill:#ffe6f0
+
+    classDef graph fill:#e8f4fd,stroke:#4a90d9,color:#1a3a5c;
+    classDef cache fill:#fdf3e8,stroke:#d48a2a,color:#4a2800;
+    classDef pipeline fill:#f5e8fd,stroke:#8a4ab0,color:#3a1060;
+
+    class UI3 graph;
+    class SVC3 cache;
+    class CORE4 pipeline;
 ```
 
 ---
@@ -346,11 +338,16 @@ flowchart LR
     U2 --> TR1
     TR1 --> TR2
     TR2 --> S1 & S2 & S3 & S4
-    
-    style E1 fill:#e6f3ff
-    style L1 fill:#ffe6f0
-    style U1 fill:#fff0e6
-    style TR1 fill:#f0e6ff
+
+    classDef extract fill:#e8f4fd,stroke:#4a90d9,color:#1a3a5c;
+    classDef link fill:#fde8d0,stroke:#d48a2a,color:#4a2800;
+    classDef unnest fill:#fff7d6,stroke:#d6a300,color:#2b2b2b;
+    classDef translate fill:#f5e8fd,stroke:#8a4ab0,color:#3a1060;
+
+    class E1 extract;
+    class L1 link;
+    class U1 unnest;
+    class TR1 translate;
 ```
 
 ---
@@ -412,11 +409,16 @@ flowchart TB
     
     R1 --> R2
     R1 --> R3
-    
-    style TP2 fill:#ccffcc
-    style TP3 fill:#ffffcc
-    style TP4 fill:#ffcccc
-    style R1 fill:#e6f3ff
+
+    classDef autoAccept fill:#dff7e8,stroke:#2e9f5b,color:#1d3a29;
+    classDef flagged fill:#fff7d6,stroke:#d6a300,color:#2b2b2b;
+    classDef noMatch fill:#ffe0e0,stroke:#d64545,color:#4a1f1f;
+    classDef result fill:#e8f4fd,stroke:#4a90d9,color:#1a3a5c;
+
+    class TP2 autoAccept;
+    class TP3 flagged;
+    class TP4 noMatch;
+    class R1 result;
 ```
 
 ---
@@ -473,9 +475,12 @@ flowchart TB
     R1 --> R2
     R2 --> R3
     R3 --> R4
-    
-    style R2 fill:#fff0e6
-    style R4 fill:#ccffcc
+
+    classDef review fill:#fdf3e8,stroke:#d48a2a,color:#4a2800;
+    classDef success fill:#dff7e8,stroke:#2e9f5b,color:#1d3a29;
+
+    class R2 review;
+    class R4 success;
 ```
 
 ---
@@ -524,10 +529,14 @@ flowchart TB
     
     HIT --> RET[Return to User]
     G5 --> RET
-    
-    style HIT fill:#ccffcc
-    style MISS fill:#ffcccc
-    style G5 fill:#e6f3ff
+
+    classDef hit fill:#dff7e8,stroke:#2e9f5b,color:#1d3a29;
+    classDef miss fill:#ffe0e0,stroke:#d64545,color:#4a1f1f;
+    classDef cached fill:#e8f4fd,stroke:#4a90d9,color:#1a3a5c;
+
+    class HIT hit;
+    class MISS miss;
+    class G5 cached;
 ```
 
 ---
@@ -838,7 +847,7 @@ flowchart LR
     U1 --> UC1 & UC2 & UC3
     U2 --> UC4 & UC5 & UC6
     U3 --> UC7 & UC8 & UC9
-
+```
 ---
 
 ## 14. Component Architecture
@@ -1093,7 +1102,59 @@ sequenceDiagram
 
 ---
 
-## 20. Entity Editing State
+## 20. Project Refresh – Sequence
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant SM as SessionManager (Vue)
+    participant PS as projectStore (Pinia)
+    participant FE as Frontend API
+    participant BE as Backend
+    participant SVC as ProjectService
+    participant CACHE as All Caches
+    participant FS as File System
+    participant PM as ProjectMapper
+
+    U->>SM: Click REFRESH button
+    alt Unsaved changes detected
+        SM->>U: Confirm dialog<br/>"Unsaved changes will be lost"
+        U->>SM: Confirm or Cancel
+        SM-->>U: Cancel → abort
+    end
+    SM->>PS: refreshProject(name)
+    PS->>PS: loading = true, error = null
+    PS->>FE: POST /api/v1/projects/{name}/refresh
+    FE->>BE: HTTP POST /api/v1/projects/{name}/refresh
+    BE->>SVC: load_project(name, force_reload=True)
+
+    note over SVC,CACHE: force_reload=True triggers full cache wipe
+    SVC->>CACHE: _invalidate_all_caches(name)
+    CACHE->>CACHE: ApplicationState.invalidate(name)
+    note over CACHE: Clears active-project entry<br/>and version counter
+    CACHE->>CACHE: ShapeShiftCache.invalidate_project(name)
+    note over CACHE: Clears all preview DataFrames<br/>and metadata entries for project
+    CACHE->>CACHE: ShapeShiftProjectCache.invalidate_project(name)
+    note over CACHE: Clears resolved ShapeShiftProject<br/>instance and version tracking
+
+    SVC->>FS: Read YAML file from disk
+    FS-->>SVC: Raw YAML content
+    SVC->>PM: to_api_config(raw_yaml, name)
+    note over PM: Preserve ${ENV_VARS}<br/>and @directives unchanged
+    PM-->>SVC: Project (API model, unresolved)
+    SVC-->>BE: Project
+    BE-->>FE: Project JSON
+    FE-->>PS: Project
+    PS->>PS: selectedProject = Project
+    PS->>PS: hasUnsavedChanges = false
+    PS->>PS: loading = false
+    PS-->>SM: Done
+    SM-->>U: UI re-renders with fresh data from disk
+```
+
+---
+
+## 21. Entity Editing State
 
 ```mermaid
 stateDiagram-v2
@@ -1132,7 +1193,7 @@ stateDiagram-v2
 
 ---
 
-## 21. Preview Cache State
+## 22. Preview Cache State
 
 ```mermaid
 stateDiagram-v2
@@ -1174,7 +1235,7 @@ stateDiagram-v2
 
 ---
 
-## 22. Validation Result State
+## 23. Validation Result State
 
 ```mermaid
 stateDiagram-v2
@@ -1211,19 +1272,12 @@ stateDiagram-v2
     class Valid valid;
     class Invalid invalid;
     class Stale stale;
-```
-    
-    UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC7 & UC8 & UC9 --> RESULT[Clean Data<br/>Ready for SEAD]
-    
-    style U1 fill:#e6f3ff
-    style U2 fill:#fff0e6
-    style U3 fill:#ffe6f0
-    style RESULT fill:#ccffcc
+
 ```
 
 ---
 
-## 14. Technology Stack
+## 24. Technology Stack
 
 ```mermaid
 flowchart TB
@@ -1272,7 +1326,7 @@ flowchart TB
 
 ---
 
-## 15. Deployment Architecture
+## 25. Deployment Architecture
 
 ```mermaid
 flowchart TB
@@ -1318,7 +1372,7 @@ flowchart TB
 
 ---
 
-## 16. Registry Pattern (Extensibility)
+## 26. Registry Pattern (Extensibility)
 
 ```mermaid
 flowchart TB
@@ -1360,8 +1414,10 @@ flowchart TB
     PLUGIN[New Plugin] -.Register.-> R1
     PLUGIN -.Register.-> R2
     PLUGIN -.Register.-> R3
-    
-    style PLUGIN fill:#fff0e6
+
+    classDef plugin fill:#fdf3e8,stroke:#d48a2a,color:#4a2800;
+
+    class PLUGIN plugin;
 ```
 
 ---
