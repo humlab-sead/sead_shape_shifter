@@ -89,12 +89,13 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
     """Validate that required FK targets are present, with support for bridge-mediated relationships.
 
     When a FK spec includes 'via: bridge_entity', the validator checks that:
-    1. The bridge entity is present in the project's FK targets
-    2. The ultimate target entity is referenced (direct check; transitive validation deferred)
+    1. The bridge entity exists as its own entity in the project (not as a FK target on the source).
+       Bridge entities are join tables — the source entity never has a direct FK to the bridge.
+    2. The bridge entity has a FK to the ultimate target entity.
 
     Example: site -> location (via: site_location)
-    - Checks that 'site' has FK to 'site_location'
-    - Final target 'location' presence is advisory (bridge mediates the relationship)
+    - Checks that 'site_location' is present in the project (project.has_table)
+    - Checks that 'site_location' has a FK to 'location'
     """
 
     def validate_entity(self, entity_name: str, entity_spec: EntitySpec, table_cfg: TableConfig) -> list[ConformanceIssue]:
@@ -133,37 +134,37 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
                 # Bridge-mediated FK target
                 bridge_name = foreign_key.via
 
-                # Check 1: Bridge entity must be in project's FK targets
-                if bridge_name not in project_targets:
+                # Check 1: Bridge entity must exist as its own entity in the project.
+                # The source entity (entity_name) will never have a direct FK to bridge_name —
+                # the bridge is a join table, not a FK target on the source side.
+                if not project.has_table(bridge_name):
                     issues.append(
                         ConformanceIssue(
                             code="MISSING_BRIDGE_ENTITY",
                             message=(
                                 f"Entity '{entity_name}' requires foreign key to '{foreign_key.entity}' "
-                                f"via bridge '{bridge_name}', but bridge entity is not present in FK targets"
+                                f"via bridge '{bridge_name}', but bridge entity is not present in the project"
                             ),
                             entity=entity_name,
                         )
                     )
                     continue
 
-                # Check 2: Bridge entity should have FK to ultimate target (advisory)
-                # This is a softer check - we verify the bridge exists in the project
-                if project.has_table(bridge_name):
-                    bridge_cfg: TableConfig = project.get_table(bridge_name)
-                    bridge_targets: set[str] = bridge_cfg.get_target_facing_foreign_key_targets()
+                # Check 2: Bridge entity should have a FK to the ultimate target entity.
+                bridge_cfg: TableConfig = project.get_table(bridge_name)
+                bridge_targets: set[str] = bridge_cfg.get_target_facing_foreign_key_targets()
 
-                    if foreign_key.entity not in bridge_targets:
-                        issues.append(
-                            ConformanceIssue(
-                                code="BRIDGE_MISSING_TARGET_FK",
-                                message=(
-                                    f"Bridge entity '{bridge_name}' (mediating '{entity_name}' -> '{foreign_key.entity}') "
-                                    f"does not have a foreign key to target entity '{foreign_key.entity}'"
-                                ),
-                                entity=bridge_name,
-                            )
+                if foreign_key.entity not in bridge_targets:
+                    issues.append(
+                        ConformanceIssue(
+                            code="BRIDGE_MISSING_TARGET_FK",
+                            message=(
+                                f"Bridge entity '{bridge_name}' (mediating '{entity_name}' -> '{foreign_key.entity}') "
+                                f"does not have a foreign key to target entity '{foreign_key.entity}'"
+                            ),
+                            entity=bridge_name,
                         )
+                    )
 
         return issues
 
