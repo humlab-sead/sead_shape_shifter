@@ -329,11 +329,13 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
 
     assert sorted(issue_pairs(target_model, project)) == sorted(
         [
-            ("MISSING_BRIDGE_ENTITY", "site"),
             ("MISSING_INDUCED_REQUIRED_ENTITY", "taxa_tree_master"),
+            ("MISSING_REQUIRED_COLUMN", "abundance_ident_level"),
             ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
+            ("MISSING_REQUIRED_COLUMN", "sample_coordinate"),
             ("MISSING_REQUIRED_COLUMN", "sample_type"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_ident_level"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
@@ -371,10 +373,9 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
         ),
         "arbodat_full": Counter(
             {
-                "MISSING_BRIDGE_ENTITY": 1,
                 "MISSING_INDUCED_REQUIRED_ENTITY": 1,
-                "MISSING_REQUIRED_COLUMN": 2,
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 4,
+                "MISSING_REQUIRED_COLUMN": 4,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 5,
             }
         ),
     }

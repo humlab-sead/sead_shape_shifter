@@ -38,7 +38,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [ ] `@include:` resolution at mapper boundary (inline dict, file ref, missing file, relative path)
 - [ ] Projects without target model — structural validation unaffected, conformance returns empty
 - [ ] Missing target model file — graceful 422, not 500
-- [ ] Backend adapter integration — `TargetModelValidator` code mapping, endpoint response, category tagging
+- [x] Backend adapter integration — `TargetModelValidator` code mapping, endpoint response, category tagging
 - [ ] Warning vs error severity (Phase 4 checks)
 
 ### Infrastructure
@@ -75,7 +75,7 @@ This proposal consolidates deferred and future items from:
 
 ## What Is Already Implemented
 
-Six conformance validators are registered and active:
+Seven conformance validators are registered and active:
 
 | Key                            | What it checks                                                                            |
 |--------------------------------|-------------------------------------------------------------------------------------------|
@@ -91,7 +91,7 @@ Backend wiring, frontend Check Conformance button, and Conformance panel in Vali
 
 ### Induced Requirements — Implementation Notes
 
-`InducedRequirementConformanceValidator` (key: `induced_requirements`) uses breadh-first-searcg (BFS) over the required-FK graph:
+`InducedRequirementConformanceValidator` (key: `induced_requirements`) uses breadth-first search (BFS) over the required-FK graph:
 
 - **Seed:** every entity that is present in the project and not globally required
 - **Traversal:** follow `required: true` FK edges; report each absent, non-globally-required target as `MISSING_INDUCED_REQUIRED_ENTITY`; continue BFS through absent nodes for transitive closure
