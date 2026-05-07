@@ -602,10 +602,9 @@ These test areas were identified in the implementation sketch but not yet covere
 
 ### Missing Target Model File
 
-- Graceful error (not uncaught exception) when referenced file does not exist
-- Error message includes the file path that was not found
-- Backend endpoint returns 200 with `is_valid=false` and a `TARGET_MODEL_NOT_FOUND` error, not a 500
-- `field` is set to `metadata.target_model` for UI highlighting
+- Graceful handling (not uncaught exception) when referenced file does not exist
+- Missing file is silently ignored — treated as if `metadata.target_model` was not set
+- Backend endpoint returns 200 with `is_valid=true` and no errors (same as no target model)
 - Covered by `TestValidateTargetModel` in `backend/tests/services/test_validation_service.py`
 
 ### Backend Adapter Integration
