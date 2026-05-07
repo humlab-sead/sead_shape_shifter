@@ -257,7 +257,26 @@ class ValidationService:
 
         project_service: ProjectService = get_project_service()
         api_project: Project = project_service.load_project(project_name)
-        core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+
+        try:
+            core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+        except FileNotFoundError as e:
+            # @include: in metadata.target_model points to a missing file.
+            # Return a validation error instead of propagating a 500.
+            logger.warning(f"Target model file not found for project '{project_name}': {e}")
+            return ValidationResult(
+                is_valid=False,
+                errors=[
+                    ValidationError(
+                        severity="error",
+                        entity=None,
+                        field="metadata.target_model",
+                        message=str(e),
+                        code="TARGET_MODEL_NOT_FOUND",
+                        suggestion="Ensure the referenced target model file exists and the path is relative to the project YAML file.",
+                    )
+                ],
+            )
 
         target_model_data: dict | None = core_project.metadata.target_model
 

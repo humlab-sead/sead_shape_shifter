@@ -449,3 +449,30 @@ class TestDataValidation:
 
         assert isinstance(first, ValidationService)
         assert first is second
+
+
+class TestValidateTargetModel:
+    """Tests for validate_target_model error-handling path."""
+
+    def test_missing_target_model_file_returns_graceful_error(self, validation_service: ValidationService):
+        """FileNotFoundError from @include resolution must surface as TARGET_MODEL_NOT_FOUND, not 500."""
+        mock_api_project = Mock(spec=Project)
+
+        with patch("backend.app.services.validation_service.get_project_service") as mock_get_service:
+            mock_project_service = Mock()
+            mock_project_service.load_project.return_value = mock_api_project
+            mock_get_service.return_value = mock_project_service
+
+            with patch(
+                "backend.app.services.validation_service.ProjectMapper.to_core",
+                side_effect=FileNotFoundError("No such file or directory: 'missing_target_model.yml'"),
+            ):
+                result = validation_service.validate_target_model("test-project")
+
+        assert result.is_valid is False
+        assert len(result.errors) == 1
+        error = result.errors[0]
+        assert error.code == "TARGET_MODEL_NOT_FOUND"
+        assert error.severity == "error"
+        assert error.field == "metadata.target_model"
+        assert "missing_target_model.yml" in error.message

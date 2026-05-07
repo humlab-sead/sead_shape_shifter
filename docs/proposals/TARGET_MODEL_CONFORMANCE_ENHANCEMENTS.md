@@ -15,7 +15,7 @@
 - [x] `induced_requirements` — optional entity present → its required FK targets are induced-required (transitive)
 - [x] `source_type_appropriateness` — classifiers should not use `type: entity`
 - [ ] `no_orphan_facts` — fact entities must have a required FK path to at least one required lookup
-- [ ] `semantic_mismatch` — entity name role disagrees with `public_id` role (Phase 4, high false-positive risk)
+~~- [ ] `semantic_mismatch` — entity name role disagrees with `public_id` role (Phase 4, high false-positive risk)~~
 - [ ] `schema_aware_append` — appended columns conform to target model column spec
 
 ### Data Conformance Validators
@@ -37,7 +37,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [ ] Target model spec parsing — valid, invalid, round-trip
 - [ ] `@include:` resolution at mapper boundary (inline dict, file ref, missing file, relative path)
 - [ ] Projects without target model — structural validation unaffected, conformance returns empty
-- [ ] Missing target model file — graceful 422, not 500
+- [x] Missing target model file — graceful 422, not 500
 - [x] Backend adapter integration — `TargetModelValidator` code mapping, endpoint response, category tagging
 - [ ] Warning vs error severity (Phase 4 checks)
 
@@ -604,7 +604,9 @@ These test areas were identified in the implementation sketch but not yet covere
 
 - Graceful error (not uncaught exception) when referenced file does not exist
 - Error message includes the file path that was not found
-- Backend endpoint returns 422 with clear message, not 500
+- Backend endpoint returns 200 with `is_valid=false` and a `TARGET_MODEL_NOT_FOUND` error, not a 500
+- `field` is set to `metadata.target_model` for UI highlighting
+- Covered by `TestValidateTargetModel` in `backend/tests/services/test_validation_service.py`
 
 ### Backend Adapter Integration
 
