@@ -84,6 +84,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         # Validate required identity fields
         entity_cfg = self.get_entity_cfg(entity_name)
 
+
         # Check for public_id (required for fixed entities)
         public_id = entity_cfg.get("public_id") or entity_cfg.get("surrogate_id")
         if not public_id:
@@ -92,7 +93,13 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
         # Note: system_id is always "system_id" (standardized name, auto-generated)
 
-        self.check_fields(entity_name, ["values"], "exists/E,not_empty/W")
+        self.check_fields(entity_name, ["values"], "exists/E")
+
+        if not table.has_append:
+            # warn if values is empty since fixed entities are expected to have data
+            self.check_fields(entity_name, ["values"], "not_empty/W")
+
+        table.has_append
         self.check_fields(entity_name, ["type"], "has_value/E", expected_value="fixed")
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
         self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
