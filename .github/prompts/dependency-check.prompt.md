@@ -1,14 +1,13 @@
-# Dependency Analysis Prompt
+---
+agent: ask
+description: Analyze the entity dependency graph in a shapeshifter.yml for cycles and correct processing order
+---
 
-Check entity dependency graph for cycles and proper processing order.
-
-## Prompt Template
-
-```
-Analyze entity dependencies in {PROJECT_FILE}:
+Analyze entity dependencies in `{PROJECT_FILE}`:
 
 ### Dependency Graph Analysis
-1. **Build dependency graph** from foreign_keys relationships
+
+1. **Build dependency graph** from `foreign_keys` relationships
    - Map each entity → parent entities (via FK references)
    - Include unnest dependencies (source entities)
    - Include fixed value dependencies
@@ -30,18 +29,12 @@ Analyze entity dependencies in {PROJECT_FILE}:
 
 ### Expected Output
 
-**Dependency Graph**:
-```
-entity_name:
-  depends_on: [parent1, parent2, ...]
-  depth: N
-  type: fixed|derived
-```
+**Dependency Graph** (per entity):
+- `depends_on`: list of parent entities
+- `depth`: integer depth in the graph
+- `type`: `fixed` or `derived`
 
-**Processing Order** (topologically sorted):
-1. {entity1} (depth 0, no dependencies)
-2. {entity2} (depth 1, depends on entity1)
-3. ...
+**Processing Order** (topologically sorted with depth noted)
 
 **Issues Found**:
 - ❌ Circular dependencies: A → B → A
@@ -53,21 +46,11 @@ entity_name:
 - [ ] No orphaned entities (defined but never used)
 - [ ] Fixed entities don't depend on derived entities
 - [ ] Reconciliation doesn't create hidden dependencies
-```
-
-## Example Usage
-
-```
-Analyze entity dependencies in projects/dendro/shapeshifter.yml:
-[... full analysis ...]
-```
 
 ## Implementation Reference
-
-See backend implementation:
-- `backend/app/utils/graph.py` - Graph algorithms (cycle detection, topological sort)
-- `backend/app/services/dependency_service.py` - Entity dependency analysis
-- `src/normalizer.py` - ProcessState topological sorting
+- `backend/app/utils/graph.py` — Graph algorithms (cycle detection, topological sort)
+- `backend/app/services/dependency_service.py` — Entity dependency analysis
+- `src/normalizer.py` — ProcessState topological sorting
 
 ## Related Documentation
 - [DESIGN.md](../../docs/DESIGN.md#core-processing-pipeline)

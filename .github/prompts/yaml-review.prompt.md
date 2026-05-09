@@ -1,11 +1,9 @@
-# YAML Configuration Review Prompt
+---
+agent: ask
+description: Comprehensive review of a shapeshifter.yml project file for correctness and best practices
+---
 
-Comprehensive review of shapeshifter.yml project files.
-
-## Prompt Template
-
-```
-Review {PROJECT_FILE} for correctness and best practices:
+Review `{PROJECT_FILE}` for correctness and best practices:
 
 ### 1. Project Metadata
 - [ ] `name` is unique and descriptive
@@ -16,7 +14,7 @@ Review {PROJECT_FILE} for correctness and best practices:
 ### 2. Data Sources Section
 - [ ] All sources have unique names
 - [ ] Required driver fields present (host, dbname, etc.)
-- [ ] Environment variables properly formatted: ${VAR_NAME}
+- [ ] Environment variables properly formatted: `${VAR_NAME}`
 - [ ] Connection strings valid for driver type
 - [ ] Optional parameters appropriate for driver
 
@@ -29,15 +27,15 @@ Review {PROJECT_FILE} for correctness and best practices:
 - [ ] No circular dependencies
 
 ### 4. Mappings Section (if present)
-- [ ] Mapping files exist in mappings/ directory
+- [ ] Mapping files exist in `mappings/` directory
 - [ ] `remote_key` matches entity's `public_id`
 - [ ] `local_keys` match entity's `keys` configuration
 - [ ] File paths are relative to workspace
 
 ### 5. Cross-References
-- [ ] All data_source names reference defined sources
+- [ ] All `data_source` names reference defined sources
 - [ ] All FK entity references exist
-- [ ] All unnest source_entity references exist
+- [ ] All unnest `source_entity` references exist
 - [ ] Column names in FK match between entities
 
 ### 6. Environment Variables & Directives
@@ -54,38 +52,17 @@ Review {PROJECT_FILE} for correctness and best practices:
 - [ ] Comments explain complex configurations
 
 ### 8. Performance Considerations
-- [ ] SQL queries optimized (no SELECT *)
+- [ ] SQL queries optimized (no `SELECT *`)
 - [ ] Data source queries have reasonable limits
 - [ ] Deep dependency chains avoided (depth < 5)
 - [ ] Unnest operations target specific columns
 
 Provide:
-1. **Critical Issues** - Must fix before processing
-2. **Warnings** - Should review
-3. **Improvements** - Nice to have
-4. **Summary** - Overall config quality score
-```
-
-## Example Usage
-
-```
-Review projects/dendro/shapeshifter.yml for correctness and best practices:
-[... full review ...]
-```
-
-## Quick Validation Checklist
-
-For rapid validation, use this condensed version:
-
-```
-Quick validation check for {PROJECT_FILE}:
-- Identity system correct?
-- FK relationships valid?
-- Data sources defined?
-- Any circular dependencies?
-- Environment variables resolvable?
-```
+1. **Critical Issues** — Must fix before processing
+2. **Warnings** — Should review
+3. **Improvements** — Nice to have
+4. **Summary** — Overall config quality score
 
 ## Related Documentation
 - [CONFIGURATION_GUIDE.md](../../docs/CONFIGURATION_GUIDE.md)
-- [shapeshifter-configuration.instructions.md](../../.github/instructions/shapeshifter-configuration.instructions.md)
+- [shapeshifter-configuration.instructions.md](../instructions/shapeshifter-configuration.instructions.md)

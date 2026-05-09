@@ -10,6 +10,8 @@ Keep `docs/DESIGN.md` focused on how the system is structured, how its major com
 
 When editing an existing document, preserve its structure unless reorganization is explicitly requested.
 
+**Constraint priority** (highest to lowest): content scope → writing rules → size expectations.
+
 ## What belongs
 
 - Runtime flows and component interactions
@@ -35,7 +37,7 @@ When editing an existing document, preserve its structure unless reorganization 
 - Every section must answer a real design question about structure, boundaries, flows, constraints, or tradeoffs. Remove sections that don't.
 - Prefer bullets and focused explanations over narrative prose.
 - Do not restate implementation detail obvious from the code unless it clarifies a boundary or constraint.
-- Distinguish current design from planned or aspirational. Mark unfinalized areas `TBD`.
+- Distinguish current design from planned (scheduled for the next release cycle) or aspirational (long-term goals without a defined implementation timeline). Mark sections under review or not yet implemented with `TBD`.
 - Do not document endpoint details here; link to generated API docs.
 
 ## Size expectations
