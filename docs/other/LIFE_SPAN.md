@@ -163,12 +163,12 @@ async def lifespan(app: FastAPI):
 
 ## 7. Lifespan vs dependencies
 
-| Use case               | Lifespan | Dependency |
-| ---------------------- | -------- | ---------- |
-| One global DB pool     | ✅        | ❌          |
-| Per-request DB session | ❌        | ✅          |
-| Load config once       | ✅        | ❌          |
-| Auth per request       | ❌        | ✅          |
+| Use case               | Lifespan  | Dependency |
+| ---------------------- | --------  | ---------- |
+| One global DB pool     | ✅        | ❌       |
+| Per-request DB session | ❌        | ✅       |
+| Load config once       | ✅        | ❌       |
+| Auth per request       | ❌        | ✅       |
 
 **Rule of thumb**:
 

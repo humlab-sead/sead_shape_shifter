@@ -8,7 +8,6 @@ This guide provides step-by-step functional testing procedures for the Shape Shi
 
 **Related Guides:**
 - [Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md) - Browser compatibility, performance, accessibility
-- [Accessibility Testing Guide](testing/ACCESSIBILITY_TESTING_GUIDE.md) - WCAG compliance, screen readers, keyboard navigation
 - [Merged Entity Manual Test Checklist](testing/MERGED_ENTITY_MANUAL_TEST_CHECKLIST.md) - Feature-specific merged entity setup and manual verification steps
 - [Target Model Conformance Manual Test Checklist](testing/TARGET_MODEL_CONFORMANCE_MANUAL_TEST_CHECKLIST.md) - End-to-end conformance validation checks using custom and SEAD-based fixtures
 
@@ -33,7 +32,6 @@ This guide provides step-by-step functional testing procedures for the Shape Shi
 - [Test Results Template](testing/TEST_RESULTS_TEMPLATE.md) - Documentation templates and checklists
 - [Testing Appendix](testing/APPENDIX.md) - Shortcuts, troubleshooting, tools
 - [Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md) - Browser compatibility, performance
-- [Accessibility Testing Guide](testing/ACCESSIBILITY_TESTING_GUIDE.md) - WCAG compliance
 
 ---
 
@@ -1641,7 +1639,6 @@ For comprehensive testing coverage, see:
 - **[Test Results Template](testing/TEST_RESULTS_TEMPLATE.md)** - Documentation templates, quick test checklists, and issue reporting
 - **[Testing Appendix](testing/APPENDIX.md)** - Keyboard shortcuts, common issues, troubleshooting, DevTools tips
 - **[Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md)** - Browser compatibility, performance metrics, feature-specific behavior
-- **[Accessibility Testing Guide](testing/ACCESSIBILITY_TESTING_GUIDE.md)** - WCAG compliance, screen readers, keyboard navigation
 
 ## Optioonal: Validation Testing
 

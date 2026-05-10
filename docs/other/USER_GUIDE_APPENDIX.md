@@ -2,29 +2,12 @@
 
 ## Table of Contents
 
-1. [System Requirements](#system-requirements)
 5. [Keyboard Shortcuts](#keyboard-shortcuts)
 6. [Tips & Best Practices](#tips--best-practices)
 7. [Troubleshooting](#troubleshooting)
 8. [FAQ](#faq)
 
 ---
-
-## System Requirements
-
-### Browser Support
-
-**Recommended:**
-- Chrome 120+ (best performance)
-- Edge 120+
-
-**Supported:**
-- Firefox 115+
-- Safari 16+
-
-**Not Supported:**
-- Internet Explorer (any version)
-- Browsers older than 2 years
 
 ## Keyboard Shortcuts
 
@@ -101,26 +84,6 @@
 - ✅ Avoid circular dependencies
 - ✅ Document complex dependencies
 - ✅ Test processing order
-
-### Collaboration Best Practices
-
-**Version Control:**
-- Commit configurations regularly
-- Write meaningful commit messages
-- Review changes before committing
-- Tag stable versions
-
-**Documentation:**
-- Document complex transformations
-- Explain business logic
-- Note known issues
-- Keep README updated
-
-**Communication:**
-- Share configuration changes with team
-- Document breaking changes
-- Review each other's configurations
-- Establish naming conventions
 
 ---
 
@@ -250,26 +213,6 @@
 **Cause:** Reference to undefined entity
 
 **Fix:** Define missing entity or fix reference
-
-### Getting Help
-
-**In-App Help:**
-1. Hover tooltips on buttons
-2. Click error for details
-3. Check validation messages
-
-**Documentation:**
-1. User Guide (main workflow)
-2. This Appendix (technical reference)
-3. Configuration Guide (YAML reference)
-4. Developer Guide (advanced usage)
-
-**Support:**
-1. Check GitHub issues
-2. Contact administrator
-3. Submit bug report
-4. Request feature
-
 ---
 
 ## FAQ
@@ -301,23 +244,6 @@ A: Data sources may change, or new validation rules may be added.
 
 **Q: Can I skip validation?**  
 A: Not recommended. Validation catches errors before processing fails.
-
-### Feature Questions
-
-**Q: Can I customize keyboard shortcuts?**  
-A: Not currently. Standard shortcuts follow VS Code conventions.
-
-**Q: Can I change the editor theme?**  
-A: Future feature. Currently uses VS Code Light theme.
-
-**Q: Can I export configurations?**  
-A: Yes, they're YAML files you can copy from config directory.
-
-**Q: Can I import from other formats?**  
-A: Not currently. YAML only.
-
-**Q: Is there an API for automation?**  
-A: Yes, backend REST API documented in API guide.
 
 ### Troubleshooting Questions
 
