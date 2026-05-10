@@ -12,7 +12,7 @@ def test_help_doc_returns_user_guide_markdown() -> None:
     response = client.get("/api/v1/help-docs/USER_GUIDE")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/markdown")
-    assert response.text.startswith("# Shape Shifter Project Editor - User Guide")
+    assert response.text.startswith("# Shape Shifter Project Editor — User Guide")
 
 
 def test_help_doc_returns_nested_markdown_file() -> None:
