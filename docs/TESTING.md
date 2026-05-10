@@ -89,7 +89,6 @@ Detailed manual test procedures (UI checklists, feature-specific verification st
 - [Target Model Conformance Manual Test Checklist](testing/TARGET_MODEL_CONFORMANCE_MANUAL_TEST_CHECKLIST.md) — conformance validation across fixture types
 - [Error Scenario Testing](testing/ERROR_SCENARIO_TESTING.md) — error handling and recovery
 - [Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md) — browser compatibility and performance
-- [Accessibility Testing Guide](testing/ACCESSIBILITY_TESTING_GUIDE.md) — WCAG compliance and keyboard navigation
 
 ---
 
