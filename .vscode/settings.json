@@ -1,50 +1,66 @@
 {
-    "python.testing.pytestArgs": [
-        "tests",
-        "backend/tests",
-        "ingesters/sead/tests"
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
-    "workbench.colorCustomizations": {
-        "activityBar.activeBackground": "#5b7456",
-        "activityBar.background": "#5b7456",
-        "activityBar.foreground": "#e7e7e7",
-        "activityBar.inactiveForeground": "#e7e7e799",
-        "activityBarBadge.background": "#283578",
-        "activityBarBadge.foreground": "#e7e7e7",
-        "commandCenter.border": "#e7e7e799",
-        "sash.hoverBorder": "#5b7456",
-        "statusBar.background": "#445740",
-        "statusBar.foreground": "#e7e7e7",
-        "statusBarItem.hoverBackground": "#5b7456",
-        "statusBarItem.remoteBackground": "#445740",
-        "statusBarItem.remoteForeground": "#e7e7e7",
-        "titleBar.activeBackground": "#445740",
-        "titleBar.activeForeground": "#e7e7e7",
-        "titleBar.inactiveBackground": "#44574099",
-        "titleBar.inactiveForeground": "#e7e7e799",
-        "editor.background": "#000000",
-        "sideBar.background": "#000000",
-        "panel.background": "#000000"
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
     },
-    "yaml.keyOrdering": false,
-    "yaml.schemas": {
-        "/home/roger/source/sead_shape_shifter/frontend/src/schemas/projectSchema.json": [
-            "**/shapeshifter.yml"
-        ]
+    "[markdown]": {
+        "editor.defaultFormatter": "darkriszty.markdown-table-prettify"
     },
-    "yaml.format.enable": true,
-    "yaml.format.singleQuote": false,
-    "yaml.format.bracketSpacing": false,
-    "yaml.format.proseWrap": "preserve",
-    "yaml.format.printWidth": 4096,
+    "[sql]": {
+        "editor.defaultFormatter": "sqlfluff.vscode-sqlfluff"
+    },
     "[yaml]": {
         "editor.defaultFormatter": "redhat.vscode-yaml",
         "editor.formatOnSave": false,
-        "editor.tabSize": 2,
-        "editor.insertSpaces": true
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2
     },
+    "chat.tools.terminal.autoApprove": {
+        "gh": true,
+        "git add": true,
+        "git commit": true
+    },
+    "chat.tools.urls.autoApprove": {
+        "https://*.cytoscape.org": {
+            "approveRequest": false,
+            "approveResponse": true
+        },
+        "https://js.cytoscape.org": {
+            "approveRequest": true,
+            "approveResponse": false
+        }
+    },
+    "chat.viewSessions.orientation": "stacked",
+    "editor.hover.delay": 1400,
+    "editor.minimap.enabled": false,
+    "files.autoSave": "afterDelay",
+    "git.confirmSync": false,
+    "gitlens.rebaseEditor.ordering": "asc",
+    "markdownlint.config": {
+        "MD007": false,
+        "MD013": {
+            "line_length": -1
+        },
+        "MD024": false,
+        "MD029": false,
+        "MD032": false
+    },
+    "mcp": {
+        "servers": {
+            "vuetify-mcp": {
+                "args": [
+                    "-y",
+                    "@vuetify/mcp"
+                ],
+                "command": "npx"
+            }
+        }
+    },
+    "peacock.remoteColor": "#668302",
+     "python.analysis.aiHoverSummaries": true,
+    "python.analysis.autoFormatStrings": true,
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticMode": "openFilesOnly",
+    "python.analysis.disableTaggedHints": true,
     "python.analysis.exclude": [
         "**/node_modules",
         "**/__pycache__",
@@ -66,12 +82,6 @@
         "**/.git/**",
         "**/.*",
     ],
-    "python.analysis.aiHoverSummaries": true,
-    "python.analysis.autoFormatStrings": true,
-    "python.analysis.autoImportCompletions": true,
-    "python.analysis.diagnosticMode": "openFilesOnly",
-    "python.analysis.disableTaggedHints": true,
-    "python.analysis.importFormat": "absolute",
     "python.analysis.extraPaths": [
         ".",
         "src",
@@ -79,32 +89,14 @@
         "target_models/src"
     ],
     "python.analysis.generateWithTypeAnnotation": true,
-    "python.analysis.ignore": [
-        "**/__pycache__/**",
-        "**/.git/**",
-        "**/.mypy_cache/**",
-        "**/.pytest_cache/**",
-        "**/.venv/**",
-        "**/backups/**",
-        "**/build/**",
-        "**/data/**",
-        "**/deprecated/**",
-        "**/dist/**",
-        "**/frontend/**",
-        "**/htmlcov/**",
-        "**/lib/**",
-        "**/node_modules/**",
-        "**/output/**",
-        "**/shape_shifter.egg-info/**",
-        "**/tmp/**",
-        "**/venv/**",
-    ],
+    "python.analysis.importFormat": "absolute",
     "python.analysis.include": [
         "src/**",
         "backend/**",
         "tests/**",
         "target_models/**"
     ],
+    "python.analysis.indexing": true,
     "python.analysis.inlayHints.callArgumentNames": "off",
     "python.analysis.inlayHints.functionReturnTypes": true,
     "python.analysis.inlayHints.pytestParameters": true,
@@ -112,90 +104,53 @@
     "python.analysis.typeCheckingMode": "standard",
     "python.analysis.typeEvaluation.deprecateTypingAliases": true,
     "python.analysis.typeEvaluation.disableBytesTypePromotions": false,
-    "python.analysis.indexing": true,
     "python.analysis.userFileIndexingLimit": 2000,
-    "search.useIndexing": true,
+    "python.testing.autoTestDiscoverOnSaveEnabled": false,
+    "python.testing.pytestArgs": [
+        "tests",
+        "backend/tests",
+        "ingesters/sead/tests"
+    ],
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
     "search.maintainFileSearchCache": true,
     "search.maxResults": 20000,
-    "files.watcherExclude": {
-        "**/.git/objects/**": true,
-        "**/.git/subtree-cache/**": true,
-        "**/node_modules/**": true,
-        "**/.venv/**": true,
-        "**/venv/**": true,
-        "**/dist/**": true,
-        "**/build/**": true,
-        "**/output/**": true,
-        "**/backups/**": true,
-        "**/tmp/**": true,
-        "**/__pycache__/**": true,
-        "**/.pytest_cache/**": true,
-        "**/.mypy_cache/**": true,
-        "**/htmlcov/**": true,
-        "**/shape_shifter.egg-info/**": true,
-        "**/data/**": true
+    "search.useIndexing": true,
+    "terminal.integrated.tabs.location": "left",
+    "testing.defaultGutterClickAction": "debug",
+    "testing.gutterEnabled": false,
+    "workbench.colorCustomizations": {
+        "activityBar.activeBackground": "#5b7456",
+        "activityBar.background": "#5b7456",
+        "activityBar.foreground": "#e7e7e7",
+        "activityBar.inactiveForeground": "#e7e7e799",
+        "activityBarBadge.background": "#283578",
+        "activityBarBadge.foreground": "#e7e7e7",
+        "commandCenter.border": "#e7e7e799",
+        "editor.background": "#000000",
+        "panel.background": "#000000",
+        "sash.hoverBorder": "#5b7456",
+        "sideBar.background": "#000000",
+        "statusBar.background": "#445740",
+        "statusBar.foreground": "#e7e7e7",
+        "statusBarItem.hoverBackground": "#5b7456",
+        "statusBarItem.remoteBackground": "#445740",
+        "statusBarItem.remoteForeground": "#e7e7e7",
+        "titleBar.activeBackground": "#445740",
+        "titleBar.activeForeground": "#e7e7e7",
+        "titleBar.inactiveBackground": "#44574099",
+        "titleBar.inactiveForeground": "#e7e7e799"
     },
-    "search.exclude": {
-        "**/node_modules": true,
-        "**/.venv": true,
-        "**/venv": true,
-        "**/dist": true,
-        "**/build": true,
-        "**/output": true,
-        "**/backups": true,
-        "**/tmp": true,
-        "**/__pycache__": true,
-        "**/.pytest_cache": true,
-        "**/.mypy_cache": true,
-        "**/htmlcov": true,
-        "**/shape_shifter.egg-info": true,
-        "**/data/**": true
-    },
-    "remote.autoForwardPorts": true,
-        "remote.portsAttributes": {
-            "22": { "onAutoForward": "ignore" },
-            "25": { "onAutoForward": "ignore" },
-            "80": { "onAutoForward": "ignore" },
-            "443": { "onAutoForward": "ignore" },
-            "8010": { "onAutoForward": "ignore" },
-            "8011": { "onAutoForward": "ignore" },
-            "8020": { "onAutoForward": "ignore" },
-            "8021": { "onAutoForward": "ignore" },
-            "8030": { "onAutoForward": "ignore" },
-            "8084": { "onAutoForward": "ignore" },
-            "8484": { "onAutoForward": "ignore" },
-            "8485": { "onAutoForward": "ignore" },
-    },
-    "peacock.remoteColor": "#668302",
-    "cSpell.words": [
-        "arbodat",
-        "Marp",
-        "shapeshifter"
-    ],
-    "chat.tools.terminal.autoApprove": {
-        "git add": true,
-        "git commit": true
-    },
-    "mcp": {
-        "servers": {
-            "vuetify-mcp": {
-                "command": "npx",
-                "args": [
-                    "-y",
-                    "@vuetify/mcp"
-                ]
-            }
-        }
-    },
-    "sqlfluff.dialect": "postgres",
-    "sqlfluff.codeActions.excludeRules.global": false,
-    "markdownlint.config": {
-        "MD007": false,
-        "MD032": false,
-        "MD013": {
-            "line_length": -1
-        },
-        "MD024": false,
-        "MD029": false,
+    "workbench.tree.indent": 18,
+    "yaml.format.bracketSpacing": false,
+    "yaml.format.enable": true,
+    "yaml.format.printWidth": 4096,
+    "yaml.format.proseWrap": "preserve",
+    "yaml.format.singleQuote": false,
+    "yaml.keyOrdering": false,
+    "yaml.schemas": {
+        "/home/roger/source/sead_shape_shifter/frontend/src/schemas/projectSchema.json": [
+            "**/shapeshifter.yml"
+        ]
     }
 }
