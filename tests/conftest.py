@@ -2,6 +2,7 @@ import sys
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+import pandas as pd
 import psycopg
 import pytest
 from loguru import logger
@@ -10,6 +11,9 @@ from src.configuration import Config, ConfigFactory, MockConfigProvider
 
 # pylint: disable=unused-argument
 
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
+pd.set_option('display.max_colwidth', None)
 
 @pytest.fixture(autouse=True, scope="session")
 def setup_test_logging():
