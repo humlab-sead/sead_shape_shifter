@@ -1027,7 +1027,6 @@ entities:
     - rWert
     - hWert
     - üNN
-    - Projekt
     foreign_keys:
     - entity: site_type
       local_keys: [FustelTyp]
@@ -1048,7 +1047,14 @@ entities:
       longitude_dd: hWert
       altitude: üNN
     data_source: arbodat_data
-    query: select distinct p.Fustel, p.EVNr, b.FustelTyp, p.KoordSys, p.rWert, p.hWert, p.[üNN], p.[Projekt] from Projekte as p inner join ( select distinct Projekt, FustelTyp from Befunde ) as b on p.Projekt = b.Projekt where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');
+    query: |
+      select distinct p.Fustel, p.EVNr, b.FustelTyp, p.KoordSys, p.rWert, p.hWert, p.[üNN]
+      from Projekte as p
+      inner join (
+        select Projekt, max(FustelTyp) as FustelTyp
+        from Befunde group by Projekt
+      ) as b on p.Projekt = b.Projekt
+      where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');
   site_location:
     type: sql
     public_id: site_location_id
