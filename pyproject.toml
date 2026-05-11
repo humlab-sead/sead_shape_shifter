@@ -46,6 +46,7 @@ dev = [
     "pytest-asyncio>=0.22.0,<1",
     "pytest-cov>=4.1.0,<5",
     "vulture>=2.14",
+    "pytest-xdist>=3.8.0",
 ]
 # All dependencies (for full development setup)
 all = [
@@ -162,7 +163,7 @@ warn_return_any = false
 # pytest
 # --------------------
 [tool.pytest.ini_options]
-addopts = "-q -ra --strict-markers"
+addopts = "-q -ra -n 6  --strict-markers"
 testpaths = ["tests", "backend/tests", "ingesters/sead/tests"]
 python_classes = "Test*"
 python_functions = "test_*"
