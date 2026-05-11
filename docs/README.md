@@ -142,11 +142,12 @@ These are the primary system documentation files:
   - Proposes new modeling ergonomics for complex target-schema scenarios such as merged parent entities, lookup/fact pairs, and branch-aware downstream entities.
   - Recommends merged-parent modeling, branch-scoped consumers, and explicit fact-to-lookup intent as the highest-value modeling improvements, with related supporting proposals split out separately.
 
-- **[proposals/COMMENT_PRESERVING_SAVE_PATH.md](proposals/COMMENT_PRESERVING_SAVE_PATH.md)**
+- **[proposals/future/COMMENT_PRESERVING_SAVE_PATH.md](proposals/COMMENT_PRESERVING_SAVE_PATH.md)**
   - Proposes preserving YAML comments across ordinary project saves so local modeling rationale is not lost during editor round trips.
   - Recommends a comment-preserving persistence path instead of treating a generic entity-level `note` field as a substitute.
+  - Much more complex than a generic entity-level `note` field and hence moved to 'future' (not decided yet)
 
-- **[proposals/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md](proposals/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md)**
+- **[proposals/future/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md](proposals/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md)**
   - Companion technical sketch for implementing the comment-preserving save proposal.
   - Compares the current save flow with a save-time reload and merge flow that preserves comments without adding another long-lived cache layer.
 

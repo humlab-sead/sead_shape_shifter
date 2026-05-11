@@ -48,16 +48,17 @@ That means the current system preserves semantics, but not comment placement fro
 
 ## Current Flow Vs Proposed Flow
 
-| Step | Current Flow | Proposed Flow |
-| --- | --- | --- |
-| Load from disk | `YamlService.load()` parses YAML, then converts to plain Python objects | same for normal application logic |
-| In-memory editing | services and frontend work on `Project` API model | same |
-| Save preparation | `ProjectMapper.to_core_dict()` rebuilds the full sparse config dict that will be dumped as the new document | `ProjectMapper.to_core_dict()` provides semantic target data for the subtree being merged; it is merge input, not the final document |
-| YAML source for save | rebuilt dict becomes the source of truth | latest YAML file is reloaded from disk as a comment-aware tree |
-| Update behavior | whole YAML structure is effectively regenerated | stable sections such as `metadata`, `options`, or `entities[entity_name]` are patched into the reloaded YAML tree |
-| Comment outcome | comments and nearby formatting are lost when regenerated | comments in unchanged areas are preserved; nearby comments around edited nodes are preserved when merge logic can keep them attached |
-| Concurrency handling | current save path trusts in-memory project state | save path should detect if the file changed on disk since load and reject or defer conflicting saves |
-| Persistence complexity | simpler serialization, no comment retention | slightly more complex save merge, but no extra long-lived cache |
+| Step                   | Current Flow                                                            | Proposed Flow                                                                                                                        |
+|------------------------|-------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| Load from disk         | `YamlService.load()` parses YAML, then converts to plain Python objects | same for normal application logic                                                                                                    |
+| In-memory editing      | services and frontend work on `Project` API model                       | same                                                                                                                                 |
+| Save preparation       | `ProjectMapper.to_core_dict()` rebuilds the full sparse config dict     | `ProjectMapper.to_core_dict()` provides semantic target data for the subtree being merged;                                           |
+|                        | dict that will be dumped as the new document                            | it is merge input, not the final document                                                                                            |
+| YAML source for save   | rebuilt dict becomes the source of truth                                | latest YAML file is reloaded from disk as a comment-aware tree                                                                       |
+| Update behavior        | whole YAML structure is effectively regenerated                         | stable sections such as `metadata`, `options`, or `entities[entity_name]` are patched into the reloaded YAML tree                    |
+| Comment outcome        | comments and nearby formatting are lost when regenerated                | comments in unchanged areas are preserved; nearby comments around edited nodes are preserved when merge logic can keep them attached |
+| Concurrency handling   | current save path trusts in-memory project state                        | save path should detect if the file changed on disk since load and reject or defer conflicting saves                                 |
+| Persistence complexity | simpler serialization, no comment retention                             | slightly more complex save merge, but no extra long-lived cache                                                                      |
 
 ## Why Reload On Save Instead Of Caching YAML In Memory
 
