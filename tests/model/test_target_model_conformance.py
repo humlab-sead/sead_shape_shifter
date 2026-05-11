@@ -6,7 +6,7 @@ import yaml
 from src.model import ShapeShiftProject, TableConfig
 from src.target_model.conformance import TargetModelConformanceValidator
 from src.target_model.models import TargetModel
-from target_model.conformance import ConformanceIssue
+from src.target_model.conformance import ConformanceIssue
 
 TEST_DATA_DIR: Path = Path(__file__).resolve().parent.parent / "test_data"
 SPEC_PATH: Path = TEST_DATA_DIR / "specs" / "sead_standard_model.yml"
