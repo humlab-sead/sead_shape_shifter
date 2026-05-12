@@ -84,7 +84,6 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         # Validate required identity fields
         entity_cfg = self.get_entity_cfg(entity_name)
 
-
         # Check for public_id (required for fixed entities)
         public_id = entity_cfg.get("public_id") or entity_cfg.get("surrogate_id")
         if not public_id:

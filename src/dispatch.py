@@ -10,6 +10,7 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from sqlalchemy import create_engine
 
 from src.model import ShapeShiftProject, TableConfig
+from src.table_store import TableStore
 from src.utility import Registry, create_db_uri, dotget
 
 
@@ -24,7 +25,7 @@ Dispatchers: DispatchRegistry = DispatchRegistry()  # pylint: disable=invalid-na
 
 class IDispatcher(Protocol):
 
-    def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None: ...
+    def dispatch(self, target: str, data: TableStore) -> None: ...
 
 
 class Dispatcher(IDispatcher):
@@ -46,7 +47,7 @@ class Dispatcher(IDispatcher):
 class CsvDispatcher(Dispatcher):
     """Dispatcher for CSV data."""
 
-    def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
+    def dispatch(self, target: str, data: TableStore) -> None:
         output_dir = Path(target)
         output_dir.mkdir(parents=True, exist_ok=True)
         for entity_name, table in data.items():
@@ -57,7 +58,7 @@ class CsvDispatcher(Dispatcher):
 class ZipCsvDispatcher(CsvDispatcher):
     """Dispatcher for CSV data."""
 
-    def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
+    def dispatch(self, target: str, data: TableStore) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             super().dispatch(temp_dir, data)
             filename: Path = Path(target)
@@ -69,7 +70,7 @@ class ZipCsvDispatcher(CsvDispatcher):
 class ExcelDispatcher(Dispatcher):
     """Dispatcher for Excel data."""
 
-    def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
+    def dispatch(self, target: str, data: TableStore) -> None:
         with pd.ExcelWriter(target, engine="openpyxl", mode="w") as writer:
             if hasattr(writer, "book"):
                 writer.book.calculation.calcMode = "manual"  # type: ignore
@@ -115,7 +116,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
         "source_column": "#e4dfec",
     }
 
-    def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
+    def dispatch(self, target: str, data: TableStore) -> None:
         wb = Workbook(write_only=False)  # Keep False for styling support
 
         # Disable formula calculations for better performance
@@ -258,7 +259,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
 class DatabaseDispatcher(Dispatcher):
     """Dispatcher for Database data."""
 
-    def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
+    def dispatch(self, target: str, data: TableStore) -> None:
 
         db_opts: dict[str, Any] = dotget(self.cfg.options, "dispatch.database", {}) or {}
 

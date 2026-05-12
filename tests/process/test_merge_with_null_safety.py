@@ -1,11 +1,9 @@
 """Unit tests for merge_with_null_safety and related helpers in src/transforms/utility.py."""
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from src.transforms.utility import merge_with_null_safety
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -71,9 +69,12 @@ class TestNullSafeMerge:
         right = _df({"rid": [1, None, 3], "label": ["A", "B", "C"]})
 
         result = merge_with_null_safety(
-            left, right,
+            left,
+            right,
             use_null_safe_merge=True,
-            left_on=["lid"], right_on=["rid"], how="inner",
+            left_on=["lid"],
+            right_on=["rid"],
+            how="inner",
         )
 
         # Only rows with lid=1 and lid=3 should match; nulls must not match each other
@@ -85,9 +86,12 @@ class TestNullSafeMerge:
         right = _df({"rid": [1], "label": ["A"]})
 
         result = merge_with_null_safety(
-            left, right,
+            left,
+            right,
             use_null_safe_merge=True,
-            left_on=["lid"], right_on=["rid"], how="left",
+            left_on=["lid"],
+            right_on=["rid"],
+            how="left",
         )
 
         assert len(result) == 2
@@ -102,9 +106,12 @@ class TestNullSafeMerge:
         right = _df({"rid": [1, None]})
 
         result = merge_with_null_safety(
-            left, right,
+            left,
+            right,
             allow_null_keys=True,
-            left_on=["lid"], right_on=["rid"], how="inner",
+            left_on=["lid"],
+            right_on=["rid"],
+            how="inner",
         )
 
         assert len(result) == 1
@@ -116,9 +123,12 @@ class TestNullSafeMerge:
         right = _df({"id": [1, 2, 3], "label": ["A", "B", "C"]})
 
         result = merge_with_null_safety(
-            left, right,
+            left,
+            right,
             use_null_safe_merge=True,
-            left_on=["id"], right_on=["id"], how="inner",
+            left_on=["id"],
+            right_on=["id"],
+            how="inner",
         )
 
         assert len(result) == 3
@@ -128,9 +138,12 @@ class TestNullSafeMerge:
         right = _df({"id": [1, None]})
 
         result = merge_with_null_safety(
-            left, right,
+            left,
+            right,
             use_null_safe_merge=True,
-            left_on=["id"], right_on=["id"], how="left",
+            left_on=["id"],
+            right_on=["id"],
+            how="left",
         )
 
         sentinel_cols = [c for c in result.columns if "__nullsafe" in c or "__ss_null" in c]
@@ -142,9 +155,12 @@ class TestNullSafeMerge:
 
         with pytest.raises(ValueError, match="Mismatched merge key counts"):
             merge_with_null_safety(
-                left, right,
+                left,
+                right,
                 use_null_safe_merge=True,
-                left_on=["a", "b"], right_on=["x"], how="inner",
+                left_on=["a", "b"],
+                right_on=["x"],
+                how="inner",
             )
 
 
@@ -222,9 +238,12 @@ class TestDtypeCoercion:
         right = _df({"id": [1, 2, 3], "label": ["A", "B", "C"]})
 
         result = merge_with_null_safety(
-            left, right,
+            left,
+            right,
             allow_null_keys=True,
-            left_on=["id"], right_on=["id"], how="left",
+            left_on=["id"],
+            right_on=["id"],
+            how="left",
         )
 
         assert len(result) == 3
@@ -236,9 +255,7 @@ class TestDtypeCoercion:
         left = _df({"a": ["1", "2"], "b": ["10", "20"], "val": ["x", "y"]})
         right = _df({"a": [1, 2], "b": [10, 20], "extra": ["X", "Y"]})
 
-        result = merge_with_null_safety(
-            left, right, left_on=["a", "b"], right_on=["a", "b"], how="inner"
-        )
+        result = merge_with_null_safety(left, right, left_on=["a", "b"], right_on=["a", "b"], how="inner")
 
         assert len(result) == 2
         assert list(result["extra"]) == ["X", "Y"]

@@ -4,7 +4,6 @@ import shutil
 from pathlib import Path
 
 import jpype
-import pandas as pd
 import pytest
 
 from backend.app.validators.data_validation_orchestrator import (
@@ -15,6 +14,7 @@ from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications.project import CompositeProjectSpecification
+from src.table_store import TableStore
 from src.utility import load_shape_file
 from src.validators.data_validators import UnresolvedExtraColumnsValidator, ValidationIssue
 from src.workflow import validate_entity_shapes, workflow
@@ -176,7 +176,7 @@ async def test_full_data_validation_with_unresolved_extra_columns():
     class TestDataFetchStrategy(TableStoreDataFetchStrategy):
         """Custom strategy that includes unresolved extra column validation."""
 
-        def __init__(self, table_store: dict[str, pd.DataFrame], unresolved_map: dict[str, dict[str, dict]]) -> None:
+        def __init__(self, table_store: TableStore, unresolved_map: dict[str, dict[str, dict]]) -> None:
             super().__init__(table_store)
             self.unresolved_map = unresolved_map
 

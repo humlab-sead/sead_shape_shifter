@@ -18,6 +18,12 @@ from backend.app.services.project_service import ProjectService
 from backend.app.services.shapeshift_service import ShapeShiftService
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
+from src.table_store import TableStore
+from src.target_model.data_validators import (
+    FKReferentialIntegrityConformanceValidator,
+    NullabilityConformanceValidator,
+    TypeCompatibilityConformanceValidator,
+)
 from src.target_model.models import TargetModel
 from src.validators.data_validators import (
     ColumnExistsValidator,
@@ -28,11 +34,6 @@ from src.validators.data_validators import (
     NonEmptyResultValidator,
     UnresolvedExtraColumnsValidator,
     ValidationIssue,
-)
-from src.target_model.data_validators import (
-    FKReferentialIntegrityConformanceValidator,
-    NullabilityConformanceValidator,
-    TypeCompatibilityConformanceValidator,
 )
 
 
@@ -107,8 +108,8 @@ class FullDataFetchStrategy(DataFetchStrategy):
 class TableStoreDataFetchStrategy(DataFetchStrategy):
     """Strategy for fetching from pre-existing table store (already normalized)."""
 
-    def __init__(self, table_store: dict[str, pd.DataFrame]) -> None:
-        self.table_store: dict[str, pd.DataFrame] = table_store
+    def __init__(self, table_store: TableStore) -> None:
+        self.table_store: TableStore = table_store
 
     async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
         """Fetch from existing table store."""
@@ -248,9 +249,7 @@ class DataValidationOrchestrator:
                         try:
                             target_df: pd.DataFrame = await self.fetch_strategy.fetch(project_name, fk_spec.entity)
                             issues.extend(
-                                FKReferentialIntegrityConformanceValidator.validate(
-                                    df, fk_spec, target_df, target_entity_spec, entity_name
-                                )
+                                FKReferentialIntegrityConformanceValidator.validate(df, fk_spec, target_df, target_entity_spec, entity_name)
                             )
                         except Exception as e:
                             logger.warning(f"Could not validate target model FK integrity {entity_name} -> {fk_spec.entity}: {e}")

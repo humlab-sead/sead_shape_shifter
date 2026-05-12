@@ -1,18 +1,16 @@
 """Tests for target-model-aware data conformance validators."""
 
 import pandas as pd
-import pytest
 
-from src.target_model.models import ColumnSpec, EntitySpec, ForeignKeySpec
 from src.target_model.data_validators import (
     FKReferentialIntegrityConformanceValidator,
     NullabilityConformanceValidator,
     TypeCompatibilityConformanceValidator,
 )
+from src.target_model.models import ColumnSpec, EntitySpec, ForeignKeySpec
 
 
 def make_entity_spec(**kwargs) -> EntitySpec:
-    from src.target_model.models import ModelMetadata, TargetModel
 
     return EntitySpec(**kwargs)
 
@@ -215,13 +213,23 @@ class TestFKReferentialIntegrityConformanceValidator:
     def test_empty_source_returns_no_issues(self):
         fk_spec = self._fk_spec("location")
         target_spec = self._target_spec("location_id")
-        assert FKReferentialIntegrityConformanceValidator.validate(pd.DataFrame(), fk_spec, pd.DataFrame({"location_id": [1]}), target_spec, "site") == []
+        assert (
+            FKReferentialIntegrityConformanceValidator.validate(
+                pd.DataFrame(), fk_spec, pd.DataFrame({"location_id": [1]}), target_spec, "site"
+            )
+            == []
+        )
 
     def test_empty_target_returns_no_issues(self):
         """Empty target — not our concern here (orphaned-values check can't run)."""
         fk_spec = self._fk_spec("location")
         target_spec = self._target_spec("location_id")
-        assert FKReferentialIntegrityConformanceValidator.validate(pd.DataFrame({"location_id": [1]}), fk_spec, pd.DataFrame(), target_spec, "site") == []
+        assert (
+            FKReferentialIntegrityConformanceValidator.validate(
+                pd.DataFrame({"location_id": [1]}), fk_spec, pd.DataFrame(), target_spec, "site"
+            )
+            == []
+        )
 
     def test_nulls_in_source_are_excluded(self):
         """Null FK values should not be counted as orphaned."""

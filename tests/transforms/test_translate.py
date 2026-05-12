@@ -2,6 +2,7 @@
 
 import pandas as pd
 
+from src.table_store import TableStore
 from src.transforms.translate import extract_translation_map, translate
 
 
@@ -35,12 +36,14 @@ class TestTranslate:
         translations: dict[str, str] = extract_translation_map(fields_metadata=fields_metadata)
 
         # Create test data
-        data: dict[str, pd.DataFrame] = {
-            "sites": pd.DataFrame({"Ort": ["Berlin", "Munich"], "Datum": ["2020-01-01", "2020-01-02"]}),
-            "species": pd.DataFrame({"Art": ["Oak", "Pine"], "Count": [5, 10]}),
-        }
+        data: TableStore = TableStore(
+            {
+                "sites": pd.DataFrame({"Ort": ["Berlin", "Munich"], "Datum": ["2020-01-01", "2020-01-02"]}),
+                "species": pd.DataFrame({"Art": ["Oak", "Pine"], "Count": [5, 10]}),
+            }
+        )
 
-        result: dict[str, pd.DataFrame] = translate(data, translations_map=translations)
+        result: TableStore = translate(data, translations_map=translations)
 
         # Verify translations
         assert "location" in result["sites"].columns
@@ -59,11 +62,13 @@ class TestTranslate:
         ]
         translations_map: dict[str, str] = extract_translation_map(fields_metadata=translations)
 
-        data: dict[str, pd.DataFrame] = {
-            "sites": pd.DataFrame({"Ort": ["Berlin"], "untranslated_col": ["value"]}),
-        }
+        data: TableStore = TableStore(
+            {
+                "sites": pd.DataFrame({"Ort": ["Berlin"], "untranslated_col": ["value"]}),
+            }
+        )
 
-        result: dict[str, pd.DataFrame] = translate(data, translations_map=translations_map)
+        result: TableStore = translate(data, translations_map=translations_map)
 
         assert "location" in result["sites"].columns
         assert "untranslated_col" in result["sites"].columns
@@ -71,11 +76,13 @@ class TestTranslate:
     def test_translate_with_no_translations_config(self):
         """Test translate when no translation configuration is available."""
 
-        data: dict[str, pd.DataFrame] = {
-            "sites": pd.DataFrame({"Ort": ["Berlin"], "Datum": ["2020-01-01"]}),
-        }
+        data: TableStore = TableStore(
+            {
+                "sites": pd.DataFrame({"Ort": ["Berlin"], "Datum": ["2020-01-01"]}),
+            }
+        )
 
-        result: dict[str, pd.DataFrame] = translate(data, translations_map=None)
+        result: TableStore = translate(data, translations_map=None)
 
         # Columns should remain unchanged
         assert "Ort" in result["sites"].columns
@@ -84,11 +91,13 @@ class TestTranslate:
     def test_translate_with_empty_translations(self):
         """Test translate with empty translations list."""
 
-        data: dict[str, pd.DataFrame] = {
-            "sites": pd.DataFrame({"Ort": ["Berlin"]}),
-        }
+        data: TableStore = TableStore(
+            {
+                "sites": pd.DataFrame({"Ort": ["Berlin"]}),
+            }
+        )
 
-        result: dict[str, pd.DataFrame] = translate(data, translations_map={})
+        result: TableStore = translate(data, translations_map={})
 
         # Columns should remain unchanged
         assert "Ort" in result["sites"].columns
@@ -101,11 +110,13 @@ class TestTranslate:
         ]
         translations: dict[str, str] = extract_translation_map(fields_metadata=fields_metadata)
 
-        data: dict[str, pd.DataFrame] = {
-            "sites": pd.DataFrame({"Ort": ["Berlin"]}),
-        }
+        data: TableStore = TableStore(
+            {
+                "sites": pd.DataFrame({"Ort": ["Berlin"]}),
+            }
+        )
 
-        result: dict[str, pd.DataFrame] = translate(data, translations_map=translations)
+        result: TableStore = translate(data, translations_map=translations)
 
         # Should skip translation and keep original columns
         assert "Ort" in result["sites"].columns
@@ -117,11 +128,13 @@ class TestTranslate:
         ]
         translations: dict[str, str] = extract_translation_map(fields_metadata=fields_metadata)
 
-        data: dict[str, pd.DataFrame] = {
-            "sites": pd.DataFrame({"Ort": ["Berlin"], "location": ["existing"]}),
-        }
+        data: TableStore = TableStore(
+            {
+                "sites": pd.DataFrame({"Ort": ["Berlin"], "location": ["existing"]}),
+            }
+        )
 
-        result: dict[str, pd.DataFrame] = translate(data, translations_map=translations)
+        result: TableStore = translate(data, translations_map=translations)
         # Should not translate 'Ort' because 'location' already exists
         assert "Ort" in result["sites"].columns
         assert "location" in result["sites"].columns
@@ -136,13 +149,15 @@ class TestTranslate:
         ]
         translations: dict[str, str] = extract_translation_map(fields_metadata=fields_metadata)
 
-        data: dict[str, pd.DataFrame] = {
-            "sites": pd.DataFrame({"Ort": ["Berlin"], "id": [1]}),
-            "species": pd.DataFrame({"Art": ["Oak"], "Anzahl": [5]}),
-            "other": pd.DataFrame({"name": ["test"]}),
-        }
+        data: TableStore = TableStore(
+            {
+                "sites": pd.DataFrame({"Ort": ["Berlin"], "id": [1]}),
+                "species": pd.DataFrame({"Art": ["Oak"], "Anzahl": [5]}),
+                "other": pd.DataFrame({"name": ["test"]}),
+            }
+        )
 
-        result: dict[str, pd.DataFrame] = translate(data, translations_map=translations)
+        result: TableStore = translate(data, translations_map=translations)
 
         # Check all tables translated correctly
         assert "location" in result["sites"].columns
@@ -159,11 +174,13 @@ class TestTranslate:
         ]
         translations: dict[str, str] = extract_translation_map(fields_metadata=fields_metadata, from_field="german", to_field="swedish")
 
-        data: dict[str, pd.DataFrame] = {
-            "sites": pd.DataFrame({"Ort": ["Berlin"], "Art": ["Oak"]}),
-        }
+        data: TableStore = TableStore(
+            {
+                "sites": pd.DataFrame({"Ort": ["Berlin"], "Art": ["Oak"]}),
+            }
+        )
 
-        result: dict[str, pd.DataFrame] = translate(data, translations_map=translations)
+        result: TableStore = translate(data, translations_map=translations)
 
         assert "plats" in result["sites"].columns
         assert "art" in result["sites"].columns
@@ -178,11 +195,13 @@ class TestTranslate:
         ]
         translations: dict[str, str] = extract_translation_map(fields_metadata=fields_metadata)
 
-        data: dict[str, pd.DataFrame] = {
-            "sites": pd.DataFrame({"Ort": ["Berlin", "Munich"], "Wert": [10, 20]}),
-        }
+        data: TableStore = TableStore(
+            {
+                "sites": pd.DataFrame({"Ort": ["Berlin", "Munich"], "Wert": [10, 20]}),
+            }
+        )
 
-        result: dict[str, pd.DataFrame] = translate(data, translations_map=translations)
+        result: TableStore = translate(data, translations_map=translations)
 
         # Verify data values are preserved
         assert result["sites"]["location"].tolist() == ["Berlin", "Munich"]
@@ -195,11 +214,13 @@ class TestTranslate:
         ]
         translations: dict[str, str] = extract_translation_map(fields_metadata=fields_metadata)
 
-        data: dict[str, pd.DataFrame] = {
-            "sites": pd.DataFrame({"Ort": [], "Datum": []}),
-        }
+        data: TableStore = TableStore(
+            {
+                "sites": pd.DataFrame({"Ort": [], "Datum": []}),
+            }
+        )
 
-        result: dict[str, pd.DataFrame] = translate(data, translations_map=translations)
+        result: TableStore = translate(data, translations_map=translations)
 
         assert "location" in result["sites"].columns
         assert "Datum" in result["sites"].columns
@@ -212,11 +233,13 @@ class TestTranslate:
         ]
         translations: dict[str, str] = extract_translation_map(fields_metadata=fields_metadata)
 
-        original_data: dict[str, pd.DataFrame] = {
-            "sites": pd.DataFrame({"Ort": ["Berlin"]}),
-        }
+        original_data: TableStore = TableStore(
+            {
+                "sites": pd.DataFrame({"Ort": ["Berlin"]}),
+            }
+        )
 
-        result: dict[str, pd.DataFrame] = translate(original_data, translations_map=translations)
+        result: TableStore = translate(original_data, translations_map=translations)
 
         # Verify it returns a dict
         assert isinstance(result, dict)
