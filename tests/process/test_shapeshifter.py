@@ -108,7 +108,7 @@ class TestProcessState:
         assert next_entity == "site"
 
         # Mark site as processed
-        state.table_store["site"] = Mock()
+        state.table_store["site"] = pd.DataFrame()
 
         # Now 'sample' should be available
         next_entity = state.get_next_entity_to_process()
@@ -117,8 +117,8 @@ class TestProcessState:
     def test_get_next_entity_all_processed(self, survey_only_config: ShapeShiftProject):
         """Test getting next entity when all are processed."""
 
-        state = ProcessState(project=survey_only_config, table_store=TableStore({"survey": Mock()}))
-        state.table_store["site"] = Mock()
+        state = ProcessState(project=survey_only_config, table_store=TableStore({"survey": pd.DataFrame()}))
+        state.table_store["site"] = pd.DataFrame()
 
         next_entity: str | None = state.get_next_entity_to_process()
         assert next_entity is None
@@ -151,7 +151,7 @@ class TestProcessState:
         unmet = state.get_unmet_dependencies("sample")
         assert unmet == {"site", "taxa"}
 
-        state.table_store["site"] = Mock()
+        state.table_store["site"] = pd.DataFrame()
 
         unmet = state.get_unmet_dependencies("sample")
         assert unmet == {"taxa"}
@@ -170,7 +170,7 @@ class TestProcessState:
         assert "site" in state.unprocessed_entities
         assert "site" not in state.processed_entities
 
-        state.table_store["site"] = Mock()
+        state.table_store["site"] = pd.DataFrame()
 
         assert "site" not in state.unprocessed_entities
         assert "site" in state.processed_entities
@@ -212,10 +212,10 @@ class TestProcessState:
         state = ProcessState(project=config, table_store=TableStore())
         assert state.processed_entities == set()
 
-        state.table_store["site"] = Mock()
+        state.table_store["site"] = pd.DataFrame()
         assert state.processed_entities == {"site"}
 
-        state.table_store["sample"] = Mock()
+        state.table_store["sample"] = pd.DataFrame()
         assert state.processed_entities == {"site", "sample"}
 
     def test_get_next_entity_with_unresolvable_dependencies(self):
