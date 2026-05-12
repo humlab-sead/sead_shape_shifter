@@ -16,17 +16,28 @@ from backend.app.models.data_source import (
     DataSourceStatus,
     DataSourceTestResult,
 )
-from backend.app.models.driver_schema import DriverSchemaResponse, FieldMetadataResponse
+from backend.app.models.driver_schema import DriverSchemaResponse, EntityTypeInfo, FieldMetadataResponse
 from backend.app.models.project import ExcelMetadataResponse, ProjectFileInfo
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
-from src.loaders.driver_metadata import DriverSchemaRegistry
+from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
 
 router = APIRouter(prefix="/data-sources", tags=["data-sources"])
 
 ALLOWED_FILE_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 MAX_FILE_SIZE_MB = 50
+
+ENTITY_TYPES: list[EntityTypeInfo] = [
+    EntityTypeInfo(value="entity", title="Data (Derived)", subtitle="Derive from another entity"),
+    EntityTypeInfo(value="sql", title="SQL Query", subtitle="Execute SQL against an external database"),
+    EntityTypeInfo(value="fixed", title="Fixed Values", subtitle="Hard-coded values"),
+    EntityTypeInfo(value="csv", title="CSV File", subtitle="Load from CSV file"),
+    EntityTypeInfo(value="xlsx", title="Excel File (Pandas)", subtitle="Load Excel with pandas"),
+    EntityTypeInfo(value="openpyxl", title="Excel File (OpenPyXL)", subtitle="Load Excel with OpenPyXL (supports ranges)"),
+    EntityTypeInfo(value="merged", title="Merged (Multi-Branch)", subtitle="Combine multiple source entities into one"),
+    EntityTypeInfo(value="duckdb", title="DuckDB (Internal SQL)", subtitle="Query already-processed entities using SQL"),
+]
 
 
 @router.get("/drivers", response_model=dict[str, DriverSchemaResponse], summary="Get available data source drivers")
@@ -73,7 +84,9 @@ async def list_drivers() -> dict[str, DriverSchemaResponse]:
     try:
 
         logger.debug("Fetching driver schemas")
-        schemas = DriverSchemaRegistry.all()
+        schemas: dict[str, DriverSchema] = {
+            driver: schema for driver, schema in DriverSchemaRegistry.all().items() if schema.category != "internal"
+        }
 
         return {
             driver: DriverSchemaResponse(
@@ -105,6 +118,12 @@ async def list_drivers() -> dict[str, DriverSchemaResponse]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch driver schemas: {str(e)}",
         ) from e
+
+
+@router.get("/entity-types", response_model=list[EntityTypeInfo], summary="Get supported entity types")
+async def list_entity_types() -> list[EntityTypeInfo]:
+    """Return the supported entity types for the entity type selector."""
+    return ENTITY_TYPES
 
 
 @router.get("", response_model=list[DataSourceConfig], summary="List all global data sources")

@@ -133,11 +133,11 @@ class ExcelGenerator(DocumentGenerator):
         return buffer.read()
 
     def auto_resize_columns(self, writer: pd.ExcelWriter):
-        for sheet_name, worksheet in writer.sheets.items():
+        for _, worksheet in writer.sheets.items():
             for column in worksheet.columns:
                 column_letter = column[0].column_letter
                 max_length: int = max(
-                    [len(str(cell.value)) for cell in column if cell.value is not None],
+                    (len(str(cell.value)) for cell in column if cell.value is not None),
                     default=0,
                 )
                 worksheet.column_dimensions[column_letter].width = min(max_length + 2, 50)
@@ -190,8 +190,8 @@ class TextDocumentGenerator(DocumentGenerator):
                 by_domain[domain].append(entity_data)
 
         # Sort entities within each domain
-        for domain in by_domain:  # type: ignore ; # pylint disable=consider-using-dict-items
-            by_domain[domain].sort(key=lambda x: x["name"])
+        for domain, entities in by_domain.items():  # type: ignore
+            entities.sort(key=lambda x: x["name"])
 
         # Calculate statistics
         total_entities: int = len(target_model.entities)
@@ -414,8 +414,8 @@ class TargetModelDocumentGenerator:
         """
         try:
             return DOCUMENT_GENERATORS.get(format)().generate(self.target_model, self.project)
-        except KeyError:
-            raise ValueError(f"Unsupported format: {format}")
+        except KeyError as exc:
+            raise ValueError(f"Unsupported format: {format}") from exc
         except Exception as e:
             raise RuntimeError(f"Error generating documentation: {e}") from e
 

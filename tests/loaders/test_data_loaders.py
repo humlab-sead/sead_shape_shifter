@@ -26,7 +26,7 @@ class TestDataLoader:
     @pytest.mark.parametrize(
         "loader_type,expected_keys",
         [
-            (LoaderType.SQL, {"postgres", "sqlite", "ucanaccess"}),
+            (LoaderType.SQL, {"postgres", "sqlite", "ucanaccess", "duckdb"}),
             (LoaderType.FILE, {"csv", "xlsx", "openpyxl"}),
             (LoaderType.VALUE, {"fixed"}),
         ],

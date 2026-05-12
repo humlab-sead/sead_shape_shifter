@@ -118,10 +118,7 @@ class TypeCompatibilityConformanceValidator:
                             f"which is incompatible with declared target model type '{col_spec.type}'"
                         ),
                         code="TYPE_INCOMPATIBLE",
-                        suggestion=(
-                            f"Cast '{col_name}' to a {col_spec.type}-compatible type "
-                            f"in transforms or the source data."
-                        ),
+                        suggestion=(f"Cast '{col_name}' to a {col_spec.type}-compatible type " f"in transforms or the source data."),
                         category="conformance",
                         priority="medium",
                         auto_fixable=False,
@@ -186,14 +183,10 @@ class FKReferentialIntegrityConformanceValidator:
                 severity="warning",
                 entity=entity_name,
                 field=fk_col,
-                message=(
-                    f"{len(orphaned)} value(s) in '{entity_name}.{fk_col}' "
-                    f"have no matching row in '{fk_spec.entity}.{fk_col}'"
-                ),
+                message=(f"{len(orphaned)} value(s) in '{entity_name}.{fk_col}' " f"have no matching row in '{fk_spec.entity}.{fk_col}'"),
                 code="FK_REFERENTIAL_INTEGRITY",
                 suggestion=(
-                    f"Ensure all '{fk_col}' values in '{entity_name}' exist in '{fk_spec.entity}'. "
-                    f"Sample orphaned: {', '.join(sample)}"
+                    f"Ensure all '{fk_col}' values in '{entity_name}' exist in '{fk_spec.entity}'. " f"Sample orphaned: {', '.join(sample)}"
                 ),
                 category="conformance",
                 priority="medium",

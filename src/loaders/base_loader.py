@@ -72,6 +72,11 @@ class DataLoader(abc.ABC):
         """
         return cls.schema
 
+    @classmethod
+    def create(cls, data_source: "DataSourceConfig | None", **context: Any) -> "DataLoader":
+        """Instantiate this loader. Override to consume extra context kwargs."""
+        return cls(data_source=data_source)
+
     @abc.abstractmethod
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         pass
@@ -79,6 +84,9 @@ class DataLoader(abc.ABC):
     @abc.abstractmethod
     async def test_connection(self) -> ConnectTestResult:
         pass
+
+    def close(self) -> None:
+        """Release any persistent resources held by this loader. No-op by default."""
 
 
 class DataLoaderRegistry(Registry):

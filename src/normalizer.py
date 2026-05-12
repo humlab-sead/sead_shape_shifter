@@ -14,17 +14,19 @@ from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService
 from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders, LoaderType
+from src.loaders.duckdb_loader import DuckDbWorkspace
 from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
 from src.path_resolution import resolve_managed_file_path
 from src.process_state import ProcessState
+from src.table_store import TableStore
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.transforms.extra_columns import ExtraColumnEvaluator
 from src.transforms.filter import apply_filters
 from src.transforms.link import ForeignKeyLinker
 from src.transforms.translate import translate
 from src.transforms.unnest import unnest
-from src.transforms.utility import add_system_id  # Renamed from add_surrogate_id
+from src.transforms.utility import add_system_id
 
 
 class ShapeShifter:
@@ -33,7 +35,7 @@ class ShapeShifter:
         self,
         project: ShapeShiftProject | str,
         default_entity: str | None = None,
-        table_store: dict[str, pd.DataFrame] | None = None,
+        table_store: TableStore | None = None,
         target_entities: set[str] | None = None,
     ) -> None:
 
@@ -41,21 +43,35 @@ class ShapeShifter:
             raise ValueError("A valid configuration must be provided")
 
         self.default_entity: str | None = default_entity
-        self.table_store: dict[str, pd.DataFrame] = table_store or {}
+
+        self.table_store: TableStore = table_store if isinstance(table_store, TableStore) else TableStore(table_store or {})
+        self.duckdb_workspace: DuckDbWorkspace = DuckDbWorkspace(database=":memory:")
+
+        self.table_store.add_on_set_hook(self.duckdb_workspace.register_entity, replay=True)
+        self.table_store.add_on_delete_hook(self.duckdb_workspace.unregister_entity)
+
         self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
         self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
         self.extra_col_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
         self.unresolved_extra_columns: dict[str, dict[str, dict[str, Any]]] = {}
+        self._loader_cache: dict[str, DataLoader] = {}
 
     def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
-        """Resolve the DataLoader, if any, for the given TableConfig."""
+        context = {"workspace": self.duckdb_workspace, "table_store": self.table_store}
+
         if table_cfg.data_source:
-            data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
-            return DataLoaders.get(key=data_source.driver)(data_source=data_source)
+            cache_key = f"ds:{table_cfg.data_source}"
+            if cache_key not in self._loader_cache:
+                data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
+                self._loader_cache[cache_key] = DataLoaders.get(key=data_source.driver).create(data_source=data_source, **context)
+            return self._loader_cache[cache_key]
 
         if table_cfg.type and table_cfg.type in DataLoaders.items:
-            return DataLoaders.get(key=table_cfg.type)(data_source=None)
+            cache_key = f"type:{table_cfg.type}"
+            if cache_key not in self._loader_cache:
+                self._loader_cache[cache_key] = DataLoaders.get(key=table_cfg.type).create(data_source=None, **context)
+            return self._loader_cache[cache_key]
 
         return None
 
@@ -159,7 +175,7 @@ class ShapeShifter:
         """
         # Extract branch metadata from sub_table_cfg
         branch_name: str = sub_table_cfg.entity_cfg.get("_branch_name", "unknown")
-        branch_source: str = sub_table_cfg.entity_cfg.get("source")
+        branch_source: str | None = sub_table_cfg.entity_cfg.get("source")
 
         # 1. Add branch discriminator column
         discriminator_column: str = f"{entity}_branch"
@@ -173,7 +189,7 @@ class ShapeShifter:
         # includes it in the branch column list, and normalize() adds it per-entity before
         # downstream merged entities are processed.
         for branch_cfg in table_cfg.branches:
-            branch_src: str = branch_cfg.get("source")
+            branch_src: str | None = branch_cfg.get("source")
             source_cfg: dict[str, Any] = table_cfg.entities_cfg.get(branch_src, {}) if branch_src else {}
             fk_column_name: str = source_cfg.get("public_id") or f"{branch_src}_id"
 
@@ -182,7 +198,7 @@ class ShapeShifter:
                 if "system_id" in sub_data.columns:
                     sub_data[fk_column_name] = sub_data["system_id"].astype("Int64")
                 else:
-                    sub_data[fk_column_name] = pd.array(pd.NA, dtype="Int64")
+                    sub_data[fk_column_name] = pd.array([pd.NA] * len(sub_data), dtype="Int64")
             else:
                 sub_data[fk_column_name] = pd.NA
 
@@ -304,6 +320,9 @@ class ShapeShifter:
             self.table_store[entity] = self.project.reorder_columns(entity, self.table_store[entity])
 
         self._link_deferred_foreign_keys()
+
+        for loader in self._loader_cache.values():
+            loader.close()
 
         return self
 

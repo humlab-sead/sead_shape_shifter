@@ -143,7 +143,7 @@ def _coerce_compatible_merge_key_dtypes(
         if left_key not in local_df.columns or right_key not in remote_df.columns:
             continue
 
-        left_col: pd.Series  = local_df[left_key]
+        left_col: pd.Series = local_df[left_key]
         right_col: pd.Series = remote_df[right_key]
         left_numeric: bool = pd.api.types.is_numeric_dtype(left_col)
         right_numeric: bool = pd.api.types.is_numeric_dtype(right_col)

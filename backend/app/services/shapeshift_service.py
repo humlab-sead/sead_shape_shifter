@@ -19,6 +19,7 @@ from src.exceptions import FunctionalDependencyError
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.specifications.constraints import ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation, ValidationIssue
+from src.table_store import TableStore
 from src.validation_messages import format_validation_message_with_context
 
 
@@ -31,7 +32,7 @@ class ShapeShiftService:
         self.project_cache = ShapeShiftProjectCache(project_service)
         self.settings: Settings = settings
         # Optional warm table_store populated by batch preview to short-circuit later preview calls
-        self._warm_table_store: dict[str, pd.DataFrame] | None = None
+        self._warm_table_store: TableStore | None = None
         # Initialize entity config mapper factory for type-specific transformations
         self._mapper_factory = EntityConfigMapperFactory(self.settings)
 
@@ -106,13 +107,13 @@ class ShapeShiftService:
 
         # Fast path: if warm table_store from batch run exists, reuse it directly (but not when using override)
         if not using_override and self._warm_table_store and entity_name in self._warm_table_store:
-            table_store = {entity_name: self._warm_table_store[entity_name]}
+            table_store = TableStore({entity_name: self._warm_table_store[entity_name]})
             validation_issues: list[dict] = []
             cached_hit = True
         else:
             # Skip cache lookup when using override config
             if using_override:
-                cached_data = ShapeShiftCache.CacheCheckResult(found=False, data=None, dependencies={})
+                cached_data = ShapeShiftCache.CacheCheckResult(found=False, data=None, dependencies=TableStore())
                 cached_hit = False
             else:
                 cached_data: ShapeShiftCache.CacheCheckResult = self.cache.fetch_cached_entity_data(
@@ -120,11 +121,11 @@ class ShapeShiftService:
                 )
                 cached_hit = cached_data.data is not None
 
-            table_store: dict[str, pd.DataFrame]
+            table_store: TableStore
             validation_issues: list[dict] = []
 
             if cached_data.data is not None:
-                table_store = {entity_name: cached_data.data} | cached_data.dependencies
+                table_store = TableStore({entity_name: cached_data.data} | cached_data.dependencies)
             else:
                 resolved_cfg: ShapeShiftProject = project.clone().resolve(filename=project.filename, strict=True, **self.settings.env_opts)
                 table_store, validation_issues = await self.shapeshift(
@@ -158,8 +159,8 @@ class ShapeShiftService:
         self,
         project: ShapeShiftProject,
         entity_names: list[str],
-        initial_table_store: dict[str, pd.DataFrame],
-    ) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+        initial_table_store: TableStore,
+    ) -> tuple[TableStore, list[dict]]:
         """
         Run ShapeShifter to produce multiple entities in one pass.
 
@@ -201,8 +202,8 @@ class ShapeShiftService:
         self,
         project: ShapeShiftProject,
         entity_name: str,
-        initial_table_store: dict[str, pd.DataFrame],
-    ) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+        initial_table_store: TableStore,
+    ) -> tuple[TableStore, list[dict]]:
         """
         Run ShapeShifter to produce entity data.
 
@@ -312,7 +313,7 @@ class ShapeShiftService:
 
         return all_issues
 
-    async def preview_entities_batch(self, project_name: str, entity_names: list[str]) -> dict[str, pd.DataFrame]:
+    async def preview_entities_batch(self, project_name: str, entity_names: list[str]) -> TableStore:
         """
         Process multiple entities in one ShapeShifter run to populate cache efficiently.
 
@@ -350,7 +351,7 @@ class ShapeShiftService:
         table_store, _ = await self.shapeshift_batch(
             project=resolved_project,
             entity_names=entity_names,  # Pass actual target entities
-            initial_table_store={},
+            initial_table_store=TableStore(),
         )
 
         # Cache all processed entities (target entities + dependencies) in one call
@@ -404,7 +405,7 @@ class PreviewResultBuilder:
         self,
         entity_name: str,
         entity_cfg: TableConfig,
-        table_store: dict[str, pd.DataFrame],
+        table_store: TableStore,
         limit: int | None,
         cache_hit: bool,
         validation_issues: list[dict] | None = None,

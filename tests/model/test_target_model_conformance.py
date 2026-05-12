@@ -4,9 +4,8 @@ from pathlib import Path
 import yaml
 
 from src.model import ShapeShiftProject, TableConfig
-from src.target_model.conformance import TargetModelConformanceValidator
+from src.target_model.conformance import ConformanceIssue, TargetModelConformanceValidator
 from src.target_model.models import TargetModel
-from src.target_model.conformance import ConformanceIssue
 
 TEST_DATA_DIR: Path = Path(__file__).resolve().parent.parent / "test_data"
 SPEC_PATH: Path = TEST_DATA_DIR / "specs" / "sead_standard_model.yml"
@@ -349,7 +348,9 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
         "arbodat_full": load_real_project("arbodat"),
     }
 
-    issue_summary: dict[str, Counter[str]] = {name: Counter(code for code, _entity in issue_pairs(target_model, project)) for name, project in corpus.items()}
+    issue_summary: dict[str, Counter[str]] = {
+        name: Counter(code for code, _entity in issue_pairs(target_model, project)) for name, project in corpus.items()
+    }
 
     assert issue_summary == {
         "sead_arbodat_core": Counter(
@@ -425,7 +426,9 @@ def test_induced_requirement_emits_issue_when_optional_entity_present_but_requir
     # project has site but NOT location
     project: ShapeShiftProject = _minimal_project({"site": {"columns": ["site_name"]}})
 
-    codes_entities: list[tuple[str, str | None]] = [(i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes_entities: list[tuple[str, str | None]] = [
+        (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
+    ]
 
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "location") in codes_entities
 
@@ -512,7 +515,9 @@ def test_induced_requirement_is_transitive() -> None:
     # only abundance is present — taxon and taxon_group must both be induced
     project: ShapeShiftProject = _minimal_project({"abundance": {"columns": ["count"]}})
 
-    codes_entities: set[tuple[str, str | None]] = set((i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project))
+    codes_entities: set[tuple[str, str | None]] = set(
+        (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
+    )
 
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon") in codes_entities
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon_group") in codes_entities
@@ -528,7 +533,9 @@ def test_source_type_appropriateness_emits_issue_for_classifier_with_entity_type
     target_model: TargetModel = _minimal_target_model({"sample_type": {"role": "classifier"}})
     project: ShapeShiftProject = _minimal_project({"sample_type": {"type": "entity", "columns": ["sample_type_name"]}})
 
-    codes_entities: list[tuple[str, str | None]] = [(i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes_entities: list[tuple[str, str | None]] = [
+        (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
+    ]
 
     assert ("CLASSIFIER_WRONG_SOURCE_TYPE", "sample_type") in codes_entities
 
@@ -596,7 +603,9 @@ def test_induced_requirement_transitive_stops_at_present_intermediate() -> None:
         }
     )
 
-    codes_entities: set[tuple[str, str | None]] = set((i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project))
+    codes_entities: set[tuple[str, str | None]] = set(
+        (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
+    )
 
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon_group") in codes_entities
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon") not in codes_entities  # taxon is present
