@@ -42,10 +42,18 @@ class DuckDbLoader(SqlLoader):
         ],
     )
 
-    def __init__(self, data_source: DataSourceConfig, *, workspace: DuckDbWorkspace, table_store: TableStore) -> None:
+    def __init__(self, data_source: DataSourceConfig | None, *, workspace: DuckDbWorkspace, table_store: TableStore) -> None:
         super().__init__(data_source=data_source)
         self.workspace: DuckDbWorkspace = workspace
         self.table_store: TableStore = table_store
+
+    @classmethod
+    def create(cls, data_source: DataSourceConfig | None, **context: Any) -> "DuckDbLoader":
+        return cls(
+            data_source=data_source,
+            workspace=context["workspace"],
+            table_store=context["table_store"],
+        )
 
     def create_db_uri(self) -> str:
         return "duckdb://internal"

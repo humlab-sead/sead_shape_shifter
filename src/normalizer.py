@@ -14,7 +14,7 @@ from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService
 from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders, LoaderType
-from src.loaders.duckdb_loader import DuckDbLoader, DuckDbWorkspace
+from src.loaders.duckdb_loader import DuckDbWorkspace
 from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
 from src.path_resolution import resolve_managed_file_path
@@ -67,30 +67,14 @@ class ShapeShifter:
         self.unresolved_extra_columns: dict[str, dict[str, dict[str, Any]]] = {}
 
     def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
+        context = {"workspace": self.duckdb_workspace, "table_store": self.table_store}
+
         if table_cfg.data_source:
             data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
-            loader_cls = DataLoaders.get(key=data_source.driver)
-
-            if issubclass(loader_cls, DuckDbLoader):
-                return loader_cls(
-                    data_source=data_source,
-                    workspace=self.duckdb_workspace,
-                    table_store=self.table_store,
-                )
-
-            return loader_cls(data_source=data_source)
+            return DataLoaders.get(key=data_source.driver).create(data_source=data_source, **context)
 
         if table_cfg.type and table_cfg.type in DataLoaders.items:
-            loader_cls = DataLoaders.get(key=table_cfg.type)
-
-            if issubclass(loader_cls, DuckDbLoader):
-                return loader_cls(
-                    data_source=None,
-                    workspace=self.duckdb_workspace,
-                    table_store=self.table_store,
-                )
-
-            return loader_cls(data_source=None)
+            return DataLoaders.get(key=table_cfg.type).create(data_source=None, **context)
 
         return None
     
