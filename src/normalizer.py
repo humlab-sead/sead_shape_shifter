@@ -321,6 +321,8 @@ class ShapeShifter:
 
         self._link_deferred_foreign_keys()
 
+        self.duckdb_workspace.close()
+
         for loader in self._loader_cache.values():
             loader.close()
 

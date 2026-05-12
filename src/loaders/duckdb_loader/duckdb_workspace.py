@@ -23,7 +23,15 @@ class DuckDbWorkspace:
         self.register_queue: dict[str, pd.DataFrame] = {}
 
     def close(self) -> None:
-        self.connection.close()
+        if self.connection is not None:
+            try:
+                self.connection.close()
+            except Exception:  # pylint: disable=broad-except
+                pass
+            self.connection = None  # type: ignore[assignment]
+
+    def __del__(self) -> None:
+        self.close()
 
     def register_entity(self, entity_name: str, df: pd.DataFrame) -> None:
         """Queue an entity DataFrame for registration on the next query."""
