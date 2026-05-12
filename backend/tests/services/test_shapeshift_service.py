@@ -232,17 +232,15 @@ class TestShapeShiftService:
 
         mock_shape_shifter = MagicMock()
         mock_shape_shifter.normalize = AsyncMock()
-        mock_shape_shifter.table_store = {}
-        mock_shape_shifter.unresolved_extra_columns = MagicMock(
-            return_value={
-                "users": {
-                    "display_name": {
-                        "expression": "=concat(first_name, ' ', missing_last_name)",
-                        "missing_dependencies": ["missing_last_name"],
-                    }
+        mock_shape_shifter.table_store = TableStore()
+        mock_shape_shifter.unresolved_extra_columns = {
+            "users": {
+                "display_name": {
+                    "expression": "=concat(first_name, ' ', missing_last_name)",
+                    "missing_dependencies": ["missing_last_name"],
                 }
             }
-        )
+        }
 
         issues = shapeshift_service._collect_validation_issues(mock_shape_shifter)
 
