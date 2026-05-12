@@ -983,14 +983,14 @@ entities:
     query: "select distinct [Projekt], [Befu], [ProbNr],\n       [Vorfu], [Trocken], [Strat], [Schi],\n       [Quadr], [Plan], [Prob_üNN], [SedProb], [KultGr]\nfrom [Proben] ;\n"
   sample_group:
     type: entity
-    source: feature
-    public_id: sample_group_id
     keys: [Projekt, Befu, site_id]
-    columns: [Projekt, Befu]
+    columns: [Projekt, Befu, Fustel]
+    public_id: sample_group_id
+    source: feature
     foreign_keys:
     - entity: site
-      local_keys: [site_id]
-      remote_keys: [site_id]
+      local_keys: [Fustel]
+      remote_keys: [Fustel]
       how: inner
       constraints:
         cardinality: many_to_one
