@@ -44,21 +44,11 @@ class ShapeShifter:
 
         self.default_entity: str | None = default_entity
 
-        self.table_store: TableStore = (
-            table_store
-            if isinstance(table_store, TableStore)
-            else TableStore(table_store or {})
-        )
+        self.table_store: TableStore = table_store if isinstance(table_store, TableStore) else TableStore(table_store or {})
         self.duckdb_workspace: DuckDbWorkspace = DuckDbWorkspace(database=":memory:")
 
-        self.table_store.add_on_set_hook(
-            self.duckdb_workspace.register_entity,
-            replay=True,
-        )
-
-        self.table_store.add_on_delete_hook(
-            self.duckdb_workspace.unregister_entity,
-        )
+        self.table_store.add_on_set_hook(self.duckdb_workspace.register_entity, replay=True)
+        self.table_store.add_on_delete_hook(self.duckdb_workspace.unregister_entity)
 
         self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
         self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
@@ -77,7 +67,7 @@ class ShapeShifter:
             return DataLoaders.get(key=table_cfg.type).create(data_source=None, **context)
 
         return None
-    
+
     def _resolve_project_local_file_options(self, table_cfg: TableConfig, loader: DataLoader) -> None:
         """Resolve `location: local` file paths relative to the project file directory."""
         if loader.loader_type() != LoaderType.FILE:
