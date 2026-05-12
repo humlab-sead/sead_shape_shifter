@@ -68,11 +68,13 @@ class TestDuckDbWorkspace:
         assert "site" in workspace.list_registered()
 
     def test_register_entity_skips_unchanged_object(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame) -> None:
-        """Re-registering the same DataFrame object should be a no-op."""
+        """Re-registering the same DataFrame object should be a no-op after flush."""
         workspace.register_entity("site", site_df)
+        workspace.flush()
         first_id = workspace._registered_object_ids["site"]
 
-        workspace.register_entity("site", site_df)  # same object
+        workspace.register_entity("site", site_df)  # same object — flush should skip re-registration
+        workspace.flush()
         assert workspace._registered_object_ids["site"] == first_id
 
     def test_register_entity_replaces_when_object_changes(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame) -> None:
