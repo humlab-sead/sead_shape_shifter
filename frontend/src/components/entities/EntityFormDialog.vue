@@ -1031,6 +1031,7 @@ import UnmaterializeDialog from './UnmaterializeDialog.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
+import type { EntityTypeInfo } from '@/api/data-sources'
 import { queryApi } from '@/api/query'
 import {
   buildFixedValuesColumns,
@@ -2407,6 +2408,10 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeyPress)
   window.addEventListener('resize', updateResponsiveDialogMode)
 
+  api.dataSources.getEntityTypes().then((types) => {
+    entityTypeOptions.value = types
+  })
+
   // Fetch project files if editing a file type entity
   if (props.mode === 'edit' && isFileType.value) {
     fetchProjectFiles()
@@ -2449,15 +2454,7 @@ const dialogModel = computed({
   set: (value: boolean) => emit('update:modelValue', value),
 })
 
-const entityTypeOptions = [
-  { title: 'Data (Derived)', value: 'entity', subtitle: 'Derive from another entity' },
-  { title: 'SQL Query', value: 'sql', subtitle: 'Execute SQL against database' },
-  { title: 'Fixed Values', value: 'fixed', subtitle: 'Hard-coded values' },
-  { title: 'CSV File', value: 'csv', subtitle: 'Load from CSV file' },
-  { title: 'Excel File (Pandas)', value: 'xlsx', subtitle: 'Load Excel with pandas' },
-  { title: 'Excel File (OpenPyXL)', value: 'openpyxl', subtitle: 'Load Excel with OpenPyXL (supports ranges)' },
-  { title: 'Merged (Multi-Branch)', value: 'merged', subtitle: 'Combine multiple source entities into one' },
-]
+const entityTypeOptions = ref<EntityTypeInfo[]>([])
 
 const availableSourceEntities = computed(() => {
   return entities.value.filter((e) => e.name !== formData.value.name).map((e) => e.name)

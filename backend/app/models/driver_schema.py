@@ -32,5 +32,13 @@ class DriverSchemaResponse(BaseModel):
     driver: str = Field(..., description="Driver identifier")
     display_name: str = Field(..., description="Human-readable driver name")
     description: str = Field(..., description="Driver description")
-    category: Literal["database", "file"] = Field(..., description="Driver category")
+    category: Literal["database", "file", "internal"] = Field(..., description="Driver category")
     fields: list[FieldMetadataResponse] = Field(..., description="List of supported configuration fields")
+
+
+class EntityTypeInfo(BaseModel):
+    """Metadata for a single entity type, used to populate UI type selectors."""
+
+    value: str = Field(..., description="Type identifier used in shapeshifter.yml")
+    title: str = Field(..., description="Human-readable label")
+    subtitle: str = Field(..., description="Brief description shown in the type selector")
