@@ -781,7 +781,7 @@ class UCanAccessSqlLoader(SqlLoader):
                 for index in range(len(df.columns)):
                     series = df.iloc[:, index]
                     if series.dtype == object:
-                        df.iloc[:, index] = series.apply(lambda value: str(value) if value is not None else value)
+                        df.iloc[:, index] = series.where(series.isna(), series.astype(str))
 
                 return df
 
