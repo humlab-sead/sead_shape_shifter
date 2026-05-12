@@ -699,6 +699,7 @@ class UCanAccessSqlLoader(SqlLoader):
         self.filename: str = opts.get("filename", "")
         self.ucanaccess_dir: str = opts.get("ucanaccess_dir", "")
         self.jars: list[str] = self._find_jar_files(self.ucanaccess_dir)
+        self._connection: "jaydebeapi.Connection | None" = None
 
     def create_db_uri(self) -> str:
         if not self.data_source:
@@ -823,15 +824,22 @@ class UCanAccessSqlLoader(SqlLoader):
 
     @contextmanager
     def connection(self) -> Generator[jaydebeapi.Connection, Any, None]:
-        """Context manager for database connection."""
+        """Context manager for database connection. Reuses a persistent connection per loader instance."""
         self._ensure_jvm()  # Ensure JVM is started before connecting
-        driver_class = "net.ucanaccess.jdbc.UcanaccessDriver"
-        url: str = f"jdbc:ucanaccess://{self.filename}"
-        conn: jaydebeapi.Connection = jaydebeapi.connect(driver_class, url, [], self.jars)
-        try:
-            yield conn
-        finally:
-            conn.close()
+        if self._connection is None:
+            driver_class = "net.ucanaccess.jdbc.UcanaccessDriver"
+            url: str = f"jdbc:ucanaccess://{self.filename}"
+            self._connection = jaydebeapi.connect(driver_class, url, [], self.jars)
+        yield self._connection
+
+    def close(self) -> None:
+        """Close the persistent JDBC connection."""
+        if self._connection is not None:
+            try:
+                self._connection.close()
+            except Exception:  # pylint: disable=broad-except
+                pass
+            self._connection = None
 
     def _find_jar_files(self, folder: str) -> list[str]:
         """Recursively find all .jar files in the ucanaccess_dir."""

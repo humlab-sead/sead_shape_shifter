@@ -85,6 +85,10 @@ class DataLoader(abc.ABC):
     async def test_connection(self) -> ConnectTestResult:
         pass
 
+    def close(self) -> None:
+        """Release any persistent resources held by this loader. No-op by default."""
+        pass
+
 
 class DataLoaderRegistry(Registry):
 
