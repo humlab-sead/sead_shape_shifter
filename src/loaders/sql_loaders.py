@@ -13,7 +13,6 @@ from sqlalchemy import create_engine
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.model import DataSourceConfig, TableConfig
-from src.table_store import TableStore
 from src.transforms.utility import add_system_id
 from src.utility import create_db_uri as create_pg_uri
 from src.utility import dotget

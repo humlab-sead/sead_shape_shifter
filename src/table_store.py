@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Callable, Iterable, Iterator, Mapping, Any, overload
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Mapping, overload
 
 if TYPE_CHECKING:
     from _typeshed import SupportsKeysAndGetItem
