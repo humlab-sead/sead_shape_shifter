@@ -1,5 +1,4 @@
 # Byte-compiled / optimized / DLL files
-data/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -127,3 +126,4 @@ output/*.xlsx
 sead-tools
 docs/projects
 tests/test_data/projects/arbodat/backups
+data

@@ -11,6 +11,7 @@ from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.shapeshift_service import PreviewResultBuilder, ShapeShiftCache, ShapeShiftService
 from src.model import ShapeShiftProject, TableConfig
 from src.specifications.constraints import ForeignKeyNullConstraintViolation
+from src.table_store import TableStore
 
 # pylint: disable=redefined-outer-name, attribute-defined-outside-init
 
@@ -226,21 +227,22 @@ class TestShapeShiftService:
     def test_collect_validation_issues_includes_unresolved_extra_columns(self, shapeshift_service: ShapeShiftService):
         """Preview issue collection should include unresolved derived columns."""
 
-        class DummyLinker:
-            validators: list = []
+        mock_linker = MagicMock()
+        mock_linker.validators = []
 
-        class DummyShapeShifter:
-            linker = DummyLinker()
-            unresolved_extra_columns = {
-                "users": {
-                    "display_name": {
-                        "expression": "=concat(first_name, ' ', missing_last_name)",
-                        "missing_dependencies": ["missing_last_name"],
-                    }
+        mock_shape_shifter = MagicMock()
+        mock_shape_shifter.normalize = AsyncMock()
+        mock_shape_shifter.table_store = TableStore()
+        mock_shape_shifter.unresolved_extra_columns = {
+            "users": {
+                "display_name": {
+                    "expression": "=concat(first_name, ' ', missing_last_name)",
+                    "missing_dependencies": ["missing_last_name"],
                 }
             }
+        }
 
-        issues = shapeshift_service._collect_validation_issues(DummyShapeShifter())
+        issues = shapeshift_service._collect_validation_issues(mock_shape_shifter)
 
         assert len(issues) == 1
         assert issues[0]["type"] == "extra_column_unresolved"
@@ -942,10 +944,12 @@ class TestPreviewBuilder:
     def test_build_preview_result_with_dependencies(self, sample_dataframe: pd.DataFrame, sample_project: ShapeShiftProject):
         """Test _build_preview_result correctly identifies dependencies."""
         entity_cfg: TableConfig = sample_project.get_table("orders")
-        table_store: dict[str, pd.DataFrame] = {
-            "orders": sample_dataframe,
-            "users": pd.DataFrame({"user_id": [1, 2], "username": ["alice", "bob"]}),
-        }
+        table_store: TableStore = TableStore(
+            {
+                "orders": sample_dataframe,
+                "users": pd.DataFrame({"user_id": [1, 2], "username": ["alice", "bob"]}),
+            }
+        )
         builder: PreviewResultBuilder = PreviewResultBuilder()
         result: PreviewResult = builder.build(
             entity_name="orders", entity_cfg=entity_cfg, table_store=table_store, limit=50, cache_hit=False
@@ -966,9 +970,11 @@ class TestPreviewBuilder:
     def test_build_preview_result(self, sample_dataframe: pd.DataFrame, sample_project: ShapeShiftProject):
         """Test _build_preview_result correctly builds PreviewResult from table_store."""
         entity_cfg: TableConfig = sample_project.get_table("users")
-        table_store: dict[str, pd.DataFrame] = {
-            "users": sample_dataframe,
-        }
+        table_store: TableStore = TableStore(
+            {
+                "users": sample_dataframe,
+            }
+        )
         builder: PreviewResultBuilder = PreviewResultBuilder()
         result: PreviewResult = builder.build(
             entity_name="users", entity_cfg=entity_cfg, table_store=table_store, limit=50, cache_hit=False
@@ -997,14 +1003,16 @@ class TestPreviewBuilder:
 
     def test_build_preview_result_marks_extra_columns_as_derived(self):
         """Preview columns produced by entity extra_columns should be marked as derived."""
-        table_store = {
-            "specimens": pd.DataFrame(
-                {
-                    "specimen_code": ["A1", "B2"],
-                    "specimen_label": ["A1 / sample", "B2 / sample"],
-                }
-            )
-        }
+        table_store: TableStore = TableStore(
+            {
+                "specimens": pd.DataFrame(
+                    {
+                        "specimen_code": ["A1", "B2"],
+                        "specimen_label": ["A1 / sample", "B2 / sample"],
+                    }
+                )
+            }
+        )
         cfg = {
             "specimens": {
                 "type": "entity",

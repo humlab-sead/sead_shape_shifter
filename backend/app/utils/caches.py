@@ -12,6 +12,7 @@ from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
 from src.model import ShapeShiftProject, TableConfig
+from src.table_store import TableStore
 
 
 @dataclass
@@ -41,7 +42,7 @@ class ShapeShiftCache:
     def __init__(self, ttl_seconds: int = 300):
         """Initialize cache with TTL in seconds (default 5 minutes)."""
         # Store individual DataFrames: key -> DataFrame
-        self._dataframes: dict[str, pd.DataFrame] = {}
+        self._dataframes: TableStore = TableStore()
         # Store metadata: key -> CacheMetadata
         self._metadata: dict[str, CacheMetadata] = {}
         self._ttl: int = ttl_seconds
@@ -146,7 +147,7 @@ class ShapeShiftCache:
     def set_table_store(
         self,
         project_name: str,
-        table_store: dict[str, pd.DataFrame],
+        table_store: TableStore,
         target_entity: str,
         project_version: int = 0,
         entity_configs: dict[str, TableConfig] | None = None,
@@ -177,7 +178,7 @@ class ShapeShiftCache:
         entity_config: TableConfig,
         project_version: int | None = None,
         shapeshift_config: ShapeShiftProject | None = None,
-    ) -> dict[str, pd.DataFrame]:
+    ) -> TableStore:
         """Gather all cached dependencies for an entity with hash validation.
 
         Args:
@@ -189,7 +190,7 @@ class ShapeShiftCache:
         Returns:
             Dict of cached entity DataFrames
         """
-        cached_deps: dict[str, pd.DataFrame] = {}
+        cached_deps: TableStore = TableStore()
         for dep_name in entity_config.depends_on:
             # Get dependency config for hash validation if available
             dep_config: TableConfig | None = shapeshift_config.get_table(dep_name) if shapeshift_config else None
@@ -206,14 +207,14 @@ class ShapeShiftCache:
     class CacheCheckResult:
         found: bool
         data: pd.DataFrame | None
-        dependencies: dict[str, pd.DataFrame]
+        dependencies: TableStore
 
     def fetch_cached_entity_data(
         self, project_name: str, entity_name: str, project_version: int, entity_config: TableConfig, shapeshift_config: ShapeShiftProject
     ) -> CacheCheckResult:
         data: pd.DataFrame | None = self.get_dataframe(project_name, entity_name, project_version, entity_config)
         found: bool = data is not None
-        dependencies: dict[str, pd.DataFrame] = self.get_dependencies(project_name, entity_config, project_version, shapeshift_config)
+        dependencies: TableStore = self.get_dependencies(project_name, entity_config, project_version, shapeshift_config)
         return self.CacheCheckResult(found=found, data=data, dependencies=dependencies)
 
     def get_available_entities(self, project_name: str) -> set[str]:
@@ -279,7 +280,7 @@ class ShapeShiftProjectCache:
         self.project_service: ProjectService = project_service
         self._cache: dict[str, ShapeShiftProject] = {}
         self._versions: dict[str, int] = {}
-        self._file_paths: dict[str, str] = {}   # file path at cache time, for mtime checks
+        self._file_paths: dict[str, str] = {}  # file path at cache time, for mtime checks
         self._file_mtimes: dict[str, float] = {}  # file mtime at cache time, for external-change detection
 
     def _current_file_mtime(self, project_name: str) -> float | None:

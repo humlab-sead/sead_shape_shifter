@@ -71,7 +71,7 @@ async def test_merged_entity_basic_processing():
 
 @pytest.mark.asyncio
 @with_test_config
-async def test_merged_entity_branch_fk_columns_use_source_public_ids(test_provider):
+async def test_merged_entity_branch_fk_columns_use_source_public_ids(test_provider):  # pylint: disable=unused-argument
     """Merged lineage columns should use source public_id names while storing source system_id values."""
     config = {
         "metadata": {"name": "test_merged_lineage", "version": "1.0.0"},

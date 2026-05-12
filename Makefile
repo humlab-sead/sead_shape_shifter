@@ -49,7 +49,7 @@ black:
 
 .PHONY: pylint
 pylint:
-	@uv run pylint src tests backend/app backend/tests ingesters
+	@uv run pylint src tests backend ingesters
 
 .PHONY: ruff
 ruff:
@@ -57,8 +57,8 @@ ruff:
 
 .PHONY: tidy
 tidy:
-	@uv run isort src tests backend/app backend/tests ingesters
-	@uv run black src tests backend/app backend/tests ingesters
+	@uv run isort src tests backend ingesters
+	@uv run black src tests backend ingesters
 
 .PHONY: lint
 lint: tidy ruff pylint

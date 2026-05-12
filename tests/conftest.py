@@ -11,9 +11,10 @@ from src.configuration import Config, ConfigFactory, MockConfigProvider
 
 # pylint: disable=unused-argument
 
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
-pd.set_option('display.max_colwidth', None)
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", None)
+pd.set_option("display.max_colwidth", None)
+
 
 @pytest.fixture(autouse=True, scope="session")
 def setup_test_logging():

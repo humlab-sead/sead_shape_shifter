@@ -48,14 +48,14 @@ class DriverSchema:
         display_name: Human-readable driver name
         description: Driver description
         fields: List of supported configuration fields
-        category: Driver category (database or file)
+        category: Driver category (database, file, or internal)
     """
 
     driver: str
     display_name: str
     description: str
     fields: list[FieldMetadata]
-    category: Literal["database", "file"]
+    category: Literal["database", "file", "internal"]
 
 
 class DriverSchemaRegistry:
