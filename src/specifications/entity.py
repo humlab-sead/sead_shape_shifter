@@ -98,7 +98,6 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
             # warn if values is empty since fixed entities are expected to have data
             self.check_fields(entity_name, ["values"], "not_empty/W")
 
-        table.has_append
         self.check_fields(entity_name, ["type"], "has_value/E", expected_value="fixed")
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
         self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
