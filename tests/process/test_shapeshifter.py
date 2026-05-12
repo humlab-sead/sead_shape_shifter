@@ -10,6 +10,7 @@ import pytest
 from src.loaders.base_loader import DataLoader
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ProcessState, ShapeShifter
+from src.table_store import TableStore
 
 # pylint: disable=redefined-outer-name
 
@@ -424,7 +425,7 @@ class TestShapeShifter:
         """Test adding system_id columns."""
         df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
-        table_store: dict[str, pd.DataFrame] = {"survey": df, "site": site_df}
+        table_store: TableStore = TableStore({"survey": df, "site": site_df})
         normalizer = ShapeShifter(project=survey_and_site_config, default_entity="survey", table_store=table_store)
 
         # Mock config
@@ -444,7 +445,7 @@ class TestShapeShifter:
         survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"name": ["A", "B"], "site_id": [1, 2], "location": ["X", "Y"]})
 
-        table_store: dict[str, pd.DataFrame] = {"survey": survey_df, "site": site_df}
+        table_store: TableStore = TableStore({"survey": survey_df, "site": site_df})
         normalizer = ShapeShifter(project=survey_and_site_config, default_entity="survey", table_store=table_store)
 
         # Mock config to reorder columns
@@ -461,7 +462,7 @@ class TestShapeShifter:
         """Test unnesting a single entity."""
         survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_id": [1], "Ort": ["Berlin"], "Kreis": ["Mitte"]})
-        table_store: dict[str, pd.DataFrame] = {"survey": survey_df, "site": site_df}
+        table_store: TableStore = TableStore({"survey": survey_df, "site": site_df})
         normalizer = ShapeShifter(project=survey_and_site_config, table_store=table_store, default_entity="survey")
 
         mock_table_cfg = Mock()
@@ -578,7 +579,7 @@ class TestShapeShifter:
         survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
         sample_df = pd.DataFrame({"sample_id": [1, 2], "type": ["X", "Y"]})
-        table_store: dict[str, pd.DataFrame] = {"survey": survey_df, "site": site_df, "sample": sample_df}
+        table_store: TableStore = TableStore({"survey": survey_df, "site": site_df, "sample": sample_df})
         config = ShapeShiftProject(
             cfg={
                 "entities": {

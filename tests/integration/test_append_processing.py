@@ -7,6 +7,7 @@ import pytest
 
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
+from src.table_store import TableStore
 from tests.decorators import with_test_config
 
 # pylint: disable=no-member, redefined-outer-name, unused-argument
@@ -108,7 +109,7 @@ class TestAppendProcessingBasic:
     @with_test_config
     async def test_append_fixed_data(self, sample_survey_data, config_with_append, test_provider):  # pylint: disable=unused-argument
         """Test appending fixed data to an entity."""
-        table_store = {"default": sample_survey_data.copy()}
+        table_store: TableStore = TableStore({"default": sample_survey_data.copy()})
         normalizer = ShapeShifter(default_entity="default", project=config_with_append, table_store=table_store)
 
         await normalizer.normalize()
@@ -124,7 +125,7 @@ class TestAppendProcessingBasic:
     @with_test_config
     async def test_append_mode_all(self, sample_survey_data, config_with_append, test_provider):  # pylint: disable=unused-argument
         """Test append mode 'all' keeps duplicates."""
-        table_store = {"default": sample_survey_data.copy()}
+        table_store: TableStore = TableStore({"default": sample_survey_data.copy()})
         normalizer = ShapeShifter(default_entity="default", project=config_with_append, table_store=table_store)
 
         await normalizer.normalize()
@@ -140,7 +141,7 @@ class TestAppendProcessingBasic:
         self, sample_survey_data, config_with_distinct_mode, test_provider
     ):  # pylint: disable=unused-argument
         """Test append mode 'distinct' removes duplicates."""
-        table_store = {"default": sample_survey_data.copy()}
+        table_store: TableStore = TableStore({"default": sample_survey_data.copy()})
         normalizer = ShapeShifter(default_entity="default", project=config_with_distinct_mode, table_store=table_store)
 
         await normalizer.normalize()
@@ -189,7 +190,7 @@ class TestAppendProcessingSQL:
         sub_configs = list(config_with_sql_append.get_table("site").get_sub_table_configs())
         assert len(sub_configs) == 2  # Base + SQL append
 
-        table_store = {"survey": sample_survey_data.copy()}
+        table_store: TableStore = TableStore({"survey": sample_survey_data.copy()})
         normalizer = ShapeShifter(default_entity="survey", project=config_with_sql_append, table_store=table_store)
 
         sql_result = pd.DataFrame({"site_name": ["SQL Site"], "latitude": [50.0], "longitude": [15.0], "country": ["Sweden"]})
@@ -246,7 +247,7 @@ class TestAppendProcessingMultiple:
         }
 
         config = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
-        table_store: dict[str, pd.DataFrame] = {"survey": sample_survey_data}
+        table_store: TableStore = TableStore({"survey": sample_survey_data})
         normalizer = ShapeShifter(project=config, default_entity="survey", table_store=table_store)
 
         await normalizer.normalize()
@@ -291,7 +292,7 @@ class TestAppendProcessingEdgeCases:
 
         config = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
         empty_data = pd.DataFrame(columns=["site_name", "latitude"])
-        table_store = {"default": empty_data}
+        table_store: TableStore = TableStore({"default": empty_data})
         normalizer = ShapeShifter(project=config, table_store=table_store, default_entity="default")
 
         await normalizer.normalize()
@@ -331,7 +332,7 @@ class TestAppendProcessingEdgeCases:
         }
 
         config = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
-        table_store = {"survey": sample_survey_data}
+        table_store: TableStore = TableStore({"survey": sample_survey_data})
         normalizer = ShapeShifter(default_entity="survey", project=config, table_store=table_store)
 
         await normalizer.normalize()

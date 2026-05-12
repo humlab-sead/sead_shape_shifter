@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from src.model import ForeignKeyConfig, ShapeShiftProject
+from src.table_store import TableStore
 from src.transforms.link import ForeignKeyLinker
 
 # pylint: disable=redefined-outer-name
@@ -85,10 +86,12 @@ def test_link_foreign_key_renames_and_drops_remote_id(fk_config: ForeignKeyConfi
             captured["merge_indicator"] = merge_indicator_col
 
     monkeypatch.setattr("src.transforms.link.ForeignKeyConstraintValidator", DummyValidator)
-    table_store = {
-        "local": pd.DataFrame({"remote_ref": [1]}),
-        "remote": pd.DataFrame({"remote_id": [1]}),
-    }
+    table_store: TableStore = TableStore(
+        {
+            "local": pd.DataFrame({"remote_ref": [1]}),
+            "remote": pd.DataFrame({"remote_id": [1]}),
+        }
+    )
     linker: ForeignKeyLinker = ForeignKeyLinker(project=project, table_store=table_store)
 
     linked = linker.link_foreign_key(local_df, fk_config, remote_df)
@@ -138,7 +141,7 @@ def test_link_foreign_key_left_join_keeps_null_local_keys_unmatched():
         }
     )
 
-    linker = ForeignKeyLinker(project=project, table_store={"local": local_df, "remote": remote_df})
+    linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
 
     linked_df = linker.link_foreign_key(local_df, fk_cfg, remote_df)
 
@@ -182,7 +185,7 @@ def test_link_foreign_key_uses_merge_with_null_safety(monkeypatch: pytest.Monkey
 
     monkeypatch.setattr("src.transforms.link.merge_with_null_safety", fake_merge_with_null_safety)
 
-    linker = ForeignKeyLinker(project=project, table_store={"local": local_df, "remote": remote_df})
+    linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
     linked_df = linker.link_foreign_key(local_df, fk_cfg, remote_df)
 
     assert captured["allow_null_keys"] is False
@@ -222,7 +225,7 @@ def test_link_foreign_key_passes_strict_null_policy_to_merge_helper(monkeypatch:
             }
         }
     )
-    fk_cfg = project.get_table("local").foreign_keys[0]
+    fk_cfg: ForeignKeyConfig = project.get_table("local").foreign_keys[0]
     local_df = pd.DataFrame({"system_id": [100], "remote_code": ["A"], "value": ["matched"]})
     remote_df = pd.DataFrame({"system_id": [7], "remote_code": ["A"], "name": ["alpha"]})
     captured: dict[str, object] = {}
@@ -234,10 +237,11 @@ def test_link_foreign_key_passes_strict_null_policy_to_merge_helper(monkeypatch:
 
     monkeypatch.setattr("src.transforms.link.merge_with_null_safety", fake_merge_with_null_safety)
 
-    linker = ForeignKeyLinker(project=project, table_store={"local": local_df, "remote": remote_df})
+    linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
     linker.link_foreign_key(local_df, fk_cfg, remote_df)
 
     assert captured["allow_null_keys"] is False
+    assert isinstance(captured["opts"], dict)
     assert captured["opts"]["use_null_safe_merge"] is False
 
 
@@ -273,10 +277,11 @@ def test_link_foreign_key_non_lookup_join_does_not_enable_null_safe_merge_by_def
 
     monkeypatch.setattr("src.transforms.link.merge_with_null_safety", fake_merge_with_null_safety)
 
-    linker = ForeignKeyLinker(project=project, table_store={"local": local_df, "remote": remote_df})
+    linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
     linker.link_foreign_key(local_df, fk_cfg, remote_df)
 
     assert captured["allow_null_keys"] is False
+    assert isinstance(captured["opts"], dict)
     assert captured["opts"]["use_null_safe_merge"] is False
 
 
@@ -322,8 +327,8 @@ def test_lookup_left_join_null_local_key_does_not_match_null_remote_key():
         }
     )
 
-    linker = ForeignKeyLinker(project=project, table_store={"local": local_df, "remote": remote_df})
-    linked_df = linker.link_foreign_key(local_df, fk_cfg, remote_df)
+    linker = ForeignKeyLinker(project=project, table_store=TableStore({"local": local_df, "remote": remote_df}))
+    linked_df: pd.DataFrame = linker.link_foreign_key(local_df, fk_cfg, remote_df)
 
     assert linked_df["remote_id"].tolist()[0] == 7
     assert pd.isna(linked_df["remote_id"].tolist()[1])
@@ -350,10 +355,12 @@ def test_link_entity_returns_deferred_when_specification_defers(monkeypatch: pyt
         }
     )
 
-    table_store = {
-        "local": pd.DataFrame({"remote_ref": [1]}),
-        "remote": pd.DataFrame({"remote_id": [1]}),
-    }
+    table_store: TableStore = TableStore(
+        {
+            "local": pd.DataFrame({"remote_ref": [1]}),
+            "remote": pd.DataFrame({"remote_id": [1]}),
+        }
+    )
 
     class DummySpecification:
         def __init__(self, cfg=None, table_store=None, **_):
@@ -387,7 +394,7 @@ class TestDeferredLinkingTrackerIntegration:
 
     def test_linker_initializes_deferred_tracker(self):
         """ForeignKeyLinker should initialize DeferredLinkingTracker on creation."""
-        table_store: dict[str, pd.DataFrame] = {}
+        table_store: TableStore = TableStore()
         project = ShapeShiftProject(cfg={"entities": {}})
         linker: ForeignKeyLinker = ForeignKeyLinker(project=project, table_store=table_store)
 
@@ -415,10 +422,12 @@ class TestDeferredLinkingTrackerIntegration:
             }
         )
 
-        table_store = {
-            "local": pd.DataFrame({"remote_ref": [1]}),
-            "remote": pd.DataFrame({"remote_id": [1]}),
-        }
+        table_store: TableStore = TableStore(
+            {
+                "local": pd.DataFrame({"remote_ref": [1]}),
+                "remote": pd.DataFrame({"remote_id": [1]}),
+            }
+        )
 
         class DummyValidator:
             def __init__(self, entity_name, fk):
@@ -476,10 +485,12 @@ class TestDeferredLinkingTrackerIntegration:
             }
         )
 
-        table_store = {
-            "local": pd.DataFrame({"remote_ref": [1]}),
-            "remote": pd.DataFrame({"remote_id": [1]}),
-        }
+        table_store: TableStore = TableStore(
+            {
+                "local": pd.DataFrame({"remote_ref": [1]}),
+                "remote": pd.DataFrame({"remote_id": [1]}),
+            }
+        )
 
         class DummySpecification:
             def __init__(self, cfg=None, table_store=None, **_):
@@ -531,11 +542,13 @@ class TestDeferredLinkingTrackerIntegration:
             }
         )
 
-        table_store = {
-            "local": pd.DataFrame({"remote_ref": [1]}),
-            "middle": pd.DataFrame({"local_ref": [1]}),
-            "remote": pd.DataFrame({"remote_id": [1]}),
-        }
+        table_store: TableStore = TableStore(
+            {
+                "local": pd.DataFrame({"remote_ref": [1]}),
+                "middle": pd.DataFrame({"local_ref": [1]}),
+                "remote": pd.DataFrame({"remote_id": [1]}),
+            }
+        )
 
         class DummyValidator:
             def __init__(self, entity_name, fk):
@@ -595,10 +608,12 @@ class TestDeferredLinkingTrackerIntegration:
             }
         )
 
-        table_store = {
-            "entity": pd.DataFrame({"ref": [1]}),
-            "remote": pd.DataFrame({"id": [1]}),
-        }
+        table_store: TableStore = TableStore(
+            {
+                "entity": pd.DataFrame({"ref": [1]}),
+                "remote": pd.DataFrame({"id": [1]}),
+            }
+        )
 
         class DummyValidator:
             def __init__(self, entity_name, fk):
@@ -670,15 +685,19 @@ class TestDeferredLinkingTrackerIntegration:
             }
         )
 
-        table_store1 = {
-            "entity": pd.DataFrame({"ref": [1]}),
-            "remote": pd.DataFrame({"id": [1]}),
-        }
+        table_store1 = TableStore(
+            {
+                "entity": pd.DataFrame({"ref": [1]}),
+                "remote": pd.DataFrame({"id": [1]}),
+            }
+        )
 
-        table_store2 = {
-            "entity": pd.DataFrame({"ref": [2]}),
-            "remote": pd.DataFrame({"id": [2]}),
-        }
+        table_store2 = TableStore(
+            {
+                "entity": pd.DataFrame({"ref": [2]}),
+                "remote": pd.DataFrame({"id": [2]}),
+            }
+        )
 
         class DummySpecification:
             def __init__(self, cfg=None, table_store=None, **_):
@@ -756,7 +775,7 @@ def test_link_foreign_key_avoids_duplicate_columns_when_public_id_in_remote_data
     )
 
     fk_cfg = project.get_table("dataset").foreign_keys[0]
-    table_store = {"dataset": local_df, "master_dataset": remote_df}
+    table_store: TableStore = TableStore({"dataset": local_df, "master_dataset": remote_df})
 
     # Mock the validator
     mock_validator = MagicMock()

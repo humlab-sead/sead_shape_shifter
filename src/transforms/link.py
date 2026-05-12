@@ -7,6 +7,7 @@ from src.model import ForeignKeyConfig, ForeignKeyMergeSetup, ShapeShiftProject,
 from src.process_state import DeferredLinkingTracker
 from src.specifications import ForeignKeyDataSpecification
 from src.specifications.constraints import ForeignKeyConstraintValidator, ForeignKeyRuntimeOptions
+from src.table_store import TableStore
 from src.transforms.utility import merge_with_null_safety
 
 
@@ -33,9 +34,9 @@ def _resolve_fk_runtime_options(fk: ForeignKeyConfig, remote_cfg: TableConfig) -
 
 class ForeignKeyLinker:
 
-    def __init__(self, project: ShapeShiftProject, table_store: dict[str, pd.DataFrame]) -> None:
+    def __init__(self, project: ShapeShiftProject, table_store: TableStore) -> None:
         self.project: ShapeShiftProject = project
-        self.table_store: dict[str, pd.DataFrame] = table_store
+        self.table_store: TableStore = table_store
         self.validators: list[ForeignKeyConstraintValidator] = []
         self.deferred_tracker: DeferredLinkingTracker = DeferredLinkingTracker()
 
@@ -95,8 +96,7 @@ class ForeignKeyLinker:
             )
         except Exception as e:
             raise ValueError(
-                f"Failed to link '{fk.local_entity}' to '{fk.remote_entity}' "
-                f"on keys {fk.local_keys} -> {fk.remote_keys}: {e}"
+                f"Failed to link '{fk.local_entity}' to '{fk.remote_entity}' " f"on keys {fk.local_keys} -> {fk.remote_keys}: {e}"
             ) from e
 
         validator.validate_after_merge(local_df, remote_df, linked_df, merge_indicator_col=validator.merge_indicator_col)

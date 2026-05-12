@@ -10,9 +10,10 @@ from ingesters.sead.metadata import SchemaService, SeadSchema
 from ingesters.sead.submission import Submission
 from ingesters.sead.utility import create_db_uri
 from src.configuration import ConfigValue
+from src.table_store import TableStore
 
 # @deprecated('table_name_index data sheet has been removed')
-# def load_excel_by_regression(filename: str) -> dict[str, pd.DataFrame]:
+# def load_excel_by_regression(filename: str) -> TableStore:
 #     def recode_excel_sheet_name(row):
 #         value = row['excel_sheet']
 #         if pd.notnull(value) and len(value) > 0 and value != 'nan':
@@ -132,29 +133,31 @@ def generate_test_excel(
     # add_dummy_row(sample_notes, [1, physical_samples.iloc[0]['system_id'], 1, 'Dummy note', np.nan, np.nan])
     # add_dummy_row(dendro_date_notes, [1, 'A dummy note', dendro_dates.iloc[0]['system_id'], np.nan])
 
-    reduced_submission: dict[str, pd.DataFrame] = {
-        "tbl_sites": sites,
-        "tbl_site_locations": site_locations,
-        "tbl_site_references": site_references,
-        "tbl_sample_groups": sample_groups,
-        "tbl_sample_group_descriptions": sample_group_descriptions,
-        "tbl_sample_group_coordinates": sample_group_coordinates,
-        "tbl_sample_group_notes": sample_group_notes,
-        "tbl_physical_samples": physical_samples,
-        "tbl_sample_descriptions": sample_descriptions,
-        "tbl_sample_locations": sample_locations,
-        "tbl_sample_notes": sample_notes,
-        "tbl_sample_alt_refs": sample_alt_refs,
-        "tbl_analysis_entities": analysis_entities,
-        "tbl_dendro": dendro,
-        "tbl_dendro_dates": dendro_dates,
-        "tbl_dendro_date_notes": dendro_date_notes,
-        "tbl_datasets": datasets,
-        "tbl_dataset_contacts": dataset_contacts,
-        "tbl_dataset_submissions": dataset_submissions,
-        "tbl_projects": projects,
-        "tbl_abundances": abundances,
-    }
+    reduced_submission: TableStore = TableStore(
+        {
+            "tbl_sites": sites,
+            "tbl_site_locations": site_locations,
+            "tbl_site_references": site_references,
+            "tbl_sample_groups": sample_groups,
+            "tbl_sample_group_descriptions": sample_group_descriptions,
+            "tbl_sample_group_coordinates": sample_group_coordinates,
+            "tbl_sample_group_notes": sample_group_notes,
+            "tbl_physical_samples": physical_samples,
+            "tbl_sample_descriptions": sample_descriptions,
+            "tbl_sample_locations": sample_locations,
+            "tbl_sample_notes": sample_notes,
+            "tbl_sample_alt_refs": sample_alt_refs,
+            "tbl_analysis_entities": analysis_entities,
+            "tbl_dendro": dendro,
+            "tbl_dendro_dates": dendro_dates,
+            "tbl_dendro_date_notes": dendro_date_notes,
+            "tbl_datasets": datasets,
+            "tbl_dataset_contacts": dataset_contacts,
+            "tbl_dataset_submissions": dataset_submissions,
+            "tbl_projects": projects,
+            "tbl_abundances": abundances,
+        }
+    )
 
     with pd.ExcelWriter(filename, engine="xlsxwriter") as writer:  # pylint: disable=abstract-class-instantiated
         for table_name, table in reduced_submission.items():

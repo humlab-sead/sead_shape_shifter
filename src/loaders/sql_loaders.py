@@ -13,6 +13,7 @@ from sqlalchemy import create_engine
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.model import DataSourceConfig, TableConfig
+from src.table_store import TableStore
 from src.transforms.utility import add_system_id
 from src.utility import create_db_uri as create_pg_uri
 from src.utility import dotget
@@ -961,3 +962,44 @@ class UCanAccessSqlLoader(SqlLoader):
     def get_test_query(self, table_name: str, limit: int) -> str:
         """Get a test query for the data source, if applicable."""
         return f"SELECT TOP {limit} * FROM {self.quote_name(table_name)};"
+
+
+@DataLoaders.register(key=["duckdb", "internal"])
+class DuckDbLoader(SqlLoader):
+    driver: str = "duckdb"
+
+    def __init__(self, data_source: "DataSourceConfig") -> None:
+
+        super().__init__(data_source=data_source)
+        self.table_store: TableStore = TableStore({})
+
+    def create_db_uri(self) -> str:
+        return ":memory:"
+
+    async def read_sql(self, sql: str) -> pd.DataFrame:
+        import duckdb
+
+        con = duckdb.connect(database=":memory:")
+
+        try:
+            for name, df in self.table_store.items():
+                con.register(name, df)
+
+            return con.execute(sql).df()
+
+        finally:
+            con.close()
+
+    async def execute_scalar_sql(self, sql: str) -> Any:
+        import duckdb
+
+        con = duckdb.connect(database=":memory:")
+
+        try:
+            for name, df in self.table_store.items():
+                con.register(name, df)
+
+            return con.execute(sql).fetchone()[0]
+
+        finally:
+            con.close()

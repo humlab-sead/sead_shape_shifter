@@ -18,6 +18,7 @@ from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
 from src.path_resolution import resolve_managed_file_path
 from src.process_state import ProcessState
+from src.table_store import TableStore
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.transforms.extra_columns import ExtraColumnEvaluator
 from src.transforms.filter import apply_filters
@@ -33,7 +34,7 @@ class ShapeShifter:
         self,
         project: ShapeShiftProject | str,
         default_entity: str | None = None,
-        table_store: dict[str, pd.DataFrame] | None = None,
+        table_store: TableStore | None = None,
         target_entities: set[str] | None = None,
     ) -> None:
 
@@ -41,7 +42,7 @@ class ShapeShifter:
             raise ValueError("A valid configuration must be provided")
 
         self.default_entity: str | None = default_entity
-        self.table_store: dict[str, pd.DataFrame] = table_store or {}
+        self.table_store: TableStore = table_store or TableStore()
         self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
         self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
@@ -159,7 +160,7 @@ class ShapeShifter:
         """
         # Extract branch metadata from sub_table_cfg
         branch_name: str = sub_table_cfg.entity_cfg.get("_branch_name", "unknown")
-        branch_source: str = sub_table_cfg.entity_cfg.get("source")
+        branch_source: str | None = sub_table_cfg.entity_cfg.get("source")
 
         # 1. Add branch discriminator column
         discriminator_column: str = f"{entity}_branch"
@@ -173,7 +174,7 @@ class ShapeShifter:
         # includes it in the branch column list, and normalize() adds it per-entity before
         # downstream merged entities are processed.
         for branch_cfg in table_cfg.branches:
-            branch_src: str = branch_cfg.get("source")
+            branch_src: str | None = branch_cfg.get("source")
             source_cfg: dict[str, Any] = table_cfg.entities_cfg.get(branch_src, {}) if branch_src else {}
             fk_column_name: str = source_cfg.get("public_id") or f"{branch_src}_id"
 
@@ -182,7 +183,7 @@ class ShapeShifter:
                 if "system_id" in sub_data.columns:
                     sub_data[fk_column_name] = sub_data["system_id"].astype("Int64")
                 else:
-                    sub_data[fk_column_name] = pd.array(pd.NA, dtype="Int64")
+                    sub_data[fk_column_name] = pd.array([pd.NA] * len(sub_data), dtype="Int64")
             else:
                 sub_data[fk_column_name] = pd.NA
 

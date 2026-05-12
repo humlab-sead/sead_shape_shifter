@@ -35,11 +35,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum, auto
 from typing import Any, Callable, Iterable, Protocol
-
-from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
 
 import pandas as pd
 
@@ -752,6 +751,7 @@ class PandasStringBackend:
                 return None
             try:
                 import datetime as _dt
+
                 return _dt.datetime.strptime(str(v).strip(), fmt_s).date()
             except Exception as exc:
                 raise DSLEvaluationError(f"to_date: cannot parse {v!r} with format {fmt_s!r}: {exc}") from exc
@@ -789,9 +789,7 @@ class PandasStringBackend:
             try:
                 return m.group(group_i)
             except IndexError as exc:
-                raise DSLEvaluationError(
-                    f"regex_extract: pattern has no group {group_i}"
-                ) from exc
+                raise DSLEvaluationError(f"regex_extract: pattern has no group {group_i}") from exc
 
         s = self._ensure_series(value)
         return s.map(_extract, na_action="ignore")
