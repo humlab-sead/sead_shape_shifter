@@ -55,16 +55,23 @@ class ShapeShifter:
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
         self.extra_col_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
         self.unresolved_extra_columns: dict[str, dict[str, dict[str, Any]]] = {}
+        self._loader_cache: dict[str, DataLoader] = {}
 
     def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
         context = {"workspace": self.duckdb_workspace, "table_store": self.table_store}
 
         if table_cfg.data_source:
-            data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
-            return DataLoaders.get(key=data_source.driver).create(data_source=data_source, **context)
+            cache_key = f"ds:{table_cfg.data_source}"
+            if cache_key not in self._loader_cache:
+                data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
+                self._loader_cache[cache_key] = DataLoaders.get(key=data_source.driver).create(data_source=data_source, **context)
+            return self._loader_cache[cache_key]
 
         if table_cfg.type and table_cfg.type in DataLoaders.items:
-            return DataLoaders.get(key=table_cfg.type).create(data_source=None, **context)
+            cache_key = f"type:{table_cfg.type}"
+            if cache_key not in self._loader_cache:
+                self._loader_cache[cache_key] = DataLoaders.get(key=table_cfg.type).create(data_source=None, **context)
+            return self._loader_cache[cache_key]
 
         return None
 
