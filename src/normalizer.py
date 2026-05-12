@@ -321,6 +321,9 @@ class ShapeShifter:
 
         self._link_deferred_foreign_keys()
 
+        for loader in self._loader_cache.values():
+            loader.close()
+
         return self
 
     def _link_deferred_foreign_keys(self, max_retries: int = 5) -> None:

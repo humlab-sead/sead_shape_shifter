@@ -85,6 +85,7 @@ class DuckDbLoader(SqlLoader):
         return data
 
     async def read_sql(self, sql: str) -> pd.DataFrame:
+        self.workspace.register_many(self.table_store)
         return self.workspace.query_df(sql)
 
     async def execute_scalar_sql(self, sql: str) -> Any:
