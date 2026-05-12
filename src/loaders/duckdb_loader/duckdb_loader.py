@@ -8,6 +8,8 @@ from loguru import logger
 from src.loaders.base_loader import DataLoaders
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.model import DataSourceConfig, TableConfig
+from src.table_store import TableStore
+from src.transforms.utility import add_system_id
 
 from src.loaders.sql_loaders import CoreSchema, SqlLoader
 from src.loaders.duckdb_loader.duckdb_workspace import DuckDbWorkspace
@@ -40,50 +42,18 @@ class DuckDbLoader(SqlLoader):
         ],
     )
 
-    def __init__(self, data_source: DataSourceConfig, *, workspace: DuckDbWorkspace, table_store: dict[str, pd.DataFrame]) -> None:
+    def __init__(self, data_source: DataSourceConfig, *, workspace: DuckDbWorkspace, table_store: TableStore) -> None:
         super().__init__(data_source=data_source)
         self.workspace: DuckDbWorkspace = workspace
-        self.table_store: dict[str, pd.DataFrame] = table_store
+        self.table_store: TableStore = table_store
 
     def create_db_uri(self) -> str:
         return "duckdb://internal"
-
-    def _dependencies_for(self, table_cfg: TableConfig | None = None) -> list[str] | None:
-        if table_cfg is None:
-            return None
-
-        dependencies: list[str] | None = getattr(table_cfg, "depends_on", None)
-
-        if dependencies:
-            return list(dependencies)
-
-        entity_cfg = getattr(table_cfg, "entity_cfg", {}) or {}
-        dependencies = entity_cfg.get("depends_on") or entity_cfg.get("dependencies")
-
-        if dependencies:
-            return list(dependencies)
-
-        return None
-
-    def sync_workspace(self, table_cfg: TableConfig | None = None) -> None:
-        """Register needed table_store entities in DuckDB.
-
-        If the config declares depends_on/dependencies, only those are registered.
-        Otherwise all current table_store entities are registered.
-        """
-        dependencies = self._dependencies_for(table_cfg)
-
-        if dependencies:
-            self.workspace.register_many(self.table_store, only=dependencies)
-        else:
-            self.workspace.register_many(self.table_store)
 
     async def load(self, entity_name: str, table_cfg: TableConfig) -> pd.DataFrame:
         """Load an internal DuckDB-derived entity."""
         if not table_cfg.query:
             raise ValueError(f"Entity '{entity_name}' is configured for DuckDB but has no query")
-
-        self.sync_workspace(table_cfg)
 
         logger.trace(f"{entity_name}[duckdb]: executing internal DuckDB query")
         data: pd.DataFrame = await self.read_sql(table_cfg.query)
@@ -102,8 +72,6 @@ class DuckDbLoader(SqlLoader):
             data.columns = effective_columns
 
         if table_cfg.system_id and table_cfg.system_id not in data.columns:
-            from src.transforms.utility import add_system_id
-
             data = add_system_id(data, table_cfg.system_id)
 
         return data
@@ -112,12 +80,9 @@ class DuckDbLoader(SqlLoader):
         return self.workspace.query_df(sql)
 
     async def execute_scalar_sql(self, sql: str) -> Any:
-        self.sync_workspace()
         return self.workspace.query_scalar(sql)
 
     async def get_tables(self, **kwargs: Any) -> dict[str, CoreSchema.TableMetadata]:
-        self.sync_workspace()
-
         return {
             name: CoreSchema.TableMetadata(
                 name=name,

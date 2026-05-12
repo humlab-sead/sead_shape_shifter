@@ -14,6 +14,7 @@ from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService
 from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders, LoaderType
+from src.loaders.duckdb_loader import DuckDbLoader, DuckDbWorkspace
 from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
 from src.path_resolution import resolve_managed_file_path
@@ -25,7 +26,7 @@ from src.transforms.filter import apply_filters
 from src.transforms.link import ForeignKeyLinker
 from src.transforms.translate import translate
 from src.transforms.unnest import unnest
-from src.transforms.utility import add_system_id  # Renamed from add_surrogate_id
+from src.transforms.utility import add_system_id
 
 
 class ShapeShifter:
@@ -42,7 +43,23 @@ class ShapeShifter:
             raise ValueError("A valid configuration must be provided")
 
         self.default_entity: str | None = default_entity
-        self.table_store: TableStore = table_store or TableStore()
+
+        self.table_store: TableStore = (
+            table_store
+            if isinstance(table_store, TableStore)
+            else TableStore(table_store or {})
+        )
+        self.duckdb_workspace: DuckDbWorkspace = DuckDbWorkspace(database=":memory:")
+
+        self.table_store.add_on_set_hook(
+            self.duckdb_workspace.register_entity,
+            replay=True,
+        )
+
+        self.table_store.add_on_delete_hook(
+            self.duckdb_workspace.unregister_entity,
+        )
+
         self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
         self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
@@ -50,16 +67,33 @@ class ShapeShifter:
         self.unresolved_extra_columns: dict[str, dict[str, dict[str, Any]]] = {}
 
     def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
-        """Resolve the DataLoader, if any, for the given TableConfig."""
         if table_cfg.data_source:
             data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
-            return DataLoaders.get(key=data_source.driver)(data_source=data_source)
+            loader_cls = DataLoaders.get(key=data_source.driver)
+
+            if issubclass(loader_cls, DuckDbLoader):
+                return loader_cls(
+                    data_source=data_source,
+                    workspace=self.duckdb_workspace,
+                    table_store=self.table_store,
+                )
+
+            return loader_cls(data_source=data_source)
 
         if table_cfg.type and table_cfg.type in DataLoaders.items:
-            return DataLoaders.get(key=table_cfg.type)(data_source=None)
+            loader_cls = DataLoaders.get(key=table_cfg.type)
+
+            if issubclass(loader_cls, DuckDbLoader):
+                return loader_cls(
+                    data_source=None,
+                    workspace=self.duckdb_workspace,
+                    table_store=self.table_store,
+                )
+
+            return loader_cls(data_source=None)
 
         return None
-
+    
     def _resolve_project_local_file_options(self, table_cfg: TableConfig, loader: DataLoader) -> None:
         """Resolve `location: local` file paths relative to the project file directory."""
         if loader.loader_type() != LoaderType.FILE:
