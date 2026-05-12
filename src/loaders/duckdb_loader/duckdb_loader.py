@@ -60,11 +60,11 @@ class DuckDbLoader(SqlLoader):
 
     async def load(self, entity_name: str, table_cfg: TableConfig) -> pd.DataFrame:
         """Load an internal DuckDB-derived entity."""
-        if not table_cfg.query:
+        if not table_cfg.sql_query:
             raise ValueError(f"Entity '{entity_name}' is configured for DuckDB but has no query")
 
         logger.trace(f"{entity_name}[duckdb]: executing internal DuckDB query")
-        data: pd.DataFrame = await self.read_sql(table_cfg.query)
+        data: pd.DataFrame = await self.read_sql(table_cfg.sql_query)
 
         auto_detect_columns: bool = True
         if table_cfg.auto_detect_columns is not None:

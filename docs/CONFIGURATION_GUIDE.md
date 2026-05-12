@@ -168,7 +168,7 @@ This architecture separates concerns between:
 - **Type**: `string` (always "system_id")
 - **Required**: Automatically managed by system
 - **Description**: Standardized name for auto-incrementing integer IDs (1, 2, 3...). This column is always added automatically during data loading and is used for internal processing. When data is exported, this column is renamed based on the entity's `public_id` setting.
-- **Import Rule**: For non-fixed entities (`sql`, `csv`, `xlsx`, `openpyxl`, `entity`), `system_id` is an internal Shape Shifter identity and should not be imported from source data or listed in `columns`. The main exception is `type: fixed`, where explicit `system_id` values may be preserved intentionally.
+- **Import Rule**: For non-fixed entities (`sql`, `duckdb`, `csv`, `xlsx`, `openpyxl`, `entity`), `system_id` is an internal Shape Shifter identity and should not be imported from source data or listed in `columns`. The main exception is `type: fixed`, where explicit `system_id` values may be preserved intentionally.
 - **Behavior**:
   - Added automatically by all loaders (SQL, fixed, file)
   - Always numbered sequentially starting from 1
@@ -459,16 +459,18 @@ method:
   - Warn if source entity is processed after current entity in dependency order
   - Validate that source entity produces compatible output columns
 #### `type`
-- **Type**: `"entity" | "fixed" | "sql" | "merged"`
+- **Type**: `"entity" | "fixed" | "sql" | "duckdb" | "merged"`
 - **Required**: No (defaults to `"entity"`)
 - **Description**: 
   - `"entity"`: Extract from source data (spreadsheet or another entity)
   - `"fixed"`: Use fixed/hardcoded values defined in `values`
-  - `"sql"`: Execute SQL query against a database (requires `data_source` and `query`)
+  - `"sql"`: Execute SQL query against an external database (requires `data_source` and `query`)
+  - `"duckdb"`: Execute a SQL query over already-processed Shape Shifter entities (requires `query` and `depends_on`; no `data_source`)
   - `"merged"`: Merge multiple source entities into a single parent entity with branch tracking (requires `branches`)
 - **Requirements by Type**:
   - `type: fixed` → requires `values` (list of lists)
   - `type: sql` → requires `data_source` and `query`
+  - `type: duckdb` → requires `query` and `depends_on`; no `data_source` needed
   - `type: entity` → uses `source` (defaults to root data if omitted)
   - `type: merged` → requires `branches` (list of branch configurations)
 - **Example**:
@@ -479,15 +481,24 @@ method:
     - ["value1", "desc1"]
     - ["value2", "desc2"]
   
-  # SQL query
+  # SQL query against external database
   type: sql
   data_source: sead
   query: |
     select id, name
     from tbl_dimensions
+  
+  # DuckDB query over already-processed entities (no data_source needed)
+  type: duckdb
+  depends_on: [site, sample]
+  query: |
+    SELECT s.site_name, COUNT(sa.system_id) AS sample_count
+    FROM site s
+    JOIN sample sa ON sa.site_id = s.system_id
+    GROUP BY s.site_name
   ```
 - **Validation Rules**:
-  - **Type**: Must be one of `"entity"`, `"fixed"`, `"sql"`, or `"merged"` if provided
+  - **Type**: Must be one of `"entity"`, `"fixed"`, `"sql"`, `"duckdb"`, or `"merged"` if provided
   - **Default**: Defaults to `"entity"` if omitted
   - **Context-Dependent Requirements**:
     - **When `type: fixed`**:
@@ -501,6 +512,12 @@ method:
       - `data_source` is required (error if missing)
       - `query` is required (error if missing)
       - `data_source` must exist in `options.data_sources` (error if not)
+      - `source` should be empty (warning if set)
+      - `values` should be empty (warning if set)
+    - **When `type: duckdb`**:
+      - `query` is required (error if missing)
+      - `depends_on` should list all entities referenced in the query
+      - `data_source` should be empty (no external connection is used)
       - `source` should be empty (warning if set)
       - `values` should be empty (warning if set)
     - **When `type: entity`**:
@@ -2306,6 +2323,31 @@ options:
       options:
         path: /path/to/database.accdb
 ```
+
+#### DuckDB Internal Workspace
+
+Entities with `type: duckdb` do not require a `data_source` entry. They query Shape Shifter's own in-memory entity store using [DuckDB](https://duckdb.org/). All entities that have already been processed and stored are available as SQL views named after the entity.
+
+```yaml
+entities:
+  site_summary:
+    type: duckdb
+    depends_on: [site, sample]
+    query: |
+      SELECT s.site_name, COUNT(sa.system_id) AS sample_count
+      FROM site s
+      JOIN sample sa ON sa.site_id = s.system_id
+      GROUP BY s.site_name
+    public_id: site_summary_id
+    keys: [site_name]
+    columns: [site_name, sample_count]
+```
+
+**Key points**:
+- The entity must come after its dependencies in the processing order. Use `depends_on` to declare them explicitly.
+- All FK values in the queried entities are local `system_id` values (integers), not external IDs.
+- No `data_source` entry is needed; the loader is selected automatically by `type: duckdb`.
+- The alternative keys `internal` and `shape_store` also select this loader (e.g. for use in `data_source` entries when needed).
 
 ---
 
