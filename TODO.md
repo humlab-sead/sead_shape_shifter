@@ -238,3 +238,30 @@ Current phase 9 in target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md  is out-of-
 1. proposal docs/proposals/TARGET_MODEL_SPECIFICATION_FORMAT.md shoudld be focused on the target model specification format only, and it's semantics. No design, or implementation detail and no implementation planning details.
 2. docs/proposals/TARGET_SCHEMA_AWARE_VALIDATION.md is focusing on the requirements and design of logic that implement's 1ö
 3. target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md is focused on the development of the SEAD target model specification YAML file only.
+
+
+### TODO: We need a single source of truth for specifying projekts
+We can't duplicate "where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');" wverywhjere
+
+### FIXME: Fix arbodat project (CHANGELOG)
+
+  - A site can have many projects: property "Projekt" is removed from "site.columns" and "site.sql"
+  - A site can only have one site type: change "site.sql" to group by "Fustel", then take max "FustelTyp"
+  - Assume "Fustel" is unique
+  - Pull "Fustel" into "feature"
+  - Pull "Fustel" into "sample_group"
+  - Property "CoordSys" varies over "Projekt" in "Projekte", FD-check fails
+    Fix:
+      select distinct p.Fustel, coalesce([EVNr], '') as [EVNr], b.FustelTyp, c.KoordSys, p.rWert, p.hWert, p.[üNN]
+      from Projekte as p
+      inner join (
+        select Projekt, max(FustelTyp) as FustelTyp
+        from Befunde group by Projekt
+      ) as b on p.Projekt = b.Projekt
+      left join(
+        select Projekt, max(KoordSys) as KoordSys
+        from Projekte
+        group by Projekt  
+      ) c on c.[Projekt] = p.[Projekt]
+      where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');
+  - FIXME: FD checks fails for Abodat ["Blake"]
