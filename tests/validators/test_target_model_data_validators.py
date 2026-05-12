@@ -24,7 +24,7 @@ class TestNullabilityConformanceValidator:
     def test_passes_when_no_nulls(self):
         spec = make_entity_spec(columns={"name": ColumnSpec(required=True, nullable=False)})
         df = pd.DataFrame({"name": ["Alice", "Bob"]})
-        assert NullabilityConformanceValidator.validate(df, spec, "person") == []
+        assert not NullabilityConformanceValidator.validate(df, spec, "person")
 
     def test_reports_nulls_in_required_non_nullable_column(self):
         spec = make_entity_spec(columns={"name": ColumnSpec(required=True, nullable=False)})
@@ -48,22 +48,22 @@ class TestNullabilityConformanceValidator:
     def test_skips_explicitly_nullable_column(self):
         spec = make_entity_spec(columns={"note": ColumnSpec(required=True, nullable=True)})
         df = pd.DataFrame({"note": [None, None]})
-        assert NullabilityConformanceValidator.validate(df, spec, "person") == []
+        assert not NullabilityConformanceValidator.validate(df, spec, "person")
 
     def test_skips_non_required_column(self):
         spec = make_entity_spec(columns={"note": ColumnSpec(required=False, nullable=False)})
         df = pd.DataFrame({"note": [None]})
-        assert NullabilityConformanceValidator.validate(df, spec, "person") == []
+        assert not NullabilityConformanceValidator.validate(df, spec, "person")
 
     def test_skips_column_absent_from_dataframe(self):
         """Missing columns are a structural conformance issue, not data conformance."""
         spec = make_entity_spec(columns={"name": ColumnSpec(required=True, nullable=False)})
         df = pd.DataFrame({"other": [1, 2]})
-        assert NullabilityConformanceValidator.validate(df, spec, "person") == []
+        assert not NullabilityConformanceValidator.validate(df, spec, "person")
 
     def test_empty_dataframe_returns_no_issues(self):
         spec = make_entity_spec(columns={"name": ColumnSpec(required=True, nullable=False)})
-        assert NullabilityConformanceValidator.validate(pd.DataFrame(), spec, "person") == []
+        assert not NullabilityConformanceValidator.validate(pd.DataFrame(), spec, "person")
 
     def test_multiple_columns_with_nulls(self):
         spec = make_entity_spec(
@@ -87,7 +87,7 @@ class TestTypeCompatibilityConformanceValidator:
     def test_passes_integer_column_with_int_dtype(self):
         spec = make_entity_spec(columns={"count": ColumnSpec(type="integer")})
         df = pd.DataFrame({"count": [1, 2, 3]})
-        assert TypeCompatibilityConformanceValidator.validate(df, spec, "entity") == []
+        assert not TypeCompatibilityConformanceValidator.validate(df, spec, "entity")
 
     def test_reports_integer_column_with_object_dtype(self):
         spec = make_entity_spec(columns={"count": ColumnSpec(type="integer")})
@@ -102,18 +102,18 @@ class TestTypeCompatibilityConformanceValidator:
     def test_passes_string_column_with_object_dtype(self):
         spec = make_entity_spec(columns={"name": ColumnSpec(type="string")})
         df = pd.DataFrame({"name": ["Alice", "Bob"]})
-        assert TypeCompatibilityConformanceValidator.validate(df, spec, "entity") == []
+        assert not TypeCompatibilityConformanceValidator.validate(df, spec, "entity")
 
     def test_passes_float_column_for_number_type(self):
         spec = make_entity_spec(columns={"ratio": ColumnSpec(type="float")})
         df = pd.DataFrame({"ratio": [1.0, 2.5]})
-        assert TypeCompatibilityConformanceValidator.validate(df, spec, "entity") == []
+        assert not TypeCompatibilityConformanceValidator.validate(df, spec, "entity")
 
     def test_passes_integer_column_for_float_type(self):
         """Integers are compatible with float type."""
         spec = make_entity_spec(columns={"ratio": ColumnSpec(type="float")})
         df = pd.DataFrame({"ratio": [1, 2]})
-        assert TypeCompatibilityConformanceValidator.validate(df, spec, "entity") == []
+        assert not TypeCompatibilityConformanceValidator.validate(df, spec, "entity")
 
     def test_reports_string_column_for_integer_type(self):
         spec = make_entity_spec(columns={"id": ColumnSpec(type="integer")})
@@ -125,26 +125,26 @@ class TestTypeCompatibilityConformanceValidator:
     def test_skips_unknown_type(self):
         spec = make_entity_spec(columns={"val": ColumnSpec(type="uuid")})
         df = pd.DataFrame({"val": ["abc-def"]})
-        assert TypeCompatibilityConformanceValidator.validate(df, spec, "entity") == []
+        assert not TypeCompatibilityConformanceValidator.validate(df, spec, "entity")
 
     def test_skips_column_with_no_declared_type(self):
         spec = make_entity_spec(columns={"val": ColumnSpec()})
         df = pd.DataFrame({"val": [1]})
-        assert TypeCompatibilityConformanceValidator.validate(df, spec, "entity") == []
+        assert not TypeCompatibilityConformanceValidator.validate(df, spec, "entity")
 
     def test_skips_column_absent_from_dataframe(self):
         spec = make_entity_spec(columns={"count": ColumnSpec(type="integer")})
         df = pd.DataFrame({"other": [1]})
-        assert TypeCompatibilityConformanceValidator.validate(df, spec, "entity") == []
+        assert not TypeCompatibilityConformanceValidator.validate(df, spec, "entity")
 
     def test_empty_dataframe_returns_no_issues(self):
         spec = make_entity_spec(columns={"count": ColumnSpec(type="integer")})
-        assert TypeCompatibilityConformanceValidator.validate(pd.DataFrame(), spec, "entity") == []
+        assert not TypeCompatibilityConformanceValidator.validate(pd.DataFrame(), spec, "entity")
 
     def test_datetime_column_for_date_type(self):
         spec = make_entity_spec(columns={"created": ColumnSpec(type="date")})
         df = pd.DataFrame({"created": pd.to_datetime(["2024-01-01", "2024-06-15"])})
-        assert TypeCompatibilityConformanceValidator.validate(df, spec, "entity") == []
+        assert not TypeCompatibilityConformanceValidator.validate(df, spec, "entity")
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +164,7 @@ class TestFKReferentialIntegrityConformanceValidator:
         target_spec = self._target_spec("location_id")
         df = pd.DataFrame({"location_id": [1, 2, 3]})
         target_df = pd.DataFrame({"location_id": [1, 2, 3, 4]})
-        assert FKReferentialIntegrityConformanceValidator.validate(df, fk_spec, target_df, target_spec, "site") == []
+        assert not FKReferentialIntegrityConformanceValidator.validate(df, fk_spec, target_df, target_spec, "site")
 
     def test_reports_orphaned_fk_values(self):
         fk_spec = self._fk_spec("location")
@@ -178,6 +178,8 @@ class TestFKReferentialIntegrityConformanceValidator:
         assert issues[0].field == "location_id"
         assert issues[0].severity == "warning"
         assert "1 value" in issues[0].message
+
+        assert isinstance(issues[0].suggestion, str)
         assert "99" in issues[0].suggestion
 
     def test_reports_multiple_orphaned_values(self):
@@ -194,41 +196,35 @@ class TestFKReferentialIntegrityConformanceValidator:
         target_spec = make_entity_spec()  # no public_id
         df = pd.DataFrame({"location_id": [1]})
         target_df = pd.DataFrame({"location_id": [2]})
-        assert FKReferentialIntegrityConformanceValidator.validate(df, fk_spec, target_df, target_spec, "site") == []
+        assert not FKReferentialIntegrityConformanceValidator.validate(df, fk_spec, target_df, target_spec, "site")
 
     def test_skips_when_fk_col_absent_from_source(self):
         fk_spec = self._fk_spec("location")
         target_spec = self._target_spec("location_id")
         df = pd.DataFrame({"other_col": [1]})
         target_df = pd.DataFrame({"location_id": [1]})
-        assert FKReferentialIntegrityConformanceValidator.validate(df, fk_spec, target_df, target_spec, "site") == []
+        assert not FKReferentialIntegrityConformanceValidator.validate(df, fk_spec, target_df, target_spec, "site")
 
     def test_skips_when_fk_col_absent_from_target(self):
         fk_spec = self._fk_spec("location")
         target_spec = self._target_spec("location_id")
         df = pd.DataFrame({"location_id": [1]})
         target_df = pd.DataFrame({"other_col": [1]})
-        assert FKReferentialIntegrityConformanceValidator.validate(df, fk_spec, target_df, target_spec, "site") == []
+        assert not FKReferentialIntegrityConformanceValidator.validate(df, fk_spec, target_df, target_spec, "site")
 
     def test_empty_source_returns_no_issues(self):
         fk_spec = self._fk_spec("location")
         target_spec = self._target_spec("location_id")
-        assert (
-            FKReferentialIntegrityConformanceValidator.validate(
-                pd.DataFrame(), fk_spec, pd.DataFrame({"location_id": [1]}), target_spec, "site"
-            )
-            == []
+        assert not FKReferentialIntegrityConformanceValidator.validate(
+            pd.DataFrame(), fk_spec, pd.DataFrame({"location_id": [1]}), target_spec, "site"
         )
 
     def test_empty_target_returns_no_issues(self):
         """Empty target — not our concern here (orphaned-values check can't run)."""
         fk_spec = self._fk_spec("location")
         target_spec = self._target_spec("location_id")
-        assert (
-            FKReferentialIntegrityConformanceValidator.validate(
-                pd.DataFrame({"location_id": [1]}), fk_spec, pd.DataFrame(), target_spec, "site"
-            )
-            == []
+        assert not FKReferentialIntegrityConformanceValidator.validate(
+            pd.DataFrame({"location_id": [1]}), fk_spec, pd.DataFrame(), target_spec, "site"
         )
 
     def test_nulls_in_source_are_excluded(self):
@@ -237,4 +233,4 @@ class TestFKReferentialIntegrityConformanceValidator:
         target_spec = self._target_spec("location_id")
         df = pd.DataFrame({"location_id": [1, None]})
         target_df = pd.DataFrame({"location_id": [1, 2]})
-        assert FKReferentialIntegrityConformanceValidator.validate(df, fk_spec, target_df, target_spec, "site") == []
+        assert not FKReferentialIntegrityConformanceValidator.validate(df, fk_spec, target_df, target_spec, "site")
