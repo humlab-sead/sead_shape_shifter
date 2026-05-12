@@ -15,7 +15,7 @@ This order is enforced in `ShapeShifter.normalize()`. Never reorder stages. Each
 ## Orchestrator: `ShapeShifter`
 
 - Entry point: `ShapeShifter(project).normalize()` — async.
-- Holds `table_store: dict[str, pd.DataFrame]` — the mutable output accumulator. An entity is "processed" the moment its DataFrame is added here.
+- Holds `table_store: TableStore` — the mutable output accumulator, derives from `dict[str, pd.DataFrame]`. An entity is "processed" the moment its DataFrame is added here.
 - `ProcessState` is constructed once per run; `table_store` is shared by reference between `ShapeShifter` and `ProcessState`.
 - Loaders are resolved per-entity via `resolve_loader()` — never pre-load all entities.
 
