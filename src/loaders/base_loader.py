@@ -72,6 +72,11 @@ class DataLoader(abc.ABC):
         """
         return cls.schema
 
+    @classmethod
+    def create(cls, data_source: "DataSourceConfig | None", **context: Any) -> "DataLoader":
+        """Instantiate this loader. Override to consume extra context kwargs."""
+        return cls(data_source=data_source)
+
     @abc.abstractmethod
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         pass
