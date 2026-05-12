@@ -84,10 +84,10 @@
     ],
     "python.analysis.extraPaths": [
         ".",
-        "src",
         "tests",
         "target_models/src"
     ],
+    "python.analysis.autoSearchPaths": false,
     "python.analysis.generateWithTypeAnnotation": true,
     "python.analysis.importFormat": "absolute",
     "python.analysis.include": [
