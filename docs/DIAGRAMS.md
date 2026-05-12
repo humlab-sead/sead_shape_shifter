@@ -538,36 +538,6 @@ flowchart TB
     class MISS miss;
     class G5 cached;
 ```
-
----
-
-## 10. Time Savings Comparison
-
-```mermaid
-gantt
-    title Traditional vs Shape Shifter Data Integration Timeline
-    dateFormat X
-    axisFormat %H hours
-    
-    section Traditional Manual Process
-    Export & Transform     :t1, 0, 24h
-    Manual ID Lookups      :t2, after t1, 8h
-    Error Correction       :t3, after t2, 8h
-    QA & Validation        :t4, after t3, 8h
-    
-    section Shape Shifter (First Time)
-    Configure Project      :s1, 0, 2h
-    Run Reconciliation     :s2, after s1, 1h
-    Execute & Validate     :s3, after s2, 5min
-    
-    section Shape Shifter (Repeat)
-    Update & Re-Dispatch   :r1, 0, 15min
-```
-
-**Traditional:** ~48 hours per dataset  
-**Shape Shifter (First Time):** ~3.5 hours  
-**Shape Shifter (Repeat):** ~15 minutes  
-
 ---
 
 ## 11. Key Features Overview
@@ -673,16 +643,17 @@ mindmap
 ## 12. Use Case Feature Map
 
 ```mermaid
-flowchart TB
+flowchart TD
+
     GOAL[User Goals in Shape Shifter]
 
     GOAL --> MP
-    GOAL --> CPS
-    GOAL --> EE
-    GOAL --> ED
-    GOAL --> VCD
-    GOAL --> RV
-    GOAL --> EXD
+    MP --> CPS
+    CPS --> EE
+    EE --> ED
+    ED --> VCD
+    VCD --> RV
+    RV --> EXD
 
     subgraph ManageProjects[Manage Projects]
         direction TB
@@ -726,6 +697,7 @@ flowchart TB
         EE5[Specify transformations]
         EE6[Edit raw entity YAML]
         EE7[Preview entity output]
+
         EE --> EE1
         EE --> EE2
         EE --> EE3
@@ -754,6 +726,7 @@ flowchart TB
         ED3[Review task status]
         ED4[Open notes and quick actions]
         ED5[Export graph image]
+
         ED --> ED1
         ED --> ED2
         ED --> ED3
@@ -770,6 +743,7 @@ flowchart TB
         VCD4[Tune sample size]
         VCD5[Review grouped issues]
         VCD6[Copy validation results]
+
         VCD --> VCD1
         VCD --> VCD2
         VCD --> VCD3
@@ -787,6 +761,7 @@ flowchart TB
         RV4[Review confidence-ranked matches]
         RV5[Accept, adjust, or reject mappings]
         RV6[Save reusable mappings]
+
         RV --> RV1
         RV --> RV2
         RV --> RV3
@@ -806,6 +781,7 @@ flowchart TB
         EXD6[Download result file]
         EXD7[Dispatch via ingester config]
         EXD8[Deliver to SEAD workflow]
+
         EXD --> EXD1
         EXD --> EXD2
         EXD --> EXD3
@@ -819,35 +795,6 @@ flowchart TB
 
 ---
 
-## 13. User Personas & Use Cases
-
-```mermaid
-flowchart LR
-    subgraph "Domain Data Manager"
-        U1[📊 Archaeologist<br/>Limited Programming]
-        UC1[Create Configurations<br/>Using Forms]
-        UC2[Validate Data<br/>Before Submission]
-        UC3[Preview Results<br/>Visually]
-    end
-    
-    subgraph "Data Engineer"
-        U2[🔧 Technical User<br/>SQL/Database Skills]
-        UC4[Complex Queries<br/>& Transformations]
-        UC5[Schema<br/>Introspection]
-        UC6[Performance<br/>Optimization]
-    end
-    
-    subgraph "Developer/Integrator"
-        U3[💻 Software Dev<br/>API Integration]
-        UC7[Programmatic<br/>Configuration]
-        UC8[Pipeline<br/>Automation]
-        UC9[Custom<br/>Validators]
-    end
-    
-    U1 --> UC1 & UC2 & UC3
-    U2 --> UC4 & UC5 & UC6
-    U3 --> UC7 & UC8 & UC9
-```
 ---
 
 ## 14. Component Architecture
