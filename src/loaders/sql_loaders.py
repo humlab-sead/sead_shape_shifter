@@ -977,7 +977,7 @@ class DuckDbLoader(SqlLoader):
         return ":memory:"
 
     async def read_sql(self, sql: str) -> pd.DataFrame:
-        import duckdb
+        import duckdb  # pylint: disable=import-outside-toplevel
 
         con = duckdb.connect(database=":memory:")
 
@@ -991,7 +991,7 @@ class DuckDbLoader(SqlLoader):
             con.close()
 
     async def execute_scalar_sql(self, sql: str) -> Any:
-        import duckdb
+        import duckdb  # pylint: disable=import-outside-toplevel
 
         con = duckdb.connect(database=":memory:")
 

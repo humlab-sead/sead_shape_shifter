@@ -230,10 +230,10 @@ class TestShapeShiftService:
         mock_linker = MagicMock()
         mock_linker.validators = []
 
-        mock_shapeShifter = MagicMock()
-        mock_shapeShifter.normalize = AsyncMock()
-        mock_shapeShifter.table_store = {}
-        mock_shapeShifter.unresolved_extra_columns = MagicMock(
+        mock_shape_shifter = MagicMock()
+        mock_shape_shifter.normalize = AsyncMock()
+        mock_shape_shifter.table_store = {}
+        mock_shape_shifter.unresolved_extra_columns = MagicMock(
             return_value={
                 "users": {
                     "display_name": {
@@ -244,7 +244,7 @@ class TestShapeShiftService:
             }
         )
 
-        issues = shapeshift_service._collect_validation_issues(mock_shapeShifter)
+        issues = shapeshift_service._collect_validation_issues(mock_shape_shifter)
 
         assert len(issues) == 1
         assert issues[0]["type"] == "extra_column_unresolved"
