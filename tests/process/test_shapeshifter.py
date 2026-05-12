@@ -62,7 +62,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(project=config, table_store={})
+        state = ProcessState(project=config, table_store=TableStore())
 
         assert state.project == config
         assert state.unprocessed_entities == {"site", "sample", "taxa"}
@@ -85,7 +85,7 @@ class TestProcessState:
             mock_table.depends_on = set()
             mock_get_table.return_value = mock_table
 
-            state = ProcessState(project=config, table_store={})
+            state = ProcessState(project=config, table_store=TableStore())
             next_entity = state.get_next_entity_to_process()
 
             assert next_entity in ["site", "sample"]
@@ -101,7 +101,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(project=config, table_store={})
+        state = ProcessState(project=config, table_store=TableStore())
 
         # First entity should be 'site' since 'sample' depends on it
         next_entity = state.get_next_entity_to_process()
@@ -117,7 +117,7 @@ class TestProcessState:
     def test_get_next_entity_all_processed(self, survey_only_config: ShapeShiftProject):
         """Test getting next entity when all are processed."""
 
-        state = ProcessState(project=survey_only_config, table_store={"survey": Mock()})
+        state = ProcessState(project=survey_only_config, table_store=TableStore({"survey": Mock()}))
         state.table_store["site"] = Mock()
 
         next_entity: str | None = state.get_next_entity_to_process()
@@ -137,7 +137,7 @@ class TestProcessState:
 
         assert cfg.get_required_entities("sample") == {"sample", "site", "survey"}
 
-        state = ProcessState(project=cfg, table_store={}, target_entities={"sample"})
+        state = ProcessState(project=cfg, table_store=TableStore(), target_entities={"sample"})
         assert state.target_entities == {"sample", "site", "survey"}
 
     def test_get_unmet_dependencies(self):
@@ -146,7 +146,7 @@ class TestProcessState:
             cfg={"entities": {"site": {"depends_on": []}, "sample": {"depends_on": ["site", "taxa"]}, "taxa": {"depends_on": []}}},
         )
 
-        state = ProcessState(project=config, table_store={})
+        state = ProcessState(project=config, table_store=TableStore())
 
         unmet = state.get_unmet_dependencies("sample")
         assert unmet == {"site", "taxa"}
@@ -166,7 +166,7 @@ class TestProcessState:
                 }
             },
         )
-        state = ProcessState(project=config, table_store={})
+        state = ProcessState(project=config, table_store=TableStore())
         assert "site" in state.unprocessed_entities
         assert "site" not in state.processed_entities
 
@@ -187,7 +187,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(project=config, table_store={})
+        state = ProcessState(project=config, table_store=TableStore())
 
         all_unmet = state.get_all_unmet_dependencies()
 
@@ -209,7 +209,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(project=config, table_store={})
+        state = ProcessState(project=config, table_store=TableStore())
         assert state.processed_entities == set()
 
         state.table_store["site"] = Mock()
@@ -229,7 +229,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(project=config, table_store={})
+        state = ProcessState(project=config, table_store=TableStore())
 
         with patch.object(config, "get_table") as mock_get_table:
             mock_table = Mock()
@@ -247,7 +247,7 @@ class TestShapeShifter:
         df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
         normalizer = ShapeShifter(project=survey_only_config, default_entity="survey")
-        normalizer.table_store = {"survey": df}
+        normalizer.table_store = TableStore({"survey": df})
 
         assert "survey" in normalizer.table_store
         pd.testing.assert_frame_equal(normalizer.table_store["survey"], df)
@@ -258,7 +258,7 @@ class TestShapeShifter:
         """Test the survey property."""
         df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
-        normalizer = ShapeShifter(project=survey_only_config, default_entity="survey", table_store={"survey": df})
+        normalizer = ShapeShifter(project=survey_only_config, default_entity="survey", table_store=TableStore({"survey": df}))
 
         pd.testing.assert_frame_equal(normalizer.table_store["survey"], df)
 
@@ -277,7 +277,7 @@ class TestShapeShifter:
             },
         )
 
-        normalizer = ShapeShifter(project=config, table_store={"survey": survey_df}, default_entity="survey")
+        normalizer = ShapeShifter(project=config, table_store=TableStore({"survey": survey_df}), default_entity="survey")
 
         table_cfg = Mock()
         table_cfg.type = None
@@ -303,7 +303,7 @@ class TestShapeShifter:
             },
         )
 
-        normalizer = ShapeShifter(project=cfg, default_entity="survey", table_store={"survey": df, "site": site_df})
+        normalizer = ShapeShifter(project=cfg, default_entity="survey", table_store=TableStore({"survey": df, "site": site_df}))
 
         table_cfg = Mock()
         table_cfg.type = None
@@ -319,7 +319,7 @@ class TestShapeShifter:
         """Test resolving source that doesn't exist."""
         df = pd.DataFrame({"col1": [1, 2]})
 
-        normalizer = ShapeShifter(project=survey_only_config, default_entity="survey", table_store={"survey": df})
+        normalizer = ShapeShifter(project=survey_only_config, default_entity="survey", table_store=TableStore({"survey": df}))
 
         table_cfg = Mock()
         table_cfg.type = None
@@ -334,7 +334,7 @@ class TestShapeShifter:
         """Test resolving fixed data source."""
         df = pd.DataFrame({"col1": [1, 2]})
 
-        normalizer = ShapeShifter(project=survey_only_config, default_entity="survey", table_store={"survey": df})
+        normalizer = ShapeShifter(project=survey_only_config, default_entity="survey", table_store=TableStore({"survey": df}))
 
         table_cfg = Mock()
         table_cfg.type = "fixed"
@@ -358,7 +358,7 @@ class TestShapeShifter:
         """Test resolving SQL data source."""
         df = pd.DataFrame({"col1": [1, 2]})
 
-        normalizer = ShapeShifter(project=survey_only_config, default_entity="survey", table_store={"survey": df})
+        normalizer = ShapeShifter(project=survey_only_config, default_entity="survey", table_store=TableStore({"survey": df}))
 
         table_cfg = Mock()
         table_cfg.type = "sql"
@@ -380,7 +380,7 @@ class TestShapeShifter:
         """Test translating column names."""
         df = pd.DataFrame({"Ort": ["Berlin"], "Datum": ["2020-01-01"]})
         normalizer = ShapeShifter(project=survey_and_site_config, default_entity="survey")
-        normalizer.table_store = {"survey": df}
+        normalizer.table_store = TableStore({"survey": df})
         normalizer.table_store["site"] = pd.DataFrame({"Ort": ["Munich"]})
 
         translations_map = {"Ort": "location", "Datum": "date"}
@@ -404,7 +404,7 @@ class TestShapeShifter:
         """Test dropping foreign key columns."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(project=survey_and_site_config, default_entity="survey")
-        normalizer.table_store = {"survey": df}
+        normalizer.table_store = TableStore({"survey": df})
 
         # Add a table with FK columns
         site_df = pd.DataFrame({"site_id": [1, 2], "location_id": [10, 20], "name": ["A", "B"]})
@@ -482,7 +482,7 @@ class TestShapeShifter:
         """Test unnesting when no unnest configuration exists."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(project=survey_only_config, default_entity="survey")
-        normalizer.table_store = {"survey": df}
+        normalizer.table_store = TableStore({"survey": df})
 
         site_df = pd.DataFrame({"site_id": [1], "name": ["A"]})
         normalizer.table_store["site"] = site_df
@@ -500,7 +500,7 @@ class TestShapeShifter:
         """Test storing data as XLSX."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(project=survey_only_config, default_entity="survey")
-        normalizer.table_store = {"survey": df}
+        normalizer.table_store = TableStore({"survey": df})
 
         mock_dispatcher = Mock()
         mock_dispatcher.dispatch = Mock()
@@ -516,7 +516,7 @@ class TestShapeShifter:
         """Test storing data as CSV."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(project=survey_only_config, default_entity="survey")
-        normalizer.table_store = {"survey": df}
+        normalizer.table_store = TableStore({"survey": df})
 
         mock_dispatcher = Mock()
         mock_dispatcher.dispatch = Mock()
@@ -532,7 +532,7 @@ class TestShapeShifter:
         """Test storing with unsupported mode."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(project=survey_only_config, default_entity="survey")
-        normalizer.table_store = {"survey": df}
+        normalizer.table_store = TableStore({"survey": df})
 
         with patch("src.normalizer.Dispatchers.get", return_value=None):
             with pytest.raises(ValueError, match="Unsupported dispatch mode: invalid"):
@@ -607,7 +607,7 @@ class TestShapeShifter:
         """Test that normalize raises error for circular dependencies."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(project=survey_only_config, default_entity="survey")
-        normalizer.table_store = {"survey": df}
+        normalizer.table_store = TableStore({"survey": df})
 
         normalizer.project.table_names = ["site", "sample"]
 
@@ -656,7 +656,7 @@ class TestShapeShifter:
             }
         )
 
-        normalizer = ShapeShifter(project=project, default_entity="survey", table_store={"survey": survey_df})
+        normalizer = ShapeShifter(project=project, default_entity="survey", table_store=TableStore({"survey": survey_df}))
 
         await normalizer.normalize()
 
@@ -709,7 +709,7 @@ class TestShapeShifter:
             }
         )
 
-        normalizer = ShapeShifter(project=project, default_entity="survey", table_store={"survey": survey_df})
+        normalizer = ShapeShifter(project=project, default_entity="survey", table_store=TableStore({"survey": survey_df}))
 
         await normalizer.normalize()
 
@@ -759,7 +759,7 @@ class TestShapeShifter:
             }
         )
 
-        normalizer = ShapeShifter(project=project, default_entity="survey", table_store={"survey": survey_df})
+        normalizer = ShapeShifter(project=project, default_entity="survey", table_store=TableStore({"survey": survey_df}))
 
         await normalizer.normalize()
 
@@ -806,7 +806,7 @@ class TestShapeShifter:
             }
         )
 
-        normalizer = ShapeShifter(project=project, default_entity="survey", table_store={"survey": survey_df})
+        normalizer = ShapeShifter(project=project, default_entity="survey", table_store=TableStore({"survey": survey_df}))
 
         await normalizer.normalize()
 
@@ -856,7 +856,7 @@ class TestShapeShifter:
         """Test unnesting all entities."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(project=survey_only_config, default_entity="survey")
-        normalizer.table_store = {"survey": df}
+        normalizer.table_store = TableStore({"survey": df})
 
         site_df = pd.DataFrame({"site_id": [1], "Ort": ["Berlin"]})
         sample_df = pd.DataFrame({"sample_id": [1], "Type": ["Soil"]})
@@ -878,7 +878,7 @@ class TestShapeShifter:
             "site": pd.DataFrame({"site_id": [10]}),
             "other": pd.DataFrame({"x": [1]}),
         }
-        normalizer = ShapeShifter(project=survey_and_site_config, default_entity="survey", table_store=table_store)
+        normalizer = ShapeShifter(project=survey_and_site_config, default_entity="survey", table_store=TableStore(table_store))
 
         mocked_service = Mock()
         mocked_service.link_to_remote = Mock(return_value=pd.DataFrame({"site_id": [10], "remote_id": [99]}))
@@ -897,10 +897,10 @@ class TestShapeShifter:
     def test_log_shapes_writes_tsv(self, tmp_path: Path, survey_only_config: ShapeShiftProject):
         """log_shapes should write table shapes TSV next to target."""
         normalizer = ShapeShifter(project=survey_only_config, default_entity="survey")
-        normalizer.table_store = {
+        normalizer.table_store = TableStore({
             "survey": pd.DataFrame({"a": [1, 2], "b": [3, 4]}),
             "site": pd.DataFrame({"x": [1], "y": [2]}),
-        }
+        })
 
         target = tmp_path / "output.xlsx"
         normalizer.log_shapes(str(target))
