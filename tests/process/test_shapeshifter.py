@@ -897,10 +897,12 @@ class TestShapeShifter:
     def test_log_shapes_writes_tsv(self, tmp_path: Path, survey_only_config: ShapeShiftProject):
         """log_shapes should write table shapes TSV next to target."""
         normalizer = ShapeShifter(project=survey_only_config, default_entity="survey")
-        normalizer.table_store = TableStore({
-            "survey": pd.DataFrame({"a": [1, 2], "b": [3, 4]}),
-            "site": pd.DataFrame({"x": [1], "y": [2]}),
-        })
+        normalizer.table_store = TableStore(
+            {
+                "survey": pd.DataFrame({"a": [1, 2], "b": [3, 4]}),
+                "site": pd.DataFrame({"x": [1], "y": [2]}),
+            }
+        )
 
         target = tmp_path / "output.xlsx"
         normalizer.log_shapes(str(target))

@@ -84,7 +84,9 @@ async def list_drivers() -> dict[str, DriverSchemaResponse]:
     try:
 
         logger.debug("Fetching driver schemas")
-        schemas: dict[str, DriverSchema] = {driver: schema for driver, schema in DriverSchemaRegistry.all().items() if schema.category != "internal"}
+        schemas: dict[str, DriverSchema] = {
+            driver: schema for driver, schema in DriverSchemaRegistry.all().items() if schema.category != "internal"
+        }
 
         return {
             driver: DriverSchemaResponse(

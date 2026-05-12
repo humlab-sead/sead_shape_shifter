@@ -7,12 +7,11 @@ from loguru import logger
 
 from src.loaders.base_loader import DataLoaders
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
+from src.loaders.duckdb_loader.duckdb_workspace import DuckDbWorkspace
+from src.loaders.sql_loaders import CoreSchema, SqlLoader
 from src.model import DataSourceConfig, TableConfig
 from src.table_store import TableStore
 from src.transforms.utility import add_system_id
-
-from src.loaders.sql_loaders import CoreSchema, SqlLoader
-from src.loaders.duckdb_loader.duckdb_workspace import DuckDbWorkspace
 
 
 @DataLoaders.register(key=["duckdb", "internal", "shape_store"])

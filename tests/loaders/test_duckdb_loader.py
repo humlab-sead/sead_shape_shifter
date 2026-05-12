@@ -4,8 +4,8 @@ Tests for DuckDbWorkspace and DuckDbLoader.
 
 from __future__ import annotations
 
-import pytest
 import pandas as pd
+import pytest
 
 from src.loaders.base_loader import DataLoaders, LoaderType
 from src.loaders.duckdb_loader import DuckDbLoader, DuckDbWorkspace
@@ -98,23 +98,17 @@ class TestDuckDbWorkspace:
         """Unregistering a name that was never registered should not raise."""
         workspace.unregister_entity("nonexistent")  # should not raise
 
-    def test_register_many_registers_all(
-        self, workspace: DuckDbWorkspace, site_df: pd.DataFrame, sample_df: pd.DataFrame
-    ) -> None:
+    def test_register_many_registers_all(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame, sample_df: pd.DataFrame) -> None:
         tables = {"site": site_df, "sample": sample_df}
         workspace.register_many(tables)
         assert set(workspace.list_registered()) == {"site", "sample"}
 
-    def test_register_many_with_only_subset(
-        self, workspace: DuckDbWorkspace, site_df: pd.DataFrame, sample_df: pd.DataFrame
-    ) -> None:
+    def test_register_many_with_only_subset(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame, sample_df: pd.DataFrame) -> None:
         tables = {"site": site_df, "sample": sample_df}
         workspace.register_many(tables, only=["site"])
         assert workspace.list_registered() == ["site"]
 
-    def test_register_many_raises_for_missing_name(
-        self, workspace: DuckDbWorkspace, site_df: pd.DataFrame
-    ) -> None:
+    def test_register_many_raises_for_missing_name(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame) -> None:
         with pytest.raises(KeyError, match="nonexistent"):
             workspace.register_many({"site": site_df}, only=["nonexistent"])
 
@@ -133,9 +127,7 @@ class TestDuckDbWorkspace:
         result = workspace.query_scalar("SELECT NULL WHERE FALSE")
         assert result is None
 
-    def test_list_registered_returns_sorted(
-        self, workspace: DuckDbWorkspace, site_df: pd.DataFrame, sample_df: pd.DataFrame
-    ) -> None:
+    def test_list_registered_returns_sorted(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame, sample_df: pd.DataFrame) -> None:
         workspace.register_entity("sample", sample_df)
         workspace.register_entity("site", site_df)
         assert workspace.list_registered() == ["sample", "site"]
@@ -149,27 +141,21 @@ class TestDuckDbWorkspace:
 class TestDuckDbWorkspaceTableStoreHooks:
     """Verify that TableStore hooks keep the workspace in sync automatically."""
 
-    def test_on_set_hook_registers_entity(
-        self, workspace: DuckDbWorkspace, site_df: pd.DataFrame
-    ) -> None:
+    def test_on_set_hook_registers_entity(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame) -> None:
         store = TableStore()
         store.add_on_set_hook(workspace.register_entity, replay=False)
 
         store["site"] = site_df
         assert "site" in workspace.list_registered()
 
-    def test_on_set_hook_replays_existing_entries(
-        self, workspace: DuckDbWorkspace, site_df: pd.DataFrame
-    ) -> None:
+    def test_on_set_hook_replays_existing_entries(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame) -> None:
         store = TableStore()
         store["site"] = site_df  # added before hook
 
         store.add_on_set_hook(workspace.register_entity, replay=True)
         assert "site" in workspace.list_registered()
 
-    def test_on_delete_hook_unregisters_entity(
-        self, workspace: DuckDbWorkspace, site_df: pd.DataFrame
-    ) -> None:
+    def test_on_delete_hook_unregisters_entity(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame) -> None:
         store = TableStore()
         store.add_on_set_hook(workspace.register_entity, replay=False)
         store.add_on_delete_hook(workspace.unregister_entity)
@@ -179,9 +165,7 @@ class TestDuckDbWorkspaceTableStoreHooks:
 
         assert "site" not in workspace.list_registered()
 
-    def test_workspace_sees_updated_data_after_reassignment(
-        self, workspace: DuckDbWorkspace, site_df: pd.DataFrame
-    ) -> None:
+    def test_workspace_sees_updated_data_after_reassignment(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame) -> None:
         store = TableStore()
         store.add_on_set_hook(workspace.register_entity, replay=False)
         store["site"] = site_df
@@ -201,9 +185,7 @@ class TestDuckDbWorkspaceTableStoreHooks:
 class TestDuckDbLoaderCreate:
     """Tests for the DuckDbLoader.create() factory classmethod."""
 
-    def test_create_returns_duckdb_loader(
-        self, workspace: DuckDbWorkspace, table_store: TableStore
-    ) -> None:
+    def test_create_returns_duckdb_loader(self, workspace: DuckDbWorkspace, table_store: TableStore) -> None:
         loader = DuckDbLoader.create(
             data_source=None,
             workspace=workspace,
@@ -211,9 +193,7 @@ class TestDuckDbLoaderCreate:
         )
         assert isinstance(loader, DuckDbLoader)
 
-    def test_create_wires_workspace_and_table_store(
-        self, workspace: DuckDbWorkspace, table_store: TableStore
-    ) -> None:
+    def test_create_wires_workspace_and_table_store(self, workspace: DuckDbWorkspace, table_store: TableStore) -> None:
         loader = DuckDbLoader.create(
             data_source=None,
             workspace=workspace,
@@ -249,18 +229,14 @@ class TestDuckDbLoaderReadSql:
     """Tests for DuckDbLoader.read_sql and execute_scalar_sql."""
 
     @pytest.mark.asyncio
-    async def test_read_sql_returns_dataframe(
-        self, loader: DuckDbLoader, workspace: DuckDbWorkspace, site_df: pd.DataFrame
-    ) -> None:
+    async def test_read_sql_returns_dataframe(self, loader: DuckDbLoader, workspace: DuckDbWorkspace, site_df: pd.DataFrame) -> None:
         workspace.register_entity("site", site_df)
         result = await loader.read_sql("SELECT * FROM site")
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 3
 
     @pytest.mark.asyncio
-    async def test_execute_scalar_sql_returns_count(
-        self, loader: DuckDbLoader, workspace: DuckDbWorkspace, site_df: pd.DataFrame
-    ) -> None:
+    async def test_execute_scalar_sql_returns_count(self, loader: DuckDbLoader, workspace: DuckDbWorkspace, site_df: pd.DataFrame) -> None:
         workspace.register_entity("site", site_df)
         result = await loader.execute_scalar_sql("SELECT COUNT(*) FROM site")
         assert result == 3
@@ -290,9 +266,7 @@ class TestDuckDbLoaderLoad:
         return TableConfig(entities_cfg={"derived": entity_cfg}, entity_name="derived")
 
     @pytest.mark.asyncio
-    async def test_load_returns_dataframe_from_sql(
-        self, loader: DuckDbLoader, workspace: DuckDbWorkspace, site_df: pd.DataFrame
-    ) -> None:
+    async def test_load_returns_dataframe_from_sql(self, loader: DuckDbLoader, workspace: DuckDbWorkspace, site_df: pd.DataFrame) -> None:
         workspace.register_entity("site", site_df)
         table_cfg = self._make_table_cfg("SELECT system_id, site_name FROM site")
 
@@ -366,32 +340,24 @@ class TestDuckDbLoaderGetTables:
     """Tests for DuckDbLoader.get_tables() and get_table_schema()."""
 
     @pytest.mark.asyncio
-    async def test_get_tables_lists_all_table_store_entries(
-        self, loader: DuckDbLoader
-    ) -> None:
+    async def test_get_tables_lists_all_table_store_entries(self, loader: DuckDbLoader) -> None:
         tables = await loader.get_tables()
         assert set(tables.keys()) == {"site", "sample"}
 
     @pytest.mark.asyncio
-    async def test_get_tables_metadata_contains_row_count(
-        self, loader: DuckDbLoader
-    ) -> None:
+    async def test_get_tables_metadata_contains_row_count(self, loader: DuckDbLoader) -> None:
         tables = await loader.get_tables()
         assert tables["site"].row_count == 3
         assert tables["sample"].row_count == 3
 
     @pytest.mark.asyncio
-    async def test_get_table_schema_returns_column_metadata(
-        self, loader: DuckDbLoader
-    ) -> None:
+    async def test_get_table_schema_returns_column_metadata(self, loader: DuckDbLoader) -> None:
         schema = await loader.get_table_schema("site")
         column_names = [col.name for col in schema.columns]
         assert "system_id" in column_names
         assert "site_name" in column_names
 
     @pytest.mark.asyncio
-    async def test_get_table_schema_raises_for_unknown_entity(
-        self, loader: DuckDbLoader
-    ) -> None:
+    async def test_get_table_schema_raises_for_unknown_entity(self, loader: DuckDbLoader) -> None:
         with pytest.raises(KeyError, match="nonexistent"):
             await loader.get_table_schema("nonexistent")
