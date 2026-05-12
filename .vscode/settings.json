@@ -117,7 +117,7 @@
     "search.useIndexing": true,
     "terminal.integrated.tabs.location": "left",
     "testing.defaultGutterClickAction": "debug",
-    "testing.gutterEnabled": false,
+    "testing.gutterEnabled": true,
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#438d96",
         "activityBar.background": "#438d96",
