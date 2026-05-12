@@ -67,8 +67,8 @@ Owns the transformation pipeline. Takes a resolved project configuration and pro
 
 - **Pipeline phases** (in order): Extract → Filter → Link → Unnest → Translate → Store
 - **Orchestrator**: `ShapeShifter` in `src/normalizer.py` using `ProcessState`
-- **Entity types**: `sql`, `csv`, `xlsx`, `fixed`, `merged`
-- **Loaders** (`src/loaders/`): pluggable async data source connectors registered via `@DataLoaders.register`
+- **Entity types**: `sql`, `csv`, `xlsx`, `fixed`, `merged`, `duckdb`
+- **Loaders** (`src/loaders/`): pluggable async data source connectors registered via `@DataLoaders.register`. Loaders that need runtime context (e.g., `DuckDbLoader`) override `DataLoader.create(**context)` to receive it; the orchestrator passes a uniform context dict without loader-specific branching.
 - **Validators** (`src/validators/`): constraint checks (cardinality, FK integrity, functional dependencies) registered via `@Validators.register`
 - **Dispatchers** (`src/dispatch.py`): output format handlers registered via `@Dispatchers.register`
 - **Specifications** (`src/specifications/`): project-level structural validation (DAG, references, identity)
