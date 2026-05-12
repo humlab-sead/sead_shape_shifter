@@ -87,7 +87,6 @@ class DataLoader(abc.ABC):
 
     def close(self) -> None:
         """Release any persistent resources held by this loader. No-op by default."""
-        pass
 
 
 class DataLoaderRegistry(Registry):

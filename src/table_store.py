@@ -3,10 +3,11 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Mapping, overload
 
+import pandas as pd
+
 if TYPE_CHECKING:
     from _typeshed import SupportsKeysAndGetItem
 
-import pandas as pd
 
 TableSetHook = Callable[[str, pd.DataFrame], None]
 TableDeleteHook = Callable[[str], None]
