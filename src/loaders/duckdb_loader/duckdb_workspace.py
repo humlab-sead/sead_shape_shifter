@@ -20,12 +20,17 @@ class DuckDbWorkspace:
 
         self._registered: set[str] = set()
         self._registered_object_ids: dict[str, int] = {}
+        self.register_queue: dict[str, pd.DataFrame] = {}
 
     def close(self) -> None:
         self.connection.close()
 
     def register_entity(self, entity_name: str, df: pd.DataFrame) -> None:
-        """Register or re-register an entity DataFrame."""
+        """Queue an entity DataFrame for registration on the next query."""
+        self.register_queue[entity_name] = df
+
+    def _register_entity(self, entity_name: str, df: pd.DataFrame) -> None:
+        """Register or re-register an entity DataFrame immediately in DuckDB."""
         object_id: int = id(df)
 
         if self._registered_object_ids.get(entity_name) == object_id:
@@ -40,8 +45,16 @@ class DuckDbWorkspace:
         self._registered.add(entity_name)
         self._registered_object_ids[entity_name] = object_id
 
+    def flush(self) -> None:
+        """Drain the registration queue, registering all pending entities."""
+        pending, self.register_queue = self.register_queue, {}
+        for entity_name, df in pending.items():
+            self._register_entity(entity_name, df)
+
     def unregister_entity(self, entity_name: str) -> None:
         """Unregister an entity if present."""
+        self.register_queue.pop(entity_name, None)
+
         if entity_name not in self._registered:
             return
 
@@ -66,12 +79,15 @@ class DuckDbWorkspace:
             self.register_entity(name, tables[name])
 
     def execute(self, sql: str) -> duckdb.DuckDBPyConnection:
+        self.flush()
         return self.connection.execute(sql)
 
     def query_df(self, sql: str) -> pd.DataFrame:
+        self.flush()
         return self.connection.execute(sql).df()
 
     def query_scalar(self, sql: str) -> Any:
+        self.flush()
         row: tuple[Any, ...] | None = self.connection.execute(sql).fetchone()
 
         if row is None:
@@ -83,7 +99,7 @@ class DuckDbWorkspace:
         return self.connection.execute(f"EXPLAIN {sql}").df()
 
     def list_registered(self) -> list[str]:
-        return sorted(self._registered)
+        return sorted(self._registered | self.register_queue.keys())
 
     def materialize_entity(self, entity_name: str, df: pd.DataFrame, *, replace: bool = True) -> None:
         """Copy a DataFrame into DuckDB as a physical table.
