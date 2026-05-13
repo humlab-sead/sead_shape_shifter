@@ -257,7 +257,7 @@ class TestDuckDbLoaderLoad:
     """Tests for DuckDbLoader.load() — the main entity loading path."""
 
     def _make_table_cfg(self, query: str, columns: list[str] | None = None, **overrides) -> TableConfig:
-        entity_cfg: dict = {"type": "duckdb", "query": query}
+        entity_cfg: dict = {"type": "sql", "data_source": "@internal", "query": query}
         if columns:
             entity_cfg["columns"] = columns
         entity_cfg.update(overrides)
@@ -275,7 +275,7 @@ class TestDuckDbLoaderLoad:
 
     @pytest.mark.asyncio
     async def test_load_raises_when_query_is_missing(self, loader: DuckDbLoader) -> None:
-        table_cfg = TableConfig(entities_cfg={"derived": {"type": "duckdb"}}, entity_name="derived")
+        table_cfg = TableConfig(entities_cfg={"derived": {"type": "sql", "data_source": "@internal"}}, entity_name="derived")
 
         with pytest.raises(ValueError, match="no query"):
             await loader.load("derived", table_cfg)
@@ -288,7 +288,8 @@ class TestDuckDbLoaderLoad:
         table_cfg = TableConfig(
             entities_cfg={
                 "derived": {
-                    "type": "duckdb",
+                    "type": "sql",
+                    "data_source": "@internal",
                     "query": "SELECT site_name FROM site",
                     "system_id": "derived_id",
                     "public_id": "derived_id",

@@ -649,7 +649,7 @@
                       <SqlEditor
                         v-model="formData.query"
                         height="250px"
-                        help-text="SQL query to execute against the selected data source"
+                        :help-text="formData.data_source === '@internal' ? 'SQL query executed against already-processed entities in the internal DuckDB store' : 'SQL query to execute against the selected data source'"
                         :error="formValid === false && !formData.query ? 'SQL query is required' : ''"
                       />
                     </div>
@@ -2066,7 +2066,7 @@ async function fetchSqlColumns() {
   const dataSource = formData.value.data_source
   const query = formData.value.query
 
-  if (formData.value.type !== 'sql' || !dataSource || !query) {
+  if (formData.value.type !== 'sql' || !dataSource || !query || dataSource === '@internal') {
     columnsLoading.value = false
     return
   }
@@ -2513,10 +2513,8 @@ const mergedAvailableColumns = computed(() => {
 const availableDataSources = computed(() => {
   // Get entity source names from project's options.data_sources (e.g., "arbodat_data", "sead")
   const dataSources = projectStore.selectedProject?.options?.data_sources
-  if (dataSources && typeof dataSources === 'object') {
-    return Object.keys(dataSources)
-  }
-  return []
+  const external = dataSources && typeof dataSources === 'object' ? Object.keys(dataSources) : []
+  return ['@internal', ...external]
 })
 
 // File type computed properties
