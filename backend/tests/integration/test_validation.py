@@ -1,18 +1,22 @@
 import asyncio
+from logging import warning
 import os
 import shutil
 from pathlib import Path
+from typing import Any
 
 import jpype
 import pytest
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
+from backend.app.models.validation import ValidationError
 from backend.app.services.dependency_service import DependencyGraph, DependencyService, get_dependency_service
 from backend.app.validators.data_validation_orchestrator import (
     DataValidationOrchestrator,
     TableStoreDataFetchStrategy,
 )
+from backend.app.validators.target_model_validator import TargetModelValidator
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
@@ -31,10 +35,17 @@ def initialize_jvm():
     yield
 
 
-def test_composite_project_specification_is_satisfied_by():
-
+@pytest.fixture(scope="function", name="project")
+def _core_project() -> ShapeShiftProject:
+    """Load the test project configuration for each test."""
     config_file: str = "./tests/test_data/projects/arbodat/shapeshifter.yml"
-    project: ShapeShiftProject = ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file=".env")
+    return ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file=".env")
+
+#############################################################################################################
+# Structural validation
+#############################################################################################################
+
+def test_composite_project_specification_is_satisfied_by(project: ShapeShiftProject):
 
     specification = CompositeProjectSpecification(project.cfg)
     is_valid: bool = specification.is_satisfied_by()
@@ -44,24 +55,24 @@ def test_composite_project_specification_is_satisfied_by():
     assert is_valid is True, specification.get_report()
 
 
-def test_check_circular_dependencies():
+#############################################################################################################
+# Circular dependency validation
+#############################################################################################################
+
+def test_check_circular_dependencies(project: ShapeShiftProject):
 
     dependency_service: DependencyService = get_dependency_service()
-    config_file: str = "./tests/test_data/projects/arbodat/shapeshifter.yml"
-
-    core_project: ShapeShiftProject = ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file=".env")
-    project: Project = ProjectMapper.to_api_config(core_project.cfg, name="arbodat")
-    graph: DependencyGraph = dependency_service.analyze_dependencies(project)
+    api_project: Project = ProjectMapper.to_api_config(project.cfg, name="arbodat")
+    graph: DependencyGraph = dependency_service.analyze_dependencies(api_project)
 
     assert graph["has_cycles"] is False, f"Expected no circular dependencies, found cycles: {graph['cycles']}"
 
-
+#############################################################################################################
+# Data validation
+#############################################################################################################
 
 @pytest.mark.asyncio
-async def test_data_validation_orchestrator():
-
-    config_file: str = "./tests/test_data/projects/arbodat/shapeshifter.yml"
-    project: ShapeShiftProject = ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file=".env")
+async def test_data_validation_orchestrator(project: ShapeShiftProject):
 
     normalizer = ShapeShifter(project)
     await normalizer.normalize()
@@ -71,11 +82,29 @@ async def test_data_validation_orchestrator():
     strategy = TableStoreDataFetchStrategy(table_store=normalizer.table_store)
     orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
 
-    # Run validation on all entities
     issues: list[ValidationIssue] = await orchestrator.validate_all_entities(
         core_project=project, project_name="arbodat", entity_names=None
     )
+
+
     issue_report: str = "\n".join(f"{issue.severity} [{issue.code}] {issue.entity}: {issue.message}" for issue in issues)
+
     error_count: int = sum(1 for issue in issues if issue.severity == "error")
     assert error_count == 0, f"Expected no validation errors, found {error_count}\n{issue_report}"
 
+    warning_count: int = sum(1 for issue in issues if issue.severity == "warning")
+    assert warning_count == 0, f"Expected no validation warnings, found {warning_count}\n{issue_report}"
+
+#############################################################################################################
+# Target model conformance validation
+#############################################################################################################
+
+def test_missing_required_column_returns_error(project: ShapeShiftProject):
+
+    assert project.metadata.target_model, "Test project must have a target model defined for this test"
+
+    target_model_data: dict[str, Any] = project.metadata.target_model
+
+    errors: list[ValidationError] = TargetModelValidator().validate(target_model_data, project)
+
+    assert not errors, f"Expected no validation errors, found {len(errors)}: {[error.message for error in errors]}"
