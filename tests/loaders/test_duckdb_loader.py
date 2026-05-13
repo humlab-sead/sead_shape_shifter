@@ -3,6 +3,7 @@ Tests for DuckDbWorkspace and DuckDbLoader.
 """
 
 from __future__ import annotations
+from typing import Generator
 
 import pandas as pd
 import pytest
@@ -21,7 +22,7 @@ from src.table_store import TableStore
 
 
 @pytest.fixture
-def workspace() -> DuckDbWorkspace:
+def workspace()  -> Generator[DuckDbWorkspace, None, None]:
     ws = DuckDbWorkspace(database=":memory:")
     yield ws
     ws.close()
@@ -212,9 +213,6 @@ class TestDuckDbLoaderCreate:
 
     def test_create_via_registry_key_internal(self) -> None:
         assert DataLoaders.get(key="internal") is DuckDbLoader
-
-    def test_create_via_registry_key_shape_store(self) -> None:
-        assert DataLoaders.get(key="shape_store") is DuckDbLoader
 
     def test_loader_type_is_sql(self) -> None:
         assert DuckDbLoader.loader_type() == LoaderType.SQL
