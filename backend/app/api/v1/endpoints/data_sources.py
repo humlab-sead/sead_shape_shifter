@@ -30,13 +30,12 @@ MAX_FILE_SIZE_MB = 50
 
 ENTITY_TYPES: list[EntityTypeInfo] = [
     EntityTypeInfo(value="entity", title="Data (Derived)", subtitle="Derive from another entity"),
-    EntityTypeInfo(value="sql", title="SQL Query", subtitle="Execute SQL against an external database"),
+    EntityTypeInfo(value="sql", title="SQL Query", subtitle="Execute SQL against an external database or internal DuckDB store"),
     EntityTypeInfo(value="fixed", title="Fixed Values", subtitle="Hard-coded values"),
     EntityTypeInfo(value="csv", title="CSV File", subtitle="Load from CSV file"),
     EntityTypeInfo(value="xlsx", title="Excel File (Pandas)", subtitle="Load Excel with pandas"),
     EntityTypeInfo(value="openpyxl", title="Excel File (OpenPyXL)", subtitle="Load Excel with OpenPyXL (supports ranges)"),
     EntityTypeInfo(value="merged", title="Merged (Multi-Branch)", subtitle="Combine multiple source entities into one"),
-    EntityTypeInfo(value="duckdb", title="DuckDB (Internal SQL)", subtitle="Query already-processed entities using SQL"),
 ]
 
 

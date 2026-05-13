@@ -28,6 +28,8 @@ from src.transforms.translate import translate
 from src.transforms.unnest import unnest
 from src.transforms.utility import add_system_id
 
+INTERNAL_DATA_SOURCE = "@internal"
+
 
 class ShapeShifter:
 
@@ -63,8 +65,11 @@ class ShapeShifter:
         if table_cfg.data_source:
             cache_key = f"ds:{table_cfg.data_source}"
             if cache_key not in self._loader_cache:
-                data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
-                self._loader_cache[cache_key] = DataLoaders.get(key=data_source.driver).create(data_source=data_source, **context)
+                if table_cfg.data_source == INTERNAL_DATA_SOURCE:
+                    self._loader_cache[cache_key] = DataLoaders.get(key="duckdb").create(data_source=None, **context)
+                else:
+                    data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
+                    self._loader_cache[cache_key] = DataLoaders.get(key=data_source.driver).create(data_source=data_source, **context)
             return self._loader_cache[cache_key]
 
         if table_cfg.type and table_cfg.type in DataLoaders.items:

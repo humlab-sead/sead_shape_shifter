@@ -82,7 +82,7 @@ class DataSourceExistsSpecification(ProjectSpecification):
             # Check entity data_source
             data_source = entity_data.get("data_source")
             if data_source and isinstance(data_source, str):
-                if data_source not in data_sources:
+                if data_source != "@internal" and data_source not in data_sources:
                     self.add_error(
                         f"Entity '{entity_name}': references non-existent data source '{data_source}'",
                         entity=entity_name,
@@ -97,7 +97,7 @@ class DataSourceExistsSpecification(ProjectSpecification):
             for idx, append_cfg in enumerate(append_configs):
                 append_data_source = append_cfg.get("data_source")
                 if append_data_source and isinstance(append_data_source, str):
-                    if append_data_source not in data_sources:
+                    if append_data_source != "@internal" and append_data_source not in data_sources:
                         self.add_error(
                             f"Entity '{entity_name}', append item #{idx + 1}: references non-existent data source '{append_data_source}'",
                             entity=entity_name,
