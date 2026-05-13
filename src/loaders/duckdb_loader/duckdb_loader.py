@@ -14,7 +14,7 @@ from src.table_store import TableStore
 from src.transforms.utility import add_system_id
 
 
-@DataLoaders.register(key=["duckdb", "internal", "shape_store"])
+@DataLoaders.register(key=["duckdb", "internal"])
 class DuckDbLoader(SqlLoader):
     """SQL loader over Shape Shifter's internal table_store.
 
