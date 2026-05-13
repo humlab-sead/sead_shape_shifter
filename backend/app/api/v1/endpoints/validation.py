@@ -43,8 +43,8 @@ async def validate_project_data(
     Returns:
         Validation result with data-specific errors and warnings
     """
-    validation_service = get_validation_service()
-    result = await validation_service.validate_project_data(
+    validation_service: ValidationService = get_validation_service()
+    result: ValidationResult = await validation_service.validate_project_data(
         name,
         entity_names,
         validation_mode=validation_mode,
