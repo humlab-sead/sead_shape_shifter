@@ -939,6 +939,7 @@ sequenceDiagram
     participant VS as ValidationService
     participant PM as ProjectMapper
     participant CORE as Core (Specifications)
+    participant TMV as TargetModelValidator
     participant DB as Source Database
 
     U->>FE: Click "Check Project"
@@ -966,6 +967,28 @@ sequenceDiagram
     VS-->>BE: ValidationResult (errors / warnings / info)
     BE-->>FE: ValidationResult JSON
     FE-->>U: Show grouped issues in validation panel
+
+    note over U,DB: Target model conformance — separate action
+
+    U->>FE: Click "Check Conformance"
+    FE->>BE: POST /projects/{name}/validate/target-model
+    BE->>VS: validate_target_model(project_name)
+    VS->>PM: to_core(api_project)
+    note over PM: Expand @include: in<br/>metadata.target_model
+    PM-->>VS: Resolved project + target_model dict
+
+    opt metadata.target_model is configured
+        VS->>TMV: validate(target_model_data, core_project)
+        note over TMV: Parse dict → TargetModel
+        TMV->>CORE: TargetModelConformanceValidator.validate()
+        note over CORE: RequiredEntity · PublicId · ForeignKey<br/>RequiredColumns · NamingConvention<br/>InducedRequirements · SourceTypeAppropriateness
+        CORE-->>TMV: list[ConformanceIssue]
+        TMV-->>VS: list[ValidationError]
+    end
+
+    VS-->>BE: ValidationResult (conformance errors)
+    BE-->>FE: ValidationResult JSON
+    FE-->>U: Show issues in Conformance panel
 ```
 
 ---
