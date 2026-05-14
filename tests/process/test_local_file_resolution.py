@@ -23,7 +23,7 @@ def test_local_file_loader_resolves_paths_relative_to_project_file() -> None:
     mock_loader.loader_type.return_value = LoaderType.FILE
     mock_loader.load = AsyncMock(return_value=None)
 
-    with patch.object(shapeshifter, "resolve_loader", return_value=mock_loader):
+    with patch.object(shapeshifter.loaders, "resolve_loader", return_value=mock_loader):
         asyncio.run(shapeshifter.resolve_source(table_cfg))
 
     assert table_cfg.options["filename"] == expected_path
