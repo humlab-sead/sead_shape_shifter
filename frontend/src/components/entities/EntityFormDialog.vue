@@ -543,7 +543,7 @@
                     </div>
 
                     <!-- Depends On (standalone when no columns field is shown) -->
-                    <div class="form-row" v-if="formData.type !== 'entity' && formData.type !== 'fixed' && !isFileType && !(formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading))">
+                    <div class="form-row" v-if="formData.type !== 'entity' && formData.type !== 'fixed' && !isFileType && !isMergedEntityType && !(formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading))">
                       <v-combobox
                         v-model="formData.depends_on"
                         label="Depends On"
@@ -2066,7 +2066,7 @@ async function fetchSqlColumns() {
   const dataSource = formData.value.data_source
   const query = formData.value.query
 
-  if (formData.value.type !== 'sql' || !dataSource || !query || dataSource === '@internal') {
+  if (formData.value.type !== 'sql' || !dataSource || !query) {
     columnsLoading.value = false
     return
   }
