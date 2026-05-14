@@ -47,6 +47,7 @@ Most instruction files auto-load via `applyTo:` when a matching file is open —
 - `features/*.instructions.md` — feature-specific paths (entities, transforms, execution, validation, loaders, materialization, reconciliation, graph, ingesters, target-model, specifications)
 - `shapeshifter-configuration.instructions.md` and `project-config.instructions.md` — `**/shapeshifter.yml` and project YAML
 - `design/development/testing/operations/user-guide.instructions.md` — their respective `docs/` files
+- `readme.instructions.md` — `README.md`
 
 Cross-cutting (no path trigger — load when relevant):
 - `diagrams.instructions.md`: Mermaid diagram style and conventions
