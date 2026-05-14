@@ -118,6 +118,35 @@
       "title": "AppendConfig",
       "type": "object"
     },
+    "BranchConfig": {
+      "description": "Configuration for a branch in a merged parent entity.\n\nEach branch defines a source entity that contributes rows to the merged parent.\nBranches are merged sequentially in declaration order with automatic:\n- Branch discriminator column ({entity}_branch)\n- Branch FK propagation (sparse FK columns for lineage tracking)\n- Column union (all columns from all branches)\n- Type conflict handling (safe numeric upcasts, datetime\u2192string, fail fast)",
+      "properties": {
+        "name": {
+          "description": "Branch identifier (must be unique within merged parent)",
+          "title": "Name",
+          "type": "string"
+        },
+        "source": {
+          "description": "Source entity name providing rows for this branch",
+          "title": "Source",
+          "type": "string"
+        },
+        "keys": {
+          "description": "Business keys to validate against source (optional, used for branch-level validation)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Keys",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "source"
+      ],
+      "title": "BranchConfig",
+      "type": "object"
+    },
     "FilterConfig": {
       "description": "Configuration for staged entity filters.",
       "properties": {
@@ -409,7 +438,8 @@
             "fixed",
             "csv",
             "xlsx",
-            "openpyxl"
+            "openpyxl",
+            "merged"
           ],
           "type": "string"
         },
@@ -521,6 +551,7 @@
       "type": "array"
     },
     "extra_columns": {
+      "additionalProperties": true,
       "description": "Additional computed columns",
       "title": "Extra Columns",
       "type": "object"
@@ -559,6 +590,14 @@
         "$ref": "#/$defs/AppendConfig"
       },
       "title": "Append",
+      "type": "array"
+    },
+    "branches": {
+      "description": "Branch configurations for merged parent entities (type='merged' only)",
+      "items": {
+        "$ref": "#/$defs/BranchConfig"
+      },
+      "title": "Branches",
       "type": "array"
     },
     "depends_on": {
