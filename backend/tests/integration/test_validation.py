@@ -1,7 +1,7 @@
 import asyncio
-from logging import warning
 import os
 import shutil
+from logging import warning
 from pathlib import Path
 from typing import Any
 
@@ -41,9 +41,11 @@ def _core_project() -> ShapeShiftProject:
     config_file: str = "./tests/test_data/projects/arbodat/shapeshifter.yml"
     return ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file=".env")
 
+
 #############################################################################################################
 # Structural validation
 #############################################################################################################
+
 
 def test_composite_project_specification_is_satisfied_by(project: ShapeShiftProject):
 
@@ -59,6 +61,7 @@ def test_composite_project_specification_is_satisfied_by(project: ShapeShiftProj
 # Circular dependency validation
 #############################################################################################################
 
+
 def test_check_circular_dependencies(project: ShapeShiftProject):
 
     dependency_service: DependencyService = get_dependency_service()
@@ -67,9 +70,11 @@ def test_check_circular_dependencies(project: ShapeShiftProject):
 
     assert graph["has_cycles"] is False, f"Expected no circular dependencies, found cycles: {graph['cycles']}"
 
+
 #############################################################################################################
 # Data validation
 #############################################################################################################
+
 
 @pytest.mark.asyncio
 async def test_data_validation_orchestrator(project: ShapeShiftProject):
@@ -86,7 +91,6 @@ async def test_data_validation_orchestrator(project: ShapeShiftProject):
         core_project=project, project_name="arbodat", entity_names=None
     )
 
-
     issue_report: str = "\n".join(f"{issue.severity} [{issue.code}] {issue.entity}: {issue.message}" for issue in issues)
 
     error_count: int = sum(1 for issue in issues if issue.severity == "error")
@@ -95,9 +99,11 @@ async def test_data_validation_orchestrator(project: ShapeShiftProject):
     warning_count: int = sum(1 for issue in issues if issue.severity == "warning")
     assert warning_count == 0, f"Expected no validation warnings, found {warning_count}\n{issue_report}"
 
+
 #############################################################################################################
 # Target model conformance validation
 #############################################################################################################
+
 
 def test_missing_required_column_returns_error(project: ShapeShiftProject):
 
