@@ -347,7 +347,10 @@ class TestShapeShifter:
         mock_loader = Mock()
         mock_loader.load = AsyncMock(return_value=fixed_df)
 
-        with patch.object(normalizer, "resolve_loader", return_value=mock_loader):
+        mock_loaders = Mock(
+            resolve_loader=Mock(return_value=mock_loader)
+        )
+        with patch.object(normalizer, "loaders", mock_loaders):
             result = await normalizer.resolve_source(table_cfg)
 
             pd.testing.assert_frame_equal(result, fixed_df)
@@ -369,8 +372,10 @@ class TestShapeShifter:
 
         mock_loader = Mock()
         mock_loader.load = AsyncMock(return_value=sql_df)
-
-        with patch.object(normalizer, "resolve_loader", return_value=mock_loader):
+        mock_loaders = Mock(
+            resolve_loader=Mock(return_value=mock_loader)
+        )
+        with patch.object(normalizer, "loaders", mock_loaders):
             result: pd.DataFrame = await normalizer.resolve_source(table_cfg=table_cfg)
 
             pd.testing.assert_frame_equal(result, sql_df)
@@ -926,7 +931,7 @@ class TestShapeShifter:
         # This will fail if the loader type isn't registered, but we're testing the logic
         # In real code, the DataLoaders would be registered
         try:
-            loader = normalizer.resolve_loader(table_cfg)
+            loader = normalizer.loaders.resolve_loader(table_cfg)
             # If it succeeds, check it's not None (depends on DataLoaders being registered)
             assert loader is not None
         except KeyError:
@@ -944,7 +949,7 @@ class TestShapeShifter:
 
         # This will fail if the loader type isn't registered
         try:
-            loader = normalizer.resolve_loader(table_cfg)
+            loader = normalizer.loaders.resolve_loader(table_cfg)
             # Test passes if no exception and loader is returned
             assert loader is not None
         except KeyError:
@@ -960,7 +965,7 @@ class TestShapeShifter:
         table_cfg: TableConfig = project.get_table("site")
         normalizer = ShapeShifter(project=project, default_entity="site")
 
-        loader: DataLoader | None = normalizer.resolve_loader(table_cfg)
+        loader: DataLoader | None = normalizer.loaders.resolve_loader(table_cfg)
 
         # Should return None or log warning
         assert loader is None

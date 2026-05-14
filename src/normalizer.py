@@ -32,6 +32,66 @@ from src.transforms.utility import add_system_id
 INTERNAL_DATA_SOURCE = "@internal"
 
 
+class LoaderInstanceSet:
+    """Simple cache for DataLoader instances keyed by data source or table type."""
+
+    def __init__(self, table_store: TableStore, duckdb_workspace: DuckDbWorkspace, project: ShapeShiftProject) -> None:
+        self._cache: dict[str, DataLoader] = {}
+        self.table_store: TableStore = table_store
+        self.duckdb_workspace: DuckDbWorkspace = duckdb_workspace
+        self.project: ShapeShiftProject = project
+
+    def close_all(self) -> None:
+        for loader in self._cache.values():
+            loader.close()
+        self._cache.clear()
+
+    def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
+        context = {"workspace": self.duckdb_workspace, "table_store": self.table_store}
+
+        if table_cfg.data_source:
+            cache_key = f"ds:{table_cfg.data_source}"
+            if cache_key not in self._cache:
+                if table_cfg.data_source == INTERNAL_DATA_SOURCE:
+                    self._cache[cache_key] = DataLoaders.get(key="duckdb").create(data_source=None, **context)
+                else:
+                    data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
+                    self._cache[cache_key] = DataLoaders.get(key=data_source.driver).create(data_source=data_source, **context)
+            return self._cache[cache_key]
+
+        if table_cfg.type and table_cfg.type in DataLoaders.items:
+            cache_key = f"type:{table_cfg.type}"
+            if cache_key not in self._cache:
+                self._cache[cache_key] = DataLoaders.get(key=table_cfg.type).create(data_source=None, **context)
+            return self._cache[cache_key]
+
+        return None
+
+    def apply_local_file_options(self, table_cfg: TableConfig, loader: DataLoader) -> None:
+        """Resolve `location: local` file paths relative to the project file directory."""
+        if loader.loader_type() != LoaderType.FILE:
+            return
+
+        project_filename: str | None = self.project.filename
+        if not project_filename:
+            return
+
+        options: dict[str, Any] = dict(table_cfg.options or {})
+        filename: str | None = options.get("filename")
+        location: str | None = options.get("location")
+
+        if location != "local" or not isinstance(filename, str) or not filename.strip():
+            return
+
+        file_path = Path(filename)
+        if file_path.is_absolute():
+            return
+
+        project_dir = Path(project_filename).resolve().parent
+        options["filename"] = str(resolve_managed_file_path(filename, location="local", local_root=project_dir))
+        table_cfg.entity_cfg["options"] = options
+
+
 class ShapeShifter:
 
     def __init__(
@@ -58,59 +118,17 @@ class ShapeShifter:
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
         self.extra_col_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
         self.unresolved_extra_columns: dict[str, dict[str, dict[str, Any]]] = {}
-        self._loader_cache: dict[str, DataLoader] = {}
 
-    def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
-        context = {"workspace": self.duckdb_workspace, "table_store": self.table_store}
-
-        if table_cfg.data_source:
-            cache_key = f"ds:{table_cfg.data_source}"
-            if cache_key not in self._loader_cache:
-                if table_cfg.data_source == INTERNAL_DATA_SOURCE:
-                    self._loader_cache[cache_key] = DataLoaders.get(key="duckdb").create(data_source=None, **context)
-                else:
-                    data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
-                    self._loader_cache[cache_key] = DataLoaders.get(key=data_source.driver).create(data_source=data_source, **context)
-            return self._loader_cache[cache_key]
-
-        if table_cfg.type and table_cfg.type in DataLoaders.items:
-            cache_key = f"type:{table_cfg.type}"
-            if cache_key not in self._loader_cache:
-                self._loader_cache[cache_key] = DataLoaders.get(key=table_cfg.type).create(data_source=None, **context)
-            return self._loader_cache[cache_key]
-
-        return None
-
-    def _resolve_project_local_file_options(self, table_cfg: TableConfig, loader: DataLoader) -> None:
-        """Resolve `location: local` file paths relative to the project file directory."""
-        if loader.loader_type() != LoaderType.FILE:
-            return
-
-        project_filename: str | None = self.project.filename
-        if not project_filename:
-            return
-
-        options: dict[str, Any] = dict(table_cfg.options or {})
-        filename: str | None = options.get("filename")
-        location: str | None = options.get("location")
-
-        if location != "local" or not isinstance(filename, str) or not filename.strip():
-            return
-
-        file_path = Path(filename)
-        if file_path.is_absolute():
-            return
-
-        project_dir = Path(project_filename).resolve().parent
-        options["filename"] = str(resolve_managed_file_path(filename, location="local", local_root=project_dir))
-        table_cfg.entity_cfg["options"] = options
+        self.loaders: LoaderInstanceSet = LoaderInstanceSet(
+            table_store=self.table_store, duckdb_workspace=self.duckdb_workspace, project=self.project
+        )
 
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
         logger.trace(f"Resolving source for entity '{table_cfg.entity_name}'")
-        loader: DataLoader | None = self.resolve_loader(table_cfg=table_cfg)
+        loader: DataLoader | None = self.loaders.resolve_loader(table_cfg=table_cfg)
         if loader:
-            self._resolve_project_local_file_options(table_cfg, loader)
+            self.loaders.apply_local_file_options(table_cfg, loader)
             logger.trace(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
 
@@ -165,49 +183,72 @@ class ShapeShifter:
         """Extract all configured entities and store them."""
         subset_service: SubsetService = SubsetService()
 
-        while len(self.state.unprocessed_entities) > 0:
-
+        while self.state.unprocessed_entities:
             entity: str | None = self.state.get_next_entity_to_process()
 
             if entity is None:
                 self.state.log_unmet_dependencies()
                 raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
 
-            table_cfg: TableConfig = self.project.get_table(entity)
+            await self._process_entity(entity, subset_service)
 
-            if not all(isinstance(col, str) for col in table_cfg.columns):
-                raise ValueError(f"Invalid columns configuration for entity '{entity}': all columns must be strings")
+        self._link_deferred_foreign_keys()
+        self.duckdb_workspace.close()
+        self.loaders.close_all()
+        return self
 
-            # Process all configured tables (base + append items)
-            data: pd.DataFrame = await self.get_subset(subset_service, entity, table_cfg)
+    async def _process_entity(self, entity: str, subset_service: SubsetService) -> None:
+        """Extract, transform, and store a single entity through the full pipeline."""
+        table_cfg: TableConfig = self.project.get_table(entity)
 
-            # Evaluate extra_columns immediately after loading (before FK linking)
-            # This ensures columns added via extra_columns (including key columns) are available for FK validation
-            if table_cfg.extra_columns:
-                data, deferred = self.extra_col_evaluator.evaluate_extra_columns(
-                    df=data,
-                    extra_columns=table_cfg.extra_columns,
-                    entity_name=entity,
-                    defer_missing=True,  # Defer columns that reference FK-added columns
-                )
-                if deferred:
-                    logger.trace(f"{entity}[extra_columns]: Deferred {len(deferred)} columns until after FK linking")
+        if not all(isinstance(col, str) for col in table_cfg.columns):
+            raise ValueError(f"Invalid columns configuration for entity '{entity}': all columns must be strings")
 
-            if table_cfg.filters:
-                data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store, stage="extract")
+        # Process all configured tables (base + append items)
+        data: pd.DataFrame = await self.get_subset(subset_service, entity, table_cfg)
 
-            delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
-            # Apply post-concatenation deduplication if append_mode is "distinct"
-            # if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
-            if table_cfg.drop_duplicates and not delay_drop_duplicates:
-                data = self.drop_duplicates(entity, table_cfg, data)
-                # logger.info(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
+        # Evaluate extra_columns immediately after loading (before FK linking)
+        # This ensures columns added via extra_columns (including key columns) are available for FK validation
+        if table_cfg.extra_columns:
+            data, deferred = self.extra_col_evaluator.evaluate_extra_columns(
+                df=data,
+                extra_columns=table_cfg.extra_columns,
+                entity_name=entity,
+                defer_missing=True,  # Defer columns that reference FK-added columns
+            )
+            if deferred:
+                logger.trace(f"{entity}[extra_columns]: Deferred {len(deferred)} columns until after FK linking")
 
-            self.table_store[entity] = data
+        if table_cfg.filters:
+            data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store, stage="extract")
 
+        delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
+        # Apply post-concatenation deduplication if append_mode is "distinct"
+        # if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
+        if table_cfg.drop_duplicates and not delay_drop_duplicates:
+            data = self.drop_duplicates(entity, table_cfg, data)
+            # logger.info(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
+
+        self.table_store[entity] = data
+
+        self.linker.link_entity(entity_name=entity)
+
+        # Re-evaluate deferred extra_columns after FK linking (in case they reference FK-added columns)
+        self._evaluate_deferred_extra_columns(entity)
+
+        if table_cfg.filters:
+            self.table_store[entity] = apply_filters(
+                name=entity,
+                df=self.table_store[entity],
+                cfg=table_cfg,
+                data_store=self.table_store,
+                stage="after_link",
+            )
+
+        if table_cfg.unnest:
+            self.unnest_entity(entity=entity)
             self.linker.link_entity(entity_name=entity)
-
-            # Re-evaluate deferred extra_columns after FK linking (in case they reference FK-added columns)
+            # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
             self._evaluate_deferred_extra_columns(entity)
 
             if table_cfg.filters:
@@ -216,68 +257,42 @@ class ShapeShifter:
                     df=self.table_store[entity],
                     cfg=table_cfg,
                     data_store=self.table_store,
-                    stage="after_link",
+                    stage="after_unnest",
                 )
 
-            if table_cfg.unnest:
-                self.unnest_entity(entity=entity)
-                self.linker.link_entity(entity_name=entity)
-                # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
-                self._evaluate_deferred_extra_columns(entity)
+        if delay_drop_duplicates and table_cfg.drop_duplicates:
+            self.table_store[entity] = self.drop_duplicates(entity, table_cfg, self.table_store[entity])
 
-                if table_cfg.filters:
-                    self.table_store[entity] = apply_filters(
-                        name=entity,
-                        df=self.table_store[entity],
-                        cfg=table_cfg,
-                        data_store=self.table_store,
-                        stage="after_unnest",
-                    )
+        self._check_duplicate_keys(entity, table_cfg)
 
-            if delay_drop_duplicates and table_cfg.drop_duplicates:
-                self.table_store[entity] = self.drop_duplicates(entity, table_cfg, self.table_store[entity])
+        if table_cfg.drop_empty_rows:
+            self.table_store[entity] = drop_empty_rows(data=self.table_store[entity], entity_name=entity, subset=table_cfg.drop_empty_rows)
 
-            self._check_duplicate_keys(entity, table_cfg)
+        # Add system_id if requested and not present (always uses "system_id" column name)
+        if table_cfg.system_id and table_cfg.system_id not in self.table_store[entity].columns:
+            self.table_store[entity] = add_system_id(self.table_store[entity], table_cfg.system_id)
 
-            if table_cfg.drop_empty_rows:
-                self.table_store[entity] = drop_empty_rows(
-                    data=self.table_store[entity], entity_name=entity, subset=table_cfg.drop_empty_rows
-                )
+        # Add public_id column immediately so downstream merged entities see a complete source table
+        self.table_store[entity] = table_cfg.add_public_id_column(self.table_store[entity])
 
-            # Add system_id if requested and not present (always uses "system_id" column name)
-            if table_cfg.system_id and table_cfg.system_id not in self.table_store[entity].columns:
-                self.table_store[entity] = add_system_id(self.table_store[entity], table_cfg.system_id)
+        self.retry_linking()
 
-            # Add public_id column immediately so downstream merged entities see a complete source table
-            self.table_store[entity] = table_cfg.add_public_id_column(self.table_store[entity])
+        # Verify extra_columns were evaluated for this entity
+        if table_cfg.extra_columns:
+            unresolved_extra_columns = self.extra_col_evaluator.get_unresolved_extra_columns(
+                self.table_store[entity],
+                table_cfg.extra_columns,
+            )
 
-            self.retry_linking()
+            if unresolved_extra_columns:
+                self.unresolved_extra_columns[entity] = unresolved_extra_columns
+            else:
+                self.unresolved_extra_columns.pop(entity, None)
 
-            # Verify extra_columns were evaluated for this entity
-            if table_cfg.extra_columns:
-                unresolved_extra_columns = self.extra_col_evaluator.get_unresolved_extra_columns(
-                    self.table_store[entity],
-                    table_cfg.extra_columns,
-                )
+            self.extra_col_evaluator.verify_extra_columns(self.table_store[entity], table_cfg.extra_columns, entity)
 
-                if unresolved_extra_columns:
-                    self.unresolved_extra_columns[entity] = unresolved_extra_columns
-                else:
-                    self.unresolved_extra_columns.pop(entity, None)
-
-                self.extra_col_evaluator.verify_extra_columns(self.table_store[entity], table_cfg.extra_columns, entity)
-
-            # Reorder columns immediately so each entity is fully formed before downstream entities process it
-            self.table_store[entity] = self.project.reorder_columns(entity, self.table_store[entity])
-
-        self._link_deferred_foreign_keys()
-
-        self.duckdb_workspace.close()
-
-        for loader in self._loader_cache.values():
-            loader.close()
-
-        return self
+        # Reorder columns immediately so each entity is fully formed before downstream entities process it
+        self.table_store[entity] = self.project.reorder_columns(entity, self.table_store[entity])
 
     def _link_deferred_foreign_keys(self, max_retries: int = 5) -> None:
         """Perform additional linking passes for any entities with deferred foreign key dependencies."""
