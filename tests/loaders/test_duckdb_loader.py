@@ -3,6 +3,7 @@ Tests for DuckDbWorkspace and DuckDbLoader.
 """
 
 from __future__ import annotations
+
 from typing import Generator
 
 import pandas as pd
@@ -22,7 +23,7 @@ from src.table_store import TableStore
 
 
 @pytest.fixture
-def workspace()  -> Generator[DuckDbWorkspace, None, None]:
+def workspace() -> Generator[DuckDbWorkspace, None, None]:
     ws = DuckDbWorkspace(database=":memory:")
     yield ws
     ws.close()

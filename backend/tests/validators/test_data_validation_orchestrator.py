@@ -13,8 +13,8 @@ from backend.app.validators.data_validation_orchestrator import (
     TableStoreDataFetchStrategy,
 )
 from src.model import ShapeShiftProject
-from src.table_store import TableStore
 from src.normalizer import ShapeShifter
+from src.table_store import TableStore
 from src.validators.data_validators import UnresolvedExtraColumnsValidator, ValidationIssue
 
 
