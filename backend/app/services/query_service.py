@@ -17,8 +17,12 @@ from backend.app.exceptions import QueryExecutionError, QuerySecurityError
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.query import QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
+from backend.app.utils.sql import extract_select_columns, has_wildcard_select
 from src.loaders.base_loader import DataLoaders
 from src.loaders.sql_loaders import SqlLoader
+
+
+INTERNAL_DATA_SOURCE = "@internal"
 
 
 class QueryService:
@@ -90,6 +94,11 @@ class QueryService:
         # Check for missing WHERE clause on large tables (heuristic warning)
         if statement_type == "SELECT" and not self._has_where_clause(statement):
             warnings.append("Query has no WHERE clause. This may return a large result set.")
+
+        # For @internal DuckDB queries, wildcard SELECT is not allowed because column
+        # names cannot be inferred without executing the query at runtime.
+        if data_source_name == INTERNAL_DATA_SOURCE and statement_type == "SELECT" and has_wildcard_select(query):
+            errors.append("SELECT * is not allowed for @internal queries — list column names explicitly.")
 
         is_valid: bool = len(errors) == 0
 
@@ -194,6 +203,15 @@ class QueryService:
         validation: QueryValidation = self.validate_query(query, data_source_name)
         if not validation.is_valid:
             raise QuerySecurityError(message="Query contains prohibited operations", query=query, violations=validation.errors)
+
+        # For @internal (DuckDB table store), parse column names directly from the SQL text.
+        # The internal store is only available at pipeline runtime, so we cannot execute
+        # a LIMIT 0 probe here — sqlparse gives us the column names for free.
+        if data_source_name == INTERNAL_DATA_SOURCE:
+            try:
+                return extract_select_columns(query)
+            except ValueError as exc:
+                raise QuerySecurityError(message=str(exc), query=query, violations=[str(exc)]) from exc
 
         # Resolve data source configuration
         ds_cfg: api.DataSourceConfig | None = None
