@@ -145,6 +145,56 @@
           },
           "title": "Foreign Keys",
           "type": "array"
+        },
+        "identity_tracking": {
+          "anyOf": [
+            {
+              "enum": [
+                "tracked",
+                "reconciled",
+                "derived",
+                "child"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Identity Tracking"
+        },
+        "reconciliation": {
+          "anyOf": [
+            {
+              "enum": [
+                "allocate",
+                "reconcile-exact",
+                "reconcile-fuzzy",
+                "lookup-only",
+                "lookup-extensible",
+                "derive"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reconciliation"
+        },
+        "aggregate_parent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Aggregate Parent"
         }
       },
       "title": "EntitySpec",

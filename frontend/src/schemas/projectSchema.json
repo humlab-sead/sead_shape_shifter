@@ -61,7 +61,8 @@
           "title": "File Path"
         },
         "entity_count": {
-          "description": "Number of entities",
+          "description": "Number of entities (computed)",
+          "exclude_from_schema": true,
           "title": "Entity Count",
           "type": "integer"
         },
@@ -114,6 +115,7 @@
               "type": "string"
             },
             {
+              "additionalProperties": true,
               "type": "object"
             },
             {
@@ -126,7 +128,8 @@
         }
       },
       "required": [
-        "name"
+        "name",
+        "entity_count"
       ],
       "title": "ProjectMetadata",
       "type": "object"
@@ -136,6 +139,7 @@
   "properties": {
     "entities": {
       "additionalProperties": {
+        "additionalProperties": true,
         "type": "object"
       },
       "description": "Map of entity name to entity (raw dicts)",
@@ -143,6 +147,7 @@
       "type": "object"
     },
     "options": {
+      "additionalProperties": true,
       "description": "Global options",
       "title": "Options",
       "type": "object"
@@ -150,6 +155,7 @@
     "task_list": {
       "anyOf": [
         {
+          "additionalProperties": true,
           "type": "object"
         },
         {
