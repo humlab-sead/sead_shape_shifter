@@ -22,6 +22,7 @@ Entity Key Ordering:
 
 import json
 import shutil
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
@@ -31,6 +32,9 @@ from loguru import logger
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.scalarstring import LiteralScalarString, SingleQuotedScalarString
+
+YamlPath = tuple[str | int, ...]
+CommentRegistry = dict[YamlPath, str]
 
 
 class YamlServiceError(Exception):
@@ -322,7 +326,152 @@ class YamlService:
         logger.debug(f"merge_boundary: boundary={boundary!r} file={filename}")
         return self.save_commented(doc, filename, create_backup=create_backup, flow_style_max_items=flow_style_max_items)
 
-    # ------------------------------------------------------------------
+    ##################################################################################################
+    # Comment preserving save of entire document
+    ###################################################################################################
+
+    def save_project_commented(
+        self,
+        path: str | Path,
+        plain_dict: dict[str, Any],
+        comments: CommentRegistry | None = None,
+        *,
+        create_backup: bool = True,
+        flow_style_max_items: int = 5,
+    ) -> Path:
+        """
+        Save a plain project dict to YAML while preserving existing comments.
+
+        Loads the existing file as a ruamel CommentedMap, deep-merges the incoming
+        plain dict into it (preserving comment metadata on keys that still exist),
+        optionally injects app-owned full-line comments, then delegates to
+        ``save_commented()`` for backup, flow-style, key-ordering, and atomic write.
+
+        Args:
+            path:               Target YAML file path.
+            plain_dict:         Plain dict produced by the core/mapper layer.
+            comments:           Optional app-owned comments keyed by YAML path tuple.
+                                Example: ``{("entities",): "Entities section."}``
+            create_backup:      Whether to create a timestamped backup before writing.
+            flow_style_max_items: Maximum list length for compact flow style.
+
+        Returns:
+            Path to the saved file.
+        """
+        existing: CommentedMap = self._load_existing_commented(Path(path))
+        merged: Any = self._merge_plain_into_commented(existing, plain_dict)
+
+        if comments:
+            self.apply_comments(merged, comments)
+
+        return self.save_commented(merged, path, create_backup=create_backup, flow_style_max_items=flow_style_max_items)
+
+    def apply_comments(
+        self,
+        node: Any,
+        comments: CommentRegistry,
+        *,
+        path: YamlPath = (),
+    ) -> None:
+        """
+        Apply app-owned full-line comments before mapping keys.
+
+        Comments are keyed by YAML path tuple, e.g.::
+
+            {
+                ("metadata",): "Project metadata.",
+                ("entities", "site"): "Site entity.",
+            }
+
+        Each comment is written as a full-line comment immediately before the key.
+        """
+        if isinstance(node, CommentedMap):
+            for key, value in node.items():
+                key_path = path + (key,)
+                comment = comments.get(key_path)
+                if comment:
+                    node.yaml_set_comment_before_after_key(key, before=self._normalize_comment(comment))
+                self.apply_comments(value, comments, path=key_path)
+        elif isinstance(node, CommentedSeq):
+            for index, item in enumerate(node):
+                self.apply_comments(item, comments, path=path + (index,))
+
+    ###################################################################################################
+    # Deep-merge helpers (plain dict → CommentedMap)
+    ###################################################################################################
+
+    def _load_existing_commented(self, path: Path) -> CommentedMap:
+        """Return the existing ruamel tree, or an empty CommentedMap for new files."""
+        if not path.exists() or path.stat().st_size == 0:
+            return CommentedMap()
+        return self.load_commented(path)
+
+    def _merge_plain_into_commented(self, old: Any, new: Any) -> Any:
+        """
+        Recursively merge plain ``new`` into ruamel ``old``, preserving comment metadata.
+
+        - Mapping keys that still exist in ``new`` keep their comments.
+        - Removed keys and their comments are dropped.
+        - Sequences are replaced wholesale (item-level comments are not preserved).
+        - Scalars and type-changed nodes are converted to ruamel containers so that
+          ``apply_comments()`` can attach comments afterwards.
+        """
+        if isinstance(old, CommentedMap) and isinstance(new, Mapping):
+            return self._merge_commented_mapping(old, new)
+        if isinstance(old, CommentedSeq) and self._is_plain_sequence(new):
+            return self._replace_commented_sequence(old, new)
+        return self._to_commented_tree(new)
+
+    def _merge_commented_mapping(self, old: CommentedMap, new: Mapping[str, Any]) -> CommentedMap:
+        """Merge plain mapping ``new`` into CommentedMap ``old`` in-place."""
+        for key in list(old.keys()):
+            if key not in new:
+                del old[key]
+        for key, new_value in new.items():
+            if key in old:
+                old[key] = self._merge_plain_into_commented(old[key], new_value)
+            else:
+                old[key] = self._to_commented_tree(new_value)
+        return old
+
+    def _replace_commented_sequence(self, old: CommentedSeq, new: Sequence[Any]) -> CommentedSeq:
+        """Replace list contents wholesale (item comments are not preserved)."""
+        old.clear()
+        old.extend(self._to_commented_tree(item) for item in new)
+        return old
+
+    def _to_commented_tree(self, value: Any) -> Any:
+        """Convert a plain dict/list into ruamel CommentedMap/CommentedSeq; scalars pass through."""
+        if isinstance(value, Mapping):
+            result = CommentedMap()
+            for k, v in value.items():
+                result[k] = self._to_commented_tree(v)
+            return result
+        if self._is_plain_sequence(value):
+            result = CommentedSeq()
+            result.extend(self._to_commented_tree(item) for item in value)
+            return result
+        return value
+
+    @staticmethod
+    def _is_plain_sequence(value: Any) -> bool:
+        """True for list/tuple-like values, but not str/bytes."""
+        return isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray))
+
+    @staticmethod
+    def _normalize_comment(comment: str) -> str:
+        """Strip leading '#' from comment text; ruamel adds it on serialization."""
+        lines = []
+        for line in comment.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                stripped = stripped[1:].lstrip()
+            lines.append(stripped)
+        return "\n".join(lines)
+
+    ##################################################################################################
+    # End comment preserving save of entire document
+    ###################################################################################################
 
     def _order_entity_keys(self, data: dict[str, Any]) -> dict[str, Any]:
         """
