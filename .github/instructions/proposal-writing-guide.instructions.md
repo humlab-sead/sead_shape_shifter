@@ -80,6 +80,9 @@ The default shape should feel lean, not exhaustive.
 
 - If you want strict adherence, explicitly reference this guide and the proposal template when asking for a new proposal.
 - If proposal-writing rules are also captured in repo instructions, you do not need to repeat them every time.
+- **Use a standard (non-premium) model** for proposal work. Proposal writing is prose, not code generation. Models like GPT-4o mini or equivalent are sufficient and consume no premium quota.
+- **Do not search the codebase** unless a specific file or symbol is directly referenced in the request. Write from the brief and from context already in the conversation.
+- **Draft in a single pass.** Do not iterate section by section across multiple turns. Ask the user one clarifying question if needed, then produce the full draft.
 
 ## Practical Rule Of Thumb
 
