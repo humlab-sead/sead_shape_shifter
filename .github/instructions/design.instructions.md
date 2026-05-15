@@ -46,16 +46,15 @@ Target 1000–2200 words. Stay under 3000. Move detailed subsystem material into
 
 ## Sources to trust
 
-- `src/` — core domain model and pipeline
-- `backend/app/` — API layer, services, and mappers
-- `frontend/src/` — component and store structure
-- `pyproject.toml` — declared dependencies and package boundaries
-- `docker/` — runtime service topology and build configuration
-- `AGENTS.md` — canonical architecture rules
-- `docs/DIAGRAMS.md` — authoritative visual design
-- `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md` — cross-references for scope boundaries
+`AGENTS.md` and `docs/DIAGRAMS.md` are the canonical references for architecture rules and visual design. Do not invent component responsibilities or integration points.
 
-Verify design claims against the current codebase, configuration, and AGENTS.md before documenting them.
+Do not proactively scan the codebase to verify prose. If a claim seems inconsistent with what the user has described, flag it as an inline question rather than searching autonomously. A full design accuracy audit against the codebase is a separate explicit task — use the `proposal-implementation-plan` prompt for that.
+
+## Working With Copilot
+
+- **Prose editing** (restructuring sections, improving wording, cutting bloat) is a standard-model task. Use a non-premium model for it.
+- **Design accuracy audits** (verifying claims against real code) justify a premium model with tool access. Request that explicitly using the `proposal-implementation-plan` prompt.
+- Draft or edit in a single pass. Do not iterate section by section across multiple turns.
 
 ## Common failure modes
 
