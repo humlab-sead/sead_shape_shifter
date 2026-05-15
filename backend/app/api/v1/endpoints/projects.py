@@ -435,7 +435,8 @@ async def connect_data_source_to_project(name: str, request: DataSourceConnectio
     """
 
     # Load project
-    project: Project = get_project_service().load_project(name)
+    project_service: ProjectService = get_project_service()
+    project: Project = project_service.load_project(name)
 
     # Check if source name already exists
     data_sources = project.options.get("data_sources", {})
@@ -446,8 +447,9 @@ async def connect_data_source_to_project(name: str, request: DataSourceConnectio
     data_sources[request.source_name] = f"@include: {request.source_filename}"
     project.options["data_sources"] = data_sources
 
-    # Save project
-    updated_config: Project = get_project_service().save_project(project)
+    # Boundary save: replaces only the options section, leaving entities and YAML comments untouched.
+    project_service.save_options_boundary(name, project.options)
+    updated_config: Project = project_service.load_project(name, force_reload=True)
 
     logger.info(f"Connected data source '{request.source_name}' (@include: {request.source_filename}) " f"to project '{name}'")
 
@@ -470,7 +472,8 @@ async def disconnect_data_source_from_project(name: str, source_name: str) -> Pr
         Updated project
     """
 
-    project: Project = get_project_service().load_project(name)
+    project_service: ProjectService = get_project_service()
+    project: Project = project_service.load_project(name)
 
     data_sources: dict[str, str] = project.options.get("data_sources", {})
     if source_name not in data_sources:
@@ -479,7 +482,9 @@ async def disconnect_data_source_from_project(name: str, source_name: str) -> Pr
     del data_sources[source_name]
     project.options["data_sources"] = data_sources
 
-    updated_config: Project = get_project_service().save_project(project)
+    # Boundary save: replaces only the options section, leaving entities and YAML comments untouched.
+    project_service.save_options_boundary(name, project.options)
+    updated_config: Project = project_service.load_project(name, force_reload=True)
 
     logger.info(f"Disconnected data source '{source_name}' from project '{name}'")
 
