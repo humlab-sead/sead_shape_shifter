@@ -1516,7 +1516,10 @@ class ShapeShiftProject:
     def get_data_source(self, name: str) -> "DataSourceConfig":
         if name not in self.data_sources:
             raise ValueError(f"Data source 'options.data_sources.{name}' not found in configuration")
-        return DataSourceConfig(cfg=self.data_sources[name], name=name)
+        raw = self.data_sources[name]
+        if not isinstance(raw, dict):
+            raise TypeError(f"Data source 'options.data_sources.{name}' is a string reference ('{raw}'), not an inline configuration")
+        return DataSourceConfig(cfg=raw, name=name)
 
     def clone(self) -> "ShapeShiftProject":
         """Create a deep copy of the ShapeShiftProject."""
