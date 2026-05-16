@@ -2,8 +2,10 @@
 
 import pandas as pd
 
+from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.shapeshift_service import PreviewResultBuilder
 from src.model import TableConfig
+from src.table_store import TableStore
 
 
 def test_preview_with_limit():
@@ -11,7 +13,7 @@ def test_preview_with_limit():
     # Create test data
     df = pd.DataFrame({"id": range(100), "name": [f"Item {i}" for i in range(100)]})
 
-    table_store = {"test_entity": df}
+    table_store: TableStore = TableStore({"test_entity": df})
     cfg = {
         "test_entity": {
             "source": "test_table",
@@ -21,8 +23,8 @@ def test_preview_with_limit():
     }
     entity_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
-    builder = PreviewResultBuilder()
-    result = builder.build(entity_name="test_entity", entity_cfg=entity_cfg, table_store=table_store, limit=10, cache_hit=False)
+    builder: PreviewResultBuilder = PreviewResultBuilder()
+    result: PreviewResult = builder.build(entity_name="test_entity", entity_cfg=entity_cfg, table_store=table_store, limit=10, cache_hit=False)
 
     assert result.total_rows_in_preview == 10
     assert result.estimated_total_rows == 100
@@ -34,7 +36,7 @@ def test_preview_with_no_limit():
     # Create test data
     df = pd.DataFrame({"id": range(100), "name": [f"Item {i}" for i in range(100)]})
 
-    table_store = {"test_entity": df}
+    table_store: TableStore = TableStore({"test_entity": df})
     cfg = {
         "test_entity": {
             "source": "test_table",
@@ -44,8 +46,8 @@ def test_preview_with_no_limit():
     }
     entity_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
-    builder = PreviewResultBuilder()
-    result = builder.build(
+    builder: PreviewResultBuilder = PreviewResultBuilder()
+    result: PreviewResult = builder.build(
         entity_name="test_entity", entity_cfg=entity_cfg, table_store=table_store, limit=None, cache_hit=False  # All rows
     )
 
@@ -59,7 +61,7 @@ def test_preview_limit_larger_than_data():
     # Create test data
     df = pd.DataFrame({"id": range(10), "name": [f"Item {i}" for i in range(10)]})
 
-    table_store = {"test_entity": df}
+    table_store: TableStore = TableStore({"test_entity": df})
     cfg = {
         "test_entity": {
             "source": "test_table",
@@ -69,8 +71,8 @@ def test_preview_limit_larger_than_data():
     }
     entity_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
-    builder = PreviewResultBuilder()
-    result = builder.build(
+    builder: PreviewResultBuilder = PreviewResultBuilder()
+    result: PreviewResult = builder.build(
         entity_name="test_entity", entity_cfg=entity_cfg, table_store=table_store, limit=100, cache_hit=False  # Larger than data
     )
 

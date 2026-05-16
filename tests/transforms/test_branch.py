@@ -1,6 +1,7 @@
 """Unit tests for src.transforms.branch.process_merged_branch."""
 
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pandas as pd
 import pytest
@@ -8,14 +9,14 @@ import pytest
 from src.transforms.branch import process_merged_branch
 
 
-def make_table_cfg(branches: list[dict], entities_cfg: dict | None = None) -> SimpleNamespace:
+def make_table_cfg(branches: list[dict], entities_cfg: dict | None = None) -> Mock:
     """Minimal stand-in for TableConfig — only the attributes process_merged_branch reads."""
-    return SimpleNamespace(branches=branches, entities_cfg=entities_cfg or {})
+    return Mock(branches=branches, entities_cfg=entities_cfg or {})
 
 
-def make_sub_table_cfg(branch_name: str, source: str) -> SimpleNamespace:
+def make_sub_table_cfg(branch_name: str, source: str) -> Mock:
     """Minimal stand-in for a branch sub-TableConfig."""
-    return SimpleNamespace(entity_cfg={"_branch_name": branch_name, "source": source})
+    return Mock(entity_cfg={"_branch_name": branch_name, "source": source})
 
 
 # ---------------------------------------------------------------------------
