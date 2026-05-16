@@ -14,6 +14,7 @@ from backend.app.exceptions import QueryExecutionError, QuerySecurityError
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.models.query import QueryResult, QueryValidation
 from backend.app.services.query_service import QueryService
+from backend.app.utils.sql import extract_tables, get_statement_type, has_where_clause
 
 # pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
 
@@ -23,8 +24,7 @@ class TestQueryValidation:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.mock_ds_service = Mock()
-        self.service = QueryService(self.mock_ds_service)
+        self.service = QueryService()
 
     def test_validate_select_query(self):
         """Should validate SELECT queries as valid."""
@@ -125,17 +125,19 @@ class TestQueryExecution:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.mock_ds_service = Mock()
-        self.service = QueryService(self.mock_ds_service)
+        self.service = QueryService()
 
     @pytest.fixture
-    def mock_ds_service(self) -> Mock:
-        """Mock pandas read_sql_query."""
-        mock_ds_config = DataSourceConfig(
-            name="test_db", driver="postgresql", host="localhost", port=5432, database="testdb", username="testuser", **{}
+    def mock_ds_config(self) -> DataSourceConfig:
+        """Return a DataSourceConfig for use in execute_query calls."""
+        return DataSourceConfig(  # type: ignore
+            name="test_db",
+            driver="postgresql",
+            host="localhost",
+            port=5432,
+            database="testdb",
+            username="testuser",
         )
-        mock_ds_service = Mock(load_data_source=Mock(return_value=mock_ds_config))
-        return mock_ds_service
 
     def mock_read_sql(self, test_df: pd.DataFrame, mock_get_loader: Mock) -> AsyncMock:
         """Mock the loader's read_sql method."""
@@ -147,7 +149,7 @@ class TestQueryExecution:
         return mock_read_sql
 
     @pytest.mark.asyncio
-    async def test_execute_simple_query(self, mock_ds_service):
+    async def test_execute_simple_query(self, mock_ds_config):
         """Should execute SELECT query and return results."""
 
         test_df = pd.DataFrame({"id": [1, 2, 3], "name": ["Kalle", "Kula", "Kurt"]})
@@ -158,8 +160,8 @@ class TestQueryExecution:
             _: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
             query: str = "select * from users"
 
-            service: QueryService = QueryService(data_source_service=mock_ds_service)
-            result: QueryResult = await service.execute_query(data_source_name="test_db", query=query, limit=100)
+            service: QueryService = QueryService()
+            result: QueryResult = await service.execute_query(ds_cfg=mock_ds_config, query=query, limit=100)
 
             assert isinstance(result, QueryResult)
             assert result.row_count == 3
@@ -171,7 +173,7 @@ class TestQueryExecution:
 
     @pytest.mark.skip(reason="Automatic limit injection disabled for now")
     @pytest.mark.asyncio
-    async def test_execute_with_limit(self, mock_ds_service):
+    async def test_execute_with_limit(self, mock_ds_config):
         """Should apply LIMIT clause to query."""
         test_df = pd.DataFrame({"id": range(50)})
 
@@ -180,20 +182,17 @@ class TestQueryExecution:
             mock_read_sql: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
 
             query: str = "SELECT * FROM users"
-            service: QueryService = QueryService(data_source_service=mock_ds_service)
+            service: QueryService = QueryService()
 
-            result: QueryResult = await service.execute_query("test_db", query, limit=50)
+            result: QueryResult = await service.execute_query(ds_cfg=mock_ds_config, query=query, limit=50)
 
             called_query: str = mock_read_sql.call_args[0][0]
             assert "LIMIT" in called_query.upper()
             assert result.row_count == 50
 
     @pytest.mark.asyncio
-    async def test_execute_truncated_result(self, mock_ds_service):
+    async def test_execute_truncated_result(self, mock_ds_config):
         """Should detect truncated results."""
-
-        mock_conn = Mock()
-        mock_ds_service.get_connection.return_value = mock_conn
 
         test_df = pd.DataFrame({"id": range(100)})  # Return exactly the limit
 
@@ -201,26 +200,23 @@ class TestQueryExecution:
 
             _: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
 
-            service: QueryService = QueryService(data_source_service=mock_ds_service)
+            service: QueryService = QueryService()
 
             query: str = "SELECT * FROM users"
-            result: QueryResult = await service.execute_query("test_db", query, limit=100)
+            result: QueryResult = await service.execute_query(ds_cfg=mock_ds_config, query=query, limit=100)
 
             assert result.is_truncated is True
 
     @pytest.mark.asyncio
-    async def test_execute_destructive_query(self, mock_ds_service):
+    async def test_execute_destructive_query(self, mock_ds_config):
         """Should reject destructive queries with structured error."""
-
-        mock_conn = Mock()
-        mock_ds_service.get_connection.return_value = mock_conn
 
         with pytest.raises(QuerySecurityError) as exc_info:
 
-            service: QueryService = QueryService(data_source_service=mock_ds_service)
+            service: QueryService = QueryService()
             query: str = "DELETE FROM users"
 
-            await service.execute_query("test_db", query)
+            await service.execute_query(ds_cfg=mock_ds_config, query=query)
 
         # Check structured error format
         error = exc_info.value
@@ -230,60 +226,58 @@ class TestQueryExecution:
         assert len(error.tips) > 0
 
     @pytest.mark.asyncio
-    async def test_execute_connection_error(self, mock_ds_service):
+    async def test_execute_connection_error(self, mock_ds_config):
         """Should handle connection errors."""
 
-        mock_ds_service.get_connection.side_effect = Exception("Connection failed")
+        with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
+            mock_loader_cls = Mock(side_effect=Exception("Connection failed"))
+            mock_get_loader.return_value = mock_loader_cls
 
-        with pytest.raises(QueryExecutionError) as exc_info:
+            with pytest.raises(QueryExecutionError) as exc_info:
 
-            query: str = "SELECT * FROM users"
-            service: QueryService = QueryService(data_source_service=mock_ds_service)
+                query: str = "SELECT * FROM users"
+                service: QueryService = QueryService()
 
-            await service.execute_query("test_db", query)
+                await service.execute_query(ds_cfg=mock_ds_config, query=query)
 
         assert "connection failed" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_execute_query_error(self, mock_ds_service):
+    async def test_execute_query_error(self, mock_ds_config):
         """Should handle query execution errors."""
 
-        mock_conn = Mock()
-        mock_ds_service.get_connection.return_value = mock_conn
-
-        with patch("pandas.read_sql_query", side_effect=Exception("Table not found")):
+        with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
+            mock_loader = Mock()
+            mock_loader.inject_limit = Mock(side_effect=lambda q, p: q)
+            mock_loader.read_sql = AsyncMock(side_effect=Exception("Table not found"))
+            mock_get_loader.return_value = Mock(return_value=mock_loader)
 
             query: str = "SELECT * FROM nonexistent"
-            service: QueryService = QueryService(data_source_service=mock_ds_service)
+            service: QueryService = QueryService()
 
             with pytest.raises(QueryExecutionError) as exc_info:
-                await service.execute_query("test_db", query)
+                await service.execute_query(ds_cfg=mock_ds_config, query=query)
             assert "query execution failed" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_execute_with_null_values(self, mock_ds_service):
+    async def test_execute_with_null_values(self, mock_ds_config):
         """Should handle NULL values correctly."""
 
-        mock_conn = Mock()
-        mock_ds_service.get_connection.return_value = mock_conn
         test_df: pd.DataFrame = pd.DataFrame({"id": [1, 2, 3], "name": ["Alice", None, "Charlie"]})
 
         with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
             _: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
 
             query: str = "SELECT * FROM users"
-            service = QueryService(data_source_service=mock_ds_service)
-            result: QueryResult = await service.execute_query("test_db", query)
+            service = QueryService()
+            result: QueryResult = await service.execute_query(ds_cfg=mock_ds_config, query=query)
 
             # NULL should be converted to None
             assert result.rows[1]["name"] is None
 
     @pytest.mark.asyncio
-    async def test_execute_with_datetime(self, mock_ds_service):
+    async def test_execute_with_datetime(self, mock_ds_config):
         """Should serialize datetime values correctly."""
-
-        mock_conn = Mock()
-        mock_ds_service.get_connection.return_value = mock_conn
 
         test_df = pd.DataFrame({"id": [1], "created_at": [pd.Timestamp("2024-01-01 12:00:00")]})
 
@@ -291,26 +285,24 @@ class TestQueryExecution:
             _: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
 
             query: str = "SELECT * FROM users"
-            service = QueryService(data_source_service=mock_ds_service)
-            result: QueryResult = await service.execute_query("test_db", query)
+            service = QueryService()
+            result: QueryResult = await service.execute_query(ds_cfg=mock_ds_config, query=query)
 
             # Timestamp should be serialized as ISO string
             assert isinstance(result.rows[0]["created_at"], str)
             assert "2024-01-01" in result.rows[0]["created_at"]
 
     @pytest.mark.asyncio
-    async def test_execute_respects_max_limit(self, mock_ds_service):
+    async def test_execute_respects_max_limit(self, mock_ds_config):
         """Should enforce maximum row limit."""
-        mock_conn = Mock()
-        mock_ds_service.get_connection.return_value = mock_conn
         test_df = pd.DataFrame({"id": range(100)})
 
         with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
             _: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
 
             query: str = "SELECT * FROM users"
-            service = QueryService(data_source_service=mock_ds_service)
-            result: QueryResult = await service.execute_query("test_db", query, limit=20000)
+            service = QueryService()
+            result: QueryResult = await service.execute_query(ds_cfg=mock_ds_config, query=query, limit=20000)
 
             assert result.row_count <= 20000
 
@@ -321,9 +313,18 @@ class TestQueryService:
     @pytest.fixture
     def service(self) -> QueryService:
         """Create QueryService instance."""
-        with patch("backend.app.services.query_service.DataSourceService") as mock_ds_service:
-            mock_ds_service.return_value.load_data_source = MagicMock(return_value=MagicMock())
-            return QueryService(data_source_service=mock_ds_service)
+        return QueryService()
+
+    @pytest.fixture
+    def mock_ds_config(self) -> DataSourceConfig:
+        """Return a DataSourceConfig for use in execute_query/introspect calls."""
+        return DataSourceConfig(  # type: ignore
+            name="test_source",
+            driver="postgresql",
+            host="localhost",
+            port=5432,
+            database="testdb",
+        )
 
     @pytest.fixture
     def mock_loader(self) -> AsyncMock:
@@ -437,20 +438,18 @@ class TestQueryService:
     # Query execution tests
 
     @pytest.mark.asyncio
-    async def test_execute_query_success(self, service: QueryService, mock_loader: AsyncMock):
+    async def test_execute_query_success(self, service: QueryService, mock_ds_config: DataSourceConfig, mock_loader: AsyncMock):
         """Test successful query execution."""
         query = "SELECT * FROM users"
 
         with (
-            patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
-            result = await service.execute_query(query, "test_source")
+            result = await service.execute_query(ds_cfg=mock_ds_config, query=query)
 
             assert isinstance(result, QueryResult)
             assert result.row_count == 2
@@ -459,20 +458,18 @@ class TestQueryService:
             assert result.rows[0]["name"] == "Alice"
 
     @pytest.mark.asyncio
-    async def test_execute_query_applies_limit(self, service: QueryService, mock_loader: AsyncMock):
+    async def test_execute_query_applies_limit(self, service: QueryService, mock_ds_config: DataSourceConfig, mock_loader: AsyncMock):
         """Test execution applies LIMIT clause."""
         query = "SELECT * FROM users"
 
         with (
-            patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
             mock_loader.inject_limit = MagicMock(side_effect=lambda q, w: f"{q} LIMIT {w}")
-            await service.execute_query(data_source_name="test_source", query=query, limit=100)
+            await service.execute_query(ds_cfg=mock_ds_config, query=query, limit=100)
 
             # Verify loader was called with modified query
             call_args = mock_loader.read_sql.call_args
@@ -481,20 +478,20 @@ class TestQueryService:
             assert "LIMIT 100" in sql_param
 
     @pytest.mark.asyncio
-    async def test_execute_query_preserves_existing_limit(self, service: QueryService, mock_loader: AsyncMock):
+    async def test_execute_query_preserves_existing_limit(
+        self, service: QueryService, mock_ds_config: DataSourceConfig, mock_loader: AsyncMock
+    ):
         """Test execution preserves user-specified LIMIT."""
         query = "SELECT * FROM users LIMIT 10"
 
         with (
-            patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
             mock_loader.inject_limit = MagicMock(side_effect=lambda q, w: q)
-            await service.execute_query(data_source_name="test_source", query=query, limit=100)
+            await service.execute_query(ds_cfg=mock_ds_config, query=query, limit=100)
 
             call_args = mock_loader.read_sql.call_args
             sql_param = call_args[0][0] if call_args else None
@@ -503,21 +500,7 @@ class TestQueryService:
             assert sql_param.count("LIMIT") == 1
 
     @pytest.mark.asyncio
-    async def test_execute_query_data_source_not_found(self, service: QueryService):
-        """Test execution with non-existent data source."""
-        # Patch the service's data_source_service directly
-        service.data_source_service.load_data_source = MagicMock(return_value=None)
-
-        with pytest.raises(QueryExecutionError) as exc_info:
-            await service.execute_query(data_source_name="nonexistent", query="SELECT 1")
-
-        error = exc_info.value
-        assert "not found" in error.message.lower()
-        assert error.context.get("data_source") == "nonexistent"
-        assert len(error.tips) > 0
-
-    @pytest.mark.asyncio
-    async def test_execute_query_timeout(self, service: QueryService):
+    async def test_execute_query_timeout(self, service: QueryService, mock_ds_config: DataSourceConfig):
         """Test execution timeout handling."""
         query = "SELECT * FROM users"
 
@@ -530,24 +513,23 @@ class TestQueryService:
         slow_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)  # noqa: E741
 
         with (
-            patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
+            mock_ds_value = MagicMock()
             mock_get_loader.return_value = lambda data_source: slow_loader
-            mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
+            mock_mapper.to_core_config = MagicMock(return_value=mock_ds_value)
 
             with pytest.raises(QueryExecutionError) as exc_info:
-                await service.execute_query(data_source_name="test_source", query=query, timeout=1)
+                await service.execute_query(ds_cfg=mock_ds_config, query=query, timeout=1)
 
             error = exc_info.value
             assert "timed out" in error.message.lower() or "timeout" in error.message.lower()
-            assert error.context.get("data_source") == "test_source"
+            assert error.context.get("data_source") == mock_ds_config.name
             assert len(error.tips) > 0
 
     @pytest.mark.asyncio
-    async def test_execute_query_loader_error(self, service: QueryService):
+    async def test_execute_query_loader_error(self, service: QueryService, mock_ds_config: DataSourceConfig):
         """Test execution handles loader errors."""
         query = "SELECT * FROM users"
         error_loader = AsyncMock()
@@ -555,178 +537,166 @@ class TestQueryService:
         error_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)  # noqa: E741
 
         with (
-            patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: error_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
             with pytest.raises(QueryExecutionError) as exc_info:
-                await service.execute_query(data_source_name="test_source", query=query)
+                await service.execute_query(ds_cfg=mock_ds_config, query=query)
 
             error = exc_info.value
             assert "database error" in error.message.lower() or "failed" in error.message.lower()
-            assert error.context.get("data_source") == "test_source"
+            assert error.context.get("data_source") == mock_ds_config.name
             assert len(error.tips) > 0
 
     @pytest.mark.asyncio
-    async def test_execute_query_empty_result(self, service: QueryService):
+    async def test_execute_query_empty_result(self, service: QueryService, mock_ds_config: DataSourceConfig):
         """Test execution with empty result set."""
         query = "SELECT * FROM users WHERE id = 999"
         empty_loader = AsyncMock()
         empty_loader.read_sql = AsyncMock(return_value=pd.DataFrame(columns=["id", "name"]))
+        empty_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)
 
         with (
-            patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: empty_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
-            result = await service.execute_query(data_source_name="test_source", query=query)
+            result = await service.execute_query(ds_cfg=mock_ds_config, query=query)
 
             assert result.row_count == 0
             assert result.columns == ["id", "name"]
             assert result.rows == []
 
     @pytest.mark.asyncio
-    async def test_execute_query_handles_null_values(self, service: QueryService):
+    async def test_execute_query_handles_null_values(self, service: QueryService, mock_ds_config: DataSourceConfig):
         """Test execution properly handles NULL values."""
         df = pd.DataFrame({"id": [1, 2], "name": ["Alice", None]})
         null_loader = AsyncMock()
         null_loader.read_sql = AsyncMock(return_value=df)
+        null_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)
 
         with (
-            patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: null_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
-            result = await service.execute_query(data_source_name="test_source", query="SELECT * FROM users")
+            result = await service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users")
 
             assert result.rows[1]["name"] is None
 
     @pytest.mark.asyncio
-    async def test_execute_query_handles_timestamps(self, service: QueryService):
+    async def test_execute_query_handles_timestamps(self, service: QueryService, mock_ds_config: DataSourceConfig):
         """Test execution serializes timestamp values."""
         df = pd.DataFrame({"id": [1], "created": [pd.Timestamp("2024-01-01 12:00:00")]})
         ts_loader = AsyncMock()
         ts_loader.read_sql = AsyncMock(return_value=df)
+        ts_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)
 
         with (
-            patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: ts_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
-            result = await service.execute_query(data_source_name="test_source", query="SELECT * FROM events")
+            result = await service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM events")
 
             assert isinstance(result.rows[0]["created"], str)
             assert "2024-01-01" in result.rows[0]["created"]
 
     @pytest.mark.asyncio
-    async def test_execute_query_truncation_flag(self, service: QueryService):
+    async def test_execute_query_truncation_flag(self, service: QueryService, mock_ds_config: DataSourceConfig):
         """Test execution sets truncation flag correctly."""
         # Create large result set
         df = pd.DataFrame({"id": range(1000), "value": range(1000)})
         large_loader = AsyncMock()
         large_loader.read_sql = AsyncMock(return_value=df)
+        large_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)
 
         with (
-            patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: large_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
-            result = await service.execute_query(data_source_name="test_source", query="SELECT * FROM large_table", limit=100)
+            result = await service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM large_table", limit=100)
 
             # Since result >= limit, should be truncated
             assert result.is_truncated is True
 
     @pytest.mark.asyncio
-    async def test_execute_query_tracks_execution_time(self, service: QueryService):
+    async def test_execute_query_tracks_execution_time(self, service: QueryService, mock_ds_config: DataSourceConfig):
         """Test execution tracks query time."""
         # Create loader with read_sql method
         mock_loader = AsyncMock()
         mock_loader.read_sql = AsyncMock(return_value=pd.DataFrame({"id": [1, 2], "name": ["Alice", "Bob"]}))
+        mock_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)
 
         with (
-            patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
-            result: QueryResult = await service.execute_query(data_source_name="test_source", query="SELECT * FROM users")
+            result: QueryResult = await service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM users")
 
             assert result.execution_time_ms > 0
 
-    # Helper method tests
+    # Helper method tests — these now test functions in backend.app.utils.sql
 
     def test_get_statement_type_select(self, service: QueryService):
         """Test statement type extraction for SELECT."""
         parsed = sqlparse.parse("SELECT * FROM users")[0]
-        stmt_type = service._get_statement_type(parsed)
+        stmt_type = get_statement_type(parsed, service.FORBIDDEN_KEYWORDS)
         assert stmt_type == "SELECT"
 
     def test_get_statement_type_insert(self, service: QueryService):
         """Test statement type extraction for INSERT."""
         parsed = sqlparse.parse("INSERT INTO users VALUES (1, 'Alice')")[0]
-        stmt_type = service._get_statement_type(parsed)
+        stmt_type = get_statement_type(parsed, service.FORBIDDEN_KEYWORDS)
         assert stmt_type == "INSERT"
 
     def test_get_statement_type_delete(self, service: QueryService):
         """Test statement type extraction for DELETE."""
         parsed = sqlparse.parse("DELETE FROM users WHERE id = 1")[0]
-        stmt_type = service._get_statement_type(parsed)
+        stmt_type = get_statement_type(parsed, service.FORBIDDEN_KEYWORDS)
         assert stmt_type == "DELETE"
 
     def test_extract_table_names_simple(self, service: QueryService):
         """Test table name extraction from simple query."""
-        parsed = sqlparse.parse("SELECT * FROM users")[0]
-        tables = service._extract_table_names(parsed)
+        tables = extract_tables("SELECT * FROM users")
         assert "users" in tables
 
     def test_extract_table_names_join(self, service: QueryService):
         """Test table name extraction from JOIN query."""
-        parsed = sqlparse.parse("SELECT * FROM users u JOIN orders o ON u.id = o.user_id")[0]
-        tables = service._extract_table_names(parsed)
+        tables = extract_tables("SELECT * FROM users u JOIN orders o ON u.id = o.user_id")
         assert "users" in tables
         assert "orders" in tables
 
     def test_extract_table_names_with_schema(self, service: QueryService):
         """Test table name extraction strips schema prefix."""
-        parsed = sqlparse.parse("SELECT * FROM public.users")[0]
-        tables = service._extract_table_names(parsed)
+        tables = extract_tables("SELECT * FROM public.users")
         assert "users" in tables
         assert "public" not in tables
 
     def test_has_where_clause_true(self, service: QueryService):
         """Test WHERE clause detection - present."""
         parsed = sqlparse.parse("SELECT * FROM users WHERE id > 10")[0]
-        has_where = service._has_where_clause(parsed)
-        assert has_where is True
+        assert has_where_clause(parsed) is True
 
     def test_has_where_clause_false(self, service: QueryService):
         """Test WHERE clause detection - absent."""
         parsed = sqlparse.parse("SELECT * FROM users")[0]
-        has_where = service._has_where_clause(parsed)
-        assert has_where is False
+        assert has_where_clause(parsed) is False
 
 
 class TestColumnIntrospection:
@@ -734,22 +704,23 @@ class TestColumnIntrospection:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.mock_ds_service = Mock()
-        self.service = QueryService(self.mock_ds_service)
+        self.service = QueryService()
 
     @pytest.fixture
     def mock_ds_config(self) -> DataSourceConfig:
         """Mock data source configuration."""
-        return DataSourceConfig(
-            name="test_db", driver="postgresql", host="localhost", port=5432, database="testdb", username="testuser", **{}
+        return DataSourceConfig(  # type: ignore
+            name="test_db",
+            driver="postgresql",
+            host="localhost",
+            port=5432,
+            database="testdb",
+            username="testuser",
         )
 
     @pytest.mark.asyncio
     async def test_introspect_query_columns_success(self, mock_ds_config):
         """Should introspect columns from SELECT query."""
-        # Mock data source service
-        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
-
         # Mock DataFrame with expected columns
         test_df = pd.DataFrame(columns=["id", "name", "email", "created_at"])
 
@@ -766,7 +737,7 @@ class TestColumnIntrospection:
             mock_mapper.return_value = Mock()
 
             query = "SELECT * FROM users"
-            columns = await self.service.introspect_query_columns(data_source_name="test_db", query=query)
+            columns = await self.service.introspect_query_columns(ds_cfg=mock_ds_config, query=query)
 
             # Verify results
             assert isinstance(columns, list)
@@ -783,8 +754,6 @@ class TestColumnIntrospection:
     @pytest.mark.asyncio
     async def test_introspect_query_columns_with_aliases(self, mock_ds_config):
         """Should introspect columns with aliases."""
-        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
-
         # DataFrame with aliased columns
         test_df = pd.DataFrame(columns=["user_id", "full_name", "order_count"])
 
@@ -800,15 +769,13 @@ class TestColumnIntrospection:
             mock_mapper.return_value = Mock()
 
             query = "SELECT id AS user_id, name AS full_name, COUNT(*) AS order_count FROM users"
-            columns = await self.service.introspect_query_columns("test_db", query)
+            columns = await self.service.introspect_query_columns(ds_cfg=mock_ds_config, query=query)
 
             assert columns == ["user_id", "full_name", "order_count"]
 
     @pytest.mark.asyncio
     async def test_introspect_query_columns_complex_query(self, mock_ds_config):
         """Should introspect columns from complex JOIN query."""
-        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
-
         test_df = pd.DataFrame(columns=["user_id", "user_name", "order_id", "order_total"])
 
         with (
@@ -829,7 +796,7 @@ class TestColumnIntrospection:
                 JOIN orders o ON u.id = o.user_id
                 WHERE u.active = true
             """
-            columns = await self.service.introspect_query_columns("test_db", query)
+            columns = await self.service.introspect_query_columns(ds_cfg=mock_ds_config, query=query)
 
             assert len(columns) == 4
             assert "user_id" in columns
@@ -838,10 +805,8 @@ class TestColumnIntrospection:
     @pytest.mark.asyncio
     async def test_introspect_query_columns_rejects_destructive(self, mock_ds_config):
         """Should reject destructive queries during introspection."""
-        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
-
         with pytest.raises(QuerySecurityError) as exc_info:
-            await self.service.introspect_query_columns(data_source_name="test_db", query="DELETE FROM users")
+            await self.service.introspect_query_columns(ds_cfg=mock_ds_config, query="DELETE FROM users")
 
         error = exc_info.value
         assert "prohibited operations" in error.message.lower()
@@ -850,27 +815,12 @@ class TestColumnIntrospection:
     @pytest.mark.asyncio
     async def test_introspect_query_columns_rejects_insert(self, mock_ds_config):
         """Should reject INSERT queries during introspection."""
-        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
-
         with pytest.raises(QuerySecurityError):
-            await self.service.introspect_query_columns(data_source_name="test_db", query="INSERT INTO users (name) VALUES ('test')")
-
-    @pytest.mark.asyncio
-    async def test_introspect_query_columns_data_source_not_found(self):
-        """Should raise error when data source doesn't exist."""
-        self.mock_ds_service.load_data_source = Mock(return_value=None)
-
-        with pytest.raises(QueryExecutionError) as exc_info:
-            await self.service.introspect_query_columns(data_source_name="nonexistent_db", query="SELECT * FROM users")
-
-        assert "not found" in exc_info.value.message.lower()
-        assert "nonexistent_db" in exc_info.value.message
+            await self.service.introspect_query_columns(ds_cfg=mock_ds_config, query="INSERT INTO users (name) VALUES ('test')")
 
     @pytest.mark.asyncio
     async def test_introspect_query_columns_execution_error(self, mock_ds_config):
         """Should handle query execution errors gracefully."""
-        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
-
         with (
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
@@ -883,7 +833,7 @@ class TestColumnIntrospection:
             mock_mapper.return_value = Mock()
 
             with pytest.raises(QueryExecutionError) as exc_info:
-                await self.service.introspect_query_columns(data_source_name="test_db", query="SELECT * FROM nonexistent_table")
+                await self.service.introspect_query_columns(ds_cfg=mock_ds_config, query="SELECT * FROM nonexistent_table")
 
             error = exc_info.value
             assert "introspection failed" in error.message.lower()
@@ -892,8 +842,6 @@ class TestColumnIntrospection:
     @pytest.mark.asyncio
     async def test_introspect_query_columns_timeout(self, mock_ds_config):
         """Should handle timeout during column introspection."""
-        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
-
         with (
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper.to_core_config") as mock_mapper,
@@ -906,7 +854,7 @@ class TestColumnIntrospection:
             mock_mapper.return_value = Mock()
 
             with pytest.raises(QueryExecutionError) as exc_info:
-                await self.service.introspect_query_columns(data_source_name="test_db", query="SELECT * FROM slow_table")
+                await self.service.introspect_query_columns(ds_cfg=mock_ds_config, query="SELECT * FROM slow_table")
 
             error = exc_info.value
             assert "timed out" in error.message.lower()
@@ -915,8 +863,6 @@ class TestColumnIntrospection:
     @pytest.mark.asyncio
     async def test_introspect_query_columns_empty_result(self, mock_ds_config):
         """Should return columns even when result set is empty."""
-        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
-
         # DataFrame with columns but no rows
         test_df = pd.DataFrame(columns=["id", "name", "email"])
 
@@ -932,7 +878,7 @@ class TestColumnIntrospection:
             mock_mapper.return_value = Mock()
 
             query = "SELECT id, name, email FROM users WHERE 1=0"
-            columns = await self.service.introspect_query_columns("test_db", query)
+            columns = await self.service.introspect_query_columns(ds_cfg=mock_ds_config, query=query)
 
             assert len(columns) == 3
             assert columns == ["id", "name", "email"]
@@ -940,8 +886,6 @@ class TestColumnIntrospection:
     @pytest.mark.asyncio
     async def test_introspect_query_columns_preserves_order(self, mock_ds_config):
         """Should preserve column order from query."""
-        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
-
         # Specific column order
         test_df = pd.DataFrame(columns=["email", "name", "id", "created_at"])
 
@@ -957,15 +901,13 @@ class TestColumnIntrospection:
             mock_mapper.return_value = Mock()
 
             query = "SELECT email, name, id, created_at FROM users"
-            columns = await self.service.introspect_query_columns("test_db", query)
+            columns = await self.service.introspect_query_columns(ds_cfg=mock_ds_config, query=query)
 
             assert columns == ["email", "name", "id", "created_at"]
 
     @pytest.mark.asyncio
     async def test_introspect_query_columns_with_aggregates(self, mock_ds_config):
         """Should introspect columns with aggregate functions."""
-        self.mock_ds_service.load_data_source = Mock(return_value=mock_ds_config)
-
         test_df = pd.DataFrame(columns=["country", "total_users", "avg_age", "max_orders"])
 
         with (
@@ -987,7 +929,7 @@ class TestColumnIntrospection:
                 FROM users
                 GROUP BY country
             """
-            columns = await self.service.introspect_query_columns("test_db", query)
+            columns = await self.service.introspect_query_columns(ds_cfg=mock_ds_config, query=query)
 
             assert len(columns) == 4
             assert "total_users" in columns
