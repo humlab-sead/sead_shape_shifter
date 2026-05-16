@@ -3,6 +3,16 @@ from sqlparse.sql import Identifier, IdentifierList, Statement
 from sqlparse.tokens import DML, Keyword
 from sqlparse.tokens import Wildcard as WildcardToken
 
+FROM_CLAUSE_KEYWORDS: set[str] = {
+    "FROM",
+    "JOIN",
+    "INNER JOIN",
+    "LEFT JOIN",
+    "RIGHT JOIN",
+    "FULL JOIN",
+    "CROSS JOIN",
+}
+
 
 def _resolve_select_alias(identifier: Identifier) -> str:
     """Return effective output name for a SELECT-list identifier: alias > real_name > raw value."""
@@ -58,9 +68,9 @@ def extract_select_columns(sql: str) -> list[str]:
     if not parsed:
         return []
 
-    statement = parsed[0]
+    statement: Statement = parsed[0]
     columns: list[str] = []
-    select_seen = False
+    select_seen: bool = False
 
     for token in statement.tokens:
         if token.ttype is DML and token.value.upper() == "SELECT":
@@ -70,7 +80,7 @@ def extract_select_columns(sql: str) -> list[str]:
             continue
         if token.is_whitespace:
             continue
-        if token.ttype is Keyword and token.value.upper() == "FROM":
+        if token.ttype is Keyword and token.value.upper() in FROM_CLAUSE_KEYWORDS:
             break
         if isinstance(token, IdentifierList):
             for ident in token.get_identifiers():
@@ -94,18 +104,10 @@ def extract_tables(sql: str) -> list[str]:
     tables: set[str] = set()
 
     for statement in parsed:
-        from_seen = False
+        from_seen: bool = False
 
         for token in statement.tokens:
-            if token.ttype is Keyword and token.value.upper() in {
-                "FROM",
-                "JOIN",
-                "INNER JOIN",
-                "LEFT JOIN",
-                "RIGHT JOIN",
-                "FULL JOIN",
-                "CROSS JOIN",
-            }:
+            if token.ttype is Keyword and token.value.upper() in FROM_CLAUSE_KEYWORDS:
                 from_seen = True
                 continue
 
