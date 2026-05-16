@@ -7,6 +7,7 @@ import pytest
 
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 from src.specifications.foreign_key import ForeignKeyConfigSpecification, ForeignKeyDataSpecification
+from src.table_store import TableStore
 
 
 class TestForeignKeyConfigSpecification:
@@ -264,14 +265,14 @@ class TestForeignKeyDataSpecification:
             fk_cfg={"entity": "remote_entity", "how": "left", "local_keys": ["id"], "remote_keys": ["id"]},
         )
 
-        spec = ForeignKeyDataSpecification({}, mock_project)
+        spec = ForeignKeyDataSpecification(TableStore({}), mock_project)
 
         with pytest.raises(ValueError, match="Local entity.*not found"):
             spec.is_satisfied_by(fk_cfg=fk_cfg)
 
     def test_missing_remote_entity_assertion(self, mock_project):
         """Test assertion when remote DataFrame missing."""
-        table_store = {"local_entity": pd.DataFrame({"id": [1]})}
+        table_store = TableStore({"local_entity": pd.DataFrame({"id": [1]})})
 
         fk_cfg = ForeignKeyConfig(
             local_entity="local_entity",
@@ -302,10 +303,10 @@ class TestForeignKeyDataSpecification:
     def test_deferred_when_pending_fields(self, mock_project):
         """Test validation is deferred when there are pending unnest fields."""
         # Create table store where local entity is missing unnest column
-        table_store = {
+        table_store = TableStore({
             "local_entity": pd.DataFrame({"local_id": [1, 2]}),  # unnest_col not yet present
             "remote_entity": pd.DataFrame({"remote_id": [1, 2]}),
-        }
+        })
 
         fk_cfg = ForeignKeyConfig(
             local_entity="local_entity",

@@ -3,6 +3,7 @@ import pandas as pd
 from ingesters.sead.metadata import SeadSchema
 from ingesters.sead.specification import SubmissionSpecification
 from ingesters.sead.submission import Submission
+from src.table_store import TableStore
 
 # pylint: disable=too-many-statements,unused-argument,redefined-outer-name
 
@@ -10,7 +11,7 @@ from ingesters.sead.submission import Submission
 class TestSubmission:
 
     def test_submission_is_created_correctly(self, minimal_schema: SeadSchema):
-        data_tables = {"tbl_test": pd.DataFrame({"system_id": [1, 2], "test_id": [1, 2], "name": ["A", "B"]})}
+        data_tables: TableStore = TableStore({"tbl_test": pd.DataFrame({"system_id": [1, 2], "test_id": [1, 2], "name": ["A", "B"]})})
         submission = Submission(data_tables=data_tables, schema=minimal_schema)
 
         assert submission is not None
@@ -19,31 +20,31 @@ class TestSubmission:
         assert isinstance(submission.data_tables, dict)
 
     def test_contains(self, minimal_schema: SeadSchema):
-        data_tables = {"tbl_test": pd.DataFrame({"system_id": [1], "test_id": [1], "name": ["A"]})}
+        data_tables: TableStore = TableStore({"tbl_test": pd.DataFrame({"system_id": [1], "test_id": [1], "name": ["A"]})})
         submission = Submission(data_tables=data_tables, schema=minimal_schema)
 
         assert "tbl_test" in submission
         assert "tbl_dummy" not in submission
 
     def test_exists(self, minimal_schema: SeadSchema):
-        data_tables = {"tbl_test": pd.DataFrame({"system_id": [1], "test_id": [1], "name": ["A"]})}
+        data_tables: TableStore = TableStore({"tbl_test": pd.DataFrame({"system_id": [1], "test_id": [1], "name": ["A"]})})
         submission = Submission(data_tables=data_tables, schema=minimal_schema)
 
         assert "tbl_test" in submission
         assert "tbl_dummy" not in submission
 
     def test_data_tablenames(self, two_table_schema: SeadSchema):
-        data_tables = {
+        data_tables: TableStore = TableStore({
             "tbl_main": pd.DataFrame({"system_id": [1], "main_id": [1], "lookup_id": [100]}),
             "tbl_lookup": pd.DataFrame({"system_id": [100], "lookup_id": [1], "value": ["test"]}),
-        }
+        })
         submission = Submission(data_tables=data_tables, schema=two_table_schema)
 
         assert "tbl_main" in submission.data_table_names
         assert "tbl_lookup" in submission.data_table_names
 
     def test_has_system_id(self, minimal_schema: SeadSchema):
-        data_tables = {"tbl_test": pd.DataFrame({"system_id": [1], "test_id": [1], "name": ["A"]})}
+        data_tables: TableStore = TableStore({"tbl_test": pd.DataFrame({"system_id": [1], "test_id": [1], "name": ["A"]})})
         submission = Submission(data_tables=data_tables, schema=minimal_schema)
 
         assert submission.has_system_id("tbl_test")
@@ -51,10 +52,10 @@ class TestSubmission:
 
     def test_referenced_keyset(self, two_table_schema: SeadSchema):
         """Test that FK references are correctly identified."""
-        data_tables = {
+        data_tables: TableStore = TableStore({
             "tbl_main": pd.DataFrame({"system_id": [1, 2], "main_id": [1, 2], "lookup_id": [100, 101]}),
             "tbl_lookup": pd.DataFrame({"system_id": [100, 101], "lookup_id": [1, 2], "value": ["A", "B"]}),
-        }
+        })
         submission = Submission(data_tables=data_tables, schema=two_table_schema)
 
         key_set: set[int] = submission.get_referenced_keyset(two_table_schema, "tbl_lookup")
@@ -62,7 +63,7 @@ class TestSubmission:
 
     def test_tables_specifications(self, minimal_schema: SeadSchema):
         # Use compatible dtype (object matches 'varchar' better than string)
-        data_tables = {"tbl_test": pd.DataFrame({"system_id": [1], "test_id": [1], "name": ["A"]}, dtype=object)}
+        data_tables: TableStore = TableStore({"tbl_test": pd.DataFrame({"system_id": [1], "test_id": [1], "name": ["A"]}, dtype=object)})
         # Convert numeric columns to proper types
         data_tables["tbl_test"]["system_id"] = data_tables["tbl_test"]["system_id"].astype("Int32")
         data_tables["tbl_test"]["test_id"] = data_tables["tbl_test"]["test_id"].astype("Int32")

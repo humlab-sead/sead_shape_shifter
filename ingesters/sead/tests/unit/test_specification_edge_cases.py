@@ -3,6 +3,7 @@
 import pandas as pd
 import pytest
 
+from ingesters.sead.metadata import SeadSchema
 from ingesters.sead.specification import (
     ColumnTypesSpecification,
     ForeignKeyColumnsHasValuesSpecification,
@@ -15,6 +16,7 @@ from ingesters.sead.specification import (
 )
 from ingesters.sead.submission import Submission
 from ingesters.sead.tests.builders import build_column, build_schema, build_table
+from src.table_store import TableStore
 
 
 class TestSpecificationEdgeCases:
@@ -24,7 +26,7 @@ class TestSpecificationEdgeCases:
         """Test that specification handles empty tables correctly."""
         schema = build_schema([build_table("tbl_test", "test_id")])
         data = pd.DataFrame(columns=["system_id", "test_id"])
-        submission = Submission(data_tables={"tbl_test": data}, schema=schema)
+        submission = Submission(data_tables=TableStore({"tbl_test": data}), schema=schema)
 
         spec = SubmissionSpecification(schema=schema, raise_errors=False)
         result = spec.is_satisfied_by(submission)
@@ -35,7 +37,7 @@ class TestSpecificationEdgeCases:
         """Test that HasSystemIdSpecification catches NULL system_ids."""
         schema = build_schema([build_table("tbl_test", "test_id")])
         data = pd.DataFrame({"system_id": [1, None, 3], "test_id": [1, 2, 3]})
-        submission = Submission(data_tables={"tbl_test": data}, schema=schema)
+        submission = Submission(data_tables=TableStore({"tbl_test": data}), schema=schema)
 
         spec = HasSystemIdSpecification(schema=schema)
         spec.is_satisfied_by(submission, table_name="tbl_test")
@@ -47,7 +49,7 @@ class TestSpecificationEdgeCases:
         """Test that HasSystemIdSpecification catches duplicate system_ids."""
         schema = build_schema([build_table("tbl_test", "test_id")])
         data = pd.DataFrame({"system_id": [1, 1, 2], "test_id": [1, 2, 3]})
-        submission = Submission(data_tables={"tbl_test": data}, schema=schema)
+        submission = Submission(data_tables=TableStore({"tbl_test": data}), schema=schema)
 
         spec = HasSystemIdSpecification(schema=schema)
         spec.is_satisfied_by(submission, table_name="tbl_test")
@@ -57,7 +59,7 @@ class TestSpecificationEdgeCases:
 
     def test_foreign_key_columns_has_values_with_nullable_fk(self):
         """Test FK validation with nullable foreign keys."""
-        schema = build_schema(
+        schema: SeadSchema = build_schema(
             [
                 build_table(
                     "tbl_main",
@@ -74,7 +76,7 @@ class TestSpecificationEdgeCases:
 
         # All rows are new (pk is NULL), but nullable FK can be NULL
         data = pd.DataFrame({"system_id": [1, 2], "main_id": [None, None], "nullable_fk": [None, None]})
-        submission = Submission(data_tables={"tbl_main": data, "tbl_lookup": pd.DataFrame()}, schema=schema)
+        submission = Submission(data_tables=TableStore({"tbl_main": data, "tbl_lookup": pd.DataFrame()}), schema=schema)
 
         spec = ForeignKeyColumnsHasValuesSpecification(schema=schema)
         spec.is_satisfied_by(submission, table_name="tbl_main")
@@ -86,7 +88,7 @@ class TestSpecificationEdgeCases:
 
     def test_non_nullable_column_has_value_for_existing_records(self):
         """Test that non-nullable validation only applies to new records."""
-        schema = build_schema(
+        schema: SeadSchema = build_schema(
             [
                 build_table(
                     "tbl_test",
@@ -108,7 +110,7 @@ class TestSpecificationEdgeCases:
                 "required_col": [None],  # NULL in non-nullable column
             }
         )
-        submission = Submission(data_tables={"tbl_test": data}, schema=schema)
+        submission = Submission(data_tables=TableStore({"tbl_test": data}), schema=schema)
 
         spec = NonNullableColumnHasValueSpecification(schema=schema)
         spec.is_satisfied_by(submission, table_name="tbl_test")
@@ -133,7 +135,7 @@ class TestSpecificationEdgeCases:
         )
 
         data = pd.DataFrame({"system_id": [1], "test_id": [None], "required_col": [None]})  # New record  # NULL in non-nullable column
-        submission = Submission(data_tables={"tbl_test": data}, schema=schema)
+        submission = Submission(data_tables=TableStore({"tbl_test": data}), schema=schema)
 
         spec = NonNullableColumnHasValueSpecification(schema=schema)
         spec.is_satisfied_by(submission, table_name="tbl_test")
@@ -158,7 +160,7 @@ class TestSpecificationEdgeCases:
 
         # integer in schema matches int64 in pandas
         data = pd.DataFrame({"system_id": pd.Series([1], dtype="int64"), "test_id": pd.Series([1], dtype="int64")})
-        submission = Submission(data_tables={"tbl_test": data}, schema=schema)
+        submission = Submission(data_tables=TableStore({"tbl_test": data}), schema=schema)
 
         spec = ColumnTypesSpecification(schema=schema)
         spec.is_satisfied_by(submission, table_name="tbl_test")
@@ -185,7 +187,7 @@ class TestSpecificationEdgeCases:
 
         # Main table references lookup, but lookup table is missing from submission
         data = pd.DataFrame({"system_id": [1], "main_id": [None], "lookup_id": [100]})
-        submission = Submission(data_tables={"tbl_main": data}, schema=schema)
+        submission = Submission(data_tables=TableStore({"tbl_main": data}), schema=schema)
 
         spec = ForeignKeyExistsAsPrimaryKeySpecification(schema=schema)
         spec.is_satisfied_by(submission, table_name="tbl_main")

@@ -21,8 +21,8 @@ class TestTranslate:
     def test_translate_skips_conflicting_columns(self):
         """Translation should avoid clobbering existing columns."""
         df = pd.DataFrame({"Ort": ["A"], "location": ["orig"]})
-        data = {"entity": df}
-        translated = translate(data, {"Ort": "location"})
+        data = TableStore({"entity": df})
+        translated: TableStore = translate(data, {"Ort": "location"})
         assert list(translated["entity"].columns) == ["Ort", "location"]
 
     def test_translate_with_valid_translations(self):

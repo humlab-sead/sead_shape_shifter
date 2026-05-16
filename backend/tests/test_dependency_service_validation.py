@@ -9,7 +9,7 @@ import pytest
 
 from backend.app.exceptions import CircularDependencyError
 from backend.app.models.project import Project
-from backend.app.services.dependency_service import DependencyService
+from backend.app.services.dependency_service import DependencyGraph, DependencyService
 
 
 class TestDependencyGraphAnalysis:
@@ -291,7 +291,7 @@ class TestSourceNodeExtraction:
         )
 
         service = DependencyService()
-        graph = service.analyze_dependencies(project)
+        graph: DependencyGraph = service.analyze_dependencies(project)
 
         # Should have 2 source nodes (file and sheet), not 4
         assert len(graph["source_nodes"]) == 2
@@ -303,6 +303,8 @@ class TestSourceNodeExtraction:
         # Verify both entities share the same sheet
         entity1_edge = next((e for e in graph["source_edges"] if e["target"] == "entity1"), None)
         entity2_edge = next((e for e in graph["source_edges"] if e["target"] == "entity2"), None)
+        assert entity1_edge is not None
+        assert entity2_edge is not None
         assert entity1_edge["source"] == entity2_edge["source"] == "sheet:data:Sheet1"
 
     def test_multiple_sheets_from_same_file_create_separate_sheet_nodes(self):

@@ -1,10 +1,14 @@
 """Test edge cases and error handling in CSV dispatcher."""
 
+from pathlib import Path
+
 import pandas as pd
 
 from ingesters.sead.dispatchers.to_csv import CsvProcessor, _format_value, _to_int_or_none, _to_none
+from ingesters.sead.metadata import SeadSchema
 from ingesters.sead.submission import Submission
 from ingesters.sead.tests.builders import build_column, build_schema, build_table
+from src.table_store import TableStore
 
 
 class TestHelperFunctions:
@@ -58,8 +62,8 @@ class TestCsvProcessorEdgeCases:
 
     def test_empty_submission(self, tmp_path):
         """Test processing an empty submission."""
-        schema = build_schema([build_table("tbl_test", "test_id")])
-        submission = Submission(data_tables={}, schema=schema)
+        schema: SeadSchema = build_schema([build_table("tbl_test", "test_id")])
+        submission = Submission(data_tables=TableStore({}), schema=schema)
 
         processor = CsvProcessor()
         processor.dispatch(target=tmp_path, schema=schema, submission=submission)
@@ -70,7 +74,7 @@ class TestCsvProcessorEdgeCases:
 
     def test_table_with_no_rows(self, tmp_path):
         """Test processing a table with no rows."""
-        schema = build_schema(
+        schema: SeadSchema = build_schema(
             [
                 build_table(
                     "tbl_test",
@@ -85,18 +89,18 @@ class TestCsvProcessorEdgeCases:
         )
 
         data = pd.DataFrame(columns=["system_id", "test_id"])
-        submission = Submission(data_tables={"tbl_test": data}, schema=schema)
+        submission = Submission(data_tables=TableStore({"tbl_test": data}), schema=schema)
 
         processor = CsvProcessor()
         processor.dispatch(target=tmp_path, schema=schema, submission=submission)
 
         records_file = tmp_path / "submission_records.csv"
-        records_df = pd.read_csv(records_file, sep="\t", na_values="NULL", keep_default_na=False)
+        records_df: pd.DataFrame = pd.read_csv(records_file, sep="\t", na_values="NULL", keep_default_na=False)
         assert len(records_df) == 0
 
     def test_null_values_in_columns(self, tmp_path):
         """Test handling of NULL values in various column types."""
-        schema = build_schema(
+        schema: SeadSchema = build_schema(
             [
                 build_table(
                     "tbl_test",
@@ -119,13 +123,13 @@ class TestCsvProcessorEdgeCases:
         )
 
         data = pd.DataFrame({"system_id": [1], "test_id": [None], "nullable_int": [None], "nullable_str": [None]})
-        submission = Submission(data_tables={"tbl_test": data}, schema=schema)
+        submission = Submission(data_tables=TableStore({"tbl_test": data}), schema=schema)
 
-        processor = CsvProcessor()
+        processor: CsvProcessor = CsvProcessor()
         processor.dispatch(target=tmp_path, schema=schema, submission=submission)
 
-        recordvalues_file = tmp_path / "submission_recordvalues.csv"
-        recordvalues_df = pd.read_csv(recordvalues_file, sep="\t", na_values="NULL", keep_default_na=False)
+        recordvalues_file: Path = tmp_path / "submission_recordvalues.csv"
+        recordvalues_df: pd.DataFrame = pd.read_csv(recordvalues_file, sep="\t", na_values="NULL", keep_default_na=False)
 
         # NULL values should be represented as empty strings in CSV
         null_rows = recordvalues_df[recordvalues_df["column_name"].isin(["nullable_int", "nullable_str"])]
@@ -157,18 +161,18 @@ class TestCsvProcessorEdgeCases:
         )
 
         submission = Submission(
-            data_tables={
+            data_tables=TableStore({
                 "tbl_test1": pd.DataFrame({"system_id": [1], "test1_id": [None]}),
                 "tbl_test2": pd.DataFrame({"system_id": [2], "test2_id": [None]}),
-            },
+            }),
             schema=schema,
         )
 
-        processor = CsvProcessor()
+        processor: CsvProcessor = CsvProcessor()
         processor.dispatch(target=tmp_path, schema=schema, submission=submission, table_names=["tbl_test1"])
 
         tables_file = tmp_path / "submission_tables.csv"
-        tables_df = pd.read_csv(tables_file, sep="\t")
+        tables_df: pd.DataFrame = pd.read_csv(tables_file, sep="\t")
 
         # Should only process tbl_test1
         assert len(tables_df) == 1
@@ -198,13 +202,13 @@ class TestCsvProcessorEdgeCases:
                 "name": ['test "quoted"', "test\ttab", "test\nnewline"],
             }
         )
-        submission = Submission(data_tables={"tbl_test": data}, schema=schema)
+        submission = Submission(data_tables=TableStore({"tbl_test": data}), schema=schema)
 
-        processor = CsvProcessor()
+        processor: CsvProcessor = CsvProcessor()
         processor.dispatch(target=tmp_path, schema=schema, submission=submission)
 
         recordvalues_file = tmp_path / "submission_recordvalues.csv"
-        recordvalues_df = pd.read_csv(recordvalues_file, sep="\t", na_values="NULL", keep_default_na=False)
+        recordvalues_df: pd.DataFrame = pd.read_csv(recordvalues_file, sep="\t", na_values="NULL", keep_default_na=False)
 
         name_rows = recordvalues_df[recordvalues_df["column_name"] == "name"]
         assert len(name_rows) == 3
@@ -233,13 +237,13 @@ class TestCsvProcessorEdgeCases:
                 "name": ["New A", "Existing B", "New C"],
             }
         )
-        submission = Submission(data_tables={"tbl_test": data}, schema=schema)
+        submission = Submission(data_tables=TableStore({"tbl_test": data}), schema=schema)
 
-        processor = CsvProcessor()
+        processor: CsvProcessor = CsvProcessor()
         processor.dispatch(target=tmp_path, schema=schema, submission=submission)
 
         records_file = tmp_path / "submission_records.csv"
-        records_df = pd.read_csv(records_file, sep="\t", na_values="NULL", keep_default_na=False)
+        records_df: pd.DataFrame = pd.read_csv(records_file, sep="\t", na_values="NULL", keep_default_na=False)
 
         assert len(records_df) == 3
         # Check that existing record has public_id
@@ -254,10 +258,10 @@ class TestCsvProcessorEdgeCases:
         output_dir = tmp_path / "new_folder"
         assert not output_dir.exists()
 
-        schema = build_schema([build_table("tbl_test", "test_id", java_class="TblTest")])
-        submission = Submission(data_tables={}, schema=schema)
+        schema: SeadSchema = build_schema([build_table("tbl_test", "test_id", java_class="TblTest")])
+        submission = Submission(data_tables=TableStore({}), schema=schema)
 
-        processor = CsvProcessor()
+        processor: CsvProcessor = CsvProcessor()
         processor.dispatch(target=output_dir, schema=schema, submission=submission)
 
         assert output_dir.exists()

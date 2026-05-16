@@ -11,6 +11,7 @@ import pandas as pd
 import pytest
 
 from src.model import ShapeShiftProject
+from src.table_store import TableStore
 from src.transforms.link import ForeignKeyLinker
 
 # pylint: disable=redefined-outer-name
@@ -45,9 +46,9 @@ def sample_project_config():
 
 
 @pytest.fixture
-def table_store():
+def table_store() -> TableStore:
     """Mock table store with sample data."""
-    return {
+    return TableStore({
         "sample_description_type": pd.DataFrame(
             {
                 "system_id": [1],
@@ -63,7 +64,7 @@ def table_store():
                 "description_type_id": [1, 1, 1],  # Added via extra_columns
             }
         ),
-    }
+    })
 
 
 def test_fk_linking_with_extra_columns_constant(sample_project_config, table_store):
@@ -118,10 +119,10 @@ def test_fk_merge_keys_after_rename():
         },
     }
 
-    table_store = {
+    table_store = TableStore({
         "parent": pd.DataFrame({"system_id": [1, 2], "parent_id": [None, None], "name": ["Parent A", "Parent B"]}),
         "child": pd.DataFrame({"system_id": [1, 2], "child_name": ["Child 1", "Child 2"], "parent_ref": [1, 1]}),
-    }
+    })
 
     project = ShapeShiftProject(cfg=project_config)
     linker = ForeignKeyLinker(project=project, table_store=table_store)

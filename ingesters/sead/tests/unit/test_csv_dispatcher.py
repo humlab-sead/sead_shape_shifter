@@ -6,14 +6,16 @@ from pathlib import Path
 import pandas as pd
 
 from ingesters.sead.dispatchers.to_csv import CsvProcessor
+from ingesters.sead.metadata import SeadSchema
 from ingesters.sead.submission import Submission
 from ingesters.sead.tests.builders import build_column, build_schema, build_table
+from src.table_store import TableStore
 
 
 def test_csv_processor_creates_four_files(tmp_path):
     """Test that CsvProcessor creates the 4 required CSV files."""
     # Create minimal schema
-    schema = build_schema(
+    schema: SeadSchema = build_schema(
         [
             build_table(
                 table_name="tbl_test",
@@ -31,9 +33,9 @@ def test_csv_processor_creates_four_files(tmp_path):
     # Create minimal submission
     data = pd.DataFrame({"system_id": [1, 2], "test_id": [None, None], "name": ["Test A", "Test B"]})  # New records
 
-    submission = Submission(data_tables={"tbl_test": data}, schema=schema)  # type: ignore
+    submission: Submission = Submission(data_tables=TableStore({"tbl_test": data}), schema=schema)  # type: ignore
 
-    processor = CsvProcessor()
+    processor: CsvProcessor = CsvProcessor()
     processor.dispatch(target=tmp_path, schema=schema, submission=submission)
 
     # Check that all 4 CSV files were created
@@ -48,13 +50,13 @@ def test_csv_processor_creates_four_files(tmp_path):
         assert expected_file.exists(), f"Expected file {expected_file} was not created"
 
     # Verify tables.csv content
-    tables_df = pd.read_csv(expected_files[0], sep="\t")
+    tables_df: pd.DataFrame = pd.read_csv(expected_files[0], sep="\t")
     assert len(tables_df) == 1
     assert tables_df.iloc[0]["table_type"] == "TblTest"
     assert int(tables_df.iloc[0]["record_count"]) == 2
 
     # Verify records.csv content
-    records_df = pd.read_csv(expected_files[2], sep="\t", na_values="NULL", keep_default_na=False)
+    records_df: pd.DataFrame = pd.read_csv(expected_files[2], sep="\t", na_values="NULL", keep_default_na=False)
     assert len(records_df) == 2
     assert all(records_df["class_name"] == "TblTest")
 
@@ -62,7 +64,7 @@ def test_csv_processor_creates_four_files(tmp_path):
 def test_csv_processor_handles_foreign_keys(tmp_path):
     """Test that CsvProcessor correctly handles foreign key relationships."""
     # Create schema with FK relationship
-    schema = build_schema(
+    schema: SeadSchema = build_schema(
         [
             build_table(
                 table_name="tbl_main",
@@ -100,20 +102,20 @@ def test_csv_processor_handles_foreign_keys(tmp_path):
 
     main_data = pd.DataFrame({"system_id": [1], "main_id": [None], "lookup_id": [100]})  # References system_id in lookup table
 
-    submission = Submission(
-        data_tables={"tbl_main": main_data, "tbl_lookup": lookup_data},
+    submission: Submission = Submission(
+        data_tables=TableStore({"tbl_main": main_data, "tbl_lookup": lookup_data}),
         schema=schema,
     )
 
-    processor = CsvProcessor()
+    processor: CsvProcessor = CsvProcessor()
     processor.dispatch(target=tmp_path, schema=schema, submission=submission)
 
     # Verify recordvalues.csv contains FK information
     recordvalues_file = tmp_path / "submission_recordvalues.csv"
-    recordvalues_df = pd.read_csv(recordvalues_file, sep="\t", na_values="NULL", keep_default_na=False)
+    recordvalues_df: pd.DataFrame = pd.read_csv(recordvalues_file, sep="\t", na_values="NULL", keep_default_na=False)
 
     # Find FK column in recordvalues
-    fk_rows = recordvalues_df[recordvalues_df["column_name"] == "lookupId"]
+    fk_rows: pd.DataFrame = recordvalues_df[recordvalues_df["column_name"] == "lookupId"]
     assert len(fk_rows) > 0, "FK column not found in recordvalues"
 
     # Verify FK has system_id and public_id
@@ -165,11 +167,11 @@ def test_csv_processor_format_compatibility():
         }
     )
 
-    submission = Submission(data_tables={"tbl_test": data}, schema=schema)  # type: ignore
+    submission = Submission(data_tables=TableStore({"tbl_test": data}), schema=schema)  # type: ignore
 
     with tempfile.TemporaryDirectory() as tmp_dir:
 
-        processor = CsvProcessor()
+        processor: CsvProcessor = CsvProcessor()
         processor.dispatch(target=tmp_dir, schema=schema, submission=submission)
 
         # Check each CSV file has the correct columns
@@ -177,5 +179,5 @@ def test_csv_processor_format_compatibility():
             csv_file = Path(tmp_dir) / f"submission_{file_type}.csv"
             assert csv_file.exists(), f"{csv_file} was not created"
 
-            df = pd.read_csv(csv_file, sep="\t", nrows=0)  # Just read headers
+            df: pd.DataFrame = pd.read_csv(csv_file, sep="\t", nrows=0)  # Just read headers
             assert list(df.columns) == expected_cols, f"{file_type}.csv has incorrect columns: {list(df.columns)} != {expected_cols}"
