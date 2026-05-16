@@ -1,21 +1,60 @@
-"""
-Query execution API endpoints.
-"""
+"""\nQuery execution API endpoints.\n"""
 
 from fastapi import APIRouter, Depends, HTTPException
 
+import backend.app.models.data_source as api
 from backend.app.api.dependencies import get_data_source_service
+from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.models.project import Project
 from backend.app.models.query import QueryExecution, QueryIntrospection, QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.project_service import ProjectService, get_project_service
-from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
+from backend.app.services.query_service import is_internal_data_source, QueryExecutionError, QuerySecurityError, QueryService
+from src.model import DataSourceConfig, ShapeShiftProject
 
 router = APIRouter()
 
 
-def get_query_service(data_source_service: DataSourceService = Depends(get_data_source_service)) -> QueryService:
+def get_query_service() -> QueryService:
     """Dependency to get query service instance."""
-    return QueryService(data_source_service)
+    return QueryService()
+
+
+def _resolve_data_source_config(
+    data_source_name: str,
+    data_source_service: DataSourceService,
+    project_name: str | None = None,
+    project_service: ProjectService | None = None,
+) -> api.DataSourceConfig | None:
+    """Resolve a data source from a project or the global data source directory.
+
+    Returns None for the ``@internal`` virtual data source.
+    Raises QueryExecutionError when the named source cannot be found.
+    """
+    if is_internal_data_source(data_source_name):
+        return None
+
+    try:
+        if not (project_name and project_service):
+            return data_source_service.load_data_source(data_source_name, strict=True)
+
+        api_project: Project = project_service.load_project(project_name)
+        core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+
+        raw_source = core_project.data_sources.get(data_source_name)
+        if raw_source is None:
+            raise ValueError(f"Data source '{data_source_name}' not found in project '{project_name}'")
+
+        if isinstance(raw_source, str):
+            return data_source_service.load_data_source(raw_source, strict=True)
+
+        core_ds: DataSourceConfig = core_project.get_data_source(data_source_name)
+        return api.DataSourceConfig(name=data_source_name, **core_ds.data_source_cfg)
+    except Exception as e:
+        raise QueryExecutionError(
+            message=f"Failed to resolve data source '{data_source_name}': {str(e)}",
+            data_source=data_source_name,
+        ) from e
 
 
 @router.post(
@@ -52,7 +91,10 @@ def get_query_service(data_source_service: DataSourceService = Depends(get_data_
     },
 )
 async def execute_query(
-    data_source_name: str, execution: QueryExecution, query_service: QueryService = Depends(get_query_service)
+    data_source_name: str,
+    execution: QueryExecution,
+    query_service: QueryService = Depends(get_query_service),
+    data_source_service: DataSourceService = Depends(get_data_source_service),
 ) -> QueryResult:
     """
     Execute a SQL query against a data source.
@@ -61,6 +103,7 @@ async def execute_query(
         data_source_name: Name of the data source to query
         execution: Query execution parameters
         query_service: Query service instance
+        data_source_service: Data source service for config resolution
 
     Returns:
         QueryResult with query results and metadata
@@ -69,14 +112,19 @@ async def execute_query(
         HTTPException: If query is invalid or execution fails
     """
     try:
+        ds_cfg = _resolve_data_source_config(data_source_name, data_source_service)
+        if ds_cfg is None:
+            raise HTTPException(status_code=400, detail=f"Data source '{data_source_name}' cannot be queried directly")
         result: QueryResult = await query_service.execute_query(
-            data_source_name=data_source_name, query=execution.query, limit=execution.limit, timeout=execution.timeout
+            ds_cfg=ds_cfg, query=execution.query, limit=execution.limit, timeout=execution.timeout
         )
         return result
     except QuerySecurityError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except QueryExecutionError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e
 
@@ -162,6 +210,7 @@ async def introspect_query_columns(
     introspection: QueryIntrospection,
     project_name: str | None = None,
     query_service: QueryService = Depends(get_query_service),
+    data_source_service: DataSourceService = Depends(get_data_source_service),
     project_service: ProjectService = Depends(get_project_service),
 ) -> dict:
     """
@@ -172,6 +221,7 @@ async def introspect_query_columns(
         introspection: Query introspection parameters (only query field is used)
         project_name: Optional project name to resolve data_source_name from project context
         query_service: Query service instance
+        data_source_service: Data source service for config resolution
         project_service: Project service instance
 
     Returns:
@@ -181,16 +231,14 @@ async def introspect_query_columns(
         HTTPException: If query is invalid or execution fails
     """
     try:
-        columns: list[str] = await query_service.introspect_query_columns(
-            data_source_name=data_source_name,
-            query=introspection.query,
-            project_name=project_name,
-            project_service=project_service,
-        )
+        ds_cfg = _resolve_data_source_config(data_source_name, data_source_service, project_name, project_service)
+        columns: list[str] = await query_service.introspect_query_columns(ds_cfg=ds_cfg, query=introspection.query)
         return {"columns": columns}
     except QuerySecurityError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except QueryExecutionError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e
