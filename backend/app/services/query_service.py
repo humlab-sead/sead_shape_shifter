@@ -4,12 +4,10 @@ SQL Query execution service for the Shape Shifter Configuration Editor.
 
 import asyncio
 import time
-from typing import Optional
 
 import pandas as pd
 import sqlparse
-from sqlparse.sql import Identifier, Statement
-from sqlparse.tokens import DDL, DML, Keyword
+from sqlparse.sql import Statement
 
 import backend.app.models.data_source as api
 import src.model as core
@@ -17,7 +15,7 @@ from backend.app.exceptions import QueryExecutionError, QuerySecurityError
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.query import QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
-from backend.app.utils.sql import extract_select_columns, has_wildcard_select
+from backend.app.utils.sql import extract_select_columns, extract_tables, get_statement_type, has_where_clause, has_wildcard_select
 from src.loaders.base_loader import DataLoaders
 from src.loaders.sql_loaders import SqlLoader
 
@@ -73,12 +71,12 @@ class QueryService:
             return QueryValidation(is_valid=False, errors=[f"SQL syntax error: {str(e)}"], warnings=[], statement_type=None)
 
         statement: Statement = parsed[0]
-        statement_type: str | None = self._get_statement_type(statement)
+        statement_type: str | None = get_statement_type(statement, self.FORBIDDEN_KEYWORDS)
 
         if statement_type and statement_type.upper() in self.FORBIDDEN_KEYWORDS:
             errors.append(f"Destructive SQL operation '{statement_type}' is not allowed. " f"Only SELECT queries are permitted.")
 
-        tables: list[str] = self._extract_table_names(statement)
+        tables: list[str] = extract_tables(query)
 
         # if not statement_type:
         #     errors.append("Could not determine SQL statement type.")
@@ -92,7 +90,7 @@ class QueryService:
             warnings.append("Query contains multiple statements. Only the first will be executed.")
 
         # Check for missing WHERE clause on large tables (heuristic warning)
-        if statement_type == "SELECT" and not self._has_where_clause(statement):
+        if statement_type == "SELECT" and not has_where_clause(statement):
             warnings.append("Query has no WHERE clause. This may return a large result set.")
 
         # For @internal DuckDB queries, wildcard SELECT is not allowed because column
@@ -282,58 +280,4 @@ class QueryService:
         except Exception as e:
             raise QueryExecutionError(message=f"Column introspection failed: {str(e)}", data_source=data_source_name, query=query) from e
 
-    def _get_statement_type(self, statement: Statement) -> Optional[str]:
-        """Extract the statement type (SELECT, INSERT, etc.) from parsed SQL."""
-        for token in statement.tokens:
-            if token.ttype is DML:
-                return token.value.upper()
-            if token.ttype is DDL:
-                return token.value.upper()
-            if token.ttype is Keyword and token.value.upper() in self.FORBIDDEN_KEYWORDS:
-                return token.value.upper()
-        return None
 
-    def _extract_table_names(self, statement: Statement) -> list[str]:
-        """Extract table names from a SQL statement."""
-        tables: list[str] = []
-        from_seen = False
-
-        def extract_name(identifier: Identifier | str) -> str:
-            """Extract table name from identifier, handling schema.table format."""
-            name: str = identifier.get_real_name() if isinstance(identifier, Identifier) else str(identifier).strip()
-            name = name.strip('`"[]')
-            if "." in name:
-                name = name.split(".")[-1]
-            return name
-
-        for token in statement.tokens:
-
-            if token.is_whitespace:
-                continue
-
-            if token.ttype is Keyword and token.value.upper() in ("FROM", "JOIN"):
-                from_seen = True
-                continue
-
-            if not from_seen:
-                continue
-
-            if isinstance(token, Identifier):
-                table_name = extract_name(token)
-                if table_name and table_name.upper() not in ("SELECT", "WHERE", "ON"):
-                    tables.append(table_name)
-                    from_seen = False
-            elif token.ttype is None:
-                # Simple name
-                table_name = token.value.strip('`"[]')
-                if "." in table_name:
-                    table_name = table_name.split(".")[-1]
-                if table_name and not any(c in table_name for c in "(),"):
-                    tables.append(table_name)
-                    from_seen = False
-
-        return tables
-
-    def _has_where_clause(self, statement: Statement) -> bool:
-        """Check if statement contains a WHERE clause."""
-        return any(t.ttype is Keyword and t.value.upper() == "WHERE" for t in statement.flatten())

@@ -1,6 +1,6 @@
 import sqlparse
 from sqlparse.sql import Identifier, IdentifierList, Statement
-from sqlparse.tokens import DML, Keyword
+from sqlparse.tokens import DDL, DML, Keyword
 from sqlparse.tokens import Wildcard as WildcardToken
 
 FROM_CLAUSE_KEYWORDS: set[str] = {
@@ -98,7 +98,8 @@ def extract_tables(sql: str) -> list[str]:
     """
     Extract table names from an SQL query using sqlparse.
 
-    Returns a set of table names (as they appear in the query).
+    Returns a sorted, deduplicated list of table names referenced in FROM/JOIN clauses.
+    Handles Identifier objects, IdentifierLists, and bare name tokens (ttype is None).
     """
     parsed: tuple[Statement, ...] = sqlparse.parse(sql)
     tables: set[str] = set()
@@ -119,5 +120,29 @@ def extract_tables(sql: str) -> list[str]:
                     tables.add(token.get_real_name())
                 elif token.ttype is Keyword:
                     from_seen = False
+                elif token.ttype is None:
+                    # Bare token — simple table name not wrapped in an Identifier object
+                    table_name = token.value.strip('`"[]')
+                    if "." in table_name:
+                        table_name = table_name.split(".")[-1]
+                    if table_name and not any(c in table_name for c in "(),"):
+                        tables.add(table_name)
 
     return sorted(list(tables))
+
+
+def get_statement_type(statement: Statement, forbidden_keywords: set[str] | None = None) -> str | None:
+    """Return the SQL statement type (SELECT, INSERT, etc.) from a parsed statement."""
+    for token in statement.tokens:
+        if token.ttype is DML:
+            return token.value.upper()
+        if token.ttype is DDL:
+            return token.value.upper()
+        if forbidden_keywords and token.ttype is Keyword and token.value.upper() in forbidden_keywords:
+            return token.value.upper()
+    return None
+
+
+def has_where_clause(statement: Statement) -> bool:
+    """Return True if the statement contains a WHERE clause."""
+    return any(t.ttype is Keyword and t.value.upper() == "WHERE" for t in statement.flatten())
