@@ -14,14 +14,15 @@ import src.model as core
 from backend.app.exceptions import QueryExecutionError, QuerySecurityError
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.query import QueryResult, QueryValidation
-from backend.app.services.data_source_service import DataSourceService
 from backend.app.utils.sql import extract_select_columns, extract_tables, get_statement_type, has_where_clause, has_wildcard_select
 from src.loaders.base_loader import DataLoaders
 from src.loaders.sql_loaders import SqlLoader
 
-
 INTERNAL_DATA_SOURCE = "@internal"
 
+def is_internal_data_source(name: str) -> bool:
+    """Check if a data source name refers to the internal virtual data source."""
+    return name == INTERNAL_DATA_SOURCE
 
 class QueryService:
     """Service for executing and validating SQL queries."""
@@ -39,15 +40,6 @@ class QueryService:
         "GRANT",
         "REVOKE",
     }
-
-    def __init__(self, data_source_service: DataSourceService):
-        """
-        Initialize query service.
-
-        Args:
-            data_source_service: Service for managing data source connections
-        """
-        self.data_source_service: DataSourceService = data_source_service
 
     def validate_query(self, query: str, data_source_name: str | None = None) -> QueryValidation:  #  pylint: disable=unused-argument
         """
@@ -102,12 +94,12 @@ class QueryService:
 
         return QueryValidation(is_valid=is_valid, errors=errors, warnings=warnings, statement_type=statement_type, tables=tables)
 
-    async def execute_query(self, data_source_name: str, query: str, limit: int | None = 100, timeout: int = 30) -> QueryResult:
+    async def execute_query(self, ds_cfg: api.DataSourceConfig, query: str, limit: int | None = 100, timeout: int = 30) -> QueryResult:
         """
         Execute a SQL query against a data source.
 
         Args:
-            data_source_name: Name of the data source
+            ds_cfg: Resolved data source configuration
             query: SQL query to execute
             limit: Maximum number of rows to return (default 100)
             timeout: Query timeout in seconds (default 30)
@@ -120,24 +112,19 @@ class QueryService:
             QueryExecutionError: If query execution fails
         """
 
-        validation: QueryValidation = self.validate_query(query, data_source_name)
+        validation: QueryValidation = self.validate_query(query, ds_cfg.name)
         if not validation.is_valid:
             raise QuerySecurityError(message="Query contains prohibited operations", query=query, violations=validation.errors)
 
         timeout = min(timeout, 300)  # Max 5 minutes
 
-        ds_cfg: api.DataSourceConfig | None = self.data_source_service.load_data_source(data_source_name)
-
-        if ds_cfg is None:
-            raise QueryExecutionError(message=f"Data source '{data_source_name}' not found", data_source=data_source_name)
-
         core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_cfg)
         loader_cls: type[SqlLoader] = DataLoaders.get(core_config.driver)
-        loader: SqlLoader = loader_cls(data_source=core_config)
 
         start_time: float = time.time()
 
         try:
+            loader: SqlLoader = loader_cls(data_source=core_config)
 
             if limit is not None:
                 query = loader.inject_limit(query, limit)
@@ -167,37 +154,36 @@ class QueryService:
             )
         except KeyError as e:
             raise QueryExecutionError(
-                message=f"Query execution failed due to missing configuration: {str(e)}", data_source=data_source_name, query=query
+                message=f"Query execution failed due to missing configuration: {str(e)}", data_source=ds_cfg.name, query=query
             ) from e
         except asyncio.TimeoutError as e:
             raise QueryExecutionError(
-                message=f"Query execution timed out after {timeout} seconds", data_source=data_source_name, query=query
+                message=f"Query execution timed out after {timeout} seconds", data_source=ds_cfg.name, query=query
             ) from e
         except Exception as e:
-            raise QueryExecutionError(message=f"Query execution failed: {str(e)}", data_source=data_source_name, query=query) from e
+            raise QueryExecutionError(message=f"Query execution failed: {str(e)}", data_source=ds_cfg.name, query=query) from e
 
-    async def introspect_query_columns(
-        self, data_source_name: str, query: str, project_name: str | None = None, project_service=None
-    ) -> list[str]:
+    async def introspect_query_columns(self, ds_cfg: api.DataSourceConfig | None, query: str) -> list[str]:
         """
         Introspect column names from a SQL query without fetching data.
 
         Executes the query with LIMIT 0 to get only column metadata.
+        Pass ``ds_cfg=None`` to introspect an ``@internal`` DuckDB query — column names
+        are parsed directly from the SQL text without executing.
 
         Args:
-            data_source_name: Name of the data source (or key from project's data_sources)
-            query: SQL query to introspect
-            project_name: Optional project name to resolve data source from project context
-            project_service: Optional project service for resolving data sources from projects
+            ds_cfg: Resolved data source configuration, or None for @internal queries.
+            query: SQL query to introspect.
 
         Returns:
-            List of column names that would be returned by the query
+            List of column names that would be returned by the query.
 
         Raises:
-            QuerySecurityError: If query contains destructive operations
-            QueryExecutionError: If query execution fails
+            QuerySecurityError: If query contains destructive operations.
+            QueryExecutionError: If query execution fails.
         """
-        # Validate query for safety
+        data_source_name: str = INTERNAL_DATA_SOURCE if ds_cfg is None else ds_cfg.name
+
         validation: QueryValidation = self.validate_query(query, data_source_name)
         if not validation.is_valid:
             raise QuerySecurityError(message="Query contains prohibited operations", query=query, violations=validation.errors)
@@ -205,79 +191,24 @@ class QueryService:
         # For @internal (DuckDB table store), parse column names directly from the SQL text.
         # The internal store is only available at pipeline runtime, so we cannot execute
         # a LIMIT 0 probe here — sqlparse gives us the column names for free.
-        if data_source_name == INTERNAL_DATA_SOURCE:
+        if ds_cfg is None:
             try:
                 return extract_select_columns(query)
             except ValueError as exc:
                 raise QuerySecurityError(message=str(exc), query=query, violations=[str(exc)]) from exc
 
-        # Resolve data source configuration
-        ds_cfg: api.DataSourceConfig | None = None
-
-        if project_name and project_service:
-            # Resolve from project context
-            from backend.app.mappers.project_mapper import ProjectMapper  # pylint: disable=import-outside-toplevel
-
-            api_project = project_service.load_project(project_name)
-            if not api_project:
-                raise QueryExecutionError(message=f"Project '{project_name}' not found", data_source=data_source_name)
-
-            # Check if data source key exists in project's data_sources
-            if data_source_name not in api_project.data_sources:
-                raise QueryExecutionError(
-                    message=f"Data source '{data_source_name}' not found in project '{project_name}'", data_source=data_source_name
-                )
-
-            # Convert to core to resolve @include directives
-            core_project = ProjectMapper.to_core(api_project)
-
-            # Get the resolved data source value from core project
-            # In core, data_sources are under cfg['options']['data_sources']
-            ds_value = core_project.cfg.get("options", {}).get("data_sources", {}).get(data_source_name)
-
-            if ds_value is None:
-                raise QueryExecutionError(
-                    message=f"Data source '{data_source_name}' not found in resolved project '{project_name}'", data_source=data_source_name
-                )
-
-            # ds_value is already resolved (no @include directives) thanks to ProjectMapper.to_core()
-            if isinstance(ds_value, dict):
-                # Inline data source configuration
-                ds_cfg = api.DataSourceConfig(name=data_source_name, **ds_value)
-            elif isinstance(ds_value, str):
-                # Should be a filename - load from global data sources
-                ds_cfg = self.data_source_service.load_data_source(ds_value)
-            else:
-                raise QueryExecutionError(
-                    message=f"Invalid data source configuration for '{data_source_name}' in project '{project_name}'",
-                    data_source=data_source_name,
-                )
-        else:
-            # Load from global data sources directory (backward compatibility)
-            ds_cfg = self.data_source_service.load_data_source(data_source_name)
-
-        if ds_cfg is None:
-            raise QueryExecutionError(message=f"Data source '{data_source_name}' not found", data_source=data_source_name)
-
-        # Convert to core config and get loader
         core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_cfg)
         loader_cls: type[SqlLoader] = DataLoaders.get(core_config.driver)
         loader: SqlLoader = loader_cls(data_source=core_config)
 
         try:
-            # Execute query with LIMIT 0 to get only column structure
             limited_query = loader.inject_limit(query, 0)
             df: pd.DataFrame = await asyncio.wait_for(loader.read_sql(limited_query), timeout=10)
-
-            # Return column names
-            columns: list[str] = df.columns.tolist()
-            return columns
+            return df.columns.tolist()
 
         except asyncio.TimeoutError as e:
             raise QueryExecutionError(
-                message="Column introspection timed out after 10 seconds", data_source=data_source_name, query=query
+                message="Column introspection timed out after 10 seconds", data_source=ds_cfg.name, query=query
             ) from e
         except Exception as e:
-            raise QueryExecutionError(message=f"Column introspection failed: {str(e)}", data_source=data_source_name, query=query) from e
-
-
+            raise QueryExecutionError(message=f"Column introspection failed: {str(e)}", data_source=ds_cfg.name, query=query) from e
