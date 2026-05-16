@@ -435,7 +435,7 @@ class EqualsRule(ReplacementRule):
             return series.where(~mask, cast(Any, to_value))
 
         if not ctx.normalize_ops and not ctx.negate:
-            out: pd.Series[Any] = series.replace(to_replace={from_value: to_value})
+            out: pd.Series[Any] = series.replace(to_replace={from_value: to_value})  # type: ignore[assignment]
             if ctx.report_replaced:
                 changed = int((series.astype("string") != out.astype("string")).fillna(False).sum())
                 logger.info(f"{ctx.entity_name}[replacements]: {ctx.column_name}: equals replaced {changed} value(s)")
