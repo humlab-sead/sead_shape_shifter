@@ -104,7 +104,7 @@ class TestShapeShiftServiceIncludeBug:
         mock_shapeshift_project = ShapeShiftProject(cfg=config_dict, filename="test-config.yml")
 
         # Now let's directly test that getting the data source fails
-        with pytest.raises(AttributeError, match="'DoubleQuotedScalarString' object has no attribute 'get'"):
+        with pytest.raises(TypeError, match="is a string reference"):
             ds = mock_shapeshift_project.get_data_source("lookup_db")
             _ = ds.driver  # This triggers the error
 
@@ -148,7 +148,7 @@ class TestShapeShiftServiceIncludeBug:
         config = ShapeShiftProject(cfg=config_dict, filename="test-config.yml")
 
         # Attempting to get the data source will fail
-        with pytest.raises(AttributeError, match="'DoubleQuotedScalarString' object has no attribute 'get'"):
+        with pytest.raises(TypeError, match="is a string reference"):
             data_source = config.get_data_source("test_source")
             _ = data_source.driver
 
