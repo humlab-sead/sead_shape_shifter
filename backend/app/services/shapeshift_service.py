@@ -339,9 +339,9 @@ class ShapeShiftService:
         project_version: int = self.get_project_version(project_name)
 
         # Validate all entities exist
-        for entity_name in entity_names:
-            if entity_name not in project.tables:
-                raise ValueError(f"Entity '{entity_name}' not found in project")
+        missing_entities: list[str] = [name for name in entity_names if name not in project.tables]
+        if missing_entities:
+            raise ValueError(f"Entities not found in project '{project_name}': {', '.join(missing_entities)}")
 
         # Run single ShapeShifter normalization for all target entities
         resolved_project: ShapeShiftProject = project
