@@ -64,7 +64,7 @@ class PublicIdConformanceValidator(EntityConformanceValidator):
             return [
                 ConformanceIssue(
                     code="MISSING_PUBLIC_ID",
-                    message=f"Entity '{entity_name}' is missing expected public_id '{entity_spec.public_id}'",
+                    message=f"Entity '{entity_name}' is missing required public_id '{entity_spec.public_id}'",
                     entity=entity_name,
                 )
             ]
@@ -159,7 +159,7 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
                         ConformanceIssue(
                             code="BRIDGE_MISSING_TARGET_FK",
                             message=(
-                                f"Bridge entity '{bridge_name}' (mediating '{entity_name}' -> '{foreign_key.entity}') "
+                                f"Bridge entity '{bridge_name}' (between '{entity_name}' -> '{foreign_key.entity}') "
                                 f"does not have a foreign key to target entity '{foreign_key.entity}'"
                             ),
                             entity=bridge_name,
@@ -180,7 +180,7 @@ class RequiredColumnsConformanceValidator(EntityConformanceValidator):
                 issues.append(
                     ConformanceIssue(
                         code="MISSING_REQUIRED_COLUMN",
-                        message=f"Entity '{entity_name}' is missing required target-facing column '{column_name}'",
+                        message=f"Entity '{entity_name}' is missing required target column '{column_name}'",
                         entity=entity_name,
                     )
                 )
