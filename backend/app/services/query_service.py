@@ -20,9 +20,11 @@ from src.loaders.sql_loaders import SqlLoader
 
 INTERNAL_DATA_SOURCE = "@internal"
 
+
 def is_internal_data_source(name: str) -> bool:
     """Check if a data source name refers to the internal virtual data source."""
     return name == INTERNAL_DATA_SOURCE
+
 
 class QueryService:
     """Service for executing and validating SQL queries."""

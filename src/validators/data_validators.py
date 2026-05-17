@@ -337,7 +337,7 @@ class ForeignKeyIntegrityValidator:
             return []  # Remote column issue
 
         # Get unique local FK values (excluding nulls)
-        local_fk_values: pd.DataFrame= local_df[local_keys].dropna()
+        local_fk_values: pd.DataFrame = local_df[local_keys].dropna()
         if local_fk_values.empty:
             return []
 
