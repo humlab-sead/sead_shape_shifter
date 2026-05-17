@@ -122,4 +122,8 @@ def test_target_model_conformance(project: ShapeShiftProject):
 
     errors: list[ValidationError] = TargetModelValidator().validate(target_model_data, project)
 
+    if errors:
+        error_report: str = "\n".join(f"{error.severity.upper()} {error.code} [{error.entity}]: {error.message}" for error in errors)
+        warning(f"Target model validation found {len(errors)} errors:\n{error_report}")
+
     assert not errors, f"Expected no validation errors, found {len(errors)}: {[error.message for error in errors]}"
