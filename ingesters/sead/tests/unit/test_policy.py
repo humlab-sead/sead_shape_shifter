@@ -132,15 +132,17 @@ def test_update_types_based_on_sead_schema(mock_service):
     )
 
     submission = Submission(
-        data_tables=TableStore({
-            "table1": pd.DataFrame(
-                {
-                    "col1": [1, 2, 3],
-                    "col2": [4, 5, 6],
-                    "col3": [7, 8, 9],
-                }
-            )
-        }),
+        data_tables=TableStore(
+            {
+                "table1": pd.DataFrame(
+                    {
+                        "col1": [1, 2, 3],
+                        "col2": [4, 5, 6],
+                        "col3": [7, 8, 9],
+                    }
+                )
+            }
+        ),
         schema=schema,
     )
 
@@ -167,14 +169,16 @@ def test_if_system_id_is_missing_set_system_id_to_public_id(mock_service):
     )
 
     submission: Submission = Submission(
-        data_tables=TableStore({
-            "table1": pd.DataFrame(
-                {
-                    "id": [1, 2, 3],
-                    "system_id": [np.nan, np.nan, np.nan],
-                }
-            )
-        }),
+        data_tables=TableStore(
+            {
+                "table1": pd.DataFrame(
+                    {
+                        "id": [1, 2, 3],
+                        "system_id": [np.nan, np.nan, np.nan],
+                    }
+                )
+            }
+        ),
         schema=schema,
     )
 

@@ -34,10 +34,12 @@ class TestSubmission:
         assert "tbl_dummy" not in submission
 
     def test_data_tablenames(self, two_table_schema: SeadSchema):
-        data_tables: TableStore = TableStore({
-            "tbl_main": pd.DataFrame({"system_id": [1], "main_id": [1], "lookup_id": [100]}),
-            "tbl_lookup": pd.DataFrame({"system_id": [100], "lookup_id": [1], "value": ["test"]}),
-        })
+        data_tables: TableStore = TableStore(
+            {
+                "tbl_main": pd.DataFrame({"system_id": [1], "main_id": [1], "lookup_id": [100]}),
+                "tbl_lookup": pd.DataFrame({"system_id": [100], "lookup_id": [1], "value": ["test"]}),
+            }
+        )
         submission = Submission(data_tables=data_tables, schema=two_table_schema)
 
         assert "tbl_main" in submission.data_table_names
@@ -52,10 +54,12 @@ class TestSubmission:
 
     def test_referenced_keyset(self, two_table_schema: SeadSchema):
         """Test that FK references are correctly identified."""
-        data_tables: TableStore = TableStore({
-            "tbl_main": pd.DataFrame({"system_id": [1, 2], "main_id": [1, 2], "lookup_id": [100, 101]}),
-            "tbl_lookup": pd.DataFrame({"system_id": [100, 101], "lookup_id": [1, 2], "value": ["A", "B"]}),
-        })
+        data_tables: TableStore = TableStore(
+            {
+                "tbl_main": pd.DataFrame({"system_id": [1, 2], "main_id": [1, 2], "lookup_id": [100, 101]}),
+                "tbl_lookup": pd.DataFrame({"system_id": [100, 101], "lookup_id": [1, 2], "value": ["A", "B"]}),
+            }
+        )
         submission = Submission(data_tables=data_tables, schema=two_table_schema)
 
         key_set: set[int] = submission.get_referenced_keyset(two_table_schema, "tbl_lookup")
