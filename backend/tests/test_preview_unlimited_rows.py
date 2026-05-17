@@ -24,7 +24,9 @@ def test_preview_with_limit():
     entity_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
     builder: PreviewResultBuilder = PreviewResultBuilder()
-    result: PreviewResult = builder.build(entity_name="test_entity", entity_cfg=entity_cfg, table_store=table_store, limit=10, cache_hit=False)
+    result: PreviewResult = builder.build(
+        entity_name="test_entity", entity_cfg=entity_cfg, table_store=table_store, limit=10, cache_hit=False
+    )
 
     assert result.total_rows_in_preview == 10
     assert result.estimated_total_rows == 100

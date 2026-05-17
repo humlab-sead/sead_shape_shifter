@@ -10,7 +10,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "jaydebeapi>=1.2.3",
     "jinja2>=3.1.6",
-    "jpype1>=1.6.0",
+    "jpype1==1.5.2",
     "loguru>=0.7.3",
     "openpyxl>=3.1.5",
     "pandas>=2.3.3",

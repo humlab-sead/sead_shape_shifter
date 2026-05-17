@@ -8,11 +8,7 @@ import pytest
 
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.model import ShapeShiftProject
-from src.normalizer import ShapeShifter
-from src.specifications.project import CompositeProjectSpecification
-from src.table_store import TableStore
 from src.utility import load_shape_file
-from src.validators.data_validators import UnresolvedExtraColumnsValidator, ValidationIssue
 from src.workflow import validate_entity_shapes, workflow
 
 

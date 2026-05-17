@@ -161,10 +161,12 @@ class TestCsvProcessorEdgeCases:
         )
 
         submission = Submission(
-            data_tables=TableStore({
-                "tbl_test1": pd.DataFrame({"system_id": [1], "test1_id": [None]}),
-                "tbl_test2": pd.DataFrame({"system_id": [2], "test2_id": [None]}),
-            }),
+            data_tables=TableStore(
+                {
+                    "tbl_test1": pd.DataFrame({"system_id": [1], "test1_id": [None]}),
+                    "tbl_test2": pd.DataFrame({"system_id": [2], "test2_id": [None]}),
+                }
+            ),
             schema=schema,
         )
 
