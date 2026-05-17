@@ -114,7 +114,7 @@ async def test_data_validation_orchestrator(project: ShapeShiftProject):
 #############################################################################################################
 
 
-def test_missing_required_column_returns_error(project: ShapeShiftProject):
+def test_target_model_conformance(project: ShapeShiftProject):
 
     assert project.metadata.target_model, "Test project must have a target model defined for this test"
 
