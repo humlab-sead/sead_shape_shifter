@@ -1,10 +1,8 @@
 """Unit tests for src.transforms.branch.process_merged_branch."""
 
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pandas as pd
-import pytest
 
 from src.transforms.branch import process_merged_branch
 

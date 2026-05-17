@@ -303,10 +303,12 @@ class TestForeignKeyDataSpecification:
     def test_deferred_when_pending_fields(self, mock_project):
         """Test validation is deferred when there are pending unnest fields."""
         # Create table store where local entity is missing unnest column
-        table_store = TableStore({
-            "local_entity": pd.DataFrame({"local_id": [1, 2]}),  # unnest_col not yet present
-            "remote_entity": pd.DataFrame({"remote_id": [1, 2]}),
-        })
+        table_store = TableStore(
+            {
+                "local_entity": pd.DataFrame({"local_id": [1, 2]}),  # unnest_col not yet present
+                "remote_entity": pd.DataFrame({"remote_id": [1, 2]}),
+            }
+        )
 
         fk_cfg = ForeignKeyConfig(
             local_entity="local_entity",

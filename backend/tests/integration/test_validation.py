@@ -1,9 +1,3 @@
-import asyncio
-import os
-import shutil
-from logging import warning
-from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 import jpype
@@ -22,10 +16,7 @@ from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications.project import CompositeProjectSpecification
-from src.table_store import TableStore
-from src.utility import load_shape_file
-from src.validators.data_validators import UnresolvedExtraColumnsValidator, ValidationIssue
-from src.workflow import validate_entity_shapes, workflow
+from src.validators.data_validators import ValidationIssue
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -80,10 +71,7 @@ def test_check_circular_dependencies(project: ShapeShiftProject):
 @pytest.mark.asyncio
 async def test_data_validation_orchestrator(project: ShapeShiftProject):
 
-    expected_issues: list[str] = [
-        f"warning:dating:EMPTY_RESULT",
-        f"warning:site_natural_region:EMPTY_RESULT"
-    ]
+    expected_issues: list[str] = ["warning:dating:EMPTY_RESULT", "warning:site_natural_region:EMPTY_RESULT"]
 
     normalizer = ShapeShifter(project)
     await normalizer.normalize()
@@ -101,11 +89,11 @@ async def test_data_validation_orchestrator(project: ShapeShiftProject):
 
     issue_report: str = "\n".join(f"{issue.severity} [{issue.code}] {issue.entity}: {issue.message}" for issue in issues)
 
-    error_count: int = sum(1 for issue in issues if issue.severity == "error" and issue.code != 'EMPTY_RESULT')
+    error_count: int = sum(1 for issue in issues if issue.severity == "error" and issue.code != "EMPTY_RESULT")
     assert error_count == 0, f"Expected no validation errors, found {error_count}\n{issue_report}"
 
     warning_count: int = sum(1 for issue in issues if issue.severity == "warning")
-    
+
     assert warning_count == 0, f"Expected no validation warnings, found {warning_count}\n{issue_report}"
 
 

@@ -347,9 +347,7 @@ class TestShapeShifter:
         mock_loader = Mock()
         mock_loader.load = AsyncMock(return_value=fixed_df)
 
-        mock_loaders = Mock(
-            resolve_loader=Mock(return_value=mock_loader)
-        )
+        mock_loaders = Mock(resolve_loader=Mock(return_value=mock_loader))
         with patch.object(normalizer, "loaders", mock_loaders):
             result = await normalizer.resolve_source(table_cfg)
 
@@ -372,9 +370,7 @@ class TestShapeShifter:
 
         mock_loader = Mock()
         mock_loader.load = AsyncMock(return_value=sql_df)
-        mock_loaders = Mock(
-            resolve_loader=Mock(return_value=mock_loader)
-        )
+        mock_loaders = Mock(resolve_loader=Mock(return_value=mock_loader))
         with patch.object(normalizer, "loaders", mock_loaders):
             result: pd.DataFrame = await normalizer.resolve_source(table_cfg=table_cfg)
 
