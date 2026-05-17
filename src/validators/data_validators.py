@@ -323,9 +323,9 @@ class ForeignKeyIntegrityValidator:
         Returns:
             List of validation issues for orphaned FK values
         """
-        local_keys = fk_config.get("local_keys", [])
-        remote_keys = fk_config.get("remote_keys", [])
-        remote_entity = fk_config.get("entity", "unknown")
+        local_keys: list[str] = fk_config.get("local_keys", [])
+        remote_keys: list[str] = fk_config.get("remote_keys", [])
+        remote_entity: str = fk_config.get("entity", "unknown")
 
         if not local_keys or not remote_keys:
             return []
@@ -337,12 +337,12 @@ class ForeignKeyIntegrityValidator:
             return []  # Remote column issue
 
         # Get unique local FK values (excluding nulls)
-        local_fk_values = local_df[local_keys].dropna()
+        local_fk_values: pd.DataFrame= local_df[local_keys].dropna()
         if local_fk_values.empty:
             return []
 
         # Get unique remote key values
-        remote_key_values = remote_df[remote_keys].dropna()
+        remote_key_values: pd.DataFrame = remote_df[remote_keys].dropna()
         if remote_key_values.empty:
             return [
                 ValidationIssue(
@@ -358,25 +358,28 @@ class ForeignKeyIntegrityValidator:
             ]
 
         # Create composite keys for comparison
-        local_composite = local_fk_values.apply(tuple, axis=1) if len(local_keys) > 1 else local_fk_values[local_keys[0]]
-        remote_composite = remote_key_values.apply(tuple, axis=1) if len(remote_keys) > 1 else remote_key_values[remote_keys[0]]
+        local_composite: pd.Series = local_fk_values.apply(tuple, axis=1) if len(local_keys) > 1 else local_fk_values[local_keys[0]]
+        remote_composite: pd.Series = remote_key_values.apply(tuple, axis=1) if len(remote_keys) > 1 else remote_key_values[remote_keys[0]]
 
         # Find orphaned values
-        orphaned = set(local_composite.unique()) - set(remote_composite.unique())
+        orphaned: set = set(local_composite.unique()) - set(remote_composite.unique())
 
         if not orphaned:
             return []
 
-        orphan_count = len(orphaned)
-        sample_orphans = list(orphaned)[:5]
-        sample_str = ", ".join(str(v) for v in sample_orphans)
+        sample_count: int = 10
+        orphan_count: int = len(orphaned)
+        sample_orphans: list = list(orphaned)[:sample_count]
+        sample_str: str = ", ".join(str(v) for v in sample_orphans)
+        if orphan_count > sample_count:
+            sample_str += ", ..."
 
         return [
             ValidationIssue(
                 severity="warning",
                 entity=entity_name,
                 field="foreign_keys[].entity",
-                message=f"{orphan_count} foreign key value(s) not found in '{remote_entity}'",
+                message=f"{orphan_count} foreign key value(s) not found in '{remote_entity}' ({sample_str})",
                 code="FK_DATA_INTEGRITY",
                 suggestion=f"Ensure all foreign key values exist in referenced entity. Sample missing: {sample_str}",
                 category="data",
@@ -403,11 +406,11 @@ class DataTypeCompatibilityValidator:
         Returns:
             List of validation issues for type mismatches
         """
-        issues = []
+        issues: list[ValidationIssue] = []
 
-        local_keys = fk_config.get("local_keys", [])
-        remote_keys = fk_config.get("remote_keys", [])
-        remote_entity = fk_config.get("entity", "unknown")
+        local_keys: list[str] = fk_config.get("local_keys", [])
+        remote_keys: list[str] = fk_config.get("remote_keys", [])
+        remote_entity: str = fk_config.get("entity", "unknown")
 
         if not local_keys or not remote_keys or len(local_keys) != len(remote_keys):
             return []
@@ -419,13 +422,32 @@ class DataTypeCompatibilityValidator:
             return []
 
         for local_col, remote_col in zip(local_keys, remote_keys):
+            # All-null local FK column: pandas stores it as float64 (NaN), which would
+            # cause a spurious numeric-vs-object type mismatch. Emit a targeted warning
+            # and skip the type comparison — the data error is more actionable.
+            if not local_df.empty and local_df[local_col].isna().all():
+                issues.append(
+                    ValidationIssue(
+                        severity="warning",
+                        entity=entity_name,
+                        field="foreign_keys[].local_keys",
+                        message=f"All values in FK column '{local_col}' are null — cannot join to '{remote_entity}.{remote_col}'",
+                        code="FK_ALL_NULL",
+                        suggestion=f"Check the data source for '{entity_name}': column '{local_col}' has no non-null values to join on",
+                        category="data",
+                        priority="medium",
+                        auto_fixable=False,
+                    )
+                )
+                continue
+
             local_dtype = str(local_df[local_col].dtype)
             remote_dtype = str(remote_df[remote_col].dtype)
 
             # Simple compatibility check - pandas is flexible but warn on obvious mismatches
             # int64 vs float64 is OK, but int64 vs object might be problematic
-            local_numeric = "int" in local_dtype or "float" in local_dtype
-            remote_numeric = "int" in remote_dtype or "float" in remote_dtype
+            local_numeric: bool = "int" in local_dtype or "float" in local_dtype
+            remote_numeric: bool = "int" in remote_dtype or "float" in remote_dtype
 
             if local_numeric != remote_numeric:
                 issues.append(
