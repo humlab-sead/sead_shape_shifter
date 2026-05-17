@@ -50,7 +50,7 @@ def main() -> None:
     save_path: str | None = None
     emit_svg = False
 
-    args = sys.argv[1:]
+    args: list[str] = sys.argv[1:]
     if "--svg" in args:
         emit_svg = True
         args.remove("--svg")
@@ -58,7 +58,7 @@ def main() -> None:
         idx = args.index("--out")
         save_path = args[idx + 1]
 
-    project = setup()
+    project: ShapeShiftProject = setup()
 
     profiler = cProfile.Profile()
     profiler.enable()
@@ -90,7 +90,7 @@ def main() -> None:
     stats = pstats.Stats(profiler, stream=stream)
     stats.strip_dirs()
     stats.sort_stats("cumulative")
-    stats.print_stats(40)  # top 40 functions by cumulative time
+    stats.print_stats(50)  # top 50 functions by cumulative time
     print(stream.getvalue())
 
     # Quick summary of top callers by total time
@@ -99,7 +99,7 @@ def main() -> None:
     stats2 = pstats.Stats(profiler, stream=stream2)
     stats2.strip_dirs()
     stats2.sort_stats("tottime")
-    stats2.print_stats(20)
+    stats2.print_stats(50)
     print(stream2.getvalue())
 
     assert os.path.exists(OUTPUT_PATH), "Workflow did not produce output — check for errors above"
