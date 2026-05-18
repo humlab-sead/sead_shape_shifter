@@ -18,6 +18,19 @@ vi.mock('@/api', () => ({
 
 import { api } from '@/api'
 
+function makeEntity(
+  name: string,
+  entity_data: Record<string, unknown> = {},
+  overrides: Partial<EntityResponse> = {},
+): EntityResponse {
+  return {
+    name,
+    entity_data,
+    etag: `${name}-etag`,
+    ...overrides,
+  }
+}
+
 describe('useEntityStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -41,23 +54,23 @@ describe('useEntityStore', () => {
     it('should group entities by type', () => {
       const store = useEntityStore()
       store.entities = [
-        { name: 'entity1', entity_data: { type: 'table' } } as EntityResponse,
-        { name: 'entity2', entity_data: { type: 'view' } } as EntityResponse,
-        { name: 'entity3', entity_data: { type: 'table' } } as EntityResponse,
+        makeEntity('entity1', { type: 'table' }),
+        makeEntity('entity2', { type: 'view' }),
+        makeEntity('entity3', { type: 'table' }),
       ]
 
       expect(store.entitiesByType).toEqual({
         table: [
-          { name: 'entity1', entity_data: { type: 'table' } },
-          { name: 'entity3', entity_data: { type: 'table' } },
+          makeEntity('entity1', { type: 'table' }),
+          makeEntity('entity3', { type: 'table' }),
         ],
-        view: [{ name: 'entity2', entity_data: { type: 'view' } }],
+        view: [makeEntity('entity2', { type: 'view' })],
       })
     })
 
     it('should handle entities without type', () => {
       const store = useEntityStore()
-      store.entities = [{ name: 'entity1', entity_data: {} } as EntityResponse]
+      store.entities = [makeEntity('entity1')]
 
       expect(store.entitiesByType.unknown).toBeDefined()
       expect(store.entitiesByType.unknown).toHaveLength(1)
@@ -66,8 +79,8 @@ describe('useEntityStore', () => {
     it('should compute entity count', () => {
       const store = useEntityStore()
       store.entities = [
-        { name: 'entity1', entity_data: {} } as EntityResponse,
-        { name: 'entity2', entity_data: {} } as EntityResponse,
+        makeEntity('entity1'),
+        makeEntity('entity2'),
       ]
 
       expect(store.entityCount).toBe(2)
@@ -76,9 +89,9 @@ describe('useEntityStore', () => {
     it('should sort entities alphabetically', () => {
       const store = useEntityStore()
       store.entities = [
-        { name: 'zebra', entity_data: {} } as EntityResponse,
-        { name: 'alpha', entity_data: {} } as EntityResponse,
-        { name: 'beta', entity_data: {} } as EntityResponse,
+        makeEntity('zebra'),
+        makeEntity('alpha'),
+        makeEntity('beta'),
       ]
 
       expect(store.sortedEntities.map((e) => e.name)).toEqual(['alpha', 'beta', 'zebra'])
@@ -86,7 +99,7 @@ describe('useEntityStore', () => {
 
     it('should find entity by name', () => {
       const store = useEntityStore()
-      const entity = { name: 'test-entity', entity_data: {} } as EntityResponse
+      const entity = makeEntity('test-entity')
       store.entities = [entity]
 
       expect(store.entityByName('test-entity')).toEqual(entity)
@@ -96,9 +109,9 @@ describe('useEntityStore', () => {
     it('should filter root entities (no source)', () => {
       const store = useEntityStore()
       store.entities = [
-        { name: 'root1', entity_data: {} } as EntityResponse,
-        { name: 'child1', entity_data: { source: 'root1' } } as EntityResponse,
-        { name: 'root2', entity_data: {} } as EntityResponse,
+        makeEntity('root1'),
+        makeEntity('child1', { source: 'root1' }),
+        makeEntity('root2'),
       ]
 
       expect(store.rootEntities).toHaveLength(2)
@@ -108,10 +121,10 @@ describe('useEntityStore', () => {
     it('should find children of an entity', () => {
       const store = useEntityStore()
       store.entities = [
-        { name: 'parent', entity_data: {} } as EntityResponse,
-        { name: 'child1', entity_data: { source: 'parent' } } as EntityResponse,
-        { name: 'child2', entity_data: { source: 'parent' } } as EntityResponse,
-        { name: 'other', entity_data: {} } as EntityResponse,
+        makeEntity('parent'),
+        makeEntity('child1', { source: 'parent' }),
+        makeEntity('child2', { source: 'parent' }),
+        makeEntity('other'),
       ]
 
       const children = store.childrenOf('parent')
@@ -122,8 +135,8 @@ describe('useEntityStore', () => {
     it('should detect entities with foreign keys', () => {
       const store = useEntityStore()
       store.entities = [
-        { name: 'withKeys', entity_data: { foreign_keys: [{ table: 'other', column: 'id' }] } } as EntityResponse,
-        { name: 'withoutKeys', entity_data: {} } as EntityResponse,
+        makeEntity('withKeys', { foreign_keys: [{ table: 'other', column: 'id' }] }),
+        makeEntity('withoutKeys'),
       ]
 
       expect(store.hasForeignKeys('withKeys')).toBe(true)
@@ -136,8 +149,8 @@ describe('useEntityStore', () => {
     it('should fetch entities successfully', async () => {
       const store = useEntityStore()
       const mockEntities = [
-        { name: 'entity1', entity_data: {} } as EntityResponse,
-        { name: 'entity2', entity_data: {} } as EntityResponse,
+        makeEntity('entity1'),
+        makeEntity('entity2'),
       ]
 
       vi.mocked(api.entities.list).mockResolvedValue(mockEntities)
@@ -153,10 +166,10 @@ describe('useEntityStore', () => {
 
     it('should resync selectedEntity to refreshed entity data', async () => {
       const store = useEntityStore()
-      store.entities = [{ name: 'test-entity', entity_data: {}, etag: 'stale-etag' } as EntityResponse]
-      store.selectedEntity = { name: 'test-entity', entity_data: {}, etag: 'stale-etag' } as EntityResponse
+      store.entities = [makeEntity('test-entity', {}, { etag: 'stale-etag' })]
+      store.selectedEntity = makeEntity('test-entity', {}, { etag: 'stale-etag' })
 
-      const refreshedEntity = { name: 'test-entity', entity_data: {}, etag: 'fresh-etag' } as EntityResponse
+      const refreshedEntity = makeEntity('test-entity', {}, { etag: 'fresh-etag' })
       vi.mocked(api.entities.list).mockResolvedValue([refreshedEntity])
 
       await store.fetchEntities('test-project')
@@ -179,7 +192,7 @@ describe('useEntityStore', () => {
   describe('selectEntity', () => {
     it('should select an entity successfully', async () => {
       const store = useEntityStore()
-      const mockEntity = { name: 'test-entity', entity_data: {} } as EntityResponse
+      const mockEntity = makeEntity('test-entity')
       store.entities = [mockEntity]
 
       const result = await store.selectEntity('test-project', 'test-entity')
@@ -209,7 +222,7 @@ describe('useEntityStore', () => {
         name: 'new-entity',
         entity_data: { type: 'table' },
       }
-      const mockEntity = { name: 'new-entity', entity_data: { type: 'table' } } as EntityResponse
+      const mockEntity = makeEntity('new-entity', { type: 'table' })
 
       vi.mocked(api.entities.create).mockResolvedValue(mockEntity)
 
@@ -241,19 +254,19 @@ describe('useEntityStore', () => {
   describe('updateEntity', () => {
     it('should update an entity successfully', async () => {
       const store = useEntityStore()
-      const existing = { name: 'test-entity', entity_data: { type: 'table' } } as EntityResponse
+      const existing = makeEntity('test-entity', { type: 'table' })
       store.entities = [existing]
 
       const updateData: EntityUpdateRequest = {
         entity_data: { type: 'view', description: 'Updated' },
       }
-      const updated = { name: 'test-entity', entity_data: { type: 'view', description: 'Updated' } } as EntityResponse
+      const updated = makeEntity('test-entity', { type: 'view', description: 'Updated' })
 
       vi.mocked(api.entities.update).mockResolvedValue(updated)
 
       const result = await store.updateEntity('test-project', 'test-entity', updateData)
 
-      expect(api.entities.update).toHaveBeenCalledWith('test-project', 'test-entity', updateData, undefined)
+      expect(api.entities.update).toHaveBeenCalledWith('test-project', 'test-entity', updateData, 'test-entity-etag')
       expect(store.entities[0]).toEqual(updated)
       expect(store.selectedEntity).toEqual(updated)
       expect(store.hasUnsavedChanges).toBe(false)
@@ -262,17 +275,13 @@ describe('useEntityStore', () => {
 
     it('should use the freshest cached entity etag for updates', async () => {
       const store = useEntityStore()
-      store.entities = [{ name: 'test-entity', entity_data: { type: 'table' }, etag: 'fresh-etag' } as EntityResponse]
-      store.selectedEntity = { name: 'test-entity', entity_data: { type: 'table' }, etag: 'stale-etag' } as EntityResponse
+      store.entities = [makeEntity('test-entity', { type: 'table' }, { etag: 'fresh-etag' })]
+      store.selectedEntity = makeEntity('test-entity', { type: 'table' }, { etag: 'stale-etag' })
 
       const updateData: EntityUpdateRequest = {
         entity_data: { type: 'view', description: 'Updated' },
       }
-      const updated = {
-        name: 'test-entity',
-        entity_data: { type: 'view', description: 'Updated' },
-        etag: 'new-etag',
-      } as EntityResponse
+      const updated = makeEntity('test-entity', { type: 'view', description: 'Updated' }, { etag: 'new-etag' })
 
       vi.mocked(api.entities.update).mockResolvedValue(updated)
 
@@ -296,8 +305,8 @@ describe('useEntityStore', () => {
   describe('deleteEntity', () => {
     it('should delete an entity successfully', async () => {
       const store = useEntityStore()
-      const entity1 = { name: 'entity1', entity_data: {} } as EntityResponse
-      const entity2 = { name: 'entity2', entity_data: {} } as EntityResponse
+      const entity1 = makeEntity('entity1')
+      const entity2 = makeEntity('entity2')
       store.entities = [entity1, entity2]
       store.selectedEntity = entity1
 
@@ -313,8 +322,8 @@ describe('useEntityStore', () => {
 
     it('should not clear selectedEntity if different entity deleted', async () => {
       const store = useEntityStore()
-      const entity1 = { name: 'entity1', entity_data: {} } as EntityResponse
-      const entity2 = { name: 'entity2', entity_data: {} } as EntityResponse
+      const entity1 = makeEntity('entity1')
+      const entity2 = makeEntity('entity2')
       store.entities = [entity1, entity2]
       store.selectedEntity = entity1
 
@@ -362,8 +371,8 @@ describe('useEntityStore', () => {
   describe('reset', () => {
     it('should reset all state to initial values', () => {
       const store = useEntityStore()
-      store.entities = [{ name: 'test', entity_data: {} } as EntityResponse]
-      store.selectedEntity = { name: 'test', entity_data: {} } as EntityResponse
+      store.entities = [makeEntity('test')]
+      store.selectedEntity = makeEntity('test')
       store.currentProjectName = 'test-project'
       store.loading = true
       store.error = 'Some error'
