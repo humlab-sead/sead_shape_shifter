@@ -543,7 +543,7 @@
                     </div>
 
                     <!-- Depends On (standalone when no columns field is shown) -->
-                    <div class="form-row" v-if="formData.type !== 'entity' && formData.type !== 'fixed' && !isFileType && !isMergedEntityType && !(formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading))">
+                    <div class="form-row" v-if="formData.type !== 'entity' && formData.type !== 'fixed' && !isFileType && !(formData.type === 'sql' && (columnsOptions.length > 0 || columnsLoading))">
                       <v-combobox
                         v-model="formData.depends_on"
                         label="Depends On"
@@ -644,12 +644,12 @@
                       />
                     </div>
 
-                    <!-- SQL Query (for sql type) -->
-                    <div class="form-row" v-if="formData.type === 'sql'">
+                    <!-- SQL Query (for sql and duckdb types) -->
+                    <div class="form-row" v-if="formData.type === 'sql' || formData.type === 'duckdb'">
                       <SqlEditor
                         v-model="formData.query"
                         height="250px"
-                        :help-text="formData.data_source === '@internal' ? 'SQL query executed against already-processed entities in the internal DuckDB store' : 'SQL query to execute against the selected data source'"
+                        :help-text="formData.type === 'duckdb' ? 'SQL query executed against already-processed entities in DuckDB' : 'SQL query to execute against the selected data source'"
                         :error="formValid === false && !formData.query ? 'SQL query is required' : ''"
                       />
                     </div>
@@ -2220,10 +2220,14 @@ watch(
 watch(
   () => formData.value.type,
   async (newType, oldType) => {
-    // Clear data source and query when switching away from SQL
-    if (newType !== 'sql') {
+    // Clear data source and query when switching away from SQL/DuckDB
+    if (newType !== 'sql' && newType !== 'duckdb') {
       formData.value.data_source = ''
       formData.value.query = ''
+    }
+    // Clear data source when switching to duckdb (it uses internal engine)
+    if (newType === 'duckdb') {
+      formData.value.data_source = ''
     }
 
     // Clear source when switching away from entity
@@ -2513,8 +2517,10 @@ const mergedAvailableColumns = computed(() => {
 const availableDataSources = computed(() => {
   // Get entity source names from project's options.data_sources (e.g., "arbodat_data", "sead")
   const dataSources = projectStore.selectedProject?.options?.data_sources
-  const external = dataSources && typeof dataSources === 'object' ? Object.keys(dataSources) : []
-  return ['@internal', ...external]
+  if (dataSources && typeof dataSources === 'object') {
+    return Object.keys(dataSources)
+  }
+  return []
 })
 
 // File type computed properties
