@@ -491,11 +491,42 @@ entities:
     drop_duplicates: true
     data_source: arbodat_data
     query: "select distinct\n  [Projekt],\n  [Befu],\n  [ProbNr],\n  [Unterprobe],\n  [Labornummer],\n  [Material],\n  [Methode],\n  [Waldkante],\n  [C14-Alter BP],\n  [Standardab C14],\n  [C14 cal],\n  [Dendroalter],\n  [Alter andere],\n  [13C PDB-Wert],\n  [Standardab 13C PDB],\n  [pMC-Wert],\n  [Standardab PMC],\n  [Anmerkungen]\nfrom [Datierung] ;\n"
-  dating_period:
+  dating_archaeological_period:
     type: sql
-    public_id: dating_period_id
+    public_id: dating_archaeological_period_id
     keys: '@value: entities.sample.keys'
-    columns: [Projekt, Befu, ProbNr, ChronoDat, ArchDat]
+    columns: [Projekt, Befu, ProbNr, ArchDat]
+    foreign_keys:
+    - entity: sample
+      local_keys: '@value: entities.sample.keys'
+      remote_keys: '@value: entities.sample.keys'
+      constraints:
+        cardinality: many_to_one
+        allow_unmatched_right: true
+        require_unique_left: false
+        require_unique_right: false
+        allow_null_keys: false
+        allow_row_decrease: true
+    - entity: archaeological_period
+      local_keys: [ArchDat]
+      remote_keys: [ArchDat]
+      how: left
+      constraints:
+        cardinality: many_to_one
+        allow_unmatched_right: true
+        require_unique_left: false
+        require_unique_right: false
+        allow_null_keys: false
+        allow_row_decrease: true
+    depends_on: [sample]
+    drop_empty_rows: [ArchDat]
+    data_source: arbodat_data
+    query: "select distinct [Projekt], [Befu], [ProbNr], [ArchDat] from [Proben] ;"
+  dating_chronological_period:
+    type: sql
+    public_id: dating_chronological_period_id
+    keys: '@value: entities.sample.keys'
+    columns: [Projekt, Befu, ProbNr, ChronoDat]
     foreign_keys:
     - entity: sample
       local_keys: '@value: entities.sample.keys'
@@ -518,21 +549,10 @@ entities:
         require_unique_right: false
         allow_null_keys: true
         allow_row_decrease: true
-    - entity: archaeological_period
-      local_keys: [ArchDat]
-      remote_keys: [ArchDat]
-      how: left
-      constraints:
-        cardinality: many_to_one
-        allow_unmatched_right: true
-        require_unique_left: false
-        require_unique_right: false
-        allow_null_keys: false
-        allow_row_decrease: true
     depends_on: [sample]
-    drop_empty_rows: [ChronoDat, ArchDat]
+    drop_empty_rows: [ChronoDat]
     data_source: arbodat_data
-    query: "select distinct [Projekt], [Befu], [ProbNr], [ChronoDat], [ArchDat]\nfrom [Proben] ;\n"
+    query: "select distinct [Projekt], [Befu], [ProbNr], [ChronoDat] from [Proben] ;"
   dimension:
     type: fixed
     source:
@@ -991,6 +1011,16 @@ entities:
     - entity: site
       local_keys: [Fustel]
       remote_keys: [Fustel]
+      how: inner
+      constraints:
+        cardinality: many_to_one
+        allow_unmatched_right: true
+        require_unique_left: false
+        require_unique_right: false
+        allow_row_decrease: true
+    - entity: method
+      local_keys: [method_id]
+      remote_keys: [method_id]
       how: inner
       constraints:
         cardinality: many_to_one
