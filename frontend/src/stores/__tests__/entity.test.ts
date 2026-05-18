@@ -151,6 +151,19 @@ describe('useEntityStore', () => {
       expect(store.error).toBeNull()
     })
 
+    it('should resync selectedEntity to refreshed entity data', async () => {
+      const store = useEntityStore()
+      store.entities = [{ name: 'test-entity', entity_data: {}, etag: 'stale-etag' } as EntityResponse]
+      store.selectedEntity = { name: 'test-entity', entity_data: {}, etag: 'stale-etag' } as EntityResponse
+
+      const refreshedEntity = { name: 'test-entity', entity_data: {}, etag: 'fresh-etag' } as EntityResponse
+      vi.mocked(api.entities.list).mockResolvedValue([refreshedEntity])
+
+      await store.fetchEntities('test-project')
+
+      expect(store.selectedEntity).toEqual(refreshedEntity)
+    })
+
     it('should handle fetch errors', async () => {
       const store = useEntityStore()
 
@@ -240,11 +253,32 @@ describe('useEntityStore', () => {
 
       const result = await store.updateEntity('test-project', 'test-entity', updateData)
 
-      expect(api.entities.update).toHaveBeenCalledWith('test-project', 'test-entity', updateData)
+      expect(api.entities.update).toHaveBeenCalledWith('test-project', 'test-entity', updateData, undefined)
       expect(store.entities[0]).toEqual(updated)
       expect(store.selectedEntity).toEqual(updated)
       expect(store.hasUnsavedChanges).toBe(false)
       expect(result).toEqual(updated)
+    })
+
+    it('should use the freshest cached entity etag for updates', async () => {
+      const store = useEntityStore()
+      store.entities = [{ name: 'test-entity', entity_data: { type: 'table' }, etag: 'fresh-etag' } as EntityResponse]
+      store.selectedEntity = { name: 'test-entity', entity_data: { type: 'table' }, etag: 'stale-etag' } as EntityResponse
+
+      const updateData: EntityUpdateRequest = {
+        entity_data: { type: 'view', description: 'Updated' },
+      }
+      const updated = {
+        name: 'test-entity',
+        entity_data: { type: 'view', description: 'Updated' },
+        etag: 'new-etag',
+      } as EntityResponse
+
+      vi.mocked(api.entities.update).mockResolvedValue(updated)
+
+      await store.updateEntity('test-project', 'test-entity', updateData)
+
+      expect(api.entities.update).toHaveBeenCalledWith('test-project', 'test-entity', updateData, 'fresh-etag')
     })
 
     it('should handle update errors', async () => {
