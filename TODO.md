@@ -23,12 +23,9 @@
  - [] TODO: [Frontend/Backend] Edit data source configuration in a dual-mode editor (Form/YAML).
  - [] TODO: Add capability to generate a default reconciliation YAML based on service manifest received from calling services /reconcile endpoint.
  - [] TODO: #68 Add a "finally" step that removes intermediate tables and columns.
- - [] TODO: #66 Introduce a "transformations" section with more advance columnar transforms (e.g. toWSG84).
  - [] TODO: #69 Add "parent" property to entity definitions.
- - [] TODO: #108 Add tiny DSL Expression Support in extra_columns
  - [] TODO: Introduce optional support for types for entity fields
           (e.g., string, integer, date) and support type conversions in extra_columns.
- - [] TODO: Improve multiuser support (working on same project)
  - [] TODO: Add more reconciliation entity types, and non-SEAD types (e.g. Geonames, RAÄ-lämningsnummer)
  - [] TODO: Improve UX suggestions when editing entity (awareness of availiable tables, columns etc)
  - [] TODO: Consider limiting "@value:" directive usage to only refer to non-directive keys.
@@ -43,10 +40,6 @@
 ### TODO: #68 Add "finally" cleanup step 
 - Drops intermediate tables/columns after processing
 - Fits naturally after Store phase
-
-### TODO: #66 Transformations section (toWGS84, etc.) - **Data Quality Feature**
-- Coordinate transformations, case normalization, etc.
-- Consider using existing libraries (pyproj for coords)
 
 ### TODO: #67 String concatenation in extra_columns - **Subset of #108**
 
@@ -107,96 +100,6 @@ Given the context, we should be able to constrict valid dot.path, e.g. when pick
 
 What are your thought? How would an implementation plan look like? 
 
-### FIXME: Store resolved bug
-
-We have a bug related to the recently fixes related to the "@value" directive. All "@value" directives have been resolved in the stored (on disk) file
-
-
-### FIXME: Entity not persisted ** CAN NOT REPRODUCE! ***
-
-There is new bug related to saving project/entity most likely caused by recent changes. 
-
-1. I open this entity in the Entity Editor:
-
-```
-name: abundance_element
-type: sql
-system_id: system_id
-keys:
-  - RTyp
-columns:
-  - Resttyp
-  - RTypGrup
-  - RTypNr
-public_id: abundance_element_id
-data_source: arbodat_lookup
-query: select [RTyp], [Resttyp], [RTypGrup], [RTypNr] from [RTyp];
-foreign_keys:
-  - entity: abundance_element_group
-    local_keys:
-      - RTypGrup
-    remote_keys:
-      - RTypGrup
-depends_on:
-  - abundance_element_group
-extra_columns:
-  element_name: RTyp
-  element_description: Resttyp
-```
-
-2. Add "@value:entities.abundance.keys" to "keys". Opening YAML tab shows as expected that '@value:entities.abundance.keys' has been added to keys.
-
-```
-name: abundance_element
-type: sql
-system_id: system_id
-keys:
-  - RTyp
-  - '@value:entities.abundance.keys'
-columns:
-...
-```
-
-3. Press SAVE in entity editor
-   ==> Status message that entity has been saved successfully
-   ==> Button "SAVE CHANGES" in project details view becomes enabled. This is not expected.
-
-4. Verify entity in project detail views YAML tab shows expected values:
-
-```
-name: abundance_element
-type: sql
-system_id: system_id
-keys:
-  - RTyp
-  - '@value:entities.abundance.keys'
-columns:
-...
-```
-
-5. Verify YAML on disk
-
-### TODO: Fixes related to task status
-
-In the graph view, when changing "Color by" from "Entity Type" to "Task Status", only entities with types "Done" or "Ignored" changes color. All other entities remain colored by entity type.
-
-We have four task status values: "todo", "ongoing", "done" and "ignored". The shapeshifter.tasks.yml has keys "required_entities", "completed" and "ignored". The mapping of "todo" and "ongoing" to "required_entities" is unclear.
-
-I think we should use the keys "todo", "ongoing", "done" and "ignored" in shapeshifter.tasks.yml.
-
-The keys should have the following semantics:
- - "todo": initial state, an entity that don't yet exists in the project file: COLOR: yellowish?
- - "ongoing": if entity exists, but "done" or "ignored": COLOR: bluish?
- - "ignored": entity is ignored by task system's definition of done: COLOR: greyish
- - "done": end state, entity is finalized. COLOR: greenish
-
-With this semantics, we need to add placeholder nodes in the graph for "todo" entities.
-Possibly, also, we need to simple ways of adding/removing "todo" entities.
-Or, possibly, we could allow user to edit "shapeshifter.tasks.yml"
-
-I think these changes (and bugfixes) would increase the usability of the task feature.
-What do you think?
-
 ### TODO: Consider adding a trash bin when deleteing projects (move instead of delete)
 ### TODO: Change "optimistic locking" concurrency strategy
 
@@ -220,7 +123,7 @@ entities:
       location: local
       sheet_name: Sheet1
 
-### Buggar
+### FIXME: Buggar
 
 site_location, och site_property har varningen "returns no data" där motsvarande SQL-frågor ger resultat när de körs i query tester (utan semikolon)  
 site_natural_region har samma varning, men där ska ingen data vara så det är ok
@@ -265,3 +168,4 @@ We can't duplicate "where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_002
       ) c on c.[Projekt] = p.[Projekt]
       where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');
   - FIXME: FD checks fails for Abodat ["Blake"]
+
