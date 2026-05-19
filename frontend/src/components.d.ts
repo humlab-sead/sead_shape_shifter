@@ -30,6 +30,7 @@ declare module 'vue' {
     ExtraColumnsEditor: typeof import('./components/entities/ExtraColumnsEditor.vue')['default']
     FiltersEditor: typeof import('./components/entities/FiltersEditor.vue')['default']
     FixedValuesGrid: typeof import('./components/entities/FixedValuesGrid.vue')['default']
+    FixedValuesGridHeader: typeof import('./components/entities/FixedValuesGridHeader.vue')['default']
     ForeignKeyEditor: typeof import('./components/entities/ForeignKeyEditor.vue')['default']
     ForeignKeyTester: typeof import('./components/entities/ForeignKeyTester.vue')['default']
     GraphDisplayOptionsDropdown: typeof import('./components/dependencies/GraphDisplayOptionsDropdown.vue')['default']

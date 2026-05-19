@@ -11,33 +11,13 @@
       </div>
     </div>
 
-    <div v-if="props.columns.length > 0" class="column-type-controls mb-2">
-      <div v-for="columnName in props.columns" :key="columnName" class="column-type-control">
-        <span class="column-type-control__label">{{ columnName }}</span>
-        <span class="column-type-control__source">{{ getColumnTypeSourceLabel(columnName) }}</span>
-        <select
-          class="column-type-control__select"
-          :value="getColumnTypeSelectorValue(columnName)"
-          @change="onColumnTypeChange(columnName, $event)"
-        >
-          <option
-            v-for="option in getColumnTypeOptions(columnName)"
-            :key="`${columnName}-${option.value}`"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </option>
-        </select>
-      </div>
-    </div>
-
     <v-alert v-if="validationSummary.length > 0" type="error" variant="tonal" density="compact" class="mb-2">
       <div v-for="error in validationSummary" :key="error" class="text-caption">{{ error }}</div>
     </v-alert>
 
     <ag-grid-vue class="ag-theme-alpine compact-grid" :style="{ height: gridHeight }" :columnDefs="columnDefs"
-      :rowData="rowData" :getRowId="getRowId" :defaultColDef="defaultColDef" :rowSelection="'multiple'"
-      :suppressRowClickSelection="true" :animateRows="true" :headerHeight="28" :rowHeight="26" :singleClickEdit="true"
+      :rowData="rowData" :getRowId="getRowId" :defaultColDef="defaultColDef" :components="gridComponents"
+      :rowSelection="'multiple'" :suppressRowClickSelection="true" :animateRows="true" :headerHeight="48" :rowHeight="26" :singleClickEdit="true"
       :stopEditingWhenCellsLoseFocus="true" @grid-ready="onGridReady" @cell-value-changed="onCellValueChanged"
       @selection-changed="onSelectionChanged" />
   </div>
@@ -47,6 +27,7 @@
 import { computed, ref, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import type { CellValueChangedEvent, ColDef, GetRowIdParams, GridApi, GridReadyEvent } from 'ag-grid-community'
+import FixedValuesGridHeader from './FixedValuesGridHeader.vue'
 import {
   applyClipboardMatrix,
   buildGridRowData,
@@ -65,6 +46,14 @@ import 'ag-grid-community/styles/ag-theme-alpine.css'
 interface ColumnTypeOption {
   value: 'auto' | FixedGridColumnTypeName
   label: string
+}
+
+interface ColumnTypeHeaderParams {
+  columnName: string
+  getSelectorValue: (columnName: string) => 'auto' | FixedGridColumnTypeName
+  getSourceLabel: (columnName: string) => string
+  getOptions: (columnName: string) => ColumnTypeOption[]
+  onTypeChange: (columnName: string, nextValue: 'auto' | FixedGridColumnTypeName) => void
 }
 
 interface Props {
@@ -92,6 +81,9 @@ const hasSelection = ref(false)
 const lastEmittedModelSignature = ref<string | null>(null)
 const validationSummary = ref<string[]>([])
 const invalidCellMessages = ref<Record<string, string>>({})
+const gridComponents = {
+  FixedValuesGridHeader,
+}
 
 const gridHeight = computed(() => props.height)
 const systemIdColumnIndex = computed(() => props.columns.findIndex((col) => col === 'system_id'))
@@ -162,8 +154,10 @@ function getColumnTypeSourceLabel(columnName: string): string {
 
 function getColumnTypeOptions(columnName: string): ColumnTypeOption[] {
   const currentType = normalizedColumnTypes.value[columnName]
+  const inferredType = inferColumnType(columnName) === 'number' ? 'int' : 'string'
+  const autoLabel = `Auto (${inferredType})`
   const options: ColumnTypeOption[] = [
-    { value: 'auto', label: 'Auto' },
+    { value: 'auto', label: autoLabel },
     { value: 'int', label: 'Integer' },
     { value: 'string', label: 'String' },
   ]
@@ -175,9 +169,7 @@ function getColumnTypeOptions(columnName: string): ColumnTypeOption[] {
   return options
 }
 
-function onColumnTypeChange(columnName: string, event: Event) {
-  const target = event.target as HTMLSelectElement | null
-  const nextValue = target?.value
+function updateColumnType(columnName: string, nextValue: 'auto' | FixedGridColumnTypeName): void {
   const nextColumnTypes: Record<string, string> = { ...normalizedColumnTypes.value }
 
   if (!nextValue || nextValue === 'auto') {
@@ -187,6 +179,16 @@ function onColumnTypeChange(columnName: string, event: Event) {
   }
 
   emit('update:columnTypes', nextColumnTypes)
+}
+
+function buildHeaderParams(columnName: string): ColumnTypeHeaderParams {
+  return {
+    columnName,
+    getSelectorValue: getColumnTypeSelectorValue,
+    getSourceLabel: getColumnTypeSourceLabel,
+    getOptions: getColumnTypeOptions,
+    onTypeChange: updateColumnType,
+  }
 }
 
 const columnDefs = computed<ColDef[]>(() => {
@@ -215,6 +217,8 @@ const columnDefs = computed<ColDef[]>(() => {
       return {
         field: `col_${index}`,
         headerName: col,
+        headerComponent: isSystemId ? undefined : 'FixedValuesGridHeader',
+        headerComponentParams: isSystemId ? undefined : buildHeaderParams(col),
         editable: !isSystemId,
         sortable: true,
         filter: true,
@@ -491,43 +495,6 @@ watch(
 <style scoped>
 .fixed-values-grid {
   width: 100%;
-}
-
-.column-type-controls {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
-}
-
-.column-type-control {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  border-radius: 4px;
-  background: rgba(var(--v-theme-surface), 0.45);
-}
-
-.column-type-control__label {
-  font-size: 11px;
-  font-weight: 600;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.column-type-control__source {
-  font-size: 10px;
-  color: rgba(var(--v-theme-on-surface), 0.68);
-}
-
-.column-type-control__select {
-  min-height: 28px;
-  padding: 4px 8px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.18);
-  border-radius: 4px;
-  background: rgb(var(--v-theme-background));
-  color: rgb(var(--v-theme-on-background));
-  font-size: 11px;
 }
 
 .compact-grid {
