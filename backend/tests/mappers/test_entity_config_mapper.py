@@ -13,6 +13,7 @@ from backend.app.mappers.entity_config_mapper import (
     FixedEntityConfigMapper,
 )
 from src.types.fixed_entity_types import FixedEntityColumnTypeDeclarationError, FixedEntityTypeValidationError
+from src.types.fixed_entity_types import FixedEntityShapeValidationError
 
 
 class TestEntityConfigMapperFactory:
@@ -256,4 +257,16 @@ class TestFixedEntityConfigMapper:
         }
 
         with pytest.raises(FixedEntityColumnTypeDeclarationError):
+            mapper.to_core(config, "arbodat")
+
+    def test_to_core_rejects_duplicate_columns_before_row_width_validation(self, mapper: FixedEntityConfigMapper) -> None:
+        """Duplicate fixed columns should produce a direct config error during mapping."""
+        config = {
+            "name": "site_type_group",
+            "type": "fixed",
+            "columns": ["system_id", "site_type_group_id", "FuTypGrup", "FuTypGrup"],
+            "values": [[1, None, "A"]],
+        }
+
+        with pytest.raises(FixedEntityShapeValidationError, match="declares duplicate columns: FuTypGrup"):
             mapper.to_core(config, "arbodat")

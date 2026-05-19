@@ -1195,7 +1195,6 @@ entities:
     - description
     - site_type_group
     - Beschreibung
-    - FuTypGrup
     values:
     - [1, null, '-99', not chosen, '-99', not chosen, '-99']
     - [2, null, Aue, alluvium/flood plain, Aue, alluvium/flood plain, Aue]

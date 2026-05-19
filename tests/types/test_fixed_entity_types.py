@@ -97,6 +97,20 @@ class TestCoerceValue:
 class TestCoerceFixedEntityValues:
     """Test full coercion pipeline with shape and type validation."""
 
+    def test_duplicate_declared_columns_fail_before_shape_validation(self) -> None:
+        """Duplicate fixed columns should be reported directly instead of as row-width mismatch."""
+        entity_data = {
+            "values": [
+                [1, None, "A"],
+            ]
+        }
+        columns = ["system_id", "sample_id", "label", "label"]
+
+        with pytest.raises(FixedEntityShapeValidationError) as exc:
+            FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "sample")
+
+        assert str(exc.value) == "Entity 'sample' declares duplicate columns: label"
+
     def test_single_column_scalar_values_are_normalized_for_backward_compatibility(self) -> None:
         """Legacy single-column fixed entities may still provide a flat scalar list."""
         entity_data = {
