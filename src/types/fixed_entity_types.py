@@ -20,6 +20,21 @@ FixedEntityColumnTypeName = str
 ALLOWED_FIXED_ENTITY_COLUMN_TYPES: frozenset[str] = frozenset({"int", "string", "float", "bool", "date"})
 
 
+def find_duplicate_fixed_entity_columns(columns: list[str]) -> list[str]:
+    """Return duplicate column names while preserving first duplicate encounter order."""
+    seen: set[str] = set()
+    duplicates: list[str] = []
+
+    for column_name in columns:
+        if column_name in seen and column_name not in duplicates:
+            duplicates.append(column_name)
+            continue
+
+        seen.add(column_name)
+
+    return duplicates
+
+
 def build_fixed_entity_full_columns(columns: list[str], key_columns: list[str], public_id: str | None) -> list[str]:
     """Build the canonical full column order for fixed entities."""
     full_columns: list[str] = ["system_id"]
@@ -378,6 +393,11 @@ class FixedEntityTypeCoercer:
             FixedEntityShapeValidationError: If rows don't match column count
             FixedEntityTypeValidationError: If non-empty values are invalid types
         """
+        duplicate_columns = find_duplicate_fixed_entity_columns(columns)
+        if duplicate_columns:
+            duplicates = ", ".join(duplicate_columns)
+            raise FixedEntityShapeValidationError(f"Entity '{entity_name}' declares duplicate columns: {duplicates}")
+
         values = entity_data.get("values")
         if not values or not isinstance(values, list):
             return values or [], []
