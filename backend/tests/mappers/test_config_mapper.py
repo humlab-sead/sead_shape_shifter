@@ -592,9 +592,7 @@ class TestEdgeCases:
         result = ProjectMapper.to_api_config(core_dict, "test")
 
         assert result.entities["method"]["values"] == [[1, "53", "Sampling"]]
-        assert result.load_warnings == [
-            "Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)"
-        ]
+        assert result.load_warnings == ["Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)"]
 
 
 class TestProjectMapperIntegration:

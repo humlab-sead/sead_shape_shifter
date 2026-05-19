@@ -263,9 +263,7 @@ options:
 
             config = service.load_project("test")
 
-        assert config.load_warnings == [
-            "Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)"
-        ]
+        assert config.load_warnings == ["Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)"]
 
     def test_load_configuration_multiple_entities(self, simple_service: ProjectService, sample_config_file):
         """Test loading valid configuration with multiple entities."""

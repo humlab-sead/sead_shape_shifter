@@ -4,8 +4,8 @@ import pandas as pd
 from loguru import logger
 
 from src.loaders.base_loader import ConnectTestResult
-from src.types.fixed_entity_types import FixedEntityTypeCoercer
 from src.transforms.utility import add_system_id
+from src.types.fixed_entity_types import FixedEntityTypeCoercer
 
 from .base_loader import DataLoader, DataLoaders, LoaderType
 

@@ -3,17 +3,16 @@
 from typing import Any
 
 from src.model import TableConfig
+from src.transforms.dsl import FormulaEngine, extract_column_references
+from src.transforms.extra_columns import ExtraColumnEvaluator
+from src.transforms.filter import Filters, normalize_filter_stage
 from src.types.fixed_entity_types import (
     FixedEntityColumnTypeDeclarationError,
     build_fixed_entity_full_columns,
     is_valid_fixed_entity_value,
     normalize_fixed_entity_column_types,
-    resolve_fixed_entity_column_type,
     resolve_fixed_entity_runtime_type,
 )
-from src.transforms.dsl import FormulaEngine, extract_column_references
-from src.transforms.extra_columns import ExtraColumnEvaluator
-from src.transforms.filter import Filters, normalize_filter_stage
 from src.utility import Registry, dotget
 
 from .base import ProjectSpecification

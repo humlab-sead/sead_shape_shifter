@@ -1,9 +1,8 @@
 from typing import Any
 
-from loguru import logger
-
 import jpype
 import pytest
+from loguru import logger
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project

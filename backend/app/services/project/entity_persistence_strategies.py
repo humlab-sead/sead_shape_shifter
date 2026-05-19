@@ -89,8 +89,7 @@ class FixedEntityPersistenceStrategy:
                 if not is_valid_fixed_entity_value(value, expected_type_name):
                     raise SchemaValidationError(
                         message=(
-                            f"Column '{col_name}' row {row_idx}: expected {expected_type_name} or null, "
-                            f"got {type(value).__name__}"
+                            f"Column '{col_name}' row {row_idx}: expected {expected_type_name} or null, " f"got {type(value).__name__}"
                         ),
                         entity=entity_name,
                         field="values",

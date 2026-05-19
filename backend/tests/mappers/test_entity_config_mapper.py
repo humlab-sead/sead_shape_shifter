@@ -12,8 +12,7 @@ from backend.app.mappers.entity_config_mapper import (
     FileBasedEntityConfigMapper,
     FixedEntityConfigMapper,
 )
-from src.types.fixed_entity_types import FixedEntityColumnTypeDeclarationError
-from src.types.fixed_entity_types import FixedEntityTypeValidationError
+from src.types.fixed_entity_types import FixedEntityColumnTypeDeclarationError, FixedEntityTypeValidationError
 
 
 class TestEntityConfigMapperFactory:
