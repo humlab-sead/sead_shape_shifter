@@ -76,9 +76,9 @@ def normalize_fixed_entity_column_types(
     normalized_column_types: dict[str, FixedEntityColumnTypeName] = {}
 
     for column_name, declared_type in column_types.items():
-        normalized_type = str(declared_type).strip().lower()
+        normalized_type: str = str(declared_type).strip().lower()
         if normalized_type not in ALLOWED_FIXED_ENTITY_COLUMN_TYPES:
-            allowed_types = ", ".join(sorted(ALLOWED_FIXED_ENTITY_COLUMN_TYPES))
+            allowed_types: str = ", ".join(sorted(ALLOWED_FIXED_ENTITY_COLUMN_TYPES))
             raise FixedEntityColumnTypeDeclarationError(
                 entity_name=entity_name,
                 column_name=column_name,
@@ -108,7 +108,7 @@ def resolve_fixed_entity_column_type(
     if column_types and column_name in column_types:
         return column_types[column_name]
 
-    inferred_type = infer_fixed_entity_column_type(column_name)
+    inferred_type: type = infer_fixed_entity_column_type(column_name)
     return "int" if inferred_type is int else "string"
 
 
@@ -125,7 +125,7 @@ def resolve_fixed_entity_runtime_type(
     if column_types and column_name in column_types:
         return column_types[column_name]
 
-    inferred_type = infer_fixed_entity_column_type(column_name)
+    inferred_type: type = infer_fixed_entity_column_type(column_name)
     return "int" if inferred_type is int else None
 
 
@@ -186,12 +186,7 @@ def is_valid_fixed_entity_value(value: Any, target_type_name: str) -> bool:
 class FixedEntityTypeValidationError(ValueError):
     """Raised when fixed-entity type coercion finds non-empty invalid values."""
 
-    def __init__(
-        self,
-        *,
-        entity_name: str,
-        issues: list["FixedEntityTypeCoercer.CoercionIssue"],
-    ) -> None:
+    def __init__(self, *, entity_name: str, issues: list["FixedEntityTypeCoercer.CoercionIssue"]) -> None:
         self.entity_name: str = entity_name
         self.issues = issues
         msg: str = f"Entity '{entity_name}' has {len(issues)} invalid typed value(s) during coercion"
@@ -391,8 +386,7 @@ class FixedEntityTypeCoercer:
         for row_idx, row in enumerate(values):
             if len(row) != len(columns):
                 raise FixedEntityShapeValidationError(
-                    f"Entity '{entity_name}' row {row_idx} has {len(row)} values; "
-                    f"expected {len(columns)} based on declared columns"
+                    f"Entity '{entity_name}' row {row_idx} has {len(row)} values; " f"expected {len(columns)} based on declared columns"
                 )
 
         normalized_column_types = normalize_fixed_entity_column_types(
@@ -416,9 +410,7 @@ class FixedEntityTypeCoercer:
                     coerced_row.append(None if is_missing_fixed_entity_value(value) else value)
                     continue
 
-                coerced_value, error_reason = FixedEntityTypeCoercer.coerce_value(
-                    value, target_type_name
-                )
+                coerced_value, error_reason = FixedEntityTypeCoercer.coerce_value(value, target_type_name)
                 coerced_row.append(coerced_value)
 
                 if error_reason is not None:
@@ -449,8 +441,6 @@ class FixedEntityTypeCoercer:
 
         # Phase 3: Raise if any non-coercible values
         if issues:
-            raise FixedEntityTypeValidationError(
-                entity_name=entity_name, issues=issues
-            )
+            raise FixedEntityTypeValidationError(entity_name=entity_name, issues=issues)
 
         return coerced, warnings
