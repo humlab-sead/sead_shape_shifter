@@ -97,4 +97,27 @@ describe('FixedValuesGrid', () => {
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
     expect(wrapper.emitted('validation-errors')).toBeUndefined()
   })
+
+  it('wires compact header components for editable columns and removes detached controls', async () => {
+    const wrapper = shallowMount(FixedValuesGrid, {
+      props: {
+        modelValue: [[1, 53, 'Sampling']],
+        columns: ['system_id', 'method_id', 'name'],
+        columnTypes: {},
+        publicId: 'method_id',
+      },
+      global: {
+        stubs: {
+          AgGridVue: AgGridVueStub,
+        },
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.find('.column-type-controls').exists()).toBe(false)
+
+    expect(wrapper.html()).not.toContain('column-type-controls')
+    expect(wrapper.html()).toContain('headerheight="48"')
+  })
 })
