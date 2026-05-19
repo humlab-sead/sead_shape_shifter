@@ -107,9 +107,7 @@ class TestCoerceFixedEntityValues:
         columns = ["system_id", "method_id", "name"]
 
         with pytest.raises(FixedEntityShapeValidationError) as exc:
-            FixedEntityTypeCoercer.coerce_fixed_entity_values(
-                entity_data, columns, "test_entity"
-            )
+            FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "test_entity")
 
         assert "row 0 has 2 values; expected 3" in str(exc.value)
 
@@ -123,9 +121,7 @@ class TestCoerceFixedEntityValues:
         }
         columns = ["system_id", "method_id", "name"]
 
-        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(
-            entity_data, columns, "method"
-        )
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         assert result == entity_data["values"]
 
@@ -139,9 +135,7 @@ class TestCoerceFixedEntityValues:
         }
         columns = ["system_id", "method_id", "name"]
 
-        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(
-            entity_data, columns, "method"
-        )
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         # String integers should be coerced to int
         assert result[0][1] == 105
@@ -160,9 +154,7 @@ class TestCoerceFixedEntityValues:
         }
         columns = ["system_id", "method_id", "name"]
 
-        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(
-            entity_data, columns, "method"
-        )
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         assert result[1][1] is None
         assert result[2][1] is None
@@ -178,9 +170,7 @@ class TestCoerceFixedEntityValues:
         columns = ["system_id", "method_id", "name"]
 
         with pytest.raises(FixedEntityTypeValidationError) as exc:
-            FixedEntityTypeCoercer.coerce_fixed_entity_values(
-                entity_data, columns, "method"
-            )
+            FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         assert len(exc.value.issues) == 1
         issue = exc.value.issues[0]
@@ -200,9 +190,7 @@ class TestCoerceFixedEntityValues:
         columns = ["system_id", "method_id", "name"]
 
         with pytest.raises(FixedEntityTypeValidationError) as exc:
-            FixedEntityTypeCoercer.coerce_fixed_entity_values(
-                entity_data, columns, "method"
-            )
+            FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         assert len(exc.value.issues) == 1
         issue = exc.value.issues[0]
@@ -218,9 +206,7 @@ class TestCoerceFixedEntityValues:
         columns = ["system_id", "method_id", "name"]
 
         with pytest.raises(FixedEntityTypeValidationError) as exc:
-            FixedEntityTypeCoercer.coerce_fixed_entity_values(
-                entity_data, columns, "method"
-            )
+            FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         assert len(exc.value.issues) == 1
         issue = exc.value.issues[0]
@@ -238,9 +224,7 @@ class TestCoerceFixedEntityValues:
         columns = ["system_id", "method_id", "name"]
 
         with pytest.raises(FixedEntityTypeValidationError) as exc:
-            FixedEntityTypeCoercer.coerce_fixed_entity_values(
-                entity_data, columns, "method"
-            )
+            FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         # Both row 0 and row 2 should have issues
         assert len(exc.value.issues) == 2
@@ -249,18 +233,8 @@ class TestCoerceFixedEntityValues:
 
     def test_empty_values_returns_empty_list(self) -> None:
         """Empty or missing values should return empty list."""
-        assert (
-            FixedEntityTypeCoercer.coerce_fixed_entity_values(
-                {"values": None}, ["col1"], "test"
-            )
-            == []
-        )
-        assert (
-            FixedEntityTypeCoercer.coerce_fixed_entity_values(
-                {"values": []}, ["col1"], "test"
-            )
-            == []
-        )
+        assert FixedEntityTypeCoercer.coerce_fixed_entity_values({"values": None}, ["col1"], "test") == []
+        assert FixedEntityTypeCoercer.coerce_fixed_entity_values({"values": []}, ["col1"], "test") == []
 
     def test_multicolumn_mixed_types(self) -> None:
         """Test coercion with multiple _id and non-_id columns."""
@@ -277,9 +251,7 @@ class TestCoerceFixedEntityValues:
             "sead_method_group_id",
         ]
 
-        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(
-            entity_data, columns, "method"
-        )
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         # First row: strings coerced to int for _id columns
         assert result[0] == [1, 105, "method_name", 17]
@@ -298,9 +270,7 @@ class TestCoerceFixedEntityValues:
         columns = ["system_id", "method_id", "name"]
 
         # With the coercer, string integers are normalized successfully
-        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(
-            entity_data, columns, "method"
-        )
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         # All method_id values are now integers (including the string "53")
         assert result[0][1] == 105
@@ -318,9 +288,7 @@ class TestCoerceFixedEntityValues:
         }
         columns = ["system_id", "method_id", "name"]
 
-        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(
-            entity_data, columns, "method"
-        )
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         assert result[0][1] == -105
         assert result[1][1] == -76
@@ -335,9 +303,7 @@ class TestCoerceFixedEntityValues:
         }
         columns = ["system_id", "method_id", "name"]
 
-        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(
-            entity_data, columns, "method"
-        )
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         assert result[0][1] == 0
         assert result[1][1] == 0
@@ -352,9 +318,7 @@ class TestCoerceFixedEntityValues:
         }
         columns = ["system_id", "rank", "name"]
 
-        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(
-            entity_data, columns, "method"
-        )
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         assert result == [[1, 7, "Sampling"]]
 
@@ -368,9 +332,7 @@ class TestCoerceFixedEntityValues:
         }
         columns = ["system_id", "taxon_name", "abundance"]
 
-        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(
-            entity_data, columns, "abundance_source"
-        )
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "abundance_source")
 
         assert result == [[1, "Oak", 12], [2, "Pine", 8]]
 
@@ -382,9 +344,7 @@ class TestCoerceFixedEntityValues:
         }
         columns = ["system_id", "is_active", "created_at"]
 
-        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(
-            entity_data, columns, "method"
-        )
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         assert result == [[1, True, "2026-05-19"]]
 
@@ -397,9 +357,7 @@ class TestCoerceFixedEntityValues:
         columns = ["system_id", "rank", "name"]
 
         with pytest.raises(FixedEntityColumnTypeDeclarationError) as exc:
-            FixedEntityTypeCoercer.coerce_fixed_entity_values(
-                entity_data, columns, "method"
-            )
+            FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         assert "unsupported type 'integer'" in str(exc.value)
 
