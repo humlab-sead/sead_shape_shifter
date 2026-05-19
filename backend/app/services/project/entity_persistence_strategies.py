@@ -8,6 +8,13 @@ import pandas as pd
 
 from backend.app.exceptions import SchemaValidationError
 from backend.app.utils.fixed_schema import build_fixed_full_columns, normalize_fixed_entity
+from src.types.fixed_entity_types import (
+    FixedEntityColumnTypeDeclarationError,
+    build_fixed_entity_full_columns,
+    is_valid_fixed_entity_value,
+    normalize_fixed_entity_column_types,
+    resolve_fixed_entity_runtime_type,
+)
 
 
 class EntityPersistenceStrategy(Protocol):
@@ -44,6 +51,50 @@ class DefaultEntityPersistenceStrategy:
 
 class FixedEntityPersistenceStrategy:
     """Persistence strategy for fixed entities."""
+
+    @staticmethod
+    def _validate_types(entity_name: str, entity_data: dict[str, Any]) -> None:
+        """Ensure fixed-entity values match declared or inferred backend types before persisting."""
+        columns = entity_data.get("columns")
+        if not isinstance(columns, list):
+            return
+
+        values = entity_data.get("values")
+        if not isinstance(values, list) or not values:
+            return
+
+        try:
+            column_types = normalize_fixed_entity_column_types(entity_name, columns, entity_data.get("column_types"))
+        except FixedEntityColumnTypeDeclarationError as exc:
+            raise SchemaValidationError(message=str(exc), entity=entity_name, field="column_types") from exc
+
+        raw_keys = entity_data.get("keys")
+        keys: list[str] = [key for key in raw_keys if isinstance(key, str)] if isinstance(raw_keys, list) else []
+        public_id = entity_data.get("public_id") if isinstance(entity_data.get("public_id"), str) else None
+        full_columns = build_fixed_entity_full_columns(columns, keys, public_id)
+
+        for row_idx, row in enumerate(values):
+            row_columns = columns if len(row) == len(columns) else full_columns
+
+            for col_idx, value in enumerate(row):
+                if value is None:
+                    continue
+
+                col_name = row_columns[col_idx]
+                expected_type_name = resolve_fixed_entity_runtime_type(col_name, column_types)
+
+                if expected_type_name is None:
+                    continue
+
+                if not is_valid_fixed_entity_value(value, expected_type_name):
+                    raise SchemaValidationError(
+                        message=(
+                            f"Column '{col_name}' row {row_idx}: expected {expected_type_name} or null, "
+                            f"got {type(value).__name__}"
+                        ),
+                        entity=entity_name,
+                        field="values",
+                    )
 
     @staticmethod
     def _validate_fixed_entity_shape(entity_name: str, entity_data: dict[str, Any]) -> None:
@@ -101,6 +152,8 @@ class FixedEntityPersistenceStrategy:
                 entity=entity_name,
                 field="values",
             )
+
+        FixedEntityPersistenceStrategy._validate_types(entity_name, entity_data)
 
     def prepare_for_persistence(self, entity_name: str, entity_data: dict[str, Any]) -> dict[str, Any]:
         self._validate_fixed_entity_shape(entity_name, entity_data)

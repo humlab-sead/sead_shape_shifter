@@ -10,6 +10,11 @@
         </v-btn>
       </div>
     </div>
+
+    <v-alert v-if="validationErrors.length > 0" type="error" variant="tonal" density="compact" class="mb-2">
+      <div v-for="error in validationErrors" :key="error" class="text-caption">{{ error }}</div>
+    </v-alert>
+
     <ag-grid-vue class="ag-theme-alpine compact-grid" :style="{ height: gridHeight }" :columnDefs="columnDefs"
       :rowData="rowData" :getRowId="getRowId" :defaultColDef="defaultColDef" :rowSelection="'multiple'"
       :suppressRowClickSelection="true" :animateRows="true" :headerHeight="28" :rowHeight="26" :singleClickEdit="true"
@@ -19,17 +24,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import type { ColDef, GridApi, GridReadyEvent, CellValueChangedEvent, GetRowIdParams } from 'ag-grid-community'
-import { applyClipboardMatrix, buildGridRowData, parseClipboardTable } from './fixedValuesGridClipboard'
+import type { CellValueChangedEvent, ColDef, GetRowIdParams, GridApi, GridReadyEvent } from 'ag-grid-community'
+import {
+  applyClipboardMatrix,
+  buildGridRowData,
+  coerceGridRows,
+  coerceGridValue,
+  inferColumnType,
+  parseClipboardTable,
+} from './fixedValuesGridClipboard'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
 interface Props {
-  modelValue: any[][] // 2D array of values (includes all columns)
-  columns: string[] // All column names including system_id and public_id
-  publicId?: string // Name of the public_id column (for special styling)
+  modelValue: any[][]
+  columns: string[]
+  publicId?: string
   height?: string
 }
 
@@ -40,13 +52,14 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: any[][]]
+  'validation-errors': [value: string[]]
 }>()
 
 const gridApi = ref<GridApi>()
 const hasSelection = ref(false)
 const lastEmittedModelSignature = ref<string | null>(null)
+const validationErrors = ref<string[]>([])
 
-// Grid configuration
 const gridHeight = computed(() => props.height)
 const systemIdColumnIndex = computed(() => props.columns.findIndex((col) => col === 'system_id'))
 
@@ -59,8 +72,24 @@ const defaultColDef: ColDef = {
   flex: 1,
 }
 
-// Generate column definitions from props.columns
-// Detect system_id and public_id columns and apply special behavior
+function setValidationErrors(errors: string[]) {
+  validationErrors.value = errors
+  emit('validation-errors', errors)
+}
+
+function clearValidationErrors() {
+  if (validationErrors.value.length === 0) {
+    return
+  }
+
+  validationErrors.value = []
+  emit('validation-errors', [])
+}
+
+function formatValidationError(columnName: string, rowIndex: number, error: string): string {
+  return `Row ${rowIndex + 1}, column ${columnName}: ${error}`
+}
+
 const columnDefs = computed<ColDef[]>(() => {
   if (!props.columns || props.columns.length === 0) {
     return []
@@ -83,23 +112,33 @@ const columnDefs = computed<ColDef[]>(() => {
     ...props.columns.map((col, index) => {
       const isSystemId = col === 'system_id'
       const isPublicId = col === props.publicId
+      const isIntegerColumn = inferColumnType(col) === 'number'
 
       return {
         field: `col_${index}`,
         headerName: col,
-        // system_id is read-only, others are editable
         editable: !isSystemId,
         sortable: true,
         filter: true,
         resizable: true,
         minWidth: 100,
         flex: 1,
-        // Ensure system_id is always an integer
-        valueParser: isSystemId ? (params: any) => {
-          const val = params.newValue
-          return val !== null && val !== undefined ? parseInt(String(val), 10) : val
-        } : undefined,
-        // Apply special styling
+        valueParser: isSystemId ? undefined : (params: any) => {
+          const result = coerceGridValue(col, params.newValue, params.oldValue)
+
+          if (result.error) {
+            setValidationErrors([
+              formatValidationError(col, params.node?.rowIndex ?? 0, result.error),
+            ])
+            return params.oldValue
+          }
+
+          if (isIntegerColumn) {
+            clearValidationErrors()
+          }
+
+          return result.value
+        },
         cellClass: isSystemId ? 'system-id-column' : (isPublicId ? 'public-id-column' : ''),
         headerClass: isSystemId ? 'system-id-header' : (isPublicId ? 'public-id-header' : ''),
       }
@@ -107,8 +146,6 @@ const columnDefs = computed<ColDef[]>(() => {
   ]
 })
 
-// Convert 2D array to row objects for ag-grid
-// Preserve actual system_id values from YAML (critical for FK relationship stability)
 const rowData = computed(() => {
   if (!props.modelValue || props.modelValue.length === 0) {
     return []
@@ -130,13 +167,18 @@ function serializeModelValue(rows: any[][]): string {
 }
 
 function emitModelValueUpdate(rows: any[][]) {
-  lastEmittedModelSignature.value = serializeModelValue(rows)
-  emit('update:modelValue', rows)
+  const coerced = coerceGridRows(props.columns, rows)
+  if (coerced.errors.length > 0) {
+    setValidationErrors(coerced.errors)
+    return
+  }
+
+  clearValidationErrors()
+  lastEmittedModelSignature.value = serializeModelValue(coerced.rows)
+  emit('update:modelValue', coerced.rows)
 }
 
 function onCellValueChanged(_event: CellValueChangedEvent) {
-  // Cell value has changed - emit update
-  // No need to stop editing here as the change has already been committed
   const allRows = getAllRows(false)
   emitModelValueUpdate(allRows)
 }
@@ -147,19 +189,18 @@ function onSelectionChanged() {
 }
 
 function getAllRows(stopEditing = false): any[][] {
-  if (!gridApi.value) return []
+  if (!gridApi.value) {
+    return []
+  }
 
   if (stopEditing) {
-    // Commit any in-progress edit before reading grid data.
     gridApi.value.stopEditing()
   }
 
   const rows: any[][] = []
   gridApi.value.forEachNode((node) => {
     const row: any[] = []
-    // Save ALL column values including system_id and public_id
-    // The columns field in YAML includes all columns, values must match
-    for (let i = 0; i < props.columns.length; i++) {
+    for (let i = 0; i < props.columns.length; i += 1) {
       const value = node.data[`col_${i}`]
       row.push(value ?? null)
     }
@@ -169,15 +210,14 @@ function getAllRows(stopEditing = false): any[][] {
 }
 
 function getMaxSystemId(): number {
-  /**
-   * Get the maximum system_id value from current rows.
-   * Critical for maintaining stable identity when adding new rows.
-   * Returns 0 if no rows exist or system_id column not found.
-   */
-  if (!gridApi.value) return 0
+  if (!gridApi.value) {
+    return 0
+  }
 
   const systemIdIndex = props.columns.findIndex((col) => col === 'system_id')
-  if (systemIdIndex === -1) return 0
+  if (systemIdIndex === -1) {
+    return 0
+  }
 
   let maxId = 0
   gridApi.value.forEachNode((node) => {
@@ -195,10 +235,8 @@ function getMaxSystemId(): number {
 
 function createEmptyRowValues(nextSystemId: number): any[] {
   const newRow: any[] = []
-  for (let i = 0; i < props.columns.length; i++) {
+  for (let i = 0; i < props.columns.length; i += 1) {
     const columnName = props.columns[i]
-    // CRITICAL: Use max(system_id) + 1, not rowCount + 1
-    // This maintains stable identity even when rows are deleted
     if (columnName === 'system_id') {
       newRow.push(nextSystemId)
     } else {
@@ -209,12 +247,14 @@ function createEmptyRowValues(nextSystemId: number): any[] {
   return newRow
 }
 
-function createEmptyRow(nextSystemId: number): any {
+function createEmptyRow(nextSystemId: number): Record<string, any> {
   return buildGridRowData([createEmptyRowValues(nextSystemId)], systemIdColumnIndex.value)[0] ?? { id: nextSystemId }
 }
 
 function addRow() {
-  if (!gridApi.value) return
+  if (!gridApi.value) {
+    return
+  }
 
   gridApi.value.stopEditing()
 
@@ -224,23 +264,24 @@ function addRow() {
 
   gridApi.value.applyTransaction({ add: [newRow] })
 
-  // Update model
   const allRows = getAllRows(false)
   emitModelValueUpdate(allRows)
 }
 
 function deleteSelectedRows() {
-  if (!gridApi.value) return
+  if (!gridApi.value) {
+    return
+  }
 
-  // Stop any active editing before deleting rows
   gridApi.value.stopEditing()
 
   const selectedRows = gridApi.value.getSelectedRows()
-  if (selectedRows.length === 0) return
+  if (selectedRows.length === 0) {
+    return
+  }
 
   gridApi.value.applyTransaction({ remove: selectedRows })
 
-  // Update model
   const allRows = getAllRows(false)
   emitModelValueUpdate(allRows)
 
@@ -248,15 +289,19 @@ function deleteSelectedRows() {
 }
 
 function getFocusedGridColumnIndex(): number {
-  if (!gridApi.value) return -1
+  if (!gridApi.value) {
+    return -1
+  }
 
   const focusedCell = gridApi.value.getFocusedCell()
-  if (!focusedCell?.column) return -1
+  if (!focusedCell?.column) {
+    return -1
+  }
 
   const colId = focusedCell.column.getColId()
-
-  // Ignore the checkbox selection column
-  if (!colId.startsWith('col_')) return -1
+  if (!colId.startsWith('col_')) {
+    return -1
+  }
 
   const match = colId.match(/^col_(\d+)$/)
   const indexText = match?.[1]
@@ -264,17 +309,22 @@ function getFocusedGridColumnIndex(): number {
 }
 
 function onPaste(event: ClipboardEvent) {
-  if (!gridApi.value) return
+  if (!gridApi.value) {
+    return
+  }
 
   const text = event.clipboardData?.getData('text/plain')
-  if (!text) return
+  if (!text) {
+    return
+  }
 
   const focusedCell = gridApi.value.getFocusedCell()
-  if (!focusedCell) return
+  if (!focusedCell) {
+    return
+  }
 
   const startRowIndex = focusedCell.rowIndex
   const startColIndex = getFocusedGridColumnIndex()
-
   if (startRowIndex == null || startColIndex < 0) {
     return
   }
@@ -288,7 +338,7 @@ function onPaste(event: ClipboardEvent) {
   gridApi.value.stopEditing()
 
   let nextSystemId = getMaxSystemId()
-  const allRows = applyClipboardMatrix({
+  const pasteResult = applyClipboardMatrix({
     rows: getAllRows(false),
     columns: props.columns,
     startRowIndex,
@@ -300,18 +350,34 @@ function onPaste(event: ClipboardEvent) {
     },
   })
 
-  gridApi.value.setGridOption('rowData', buildGridRowData(allRows, systemIdColumnIndex.value))
-  emitModelValueUpdate(allRows)
+  if (pasteResult.errors.length > 0) {
+    setValidationErrors(pasteResult.errors)
+  } else {
+    clearValidationErrors()
+  }
+
+  gridApi.value.setGridOption('rowData', buildGridRowData(pasteResult.rows, systemIdColumnIndex.value))
+  emitModelValueUpdate(pasteResult.rows)
 }
 
-// Watch for external changes to modelValue
 watch(
   () => props.modelValue,
   (newValue) => {
-    const incomingSignature = serializeModelValue(newValue || [])
+    const incomingRows = newValue || []
+    const incomingSignature = serializeModelValue(incomingRows)
 
-    // Skip resetting rowData when the change originated from this grid edit.
     if (incomingSignature === lastEmittedModelSignature.value) {
+      return
+    }
+
+    const coerced = coerceGridRows(props.columns, incomingRows)
+    const coercedSignature = serializeModelValue(coerced.rows)
+
+    if (coerced.errors.length > 0) {
+      setValidationErrors(coerced.errors)
+    } else if (coercedSignature !== incomingSignature) {
+      clearValidationErrors()
+      emitModelValueUpdate(incomingRows)
       return
     }
 
@@ -319,7 +385,7 @@ watch(
       gridApi.value.setGridOption('rowData', rowData.value)
     }
   },
-  { deep: true }
+  { deep: true, immediate: true },
 )
 </script>
 
@@ -391,7 +457,6 @@ watch(
   background: rgba(var(--v-theme-primary), 0.08) !important;
 }
 
-/* system_id column - read-only, auto-numbered */
 .compact-grid :deep(.system-id-column) {
   background: rgba(var(--v-theme-surface), 0.5) !important;
   font-style: italic;
@@ -403,7 +468,6 @@ watch(
   font-weight: 700;
 }
 
-/* public_id column - editable, highlighted */
 .compact-grid :deep(.public-id-column) {
   background: rgba(var(--v-theme-primary), 0.05) !important;
   font-weight: 500;

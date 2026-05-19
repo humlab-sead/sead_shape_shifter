@@ -3,7 +3,7 @@
 This provides type-specific transformations for different entity types:
 - File-based entities (CSV, Excel, Fixed Width) -> filename/location resolution
 - Database entities (SQL) -> no-op
-- Fixed entities -> no-op
+- Fixed entities -> fixed-value type coercion
 
 Architecture:
 - EntityConfigMapper: Protocol defining the interface
@@ -20,6 +20,7 @@ from loguru import logger
 
 from backend.app.core.config import Settings
 from backend.app.utils.file_path_resolver import FilePathResolver
+from src.types.fixed_entity_types import FixedEntityTypeCoercer
 
 # p pylint: disable=too-few-public-methods
 
@@ -162,6 +163,28 @@ class FileBasedEntityConfigMapper(EntityConfigMapper):
         return config
 
 
+class FixedEntityConfigMapper(EntityConfigMapper):
+    """Mapper for fixed entities with load-time type coercion."""
+
+    def to_api(self, config: dict[str, Any], project_name: str) -> dict[str, Any]:
+        """Return config unchanged for API serialization."""
+        return config
+
+    def to_core(self, config: dict[str, Any], project_name: str) -> dict[str, Any]:
+        """Coerce fixed entity values to their inferred in-memory types."""
+        columns = config.get("columns", [])
+        if not isinstance(columns, list) or not columns:
+            return config
+
+        entity_name = str(config.get("name") or "<unknown>")
+        config["values"] = FixedEntityTypeCoercer.coerce_fixed_entity_values(
+            config,
+            columns,
+            entity_name=entity_name,
+        )
+        return config
+
+
 class EntityConfigMapperFactory:
     """Factory for creating appropriate entity config mappers based on entity type.
 
@@ -178,11 +201,13 @@ class EntityConfigMapperFactory:
             settings: Application settings for path resolution
         """
         self._file_mapper = FileBasedEntityConfigMapper(settings)
+        self._fixed_mapper = FixedEntityConfigMapper(settings)
         self._default_mapper = DefaultEntityConfigMapper(settings)
         self._mapper_cache: dict[str, EntityConfigMapper] = {
             "csv": self._file_mapper,
             "xlsx": self._file_mapper,
             "openpyxl": self._file_mapper,
+            "fixed": self._fixed_mapper,
         }
 
     def get_mapper(self, entity_type: str) -> EntityConfigMapper:
