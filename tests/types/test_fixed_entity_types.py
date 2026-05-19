@@ -97,6 +97,17 @@ class TestCoerceValue:
 class TestCoerceFixedEntityValues:
     """Test full coercion pipeline with shape and type validation."""
 
+    def test_single_column_scalar_values_are_normalized_for_backward_compatibility(self) -> None:
+        """Legacy single-column fixed entities may still provide a flat scalar list."""
+        entity_data = {
+            "values": ["gebäud", "okBefu", "okErh"],
+        }
+        columns = ["arbodat_code"]
+
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "feature_property_type")
+
+        assert result == [["gebäud"], ["okBefu"], ["okErh"]]
+
     def test_shape_validation_is_hard_gate(self) -> None:
         """Shape validation should reject before type coercion."""
         entity_data = {
@@ -110,6 +121,18 @@ class TestCoerceFixedEntityValues:
             FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "test_entity")
 
         assert "row 0 has 2 values; expected 3" in str(exc.value)
+
+    def test_scalar_values_remain_invalid_for_multi_column_entities(self) -> None:
+        """Scalar rows should still fail when more than one column is declared."""
+        entity_data = {
+            "values": ["abc"],
+        }
+        columns = ["method_code", "method_name"]
+
+        with pytest.raises(FixedEntityShapeValidationError) as exc:
+            FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
+
+        assert "row 0 is scalar-valued; expected a list with 2 values" in str(exc.value)
 
     def test_simple_coercion_all_integers(self) -> None:
         """Coerce all-integer fixed entity."""
