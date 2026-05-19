@@ -21,6 +21,7 @@ export interface Project {
   entities: Record<string, Entity>
   options?: Record<string, any>
   metadata?: ProjectMetadata | null
+  load_warnings?: string[]
 }
 
 export interface ProjectFileInfo {

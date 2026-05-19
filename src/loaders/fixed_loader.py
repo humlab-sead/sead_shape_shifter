@@ -4,6 +4,7 @@ import pandas as pd
 from loguru import logger
 
 from src.loaders.base_loader import ConnectTestResult
+from src.types.fixed_entity_types import FixedEntityTypeCoercer
 from src.transforms.utility import add_system_id
 
 from .base_loader import DataLoader, DataLoaders, LoaderType
@@ -30,8 +31,11 @@ class FixedLoader(DataLoader):
         raw_values: list[Any] | None = table_cfg.values if isinstance(table_cfg.values, list) else None
 
         if raw_values and isinstance(raw_values[0], dict):
-            # Values came from @load: directive - columns are embedded as dict keys
-            data = pd.DataFrame(raw_values)
+            # Values came from @load: directive - normalize to fixed-safe row values first.
+            resolved_columns: list[str] = table_cfg.columns or list(raw_values[0].keys())
+            values = [[row.get(column) for column in resolved_columns] for row in raw_values]
+            coerced_values = self._coerce_loaded_values(entity_name, table_cfg, resolved_columns, values)
+            data = pd.DataFrame(coerced_values, columns=resolved_columns)
         else:
             values: list[list[Any]] = table_cfg.safe_values
             columns: list[str] = table_cfg.columns
@@ -41,9 +45,10 @@ class FixedLoader(DataLoader):
                 return pd.DataFrame()
 
             resolved_columns: list[str] = self._resolve_columns_for_values(entity_name, table_cfg, columns, values)
+            coerced_values = self._coerce_loaded_values(entity_name, table_cfg, resolved_columns, values)
 
             try:
-                data = pd.DataFrame(values, columns=resolved_columns)
+                data = pd.DataFrame(coerced_values, columns=resolved_columns)
             except ValueError as exc:
                 raise ValueError(f"Fixed data entity '{entity_name}' failed to build DataFrame: {exc}") from exc
 
@@ -52,6 +57,26 @@ class FixedLoader(DataLoader):
             data = add_system_id(data, table_cfg.system_id)
 
         return data
+
+    @staticmethod
+    def _coerce_loaded_values(
+        entity_name: str,
+        table_cfg: "TableConfig",
+        columns: list[str],
+        values: list[list[Any]],
+    ) -> list[list[Any]]:
+        """Normalize loaded fixed values before building the DataFrame."""
+        if not values:
+            return values
+
+        return FixedEntityTypeCoercer.coerce_fixed_entity_values(
+            {
+                "values": values,
+                "column_types": table_cfg.column_types,
+            },
+            columns,
+            entity_name,
+        )
 
     def validate(self, entity_name: str, table_cfg: "TableConfig") -> None:
         """Validate the fixed data entity configuration."""

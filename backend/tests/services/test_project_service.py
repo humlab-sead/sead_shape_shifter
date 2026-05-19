@@ -240,6 +240,33 @@ options:
             assert config.metadata.file_path == str(file_path)
             assert config.metadata.entity_count == 1
 
+    def test_load_configuration_includes_fixed_entity_normalization_warnings(
+        self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict
+    ):
+        """Loading a project should surface successful fixed-entity normalizations as warnings."""
+        test_dir = temp_config_dir / "test"
+        test_dir.mkdir()
+
+        fixed_project = deepcopy(sample_yaml_dict)
+        fixed_project["entities"] = {
+            "method": {
+                "type": "fixed",
+                "columns": ["system_id", "method_id", "name"],
+                "values": [[1, "53", "Sampling"]],
+            }
+        }
+
+        (test_dir / "shapeshifter.yml").write_text(yaml.dump(fixed_project))
+
+        with patch.object(service, "state") as mock_state:
+            mock_state.get.return_value = None
+
+            config = service.load_project("test")
+
+        assert config.load_warnings == [
+            "Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)"
+        ]
+
     def test_load_configuration_multiple_entities(self, simple_service: ProjectService, sample_config_file):
         """Test loading valid configuration with multiple entities."""
         config = simple_service.load_project("test_project")
@@ -544,6 +571,119 @@ options:
         strategy = registry.get_strategy({"type": "sql"})
 
         assert isinstance(strategy, DefaultEntityPersistenceStrategy)
+
+    def test_fixed_entity_persistence_rejects_string_ids(self):
+        """Fixed persistence should reject non-integer _id values before save."""
+        strategy = FixedEntityPersistenceStrategy()
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "method_id",
+            "keys": ["name"],
+            "columns": ["system_id", "method_id", "name"],
+            "values": [[1, "53", "Sampling"]],
+        }
+
+        with pytest.raises(SchemaValidationError, match="expected int or null"):
+            strategy.prepare_for_persistence("method", entity_data)
+
+    def test_fixed_entity_persistence_rejects_bool_ids(self):
+        """Fixed persistence should reject booleans in _id columns before save."""
+        strategy = FixedEntityPersistenceStrategy()
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "method_id",
+            "keys": ["name"],
+            "columns": ["system_id", "method_id", "name"],
+            "values": [[1, True, "Sampling"]],
+        }
+
+        with pytest.raises(SchemaValidationError, match="expected int or null"):
+            strategy.prepare_for_persistence("method", entity_data)
+
+    def test_fixed_entity_persistence_accepts_strict_integer_ids(self):
+        """Fixed persistence should accept strict integer _id values."""
+        strategy = FixedEntityPersistenceStrategy()
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "method_id",
+            "keys": ["name"],
+            "columns": ["system_id", "method_id", "name"],
+            "values": [[1, 53, "Sampling"]],
+        }
+
+        result = strategy.prepare_for_persistence("method", entity_data)
+
+        assert result["columns"] == ["system_id", "method_id", "name"]
+        assert result["values"] == [[1, 53, "Sampling"]]
+
+    def test_fixed_entity_persistence_accepts_declared_int_columns(self):
+        """Declared column_types should validate non-_id columns during persistence."""
+        strategy = FixedEntityPersistenceStrategy()
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "method_id",
+            "keys": ["name"],
+            "columns": ["system_id", "rank", "name"],
+            "column_types": {"rank": "int"},
+            "values": [[1, 7, "Sampling"]],
+        }
+
+        result = strategy.prepare_for_persistence("method", entity_data)
+
+        assert result["column_types"] == {"rank": "int"}
+        assert result["values"] == [[1, 7, "Sampling"]]
+
+    def test_fixed_entity_persistence_accepts_undeclared_non_id_numeric_values(self):
+        """Undeclared non-_id numeric columns should not be rejected during persistence."""
+        strategy = FixedEntityPersistenceStrategy()
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "abundance_id",
+            "keys": ["label"],
+            "columns": ["system_id", "label", "abundance"],
+            "values": [[1, "Oak", 12]],
+        }
+
+        result = strategy.prepare_for_persistence("abundance_source", entity_data)
+
+        assert result["values"] == [[1, "Oak", 12]]
+
+    def test_fixed_entity_persistence_rejects_invalid_declared_int_columns(self):
+        """Declared int columns should reject string values before save."""
+        strategy = FixedEntityPersistenceStrategy()
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "method_id",
+            "keys": ["name"],
+            "columns": ["system_id", "rank", "name"],
+            "column_types": {"rank": "int"},
+            "values": [[1, "7", "Sampling"]],
+        }
+
+        with pytest.raises(SchemaValidationError, match="expected int or null"):
+            strategy.prepare_for_persistence("method", entity_data)
+
+    def test_fixed_entity_persistence_rejects_unsupported_declared_column_types(self):
+        """Unsupported fixed column_types should fail fast during persistence."""
+        strategy = FixedEntityPersistenceStrategy()
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "method_id",
+            "keys": ["name"],
+            "columns": ["system_id", "rank", "name"],
+            "column_types": {"rank": "integer"},
+            "values": [[1, 7, "Sampling"]],
+        }
+
+        with pytest.raises(SchemaValidationError, match="unsupported type 'integer'"):
+            strategy.prepare_for_persistence("method", entity_data)
 
     def test_entity_operations_uses_injected_persistence_strategy_registry(self):
         """EntityOperations should delegate preparation to the injected registry."""

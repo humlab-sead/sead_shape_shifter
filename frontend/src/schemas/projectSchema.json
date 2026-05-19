@@ -177,6 +177,14 @@
       ],
       "default": null,
       "description": "Project metadata"
+    },
+    "load_warnings": {
+      "description": "Non-fatal normalization warnings detected while loading",
+      "items": {
+        "type": "string"
+      },
+      "title": "Load Warnings",
+      "type": "array"
     }
   },
   "title": "ShapeShifter Project Configuration",

@@ -197,6 +197,16 @@ docker logs shape-shifter --tail 50
 
 Smoke-check the UI by opening `http://<host>:8012/` in a browser. Confirm the project list loads and the API docs are reachable at `http://<host>:8012/api/v1/docs`.
 
+For projects that include fixed entities, open at least one representative project after deployment and check for a `Load-Time Normalizations Detected` warning banner in the project detail view. That banner means the backend normalized coercible fixed-entity values in memory during load, typically string values in `_id` columns such as `"53" -> 53`.
+
+If the banner appears:
+
+- review the listed entity, row, and column details before making other changes
+- confirm the normalization is expected for that project
+- save the project only if you want the normalized values written back to YAML
+
+Project files are not mutated on load. Normalized values are written only on explicit save, and the normal pre-save backup flow still applies.
+
 ---
 
 ## Rollback
@@ -238,6 +248,33 @@ docker logs shape-shifter  # container stdout
 
 Log level is controlled by `SHAPE_SHIFTER_LOG_LEVEL` (default `INFO`).
 
+### Fixed-entity normalization signals
+
+When a project load encounters coercible fixed-entity values, the backend emits a warning-level log entry beginning with `Fixed entity normalization on load`. Each entry includes:
+
+- project name
+- source file path
+- entity name
+- row number
+- column name
+- original value
+- normalized value
+- target type
+
+These warnings are also returned to the frontend and shown in the project detail view as a `Load-Time Normalizations Detected` banner.
+
+Operational meaning:
+
+- warning present: the load succeeded, but the in-memory project differs from the YAML file for the listed fixed-entity values
+- no banner and no warning log: no successful fixed-entity normalization was needed during that load
+- invalid non-coercible values are not converted into warnings; they continue to fail through the normal validation and save paths
+
+Operator response:
+
+- inspect the warning list in the UI or the matching log entries
+- decide whether the normalization is expected
+- save the project to persist the corrected values, or restore/edit the YAML manually if the values should not be normalized
+
 ### Alerting
 
 TBD — no alerting infrastructure is currently configured.
@@ -249,6 +286,8 @@ TBD — no alerting infrastructure is currently configured.
 ### Automatic project backups
 
 The application writes a timestamped backup of each project YAML to `/app/backups/` before every save. These are accessible on the host at `docker/data/backups/`. No retention policy is enforced automatically; prune old backups manually as needed.
+
+This includes explicit saves performed after load-time fixed-entity normalizations. Loading a project does not create a backup by itself because no file is modified until an operator saves.
 
 ### Manual backup
 

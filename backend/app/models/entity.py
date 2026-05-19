@@ -155,6 +155,10 @@ class Entity(BaseModel):
     keys: list[str] = Field(default_factory=list, description="Business/natural key columns from source data")
 
     columns: list[str] = Field(default_factory=list, description="Columns to extract")
+    column_types: dict[str, str] | None = Field(
+        default=None,
+        description="Optional explicit fixed-entity column type declarations (for example int, string, float, bool, date)",
+    )
     extra_columns: dict[str, Any] = Field(default_factory=dict, description="Additional computed columns")
     foreign_keys: list[ForeignKeyConfig] = Field(default_factory=list, description="Foreign key relationships")
     unnest: UnnestConfig | None = Field(default=None, description="Unnest configuration")

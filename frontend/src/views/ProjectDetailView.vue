@@ -76,6 +76,16 @@
     <!-- Main Content -->
     <v-row v-else-if="selectedProject">
       <v-col cols="12">
+        <v-alert v-if="loadWarnings.length > 0" type="warning" variant="tonal" class="mb-4">
+          <v-alert-title>Load-Time Normalizations Detected</v-alert-title>
+          <div class="text-body-2 mb-2">
+            Coercible fixed-entity values were normalized in memory while loading. Save the project to persist these changes.
+          </div>
+          <ul class="pl-4 mb-0">
+            <li v-for="warning in loadWarnings" :key="warning">{{ warning }}</li>
+          </ul>
+        </v-alert>
+
         <v-tabs v-model="activeTab" bg-color="transparent">
           <v-tab value="entities">
             <v-icon icon="mdi-cube-outline" class="mr-2" />
@@ -1202,6 +1212,8 @@ const validationChipText = computed(() => {
   if (hasWarnings.value) return `${warningCount.value} warnings`
   return 'Valid'
 })
+
+const loadWarnings = computed(() => selectedProject.value?.load_warnings ?? [])
 
 const isDark = computed(() => theme.global.current.value.dark)
 

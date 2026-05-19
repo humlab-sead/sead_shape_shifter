@@ -37,10 +37,68 @@ from backend.app.models import (
 from backend.app.utils import convert_ruamel_types
 from src.configuration.config import Config
 from src.model import ShapeShiftProject
+from src.types.fixed_entity_types import (
+    FixedEntityColumnTypeDeclarationError,
+    FixedEntityNormalizationWarning,
+    FixedEntityShapeValidationError,
+    FixedEntityTypeCoercer,
+    FixedEntityTypeValidationError,
+    format_fixed_entity_normalization_warning,
+)
 
 
 class ProjectMapper:
     """Bidirectional mapper between core and API project models."""
+
+    @staticmethod
+    def _collect_load_warnings(cfg_dict: dict[str, Any], project_name: str, filename: str | None = None) -> list[str]:
+        """Collect non-fatal fixed-entity normalization warnings for project load responses."""
+        warnings: list[str] = []
+        source_name = filename or project_name
+
+        for entity_name, entity_dict in cfg_dict.get("entities", {}).items():
+            if not isinstance(entity_dict, dict) or entity_dict.get("type") != "fixed":
+                continue
+
+            columns = entity_dict.get("columns")
+            if not isinstance(columns, list) or not columns:
+                continue
+
+            try:
+                _coerced_values, normalization_warnings = FixedEntityTypeCoercer.coerce_fixed_entity_values_with_warnings(
+                    entity_dict,
+                    columns,
+                    entity_name,
+                )
+            except (
+                FixedEntityColumnTypeDeclarationError,
+                FixedEntityShapeValidationError,
+                FixedEntityTypeValidationError,
+            ):
+                # Invalid values belong to validation/persistence paths; load warnings only report successful normalizations.
+                continue
+
+            for warning in normalization_warnings:
+                warnings.append(format_fixed_entity_normalization_warning(warning))
+                ProjectMapper._log_load_warning(project_name, source_name, warning)
+
+        return warnings
+
+    @staticmethod
+    def _log_load_warning(project_name: str, source_name: str, warning: FixedEntityNormalizationWarning) -> None:
+        """Emit structured log details for a load-time fixed-entity normalization."""
+        logger.warning(
+            "Fixed entity normalization on load: project='{}' source='{}' entity='{}' row={} "
+            "column='{}' raw_value={!r} normalized_value={!r} target_type='{}'",
+            project_name,
+            source_name,
+            warning.entity_name,
+            warning.row_index + 1,
+            warning.column_name,
+            warning.raw_value,
+            warning.normalized_value,
+            warning.expected_type,
+        )
 
     @staticmethod
     def to_api_config(cfg_dict: dict[str, Any], name: str, filename: str | None = None) -> Project:
@@ -94,11 +152,14 @@ class ProjectMapper:
         # Map task_list (preserve as-is)
         task_list = cfg_dict.get("task_list")
 
+        load_warnings = ProjectMapper._collect_load_warnings(cfg_dict, name, filename)
+
         return Project(
             metadata=metadata,
             entities=entities,
             options=options,
             task_list=task_list,
+            load_warnings=load_warnings,
         )
 
     @staticmethod
@@ -174,13 +235,17 @@ class ProjectMapper:
         # Apply type-specific transformations (API → Core) using strategy pattern
         # File-based entities: resolve (filename, location) to absolute paths
         # Other entities: no-op transformation
-        project_name = api_config.metadata.name if api_config.metadata else api_config.filename
+        project_name: str = api_config.metadata.name if api_config.metadata else (api_config.filename or "")
         mapper_factory = EntityConfigMapperFactory(settings)
 
         entities = cfg_dict.get("entities", {})
-        for entity_dict in entities.values():
-            mapper = mapper_factory.get_mapper_for_entity(entity_dict)
-            entity_dict.update(mapper.to_core(entity_dict, project_name))  # type: ignore
+        for entity_name, entity_dict in entities.items():
+            mapper: EntityConfigMapper = mapper_factory.get_mapper_for_entity(entity_dict)
+            entity_input = dict(entity_dict)
+            entity_input.setdefault("name", entity_name)
+            transformed = mapper.to_core(entity_input, project_name)
+            transformed.pop("name", None)
+            entity_dict.update(transformed)  # type: ignore[arg-type]
 
         project = ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
 
