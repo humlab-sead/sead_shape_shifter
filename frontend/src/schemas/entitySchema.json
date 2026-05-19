@@ -550,6 +550,22 @@
       "title": "Columns",
       "type": "array"
     },
+    "column_types": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional explicit fixed-entity column type declarations (for example int, string, float, bool, date)",
+      "title": "Column Types"
+    },
     "extra_columns": {
       "additionalProperties": true,
       "description": "Additional computed columns",
