@@ -334,8 +334,7 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
             ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_ident_level"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity")
         ]
     )
 
