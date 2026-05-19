@@ -1,3 +1,76 @@
+export type GridColumnType = 'number' | 'string'
+
+export interface CoercedGridValue {
+  value: any
+  error: string | null
+}
+
+export interface ApplyClipboardMatrixResult {
+  rows: any[][]
+  errors: string[]
+}
+
+export interface CoerceGridRowsResult {
+  rows: any[][]
+  errors: string[]
+}
+
+export function inferColumnType(columnName: string): GridColumnType {
+  if (columnName.endsWith('_id')) {
+    return 'number'
+  }
+
+  return 'string'
+}
+
+export function parseStrictInteger(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  const text = String(value).trim()
+  if (text === '') {
+    return null
+  }
+
+  if (!/^-?\d+$/.test(text)) {
+    return null
+  }
+
+  return Number(text)
+}
+
+export function coerceGridValue(columnName: string, value: unknown, fallbackValue: any = null): CoercedGridValue {
+  if (inferColumnType(columnName) === 'number') {
+    const parsed = parseStrictInteger(value)
+    const text = value === null || value === undefined ? '' : String(value).trim()
+
+    if (parsed === null && text !== '') {
+      return {
+        value: fallbackValue,
+        error: 'Expected integer ID',
+      }
+    }
+
+    return {
+      value: parsed,
+      error: null,
+    }
+  }
+
+  if (value === null || value === undefined || value === '') {
+    return {
+      value: null,
+      error: null,
+    }
+  }
+
+  return {
+    value: String(value),
+    error: null,
+  }
+}
+
 export function parseClipboardTable(text: string): string[][] {
   const rows = text
     .replace(/\r\n/g, '\n')
@@ -10,15 +83,6 @@ export function parseClipboardTable(text: string): string[][] {
   }
 
   return rows
-}
-
-export function coercePastedValue(columnName: string, value: string): any {
-  if (columnName === 'system_id') {
-    const parsed = parseInt(value, 10)
-    return isNaN(parsed) ? null : parsed
-  }
-
-  return value === '' ? null : value
 }
 
 export function buildGridRowData(rows: any[][], systemIdColumnIndex: number): Array<Record<string, any>> {
@@ -34,6 +98,25 @@ export function buildGridRowData(rows: any[][], systemIdColumnIndex: number): Ar
 
     return rowObj
   })
+}
+
+export function coerceGridRows(columns: string[], rows: any[][]): CoerceGridRowsResult {
+  const errors: string[] = []
+  const coercedRows = rows.map((row, rowIndex) => row.map((value, columnIndex) => {
+    const columnName = columns[columnIndex]
+    if (!columnName) {
+      return value
+    }
+
+    const result = coerceGridValue(columnName, value, value)
+    if (result.error) {
+      errors.push(`Row ${rowIndex + 1}, column ${columnName}: ${result.error}`)
+    }
+
+    return result.value
+  }))
+
+  return { rows: coercedRows, errors }
 }
 
 interface ApplyClipboardMatrixOptions {
@@ -52,8 +135,9 @@ export function applyClipboardMatrix({
   startColIndex,
   matrix,
   createEmptyRow,
-}: ApplyClipboardMatrixOptions): any[][] {
+}: ApplyClipboardMatrixOptions): ApplyClipboardMatrixResult {
   const result = rows.map((row) => [...row])
+  const errors: string[] = []
   const requiredRowCount = startRowIndex + matrix.length
 
   while (result.length < requiredRowCount) {
@@ -84,9 +168,15 @@ export function applyClipboardMatrix({
         continue
       }
 
-      targetRow[targetColIndex] = coercePastedValue(columnName, sourceRow[columnOffset] ?? '')
+      const { value, error } = coerceGridValue(columnName, sourceRow[columnOffset] ?? '', targetRow[targetColIndex])
+
+      if (error) {
+        errors.push(`Row ${targetRowIndex + 1}, column ${columnName}: ${error}`)
+      }
+
+      targetRow[targetColIndex] = value
     }
   }
 
-  return result
+  return { rows: result, errors }
 }

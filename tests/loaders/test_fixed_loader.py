@@ -181,8 +181,9 @@ class TestCreateFixedTable:
                 "type": "fixed",
                 "keys": [],
                 "public_id": "coordinate_method_dimension_id",
+                "column_types": {"limit_lower": "float", "limit_upper": "float"},
                 "columns": ["system_id", "coordinate_method_dimension_id", "coordinate_type", "limit_lower", "limit_upper"],
-                "values": [[1, None, "KoordX", None, None], [2, None, "KoordY", None, None], [3, 0.0, "KoordZ", 0.0, 100.0]],
+                "values": [[1, None, "KoordX", None, None], [2, None, "KoordY", None, None], [3, 0, "KoordZ", 0.0, 100.0]],
             }
         }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
@@ -374,6 +375,7 @@ class TestCreateFixedTable:
             "test_entity": {
                 "type": "fixed",
                 "keys": [],
+                "column_types": {"level": "int"},
                 "columns": ["system_id", "id", "level"],
                 "public_id": "id",
                 "surrogate_name": "level",
@@ -398,7 +400,7 @@ class TestCreateFixedTable:
                 "public_id": "id",
                 "keys": [],
                 "columns": ["value"],
-                "values": [1, "two", 3.0, None],
+                "values": ["1", "two", "3.0", None],
             },
         }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
@@ -406,9 +408,9 @@ class TestCreateFixedTable:
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
         assert len(result) == 4
-        assert result["value"].tolist()[0] == 1
+        assert result["value"].tolist()[0] == "1"
         assert result["value"].tolist()[1] == "two"
-        assert result["value"].tolist()[2] == 3.0
+        assert result["value"].tolist()[2] == "3.0"
         assert pd.isna(result["value"].tolist()[3])
 
     @pytest.mark.asyncio
@@ -420,6 +422,7 @@ class TestCreateFixedTable:
                 "type": "fixed",
                 "keys": [],
                 "public_id": "id",
+                "column_types": {"col3": "int"},
                 "columns": ["col1", "col2", "col3"],
                 "values": [["A", None, 1], [None, "B", None], ["C", "D", 3]],
             }
@@ -434,6 +437,51 @@ class TestCreateFixedTable:
         assert pd.isna(result.iloc[1]["col3"])
 
     @pytest.mark.asyncio
+    async def test_coerces_externally_loaded_dict_rows_using_column_types(self):
+        """Externally loaded fixed rows should normalize null-like values and typed columns before DataFrame creation."""
+        entity = "method"
+        config = {
+            entity: {
+                "type": "fixed",
+                "public_id": "method_id",
+                "keys": [],
+                "columns": ["system_id", "method_id", "rank", "observed_on", "enabled"],
+                "column_types": {
+                    "rank": "int",
+                    "observed_on": "date",
+                    "enabled": "bool",
+                },
+                "values": [
+                    {
+                        "system_id": "1",
+                        "method_id": "10",
+                        "rank": "3",
+                        "observed_on": "2024-01-02",
+                        "enabled": "true",
+                    },
+                    {
+                        "system_id": "2",
+                        "method_id": float("nan"),
+                        "rank": pd.NA,
+                        "observed_on": pd.NaT,
+                        "enabled": "false",
+                    },
+                ],
+            }
+        }
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
+
+        result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
+
+        assert result.columns.tolist() == ["system_id", "method_id", "rank", "observed_on", "enabled"]
+        assert result.iloc[0].tolist() == [1, 10, 3, "2024-01-02", True]
+        assert result.iloc[1]["system_id"] == 2
+        assert pd.isna(result.iloc[1]["method_id"])
+        assert pd.isna(result.iloc[1]["rank"])
+        assert pd.isna(result.iloc[1]["observed_on"])
+        assert not result.iloc[1]["enabled"]
+
+    @pytest.mark.asyncio
     async def test_surrogate_id_column_order(self):
         """Test that public_id is added as a new column."""
         entity = "test_entity"
@@ -442,6 +490,7 @@ class TestCreateFixedTable:
                 "type": "fixed",
                 "public_id": "id",
                 "keys": [],
+                "column_types": {"value": "int"},
                 "columns": ["system_id", "id", "name", "value"],
                 "values": [[None, None, "A", 1], [None, None, "B", 2]],
             }
@@ -465,6 +514,7 @@ class TestCreateFixedTable:
                 "public_id": "id",
                 "surrogate_name": "number",
                 "keys": [],
+                "column_types": {"number": "int"},
                 "columns": ["system_id", "id", "number"],
                 "values": [[i, None, i] for i in range(1, 101)],
             },
@@ -536,6 +586,7 @@ class TestCreateFixedTable:
                 "keys": [],
                 "columns": ["flag", "name"],
                 "public_id": "id",
+                "column_types": {"flag": "bool"},
                 "values": [[True, "Yes"], [False, "No"], [True, "Maybe"]],
             },
         }

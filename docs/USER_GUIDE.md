@@ -501,6 +501,37 @@ Use `fixed` entities for:
 
 The fixed editor supports spreadsheet-style pasting.
 
+### Edit a Fixed Entity
+
+Use this workflow when you need to maintain a lookup table directly in the project:
+
+1. Open the entity in the editor.
+2. Paste or type values into the fixed grid.
+3. Review any validation messages shown in the grid.
+4. Save the project.
+5. Run validation before executing the full workflow.
+
+### What Happens to `_id` Columns
+
+Fixed entities treat columns ending in `_id` as integers by default.
+
+This matters in two common situations:
+
+- If you paste a quoted integer such as `"53"`, the editor normalizes it to `53` when it can do so safely.
+- If a project is loaded with coercible fixed-entity values, the project page shows a **Load-Time Normalizations Detected** warning banner.
+
+When that banner appears, Shape Shifter has normalized values in memory only. Save the project if you want those normalized values written back to YAML.
+
+### When to Use `column_types`
+
+Most fixed entities work without extra type configuration. Add `column_types` in YAML only when a fixed column should be treated as something other than the default:
+
+- `_id` columns default to `int`
+- other fixed columns default to `string`
+- declare `column_types` when a column should be `int`, `float`, `bool`, or `date`
+
+Use the configuration reference for the exact YAML format and allowed values: [docs/CONFIGURATION_GUIDE.md](docs/CONFIGURATION_GUIDE.md).
+
 ---
 
 ## Merged Entities
@@ -1035,6 +1066,14 @@ The entity loads values from external storage rather than inline YAML.
 Yes.
 
 The fixed editor supports rectangular spreadsheet pasting.
+
+After pasting:
+
+1. Check the grid for validation problems.
+2. Review `_id` columns carefully, because they are treated as integers by default.
+3. Save the project if you want normalized values to be persisted back to YAML.
+
+If the project shows **Load-Time Normalizations Detected**, Shape Shifter has already normalized coercible fixed values in memory while loading the project.
 
 ---
 

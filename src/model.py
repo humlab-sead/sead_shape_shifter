@@ -372,6 +372,11 @@ class TableConfig:
         return unique(self.entity_cfg.get("columns"))
 
     @property
+    def column_types(self) -> dict[str, str]:
+        value = self.entity_cfg.get("column_types")
+        return value if isinstance(value, dict) else {}
+
+    @property
     def safe_columns(self) -> list[str]:
         """Return the list of columns converting to a list if necessary."""
         columns: str | list[Any] = self.columns or []

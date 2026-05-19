@@ -102,6 +102,7 @@ class Project(BaseModel):
     options: dict[str, Any] = Field(default_factory=dict, description="Global options")
     task_list: dict[str, Any] | None = Field(default=None, description="Task list for entity progress tracking")
     metadata: ProjectMetadata | None = Field(default=None, description="Project metadata")
+    load_warnings: list[str] = Field(default_factory=list, description="Non-fatal normalization warnings detected while loading")
 
     @property
     def ingesters(self) -> dict[str, Any]:

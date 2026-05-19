@@ -1,5 +1,7 @@
 from typing import Any
 
+from loguru import logger
+
 import jpype
 import pytest
 
@@ -29,8 +31,8 @@ def initialize_jvm():
 
 @pytest.fixture(scope="function", name="project")
 def _core_project() -> ShapeShiftProject:
-    """Load the test project configuration for each test."""
-    config_file: str = "./tests/test_data/projects/arbodat/shapeshifter.yml"
+    """Load the backend integration test project configuration for each test."""
+    config_file: str = "./backend/tests/test_data/projects/arbodat/shapeshifter.yml"
     return ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file=".env")
 
 
@@ -111,7 +113,7 @@ def test_target_model_conformance(project: ShapeShiftProject):
     errors: list[ValidationError] = TargetModelValidator().validate(target_model_data, project)
 
     if errors:
-        error_report: str = "\n".join(f"{error.severity.upper()} {error.code} [{error.entity}]: {error.message}" for error in errors)
-        warning(f"Target model validation found {len(errors)} errors:\n{error_report}")
+        error_report: str = "\n".join(f"{str(error.severity).upper()} {error.code} [{error.entity}]: {error.message}" for error in errors)
+        logger.warning(f"Target model validation found {len(errors)} errors:\n{error_report}")
 
     assert not errors, f"Expected no validation errors, found {len(errors)}: {[error.message for error in errors]}"

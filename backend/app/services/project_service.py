@@ -231,7 +231,7 @@ class ProjectService:
                     data["task_list"] = sidecar_task_list
                     logger.debug(f"Loaded task_list from sidecar after migration for '{name}'")
 
-            project: Project = ProjectMapper.to_api_config(data, name)
+            project: Project = ProjectMapper.to_api_config(data, name, str(filename))
 
             assert project.metadata is not None  # For mypy
 

@@ -115,12 +115,12 @@ entities:
     - RTypGrup
     - RTypGrup_EN
     values:
-    - [1, null, '-99', 9999, '-99', '-99']
-    - [2, null, Wood, 20, Holz, Wood]
-    - [3, null, Seeds/Fruits etc., 30, Samen/Früchte usw., Seeds/Fruits etc.]
-    - [4, null, Others, 50, sonstiges, Others]
-    - [5, null, Unknown, 999, unbekannt, Unknown]
-    - [6, null, Veg. Remains, 40, veget. Pflanzenteile, Veg. Remains]
+    - [1, null, '-99', '9999', '-99', '-99']
+    - [2, null, Wood, '20', Holz, Wood]
+    - [3, null, Seeds/Fruits etc., '30', Samen/Früchte usw., Seeds/Fruits etc.]
+    - [4, null, Others, '50', sonstiges, Others]
+    - [5, null, Unknown, '999', unbekannt, Unknown]
+    - [6, null, Veg. Remains, '40', veget. Pflanzenteile, Veg. Remains]
     materialized:
       enabled: true
       source_state:
@@ -693,9 +693,9 @@ entities:
     - arbodat_value
     - notes
     values:
-    - [1, '1', null, null, F, Uncertainty at the family level]
-    - [2, '2', null, null, G, Uncertainty at the genus level]
-    - [3, '3', null, null, A, Uncertainty at the species level]
+    - [1, 1, null, null, F, Uncertainty at the family level]
+    - [2, 2, null, null, G, Uncertainty at the genus level]
+    - [3, 3, null, null, A, Uncertainty at the species level]
     - [4, null, null, c.f. Variety, V, Uncertainty at the variety level]
     - [5, null, null, c.f. Subspecies, S, Uncertainty at the subspecies level]
   location:
@@ -736,11 +736,11 @@ entities:
     keys: []
     columns: [system_id, location_type_id, location_type]
     values:
-    - [1, '2', Ort]
-    - [2, '2', Kreis]
-    - [3, '2', Land]
-    - [4, '1', Staat]
-    - [5, '10', FlurStr]
+    - [1, 2, Ort]
+    - [2, 2, Kreis]
+    - [3, 2, Land]
+    - [4, 1, Staat]
+    - [5, 10, FlurStr]
   master_dataset:
     type: fixed
     public_id: master_set_id
@@ -769,16 +769,16 @@ entities:
     - sead_method_group_id
     - arbodat_code
     values:
-    - [1, null, null, Light fraction 2.0 mm, 'ORG 2,0', 'ORG 2,0', '1', 'ORG 2,0']
-    - [2, null, null, Light fraction 1.0 mm, 'ORG 1,0', 'ORG 1,0', '1', 'ORG 1,0']
-    - [3, null, null, Light fraction 0.5 mm, 'ORG 0,5', 'ORG 0,5', '1', 'ORG 0,5']
-    - [4, null, null, Light fraction 0.25 mm, 'ORG 0,25', 'ORG 0,25', '1', 'ORG 0,25']
-    - [5, null, null, Heavy fraction 2.0 mm, 'MIN 2,0', 'MIN 2,0', '1', 'MIN 2,0']
-    - [6, null, null, Heavy fraction 1.0 mm, 'MIN 1,0', 'MIN 1,0', '1', 'MIN 1,0']
-    - [7, null, null, Heavy fraction 0.5 mm, 'MIN 0,5', 'MIN 0,5', '1', 'MIN 0,5']
-    - [8, null, null, Heavy fraction 0.25 mm, 'MIN 0,25', 'MIN 0,25', '1', 'MIN 0,25']
-    - [9, 105, null, null, Local or unknown grid, null, '17', null]
-    - [10, 76, null, null, Altitude above sea level, null, '17', null]
+    - [1, null, null, Light fraction 2.0 mm, 'ORG 2,0', 'ORG 2,0', 1, 'ORG 2,0']
+    - [2, null, null, Light fraction 1.0 mm, 'ORG 1,0', 'ORG 1,0', 1, 'ORG 1,0']
+    - [3, null, null, Light fraction 0.5 mm, 'ORG 0,5', 'ORG 0,5', 1, 'ORG 0,5']
+    - [4, null, null, Light fraction 0.25 mm, 'ORG 0,25', 'ORG 0,25', 1, 'ORG 0,25']
+    - [5, null, null, Heavy fraction 2.0 mm, 'MIN 2,0', 'MIN 2,0', 1, 'MIN 2,0']
+    - [6, null, null, Heavy fraction 1.0 mm, 'MIN 1,0', 'MIN 1,0', 1, 'MIN 1,0']
+    - [7, null, null, Heavy fraction 0.5 mm, 'MIN 0,5', 'MIN 0,5', 1, 'MIN 0,5']
+    - [8, null, null, Heavy fraction 0.25 mm, 'MIN 0,25', 'MIN 0,25', 1, 'MIN 0,25']
+    - [9, 105, null, null, Local or unknown grid, null, 17, null]
+    - [10, 76, null, null, Altitude above sea level, null, 17, null]
     foreign_keys:
     - entity: method_group
       local_keys: [sead_method_group_id]
@@ -1527,16 +1527,16 @@ entities:
     - Zust
     - Zustand
     values:
-    - [1, null, null, not chosen, 9999, '-99', not chosen]
-    - [2, null, null, imprint, 60, Ab, imprint]
-    - [3, null, null, kiln-dried/partly charred, 55, ag, kiln-dried/partly charred]
-    - [4, null, null, calcinated, 56, ca, calcinated]
-    - [5, '5', null, mineralised, 30, mi, mineralised]
-    - [6, null, null, waterlogged, 20, sf, waterlogged]
-    - [7, null, null, others, 999, so, others]
-    - [8, null, null, dessicated, 40, st, dessicated]
-    - [9, '1', null, charred, 10, vk, charred]
-    - [10, null, null, charred and mineralised, 50, vm, charred and mineralised]
+    - [1, null, null, not chosen, '9999', '-99', not chosen]
+    - [2, null, null, imprint, '60', Ab, imprint]
+    - [3, null, null, kiln-dried/partly charred, '55', ag, kiln-dried/partly charred]
+    - [4, null, null, calcinated, '56', ca, calcinated]
+    - [5, 5, null, mineralised, '30', mi, mineralised]
+    - [6, null, null, waterlogged, '20', sf, waterlogged]
+    - [7, null, null, others, '999', so, others]
+    - [8, null, null, dessicated, '40', st, dessicated]
+    - [9, 1, null, charred, '10', vk, charred]
+    - [10, null, null, charred and mineralised, '50', vm, charred and mineralised]
   ecocode_system:
     type: fixed
     public_id: ecocode_system_id
