@@ -291,15 +291,22 @@ class MaterializationService:
         """
         try:
             api_project: Project = self.project_service.load_project(project_name)
-            core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
-            table_cfg: TableConfig = core_project.get_table(entity_name)
+            entity_cfg = api_project.entities.get(entity_name)
 
-            if not table_cfg.is_materialized:
+            if not isinstance(entity_cfg, dict):
+                return UnmaterializationResult(
+                    success=False,
+                    errors=[f"Entity '{entity_name}' not found"],
+                    entity_name=entity_name,
+                )
+
+            materialized_cfg = entity_cfg.get("materialized")
+            if not isinstance(materialized_cfg, dict) or not materialized_cfg.get("enabled", False):
                 return UnmaterializationResult(
                     success=False, errors=[f"Entity '{entity_name}' is not materialized"], entity_name=entity_name
                 )
 
-            dependents: list[str] = self._find_materialized_dependents(core_project, table_cfg)
+            dependents: list[str] = self._find_materialized_dependents_from_project(api_project, entity_name)
 
             if dependents and not cascade:
                 return UnmaterializationResult(
@@ -320,7 +327,9 @@ class MaterializationService:
                     unmaterialized_entities.extend(result.unmaterialized_entities)
 
             # Restore config from saved state (includes original public_id, keys, columns, etc.)
-            saved_state: dict[str, Any] = table_cfg.materialized.source_state or {}
+            saved_state = materialized_cfg.get("source_state")
+            if not isinstance(saved_state, dict):
+                saved_state = {}
             restored_entity: dict[str, Any] = {**saved_state}
 
             api_project.entities[entity_name] = restored_entity
@@ -338,6 +347,44 @@ class MaterializationService:
         except Exception as e:  # pylint: disable=broad-except
             logger.exception(f"Failed to unmaterialize entity '{entity_name}': {e}")
             return UnmaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
+
+    @staticmethod
+    def _entity_depends_on(entity_name: str, entity_cfg: dict[str, Any], dependency_name: str) -> bool:
+        """Return True when an entity config references another entity by dependency."""
+        if entity_cfg.get("source") == dependency_name:
+            return True
+
+        depends_on: list[str] = entity_cfg.get("depends_on", []) or []
+        if dependency_name in depends_on:
+            return True
+
+        foreign_keys: list[dict[str, Any]] = entity_cfg.get("foreign_keys", []) or []
+        for fk in foreign_keys:
+            if fk.get("entity") == dependency_name:
+                return True
+
+        return False
+
+    def _find_materialized_dependents_from_project(self, api_project: Project, entity_name: str) -> list[str]:
+        """Find materialized entities whose frozen source_state depends on the given entity."""
+        dependents: list[str] = []
+
+        for candidate_name, candidate_cfg in api_project.entities.items():
+            if candidate_name == entity_name or not isinstance(candidate_cfg, dict):
+                continue
+
+            materialized_cfg = candidate_cfg.get("materialized")
+            if not isinstance(materialized_cfg, dict) or not materialized_cfg.get("enabled", False):
+                continue
+
+            source_state = materialized_cfg.get("source_state")
+            if not isinstance(source_state, dict):
+                continue
+
+            if self._entity_depends_on(candidate_name, source_state, entity_name):
+                dependents.append(candidate_name)
+
+        return dependents
 
     def _find_materialized_dependents(self, core_project: ShapeShiftProject, table: TableConfig) -> list[str]:
         """Find all materialized entities that depend on the given table."""

@@ -384,7 +384,20 @@ class TestUnmaterializeEntity:
         """Test successful unmaterialization."""
         mock_project_service.load_project.return_value = mock_api_project
         mock_project_service.save_project = Mock()
-        mock_core_project.get_table = Mock(return_value=mock_materialized_table_config)
+
+        mock_api_project.entities["location"] = {
+            "type": "fixed",
+            "values": "@load:materialized/location.parquet",
+            "materialized": {
+                "enabled": True,
+                "source_state": {
+                    "type": "source",
+                    "source": "locations.csv",
+                    "public_id": "location_id",
+                    "keys": ["location_name"],
+                },
+            },
+        }
 
         with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             result = await materialization_service.unmaterialize_entity("test-project", "location")
@@ -400,21 +413,41 @@ class TestUnmaterializeEntity:
     ):
         """Test unmaterialization fails when dependents exist without cascade."""
         mock_project_service.load_project.return_value = mock_api_project
-        mock_core_project.get_table = Mock(return_value=mock_materialized_table_config)
-
-        # Mock dependent entities
-        mock_materialized_table_config.dependent_entities.return_value = ["site", "sample"]
-
-        # Mock dependent tables as materialized
-        dependent_table = MagicMock(spec=TableConfig)
-        dependent_table.is_materialized = True
-
-        def get_table_side_effect(name):
-            if name == "location":
-                return mock_materialized_table_config
-            return dependent_table
-
-        mock_core_project.get_table.side_effect = get_table_side_effect
+        mock_api_project.entities = {
+            "location": {
+                "type": "fixed",
+                "values": "@load:materialized/location.parquet",
+                "materialized": {
+                    "enabled": True,
+                    "source_state": {
+                        "type": "source",
+                        "source": "locations.csv",
+                    },
+                },
+            },
+            "site": {
+                "type": "fixed",
+                "values": "@load:materialized/site.parquet",
+                "materialized": {
+                    "enabled": True,
+                    "source_state": {
+                        "type": "entity",
+                        "source": "location",
+                    },
+                },
+            },
+            "sample": {
+                "type": "fixed",
+                "values": "@load:materialized/sample.parquet",
+                "materialized": {
+                    "enabled": True,
+                    "source_state": {
+                        "type": "sql",
+                        "depends_on": ["location"],
+                    },
+                },
+            },
+        }
 
         with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             result = await materialization_service.unmaterialize_entity("test-project", "location", cascade=False)
@@ -431,30 +464,30 @@ class TestUnmaterializeEntity:
         """Test successful cascade unmaterialization."""
         mock_project_service.load_project.return_value = mock_api_project
         mock_project_service.save_project = Mock()
-
-        # Setup dependent entity
-        dependent_table = MagicMock(spec=TableConfig)
-        dependent_table.entity_name = "site"
-        dependent_table.is_materialized = True
-        dependent_table.materialized = MaterializationConfig(
-            data={
-                "enabled": True,
-                "source_state": {"type": "source", "source": "sites.csv"},
-                "materialized_at": "2026-03-05T12:00:00",
-            }
-        )
-        dependent_table.dependent_entities.return_value = []
-
-        mock_materialized_table_config.dependent_entities.return_value = ["site"]
-
-        def get_table_side_effect(name):
-            if name == "location":
-                return mock_materialized_table_config
-            if name == "site":
-                return dependent_table
-            return None
-
-        mock_core_project.get_table.side_effect = get_table_side_effect
+        mock_api_project.entities = {
+            "location": {
+                "type": "fixed",
+                "values": "@load:materialized/location.parquet",
+                "materialized": {
+                    "enabled": True,
+                    "source_state": {
+                        "type": "source",
+                        "source": "locations.csv",
+                    },
+                },
+            },
+            "site": {
+                "type": "fixed",
+                "values": "@load:materialized/site.parquet",
+                "materialized": {
+                    "enabled": True,
+                    "source_state": {
+                        "type": "entity",
+                        "source": "location",
+                    },
+                },
+            },
+        }
 
         with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             result = await materialization_service.unmaterialize_entity("test-project", "location", cascade=True)
@@ -465,6 +498,41 @@ class TestUnmaterializeEntity:
             assert "site" in result.unmaterialized_entities
             # Should be called twice: once for dependent, once for main entity
             assert mock_project_service.save_project.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_unmaterialize_does_not_require_core_mapping_for_malformed_project(
+        self, materialization_service, mock_project_service, mock_api_project
+    ):
+        """Malformed fixed snapshots elsewhere should not block unmaterialization recovery."""
+        mock_project_service.load_project.return_value = mock_api_project
+        mock_project_service.save_project = Mock()
+        mock_api_project.entities = {
+            "location": {
+                "type": "fixed",
+                "values": "@load:materialized/location.parquet",
+                "materialized": {
+                    "enabled": True,
+                    "source_state": {
+                        "type": "source",
+                        "source": "locations.csv",
+                        "public_id": "location_id",
+                    },
+                },
+            },
+            "broken_fixed": {
+                "type": "fixed",
+                "public_id": "broken_fixed_id",
+                "columns": ["system_id", "broken_fixed_id", "label", "label"],
+                "values": [[1, None, "A"]],
+            },
+        }
+
+        with patch.object(ProjectMapper, "to_core", side_effect=AssertionError("to_core should not be called")):
+            result = await materialization_service.unmaterialize_entity("test-project", "location")
+
+        assert result.success
+        assert result.unmaterialized_entities == ["location"]
+        mock_project_service.save_project.assert_called_once()
 
 
 class TestCreateMaterializedEntity:
