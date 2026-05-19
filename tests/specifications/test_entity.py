@@ -124,6 +124,58 @@ class TestFixedEntityFieldsSpecification:
                         {"system_id": 2, "entity_id": None, "label": "two"},
                     ],
                 },
+                "typed_fixed": {
+                    "type": "fixed",
+                    "columns": ["system_id", "method_id", "name"],
+                    "keys": ["name"],
+                    "public_id": "method_id",
+                    "values": [[1, 53, "Sampling"]],
+                },
+                "invalid_typed_fixed": {
+                    "type": "fixed",
+                    "columns": ["system_id", "method_id", "name"],
+                    "keys": ["name"],
+                    "public_id": "method_id",
+                    "values": [[1, "53", "Sampling"]],
+                },
+                "bool_typed_fixed": {
+                    "type": "fixed",
+                    "columns": ["system_id", "method_id", "name"],
+                    "keys": ["name"],
+                    "public_id": "method_id",
+                    "values": [[1, True, "Sampling"]],
+                },
+                "declared_int_fixed": {
+                    "type": "fixed",
+                    "columns": ["system_id", "rank", "name"],
+                    "column_types": {"rank": "int"},
+                    "keys": ["name"],
+                    "public_id": "method_id",
+                    "values": [[1, 7, "Sampling"]],
+                },
+                "invalid_declared_int_fixed": {
+                    "type": "fixed",
+                    "columns": ["system_id", "rank", "name"],
+                    "column_types": {"rank": "int"},
+                    "keys": ["name"],
+                    "public_id": "method_id",
+                    "values": [[1, "7", "Sampling"]],
+                },
+                "implicit_numeric_fixed": {
+                    "type": "fixed",
+                    "columns": ["system_id", "label", "abundance"],
+                    "keys": ["label"],
+                    "public_id": "abundance_id",
+                    "values": [[1, "Oak", 12]],
+                },
+                "unsupported_declared_type_fixed": {
+                    "type": "fixed",
+                    "columns": ["system_id", "rank", "name"],
+                    "column_types": {"rank": "integer"},
+                    "keys": ["name"],
+                    "public_id": "method_id",
+                    "values": [[1, 7, "Sampling"]],
+                },
             }
         }
 
@@ -214,6 +266,66 @@ class TestFixedEntityFieldsSpecification:
 
         assert result is True, spec.get_report()
         assert len(spec.errors) == 0, spec.get_report()
+
+    def test_fixed_entity_rejects_string_ids(self, project_cfg):
+        """Fixed entities should reject string values in _id columns after coercion boundaries."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="invalid_typed_fixed")
+
+        assert result is False, spec.get_report()
+        assert any("expected int or null" in str(error) for error in spec.errors), spec.get_report()
+
+    def test_fixed_entity_rejects_bool_ids(self, project_cfg):
+        """Fixed entities should reject booleans in _id columns."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="bool_typed_fixed")
+
+        assert result is False, spec.get_report()
+        assert any("expected int or null" in str(error) for error in spec.errors), spec.get_report()
+
+    def test_fixed_entity_accepts_strict_integer_ids(self, project_cfg):
+        """Fixed entities should accept strict integers in _id columns."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="typed_fixed")
+
+        assert result is True, spec.get_report()
+
+    def test_fixed_entity_accepts_declared_int_columns(self, project_cfg):
+        """Fixed entities should validate explicit int declarations on non-_id columns."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="declared_int_fixed")
+
+        assert result is True, spec.get_report()
+
+    def test_fixed_entity_accepts_undeclared_non_id_numeric_values(self, project_cfg):
+        """Undeclared non-_id columns should not be forced to string at validation time."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="implicit_numeric_fixed")
+
+        assert result is True, spec.get_report()
+
+    def test_fixed_entity_rejects_invalid_declared_int_columns(self, project_cfg):
+        """Declared int columns should reject string values after coercion boundaries."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="invalid_declared_int_fixed")
+
+        assert result is False, spec.get_report()
+        assert any("expected int or null" in str(error) for error in spec.errors), spec.get_report()
+
+    def test_fixed_entity_rejects_unsupported_declared_types(self, project_cfg):
+        """Unsupported column_types declarations should be reported as validation errors."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="unsupported_declared_type_fixed")
+
+        assert result is False, spec.get_report()
+        assert any("unsupported type 'integer'" in str(error).lower() for error in spec.errors), spec.get_report()
 
 
 class TestSqlEntityFieldsSpecification:

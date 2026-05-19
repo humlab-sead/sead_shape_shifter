@@ -542,6 +542,60 @@ class TestEdgeCases:
         restored_config = ProjectMapper.to_api_config(core_dict, "test")
         assert restored_config.entities["contact_type"]["values"] == original_config.entities["contact_type"]["values"]
 
+    def test_fixed_entity_round_trip_preserves_column_types(self):
+        """Fixed entity column_types should survive API/Core round-trip unchanged."""
+        original_config = Project(
+            metadata=ProjectMetadata(name="test", entity_count=1),
+            entities={
+                "method": {
+                    "type": "fixed",
+                    "keys": ["label"],
+                    "public_id": "method_id",
+                    "columns": ["system_id", "method_id", "label", "created_at"],
+                    "column_types": {
+                        "system_id": "int",
+                        "method_id": "int",
+                        "label": "string",
+                        "created_at": "date",
+                    },
+                    "values": [[1, 53, "Sampling", "2026-05-19"]],
+                }
+            },
+            options={},
+        )
+
+        core_dict = ProjectMapper.to_core_dict(original_config)
+        assert core_dict["entities"]["method"]["column_types"] == {
+            "system_id": "int",
+            "method_id": "int",
+            "label": "string",
+            "created_at": "date",
+        }
+
+        restored_config = ProjectMapper.to_api_config(core_dict, "test")
+        assert restored_config.entities["method"]["column_types"] == original_config.entities["method"]["column_types"]
+
+    def test_to_api_config_exposes_fixed_entity_load_warnings(self):
+        """Project load should surface successful fixed-entity normalizations as warnings."""
+        core_dict = {
+            "metadata": {"name": "test", "type": "shapeshifter-project"},
+            "entities": {
+                "method": {
+                    "type": "fixed",
+                    "columns": ["system_id", "method_id", "name"],
+                    "values": [[1, "53", "Sampling"]],
+                }
+            },
+            "options": {},
+        }
+
+        result = ProjectMapper.to_api_config(core_dict, "test")
+
+        assert result.entities["method"]["values"] == [[1, "53", "Sampling"]]
+        assert result.load_warnings == [
+            "Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)"
+        ]
+
 
 class TestProjectMapperIntegration:
     """Integration tests using real project files."""

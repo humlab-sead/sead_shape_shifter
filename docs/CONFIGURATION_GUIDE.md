@@ -118,6 +118,7 @@ entities:
     source: string | null                   # Data: source entity or null for default source
     type: \"data\" | \"fixed\" | \"sql\"    # Data source type  (required)
     columns: [string, ...]                  # Columns to extract
+    column_types: {string: string}          # Optional fixed-entity type declarations
     
     # Data quality
     drop_empty_rows: bool | [string, ...] | {string: [any, ...]}  # Empty row handling
@@ -594,7 +595,7 @@ method:
 #### `values`
 - **Type**: `list[list[any]]` or `list[any]` (for single-column tables)
 - **Required**: Yes when `type: fixed`; No for other types
-- **Description**: 2D array of fixed values for lookup tables. Each inner list represents a row of data.
+- **Description**: 2D array of fixed values for lookup tables. Each inner list represents a row of data. For fixed entities, value typing is enforced at load, validation, and save time.
 - **Example**:
   ```yaml
   # Multi-column fixed values
@@ -616,23 +617,59 @@ method:
     - **Multi-column**: Each row must be a list with length matching `columns` count (error if mismatch)
     - **Single-column**: If values are primitives (not lists), `columns` must have exactly 1 item (error if not)
   - **Consistency**: All rows should have the same number of columns (error if inconsistent)
+  - **Fixed-Entity Type Rules**:
+    - Columns ending with `_id` default to integer semantics when `type: fixed`
+    - Empty string values in fixed entities normalize to `null`
+    - Coercible integer strings such as `"53"` normalize in memory to `53` during project load
+    - Invalid non-empty `_id` values such as `"53.0"`, `"abc"`, or booleans are rejected rather than coerced to `null`
+    - Successful load-time normalizations are surfaced in the UI and are only written back to YAML on explicit save
   - **Append Configurations**: Also validated for append items with `type: fixed`
 - **Common Issues**:
   - Column/row count mismatch
   - Empty values list
   - Mixed row structures (some lists, some primitives)
   - Missing `columns` configuration
+  - String values in `_id` columns causing load-time normalization warnings
 - **Suggested Additional Validation**:
   - Warn if values contain duplicate rows (when keys are defined)
   - Validate data types match expected column types
 - **Example**:
   ```yaml
   type: fixed
-  columns: ["code", "description"]
+  public_id: contact_type_id
+  columns: ["contact_type_name", "description", "sead_contact_group_id"]
   values:
-    - ["Type A", "Description A"]
-    - ["Type B", "Description B"]
+    - ["Type A", "Description A", 17]
+    - ["Type B", "Description B", "18"]  # normalized in memory on load; persisted on explicit save
   ```
+
+#### `column_types`
+- **Type**: `dict[string, string]`
+- **Required**: No
+- **Description**: Optional explicit type declarations for `type: fixed` entities. When present, declared types override the default `_id` inference. This is useful for non-`_id` fixed columns that should be validated as `int`, `float`, `bool`, or `date` instead of the default `string`.
+- **Allowed Values**: `int`, `string`, `float`, `bool`, `date`
+- **Example**:
+  ```yaml
+  type: fixed
+  public_id: method_id
+  columns: ["label", "rank", "created_at", "is_active"]
+  column_types:
+    rank: int
+    created_at: date
+    is_active: bool
+  values:
+    - ["Sampling", 1, "2026-05-19", true]
+    - ["Collecting", "2", "2026-05-20", "false"]
+  ```
+- **Validation Rules**:
+  - Applies only to `type: fixed` entities
+  - Keys must match declared columns (error if unknown column is listed)
+  - Values must use the allowlist above (error on unsupported types such as `integer`)
+  - When absent, fixed entities fall back to `_id` suffix inference: `_id -> int`, all other columns -> `string`
+- **Common Issues**:
+  - Declaring a column name that is not present in `columns`
+  - Using unsupported type names such as `integer` instead of `int`
+  - Forgetting that declared types affect both load-time coercion and save-time validation
 
 #### `branches`
 - **Type**: `list[BranchConfig]`
@@ -2991,9 +3028,11 @@ archaeological_period:
 contact_type:
   source: null
   type: fixed
-  surrogate_id: contact_type_id
+  public_id: contact_type_id
   surrogate_name: contact_type
   columns: ["contact_type_name", "description", "arbodat_code"]
+  column_types:
+    arbodat_code: string
   values:
     - ["Archaeologist", "Name of scientist responsible", "ArchBear"]
     - ["Botanist", "Name of botanist responsible", "BotBear"]

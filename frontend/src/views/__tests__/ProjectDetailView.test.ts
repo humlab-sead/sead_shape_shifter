@@ -359,4 +359,23 @@ describe('ProjectDetailView', () => {
 
     expect(mockProjectState.getRawYaml).toHaveBeenCalledWith('arbodat')
   })
+
+  it('renders load-time normalization warnings from the selected project', async () => {
+    mockProjectState.selectedProjectRef.value = {
+      metadata: { name: 'arbodat' },
+      options: {},
+      entities: {},
+      load_warnings: [
+        "Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)",
+      ],
+    }
+
+    const wrapper = mountProjectDetailView()
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Load-Time Normalizations Detected')
+    expect(wrapper.text()).toContain('Save the project to persist these changes.')
+    expect(wrapper.text()).toContain("Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)")
+  })
 })

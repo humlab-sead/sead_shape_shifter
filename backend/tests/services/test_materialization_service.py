@@ -190,6 +190,52 @@ class TestMaterializeEntity:
                     assert result.storage_file is None
 
     @pytest.mark.asyncio
+    async def test_materialize_inline_serializes_nulls_and_infers_column_types(
+        self, materialization_service, mock_project_service, mock_api_project, mock_core_project, mock_table_config
+    ):
+        """Inline materialization should freeze pandas scalars as fixed-safe values and preserve non-default types."""
+        mock_project_service.load_project.return_value = mock_api_project
+        mock_project_service.save_project = Mock()
+
+        mock_spec = MagicMock(spec=CanMaterializeSpecification)
+        mock_spec.is_satisfied_by.return_value = True
+
+        materialized_df = pd.DataFrame(
+            {
+                "location_id": pd.Series([1, 2], dtype="Int64"),
+                "location_name": ["Norway", "Sweden"],
+                "phase_rank": pd.Series([1, pd.NA], dtype="Int64"),
+                "observed_on": [pd.Timestamp("2024-01-02"), pd.NaT],
+                "enabled": [True, False],
+                "score": pd.Series([1.5, pd.NA], dtype="Float64"),
+            }
+        )
+
+        mock_shapeshifter = MagicMock(spec=ShapeShifter)
+        mock_shapeshifter.table_store = {"location": materialized_df}
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            with patch("backend.app.services.materialization_service.CanMaterializeSpecification", return_value=mock_spec):
+                with patch("backend.app.services.materialization_service.ShapeShifter", return_value=mock_shapeshifter):
+                    result = await materialization_service.materialize_entity("test-project", "location", "inline")
+
+        assert result.success
+
+        saved_project = mock_project_service.save_project.call_args.args[0]
+        saved_entity = saved_project.entities["location"]
+
+        assert saved_entity["column_types"] == {
+            "phase_rank": "int",
+            "observed_on": "date",
+            "enabled": "bool",
+            "score": "float",
+        }
+        assert saved_entity["values"] == [
+            [1, 1, "Norway", 1, "2024-01-02", True, 1.5],
+            [2, 2, "Sweden", None, None, False, None],
+        ]
+
+    @pytest.mark.asyncio
     async def test_materialize_parquet_storage(
         self, materialization_service, mock_project_service, mock_api_project, mock_core_project, mock_table_config, sample_dataframe
     ):
@@ -426,7 +472,7 @@ class TestCreateMaterializedEntity:
 
     def test_create_materialized_entity_normal(self, materialization_service, mock_table_config, sample_dataframe):
         """Test creating materialized entity config."""
-        values_inline = [[1, "Norway", "NO"], [2, "Sweden", "SE"]]
+        values_inline = [[1, 1, "Norway", "NO"], [2, 2, "Sweden", "SE"], [3, 3, "Denmark", "DK"]]
 
         with patch("backend.app.services.materialization_service.datetime") as mock_datetime:
             mock_datetime.now.return_value.isoformat.return_value = "2026-03-05T12:00:00"
