@@ -382,8 +382,23 @@ class FixedEntityTypeCoercer:
         if not values or not isinstance(values, list):
             return values or [], []
 
-        # Phase 1: Shape validation (hard gate)
+        normalized_values: list[list[Any]] = []
         for row_idx, row in enumerate(values):
+            if isinstance(row, list):
+                normalized_values.append(row)
+                continue
+
+            if len(columns) == 1:
+                normalized_values.append([row])
+                continue
+
+            raise FixedEntityShapeValidationError(
+                f"Entity '{entity_name}' row {row_idx} is scalar-valued; expected a list with {len(columns)} values "
+                f"based on declared columns"
+            )
+
+        # Phase 1: Shape validation (hard gate)
+        for row_idx, row in enumerate(normalized_values):
             if len(row) != len(columns):
                 raise FixedEntityShapeValidationError(
                     f"Entity '{entity_name}' row {row_idx} has {len(row)} values; " f"expected {len(columns)} based on declared columns"
@@ -400,7 +415,7 @@ class FixedEntityTypeCoercer:
         issues: list[FixedEntityTypeCoercer.CoercionIssue] = []
         warnings: list[FixedEntityNormalizationWarning] = []
 
-        for row_idx, row in enumerate(values):
+        for row_idx, row in enumerate(normalized_values):
             coerced_row: list[Any] = []
             for col_idx, value in enumerate(row):
                 col_name = columns[col_idx]

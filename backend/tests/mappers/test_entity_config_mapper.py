@@ -203,6 +203,19 @@ class TestFixedEntityConfigMapper:
             [10, 76, "Collecting", None],
         ]
 
+    def test_to_core_normalizes_legacy_single_column_scalar_values(self, mapper: FixedEntityConfigMapper) -> None:
+        """Single-column fixed entities may still arrive as a flat scalar list from legacy YAML."""
+        config = {
+            "name": "feature_property_type",
+            "type": "fixed",
+            "columns": ["arbodat_code"],
+            "values": ["gebäud", "okBefu", "okErh"],
+        }
+
+        result = mapper.to_core(config, "arbodat")
+
+        assert result["values"] == [["gebäud"], ["okBefu"], ["okErh"]]
+
     def test_to_core_raises_on_invalid_id_value(self, mapper: FixedEntityConfigMapper) -> None:
         """Invalid non-empty _id values should fail fast during mapping."""
         config = {
