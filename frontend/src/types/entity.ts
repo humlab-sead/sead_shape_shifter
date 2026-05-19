@@ -78,6 +78,7 @@ export interface Entity {
   surrogate_id?: string | null
   keys?: string[]
   columns?: string[]
+  column_types?: Record<string, string> | null
   extra_columns?: Record<string, any>
   foreign_keys?: ForeignKeyConfig[]
   unnest?: UnnestConfig | null

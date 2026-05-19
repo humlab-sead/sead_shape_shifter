@@ -15,6 +15,7 @@ describe('FixedValuesGrid', () => {
       props: {
         modelValue: [[1, '53', 'Sampling']],
         columns: ['system_id', 'method_id', 'name'],
+        columnTypes: {},
         publicId: 'method_id',
       },
       global: {
@@ -37,6 +38,7 @@ describe('FixedValuesGrid', () => {
       props: {
         modelValue: [[1, '53abc', 'Sampling']],
         columns: ['system_id', 'method_id', 'name'],
+        columnTypes: {},
         publicId: 'method_id',
       },
       global: {
@@ -50,7 +52,49 @@ describe('FixedValuesGrid', () => {
 
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
     expect(wrapper.emitted('validation-errors')).toEqual([
-      [['Row 1, column method_id: Expected integer ID']],
+      [['Column method_id: 1 invalid value (row 1)']],
     ])
+  })
+
+  it('uses declared int column types for non-_id columns', async () => {
+    const wrapper = shallowMount(FixedValuesGrid, {
+      props: {
+        modelValue: [[1, '7', 'Sampling']],
+        columns: ['system_id', 'rank', 'name'],
+        columnTypes: { rank: 'int' },
+        publicId: 'name',
+      },
+      global: {
+        stubs: {
+          AgGridVue: AgGridVueStub,
+        },
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.emitted('update:modelValue')).toEqual([
+      [[[1, 7, 'Sampling']]],
+    ])
+  })
+
+  it('does not coerce unsupported declared types on load', async () => {
+    const wrapper = shallowMount(FixedValuesGrid, {
+      props: {
+        modelValue: [[1, true]],
+        columns: ['system_id', 'is_active'],
+        columnTypes: { is_active: 'bool' },
+      },
+      global: {
+        stubs: {
+          AgGridVue: AgGridVueStub,
+        },
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    expect(wrapper.emitted('validation-errors')).toBeUndefined()
   })
 })

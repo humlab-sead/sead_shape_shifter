@@ -6,8 +6,10 @@ import {
   coerceGridRows,
   coerceGridValue,
   inferColumnType,
+  normalizeGridColumnTypes,
   parseClipboardTable,
   parseStrictInteger,
+  summarizeValidationIssues,
 } from '../fixedValuesGridClipboard'
 
 describe('fixedValuesGridClipboard', () => {
@@ -55,6 +57,12 @@ describe('fixedValuesGridClipboard', () => {
     expect(inferColumnType('label')).toBe('string')
   })
 
+  it('uses explicit fixed column types ahead of naming inference', () => {
+    expect(inferColumnType('rank', { rank: 'int' })).toBe('number')
+    expect(inferColumnType('label', { label: 'string' })).toBe('string')
+    expect(inferColumnType('created_at', { created_at: 'date' })).toBe('preserve')
+  })
+
   it('parses strict integers without truncation', () => {
     expect(parseStrictInteger('53')).toBe(53)
     expect(parseStrictInteger('-7')).toBe(-7)
@@ -90,9 +98,33 @@ describe('fixedValuesGridClipboard', () => {
     })
   })
 
+  it('coerces declared int columns even when the name does not end with _id', () => {
+    expect(coerceGridValue('rank', '7', null, { rank: 'int' })).toEqual({
+      value: 7,
+      error: null,
+    })
+    expect(coerceGridValue('rank', '7x', 3, { rank: 'int' })).toEqual({
+      value: 3,
+      error: 'Expected integer value',
+    })
+  })
+
+  it('preserves unsupported-yet declared types without coercing loaded scalar values', () => {
+    expect(coerceGridValue('created_at', '2026-05-19', null, { created_at: 'date' })).toEqual({
+      value: '2026-05-19',
+      error: null,
+    })
+    expect(coerceGridRows(['system_id', 'is_active'], [[1, true]], { is_active: 'bool' })).toEqual({
+      rows: [[1, true]],
+      issues: [],
+      errors: [],
+    })
+  })
+
   it('coerces loaded rows so save can persist normalized integer ids', () => {
     expect(coerceGridRows(['system_id', 'method_group_id', 'label'], [[1, '53', 'Method A']])).toEqual({
       rows: [[1, 53, 'Method A']],
+      issues: [],
       errors: [],
     })
   })
@@ -100,7 +132,24 @@ describe('fixedValuesGridClipboard', () => {
   it('collects row errors when loaded values contain invalid integer ids', () => {
     expect(coerceGridRows(['system_id', 'method_group_id', 'label'], [[1, '53abc', 'Method A']])).toEqual({
       rows: [[1, '53abc', 'Method A']],
+      issues: [{ rowIndex: 0, columnName: 'method_group_id', message: 'Expected integer ID' }],
       errors: ['Row 1, column method_group_id: Expected integer ID'],
+    })
+  })
+
+  it('summarizes validation issues per column', () => {
+    expect(summarizeValidationIssues([
+      { rowIndex: 0, columnName: 'rank', message: 'Expected integer value' },
+      { rowIndex: 2, columnName: 'rank', message: 'Expected integer value' },
+    ])).toEqual([
+      'Column rank: 2 invalid values (rows 1, 3)',
+    ])
+  })
+
+  it('normalizes only supported fixed column types', () => {
+    expect(normalizeGridColumnTypes({ rank: 'INT', label: 'string', skip: 'json' })).toEqual({
+      rank: 'int',
+      label: 'string',
     })
   })
 })
