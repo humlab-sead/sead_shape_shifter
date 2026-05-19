@@ -532,6 +532,7 @@
                       <FixedValuesGrid
                         v-else-if="fixedValuesColumns.length > 0"
                         v-model="formData.values"
+                        v-model:column-types="formData.column_types"
                         :columns="fixedValuesColumns"
                         :public-id="formData.public_id"
                         height="400px"
@@ -1048,6 +1049,19 @@ const DEFAULT_DIALOG_WIDTH = 1100
 const DEFAULT_DIALOG_HEIGHT = 820
 const MIN_DIALOG_WIDTH = 900
 const MIN_DIALOG_HEIGHT = 640
+const SHOULD_DEBUG_ENTITY_FORM_DIALOG = import.meta.env.DEV && import.meta.env.MODE !== 'test'
+
+function debugEntityForm(...args: unknown[]): void {
+  if (SHOULD_DEBUG_ENTITY_FORM_DIALOG) {
+    console.debug(...args)
+  }
+}
+
+function warnEntityForm(...args: unknown[]): void {
+  if (SHOULD_DEBUG_ENTITY_FORM_DIALOG) {
+    console.warn(...args)
+  }
+}
 
 // Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
 const FixedValuesGrid = defineAsyncComponent(() => import('./FixedValuesGrid.vue'))
@@ -1165,6 +1179,7 @@ interface FormData {
   surrogate_id: string // Deprecated - for backward compatibility
   keys: string[]
   columns: string[]
+  column_types: Record<string, string>
   values: any[][] // For fixed type entities
   source: string | null
   data_source: string
@@ -1198,6 +1213,28 @@ interface FormData {
   }
 }
 
+const SUPPORTED_FIXED_COLUMN_TYPES = new Set(['int', 'string', 'float', 'bool', 'date'])
+
+function normalizeFixedColumnTypes(value: unknown, allowedColumns: string[] = []): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  const allowed = new Set(allowedColumns)
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .map(([columnName, typeName]) => [columnName, String(typeName).trim().toLowerCase()] as const)
+      .filter(([columnName, typeName]) => {
+        if (!SUPPORTED_FIXED_COLUMN_TYPES.has(typeName)) {
+          return false
+        }
+
+        return allowed.size === 0 || allowed.has(columnName)
+      })
+  )
+}
+
 function normalizeChipField(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value
@@ -1228,6 +1265,7 @@ const formData = ref<FormData>({
   surrogate_id: '', // Deprecated - kept for backward compat
   keys: [],
   columns: [],
+  column_types: {},
   values: [],
   source: null,
   data_source: '',
@@ -1725,6 +1763,11 @@ function buildEntityConfigFromFormData(options: BuildEntityConfigOptions = {}): 
 
   // Always include values field for fixed type (required by backend validation)
   if (formData.value.type === 'fixed') {
+    const normalizedColumnTypes = normalizeFixedColumnTypes(formData.value.column_types, fixedValuesColumns.value)
+    if (Object.keys(normalizedColumnTypes).length > 0) {
+      entityData.column_types = normalizedColumnTypes
+    }
+
     applyMaterializationRoundTripToFixedEntity(
       entityData,
       formData.value.values || [],
@@ -2051,7 +2094,7 @@ function hydrateColumnsFromSource() {
   const existing = formData.value.columns || []
   // Ensure saved selections stay visible even if source metadata is not yet available
   columnsOptions.value = Array.from(new Set([...existing, ...colsFromSource]))
-  console.debug('[EntityFormDialog] Hydrated columns from source:', {
+  debugEntityForm('[EntityFormDialog] Hydrated columns from source:', {
     source: formData.value.source,
     colsFromSource,
     existing,
@@ -2363,12 +2406,16 @@ watch(
 watch(
   () => fixedValuesColumns.value,
   (newColumns, oldColumns) => {
-    if (
-      suppressFixedSchemaRemap.value
-      || formData.value.type !== 'fixed'
-      || !Array.isArray(formData.value.values)
-      || oldColumns.length === 0
-    ) {
+    if (suppressFixedSchemaRemap.value || formData.value.type !== 'fixed') {
+      return
+    }
+
+    const normalizedColumnTypes = normalizeFixedColumnTypes(formData.value.column_types, newColumns)
+    if (JSON.stringify(normalizedColumnTypes) !== JSON.stringify(formData.value.column_types)) {
+      formData.value.column_types = normalizedColumnTypes
+    }
+
+    if (!Array.isArray(formData.value.values) || oldColumns.length === 0) {
       return
     }
 
@@ -2735,6 +2782,13 @@ function yamlToFormData(yamlString: string): boolean {
     const normalizedKeys = normalizeChipField(data.keys)
     const publicId = data.public_id || data.surrogate_id || ''
     const normalizedColumns = normalizeChipField(data.columns)
+    const editableFixedColumns = (data.type || 'entity') === 'fixed'
+      ? normalizeEditableFixedColumns(normalizedColumns, normalizedKeys, publicId)
+      : normalizedColumns
+    const fixedFullColumns = (data.type || 'entity') === 'fixed'
+      ? buildFixedValuesColumns(editableFixedColumns, normalizedKeys, publicId)
+      : normalizedColumns
+    const normalizedColumnTypes = normalizeFixedColumnTypes(data.column_types, fixedFullColumns)
 
     // Keep non-inline values/materialization metadata from YAML edits.
     const roundTrip = extractMaterializationRoundTripState(data)
@@ -2776,9 +2830,10 @@ function yamlToFormData(yamlString: string): boolean {
         public_id: publicId, // Migrate surrogate_id → public_id
         surrogate_id: data.surrogate_id || '', // Keep for backward compat
         keys: normalizedKeys,
+        column_types: normalizedColumnTypes,
         columns:
           (data.type || 'entity') === 'fixed'
-            ? normalizeEditableFixedColumns(normalizedColumns, normalizedKeys, publicId)
+            ? editableFixedColumns
             : normalizedColumns,
         values: normalizedFixedRows,
         source: data.source || null,
@@ -2952,7 +3007,7 @@ async function handleSubmit() {
           )
           // Update etag after successful save
           externalValuesEtag.value = response.etag
-          console.log('[EntityFormDialog] Saved external values')
+          debugEntityForm('[EntityFormDialog] Saved external values')
         } catch (err: any) {
           console.error('Failed to save external values:', err)
           // Check for conflict (409)
@@ -3027,7 +3082,7 @@ async function handleSubmitAndClose() {
           )
           // Update etag after successful save
           externalValuesEtag.value = response.etag
-          console.log('[EntityFormDialog] Saved external values (close)')
+          debugEntityForm('[EntityFormDialog] Saved external values (close)')
         } catch (err: any) {
           console.error('Failed to save external values:', err)
           // Check for conflict (409)
@@ -3141,7 +3196,7 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
 
   // Log unmaterialized entities
   if (unmaterializedEntities.length > 1) {
-    console.log(`Unmaterialized ${unmaterializedEntities.length} entities:`, unmaterializedEntities)
+    debugEntityForm(`Unmaterialized ${unmaterializedEntities.length} entities:`, unmaterializedEntities)
   }
 }
 
@@ -3165,10 +3220,15 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   const normalizedColumns = normalizeChipField(entity.entity_data.columns)
   const publicId = (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || ''
   let columns = normalizedColumns
+  let fixedFullColumns = normalizedColumns
   if (entity.entity_data.type === 'fixed') {
-    const fixedFullColumns = entity.fixed_schema?.full_columns || normalizedColumns
+    fixedFullColumns = entity.fixed_schema?.full_columns || normalizedColumns
     columns = normalizeEditableFixedColumns(fixedFullColumns, keys, publicId)
   }
+  const normalizedColumnTypes = normalizeFixedColumnTypes(
+    entity.entity_data.column_types,
+    entity.entity_data.type === 'fixed' ? fixedFullColumns : normalizedColumns
+  )
 
   // Handle values: can be either array (inline) or string (@load: directive for materialized entities)
   const roundTrip = extractMaterializationRoundTripState(entity.entity_data)
@@ -3195,6 +3255,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     public_id: publicId, // Migrate
     surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
     keys,
+    column_types: normalizedColumnTypes,
     columns: columns,
     values: normalizedFixedRows,
     source: (entity.entity_data.source as string) || null,
@@ -3243,7 +3304,7 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
     externalValuesError.value = null
 
     try {
-      console.log(`[EntityFormDialog] Loading external values for ${entity.name}: ${rawValues}`)
+      debugEntityForm(`[EntityFormDialog] Loading external values for ${entity.name}: ${rawValues}`)
       const response = await api.entities.getValues(props.projectName, entity.name)
 
       // Populate form data with fetched values
@@ -3262,7 +3323,7 @@ async function loadExternalValuesIfNeeded(entity: EntityResponse) {
       // Store etag for optimistic locking
       externalValuesEtag.value = response.etag
 
-      console.log(
+      debugEntityForm(
         `[EntityFormDialog] Loaded ${response.row_count} rows from external storage (${response.format}, etag: ${response.etag.substring(0, 8)}...)`
       )
     } catch (err) {
@@ -3296,6 +3357,7 @@ function buildDefaultFormData(): FormData {
     surrogate_id: '', // Backward compat
     keys: [],
     columns: [],
+    column_types: {},
     values: [],
     source: null,
     data_source: '',
@@ -3340,7 +3402,7 @@ watch(
     // - Create mode: always reset (no entity name required)
     // - Edit mode: reset when entity name is available
     if (isOpen && (mode === 'create' || entityName)) {
-      console.log('[EntityFormDialog] Dialog opening/entity changed, props:', {
+      debugEntityForm('[EntityFormDialog] Dialog opening/entity changed, props:', {
         mode: mode,
         entityName: entityName,
         hasEntity: !!props.entity,
@@ -3363,7 +3425,7 @@ watch(
         // Use entity from props (already fresh from reactive store)
         // Only fetch from API if props.entity is missing (defensive coding)
         if (props.entity) {
-          console.log('[EntityFormDialog] Using entity from props (reactive store):', entityName)
+          debugEntityForm('[EntityFormDialog] Using entity from props (reactive store):', entityName)
           currentEntity.value = props.entity
           suppressFixedSchemaRemap.value = true
           formData.value = buildFormDataFromEntity(props.entity)
@@ -3383,10 +3445,10 @@ watch(
         } else {
           // Fallback: fetch from API if entity not provided (shouldn't happen in normal flow)
           loading.value = true
-          console.warn('[EntityFormDialog] Entity not in props, fetching from API:', entityName)
+          warnEntityForm('[EntityFormDialog] Entity not in props, fetching from API:', entityName)
           try {
             const freshEntity = await api.entities.get(props.projectName, entityName)
-            console.log('[EntityFormDialog] API response received for:', freshEntity.name)
+            debugEntityForm('[EntityFormDialog] API response received for:', freshEntity.name)
             currentEntity.value = freshEntity
             suppressFixedSchemaRemap.value = true
             formData.value = buildFormDataFromEntity(freshEntity)
@@ -3524,17 +3586,17 @@ function handleAcceptForeignKey(fk: ForeignKeySuggestion) {
 
 function handleRejectForeignKey(fk: ForeignKeySuggestion) {
   // Just log for now - user rejected this suggestion
-  console.log('Rejected FK suggestion:', fk)
+  debugEntityForm('Rejected FK suggestion:', fk)
 }
 
 function handleAcceptDependency(dep: DependencySuggestion) {
   // Dependencies would be handled by the backend during processing
   // For now, just log
-  console.log('Accepted dependency suggestion:', dep)
+  debugEntityForm('Accepted dependency suggestion:', dep)
 }
 
 function handleRejectDependency(dep: DependencySuggestion) {
-  console.log('Rejected dependency suggestion:', dep)
+  debugEntityForm('Rejected dependency suggestion:', dep)
 }
 </script>
 
