@@ -11,8 +11,28 @@
       </div>
     </div>
 
-    <v-alert v-if="validationErrors.length > 0" type="error" variant="tonal" density="compact" class="mb-2">
-      <div v-for="error in validationErrors" :key="error" class="text-caption">{{ error }}</div>
+    <div v-if="props.columns.length > 0" class="column-type-controls mb-2">
+      <div v-for="columnName in props.columns" :key="columnName" class="column-type-control">
+        <span class="column-type-control__label">{{ columnName }}</span>
+        <span class="column-type-control__source">{{ getColumnTypeSourceLabel(columnName) }}</span>
+        <select
+          class="column-type-control__select"
+          :value="getColumnTypeSelectorValue(columnName)"
+          @change="onColumnTypeChange(columnName, $event)"
+        >
+          <option
+            v-for="option in getColumnTypeOptions(columnName)"
+            :key="`${columnName}-${option.value}`"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <v-alert v-if="validationSummary.length > 0" type="error" variant="tonal" density="compact" class="mb-2">
+      <div v-for="error in validationSummary" :key="error" class="text-caption">{{ error }}</div>
     </v-alert>
 
     <ag-grid-vue class="ag-theme-alpine compact-grid" :style="{ height: gridHeight }" :columnDefs="columnDefs"
@@ -32,36 +52,50 @@ import {
   buildGridRowData,
   coerceGridRows,
   coerceGridValue,
+  type FixedGridColumnTypeName,
+  type GridValidationIssue,
   inferColumnType,
+  normalizeGridColumnTypes,
   parseClipboardTable,
+  summarizeValidationIssues,
 } from './fixedValuesGridClipboard'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
+interface ColumnTypeOption {
+  value: 'auto' | FixedGridColumnTypeName
+  label: string
+}
+
 interface Props {
   modelValue: any[][]
   columns: string[]
+  columnTypes?: Record<string, string>
   publicId?: string
   height?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   height: '300px',
+  columnTypes: () => ({}),
   publicId: undefined,
 })
 
 const emit = defineEmits<{
   'update:modelValue': [value: any[][]]
+  'update:columnTypes': [value: Record<string, string>]
   'validation-errors': [value: string[]]
 }>()
 
 const gridApi = ref<GridApi>()
 const hasSelection = ref(false)
 const lastEmittedModelSignature = ref<string | null>(null)
-const validationErrors = ref<string[]>([])
+const validationSummary = ref<string[]>([])
+const invalidCellMessages = ref<Record<string, string>>({})
 
 const gridHeight = computed(() => props.height)
 const systemIdColumnIndex = computed(() => props.columns.findIndex((col) => col === 'system_id'))
+const normalizedColumnTypes = computed<Record<string, FixedGridColumnTypeName>>(() => normalizeGridColumnTypes(props.columnTypes))
 
 const defaultColDef: ColDef = {
   editable: true,
@@ -72,22 +106,87 @@ const defaultColDef: ColDef = {
   flex: 1,
 }
 
-function setValidationErrors(errors: string[]) {
-  validationErrors.value = errors
-  emit('validation-errors', errors)
+function buildInvalidCellKey(rowIndex: number, columnName: string): string {
+  return `${rowIndex}:${columnName}`
 }
 
-function clearValidationErrors() {
-  if (validationErrors.value.length === 0) {
+function setValidationIssues(issues: GridValidationIssue[]) {
+  invalidCellMessages.value = Object.fromEntries(
+    issues.map((issue) => [buildInvalidCellKey(issue.rowIndex, issue.columnName), issue.message])
+  )
+
+  const summary = summarizeValidationIssues(issues)
+  validationSummary.value = summary
+  emit('validation-errors', summary)
+}
+
+function clearValidationIssues() {
+  if (validationSummary.value.length === 0 && Object.keys(invalidCellMessages.value).length === 0) {
     return
   }
 
-  validationErrors.value = []
+  validationSummary.value = []
+  invalidCellMessages.value = {}
   emit('validation-errors', [])
 }
 
-function formatValidationError(columnName: string, rowIndex: number, error: string): string {
-  return `Row ${rowIndex + 1}, column ${columnName}: ${error}`
+function hasValidationIssue(rowIndex: number, columnName: string): boolean {
+  return Boolean(invalidCellMessages.value[buildInvalidCellKey(rowIndex, columnName)])
+}
+
+function getValidationIssueMessage(rowIndex: number, columnName: string): string | undefined {
+  return invalidCellMessages.value[buildInvalidCellKey(rowIndex, columnName)]
+}
+
+function formatTypeLabel(typeName: FixedGridColumnTypeName): string {
+  if (typeName === 'int') {
+    return 'Integer'
+  }
+
+  return typeName.charAt(0).toUpperCase() + typeName.slice(1)
+}
+
+function getColumnTypeSelectorValue(columnName: string): 'auto' | FixedGridColumnTypeName {
+  return normalizedColumnTypes.value[columnName] || 'auto'
+}
+
+function getColumnTypeSourceLabel(columnName: string): string {
+  const explicitType = normalizedColumnTypes.value[columnName]
+
+  if (explicitType) {
+    return `Declared: ${explicitType}`
+  }
+
+  return `Inferred: ${inferColumnType(columnName) === 'number' ? 'int' : 'string'}`
+}
+
+function getColumnTypeOptions(columnName: string): ColumnTypeOption[] {
+  const currentType = normalizedColumnTypes.value[columnName]
+  const options: ColumnTypeOption[] = [
+    { value: 'auto', label: 'Auto' },
+    { value: 'int', label: 'Integer' },
+    { value: 'string', label: 'String' },
+  ]
+
+  if (currentType && !['int', 'string'].includes(currentType)) {
+    options.unshift({ value: currentType, label: `Preserve: ${formatTypeLabel(currentType)}` })
+  }
+
+  return options
+}
+
+function onColumnTypeChange(columnName: string, event: Event) {
+  const target = event.target as HTMLSelectElement | null
+  const nextValue = target?.value
+  const nextColumnTypes: Record<string, string> = { ...normalizedColumnTypes.value }
+
+  if (!nextValue || nextValue === 'auto') {
+    delete nextColumnTypes[columnName]
+  } else {
+    nextColumnTypes[columnName] = nextValue
+  }
+
+  emit('update:columnTypes', nextColumnTypes)
 }
 
 const columnDefs = computed<ColDef[]>(() => {
@@ -112,7 +211,6 @@ const columnDefs = computed<ColDef[]>(() => {
     ...props.columns.map((col, index) => {
       const isSystemId = col === 'system_id'
       const isPublicId = col === props.publicId
-      const isIntegerColumn = inferColumnType(col) === 'number'
 
       return {
         field: `col_${index}`,
@@ -124,23 +222,21 @@ const columnDefs = computed<ColDef[]>(() => {
         minWidth: 100,
         flex: 1,
         valueParser: isSystemId ? undefined : (params: any) => {
-          const result = coerceGridValue(col, params.newValue, params.oldValue)
+          const result = coerceGridValue(col, params.newValue, params.oldValue, props.columnTypes)
 
           if (result.error) {
-            setValidationErrors([
-              formatValidationError(col, params.node?.rowIndex ?? 0, result.error),
-            ])
+            setValidationIssues([{ rowIndex: params.node?.rowIndex ?? 0, columnName: col, message: result.error }])
             return params.oldValue
-          }
-
-          if (isIntegerColumn) {
-            clearValidationErrors()
           }
 
           return result.value
         },
         cellClass: isSystemId ? 'system-id-column' : (isPublicId ? 'public-id-column' : ''),
+        cellClassRules: {
+          'invalid-fixed-value-cell': (params: any) => hasValidationIssue(params.node?.rowIndex ?? -1, col),
+        },
         headerClass: isSystemId ? 'system-id-header' : (isPublicId ? 'public-id-header' : ''),
+        tooltipValueGetter: (params: any) => getValidationIssueMessage(params.node?.rowIndex ?? -1, col) || null,
       }
     }),
   ]
@@ -167,13 +263,13 @@ function serializeModelValue(rows: any[][]): string {
 }
 
 function emitModelValueUpdate(rows: any[][]) {
-  const coerced = coerceGridRows(props.columns, rows)
-  if (coerced.errors.length > 0) {
-    setValidationErrors(coerced.errors)
+  const coerced = coerceGridRows(props.columns, rows, props.columnTypes)
+  if (coerced.issues.length > 0) {
+    setValidationIssues(coerced.issues)
     return
   }
 
-  clearValidationErrors()
+  clearValidationIssues()
   lastEmittedModelSignature.value = serializeModelValue(coerced.rows)
   emit('update:modelValue', coerced.rows)
 }
@@ -341,6 +437,7 @@ function onPaste(event: ClipboardEvent) {
   const pasteResult = applyClipboardMatrix({
     rows: getAllRows(false),
     columns: props.columns,
+    columnTypes: props.columnTypes,
     startRowIndex,
     startColIndex,
     matrix,
@@ -350,10 +447,10 @@ function onPaste(event: ClipboardEvent) {
     },
   })
 
-  if (pasteResult.errors.length > 0) {
-    setValidationErrors(pasteResult.errors)
+  if (pasteResult.issues.length > 0) {
+    setValidationIssues(pasteResult.issues)
   } else {
-    clearValidationErrors()
+    clearValidationIssues()
   }
 
   gridApi.value.setGridOption('rowData', buildGridRowData(pasteResult.rows, systemIdColumnIndex.value))
@@ -361,8 +458,8 @@ function onPaste(event: ClipboardEvent) {
 }
 
 watch(
-  () => props.modelValue,
-  (newValue) => {
+  [() => props.modelValue, () => props.columnTypes],
+  ([newValue]) => {
     const incomingRows = newValue || []
     const incomingSignature = serializeModelValue(incomingRows)
 
@@ -370,15 +467,17 @@ watch(
       return
     }
 
-    const coerced = coerceGridRows(props.columns, incomingRows)
+    const coerced = coerceGridRows(props.columns, incomingRows, props.columnTypes)
     const coercedSignature = serializeModelValue(coerced.rows)
 
-    if (coerced.errors.length > 0) {
-      setValidationErrors(coerced.errors)
+    if (coerced.issues.length > 0) {
+      setValidationIssues(coerced.issues)
     } else if (coercedSignature !== incomingSignature) {
-      clearValidationErrors()
+      clearValidationIssues()
       emitModelValueUpdate(incomingRows)
       return
+    } else {
+      clearValidationIssues()
     }
 
     if (gridApi.value) {
@@ -392,6 +491,43 @@ watch(
 <style scoped>
 .fixed-values-grid {
   width: 100%;
+}
+
+.column-type-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.column-type-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 4px;
+  background: rgba(var(--v-theme-surface), 0.45);
+}
+
+.column-type-control__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.column-type-control__source {
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+}
+
+.column-type-control__select {
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.18);
+  border-radius: 4px;
+  background: rgb(var(--v-theme-background));
+  color: rgb(var(--v-theme-on-background));
+  font-size: 11px;
 }
 
 .compact-grid {
@@ -477,5 +613,10 @@ watch(
   background: rgba(var(--v-theme-primary), 0.1) !important;
   font-weight: 700;
   color: rgb(var(--v-theme-primary)) !important;
+}
+
+.compact-grid :deep(.invalid-fixed-value-cell) {
+  background: rgba(var(--v-theme-error), 0.12) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-error), 0.35);
 }
 </style>
