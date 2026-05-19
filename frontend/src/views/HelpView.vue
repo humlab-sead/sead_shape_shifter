@@ -106,7 +106,9 @@ function getSectionFromHash(hash: string): string {
 
 watch(
   () => [currentDoc.value, route.hash] as const,
-  async ([docPath, hash], [previousDocPath, previousHash]) => {
+  async ([docPath, hash], previousValue) => {
+    const [previousDocPath, previousHash] = previousValue ?? [undefined, undefined]
+
     if (docPath !== previousDocPath) {
       await loadHelp(docPath)
     }
