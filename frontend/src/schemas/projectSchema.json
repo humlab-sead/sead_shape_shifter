@@ -128,8 +128,7 @@
         }
       },
       "required": [
-        "name",
-        "entity_count"
+        "name"
       ],
       "title": "ProjectMetadata",
       "type": "object"
