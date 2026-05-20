@@ -211,4 +211,4 @@ Approve a narrow proposal for project-level fixed-entity type conventions. Imple
 - [x] Update configuration documentation after behavior is merged.
 - [x] Produce a follow-up proposal for deferred enhancements such as entity-scoped convention blocks, target-model-informed typing, lineage UX, and regex support.
 
-See [future/FIXED_ENTITY_TYPE_CONVENTION_ENHANCEMENTS.md](future/FIXED_ENTITY_TYPE_CONVENTION_ENHANCEMENTS.md) for the follow-up proposal.
+See [../future/FIXED_ENTITY_TYPE_CONVENTION_ENHANCEMENTS.md](../future/FIXED_ENTITY_TYPE_CONVENTION_ENHANCEMENTS.md) for the follow-up proposal.
