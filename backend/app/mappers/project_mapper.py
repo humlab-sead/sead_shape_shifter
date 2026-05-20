@@ -27,7 +27,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.core.config import settings
-from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityConfigMapperFactory
+from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityConfigMapperFactory, EntityMapperContext
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models import (
     Entity,
@@ -42,8 +42,11 @@ from src.types.fixed_entity_types import (
     FixedEntityNormalizationWarning,
     FixedEntityShapeValidationError,
     FixedEntityTypeCoercer,
+    FixedEntityTypeConvention,
+    FixedEntityTypeConventionDeclarationError,
     FixedEntityTypeValidationError,
     format_fixed_entity_normalization_warning,
+    normalize_fixed_entity_type_conventions,
 )
 
 
@@ -55,6 +58,7 @@ class ProjectMapper:
         """Collect non-fatal fixed-entity normalization warnings for project load responses."""
         warnings: list[str] = []
         source_name = filename or project_name
+        conventions: list[FixedEntityTypeConvention] = normalize_fixed_entity_type_conventions(cfg_dict.get("options", {}))
 
         for entity_name, entity_dict in cfg_dict.get("entities", {}).items():
             if not isinstance(entity_dict, dict) or entity_dict.get("type") != "fixed":
@@ -69,9 +73,11 @@ class ProjectMapper:
                     entity_dict,
                     columns,
                     entity_name,
+                    conventions,
                 )
             except (
                 FixedEntityColumnTypeDeclarationError,
+                FixedEntityTypeConventionDeclarationError,
                 FixedEntityShapeValidationError,
                 FixedEntityTypeValidationError,
             ):
@@ -142,9 +148,10 @@ class ProjectMapper:
         # File-based entities: decompose absolute paths to (filename, location)
         # Other entities: no-op transformation
         mapper_factory = EntityConfigMapperFactory(settings)
+        mapper_context = EntityMapperContext(project_name=name, project_options=cfg_dict.get("options", {}))
         for entity_dict in entities.values():
             mapper: EntityConfigMapper = mapper_factory.get_mapper_for_entity(entity_dict)
-            entity_dict.update(mapper.to_api(entity_dict, name))
+            entity_dict.update(mapper.to_api(entity_dict, mapper_context))
 
         # Map options (preserve as-is)
         options = cfg_dict.get("options", {})
@@ -237,13 +244,14 @@ class ProjectMapper:
         # Other entities: no-op transformation
         project_name: str = api_config.metadata.name if api_config.metadata else (api_config.filename or "")
         mapper_factory = EntityConfigMapperFactory(settings)
+        mapper_context = EntityMapperContext(project_name=project_name, project_options=cfg_dict.get("options", {}))
 
         entities = cfg_dict.get("entities", {})
         for entity_name, entity_dict in entities.items():
             mapper: EntityConfigMapper = mapper_factory.get_mapper_for_entity(entity_dict)
             entity_input = dict(entity_dict)
             entity_input.setdefault("name", entity_name)
-            transformed = mapper.to_core(entity_input, project_name)
+            transformed = mapper.to_core(entity_input, mapper_context)
             transformed.pop("name", None)
             entity_dict.update(transformed)  # type: ignore[arg-type]
 

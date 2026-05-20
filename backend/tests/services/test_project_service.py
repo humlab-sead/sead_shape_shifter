@@ -708,8 +708,51 @@ options:
         operations.add_entity(project, "sample", entity)
 
         registry.get_strategy.assert_called_once_with({"type": "entity", "source": "raw_table", "public_id": None})
-        strategy.prepare_for_persistence.assert_called_once_with("sample", {"type": "entity", "source": "raw_table", "public_id": None})
+        strategy.prepare_for_persistence.assert_called_once_with(
+            "sample",
+            {"type": "entity", "source": "raw_table", "public_id": None},
+            {},
+        )
         assert project.entities["sample"] == {"type": "entity", "source": "prepared_table"}
+
+    def test_fixed_entity_persistence_accepts_project_convention_typed_columns(self):
+        """Project conventions should validate matching non-_id columns during persistence."""
+        strategy = FixedEntityPersistenceStrategy()
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "abundance_id",
+            "keys": ["label"],
+            "columns": ["system_id", "label", "abundance"],
+            "values": [[1, "Oak", 12]],
+        }
+
+        result = strategy.prepare_for_persistence(
+            "abundance_source",
+            entity_data,
+            {"fixed_entity_types": {"conventions": [{"pattern": "abundance", "type": "int"}]}},
+        )
+
+        assert result["values"] == [[1, "Oak", 12]]
+
+    def test_fixed_entity_persistence_rejects_invalid_project_convention_typed_columns(self):
+        """Project conventions should reject invalid matching non-_id values before save."""
+        strategy = FixedEntityPersistenceStrategy()
+
+        entity_data = {
+            "type": "fixed",
+            "public_id": "abundance_id",
+            "keys": ["label"],
+            "columns": ["system_id", "label", "abundance"],
+            "values": [[1, "Oak", "12"]],
+        }
+
+        with pytest.raises(SchemaValidationError, match="expected int or null"):
+            strategy.prepare_for_persistence(
+                "abundance_source",
+                entity_data,
+                {"fixed_entity_types": {"conventions": [{"pattern": "abundance", "type": "int"}]}},
+            )
 
     def test_add_entity_by_name_already_exists(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test adding duplicate entity by name raises error."""

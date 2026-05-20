@@ -114,7 +114,11 @@ class ProjectSpecification(Specification):
 
     def get_entity(self, entity_name: str) -> TableConfig:
         """Get the TableConfig for the specified entity."""
-        return TableConfig(entity_name=entity_name, entities_cfg=self.project_cfg.get("entities", {}))
+        return TableConfig(
+            entity_name=entity_name,
+            entities_cfg=self.project_cfg.get("entities", {}),
+            project_options=self.project_cfg.get("options", {}),
+        )
 
     def entity_exists(self, entity_name: str) -> bool:
         """Check if a specific entity exists in the configuration."""
