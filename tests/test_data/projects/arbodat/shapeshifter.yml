@@ -839,7 +839,7 @@ entities:
     query: |
       select distinct [Projekt], [Fustel], coalesce([EVNr], '') as [EVNr]
       from [Projekte]
-      where [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;"
+      where [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;
   relative_dating:
     type: entity
     source: _analysis_entity_relative_dating
