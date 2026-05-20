@@ -609,6 +609,9 @@ class YamlService:
                     for note_key, note_value in value.items():
                         if isinstance(note_value, str) and "\n" in note_value:
                             value[note_key] = LiteralScalarString(note_value.rstrip("\n"))
+                elif key == "query" and isinstance(value, str) and ("\n" in value or "\r" in value):
+                    normalized_query = value.replace("\r\n", "\n").replace("\r", "\n")
+                    obj[key] = LiteralScalarString(normalized_query.rstrip("\n"))
                 # Special case: 'values' should always be formatted as list of rows
                 if key == "values" and isinstance(value, list) and value and isinstance(value[0], list):
                     # Outer list: block style (each row on its own line)
