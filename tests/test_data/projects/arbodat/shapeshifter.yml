@@ -1,5 +1,5 @@
 metadata:
-  name: arbodat:arbodat-roger
+  name: arbodat
   type: shapeshifter-project
   description: Configuration for importing data from ArboDat database into SEAD.
   version: 1.0.0
@@ -8,7 +8,6 @@ metadata:
 entities:
   abundance:
     type: sql
-    public_id: abundance_id
     keys: '@value: entities.analysis_entity.keys'
     columns:
     - Projekt
@@ -29,6 +28,9 @@ entities:
     - FGewicht
     - EDatProb
     - AnmFrakt
+    public_id: abundance_id
+    data_source: arbodat_data
+    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl],\n       [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]\nfrom [Details];"
     foreign_keys:
     - entity: analysis_entity
       local_keys: '@value: entities.analysis_entity.keys'
@@ -57,8 +59,6 @@ entities:
       abundance: FAnzahl
       analysis_entity_type: abundance
       analysis_entity_value: '{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}'
-    data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl],\n       [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]\nfrom [Details];"
   abundance_element:
     type: fixed
     public_id: abundance_element_id
@@ -115,12 +115,12 @@ entities:
     - RTypGrup
     - RTypGrup_EN
     values:
-    - [1, null, '-99', '9999', '-99', '-99']
-    - [2, null, Wood, '20', Holz, Wood]
-    - [3, null, Seeds/Fruits etc., '30', Samen/Früchte usw., Seeds/Fruits etc.]
-    - [4, null, Others, '50', sonstiges, Others]
-    - [5, null, Unknown, '999', unbekannt, Unknown]
-    - [6, null, Veg. Remains, '40', veget. Pflanzenteile, Veg. Remains]
+    - [1, null, '-99', 9999, '-99', '-99']
+    - [2, null, Wood, 20, Holz, Wood]
+    - [3, null, Seeds/Fruits etc., 30, Samen/Früchte usw., Seeds/Fruits etc.]
+    - [4, null, Others, 50, sonstiges, Others]
+    - [5, null, Unknown, 999, unbekannt, Unknown]
+    - [6, null, Veg. Remains, 40, veget. Pflanzenteile, Veg. Remains]
     materialized:
       enabled: true
       source_state:
@@ -613,7 +613,11 @@ entities:
     depends_on: [project]
     drop_duplicates: [Projekt, Befu]
     data_source: arbodat_data
-    query: "select p.[Fustel], b.[Projekt], b.[Befu], b.[FlSchn], b.[BefuTyp], b.[FuTypVermut], b.[gebäud], b.[okBefu], b.[okErh], b.[BotBest], b.[BestJa], b.[Anmerkung]\nfrom [Befunde] b\ninner join Projekte p using ([Projekt])\nwhere p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015') ;\n"
+    query: |
+      select p.[Fustel], b.[Projekt], b.[Befu], b.[FlSchn], b.[BefuTyp], b.[FuTypVermut], b.[gebäud], b.[okBefu], b.[okErh], b.[BotBest], b.[BestJa], b.[Anmerkung]
+      from [Befunde] b
+      inner join Projekte p using ([Projekt])
+      where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015') ;
   feature_property:
     type: sql
     source:
@@ -832,7 +836,10 @@ entities:
       project_abbrev_name:
       description:
     data_source: arbodat_data
-    query: "select distinct [Projekt], [Fustel], coalesce([EVNr], '') as [EVNr]\nfrom [Projekte]\nwhere [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;\n"
+    query: |
+      select distinct [Projekt], [Fustel], coalesce([EVNr], '') as [EVNr]
+      from [Projekte]
+      where [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;"
   relative_dating:
     type: entity
     source: _analysis_entity_relative_dating
@@ -911,6 +918,8 @@ entities:
     - TiefeBis
     - TiefeVon
     - Prob_üNN
+    data_source: arbodat_data
+    query: "select [Projekt], [Befu], [ProbNr], [KoordX], [KoordY], [KoordZ], [TiefeBis], [TiefeVon], [Prob_üNN]\r\nfrom [Proben]\r\nwhere [Proben].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015');"
     foreign_keys:
     - entity: sample
       local_keys: [Projekt, Befu, ProbNr]
@@ -936,8 +945,8 @@ entities:
         allow_row_decrease: true
     depends_on: [sample, dimension, coordinate_method_dimension]
     drop_duplicates: true
-    drop_empty_rows: [measurement]
     check_functional_dependency: true
+    drop_empty_rows: [measurement]
     unnest:
       id_vars: [Projekt, Befu, ProbNr]
       value_vars:
@@ -949,8 +958,6 @@ entities:
       - Prob_üNN
       var_name: coordinate_type
       value_name: measurement
-    data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr], [KoordX], [KoordY], [KoordZ], [TiefeBis], [TiefeVon], [Prob_üNN]\r\nfrom [Proben]\r\nwhere [Proben].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015');"
   sample_description_type:
     type: fixed
     source:
@@ -1038,16 +1045,16 @@ entities:
       method_id: '53'
   sample_type:
     type: sql
-    public_id: sample_type_id
     keys: [ProbTyp]
     columns: [ProbTyp, PrTyp, Nummer]
+    public_id: sample_type_id
+    data_source: arbodat_lookup
+    query: select distinct [ProbTyp], [PrTyp], [Nummer] from [Probentypen] ;
     drop_duplicates: [ProbTyp]
     check_functional_dependency: true
     extra_columns:
       type_name: ProbTyp
       sample_type_description: PrTyp
-    data_source: arbodat_lookup
-    query: select distinct [ProbTyp], [PrTyp], [Nummer] from [Probentypen] ;
   site:
     type: sql
     keys: [Fustel, EVNr]
@@ -1526,16 +1533,16 @@ entities:
     - Zust
     - Zustand
     values:
-    - [1, null, null, not chosen, '9999', '-99', not chosen]
-    - [2, null, null, imprint, '60', Ab, imprint]
-    - [3, null, null, kiln-dried/partly charred, '55', ag, kiln-dried/partly charred]
-    - [4, null, null, calcinated, '56', ca, calcinated]
-    - [5, 5, null, mineralised, '30', mi, mineralised]
-    - [6, null, null, waterlogged, '20', sf, waterlogged]
-    - [7, null, null, others, '999', so, others]
-    - [8, null, null, dessicated, '40', st, dessicated]
-    - [9, 1, null, charred, '10', vk, charred]
-    - [10, null, null, charred and mineralised, '50', vm, charred and mineralised]
+    - [1, null, null, not chosen, 9999, '-99', not chosen]
+    - [2, null, null, imprint, 60, Ab, imprint]
+    - [3, null, null, kiln-dried/partly charred, 55, ag, kiln-dried/partly charred]
+    - [4, null, null, calcinated, 56, ca, calcinated]
+    - [5, 5, null, mineralised, 30, mi, mineralised]
+    - [6, null, null, waterlogged, 20, sf, waterlogged]
+    - [7, null, null, others, 999, so, others]
+    - [8, null, null, dessicated, 40, st, dessicated]
+    - [9, 1, null, charred, 10, vk, charred]
+    - [10, null, null, charred and mineralised, 50, vm, charred and mineralised]
   ecocode_system:
     type: fixed
     public_id: ecocode_system_id
