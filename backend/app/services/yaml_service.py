@@ -500,18 +500,21 @@ class YamlService:
             New dictionary with ordered keys (ALL keys preserved)
         """
         # Canonical order for entity configuration keys
-        ENTITY_KEY_ORDER = [  # pylint: disable=invalid-name
+        ENTITY_KEY_ORDER: list[str] = [  # pylint: disable=invalid-name
             # Core identity
             "type",
             "source",
+            "data_source",
             "system_id",
             "public_id",
             # Business keys
             "keys",
             # Schema
             "columns",
+            "column_types",
             # Data
             "values",
+            "query",
             # Materialization metadata
             "materialized",
             # Relationships
