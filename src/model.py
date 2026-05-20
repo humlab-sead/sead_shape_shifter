@@ -9,6 +9,7 @@ from loguru import logger
 
 from src.configuration import ConfigFactory, ConfigLike
 from src.configuration.config import Config, is_config_path
+from src.types.fixed_entity_types import FixedEntityTypeConvention, normalize_fixed_entity_type_conventions
 from src.utility import dotget, unique
 
 
@@ -282,13 +283,24 @@ class MaterializationConfig:
 class TableConfig:
     """Configuration for a database table. Read-Only. Wraps table setting from entities config."""
 
-    def __init__(self, *, entities_cfg: dict[str, dict[str, Any]], entity_name: str) -> None:
+    def __init__(self, *, entities_cfg: dict[str, dict[str, Any]], entity_name: str, project_options: dict[str, Any] | None = None) -> None:
 
         self.entities_cfg: dict[str, dict[str, Any]] = entities_cfg
         self.entity_name: str = entity_name
         self.entity_cfg: dict[str, Any] = entities_cfg[entity_name]
+        self._project_options: dict[str, Any] = project_options or {}
 
         assert self.entity_cfg, f"No configuration found for entity '{entity_name}'"
+
+    @property
+    def project_options(self) -> dict[str, Any]:
+        """Get project-level options available to this entity."""
+        return self._project_options
+
+    @property
+    def fixed_entity_type_conventions(self) -> list[FixedEntityTypeConvention]:
+        """Get normalized project fixed-entity type conventions."""
+        return normalize_fixed_entity_type_conventions(self._project_options)
 
     @property
     def type(self) -> Literal["entity", "sql", "fixed", "csv", "xlsx", "openpyxl", "merged"] | None:
@@ -1462,7 +1474,7 @@ class ShapeShiftProject:
 
     @cached_property
     def tables(self) -> dict[str, TableConfig]:
-        return {key: TableConfig(entities_cfg=self.entities, entity_name=key) for key in self.entities.keys()}
+        return {key: TableConfig(entities_cfg=self.entities, entity_name=key, project_options=self.options) for key in self.entities.keys()}
 
     @property
     def metadata(self) -> Metadata:
