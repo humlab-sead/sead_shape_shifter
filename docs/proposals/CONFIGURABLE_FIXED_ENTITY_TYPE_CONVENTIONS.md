@@ -191,12 +191,24 @@ Regression coverage should include the merged-entity case that motivated the rec
 4. Add focused regression and precedence tests.
 5. Update configuration documentation after behavior is merged.
 
-## Open Questions
+## Future Enhancements
 
-- Should conventions remain global for all fixed entities, or should a later version support entity-scoped overrides?
-- Should future UX work expose whether a column type is declared, convention-based, or inferred from the built-in fallback?
-- Is glob matching sufficient long term, or will some projects eventually need regex support?
+- A later version could add entity-scoped convention blocks for cases where a project-wide rule is too broad. This would complement existing per-entity `column_types`, not replace them. If added, precedence should remain explicit: `column_types` first, then any entity-scoped convention layer, then project-level conventions, then the built-in `_id -> int` fallback.
+- A later version could also evaluate whether target model specifications should help drive fixed-entity typing so projects stay DRY. The target model already supports column `type` hints, but they are informational in v1 rather than enforced. Any future design should decide whether those hints are advisory only, whether they can seed conventions, and how they map onto fixed-entity runtime types without overriding explicit project or entity declarations.
+- Any UX that exposes type-resolution lineage, such as whether a column type came from `column_types`, a project convention, or the built-in fallback, should also be deferred to a later iteration. It is not necessary for the initial user-facing scope of this feature.
+- Regex support should also be deferred to a later iteration. Glob matching is sufficient for the first version unless a concrete project need demonstrates that broader pattern expressiveness is necessary.
 
 ## Final Recommendation
 
 Approve a narrow proposal for project-level fixed-entity type conventions. Implement them as ordered implicit defaults for fixed entities only, with explicit precedence over the built-in fallback and no change to the current preservation behavior for undeclared non-`_id` columns.
+
+## Implementation Progress Checklist
+
+- [x] Add project model support for fixed-entity type conventions.
+- [x] Implement convention validation and type resolution precedence.
+- [x] Reuse the resolved effective type across load, validation, persistence, and materialization paths.
+- [x] Add focused regression and precedence tests.
+- [x] Update configuration documentation after behavior is merged.
+- [x] Produce a follow-up proposal for deferred enhancements such as entity-scoped convention blocks, target-model-informed typing, lineage UX, and regex support.
+
+See [future/FIXED_ENTITY_TYPE_CONVENTION_ENHANCEMENTS.md](future/FIXED_ENTITY_TYPE_CONVENTION_ENHANCEMENTS.md) for the follow-up proposal.

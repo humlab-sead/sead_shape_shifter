@@ -11,9 +11,14 @@ from src.types.fixed_entity_types import (
     FixedEntityNormalizationWarning,
     FixedEntityShapeValidationError,
     FixedEntityTypeCoercer,
+    FixedEntityTypeConvention,
+    FixedEntityTypeConventionDeclarationError,
     FixedEntityTypeValidationError,
     format_fixed_entity_normalization_warning,
     infer_fixed_entity_column_type,
+    normalize_fixed_entity_type_conventions,
+    resolve_fixed_entity_column_type,
+    resolve_fixed_entity_runtime_type,
 )
 
 
@@ -397,6 +402,55 @@ class TestCoerceFixedEntityValues:
             FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "method")
 
         assert "unsupported type 'integer'" in str(exc.value)
+
+    def test_project_convention_coerces_matching_non_id_columns(self) -> None:
+        """Project conventions should enforce matching non-_id column types."""
+        entity_data = {
+            "values": [[1, "Oak", "12"]],
+        }
+        columns = ["system_id", "label", "abundance"]
+        conventions = [FixedEntityTypeConvention(pattern="abundance", type_name="int")]
+
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "abundance_source", conventions)
+
+        assert result == [[1, "Oak", 12]]
+
+    def test_explicit_column_types_override_project_conventions(self) -> None:
+        """Entity column_types should win over project conventions."""
+        entity_data = {
+            "column_types": {"abundance": "string"},
+            "values": [[1, "Oak", 12]],
+        }
+        columns = ["system_id", "label", "abundance"]
+        conventions = [FixedEntityTypeConvention(pattern="abundance", type_name="int")]
+
+        result = FixedEntityTypeCoercer.coerce_fixed_entity_values(entity_data, columns, "abundance_source", conventions)
+
+        assert result == [[1, "Oak", "12"]]
+
+    def test_first_matching_project_convention_wins(self) -> None:
+        """Project conventions should use first-match semantics."""
+        conventions = [
+            FixedEntityTypeConvention(pattern="*_value", type_name="string"),
+            FixedEntityTypeConvention(pattern="abundance_value", type_name="int"),
+        ]
+
+        assert resolve_fixed_entity_runtime_type("abundance_value", None, conventions) == "string"
+
+    def test_invalid_project_conventions_raise_error(self) -> None:
+        """Malformed project conventions should fail validation."""
+        with pytest.raises(FixedEntityTypeConventionDeclarationError, match="must be a list"):
+            normalize_fixed_entity_type_conventions({"fixed_entity_types": {"conventions": {"pattern": "*_id", "type": "int"}}})
+
+        with pytest.raises(FixedEntityTypeConventionDeclarationError, match="unsupported type 'integer'"):
+            normalize_fixed_entity_type_conventions({"fixed_entity_types": {"conventions": [{"pattern": "abundance", "type": "integer"}]}})
+
+    def test_resolve_column_type_uses_project_convention_before_builtin_fallback(self) -> None:
+        """Project conventions should beat built-in inference while preserving built-in fallback."""
+        conventions = [FixedEntityTypeConvention(pattern="*_uuid", type_name="string")]
+
+        assert resolve_fixed_entity_column_type("sample_uuid", None, conventions) == "string"
+        assert resolve_fixed_entity_column_type("sample_id", None, conventions) == "int"
 
     def test_collects_successful_normalization_warnings(self) -> None:
         """Successful coercions should be reported as normalization warnings."""

@@ -12,6 +12,7 @@ Key rules:
 
 from dataclasses import dataclass
 from datetime import date, datetime
+from fnmatch import fnmatchcase
 from typing import Any
 
 from pandas import isna
@@ -60,6 +61,18 @@ class FixedEntityColumnTypeDeclarationError(ValueError):
         self.entity_name = entity_name
         self.column_name = column_name
         super().__init__(message)
+
+
+class FixedEntityTypeConventionDeclarationError(ValueError):
+    """Raised when project fixed-entity type conventions contain invalid declarations."""
+
+
+@dataclass(frozen=True)
+class FixedEntityTypeConvention:
+    """Normalized fixed-entity type convention rule."""
+
+    pattern: str
+    type_name: FixedEntityColumnTypeName
 
 
 def infer_fixed_entity_column_type(column_name: str) -> type:
@@ -115,13 +128,82 @@ def normalize_fixed_entity_column_types(
     return normalized_column_types
 
 
+def normalize_fixed_entity_type_conventions(options: dict[str, Any] | None) -> list[FixedEntityTypeConvention]:
+    """Validate and normalize project-level fixed-entity type conventions."""
+    if options is None:
+        return []
+
+    fixed_entity_options = options.get("fixed_entity_types")
+    if fixed_entity_options is None:
+        return []
+
+    if not isinstance(fixed_entity_options, dict):
+        raise FixedEntityTypeConventionDeclarationError("Project option 'options.fixed_entity_types' must be a mapping")
+
+    conventions = fixed_entity_options.get("conventions")
+    if conventions is None:
+        return []
+
+    if not isinstance(conventions, list):
+        raise FixedEntityTypeConventionDeclarationError("Project option 'options.fixed_entity_types.conventions' must be a list")
+
+    normalized_conventions: list[FixedEntityTypeConvention] = []
+
+    for index, convention in enumerate(conventions):
+        if not isinstance(convention, dict):
+            raise FixedEntityTypeConventionDeclarationError(f"Project fixed-entity type convention at index {index} must be a mapping")
+
+        pattern = convention.get("pattern")
+        declared_type = convention.get("type")
+
+        if not isinstance(pattern, str) or not pattern.strip():
+            raise FixedEntityTypeConventionDeclarationError(
+                f"Project fixed-entity type convention at index {index} must declare a non-empty 'pattern'"
+            )
+
+        if declared_type is None:
+            raise FixedEntityTypeConventionDeclarationError(f"Project fixed-entity type convention at index {index} must declare 'type'")
+
+        normalized_type = str(declared_type).strip().lower()
+        if normalized_type not in ALLOWED_FIXED_ENTITY_COLUMN_TYPES:
+            allowed_types = ", ".join(sorted(ALLOWED_FIXED_ENTITY_COLUMN_TYPES))
+            raise FixedEntityTypeConventionDeclarationError(
+                f"Project fixed-entity type convention pattern '{pattern}' declares unsupported type '{declared_type}'; "
+                f"allowed types: {allowed_types}"
+            )
+
+        normalized_conventions.append(FixedEntityTypeConvention(pattern=pattern.strip(), type_name=normalized_type))
+
+    return normalized_conventions
+
+
+def resolve_fixed_entity_convention_type(
+    column_name: str,
+    conventions: list[FixedEntityTypeConvention] | None = None,
+) -> FixedEntityColumnTypeName | None:
+    """Resolve the first matching project convention type for a column."""
+    if not conventions:
+        return None
+
+    for convention in conventions:
+        if fnmatchcase(column_name, convention.pattern):
+            return convention.type_name
+
+    return None
+
+
 def resolve_fixed_entity_column_type(
     column_name: str,
     column_types: dict[str, str] | None = None,
+    conventions: list[FixedEntityTypeConvention] | None = None,
 ) -> FixedEntityColumnTypeName:
     """Resolve the effective fixed-entity type name for a column."""
     if column_types and column_name in column_types:
         return column_types[column_name]
+
+    convention_type = resolve_fixed_entity_convention_type(column_name, conventions)
+    if convention_type is not None:
+        return convention_type
 
     inferred_type: type = infer_fixed_entity_column_type(column_name)
     return "int" if inferred_type is int else "string"
@@ -130,6 +212,7 @@ def resolve_fixed_entity_column_type(
 def resolve_fixed_entity_runtime_type(
     column_name: str,
     column_types: dict[str, str] | None = None,
+    conventions: list[FixedEntityTypeConvention] | None = None,
 ) -> FixedEntityColumnTypeName | None:
     """Resolve the runtime type to enforce for a fixed-entity column.
 
@@ -139,6 +222,10 @@ def resolve_fixed_entity_runtime_type(
     """
     if column_types and column_name in column_types:
         return column_types[column_name]
+
+    convention_type = resolve_fixed_entity_convention_type(column_name, conventions)
+    if convention_type is not None:
+        return convention_type
 
     inferred_type: type = infer_fixed_entity_column_type(column_name)
     return "int" if inferred_type is int else None
@@ -359,12 +446,14 @@ class FixedEntityTypeCoercer:
         entity_data: dict[str, Any],
         columns: list[str],
         entity_name: str,
+        conventions: list[FixedEntityTypeConvention] | None = None,
     ) -> list[list[Any]]:
         """Coerce all values in a fixed entity to correct types."""
         coerced_values, _warnings = FixedEntityTypeCoercer.coerce_fixed_entity_values_with_warnings(
             entity_data,
             columns,
             entity_name,
+            conventions,
         )
         return coerced_values
 
@@ -373,6 +462,7 @@ class FixedEntityTypeCoercer:
         entity_data: dict[str, Any],
         columns: list[str],
         entity_name: str,
+        conventions: list[FixedEntityTypeConvention] | None = None,
     ) -> tuple[list[list[Any]], list[FixedEntityNormalizationWarning]]:
         """Coerce all values in a fixed entity to correct types.
 
@@ -439,7 +529,7 @@ class FixedEntityTypeCoercer:
             coerced_row: list[Any] = []
             for col_idx, value in enumerate(row):
                 col_name = columns[col_idx]
-                target_type_name = resolve_fixed_entity_runtime_type(col_name, normalized_column_types)
+                target_type_name = resolve_fixed_entity_runtime_type(col_name, normalized_column_types, conventions)
 
                 if target_type_name is None:
                     coerced_row.append(None if is_missing_fixed_entity_value(value) else value)

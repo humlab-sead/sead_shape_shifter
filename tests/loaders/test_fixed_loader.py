@@ -482,6 +482,29 @@ class TestCreateFixedTable:
         assert not result.iloc[1]["enabled"]
 
     @pytest.mark.asyncio
+    async def test_coerces_matching_columns_using_project_conventions(self):
+        """Project conventions should coerce matching non-_id columns during fixed loading."""
+        entity = "abundance_source"
+        config = {
+            entity: {
+                "type": "fixed",
+                "public_id": "abundance_id",
+                "keys": ["label"],
+                "columns": ["system_id", "abundance_id", "label", "abundance"],
+                "values": [{"system_id": "1", "abundance_id": None, "label": "Oak", "abundance": "12"}],
+            }
+        }
+        table_cfg = TableConfig(
+            entities_cfg=config,
+            entity_name=entity,
+            project_options={"fixed_entity_types": {"conventions": [{"pattern": "abundance", "type": "int"}]}},
+        )
+
+        result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
+
+        assert result.iloc[0]["abundance"] == 12
+
+    @pytest.mark.asyncio
     async def test_surrogate_id_column_order(self):
         """Test that public_id is added as a new column."""
         entity = "test_entity"

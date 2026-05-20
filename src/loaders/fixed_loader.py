@@ -76,13 +76,14 @@ class FixedLoader(DataLoader):
             },
             columns,
             entity_name,
+            table_cfg.fixed_entity_type_conventions,
         )
 
     def validate(self, entity_name: str, table_cfg: "TableConfig") -> None:
         """Validate the fixed data entity configuration."""
         from src.specifications.entity import FixedEntityFieldsSpecification  # pylint: disable=import-outside-toplevel
 
-        spec = FixedEntityFieldsSpecification({"metadata": {}, "entities": table_cfg.entities_cfg})
+        spec = FixedEntityFieldsSpecification({"metadata": {}, "entities": table_cfg.entities_cfg, "options": table_cfg.project_options})
         is_valid: bool = spec.is_satisfied_by(entity_name=table_cfg.entity_name)
 
         if not is_valid:

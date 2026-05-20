@@ -8,9 +8,12 @@ from src.transforms.extra_columns import ExtraColumnEvaluator
 from src.transforms.filter import Filters, normalize_filter_stage
 from src.types.fixed_entity_types import (
     FixedEntityColumnTypeDeclarationError,
+    FixedEntityTypeConvention,
+    FixedEntityTypeConventionDeclarationError,
     build_fixed_entity_full_columns,
     is_valid_fixed_entity_value,
     normalize_fixed_entity_column_types,
+    normalize_fixed_entity_type_conventions,
     resolve_fixed_entity_runtime_type,
 )
 from src.utility import Registry, dotget
@@ -87,6 +90,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         public_id: str,
         keys: list[str],
         column_types: dict[str, str],
+        conventions: list[FixedEntityTypeConvention],
     ) -> None:
         """Validate that fixed-entity values match declared or inferred backend types."""
         full_columns = build_fixed_entity_full_columns(columns, keys, public_id)
@@ -96,7 +100,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
             for col_idx, value in enumerate(row):
                 col_name = row_columns[col_idx]
-                expected_type_name = resolve_fixed_entity_runtime_type(col_name, column_types)
+                expected_type_name = resolve_fixed_entity_runtime_type(col_name, column_types, conventions)
 
                 if value is None or expected_type_name is None:
                     continue
@@ -154,6 +158,12 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
             self.add_error(str(exc), entity=entity_name, field="column_types")
             return not self.has_errors()
 
+        try:
+            conventions = normalize_fixed_entity_type_conventions(self.project_cfg.get("options", {}))
+        except FixedEntityTypeConventionDeclarationError as exc:
+            self.add_error(str(exc), entity=entity_name, field="options.fixed_entity_types")
+            return not self.has_errors()
+
         if dict_rows:
             row_keys = set().union(*(row.keys() for row in raw_values)) if raw_values else set()
             missing_columns = set(columns) - row_keys
@@ -208,7 +218,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
                 )
 
         if values and not dict_rows and shape_is_valid:
-            self._validate_column_types(entity_name, values, columns, public_id, keys, column_types)
+            self._validate_column_types(entity_name, values, columns, public_id, keys, column_types, conventions)
 
         return not self.has_errors()
 

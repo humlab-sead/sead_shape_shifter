@@ -17,6 +17,7 @@ from backend.app.services.project_service import ProjectService
 from src.model import MaterializationConfig, ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.specifications.materialize import CanMaterializeSpecification
+from src.types.fixed_entity_types import FixedEntityTypeConvention
 
 # pylint: disable=redefined-outer-name, unused-argument, protected-access
 
@@ -56,6 +57,7 @@ def mock_table_config():
         "public_id": "location_id",
         "keys": ["location_name"],
     }
+    table.fixed_entity_type_conventions = []
     table.dependent_entities = Mock(return_value=[])
     return table
 
@@ -234,6 +236,42 @@ class TestMaterializeEntity:
             [1, 1, "Norway", 1, "2024-01-02", True, 1.5],
             [2, 2, "Sweden", None, None, False, None],
         ]
+
+    @pytest.mark.asyncio
+    async def test_materialize_inline_avoids_redundant_column_types_when_project_convention_exists(
+        self, materialization_service, mock_project_service, mock_api_project, mock_core_project, mock_table_config
+    ):
+        """Materialization should keep YAML DRY when project conventions already cover a typed column."""
+        mock_project_service.load_project.return_value = mock_api_project
+        mock_project_service.save_project = Mock()
+        mock_table_config.fixed_entity_type_conventions = [FixedEntityTypeConvention(pattern="phase_*", type_name="int")]
+
+        mock_spec = MagicMock(spec=CanMaterializeSpecification)
+        mock_spec.is_satisfied_by.return_value = True
+
+        materialized_df = pd.DataFrame(
+            {
+                "location_id": pd.Series([1, 2], dtype="Int64"),
+                "location_name": ["Norway", "Sweden"],
+                "phase_rank": pd.Series([1, pd.NA], dtype="Int64"),
+                "observed_on": [pd.Timestamp("2024-01-02"), pd.NaT],
+            }
+        )
+
+        mock_shapeshifter = MagicMock(spec=ShapeShifter)
+        mock_shapeshifter.table_store = {"location": materialized_df}
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            with patch("backend.app.services.materialization_service.CanMaterializeSpecification", return_value=mock_spec):
+                with patch("backend.app.services.materialization_service.ShapeShifter", return_value=mock_shapeshifter):
+                    result = await materialization_service.materialize_entity("test-project", "location", "inline")
+
+        assert result.success
+
+        saved_project = mock_project_service.save_project.call_args.args[0]
+        saved_entity = saved_project.entities["location"]
+
+        assert saved_entity["column_types"] == {"observed_on": "date"}
 
     @pytest.mark.asyncio
     async def test_materialize_parquet_storage(

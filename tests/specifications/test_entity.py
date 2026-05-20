@@ -31,11 +31,18 @@ class TestEntityFieldsBaseSpecification:
     def project_cfg(self):
         """Sample project configuration."""
         return {
+            "options": {
+                "fixed_entity_types": {
+                    "conventions": [
+                        {"pattern": "abundance", "type": "int"},
+                    ]
+                }
+            },
             "entities": {
                 "valid_entity": {"type": "entity", "columns": ["id", "col1", "col2"], "keys": ["id"]},  # id added to columns
                 "missing_columns": {"keys": ["id"]},
                 "non_list_columns": {"columns": "not_a_list", "keys": ["id"]},
-            }
+            },
         }
 
     def test_valid_entity(self, project_cfg):
@@ -73,6 +80,13 @@ class TestFixedEntityFieldsSpecification:
     def project_cfg(self):
         """Sample project configuration."""
         return {
+            "options": {
+                "fixed_entity_types": {
+                    "conventions": [
+                        {"pattern": "abundance", "type": "int"},
+                    ]
+                }
+            },
             "entities": {
                 "valid_fixed": {
                     "type": "fixed",
@@ -168,6 +182,20 @@ class TestFixedEntityFieldsSpecification:
                     "public_id": "abundance_id",
                     "values": [[1, "Oak", 12]],
                 },
+                "convention_typed_fixed": {
+                    "type": "fixed",
+                    "columns": ["system_id", "label", "abundance"],
+                    "keys": ["label"],
+                    "public_id": "abundance_id",
+                    "values": [[1, "Oak", 12]],
+                },
+                "invalid_convention_typed_fixed": {
+                    "type": "fixed",
+                    "columns": ["system_id", "label", "abundance"],
+                    "keys": ["label"],
+                    "public_id": "abundance_id",
+                    "values": [[1, "Oak", "12"]],
+                },
                 "unsupported_declared_type_fixed": {
                     "type": "fixed",
                     "columns": ["system_id", "rank", "name"],
@@ -176,7 +204,7 @@ class TestFixedEntityFieldsSpecification:
                     "public_id": "method_id",
                     "values": [[1, 7, "Sampling"]],
                 },
-            }
+            },
         }
 
     def test_valid_fixed_entity(self, project_cfg):
@@ -309,6 +337,23 @@ class TestFixedEntityFieldsSpecification:
 
         assert result is True, spec.get_report()
 
+    def test_fixed_entity_accepts_project_convention_typed_columns(self, project_cfg):
+        """Project conventions should validate matching non-_id columns strictly."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="convention_typed_fixed")
+
+        assert result is True, spec.get_report()
+
+    def test_fixed_entity_rejects_invalid_project_convention_typed_columns(self, project_cfg):
+        """Project conventions should reject invalid matching non-_id values."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="invalid_convention_typed_fixed")
+
+        assert result is False, spec.get_report()
+        assert any("expected int or null" in str(error) for error in spec.errors), spec.get_report()
+
     def test_fixed_entity_rejects_invalid_declared_int_columns(self, project_cfg):
         """Declared int columns should reject string values after coercion boundaries."""
         spec = FixedEntityFieldsSpecification(project_cfg)
@@ -323,6 +368,31 @@ class TestFixedEntityFieldsSpecification:
         spec = FixedEntityFieldsSpecification(project_cfg)
 
         result = spec.is_satisfied_by(entity_name="unsupported_declared_type_fixed")
+
+        assert result is False, spec.get_report()
+        assert any("unsupported type 'integer'" in str(error).lower() for error in spec.errors), spec.get_report()
+
+    def test_fixed_entity_rejects_invalid_project_conventions(self):
+        """Malformed project conventions should surface as configuration errors."""
+        project_cfg = {
+            "options": {
+                "fixed_entity_types": {
+                    "conventions": [{"pattern": "abundance", "type": "integer"}],
+                }
+            },
+            "entities": {
+                "typed_fixed": {
+                    "type": "fixed",
+                    "columns": ["system_id", "label", "abundance"],
+                    "keys": ["label"],
+                    "public_id": "abundance_id",
+                    "values": [[1, "Oak", 12]],
+                }
+            },
+        }
+
+        spec = FixedEntityFieldsSpecification(project_cfg)
+        result = spec.is_satisfied_by(entity_name="typed_fixed")
 
         assert result is False, spec.get_report()
         assert any("unsupported type 'integer'" in str(error).lower() for error in spec.errors), spec.get_report()
