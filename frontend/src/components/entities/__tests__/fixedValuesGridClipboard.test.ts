@@ -8,6 +8,7 @@ import {
   inferColumnType,
   normalizeGridColumnTypes,
   parseClipboardTable,
+  parseStrictFloat,
   parseStrictInteger,
   summarizeValidationIssues,
 } from '../fixedValuesGridClipboard'
@@ -59,6 +60,7 @@ describe('fixedValuesGridClipboard', () => {
 
   it('uses explicit fixed column types ahead of naming inference', () => {
     expect(inferColumnType('rank', { rank: 'int' })).toBe('number')
+    expect(inferColumnType('measurement', { measurement: 'float' })).toBe('float')
     expect(inferColumnType('label', { label: 'string' })).toBe('string')
     expect(inferColumnType('created_at', { created_at: 'date' })).toBe('preserve')
   })
@@ -69,6 +71,15 @@ describe('fixedValuesGridClipboard', () => {
     expect(parseStrictInteger('')).toBeNull()
     expect(parseStrictInteger('53abc')).toBeNull()
     expect(parseStrictInteger('53.9')).toBeNull()
+  })
+
+  it('parses strict floats without truncation', () => {
+    expect(parseStrictFloat('53')).toBe(53)
+    expect(parseStrictFloat('-7.25')).toBe(-7.25)
+    expect(parseStrictFloat('.5')).toBe(0.5)
+    expect(parseStrictFloat('1.2e3')).toBe(1200)
+    expect(parseStrictFloat('')).toBeNull()
+    expect(parseStrictFloat('53.1abc')).toBeNull()
   })
 
   it('rejects invalid _id paste values and preserves the previous cell value', () => {
@@ -106,6 +117,17 @@ describe('fixedValuesGridClipboard', () => {
     expect(coerceGridValue('rank', '7x', 3, { rank: 'int' })).toEqual({
       value: 3,
       error: 'Expected integer value',
+    })
+  })
+
+  it('coerces declared float columns for non-_id columns', () => {
+    expect(coerceGridValue('measurement', '7.25', null, { measurement: 'float' })).toEqual({
+      value: 7.25,
+      error: null,
+    })
+    expect(coerceGridValue('measurement', '7.2x', 3.5, { measurement: 'float' })).toEqual({
+      value: 3.5,
+      error: 'Expected float value',
     })
   })
 

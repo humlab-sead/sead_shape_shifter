@@ -159,10 +159,11 @@ function getColumnTypeOptions(columnName: string): ColumnTypeOption[] {
   const options: ColumnTypeOption[] = [
     { value: 'auto', label: autoLabel },
     { value: 'int', label: 'Integer' },
+    { value: 'float', label: 'Float' },
     { value: 'string', label: 'String' },
   ]
 
-  if (currentType && !['int', 'string'].includes(currentType)) {
+  if (currentType && !['int', 'float', 'string'].includes(currentType)) {
     options.unshift({ value: currentType, label: `Preserve: ${formatTypeLabel(currentType)}` })
   }
 

@@ -6,6 +6,7 @@ import FixedValuesGrid from '../FixedValuesGrid.vue'
 
 const AgGridVueStub = {
   name: 'AgGridVue',
+  props: ['columnDefs'],
   template: '<div class="ag-grid-vue-stub" />',
 }
 
@@ -78,6 +79,28 @@ describe('FixedValuesGrid', () => {
     ])
   })
 
+  it('uses declared float column types for non-_id columns', async () => {
+    const wrapper = shallowMount(FixedValuesGrid, {
+      props: {
+        modelValue: [[1, '7.25', 'Sampling']],
+        columns: ['system_id', 'measurement', 'name'],
+        columnTypes: { measurement: 'float' },
+        publicId: 'name',
+      },
+      global: {
+        stubs: {
+          AgGridVue: AgGridVueStub,
+        },
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.emitted('update:modelValue')).toEqual([
+      [[[1, 7.25, 'Sampling']]],
+    ])
+  })
+
   it('does not coerce unsupported declared types on load', async () => {
     const wrapper = shallowMount(FixedValuesGrid, {
       props: {
@@ -119,5 +142,34 @@ describe('FixedValuesGrid', () => {
 
     expect(wrapper.html()).not.toContain('column-type-controls')
     expect(wrapper.html()).toContain('headerheight="48"')
+  })
+
+  it('offers float as a first-class editable column type option', async () => {
+    const wrapper = shallowMount(FixedValuesGrid, {
+      props: {
+        modelValue: [[1, 53, 'Sampling']],
+        columns: ['system_id', 'measurement', 'name'],
+        columnTypes: {},
+        publicId: 'name',
+      },
+      global: {
+        stubs: {
+          AgGridVue: AgGridVueStub,
+        },
+      },
+    })
+
+    await nextTick()
+
+    const columnDefs = (wrapper.vm as any).columnDefs as Array<Record<string, any>>
+    const measurementColumn = columnDefs.find((column) => column.headerName === 'measurement')
+    const options = measurementColumn?.headerComponentParams?.getOptions('measurement')
+
+    expect(options).toEqual([
+      { value: 'auto', label: 'Auto (string)' },
+      { value: 'int', label: 'Integer' },
+      { value: 'float', label: 'Float' },
+      { value: 'string', label: 'String' },
+    ])
   })
 })

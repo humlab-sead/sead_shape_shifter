@@ -1,5 +1,5 @@
 export type FixedGridColumnTypeName = 'int' | 'string' | 'float' | 'bool' | 'date'
-export type GridColumnType = 'number' | 'string' | 'preserve'
+export type GridColumnType = 'number' | 'float' | 'string' | 'preserve'
 export interface GridValidationIssue {
   rowIndex: number
   columnName: string
@@ -42,6 +42,9 @@ function getIntegerValidationMessage(columnName: string, explicitType: FixedGrid
 
   return 'Expected integer ID'
 }
+function getFloatValidationMessage(): string {
+  return 'Expected float value'
+}
 export function formatValidationIssue(issue: GridValidationIssue): string {
   return `Row ${issue.rowIndex + 1}, column ${issue.columnName}: ${issue.message}`
 }
@@ -69,6 +72,10 @@ export function inferColumnType(columnName: string, columnTypes?: Record<string,
 
   if (explicitType === 'int') {
     return 'number'
+  }
+
+  if (explicitType === 'float') {
+    return 'float'
   }
 
   if (explicitType === 'string') {
@@ -101,6 +108,23 @@ export function parseStrictInteger(value: unknown): number | null {
 
   return Number(text)
 }
+export function parseStrictFloat(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  const text = String(value).trim()
+  if (text === '') {
+    return null
+  }
+
+  if (!/^-?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) {
+    return null
+  }
+
+  const parsed = Number(text)
+  return Number.isFinite(parsed) ? parsed : null
+}
 export function coerceGridValue(
   columnName: string,
   value: unknown,
@@ -119,6 +143,23 @@ export function coerceGridValue(
       return {
         value: fallbackValue,
         error: getIntegerValidationMessage(columnName, explicitType),
+      }
+    }
+
+    return {
+      value: parsed,
+      error: null,
+    }
+  }
+
+  if (inferredType === 'float') {
+    const parsed = parseStrictFloat(value)
+    const text = value === null || value === undefined ? '' : String(value).trim()
+
+    if (parsed === null && text !== '') {
+      return {
+        value: fallbackValue,
+        error: getFloatValidationMessage(),
       }
     }
 
