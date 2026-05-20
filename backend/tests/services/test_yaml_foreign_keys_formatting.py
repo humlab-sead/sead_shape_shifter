@@ -112,5 +112,36 @@ def test_append_uses_block_style_but_preserves_compact_columns():
         temp_path.unlink()
 
 
+def test_multiline_query_uses_literal_block_style_and_normalizes_crlf():
+    """Verify multiline query fields are emitted as block scalars with normalized line endings."""
+    yaml_service = YamlService()
+
+    data = {
+        "entities": {
+            "project": {
+                "type": "sql",
+                "data_source": "arbodat_data",
+                "query": "select distinct [Projekt], [Fustel], coalesce([EVNr], '') as [EVNr]\r\nfrom [Projekte]\r\nwhere [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;",
+            }
+        }
+    }
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        temp_path = Path(f.name)
+
+    try:
+        yaml_service.save(data, temp_path, create_backup=False)
+        content: str = temp_path.read_text(encoding="utf-8")
+
+        assert "query: |" in content, "Multiline query should use literal block style"
+        assert "\r" not in content, "Serialized query should normalize carriage returns to line feeds"
+        assert "select distinct [Projekt], [Fustel], coalesce([EVNr], '') as [EVNr]" in content
+        assert "from [Projekte]" in content
+        assert "where [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;" in content
+
+    finally:
+        temp_path.unlink()
+
+
 if __name__ == "__main__":
     test_foreign_keys_block_style()
