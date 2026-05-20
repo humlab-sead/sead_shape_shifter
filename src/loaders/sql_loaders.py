@@ -771,7 +771,7 @@ class UCanAccessSqlLoader(SqlLoader):
         with self.connection() as conn:
             with self._cursor(conn) as cursor:
                 cursor.execute(sql)
-                columns = self._result_columns_from_cursor(cursor)
+                columns: list[str] = self._result_columns_from_cursor(cursor)
                 rows = cursor.fetchall()
                 df = pd.DataFrame(rows, columns=columns)
 
