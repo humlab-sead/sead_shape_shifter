@@ -20,7 +20,12 @@ from backend.app.services.project_service import ProjectService
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.specifications.materialize import CanMaterializeSpecification
-from src.types.fixed_entity_types import FixedEntityTypeCoercer, is_missing_fixed_entity_value, resolve_fixed_entity_column_type
+from src.types.fixed_entity_types import (
+    FixedEntityTypeCoercer,
+    FixedEntityTypeConvention,
+    is_missing_fixed_entity_value,
+    resolve_fixed_entity_column_type,
+)
 
 # pylint: disable=redefined-builtin
 
@@ -69,9 +74,13 @@ class MaterializationService:
         return strategy.normalize_materialized_dataframe(table.entity_name, df, table.public_id, list(table.keys))
 
     @staticmethod
-    def _infer_materialized_column_type(column_name: str, series: pd.Series) -> str:
+    def _infer_materialized_column_type(
+        column_name: str,
+        series: pd.Series,
+        conventions: list[FixedEntityTypeConvention] | None = None,
+    ) -> str:
         """Infer the fixed-entity column type needed to preserve a materialized series."""
-        default_type = resolve_fixed_entity_column_type(column_name)
+        default_type = resolve_fixed_entity_column_type(column_name, conventions=conventions)
         non_missing = [value for value in series.tolist() if not is_missing_fixed_entity_value(value)]
 
         if not non_missing:
@@ -104,13 +113,17 @@ class MaterializationService:
 
         return "string"
 
-    def _infer_materialized_column_types(self, df: pd.DataFrame) -> dict[str, str]:
+    def _infer_materialized_column_types(
+        self,
+        df: pd.DataFrame,
+        conventions: list[FixedEntityTypeConvention] | None = None,
+    ) -> dict[str, str]:
         """Infer explicit fixed column types needed to preserve materialized values."""
         inferred_types: dict[str, str] = {}
 
         for column in df.columns:
-            inferred_type = self._infer_materialized_column_type(str(column), df[column])
-            if inferred_type != resolve_fixed_entity_column_type(str(column)):
+            inferred_type = self._infer_materialized_column_type(str(column), df[column], conventions)
+            if inferred_type != resolve_fixed_entity_column_type(str(column), conventions=conventions):
                 inferred_types[str(column)] = inferred_type
 
         return inferred_types
@@ -120,6 +133,7 @@ class MaterializationService:
         entity_name: str,
         df: pd.DataFrame,
         column_types: dict[str, str],
+        conventions: list[FixedEntityTypeConvention] | None = None,
     ) -> list[list[Any]]:
         """Convert a materialized dataframe to fixed-safe Python row values."""
         columns = [str(column) for column in df.columns.tolist()]
@@ -133,14 +147,30 @@ class MaterializationService:
             },
             columns,
             entity_name,
+            conventions,
         )
 
-    def _prepare_materialized_values(self, table: TableConfig, df: pd.DataFrame) -> tuple[pd.DataFrame, list[list[Any]], dict[str, str]]:
+    @staticmethod
+    def _build_materialized_storage_column_types(
+        columns: list[str],
+        explicit_column_types: dict[str, str],
+        conventions: list[FixedEntityTypeConvention] | None = None,
+    ) -> dict[str, str]:
+        """Build effective column types for stable sidecar storage without bloating YAML."""
+        return {column: resolve_fixed_entity_column_type(column, explicit_column_types, conventions) for column in columns}
+
+    def _prepare_materialized_values(
+        self,
+        table: TableConfig,
+        df: pd.DataFrame,
+    ) -> tuple[pd.DataFrame, list[list[Any]], dict[str, str], dict[str, str]]:
         """Normalize, type, and serialize a materialized dataframe for fixed persistence."""
         normalized_df = self._normalize_materialized_dataframe(table, self._sanitize_materialized_dataframe(df))
-        column_types = self._infer_materialized_column_types(normalized_df)
-        values = self._serialize_materialized_values(table.entity_name, normalized_df, column_types)
-        return normalized_df, values, column_types
+        conventions = table.fixed_entity_type_conventions
+        column_types = self._infer_materialized_column_types(normalized_df, conventions)
+        values = self._serialize_materialized_values(table.entity_name, normalized_df, column_types, conventions)
+        storage_column_types = self._build_materialized_storage_column_types(normalized_df.columns.tolist(), column_types, conventions)
+        return normalized_df, values, column_types, storage_column_types
 
     async def materialize_entity(
         self,
@@ -178,7 +208,10 @@ class MaterializationService:
             if entity_name not in shapeshifter.table_store:
                 raise MaterializationError(f"Entity '{entity_name}' not found in normalization results")
 
-            df, serialized_values, column_types = self._prepare_materialized_values(table_cfg, shapeshifter.table_store[entity_name])
+            df, serialized_values, column_types, storage_column_types = self._prepare_materialized_values(
+                table_cfg,
+                shapeshifter.table_store[entity_name],
+            )
 
             # Determine storage strategy
             data_file: str | None = None
@@ -210,7 +243,7 @@ class MaterializationService:
                     columns=df.columns.tolist(),
                     values=serialized_values,
                     format_type=storage_format,
-                    column_types=column_types,
+                    column_types=storage_column_types,
                 )
 
             api_project.entities[entity_name] = self._create_materialized_entity(table_cfg, df, values_inline, column_types)

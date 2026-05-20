@@ -46,6 +46,7 @@ entities:          # Entity definitions   (required)
 options:           # Global options (optional)
   translations:    # Column name translations
   data_sources:    # named data sources associated to this project
+  fixed_entity_types:  # Project-level fixed-entity type conventions (optional)
   mappings:        # Remote entity mappings (optional)
 ```
 
@@ -646,7 +647,7 @@ method:
 #### `column_types`
 - **Type**: `dict[string, string]`
 - **Required**: No
-- **Description**: Optional explicit type declarations for `type: fixed` entities. When present, declared types override the default `_id` inference. This is useful for non-`_id` fixed columns that should be validated as `int`, `float`, `bool`, or `date` instead of the default `string`.
+- **Description**: Optional explicit type declarations for `type: fixed` entities. When present, declared types override both project-level fixed-entity conventions and the built-in `_id` inference. This is useful for non-`_id` fixed columns that should be validated as `int`, `float`, `bool`, or `date` instead of the default undeclared behavior.
 - **Allowed Values**: `int`, `string`, `float`, `bool`, `date`
 - **Example**:
   ```yaml
@@ -665,7 +666,7 @@ method:
   - Applies only to `type: fixed` entities
   - Keys must match declared columns (error if unknown column is listed)
   - Values must use the allowlist above (error on unsupported types such as `integer`)
-  - When absent, fixed entities fall back to `_id` suffix inference: `_id -> int`, all other columns -> `string`
+  - Precedence is explicit: `column_types` first, then `options.fixed_entity_types.conventions`, then built-in `_id -> int`, then no inferred type for other undeclared columns
 - **Common Issues**:
   - Declaring a column name that is not present in `columns`
   - Using unsupported type names such as `integer` instead of `int`
@@ -2291,7 +2292,52 @@ unnest:
 
 ## Options Section
 
-The `options` section contains global configuration for translations and data sources.
+The `options` section contains global configuration for translations, data sources, and other project-wide behaviors.
+
+### Fixed Entity Type Conventions
+
+```yaml
+options:
+  fixed_entity_types:
+    conventions:
+      - pattern: "*_id"
+        type: int
+      - pattern: "*_uuid"
+        type: string
+      - pattern: "abundance"
+        type: int
+```
+
+Project-level fixed-entity type conventions define reusable default types for fixed-entity columns.
+
+- Applies only to `type: fixed` entities
+- Matching uses glob-style column-name patterns
+- Rules are evaluated in order
+- First match wins
+- Allowed type values are `int`, `string`, `float`, `bool`, and `date`
+
+Precedence is:
+
+1. `entity.column_types[column]`
+2. first matching `options.fixed_entity_types.conventions` rule
+3. built-in `_id -> int` fallback
+4. otherwise no inferred type for undeclared non-`_id` columns
+
+Runtime behavior is strict only when a type is explicitly active through `column_types`, a matching project convention, or the built-in `_id` fallback. Undeclared non-`_id` columns continue to preserve incoming scalar values.
+
+**Validation Rules**:
+
+- `fixed_entity_types` must be a mapping when present
+- `conventions` must be a list
+- Each convention entry must define a non-empty `pattern`
+- Each convention entry must define a supported `type`
+- Invalid convention definitions fail project validation
+
+**Common Issues**:
+
+- Using unsupported type names such as `integer` instead of `int`
+- Assuming conventions replace per-entity `column_types` rather than acting as defaults
+- Expecting conventions to affect non-fixed entities
 
 ### Translation Project
 

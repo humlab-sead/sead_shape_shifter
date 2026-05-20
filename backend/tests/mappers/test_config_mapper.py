@@ -594,6 +594,28 @@ class TestEdgeCases:
         assert result.entities["method"]["values"] == [[1, "53", "Sampling"]]
         assert result.load_warnings == ["Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)"]
 
+    def test_to_api_config_exposes_load_warnings_for_project_conventions(self):
+        """Project load warnings should include successful convention-based normalizations."""
+        core_dict = {
+            "metadata": {"name": "test", "type": "shapeshifter-project"},
+            "entities": {
+                "abundance_source": {
+                    "type": "fixed",
+                    "columns": ["system_id", "label", "abundance"],
+                    "values": [[1, "Oak", "12"]],
+                }
+            },
+            "options": {
+                "fixed_entity_types": {
+                    "conventions": [{"pattern": "abundance", "type": "int"}],
+                }
+            },
+        }
+
+        result = ProjectMapper.to_api_config(core_dict, "test")
+
+        assert result.load_warnings == ["Entity 'abundance_source', row 1, column 'abundance': normalized '12' to 12 (int)"]
+
 
 class TestProjectMapperIntegration:
     """Integration tests using real project files."""

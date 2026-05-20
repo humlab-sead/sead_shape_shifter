@@ -92,10 +92,15 @@ class EntityOperations:
 
         return entity_dict
 
-    def _prepare_entity_for_persistence(self, entity_name: str, entity_data: dict[str, Any]) -> dict[str, Any]:
+    def _prepare_entity_for_persistence(
+        self,
+        project_options: dict[str, Any] | None,
+        entity_name: str,
+        entity_data: dict[str, Any],
+    ) -> dict[str, Any]:
         """Apply the configured persistence strategy for the entity type."""
         strategy = self._persistence_strategy_registry.get_strategy(entity_data)
-        return strategy.prepare_for_persistence(entity_name, entity_data)
+        return strategy.prepare_for_persistence(entity_name, entity_data, project_options)
 
     # Object-based entity operations (work on Project instances)
 
@@ -117,7 +122,7 @@ class EntityOperations:
         if entity_name in project.entities:
             raise ResourceConflictError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists")
 
-        entity_dict = self._prepare_entity_for_persistence(entity_name, self._serialize_entity(entity))
+        entity_dict = self._prepare_entity_for_persistence(getattr(project, "options", {}), entity_name, self._serialize_entity(entity))
         project.entities[entity_name] = entity_dict
         logger.debug(f"Added entity '{entity_name}'")
         return project
@@ -140,7 +145,7 @@ class EntityOperations:
         if entity_name not in project.entities:
             raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
 
-        entity_dict = self._prepare_entity_for_persistence(entity_name, self._serialize_entity(entity))
+        entity_dict = self._prepare_entity_for_persistence(getattr(project, "options", {}), entity_name, self._serialize_entity(entity))
         project.entities[entity_name] = entity_dict
         logger.debug(f"Updated entity '{entity_name}'")
         return project
@@ -230,7 +235,7 @@ class EntityOperations:
                     resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists"
                 )
 
-            entity_data = self._prepare_entity_for_persistence(entity_name, entity_data)
+            entity_data = self._prepare_entity_for_persistence(getattr(project, "options", {}), entity_name, entity_data)
 
             # Use the model's add_entity method to ensure proper handling
             project.add_entity(entity_name, entity_data)
@@ -332,7 +337,7 @@ class EntityOperations:
             if "public_id" not in entity_data and "public_id" in project.entities[entity_name]:
                 entity_data["public_id"] = project.entities[entity_name]["public_id"]
 
-            entity_data = self._prepare_entity_for_persistence(entity_name, entity_data)
+            entity_data = self._prepare_entity_for_persistence(getattr(project, "options", {}), entity_name, entity_data)
 
             # Use the model's add_entity method to ensure proper handling
             project.add_entity(entity_name, entity_data)
