@@ -201,4 +201,6 @@ skip_covered = true
 fail_under = 85
 
 [dependency-groups]
-dev = []
+dev = [
+    "pyinstrument>=5.1.2",
+]
