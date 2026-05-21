@@ -445,7 +445,7 @@ class TestValidationIssue:
         assert issue.entity_name == "entity1"
         assert issue.entity_field == "field1"
         assert issue.column_name is None
-        assert issue.kwargs == {}
+        assert not issue.kwargs
 
     def test_requires_non_empty_code(self):
         """Test that ValidationIssue enforces the code invariant in __post_init__."""

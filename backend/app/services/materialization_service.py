@@ -382,7 +382,7 @@ class MaterializationService:
             return UnmaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
 
     @staticmethod
-    def _entity_depends_on(entity_name: str, entity_cfg: dict[str, Any], dependency_name: str) -> bool:
+    def _entity_depends_on(entity_name: str, entity_cfg: dict[str, Any], dependency_name: str) -> bool:  # pylint: disable=unused-argument
         """Return True when an entity config references another entity by dependency."""
         if entity_cfg.get("source") == dependency_name:
             return True
