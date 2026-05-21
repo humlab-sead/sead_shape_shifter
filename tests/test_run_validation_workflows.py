@@ -20,7 +20,7 @@ def test_main_runs_data_workflow_only(monkeypatch, tmp_path, capsys):
         lambda project: (_ for _ in ()).throw(AssertionError("conformance workflow should not run")),
     )
 
-    async def fake_run_data_validation(project):
+    async def fake_run_data_validation(project) -> script.WorkflowResult:  # pylint: disable=unused-argument
         calls.append("data")
         return script.WorkflowResult(name="data", passed=True)
 
@@ -53,7 +53,7 @@ def test_main_skips_data_workflow_in_all_mode_when_structural_fails(monkeypatch,
         lambda project: script.WorkflowResult(name="conformance", passed=True),
     )
 
-    async def fake_run_data_validation(project):
+    async def fake_run_data_validation(project):  # pylint: disable=unused-argument
         calls.append("data")
         return script.WorkflowResult(name="data", passed=True)
 
@@ -63,7 +63,7 @@ def test_main_skips_data_workflow_in_all_mode_when_structural_fails(monkeypatch,
     output = capsys.readouterr().out
 
     assert exit_code == 1
-    assert calls == []
+    assert not calls
     assert "Skipped because structural validation reported errors." in output
 
 
@@ -86,7 +86,7 @@ def test_main_accepts_target_model_conformance_alias(monkeypatch, tmp_path):
 
     monkeypatch.setattr(script, "run_data_validation", fake_run_data_validation)
 
-    def fake_run_conformance_validation(project):
+    def fake_run_conformance_validation(project):  # pylint: disable=unused-argument
         calls.append("conformance")
         return script.WorkflowResult(name="conformance", passed=True)
 

@@ -44,10 +44,10 @@ class DefaultEntityPersistenceStrategy:
     """Default persistence strategy with no type-specific behavior."""
 
     def prepare_for_persistence(
-        self,
+        self,  # pylint: disable=unused-argument
         entity_name: str,
         entity_data: dict[str, Any],
-        project_options: dict[str, Any] | None = None,
+        project_options: dict[str, Any] | None = None,  # pylint: disable=unused-argument
     ) -> dict[str, Any]:  # pylint: disable=unused-argument
         return entity_data
 
