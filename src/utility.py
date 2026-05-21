@@ -435,7 +435,7 @@ def import_sub_modules(module_name: str, module_folder: str) -> Any:
     sub_modules: list[str] = [
         f.name[:-3] for f in os.scandir(module_folder) if f.is_file() and f.name.endswith(".py") and not f.name.startswith("__")
     ]
-    logger.info(f"Importing sub-modules for {module_name}: {', '.join(sub_modules)}")
+    # logger.info(f"Importing sub-modules for {module_name}: {', '.join(sub_modules)}")
 
     for filename in os.listdir(module_folder):
         if filename.endswith(".py") and filename != "__init__.py":
