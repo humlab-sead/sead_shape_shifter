@@ -121,7 +121,8 @@ def test_multiline_query_uses_literal_block_style_and_normalizes_crlf():
             "project": {
                 "type": "sql",
                 "data_source": "arbodat_data",
-                "query": "select distinct [Projekt], [Fustel], coalesce([EVNr], '') as [EVNr]\r\nfrom [Projekte]\r\nwhere [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;",
+                "query": "select distinct [Projekt], [Fustel], coalesce([EVNr], '') as [EVNr]\r\nfrom [Projekte]\r\n"
+                "where [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;",
             }
         }
     }
