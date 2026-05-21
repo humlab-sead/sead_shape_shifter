@@ -1,5 +1,6 @@
 """Tests for pure domain data validators."""
 
+import pytest
 import pandas as pd
 
 from src.validators.data_validators import (
@@ -436,3 +437,17 @@ class TestValidationIssue:
         assert issue.category == "config"
         assert issue.priority == "high"
         assert issue.auto_fixable is True
+
+    def test_exposes_core_issue_compatibility_aliases(self):
+        """Test that ValidationIssue also exposes the shared CoreIssue aliases."""
+        issue = ValidationIssue(severity="error", entity="entity1", field="field1", message="Custom message", code="CUSTOM_CODE")
+
+        assert issue.entity_name == "entity1"
+        assert issue.entity_field == "field1"
+        assert issue.column_name is None
+        assert issue.kwargs == {}
+
+    def test_requires_non_empty_code(self):
+        """Test that ValidationIssue enforces the code invariant in __post_init__."""
+        with pytest.raises(ValueError, match="requires a non-empty code"):
+            ValidationIssue(severity="error", entity="entity1", field="field1", message="Custom message", code=None)

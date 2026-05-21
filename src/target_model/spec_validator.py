@@ -2,14 +2,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from src.issues import CoreIssue
 from src.target_model.models import TargetModel
 
 
-@dataclass(slots=True)
-class SpecValidationIssue:
-    code: str
-    message: str
-    entity: str | None = None
+@dataclass(slots=True, kw_only=True, repr=False)
+class SpecValidationIssue(CoreIssue):
+    """Issue emitted when validating the structure of a target-model specification."""
+
+    severity: str = "error"
+    category: str | None = "structural"
+
+    def __post_init__(self) -> None:
+        """Ensure target-model spec issues always carry a machine-readable code."""
+        if self.code is None:
+            raise ValueError("SpecValidationIssue requires a non-empty code")
 
 
 class TargetModelSpecValidator:

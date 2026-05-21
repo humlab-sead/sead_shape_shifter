@@ -3,38 +3,31 @@ from typing import Any, Literal
 
 from loguru import logger
 
+from src.issues import CoreIssue
 from src.model import TableConfig
 from src.utility import Registry, dotexists, dotget
 
 # pylint: disable=line-too-long
 
 
-class SpecificationIssue:
-    """Custom exception for specification validation errors/warnings."""
+class SpecificationIssue(CoreIssue):
+    """Structural/configuration issue emitted by specification checks.
+
+    Additional keyword arguments are preserved in ``metadata`` and exposed through the
+    backward-compatible ``kwargs`` alias used by existing callers.
+    """
 
     def __init__(self, *, severity: str, message: str, entity: str | None = None, **kwargs) -> None:
-        self.severity: str = severity
-        self.message: str = message
-        self.entity_name: str | None = entity
-        self.entity_field: str | None = kwargs.get("field")
-        self.column_name: str | None = kwargs.get("column")
-        self.kwargs = kwargs
-
-    def __str__(self) -> str:
-        """Return string representation of the issue."""
-        parts: list[str] = [f"[{self.severity.upper()}]"]
-        if self.entity_name:
-            parts.append(f"Entity '{self.entity_name}':")
-        parts.append(self.message)
-        if self.entity_field:
-            parts.append(f"(field: {self.entity_field})")
-        if self.column_name:
-            parts.append(f"(column: {self.column_name})")
-        return " ".join(parts)
-
-    def __repr__(self) -> str:
-        """Return representation of the issue."""
-        return self.__str__()
+        super().__init__(
+            severity=severity,
+            message=message,
+            entity=entity,
+            field=kwargs.get("field"),
+            column=kwargs.get("column"),
+            code=kwargs.get("code"),
+            category="structural",
+            metadata=dict(kwargs),
+        )
 
 
 class Specification(ABC):

@@ -22,7 +22,7 @@ class IsEmptyFieldValidator(FieldValidator):
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         self.rule_handler(
-            f"Entity '{entity_name}': Field '{field}' must be empty. {kwargs.get('message', '')}", entity=entity_name, column=field
+            f"Entity '{entity_name}': Field '{field}' must be empty. {kwargs.get('message', '')}", entity=entity_name, field=field
         )
 
 
@@ -40,7 +40,7 @@ class FieldExistsValidator(FieldValidator):
         self.rule_handler(
             f"Entity '{entity_name}': Field '{field}' is required but missing. {kwargs.get('message', '')}",
             entity=entity_name,
-            column=field,
+            field=field,
         )
 
 
@@ -59,7 +59,7 @@ class FieldIsStringListValidator(FieldValidator):
         self.rule_handler(
             f"Entity '{entity_name}': Field '{field}' must be a list of strings. {kwargs.get('message', '')}",
             entity=entity_name,
-            column=field,
+            field=field,
         )
 
 
@@ -75,7 +75,7 @@ class FieldIsNotEmptyStringValidator(FieldValidator):
         self.rule_handler(
             f"Entity '{entity_name}': Field '{field}' must be a non-empty string. {kwargs.get('message', '')}",
             entity=entity_name,
-            column=field,
+            field=field,
         )
 
 
@@ -95,7 +95,7 @@ class FieldIsNonEmptyValidator(FieldValidator):
         self.rule_handler(
             f"Entity '{entity_name}': Field '{field}' is empty or falsy. {kwargs.get('message', '')}",
             entity=entity_name,
-            column=field,
+            field=field,
         )
 
 
@@ -121,7 +121,7 @@ class FieldTypeValidator(FieldValidator):
         self.rule_handler(
             f"Entity '{entity_name}': Field '{field}' must be of type(s) '{expected_type_names}'. {message}",
             entity=entity_name,
-            column=field,
+            field=field,
         )
 
 
@@ -137,7 +137,7 @@ class IsExistingEntityValidator(FieldValidator):
         self.rule_handler(
             f"Entity '{entity_name}': Field '{field}' must be an existing entity. {kwargs.get('message', '')}",
             entity=entity_name,
-            column=field,
+            field=field,
         )
 
 
@@ -153,7 +153,7 @@ class EndsWithIdValidator(FieldValidator):
         self.rule_handler(
             f"Entity '{entity_name}': Field '{field}' should end with '_id'. {kwargs.get('message', '')}",
             entity=entity_name,
-            column=field,
+            field=field,
         )
 
 
@@ -172,7 +172,7 @@ class IsOfCategoricalValuesValidator(FieldValidator):
         self.rule_handler(
             f"Entity '{entity_name}': Field '{field}' should have a value in the specified categories. {kwargs.get('message', '')}",
             entity=entity_name,
-            column=field,
+            field=field,
         )
 
 
@@ -191,7 +191,7 @@ class IsInColumnsValidator(FieldValidator):
         self.rule_handler(
             f"Entity '{entity_name}': Field '{field}' not specified in 'columns'. {kwargs.get('message', '')}",
             entity=entity_name,
-            column=field,
+            field=field,
         )
 
 
@@ -207,7 +207,7 @@ class HasValueValidator(FieldValidator):
         self.rule_handler(
             f"Entity '{entity_name}': Field '{field}' does not have the expected value. {kwargs.get('message', '')}",
             entity=entity_name,
-            column=field,
+            field=field,
         )
 
 
@@ -225,7 +225,7 @@ class FieldIsAbsentValidator(FieldValidator):
         self.rule_handler(
             f"Entity '{entity_name}': Field '{field}' must be absent. {kwargs.get('message', '')}",
             entity=entity_name,
-            column=field,
+            field=field,
         )
 
 
@@ -278,5 +278,5 @@ class KeysSubsetOfColumnsValidator(FieldValidator):
             f"Keys are used for deduplication and FK matching, so they must exist in the extracted data. "
             f"Add {sorted(missing_keys)} to the 'columns' list.",
             entity=entity_name,
-            column="keys",
+            field="keys",
         )
