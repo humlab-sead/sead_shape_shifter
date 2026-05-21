@@ -189,7 +189,7 @@ def filter_once_per_message(record) -> bool:
     return False
 
 
-def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
+def setup_logging(level: str | None = None, verbose: bool = False, log_file: str | None = None) -> None:
     """Configure loguru logging for CLI/scripts.
 
     This is for standalone scripts and CLI tools. For the backend API,
@@ -211,8 +211,8 @@ def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
     logger.remove()
     logger.add(
         sys.stderr,
-        level="DEBUG" if verbose else "INFO",
-        format=format_str if verbose else "<level>{message}</level>",
+        level=level or ("DEBUG" if verbose else "INFO"),
+        format=format_str,  # if verbose else "<level>{message}</level>",
         filter=filter_once_per_message if not verbose else None,
         colorize=True,
         backtrace=True,
