@@ -1,7 +1,7 @@
 """Tests for pure domain data validators."""
 
-import pytest
 import pandas as pd
+import pytest
 
 from src.validators.data_validators import (
     ColumnExistsValidator,
