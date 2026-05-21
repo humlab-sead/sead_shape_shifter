@@ -26,6 +26,10 @@ test:
 	@uv run pytest tests backend/tests ingesters/sead/tests -v
 
 .PHONY: validate
+validate:
+	@uv run python scripts/run_validation_workflows.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow all
+
+.PHONY: profile-validate
 profile-validate:
 	@uv run pyinstrument scripts/run_validation_workflows.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow all
 
