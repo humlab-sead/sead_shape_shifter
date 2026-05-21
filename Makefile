@@ -25,8 +25,12 @@ install-api:
 test:
 	@uv run pytest tests backend/tests ingesters/sead/tests -v
 
+.PHONY: validate
+profile-validate:
+	@uv run pyinstrument scripts/run_validation_workflows.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow all
+
 .PHONY: profile
-profile:
+profile-test:
 	@echo "Profiling test with py-spy..."
 	@uv run py-spy record -o profile.svg --format speedscope -- pytest $(TEST) -v -s
 	@echo "✓ Profile saved to profile.svg (open in browser or speedscope.app)"
