@@ -14,11 +14,11 @@ import asyncio
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Awaitable, Callable, Sequence
+from typing import Any, Awaitable, Callable, Sequence
 
 from loguru import logger
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -53,8 +53,8 @@ class WorkflowResult:
 
 def normalize_workflow_name(value: str) -> str:
     """Normalize CLI workflow choices, including stable aliases."""
-    normalized = value.strip().lower()
-    aliases = {
+    normalized: str = value.strip().lower()
+    aliases: dict[str, str] = {
         "all": "all",
         "structural": "structural",
         "data": "data",
@@ -96,6 +96,7 @@ Examples
     )
     parser.add_argument("--env-file", type=Path, default=Path(".env"), help="Optional env file for project loading (default: .env)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
+    parser.add_argument("--log-level", "-l", type=str, default=None, help="Set the logging level (e.g., DEBUG, INFO, WARNING, ERROR)")
     parser.add_argument("--log-file", type=Path, help="Optional log file path")
     return parser
 
@@ -124,7 +125,7 @@ def format_data_issue(issue: ValidationIssue) -> str:
 
 def format_validation_error(error: ValidationError) -> str:
     """Format a backend validation error for CLI output."""
-    location = error.entity or "project"
+    location: str = error.entity or "project"
     if error.field:
         location = f"{location}.{error.field}"
     return f"[{error.severity.upper()}] {location}: {error.message} ({error.code or 'UNKNOWN'})"
@@ -133,7 +134,7 @@ def format_validation_error(error: ValidationError) -> str:
 def run_structural_validation(project: ShapeShiftProject) -> WorkflowResult:
     """Run structural/specification validation."""
     specification = CompositeProjectSpecification(project.cfg)
-    is_valid = specification.is_satisfied_by()
+    is_valid: bool = specification.is_satisfied_by()
     return WorkflowResult(
         name="structural",
         passed=is_valid,
@@ -148,7 +149,7 @@ async def run_data_validation(project: ShapeShiftProject) -> WorkflowResult:
     await normalizer.normalize()
 
     orchestrator = DataValidationOrchestrator(fetch_strategy=TableStoreDataFetchStrategy(normalizer.table_store))
-    issues = await orchestrator.validate_all_entities(
+    issues: list[ValidationIssue] = await orchestrator.validate_all_entities(
         core_project=project,
         project_name=project.metadata.name or Path(project.filename).stem,
     )
@@ -164,7 +165,7 @@ async def run_data_validation(project: ShapeShiftProject) -> WorkflowResult:
 
 def run_conformance_validation(project: ShapeShiftProject) -> WorkflowResult:
     """Run target-model conformance validation if the project defines a target model."""
-    target_model_data = project.metadata.target_model
+    target_model_data: dict[str, Any] | None = project.metadata.target_model
     if not target_model_data or not isinstance(target_model_data, dict):
         return WorkflowResult(
             name="conformance",
@@ -172,7 +173,7 @@ def run_conformance_validation(project: ShapeShiftProject) -> WorkflowResult:
             skipped="No resolved target model configured on the project.",
         )
 
-    errors = TargetModelValidator().validate(target_model_data, project)
+    errors: list[ValidationError] = TargetModelValidator().validate(target_model_data, project)
     return WorkflowResult(
         name="conformance",
         passed=len(errors) == 0,
@@ -181,13 +182,11 @@ def run_conformance_validation(project: ShapeShiftProject) -> WorkflowResult:
 
 
 async def execute_async_workflow(
-    name: str,
-    runner: Callable[[ShapeShiftProject], Awaitable[WorkflowResult]],
-    project: ShapeShiftProject,
+    name: str, runner: Callable[[ShapeShiftProject], Awaitable[WorkflowResult]], project: ShapeShiftProject
 ) -> WorkflowResult:
     """Run an async workflow and normalize unexpected failures into CLI output."""
     try:
-        result = await runner(project)
+        result: WorkflowResult = await runner(project)
     except Exception as exc:  # pylint: disable=broad-except
         logger.exception("{} validation workflow failed", name)
         return WorkflowResult(name=name, passed=False, errors=[f"[{name.upper()}] Workflow failed: {exc}"])
@@ -200,7 +199,8 @@ async def execute_async_workflow(
 def execute_sync_workflow(name: str, runner: Callable[[ShapeShiftProject], WorkflowResult], project: ShapeShiftProject) -> WorkflowResult:
     """Run a sync workflow and normalize unexpected failures into CLI output."""
     try:
-        return runner(project)
+        result: WorkflowResult = runner(project)
+        return result
     except Exception as exc:  # pylint: disable=broad-except
         logger.exception("{} validation workflow failed", name)
         return WorkflowResult(name=name, passed=False, errors=[f"[{name.upper()}] Workflow failed: {exc}"])
@@ -218,7 +218,7 @@ async def run_requested_workflows(project: ShapeShiftProject, workflow: str) -> 
         return [execute_sync_workflow("conformance", run_conformance_validation, project)]
 
     results: list[WorkflowResult] = []
-    structural_result = execute_sync_workflow("structural", run_structural_validation, project)
+    structural_result: WorkflowResult = execute_sync_workflow("structural", run_structural_validation, project)
     results.append(structural_result)
 
     if structural_result.passed:
@@ -271,12 +271,12 @@ def print_workflow_results(project_file: Path, results: list[WorkflowResult]) ->
 
 def print_summary(results: list[WorkflowResult]) -> None:
     """Print a compact final summary."""
-    failed = sum(1 for result in results if not result.passed)
-    skipped = sum(1 for result in results if result.skipped)
+    failed: int = sum(1 for result in results if not result.passed)
+    skipped: int = sum(1 for result in results if result.skipped)
     print("\nSummary:")
     for result in results:
         if result.skipped:
-            state = f"skipped ({result.skipped})"
+            state: str = f"skipped ({result.skipped})"
         else:
             state = "passed" if result.passed else "failed"
         print(f"  - {WORKFLOW_LABELS[result.name]}: {state}")
@@ -286,10 +286,10 @@ def print_summary(results: list[WorkflowResult]) -> None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry point."""
-    parser = build_parser()
-    args = parser.parse_args(argv)
+    parser: argparse.ArgumentParser = build_parser()
+    args: argparse.Namespace = parser.parse_args(argv)
 
-    setup_logging(verbose=args.verbose, log_file=str(args.log_file) if args.log_file else None)
+    setup_logging(level=args.log_level.upper() if args.log_level else None, verbose=args.verbose, log_file=str(args.log_file) if args.log_file else None)
 
     project_file = args.project.resolve()
     if not project_file.exists():
@@ -297,13 +297,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     try:
-        project = load_project(project_file, args.env_file)
+        project: ShapeShiftProject = load_project(project_file, args.env_file)
     except Exception as exc:  # pylint: disable=broad-except
         logger.exception("Failed to load project file {}", project_file)
         print(f"Failed to load project file: {exc}", file=sys.stderr)
         return 1
 
-    results = asyncio.run(run_requested_workflows(project, args.workflow))
+    results: list[WorkflowResult] = asyncio.run(run_requested_workflows(project, args.workflow))
     print_workflow_results(project_file, results)
     print_summary(results)
 
