@@ -238,6 +238,20 @@ async def run_requested_workflows(project: ShapeShiftProject, workflow: str) -> 
 
 def print_workflow_results(project_file: Path, results: list[WorkflowResult]) -> None:
     """Print workflow-by-workflow validation results."""
+
+    # name: str
+    # passed: bool
+    # errors: list[str] = field(default_factory=list)
+    # warnings: list[str] = field(default_factory=list)
+    # info: list[str] = field(default_factory=list)
+    # skipped: str | None = None
+
+    for result in results:
+        workflow: str = WORKFLOW_LABELS.get(result.name, result.name)
+        for error in result.errors:
+            print(f"{workflow};{})
+            logger.error(error)
+
     print(f"Validation results for {project_file}")
 
     for result in results:
@@ -311,4 +325,5 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main(["data/projects/arbodat/shapeshifter.yml", "--workflow", "all", "--log-level", "WARNING"])
+    # sys.exit(main())
