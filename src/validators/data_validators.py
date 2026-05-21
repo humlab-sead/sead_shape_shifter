@@ -9,22 +9,29 @@ from typing import Any
 
 import pandas as pd
 
+from src.issues import CoreIssue
 from src.validation_messages import format_validation_message_with_context
 
 
-@dataclass
-class ValidationIssue:
-    """Domain representation of a validation issue."""
+@dataclass(slots=True, kw_only=True, repr=False)
+class ValidationIssue(CoreIssue):
+    """Data-oriented issue returned by pure validation functions.
 
-    severity: str  # "error", "warning", "info"
-    entity: str | None
-    field: str | None
-    message: str
-    code: str
+    Attributes:
+        suggestion: Optional guidance for resolving the issue.
+        priority: Relative urgency used by consumers when ordering issues.
+        auto_fixable: Whether the issue can be resolved automatically.
+    """
+
+    category: str | None = "data"
     suggestion: str | None = None
-    category: str = "data"
     priority: str = "medium"
     auto_fixable: bool = False
+
+    def __post_init__(self) -> None:
+        """Ensure data validation issues always carry a machine-readable code."""
+        if self.code is None:
+            raise ValueError("ValidationIssue requires a non-empty code")
 
 
 class ColumnExistsValidator:
@@ -32,10 +39,7 @@ class ColumnExistsValidator:
 
     @staticmethod
     def validate(
-        df: pd.DataFrame,
-        configured_columns: list[str],
-        entity_name: str,
-        entity_config: dict[str, Any] | None = None,
+        df: pd.DataFrame, configured_columns: list[str], entity_name: str, entity_config: dict[str, Any] | None = None
     ) -> list[ValidationIssue]:
         """
         Check that all configured columns exist in DataFrame.

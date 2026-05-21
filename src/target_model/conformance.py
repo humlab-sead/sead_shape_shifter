@@ -3,16 +3,23 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from src.issues import CoreIssue
 from src.model import ShapeShiftProject, TableConfig
 from src.target_model.models import EntitySpec, TargetModel
 from src.utility import Registry
 
 
-@dataclass(slots=True)
-class ConformanceIssue:
-    code: str
-    message: str
-    entity: str | None = None
+@dataclass(slots=True, kw_only=True, repr=False)
+class ConformanceIssue(CoreIssue):
+    """Target-model conformance issue emitted by core conformance validators."""
+
+    severity: str = "error"
+    category: str | None = "conformance"
+
+    def __post_init__(self) -> None:
+        """Ensure conformance issues always carry a machine-readable code."""
+        if self.code is None:
+            raise ValueError("ConformanceIssue requires a non-empty code")
 
 
 class ConformanceValidator(ABC):

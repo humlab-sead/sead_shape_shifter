@@ -68,6 +68,17 @@ class TestSpecificationIssue:
         assert issue.kwargs["extra_data"] == "value"
         assert issue.kwargs["custom_field"] == 123
 
+    def test_core_issue_aliases_expose_canonical_fields(self):
+        """Test that compatibility aliases still reflect the canonical CoreIssue fields."""
+        issue = SpecificationIssue(severity="error", message="Test", entity="sample", field="columns", column="site_id")
+
+        assert issue.entity == "sample"
+        assert issue.field == "columns"
+        assert issue.column == "site_id"
+        assert issue.entity_name == "sample"
+        assert issue.entity_field == "columns"
+        assert issue.column_name == "site_id"
+
 
 class ConcreteSpecification(ProjectSpecification):
     """Concrete implementation for testing abstract base class."""

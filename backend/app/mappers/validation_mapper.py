@@ -1,6 +1,7 @@
 """Mapper for translating between domain validation models and API validation models."""
 
 from backend.app import models as api
+from src.issues import CoreIssue
 from src.target_model.conformance import ConformanceIssue
 from src.validators.data_validators import ValidationIssue
 
@@ -9,12 +10,23 @@ class ValidationMapper:
     """Mapper for validation layer boundaries (Domain ↔ API)."""
 
     @staticmethod
-    def to_api_error(issue: ValidationIssue) -> api.ValidationError:
+    def from_core_issue(
+        issue: CoreIssue,
+        *,
+        default_category: api.ValidationCategory = api.ValidationCategory.STRUCTURAL,
+        default_priority: api.ValidationPriority = api.ValidationPriority.MEDIUM,
+        default_suggestion: str | None = None,
+        default_auto_fixable: bool = False,
+    ) -> api.ValidationError:
         """
-        Convert domain ValidationIssue to API ValidationError.
+        Convert any CoreIssue subclass to an API ValidationError.
 
         Args:
-            issue: Domain validation issue
+            issue: Domain/core issue object.
+            default_category: Category to use when the issue does not define one.
+            default_priority: Priority to use when the issue does not define one.
+            default_suggestion: Suggestion to use when the issue does not define one.
+            default_auto_fixable: Auto-fixable flag to use when the issue does not define one.
 
         Returns:
             API validation error model
@@ -33,27 +45,50 @@ class ValidationMapper:
             "structural": api.ValidationCategory.STRUCTURAL,
             "structure": api.ValidationCategory.STRUCTURAL,
             "performance": api.ValidationCategory.PERFORMANCE,
+            "conformance": api.ValidationCategory.CONFORMANCE,
         }
-        category: api.ValidationCategory = category_map.get(issue.category, api.ValidationCategory.DATA)
+        category: api.ValidationCategory = category_map.get(issue.category or "", default_category)
 
         # Map priority string to enum
         priority_map: dict[str, api.ValidationPriority] = {
+            "critical": api.ValidationPriority.CRITICAL,
             "high": api.ValidationPriority.HIGH,
             "medium": api.ValidationPriority.MEDIUM,
             "low": api.ValidationPriority.LOW,
         }
-        priority: api.ValidationPriority = priority_map.get(issue.priority, api.ValidationPriority.MEDIUM)
+        raw_priority = getattr(issue, "priority", None)
+        priority: api.ValidationPriority = priority_map.get(raw_priority or "", default_priority)
+
+        suggestion = getattr(issue, "suggestion", None)
+        if suggestion is None:
+            suggestion = default_suggestion
+
+        auto_fixable = getattr(issue, "auto_fixable", default_auto_fixable)
+        metadata = issue.metadata or {}
+        field_name = issue.field or issue.column
 
         return api.ValidationError(
             severity=severity,  # type: ignore[arg-type]
             entity=issue.entity,
-            field=issue.field,
+            branch_name=metadata.get("branch_name"),
+            branch_source=metadata.get("branch_source"),
+            field=field_name,
             message=issue.message,
             code=issue.code,
-            suggestion=issue.suggestion,
+            suggestion=suggestion,
             category=category,
             priority=priority,
-            auto_fixable=issue.auto_fixable,
+            auto_fixable=auto_fixable,
+        )
+
+    @staticmethod
+    def to_api_error(issue: ValidationIssue) -> api.ValidationError:
+        """Convert a domain ValidationIssue to an API ValidationError."""
+        return ValidationMapper.from_core_issue(
+            issue,
+            default_category=api.ValidationCategory.DATA,
+            default_priority=api.ValidationPriority.MEDIUM,
+            default_auto_fixable=False,
         )
 
     @staticmethod
@@ -70,14 +105,9 @@ class ValidationMapper:
         Returns:
             API validation error model
         """
-        return api.ValidationError(
-            severity="error",
-            entity=issue.entity,
-            field=None,
-            message=issue.message,
-            code=issue.code,
-            suggestion=None,
-            category=api.ValidationCategory.CONFORMANCE,
-            priority=api.ValidationPriority.HIGH,
-            auto_fixable=False,
+        return ValidationMapper.from_core_issue(
+            issue,
+            default_category=api.ValidationCategory.CONFORMANCE,
+            default_priority=api.ValidationPriority.HIGH,
+            default_auto_fixable=False,
         )
