@@ -104,9 +104,12 @@ import { computed, ref, watch } from 'vue'
 
 import {
   applySuggestionToExpression,
+  formatExtraColumnEditorValue,
   getExtraColumnDiagnostics,
   getExtraColumnSuggestions,
+  parseExtraColumnEditorValue,
   type ExtraColumnSuggestion,
+  type ExtraColumnValue,
 } from './extraColumnsEditorUtils'
 
 interface ExtraColumnConfig {
@@ -115,7 +118,7 @@ interface ExtraColumnConfig {
 }
 
 interface Props {
-  modelValue?: Record<string, string | null>
+  modelValue?: Record<string, ExtraColumnValue>
   availableColumns?: string[]
   reservedNames?: string[]
 }
@@ -123,12 +126,15 @@ interface Props {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: Record<string, string | null> | undefined]
+  'update:modelValue': [value: Record<string, ExtraColumnValue> | undefined]
 }>()
 
-function toModelValue(value: ExtraColumnConfig[]): Record<string, string | null> | undefined {
+function toModelValue(value: ExtraColumnConfig[]): Record<string, ExtraColumnValue> | undefined {
   const entries = value
-    .map((item) => ({ column: item.column?.trim() || '', source: item.source ?? null }))
+    .map((item) => ({
+      column: item.column?.trim() || '',
+      source: parseExtraColumnEditorValue(item.source, props.availableColumns ?? []),
+    }))
     .filter((item) => item.column.length > 0)
     .map((item) => [item.column, item.source] as const)
 
@@ -141,7 +147,7 @@ const extraColumns = ref<ExtraColumnConfig[]>(
   props.modelValue
     ? Object.entries(props.modelValue).map(([column, source]) => ({
         column,
-        source: source || null,
+        source: formatExtraColumnEditorValue(source),
       }))
     : []
 )
@@ -239,7 +245,7 @@ watch(
     extraColumns.value = newValue
       ? Object.entries(newValue).map(([column, source]) => ({
           column,
-          source: source || null,
+          source: formatExtraColumnEditorValue(source),
         }))
       : []
   },
