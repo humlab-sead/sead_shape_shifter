@@ -13,7 +13,7 @@ from src.issues import CoreIssue
 from src.validation_messages import format_validation_message_with_context
 
 
-@dataclass(slots=True, kw_only=True, repr=False)
+@dataclass(slots=True, kw_only=True)
 class ValidationIssue(CoreIssue):
     """Data-oriented issue returned by pure validation functions.
 
@@ -33,6 +33,10 @@ class ValidationIssue(CoreIssue):
         if self.code is None:
             raise ValueError("ValidationIssue requires a non-empty code")
 
+    def to_csv(self) -> str:
+        """Return a CSV representation of the issue."""
+        # return super().to_csv() + f";{self.priority}"
+        return f"{self.severity};{self.entity};{self.field};{self.column};{self.code};{self.message}"
 
 class ColumnExistsValidator:
     """Validate that configured columns exist in DataFrame."""
