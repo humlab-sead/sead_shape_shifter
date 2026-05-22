@@ -813,6 +813,7 @@ entities:
     - [8, null, null, Heavy fraction 0.25 mm, 'MIN 0,25', 'MIN 0,25', 1, 'MIN 0,25']
     - [9, 105, null, null, Local or unknown grid, null, 17, null]
     - [10, 76, null, null, Altitude above sea level, null, 17, null]
+    - [11, 53, null, null, null, null, null, null]
     foreign_keys:
     - entity: method_group
       local_keys: [sead_method_group_id]
@@ -1079,7 +1080,7 @@ entities:
       sample_group_name: Befu
       sample_group_description:
       sampling_context_id:
-      method_id: '11'
+      method_id: 11
   sample_type:
     type: sql
     keys: [ProbTyp]
