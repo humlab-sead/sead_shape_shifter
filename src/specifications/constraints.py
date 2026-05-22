@@ -164,7 +164,10 @@ class NullKeyValidator(ConstraintValidator):
 
     def validate(self, context: ValidationContext) -> None:
         for col in self.fk.local_keys:
-            if context.local_df[col].isnull().any():
+            # FIXME: If tables public_id has a value, then this is a simple mapping system_id => public_id
+            # and nulls in the local key should be allowed
+            new_rows_mask: pd.Series = self.get_new_rows_mask(context)
+            if context.local_df[new_rows_mask][col].isnull().any():
                 if self.raise_on_violation:
                     raise ForeignKeyNullConstraintViolation(
                         local_entity=self.fk.local_entity, remote_entity=self.fk.remote_entity, key_side="local", key_column=col
@@ -183,6 +186,12 @@ class NullKeyValidator(ConstraintValidator):
                         f"{self.fk.local_entity} -> {self.fk.remote_entity}: "
                         f"Null values found in remote key '{col}' (allow_null_keys=False)"
                     )
+
+    def get_new_rows_mask(self, context: ValidationContext) -> pd.Series:
+        """Determine which rows in the local DataFrame are new (i.e., have null public_id)
+        and should be included in the strict null key validation."""
+        null_public_ids: pd.Series = context.local_df[self.entity.public_id].isnull()
+        return null_public_ids
 
 
 @Validators.register(key="require_unique_left", stage="pre-merge")

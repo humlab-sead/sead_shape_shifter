@@ -12,11 +12,12 @@ from src.specifications.constraints import (
 )
 
 
-def build_fk(*, local_entity: str = "orders", remote_entity: str = "customers", constraints: dict | None = None) -> ForeignKeyConfig:
+def build_project(*, local_entity: str = "orders", remote_entity: str = "customers", constraints: dict | None = None) -> ShapeShiftProject:
     cfg = {
         "entities": {
             local_entity: {
-                "columns": ["order_id", "customer_id"],
+                "public_id": "order_public_id",
+                "columns": ["order_id", "order_public_id", "customer_id"],
                 "foreign_keys": [
                     {
                         "entity": remote_entity,
@@ -29,7 +30,11 @@ def build_fk(*, local_entity: str = "orders", remote_entity: str = "customers", 
             remote_entity: {"columns": ["id"]},
         }
     }
-    return ShapeShiftProject(cfg=cfg).get_table(local_entity).foreign_keys[0]
+    return ShapeShiftProject(cfg=cfg)
+
+
+def build_fk(*, local_entity: str = "orders", remote_entity: str = "customers", constraints: dict | None = None) -> ForeignKeyConfig:
+    return build_project(local_entity=local_entity, remote_entity=remote_entity, constraints=constraints).get_table(local_entity).foreign_keys[0]
 
 
 def test_validator_registry_lookup():
@@ -43,11 +48,12 @@ def test_validator_registry_lookup():
 
 def test_pre_merge_null_and_uniqueness_checks():
     """Pre-merge validators should raise when constraints violated."""
-    fk: ForeignKeyConfig = build_fk(constraints={"allow_null_keys": False, "require_unique_left": True, "require_unique_right": True})
-    entity: TableConfig = ShapeShiftProject(cfg={"entities": {}}).get_table("orders")
+    project = build_project(constraints={"allow_null_keys": False, "require_unique_left": True, "require_unique_right": True})
+    fk: ForeignKeyConfig = project.get_table("orders").foreign_keys[0]
+    entity: TableConfig = project.get_table("orders")
     validator = ForeignKeyConstraintValidator(local_entity=entity, fk=fk)
 
-    local_df = pd.DataFrame({"order_id": [1, 2, 3], "customer_id": [1, 1, None]})
+    local_df = pd.DataFrame({"order_id": [1, 2, 3], "order_public_id": [None, None, None], "customer_id": [1, 1, None]})
     remote_df = pd.DataFrame({"id": [1, 1]})
 
     with pytest.raises(ForeignKeyConstraintViolation, match="Null values"):
@@ -61,17 +67,18 @@ def test_pre_merge_null_and_uniqueness_checks():
 
 def test_post_merge_cardinality_and_unmatched_checks():
     """Post-merge validators enforce cardinality and unmatched rules."""
-    fk: ForeignKeyConfig = build_fk(
+    project = build_project(
         constraints={
             "cardinality": "one_to_one",
             "allow_unmatched_left": False,
             "allow_unmatched_right": False,
         }
     )
-    entity: TableConfig = ShapeShiftProject(cfg={"entities": {}}).get_table("orders")
+    fk: ForeignKeyConfig = project.get_table("orders").foreign_keys[0]
+    entity: TableConfig = project.get_table("orders")
     validator = ForeignKeyConstraintValidator(local_entity=entity, fk=fk)
 
-    local_df = pd.DataFrame({"order_id": [1, 2], "customer_id": [1, 2]})
+    local_df = pd.DataFrame({"order_id": [1, 2], "order_public_id": [None, None], "customer_id": [1, 2]})
     remote_df = pd.DataFrame({"id": [1]})
 
     # Simulate a merge with unmatched rows and row count change
@@ -122,3 +129,76 @@ def test_lookup_runtime_options_skip_strict_null_validation_for_targeted_case():
     remote_df = pd.DataFrame({"customer_code": ["A", None]})
 
     validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
+
+
+def test_pre_merge_null_check_exempts_rows_with_existing_public_id():
+    """Rows with an existing public_id are treated as simple mappings and are exempt from strict null-key checks."""
+    cfg = {
+        "entities": {
+            "orders": {
+                "public_id": "order_public_id",
+                "columns": ["order_id", "order_public_id", "customer_id"],
+                "foreign_keys": [
+                    {
+                        "entity": "customers",
+                        "local_keys": ["customer_id"],
+                        "remote_keys": ["id"],
+                        "constraints": {"allow_null_keys": False},
+                    }
+                ],
+            },
+            "customers": {"columns": ["id"]},
+        }
+    }
+    project = ShapeShiftProject(cfg=cfg)
+    entity = project.get_table("orders")
+    fk = entity.foreign_keys[0]
+    validator = ForeignKeyConstraintValidator(local_entity=entity, fk=fk)
+
+    local_df = pd.DataFrame(
+        {
+            "order_id": [1, 2],
+            "order_public_id": [1001, 1002],
+            "customer_id": [None, None],
+        }
+    )
+    remote_df = pd.DataFrame({"id": [1, 2]})
+
+    validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
+
+
+def test_pre_merge_null_check_still_applies_to_new_rows_without_public_id():
+    """Strict null-key validation still applies to rows whose public_id is not populated yet."""
+    cfg = {
+        "entities": {
+            "orders": {
+                "public_id": "order_public_id",
+                "columns": ["order_id", "order_public_id", "customer_id"],
+                "foreign_keys": [
+                    {
+                        "entity": "customers",
+                        "local_keys": ["customer_id"],
+                        "remote_keys": ["id"],
+                        "constraints": {"allow_null_keys": False},
+                    }
+                ],
+            },
+            "customers": {"columns": ["id"]},
+        }
+    }
+    project = ShapeShiftProject(cfg=cfg)
+    entity = project.get_table("orders")
+    fk = entity.foreign_keys[0]
+    validator = ForeignKeyConstraintValidator(local_entity=entity, fk=fk)
+
+    local_df = pd.DataFrame(
+        {
+            "order_id": [1, 2],
+            "order_public_id": [1001, None],
+            "customer_id": [None, None],
+        }
+    )
+    remote_df = pd.DataFrame({"id": [1, 2]})
+
+    with pytest.raises(ForeignKeyConstraintViolation, match="customer_id"):
+        validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
