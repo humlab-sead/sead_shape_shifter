@@ -45,7 +45,7 @@ class DefaultEntityPersistenceStrategy:
 
     def prepare_for_persistence(
         self,  # pylint: disable=unused-argument
-        entity_name: str,
+        entity_name: str,  # pylint: disable=unused-argument
         entity_data: dict[str, Any],
         project_options: dict[str, Any] | None = None,  # pylint: disable=unused-argument
     ) -> dict[str, Any]:  # pylint: disable=unused-argument
