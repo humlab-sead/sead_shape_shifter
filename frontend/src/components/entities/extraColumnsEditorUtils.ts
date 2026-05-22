@@ -3,6 +3,8 @@ export interface ExtraColumnEditorRow {
   source: string | null
 }
 
+export type ExtraColumnValue = string | number | boolean | null
+
 export interface ExtraColumnAnalysis {
   kind: 'empty' | 'copy' | 'constant' | 'interpolation' | 'formula' | 'escaped-literal'
   references: string[]
@@ -23,6 +25,8 @@ const INTERPOLATION_PATTERN = /(?<!\{)\{([a-zA-Z_][\w]*)\}(?!\})/g
 const FORMULA_REFERENCE_PATTERN = /\b([a-zA-Z_][\w]*)\b/g
 const DSL_FUNCTIONS = new Set(['concat', 'upper', 'lower', 'trim', 'substr', 'coalesce', 'null', 'true', 'false'])
 const FORMULA_SNIPPETS = ['concat()', 'upper()', 'lower()', 'trim()', 'substr()', 'coalesce()'] as const
+const INTEGER_LITERAL_PATTERN = /^[+-]?\d+$/
+const FLOAT_LITERAL_PATTERN = /^[+-]?(?:\d+\.\d*|\.\d+)$/
 
 export function extractInterpolationReferences(expression: string): string[] {
   const matches = Array.from(expression.matchAll(INTERPOLATION_PATTERN))
@@ -70,6 +74,59 @@ export function analyzeExtraColumnExpression(
   }
 
   return { kind: 'constant', references: [] }
+}
+
+export function parseExtraColumnConstantLiteral(expression: string): ExtraColumnValue {
+  const normalized = expression.trim()
+  const lowered = normalized.toLowerCase()
+
+  if (INTEGER_LITERAL_PATTERN.test(normalized)) {
+    return Number.parseInt(normalized, 10)
+  }
+
+  if (FLOAT_LITERAL_PATTERN.test(normalized)) {
+    return Number.parseFloat(normalized)
+  }
+
+  if (lowered === 'true') {
+    return true
+  }
+
+  if (lowered === 'false') {
+    return false
+  }
+
+  if (lowered === 'null' || normalized === '~') {
+    return null
+  }
+
+  return normalized
+}
+
+export function parseExtraColumnEditorValue(
+  expression: string | null | undefined,
+  availableColumns: string[] = []
+): ExtraColumnValue {
+  const normalized = expression?.trim() ?? ''
+
+  if (!normalized) {
+    return null
+  }
+
+  const analysis = analyzeExtraColumnExpression(normalized, availableColumns)
+  if (analysis.kind !== 'constant') {
+    return normalized
+  }
+
+  return parseExtraColumnConstantLiteral(normalized)
+}
+
+export function formatExtraColumnEditorValue(value: ExtraColumnValue | undefined): string | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  return String(value)
 }
 
 export function getExtraColumnDiagnostics(

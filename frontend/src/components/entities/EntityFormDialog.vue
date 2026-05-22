@@ -1043,6 +1043,7 @@ import {
   remapFixedValuesRowsToColumns,
   normalizeEditableFixedColumns,
 } from './entityFormMaterialization'
+import type { ExtraColumnValue } from './extraColumnsEditorUtils'
 
 const DIALOG_SIZE_STORAGE_KEY = 'shape-shifter:entity-dialog-size:v1'
 const DEFAULT_DIALOG_WIDTH = 1100
@@ -1208,7 +1209,7 @@ interface FormData {
     unnest?: any | null
     append?: any[]
     branches?: any[]
-    extra_columns?: Record<string, string | null>
+    extra_columns?: Record<string, ExtraColumnValue>
     replacements?: Record<string, any>
   }
 }
@@ -3285,7 +3286,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
       unnest: entity.entity_data.unnest || null,
       append: (entity.entity_data.append as any[]) || [],
       branches: (entity.entity_data.branches as any[]) || [],
-      extra_columns: (entity.entity_data.extra_columns as Record<string, string | null>) || undefined,
+      extra_columns: (entity.entity_data.extra_columns as Record<string, ExtraColumnValue>) || undefined,
     },
   }
 }
