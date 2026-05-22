@@ -64,5 +64,10 @@ class CoreIssue:
         return " ".join(parts)
 
     def __repr__(self) -> str:
-        """Return the same representation used for user-facing issue text."""
-        return self.__str__()
+        """Return a CSV representation of the issue."""
+        return self.to_csv()
+
+
+    def to_csv(self) -> str:
+        """Return a list of issue attributes suitable for CSV output."""
+        return f"{self.severity};{self.entity};{self.field};{self.column};{self.code};{self.message}"
