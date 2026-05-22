@@ -5,7 +5,7 @@ from typing import Any, Self
 import pandas as pd
 from loguru import logger
 
-from src.model import ForeignKeyConfig, ForeignKeyConstraints
+from src.model import ForeignKeyConfig, ForeignKeyConstraints, TableConfig
 from src.utility import Registry
 
 # pylint: disable=line-too-long, unnecessary-pass
@@ -68,22 +68,23 @@ class ConstraintValidator(ABC):
 
     def __init__(
         self,
-        entity_name: str,
+        entity: TableConfig,
         fk: ForeignKeyConfig,
         constraints: ForeignKeyConstraints,
         runtime_options: ForeignKeyRuntimeOptions | None = None,
+        raise_on_violation: bool = True,
     ) -> None:
-        self.entity_name: str = entity_name
+        self.entity: TableConfig = entity
         self.fk: ForeignKeyConfig = fk
         self.constraints: ForeignKeyConstraints = constraints
         self.runtime_options: ForeignKeyRuntimeOptions = runtime_options or ForeignKeyRuntimeOptions.from_constraints(constraints)
-        self.raise_on_violation: bool = True
+        self.raise_on_violation: bool = raise_on_violation
 
     def handle_violation(self, message: str) -> None:
         """Raise a constraint violation exception with context."""
         if self.raise_on_violation:
-            raise ForeignKeyConstraintViolation(f"{self.entity_name} -> {self.fk.remote_entity}: {message}")
-        logger.error(f"{self.entity_name} -> {self.fk.remote_entity}: {message}")
+            raise ForeignKeyConstraintViolation(f"{self.entity.entity_name} -> {self.fk.remote_entity}: {message}")
+        logger.error(f"{self.entity.entity_name} -> {self.fk.remote_entity}: {message}")
 
     @abstractmethod
     def is_applicable(self) -> bool:
@@ -166,26 +167,21 @@ class NullKeyValidator(ConstraintValidator):
             if context.local_df[col].isnull().any():
                 if self.raise_on_violation:
                     raise ForeignKeyNullConstraintViolation(
-                        local_entity=self.entity_name,
-                        remote_entity=self.fk.remote_entity,
-                        key_side="local",
-                        key_column=col,
+                        local_entity=self.fk.local_entity, remote_entity=self.fk.remote_entity, key_side="local", key_column=col
                     )
                 logger.error(
-                    f"{self.entity_name} -> {self.fk.remote_entity}: Null values found in local key '{col}' (allow_null_keys=False)"
+                    f"{self.fk.local_entity} -> {self.fk.remote_entity}: Null values found in local key '{col}' (allow_null_keys=False)"
                 )
         if context.remote_df is not None:
             for col in self.fk.remote_keys:
                 if context.remote_df[col].isnull().any():
                     if self.raise_on_violation:
                         raise ForeignKeyNullConstraintViolation(
-                            local_entity=self.entity_name,
-                            remote_entity=self.fk.remote_entity,
-                            key_side="remote",
-                            key_column=col,
+                            local_entity=self.fk.local_entity, remote_entity=self.fk.remote_entity, key_side="remote", key_column=col
                         )
                     logger.error(
-                        f"{self.entity_name} -> {self.fk.remote_entity}: Null values found in remote key '{col}' (allow_null_keys=False)"
+                        f"{self.fk.local_entity} -> {self.fk.remote_entity}: "
+                        f"Null values found in remote key '{col}' (allow_null_keys=False)"
                     )
 
 
@@ -312,11 +308,13 @@ class ForeignKeyConstraintValidator:
 
     def __init__(
         self,
-        entity_name: str,
+        *,
+        local_entity: TableConfig,
         fk: ForeignKeyConfig,
         runtime_options: ForeignKeyRuntimeOptions | None = None,
+        raise_on_violation: bool = True,
     ) -> None:
-        self.entity_name: str = entity_name
+        self.entity: TableConfig = local_entity
         self.fk: ForeignKeyConfig = fk
         self.constraints: ForeignKeyConstraints = fk.constraints
         self.runtime_options: ForeignKeyRuntimeOptions = runtime_options or ForeignKeyRuntimeOptions.from_constraints(self.constraints)
@@ -324,6 +322,7 @@ class ForeignKeyConstraintValidator:
         self.size_before_merge: tuple[int, int] = (0, 0)
         self.size_after_merge: tuple[int, int] = (0, 0)
         self.issues: list[ValidationIssue] = []
+        self.raise_on_violation: bool = raise_on_violation
 
     def validate_before_merge(self, local_df: pd.DataFrame, remote_df: pd.DataFrame) -> Self:
         """Validate constraints before performing the merge."""
@@ -332,7 +331,9 @@ class ForeignKeyConstraintValidator:
 
         context = ValidationContext(local_df=local_df, remote_df=remote_df)
         for validator_cls in Validators.get_validators_for_stage("pre-merge"):
-            validator: ConstraintValidator = validator_cls(self.entity_name, self.fk, self.constraints, self.runtime_options)
+            validator: ConstraintValidator = validator_cls(
+                self.entity, self.fk, self.constraints, self.runtime_options, raise_on_violation=self.raise_on_violation
+            )
             if validator.is_applicable():
                 validator.validate(context)
 
@@ -356,11 +357,13 @@ class ForeignKeyConstraintValidator:
 
         self.size_after_merge = linked_df.shape
 
-        # logger.debug(f"{self.entity_name}[linking]: merge size: before={self.size_before_merge}, after={self.size_after_merge}")
+        # logger.debug(f"{self.fk.local_entity}[linking]: merge size: before={self.size_before_merge}, after={self.size_after_merge}")
 
         context = ValidationContext(local_df=local_df, remote_df=remote_df, linked_df=linked_df)
         for validator_cls in Validators.get_validators_for_stage("post-merge"):
-            validator: ConstraintValidator = validator_cls(self.entity_name, self.fk, self.constraints, self.runtime_options)
+            validator: ConstraintValidator = validator_cls(
+                self.entity, self.fk, self.constraints, self.runtime_options, raise_on_violation=self.raise_on_violation
+            )
             if validator.is_applicable():
                 validator.validate(context)
 
@@ -368,13 +371,13 @@ class ForeignKeyConstraintValidator:
             local_df=local_df, remote_df=remote_df, linked_df=linked_df, merge_indicator_col=merge_indicator_col
         )
         for validator_cls in Validators.get_validators_for_stage("post-merge-match"):
-            validator: ConstraintValidator = validator_cls(self.entity_name, self.fk, self.constraints, self.runtime_options)
+            validator: ConstraintValidator = validator_cls(self.entity, self.fk, self.constraints, self.runtime_options)
             if validator.is_applicable():
                 if merge_indicator_col and merge_indicator_col in linked_df.columns:
                     validator.validate(match_context)
                 else:
                     logger.warning(
-                        f"{self.entity_name} -> {self.fk.remote_entity}: Merge indicator column "
+                        f"{self.fk.local_entity} -> {self.fk.remote_entity}: Merge indicator column "
                         f"'{merge_indicator_col}' not found in linked DataFrame for match validation"
                     )
 
@@ -423,7 +426,7 @@ class ForeignKeyConstraintValidator:
         if self.size_after_merge[1] != self.size_before_merge[1] + actual_expected_increase:
             added_columns: set[str] = set(linked_df.columns) - set(local_df.columns)
             message = (
-                f"{self.entity_name} -> {self.fk.remote_entity}[linking]: join resulted in unexpected number of columns: "
+                f"{self.fk.local_entity} -> {self.fk.remote_entity}[linking]: join resulted in unexpected number of columns: "
                 f"before={self.size_before_merge[1]}, after={self.size_after_merge[1]}, "
                 f"expected increase={actual_expected_increase} "
                 f"(added columns: {added_columns})"
@@ -433,7 +436,7 @@ class ForeignKeyConstraintValidator:
                 ValidationIssue(
                     issue_type="column_count_mismatch",
                     severity="warning",
-                    local_entity=self.entity_name,
+                    local_entity=self.fk.local_entity,
                     remote_entity=self.fk.remote_entity,
                     message=message,
                     metadata={
