@@ -608,7 +608,10 @@ class ExtraColumnEvaluator:
             # Case 6: String constant (doesn't match any column, or matches extra_column key)
             result[new_col] = self.coerce_string_constant_literal(value)
             added_count += 1
-            logger.trace(f"{entity_name}[extra_columns]: Added constant '{new_col}' = '{result[new_col].iloc[0] if len(result) > 0 else result[new_col]}'")
+            logger.trace(
+                f"{entity_name}[extra_columns]: Added constant "
+                f"'{new_col}' = '{result[new_col].iloc[0] if len(result) > 0 else result[new_col]}'"
+            )
 
         if added_count > 0 or deferred or skipped_count > 0:
             msg_parts = []
