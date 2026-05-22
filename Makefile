@@ -27,12 +27,12 @@ test:
 
 .PHONY: test-validate
 test-validate:
-	@uv run python scripts/run_validation_workflows.py tests/test_data/projects/arbodat/shapeshifter.yml \
+	@uv run python scripts/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml \
 		--workflow all --log-level ERROR > validation_issues.csv 
 
 .PHONY: profile-validate
 profile-validate:
-	@uv run pyinstrument scripts/run_validation_workflows.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow all
+	@uv run pyinstrument scripts/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow all
 
 .PHONY: profile
 profile-test:
