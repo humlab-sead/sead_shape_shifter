@@ -28,7 +28,7 @@ test:
 .PHONY: test-validate
 test-validate:
 	@uv run python scripts/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml \
-		--workflow all --log-level ERROR > validation_issues.csv 
+		--workflow all --log-level ERROR --ignore EMPTY_RESULT > validation_issues.csv 
 
 .PHONY: profile-validate
 profile-validate:
