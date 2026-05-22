@@ -69,6 +69,8 @@ class ExtraColumnEvaluator:
     INTERPOLATION_PATTERN = re.compile(r"(?<!\{)\{([a-zA-Z_][\w]*)\}(?!\})")
     INTEGER_LITERAL_PATTERN = re.compile(r"[+-]?\d+")
     FLOAT_LITERAL_PATTERN = re.compile(r"[+-]?(?:\d+\.\d*|\.\d+)")
+    INTEGER_LITERAL_PATTERN = re.compile(r"[+-]?\d+")
+    FLOAT_LITERAL_PATTERN = re.compile(r"[+-]?(?:\d+\.\d*|\.\d+)")
 
     def __init__(self):
         """Initialize evaluator with FormulaEngine for DSL formula support."""
@@ -384,6 +386,23 @@ class ExtraColumnEvaluator:
             '{normal}'
         """
         return text.replace("{{", "{").replace("}}", "}")
+
+    @staticmethod
+    def coerce_string_constant_literal(value: str) -> str | int | float:
+        """Coerce plain numeric string literals used as extra-column constants.
+
+        This applies only after formula, interpolation, and column-copy detection,
+        so it affects only literal string constants such as "53" or "53.5".
+        """
+        text = value.strip()
+
+        if ExtraColumnEvaluator.INTEGER_LITERAL_PATTERN.fullmatch(text):
+            return int(text)
+
+        if ExtraColumnEvaluator.FLOAT_LITERAL_PATTERN.fullmatch(text):
+            return float(text)
+
+        return value
 
     @staticmethod
     def coerce_string_constant_literal(value: str) -> str | int | float:
