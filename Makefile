@@ -25,9 +25,10 @@ install-api:
 test:
 	@uv run pytest tests backend/tests ingesters/sead/tests -v
 
-.PHONY: validate
-validate:
-	@uv run python scripts/run_validation_workflows.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow all
+.PHONY: test-validate
+test-validate:
+	@uv run python scripts/run_validation_workflows.py tests/test_data/projects/arbodat/shapeshifter.yml \
+		--workflow all --log-level ERROR > validation_issues.csv 
 
 .PHONY: profile-validate
 profile-validate:
