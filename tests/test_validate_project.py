@@ -47,8 +47,7 @@ def test_main_skips_data_workflow_in_all_mode_when_structural_fails(monkeypatch,
     monkeypatch.setattr(
         script,
         "run_structural_validation",
-        lambda project: script.WorkflowResult(name="structural", passed=False, issues=[
-            Mock(message="broken structure")]),
+        lambda project: script.WorkflowResult(name="structural", passed=False, issues=[Mock(message="broken structure")]),
     )
     monkeypatch.setattr(
         script,
