@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from email import message
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Sequence
 
 from loguru import logger
+
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -31,12 +33,7 @@ from src.specifications import CompositeProjectSpecification
 from src.specifications.base import SpecificationIssue
 from src.utility import setup_logging
 from src.validators.data_validators import ValidationIssue
-
-WORKFLOW_LABELS: dict[str, str] = {
-    "structural": "Structural",
-    "data": "Data",
-    "conformance": "Target-model conformance",
-}
+from src.issues import CoreIssue
 
 
 @dataclass
@@ -45,9 +42,7 @@ class WorkflowResult:
 
     name: str
     passed: bool
-    errors: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
-    info: list[str] = field(default_factory=list)
+    issues: list[CoreIssue] = field(default_factory=list)
     skipped: str | None = None
 
 
@@ -110,26 +105,6 @@ def load_project(project_file: Path, env_file: Path) -> ShapeShiftProject:
     )
 
 
-def format_specification_issue(issue: SpecificationIssue) -> str:
-    """Format a structural validation issue for CLI output."""
-    return str(issue)
-
-
-def format_data_issue(issue: ValidationIssue) -> str:
-    """Format a data validation issue for CLI output."""
-    location = issue.entity or "project"
-    if issue.field:
-        location = f"{location}.{issue.field}"
-    return f"[{issue.severity.upper()}] {location}: {issue.message} ({issue.code})"
-
-
-def format_validation_error(error: ValidationError) -> str:
-    """Format a backend validation error for CLI output."""
-    location: str = error.entity or "project"
-    if error.field:
-        location = f"{location}.{error.field}"
-    return f"[{error.severity.upper()}] {location}: {error.message} ({error.code or 'UNKNOWN'})"
-
 
 def run_structural_validation(project: ShapeShiftProject) -> WorkflowResult:
     """Run structural/specification validation."""
@@ -138,8 +113,7 @@ def run_structural_validation(project: ShapeShiftProject) -> WorkflowResult:
     return WorkflowResult(
         name="structural",
         passed=is_valid,
-        errors=[format_specification_issue(issue) for issue in specification.errors],
-        warnings=[format_specification_issue(issue) for issue in specification.warnings],
+        issues=list(specification.errors + specification.warnings),
     )
 
 
@@ -157,14 +131,24 @@ async def run_data_validation(project: ShapeShiftProject) -> WorkflowResult:
     return WorkflowResult(
         name="data",
         passed=all(issue.severity != "error" for issue in issues),
-        errors=[format_data_issue(issue) for issue in issues if issue.severity == "error"],
-        warnings=[format_data_issue(issue) for issue in issues if issue.severity == "warning"],
-        info=[format_data_issue(issue) for issue in issues if issue.severity == "info"],
+        issues=list(issues),
     )
 
 
 def run_conformance_validation(project: ShapeShiftProject) -> WorkflowResult:
     """Run target-model conformance validation if the project defines a target model."""
+
+    def map_error_to_issue(error: ValidationError) -> ValidationIssue:
+        return ValidationIssue(
+            severity="error",
+            message=error.message,
+            entity=error.entity,
+            field=error.field,
+            code=error.code,
+            category="conformance",
+            metadata={"message": error.message},
+        )
+    
     target_model_data: dict[str, Any] | None = project.metadata.target_model
     if not target_model_data or not isinstance(target_model_data, dict):
         return WorkflowResult(
@@ -177,10 +161,23 @@ def run_conformance_validation(project: ShapeShiftProject) -> WorkflowResult:
     return WorkflowResult(
         name="conformance",
         passed=len(errors) == 0,
-        errors=[format_validation_error(error) for error in errors],
+        issues=[map_error_to_issue(e) for e in errors],
     )
 
-
+def create_workflow_issue_from_exception(name: str, exc: Exception) -> WorkflowResult:
+    """Create a WorkflowResult with a single error issue based on an exception."""
+    return WorkflowResult(
+        name=name,
+        passed=False,
+        issues=[CoreIssue(
+            severity="error",
+            entity=name,
+            field="workflow",
+            message=f"Workflow failed: {exc}",
+            code="WORKFLOW_FAILED",
+            category="workflow",
+        )],
+    )
 async def execute_async_workflow(
     name: str, runner: Callable[[ShapeShiftProject], Awaitable[WorkflowResult]], project: ShapeShiftProject
 ) -> WorkflowResult:
@@ -189,7 +186,7 @@ async def execute_async_workflow(
         result: WorkflowResult = await runner(project)
     except Exception as exc:  # pylint: disable=broad-except
         logger.exception("{} validation workflow failed", name)
-        return WorkflowResult(name=name, passed=False, errors=[f"[{name.upper()}] Workflow failed: {exc}"])
+        return create_workflow_issue_from_exception(name, exc)
 
     if not isinstance(result, WorkflowResult):
         raise TypeError(f"Workflow '{name}' did not return WorkflowResult")
@@ -203,7 +200,7 @@ def execute_sync_workflow(name: str, runner: Callable[[ShapeShiftProject], Workf
         return result
     except Exception as exc:  # pylint: disable=broad-except
         logger.exception("{} validation workflow failed", name)
-        return WorkflowResult(name=name, passed=False, errors=[f"[{name.upper()}] Workflow failed: {exc}"])
+        return create_workflow_issue_from_exception(name, exc)
 
 
 async def run_requested_workflows(project: ShapeShiftProject, workflow: str) -> list[WorkflowResult]:
@@ -236,45 +233,54 @@ async def run_requested_workflows(project: ShapeShiftProject, workflow: str) -> 
     return results
 
 
-def print_workflow_results(project_file: Path, results: list[WorkflowResult]) -> None:
+def print_workflow_results(project_file: Path, results: list[WorkflowResult], format: str = "csv") -> None:
     """Print workflow-by-workflow validation results."""
 
+    def csv_header() -> str:
+        return "workflow;severity;entity;field;column;code;message"
+    
+    def to_csv(issue: CoreIssue) -> str:
+        """Return a list of issue attributes suitable for CSV output."""
+        return f"{issue.severity};{issue.entity};{issue.field};{issue.column};{issue.code};{issue.message}"
+    
+    if format == "csv":
+        print(csv_header())
+        for result in results:
+            for issue in result.issues:
+                print(f"{result.name};{to_csv(issue)}")
+        return
 
-    for result in results:
-        workflow: str = WORKFLOW_LABELS.get(result.name, result.name)
-        for error in result.errors:
-            logger.error(error)
+    # print(f"Validation results for {project_file}")
 
-    print(f"Validation results for {project_file}")
+    # for result in results:
+    #     for result in results:
+    #         print(f"\n== {WORKFLOW_LABELS[result.name]} ==")
+    #         if result.skipped:
+    #             print(f"SKIPPED: {result.skipped}")
+    #             continue
 
-    for result in results:
-        print(f"\n== {WORKFLOW_LABELS[result.name]} ==")
-        if result.skipped:
-            print(f"SKIPPED: {result.skipped}")
-            continue
+    #         status = "PASSED" if result.passed else "FAILED"
+    #         print(f"Status: {status}")
 
-        status = "PASSED" if result.passed else "FAILED"
-        print(f"Status: {status}")
+    #         if not result.issues:
+    #             print("No issues found.")
+    #             continue
 
-        if not result.errors and not result.warnings and not result.info:
-            print("No issues found.")
-            continue
+    #         if result.errors:
+    #             print("Errors:")
+    #             for issue in result.errors:
+    #                 print(f"  - {issue}")
 
-        if result.errors:
-            print("Errors:")
-            for issue in result.errors:
-                print(f"  - {issue}")
+    #         if result.warnings:
+    #             print("Warnings:")
+    #             for issue in result.warnings:
+    #                 print(f"  - {issue}")
 
-        if result.warnings:
-            print("Warnings:")
-            for issue in result.warnings:
-                print(f"  - {issue}")
-
-        if result.info:
-            print("Info:")
-            for issue in result.info:
-                print(f"  - {issue}")
-
+    #         if result.info:
+    #             print("Info:")
+    #             for issue in result.info:
+    #                 print(f"  - {issue}")
+    # print_summary(results)
 
 def print_summary(results: list[WorkflowResult]) -> None:
     """Print a compact final summary."""
@@ -286,7 +292,7 @@ def print_summary(results: list[WorkflowResult]) -> None:
             state: str = f"skipped ({result.skipped})"
         else:
             state = "passed" if result.passed else "failed"
-        print(f"  - {WORKFLOW_LABELS[result.name]}: {state}")
+        print(f"  - {result.name}: {state}")
 
     print(f"\nCompleted {len(results)} workflow(s): {failed} failed, {skipped} skipped.")
 
@@ -312,7 +318,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     results: list[WorkflowResult] = asyncio.run(run_requested_workflows(project, args.workflow))
     print_workflow_results(project_file, results)
-    print_summary(results)
 
     return 0 if all(result.passed for result in results) else 1
 
