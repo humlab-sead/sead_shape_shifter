@@ -30,7 +30,11 @@ entities:
     - AnmFrakt
     public_id: abundance_id
     data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl],\n       [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]\nfrom [Details];"
+    query: |-
+      select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],
+             [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl],
+             [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]
+      from [Details];
     foreign_keys:
     - entity: analysis_entity
       local_keys: '@value: entities.analysis_entity.keys'
@@ -129,7 +133,9 @@ entities:
         columns: [RTypGrup, RTypGrup_EN, Nummer]
         public_id: abundance_element_group_id
         data_source: arbodat_lookup
-        query: "select [RTypGrup], [RTypGrup_EN], [Nummer]\nfrom [RtypGruppen];\n"
+        query: |-
+          select [RTypGrup], [RTypGrup_EN], [Nummer]
+          from [RtypGruppen];
         extra_columns:
           abundance_element_group_name: RTypGrup_EN
       materialized_at: '2026-03-13T14:41:04.914235'
@@ -217,7 +223,10 @@ entities:
       analysis_entity_type: relative_dating
       analysis_entity_value: '{ArchDat}'
     data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr], null as [PCODE], null as [Fraktion], null as [cf], null as [RTyp], null as [Zust], [ArchDat]\nfrom [Proben]\nwhere [ArchDat] is not null and [ArchDat] <> '';"
+    query: |-
+      select [Projekt], [Befu], [ProbNr], null as [PCODE], null as [Fraktion], null as [cf], null as [RTyp], null as [Zust], [ArchDat]
+      from [Proben]
+      where [ArchDat] is not null and [ArchDat] <> '';
   analysis_entity:
     type: fixed
     source:
@@ -307,7 +316,8 @@ entities:
       data_source: arbodat_data
       check_column_names: false
       type: sql
-      query: "select distinct [BotBest], \"BotBest\" from [Befunde] where [BotBest] is not null ;\n"
+      query: |-
+        select distinct [BotBest], "BotBest" from [Befunde] where [BotBest] is not null ;
   contact_type:
     type: fixed
     source:
@@ -490,7 +500,27 @@ entities:
     depends_on: [sample]
     drop_duplicates: true
     data_source: arbodat_data
-    query: "select distinct\n  [Projekt],\n  [Befu],\n  [ProbNr],\n  [Unterprobe],\n  [Labornummer],\n  [Material],\n  [Methode],\n  [Waldkante],\n  [C14-Alter BP],\n  [Standardab C14],\n  [C14 cal],\n  [Dendroalter],\n  [Alter andere],\n  [13C PDB-Wert],\n  [Standardab 13C PDB],\n  [pMC-Wert],\n  [Standardab PMC],\n  [Anmerkungen]\nfrom [Datierung] ;\n"
+    query: |-
+      select distinct
+        [Projekt],
+        [Befu],
+        [ProbNr],
+        [Unterprobe],
+        [Labornummer],
+        [Material],
+        [Methode],
+        [Waldkante],
+        [C14-Alter BP],
+        [Standardab C14],
+        [C14 cal],
+        [Dendroalter],
+        [Alter andere],
+        [13C PDB-Wert],
+        [Standardab 13C PDB],
+        [pMC-Wert],
+        [Standardab PMC],
+        [Anmerkungen]
+      from [Datierung] ;
   dating_archaeological_period:
     type: sql
     public_id: dating_archaeological_period_id
@@ -613,7 +643,7 @@ entities:
     depends_on: [project]
     drop_duplicates: [Projekt, Befu]
     data_source: arbodat_data
-    query: |
+    query: |-
       select p.[Fustel], b.[Projekt], b.[Befu], b.[FlSchn], b.[BefuTyp], b.[FuTypVermut], b.[gebäud], b.[okBefu], b.[okErh], b.[BotBest], b.[BestJa], b.[Anmerkung]
       from [Befunde] b
       inner join Projekte p using ([Projekt])
@@ -761,7 +791,6 @@ entities:
     depends_on: []
   method:
     type: fixed
-    public_id: method_id
     keys: []
     columns:
     - system_id
@@ -772,6 +801,7 @@ entities:
     - method_abbrev_or_alt_name
     - sead_method_group_id
     - arbodat_code
+    public_id: method_id
     values:
     - [1, null, null, Light fraction 2.0 mm, 'ORG 2,0', 'ORG 2,0', 1, 'ORG 2,0']
     - [2, null, null, Light fraction 1.0 mm, 'ORG 1,0', 'ORG 1,0', 1, 'ORG 1,0']
@@ -836,7 +866,7 @@ entities:
       project_abbrev_name:
       description:
     data_source: arbodat_data
-    query: |
+    query: |-
       select distinct [Projekt], [Fustel], coalesce([EVNr], '') as [EVNr]
       from [Projekte]
       where [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;
@@ -919,7 +949,10 @@ entities:
     - TiefeVon
     - Prob_üNN
     data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr], [KoordX], [KoordY], [KoordZ], [TiefeBis], [TiefeVon], [Prob_üNN]\r\nfrom [Proben]\r\nwhere [Proben].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015');"
+    query: |-
+      select [Projekt], [Befu], [ProbNr], [KoordX], [KoordY], [KoordZ], [TiefeBis], [TiefeVon], [Prob_üNN]
+      from [Proben]
+      where [Proben].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015');
     foreign_keys:
     - entity: sample
       local_keys: [Projekt, Befu, ProbNr]
@@ -1007,7 +1040,11 @@ entities:
       var_name: type_name
       value_name: description_value
     data_source: arbodat_data
-    query: "select distinct [Projekt], [Befu], [ProbNr],\n       [Vorfu], [Trocken], [Strat], [Schi],\n       [Quadr], [Plan], [Prob_üNN], [SedProb], [KultGr]\nfrom [Proben] ;\n"
+    query: |-
+      select distinct [Projekt], [Befu], [ProbNr],
+             [Vorfu], [Trocken], [Strat], [Schi],
+             [Quadr], [Plan], [Prob_üNN], [SedProb], [KultGr]
+      from [Proben] ;
   sample_group:
     type: entity
     keys: [Projekt, Befu, site_id]
@@ -1042,7 +1079,7 @@ entities:
       sample_group_name: Befu
       sample_group_description:
       sampling_context_id:
-      method_id: '53'
+      method_id: '11'
   sample_type:
     type: sql
     keys: [ProbTyp]
@@ -1068,7 +1105,14 @@ entities:
     - üNN
     public_id: site_id
     data_source: arbodat_data
-    query: "select distinct p.Fustel, coalesce([EVNr], '') as [EVNr], b.FustelTyp, p.KoordSys, p.rWert, p.hWert, p.[üNN]\nfrom Projekte as p\ninner join (\n  select Projekt, max(FustelTyp) as FustelTyp\n  from Befunde group by Projekt\n) as b on p.Projekt = b.Projekt\nwhere p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');\n"
+    query: |-
+      select distinct p.Fustel, coalesce([EVNr], '') as [EVNr], b.FustelTyp, p.KoordSys, p.rWert, p.hWert, p.[üNN]
+      from Projekte as p
+      inner join (
+        select Projekt, max(FustelTyp) as FustelTyp
+        from Befunde group by Projekt
+      ) as b on p.Projekt = b.Projekt
+      where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');
     foreign_keys:
     - entity: site_type
       local_keys: [FustelTyp]
@@ -1101,7 +1145,10 @@ entities:
     - FlurStr
     public_id: site_location_id
     data_source: arbodat_data
-    query: "select distinct [Fustel], coalesce([EVNr], '') as [EVNr], [Ort], [Kreis], [Land], [Staat], [FlurStr]\nfrom [Projekte]\nwhere [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;\n"
+    query: |-
+      select distinct [Fustel], coalesce([EVNr], '') as [EVNr], [Ort], [Kreis], [Land], [Staat], [FlurStr]
+      from [Projekte]
+      where [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;
     foreign_keys:
     - entity: site
       local_keys: [Fustel, EVNr]
@@ -1146,7 +1193,10 @@ entities:
     drop_duplicates: [Fustel, EVNr]
     check_functional_dependency: true
     data_source: arbodat_data
-    query: "select distinct [Fustel], coalesce([EVNr], '') as [EVNr], [NaturE]\nfrom [Projekte]\nwhere [NaturE] is not null ;\n"
+    query: |-
+      select distinct [Fustel], coalesce([EVNr], '') as [EVNr], [NaturE]
+      from [Projekte]
+      where [NaturE] is not null ;
   site_property_type:
     type: fixed
     source:
@@ -1189,7 +1239,9 @@ entities:
       var_name: site_property_type
       value_name: site_property_value
     data_source: arbodat_data
-    query: "select distinct [Fustel], coalesce([EVNr], '') as [EVNr], [okFustel], [Limes], [TK], [AnmFustel]\nfrom [Projekte] ;\n"
+    query: |-
+      select distinct [Fustel], coalesce([EVNr], '') as [EVNr], [okFustel], [Limes], [TK], [AnmFustel]
+      from [Projekte] ;
   site_type_group:
     type: fixed
     public_id: site_type_group_id
@@ -1304,7 +1356,9 @@ entities:
       genus_id:
       species: BNam
     data_source: arbodat_lookup
-    query: "select distinct t.[PCODE], t.[BNam], t.[Name_E], t.[Fam], t.[S_Od], t.[TaxAut], t.[Achtung]\r\nfrom [ÖkoSozDaten] t ;"
+    query: |-
+      select distinct t.[PCODE], t.[BNam], t.[Name_E], t.[Fam], t.[S_Od], t.[TaxAut], t.[Achtung]
+      from [ÖkoSozDaten] t ;
   taxa_use_categories:
     type: sql
     source:
@@ -1355,7 +1409,9 @@ entities:
       remote_keys: [PCODE]
     depends_on: [taxa]
     data_source: arbodat_lookup
-    query: "select [PCODE], [G], [G_u], [Kl], [Kl_u], [O], [O_u], [Soz], [Soz_u], [U], [U_u], [V], [V_u], [Ökogruppe], [Ökogruppe_u]\nfrom [ÖkoSozDaten];\n"
+    query: |-
+      select [PCODE], [G], [G_u], [Kl], [Kl_u], [O], [O_u], [Soz], [Soz_u], [U], [U_u], [V], [V_u], [Ökogruppe], [Ökogruppe_u]
+      from [ÖkoSozDaten];
   taxa_dominance:
     type: sql
     source:
@@ -1368,7 +1424,9 @@ entities:
       remote_keys: [PCODE]
     depends_on: [taxa]
     data_source: arbodat_lookup
-    query: "select [PCODE], [Dom], [Dom_u]\nfrom [ÖkoSozDaten];\n"
+    query: |-
+      select [PCODE], [Dom], [Dom_u]
+      from [ÖkoSozDaten];
   taxa_oberdorfer_characteristics:
     type: sql
     source:
@@ -1393,7 +1451,9 @@ entities:
       remote_keys: [PCODE]
     depends_on: [taxa]
     data_source: arbodat_lookup
-    query: "select [PCODE], [Anm], [ARE], [BLA], [BLE], [Pio], [Roh], [SozGrup], [WT], [WUA], [WUE], [Zeig]\nfrom [ÖkoSozDaten];\n"
+    query: |-
+      select [PCODE], [Anm], [ARE], [BLA], [BLE], [Pio], [Roh], [SozGrup], [WT], [WUA], [WUE], [Zeig]
+      from [ÖkoSozDaten];
   taxa_persistence:
     type: sql
     source:
@@ -1406,7 +1466,9 @@ entities:
       remote_keys: [PCODE]
     depends_on: [taxa]
     data_source: arbodat_lookup
-    query: "select [PCODE], [Bl], [Bl_u], [Leb]\nfrom [ÖkoSozDaten];\n"
+    query: |-
+      select [PCODE], [Bl], [Bl_u], [Leb]
+      from [ÖkoSozDaten];
   taxa_briemle_characteristics:
     type: sql
     source:
@@ -1419,7 +1481,9 @@ entities:
       remote_keys: [PCODE]
     depends_on: [taxa]
     data_source: arbodat_lookup
-    query: "select [PCODE], [FW], [M], [TKG], [W]\nfrom [ÖkoSozDaten];\n"
+    query: |-
+      select [PCODE], [FW], [M], [TKG], [W]
+      from [ÖkoSozDaten];
   taxa_ecological_behaviour:
     type: sql
     source:
@@ -1449,7 +1513,9 @@ entities:
       remote_keys: [PCODE]
     depends_on: [taxa]
     data_source: arbodat_lookup
-    query: "select [PCODE], [F], [F_s], [F_u], [K], [K_u], [L], [L_u], [N], [N_u], [Re], [Re_u], [S], [S_u], [SMet], [T], [T_u]\nfrom [ÖkoSozDaten];\n"
+    query: |-
+      select [PCODE], [F], [F_s], [F_u], [K], [K_u], [L], [L_u], [N], [N_u], [Re], [Re_u], [S], [S_u], [SMet], [T], [T_u]
+      from [ÖkoSozDaten];
   _project_contact:
     type: sql
     source:
