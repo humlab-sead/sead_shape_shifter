@@ -60,23 +60,24 @@ class ForeignKeyLinker:
             ForeignKeyConstraintViolation: If any constraints are violated
         """
 
-        remote_cfg: TableConfig = self.project.get_table(entity_name=fk.remote_entity)
-        runtime_options: ForeignKeyRuntimeOptions = _resolve_fk_runtime_options(fk, remote_cfg)
+        local_entity: TableConfig = self.project.get_table(entity_name=fk.local_entity)
+        remote_entity: TableConfig = self.project.get_table(entity_name=fk.remote_entity)
+        runtime_options: ForeignKeyRuntimeOptions = _resolve_fk_runtime_options(fk, remote_entity)
 
         validator: ForeignKeyConstraintValidator = ForeignKeyConstraintValidator(
-            fk.local_entity,
-            fk,
+            local_entity=local_entity,
+            fk=fk,
             runtime_options=runtime_options,
         ).validate_before_merge(local_df, remote_df)
 
         # Store validator to collect issues later
         self.validators.append(validator)
 
-        link_setup: ForeignKeyMergeSetup = fk.generate_link_setup(remote_df.columns.tolist(), remote_cfg)
+        link_setup: ForeignKeyMergeSetup = fk.generate_link_setup(remote_df.columns.tolist(), remote_entity)
 
         # Build column list: system_id + remote_columns (avoid duplicates)
-        cols_to_select: list[str] = [remote_cfg.system_id]
-        cols_to_select.extend([col for col in link_setup.remote_columns if col != remote_cfg.system_id])
+        cols_to_select: list[str] = [remote_entity.system_id]
+        cols_to_select.extend([col for col in link_setup.remote_columns if col != remote_entity.system_id])
 
         remote_df = remote_df[cols_to_select].rename(columns=link_setup.rename_map)
 
@@ -105,7 +106,7 @@ class ForeignKeyLinker:
             linked_df = linked_df.drop(columns=[validator.merge_indicator_col], errors="ignore")
 
         if fk.extra_columns and fk.drop_remote_id:
-            linked_df = linked_df.drop(columns=[remote_cfg.public_id], errors="ignore")
+            linked_df = linked_df.drop(columns=[remote_entity.public_id], errors="ignore")
 
         logger.debug(
             f"{fk.local_entity}[linking]: Linked '{fk.remote_entity}' using keys {fk.local_keys}"

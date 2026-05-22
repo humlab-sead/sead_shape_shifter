@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from src.model import ForeignKeyConfig, ShapeShiftProject
+from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 from src.specifications.constraints import (
     ForeignKeyConstraintValidator,
     ForeignKeyConstraintViolation,
@@ -43,8 +43,9 @@ def test_validator_registry_lookup():
 
 def test_pre_merge_null_and_uniqueness_checks():
     """Pre-merge validators should raise when constraints violated."""
-    fk = build_fk(constraints={"allow_null_keys": False, "require_unique_left": True, "require_unique_right": True})
-    validator = ForeignKeyConstraintValidator(entity_name="orders", fk=fk)
+    fk: ForeignKeyConfig = build_fk(constraints={"allow_null_keys": False, "require_unique_left": True, "require_unique_right": True})
+    entity: TableConfig = ShapeShiftProject(cfg={"entities": {}}).get_table("orders")
+    validator = ForeignKeyConstraintValidator(local_entity=entity, fk=fk)
 
     local_df = pd.DataFrame({"order_id": [1, 2, 3], "customer_id": [1, 1, None]})
     remote_df = pd.DataFrame({"id": [1, 1]})
@@ -60,14 +61,15 @@ def test_pre_merge_null_and_uniqueness_checks():
 
 def test_post_merge_cardinality_and_unmatched_checks():
     """Post-merge validators enforce cardinality and unmatched rules."""
-    fk = build_fk(
+    fk: ForeignKeyConfig = build_fk(
         constraints={
             "cardinality": "one_to_one",
             "allow_unmatched_left": False,
             "allow_unmatched_right": False,
         }
     )
-    validator = ForeignKeyConstraintValidator(entity_name="orders", fk=fk)
+    entity: TableConfig = ShapeShiftProject(cfg={"entities": {}}).get_table("orders")
+    validator = ForeignKeyConstraintValidator(local_entity=entity, fk=fk)
 
     local_df = pd.DataFrame({"order_id": [1, 2], "customer_id": [1, 2]})
     remote_df = pd.DataFrame({"id": [1]})
@@ -108,9 +110,10 @@ def test_lookup_runtime_options_skip_strict_null_validation_for_targeted_case():
             },
         }
     }
-    fk = ShapeShiftProject(cfg=cfg).get_table("orders").foreign_keys[0]
+    entity: TableConfig = ShapeShiftProject(cfg=cfg).get_table("orders")
+    fk = entity.foreign_keys[0]
     validator = ForeignKeyConstraintValidator(
-        entity_name="orders",
+        local_entity=entity,
         fk=fk,
         runtime_options=ForeignKeyRuntimeOptions(enforce_strict_null_keys=False, use_null_safe_merge=True),
     )
