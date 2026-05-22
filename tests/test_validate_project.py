@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import Mock
 
 from scripts import validate_project as script
@@ -28,7 +29,9 @@ def test_main_runs_data_workflow_only(monkeypatch, tmp_path, capsys):
 
     monkeypatch.setattr(script, "run_data_validation", fake_run_data_validation)
 
-    exit_code = script.main([str(project_file), "--workflow", "data"])
+    exit_code: int = script.execute(
+        str(project_file), workflow="data", env_file=Path(".env"), verbose=False, log_level="INFO", log_file=None, ignore=""
+    )
     output = capsys.readouterr().out
 
     assert exit_code == 0
@@ -61,7 +64,9 @@ def test_main_skips_data_workflow_in_all_mode_when_structural_fails(monkeypatch,
 
     monkeypatch.setattr(script, "run_data_validation", fake_run_data_validation)
 
-    exit_code = script.main([str(project_file), "--workflow", "all"])
+    exit_code: int = script.execute(
+        str(project_file), workflow="all", env_file=Path(".env"), verbose=False, log_level="INFO", log_file=None, ignore=""
+    )
     output = capsys.readouterr().out
 
     assert exit_code == 1
@@ -94,7 +99,9 @@ def test_main_accepts_target_model_conformance_alias(monkeypatch, tmp_path):
 
     monkeypatch.setattr(script, "run_conformance_validation", fake_run_conformance_validation)
 
-    exit_code = script.main([str(project_file), "--workflow", "target-model-conformance"])
+    exit_code: int = script.execute(
+        str(project_file), workflow="conformance", env_file=Path(".env"), verbose=False, log_level="INFO", log_file=None, ignore=""
+    )
 
     assert exit_code == 0
     assert calls == ["conformance"]
