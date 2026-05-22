@@ -20,6 +20,7 @@ from typing import Any, Awaitable, Callable, Literal, Sequence
 
 import click
 from loguru import logger
+from numpy import str_
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -72,39 +73,40 @@ EXECUTORS = ValidateExecutorRegistry()
 class WorkflowExecutor(abc.ABC):
     """Helper for executing validation workflows with consistent error handling and result normalization."""
 
-    def execute(self, project: ShapeShiftProject) -> WorkflowResult:
+    def execute(self, project: ShapeShiftProject, ignores: set[str] | None = None) -> WorkflowResult:
         """Execute the workflow for the given project and return a WorkflowResult."""
         try:
-            return self._execute(project)
+            return self._execute(project, ignores or set())
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("{} validation workflow failed", self.get_name())
             return WorkflowResult.from_exception(self.get_name(), exc)
 
     @abc.abstractmethod
-    def _execute(self, project: ShapeShiftProject) -> WorkflowResult:
+    def _execute(self, project: ShapeShiftProject, ignores: set[str]) -> WorkflowResult:
         """Execute the workflow for the given project and return a WorkflowResult."""
         pass
 
     def get_name(self) -> str:
         """Return the name/key of this workflow executor."""
         return getattr(self, "key", self.__class__.__name__.lower())
-    
+
+
 @EXECUTORS.register(key="structural")
 class StructuralValidationExecutor(WorkflowExecutor):
-    def _execute(self, project: ShapeShiftProject) -> WorkflowResult:
+    def _execute(self, project: ShapeShiftProject, ignores: set[str]) -> WorkflowResult:
         """Run structural/specification validation."""
         specification = CompositeProjectSpecification(project.cfg)
         is_valid: bool = specification.is_satisfied_by()
         return WorkflowResult(
             name=self.get_name(),
             passed=is_valid,
-            issues=list(specification.errors + specification.warnings),
+            issues=[issue for issue in specification.errors + specification.warnings if issue.code not in ignores],
         )
 
 
 @EXECUTORS.register(key="data")
 class DataValidationExecutor(WorkflowExecutor):
-    def _execute(self, project: ShapeShiftProject) -> WorkflowResult:
+    def _execute(self, project: ShapeShiftProject, ignores: set[str]) -> WorkflowResult:
         """Run data validation against the fully normalized in-memory table store."""
         normalizer = ShapeShifter(project)
         asyncio.run(normalizer.normalize())
@@ -120,13 +122,13 @@ class DataValidationExecutor(WorkflowExecutor):
         return WorkflowResult(
             name="data",
             passed=all(issue.severity != "error" for issue in issues),
-            issues=list(issues),
+            issues=[issue for issue in issues if issue.code not in ignores],
         )
 
 
 @EXECUTORS.register(key="conformance")
 class ConformanceValidationExecutor(WorkflowExecutor):
-    def _execute(self, project: ShapeShiftProject) -> WorkflowResult:
+    def _execute(self, project: ShapeShiftProject, ignores: set[str]) -> WorkflowResult:
         """Run target-model conformance validation if the project defines a target model."""
 
         def map_error_to_issue(error: ValidationError) -> ValidationIssue:
@@ -152,7 +154,7 @@ class ConformanceValidationExecutor(WorkflowExecutor):
         return WorkflowResult(
             name="conformance",
             passed=len(errors) == 0,
-            issues=[map_error_to_issue(e) for e in errors],
+            issues=[map_error_to_issue(e) for e in errors if e.code not in ignores],
         )
 
 
@@ -172,7 +174,7 @@ def normalize_workflow_name(value: str) -> str:
     return aliases[normalized]
 
 
-def run_workflows(project: ShapeShiftProject, workflow: str) -> dict[str, WorkflowResult]:
+def run_workflows(project: ShapeShiftProject, workflow: str, ignores: set[str]) -> dict[str, WorkflowResult]:
     """Run the selected validation workflow or workflow set."""
 
     workflows: list[str] = [workflow] if workflow != "all" else list(EXECUTORS.items.keys())
@@ -187,9 +189,9 @@ def run_workflows(project: ShapeShiftProject, workflow: str) -> dict[str, Workfl
             logger.warning(f"Skipping {wf} validation: {reason}")
             results[wf] = WorkflowResult.create_skipped(name=wf, reason=reason)
             continue
-        
+
         executor_cls: type[WorkflowExecutor] = EXECUTORS.get(wf)
-        result: WorkflowResult = executor_cls().execute(project)
+        result: WorkflowResult = executor_cls().execute(project, ignores=ignores)  # type: ignore[call-arg]
         results[wf] = result
 
     return results
@@ -274,11 +276,17 @@ def print_summary(results: dict[str, WorkflowResult]) -> None:
     "--log-level",
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
     default="INFO",
-    help="Set the logging level (e.g., DEBUG, INFO, WARNING, ERROR)",
-    show_default=True,
+    help="Set the logging level (e.g., DEBUG, INFO, WARNING, ERROR)"
 )
 @click.option("--log-file", type=Path, default=None, help="Optional log file path")
-def main(project_name, workflow, env_file, verbose, log_level, log_file) -> int:
+@click.option(
+    "--ignore",
+    type=str,
+    default=None,
+    help="Codes to ignore, separated by commas (e.g., 'MISSING_COLUMN,INVALID_FOREIGN_KEY') ",
+    show_default=True,
+)
+def main(project_name: str, workflow: str, env_file: Path, verbose: bool, log_level: str, log_file: Path, ignore: str) -> int:
     """
     Workflows
     ---------
@@ -295,6 +303,8 @@ def main(project_name, workflow, env_file, verbose, log_level, log_file) -> int:
     """
     setup_logging(level=log_level.upper() if log_level else None, verbose=verbose, log_file=str(log_file) if log_file else None)
 
+    ignores: set[str] = set(code.strip() for code in ignore.split(",")) if ignore else set()
+
     project_file = Path(project_name).resolve()
     if not project_file.exists():
         click.echo(f"Project file not found: {project_file}", err=True)
@@ -309,7 +319,7 @@ def main(project_name, workflow, env_file, verbose, log_level, log_file) -> int:
         click.echo(f"Failed to load project file: {exc}", err=True)
         return 1
 
-    results: dict[str, WorkflowResult] = run_workflows(project, workflow)
+    results: dict[str, WorkflowResult] = run_workflows(project, workflow, ignores=ignores)
     print_workflow_results(project_file, results)
 
     return 0 if all(result.passed for result in results.values()) else 1
