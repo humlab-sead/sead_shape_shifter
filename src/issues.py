@@ -67,7 +67,6 @@ class CoreIssue:
         """Return a CSV representation of the issue."""
         return self.to_csv()
 
-
     def to_csv(self) -> str:
         """Return a list of issue attributes suitable for CSV output."""
         return f"{self.severity};{self.entity};{self.field};{self.column};{self.code};{self.message}"

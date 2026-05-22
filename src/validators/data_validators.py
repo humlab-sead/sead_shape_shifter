@@ -38,6 +38,7 @@ class ValidationIssue(CoreIssue):
         # return super().to_csv() + f";{self.priority}"
         return f"{self.severity};{self.entity};{self.field};{self.column};{self.code};{self.message}"
 
+
 class ColumnExistsValidator:
     """Validate that configured columns exist in DataFrame."""
 
