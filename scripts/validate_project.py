@@ -78,7 +78,7 @@ class WorkflowExecutor(abc.ABC):
         try:
             return self._execute(project, ignores or set())
         except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("{} validation workflow failed", self.get_name())
+            # logger.exception("{} validation workflow failed", self.get_name())
             return WorkflowResult.from_exception(self.get_name(), exc)
 
     @abc.abstractmethod
