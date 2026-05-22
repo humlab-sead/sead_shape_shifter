@@ -262,31 +262,9 @@ def print_summary(results: dict[str, WorkflowResult]) -> None:
     print(f"\nCompleted {len(results)} workflow(s): {failed} failed, {skipped} skipped.")
 
 
-@click.command()
-@click.argument("project_name")
-@click.option(
-    "--workflow",
-    type=normalize_workflow_name,
-    default="all",
-    help="Workflow to run: structural, data, conformance, target-model-conformance, or all (default: all)",
-)
-@click.option("--env-file", type=Path, default=Path(".env"), help="Optional env file for project loading (default: .env)")
-@click.option("--verbose", is_flag=True, default=False, help="Enable verbose loggingEnable verbose logging")
-@click.option(
-    "--log-level",
-    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
-    default="INFO",
-    help="Set the logging level (e.g., DEBUG, INFO, WARNING, ERROR)"
-)
-@click.option("--log-file", type=Path, default=None, help="Optional log file path")
-@click.option(
-    "--ignore",
-    type=str,
-    default=None,
-    help="Codes to ignore, separated by commas (e.g., 'MISSING_COLUMN,INVALID_FOREIGN_KEY') ",
-    show_default=True,
-)
-def main(project_name: str, workflow: str, env_file: Path, verbose: bool, log_level: str, log_file: Path, ignore: str) -> int:
+def execute(
+    project_name: str, *, workflow: str, env_file: Path, verbose: bool, log_level: str | None, log_file: Path | None, ignore: str
+) -> int:
     """
     Workflows
     ---------
@@ -305,7 +283,7 @@ def main(project_name: str, workflow: str, env_file: Path, verbose: bool, log_le
 
     ignores: set[str] = set(code.strip() for code in ignore.split(",")) if ignore else set()
 
-    project_file = Path(project_name).resolve()
+    project_file: Path = Path(project_name).resolve()
     if not project_file.exists():
         click.echo(f"Project file not found: {project_file}", err=True)
         return 2
@@ -323,6 +301,36 @@ def main(project_name: str, workflow: str, env_file: Path, verbose: bool, log_le
     print_workflow_results(project_file, results)
 
     return 0 if all(result.passed for result in results.values()) else 1
+
+
+@click.command()
+@click.argument("project_name")
+@click.option(
+    "--workflow",
+    type=normalize_workflow_name,
+    default="all",
+    help="Workflow to run: structural, data, conformance, target-model-conformance, or all (default: all)",
+)
+@click.option("--env-file", type=Path, default=Path(".env"), help="Optional env file for project loading (default: .env)")
+@click.option("--verbose", is_flag=True, default=False, help="Enable verbose loggingEnable verbose logging")
+@click.option(
+    "--log-level",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
+    default="INFO",
+    help="Set the logging level (e.g., DEBUG, INFO, WARNING, ERROR)",
+)
+@click.option("--log-file", type=Path, default=None, help="Optional log file path")
+@click.option(
+    "--ignore",
+    type=str,
+    default=None,
+    help="Codes to ignore, separated by commas (e.g., 'MISSING_COLUMN,INVALID_FOREIGN_KEY') ",
+    show_default=True,
+)
+def main(project_name: str, workflow: str, env_file: Path, verbose: bool, log_level: str | None, log_file: Path | None, ignore: str) -> int:
+    return execute(
+        project_name, workflow=workflow, env_file=env_file, verbose=verbose, log_level=log_level, log_file=log_file, ignore=ignore
+    )
 
 
 if __name__ == "__main__":
