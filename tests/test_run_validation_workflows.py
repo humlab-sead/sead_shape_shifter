@@ -1,4 +1,6 @@
-from scripts import run_validation_workflows as script
+from unittest.mock import Mock
+
+from scripts import validate_project as script
 
 
 def test_main_runs_data_workflow_only(monkeypatch, tmp_path, capsys):
@@ -45,7 +47,8 @@ def test_main_skips_data_workflow_in_all_mode_when_structural_fails(monkeypatch,
     monkeypatch.setattr(
         script,
         "run_structural_validation",
-        lambda project: script.WorkflowResult(name="structural", passed=False, errors=["broken structure"]),
+        lambda project: script.WorkflowResult(name="structural", passed=False, issues=[
+            Mock(message="broken structure")]),
     )
     monkeypatch.setattr(
         script,
