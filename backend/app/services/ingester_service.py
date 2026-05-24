@@ -4,6 +4,7 @@ from typing import Any
 
 from loguru import logger
 
+from backend.app.core.config import get_settings
 from backend.app.ingesters.protocol import (
     Ingester,
     IngesterConfig,
@@ -19,6 +20,7 @@ from backend.app.models.ingester import (
     ValidateRequest,
     ValidateResponse,
 )
+from backend.app.services.ingester_runtime import inject_ingester_database_dependencies, inject_ingester_runtime_dependencies
 
 
 class IngesterService:
@@ -63,7 +65,7 @@ class IngesterService:
             raise ValueError(f"Ingester '{key}' not found")
 
         # Create configuration
-        config = IngesterService._create_config(request.config)
+        config = IngesterService._create_config(request.config, key=key)
 
         # Instantiate and validate
         try:
@@ -74,6 +76,8 @@ class IngesterService:
                 is_valid=result.is_valid,
                 errors=result.errors,
                 warnings=result.warnings,
+                infos=result.infos,
+                pending_confirmation_report=result.pending_confirmation_report,
             )
         except Exception as e:  # pylint: disable=broad-except
             logger.exception(f"Validation failed for ingester '{key}'")
@@ -81,6 +85,8 @@ class IngesterService:
                 is_valid=False,
                 errors=[f"Validation error: {str(e)}"],
                 warnings=[],
+                infos=[],
+                pending_confirmation_report=None,
             )
 
     @staticmethod
@@ -113,7 +119,7 @@ class IngesterService:
                 "explode": request.explode,
             }
         )
-        config = IngesterService._create_config(config_dict)
+        config = IngesterService._create_config(config_dict, key=key)
 
         # Instantiate and ingest
         try:
@@ -126,6 +132,9 @@ class IngesterService:
                 message=result.message,
                 submission_id=result.submission_id,
                 output_path=request.output_folder,
+                error_details=result.error_details,
+                deploy_artifact=result.deploy_artifact,
+                pending_confirmation_report=result.pending_confirmation_report,
             )
         except Exception as e:  # pylint: disable=broad-except
             logger.exception(f"Ingestion failed for ingester '{key}'")
@@ -135,10 +144,13 @@ class IngesterService:
                 message=f"Ingestion error: {str(e)}",
                 submission_id=None,
                 output_path=None,
+                error_details=str(e),
+                deploy_artifact=None,
+                pending_confirmation_report=None,
             )
 
     @staticmethod
-    def _create_config(config_dict: dict[str, Any]) -> IngesterConfig:
+    def _create_config(config_dict: dict[str, Any], key: str | None = None) -> IngesterConfig:
         """Create IngesterConfig from dict, extracting standard fields.
 
         Args:
@@ -153,6 +165,8 @@ class IngesterService:
         # Build extra dict with all non-standard fields
         standard_fields = {"host", "port", "dbname", "user", "submission_name", "data_types", "database"}
         extra = {k: v for k, v in config_dict.items() if k not in standard_fields}
+        extra = inject_ingester_runtime_dependencies(key, extra, get_settings())
+        extra = inject_ingester_database_dependencies(key, extra, db_config)
 
         return IngesterConfig(
             host=db_config.get("host", "localhost"),

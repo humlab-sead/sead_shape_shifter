@@ -19,6 +19,8 @@ export interface ValidateResponse {
   is_valid: boolean
   errors: string[]
   warnings: string[]
+  infos: string[]
+  pending_confirmation_report?: Record<string, any>
 }
 
 export interface IngestRequest {
@@ -37,6 +39,9 @@ export interface IngestResponse {
   message: string
   submission_id?: number
   output_path?: string
+  error_details?: string
+  deploy_artifact?: Record<string, any>
+  pending_confirmation_report?: Record<string, any>
 }
 
 export interface DatabaseConfig {

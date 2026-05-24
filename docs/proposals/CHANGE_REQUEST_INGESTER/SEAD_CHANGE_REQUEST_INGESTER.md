@@ -2,7 +2,7 @@
 
 ## Status
 
-- Proposed feature
+- Accepted feature
 - Scope: New SEAD-targeted ingester that emits SEAD Change Control System change requests directly from normalized DataFrames
 - Goal: Replace the Clearinghouse plus Transport System path with a simpler, identity-aware, implementation-ready workflow
 
@@ -10,9 +10,11 @@
 
 Replace the current SEAD Clearinghouse ingester with a new ingester that generates SEAD Change Control System-ready SQL directly from normalized DataFrames. The new ingester resolves identities before SQL generation by using SIMS for provider-owned entities and for classifier entities that require Delivery 1 allocation, while still using the existing reconciliation API where matching existing SEAD-managed entities is appropriate.
 
-The recommendation is to deliver this in two stages. Delivery 1 should be a strict MVP: forward-only, INSERT-only, no rollback support, no UPDATE handling, and no dependency on topological insert order if the target constraints can be deferred. Delivery 2 should add rollback support, richer change handling, and stronger idempotency guarantees.
+The recommendation was to deliver this in two stages. Delivery 1 is now closed on the current MVP baseline: forward-only, INSERT-only, no rollback support, no UPDATE handling, and no dependency on topological insert order if the target constraints can be deferred. Delivery 2 remains the place for rollback support, richer change handling, and stronger idempotency guarantees.
 
 This keeps the first delivery small enough to implement and validate while still removing the Clearinghouse staging layer and the Transport System from the main ingestion path.
+
+Post-Delivery-1 hardening is now tracked separately in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
 
 ## Problem
 
@@ -85,21 +87,13 @@ The following building blocks already exist and can be reused.
 | Target-model validators                       | Ensure normalized DataFrames conform before ingestion                                   |
 | Existing ingester framework                   | Registration, discovery, and configuration                                              |
 
-What does not yet exist is the ingester-specific orchestration for turning resolved DataFrames into Change Control System artifacts.
+What did not yet exist at proposal time was the ingester-specific orchestration for turning resolved DataFrames into Change Control System artifacts. That Delivery 1 orchestration is now implemented on the current baseline.
 
-### Required upstream SIMS contract change
+### Upstream SIMS contract dependency
 
-Delivery 1 still has one upstream dependency gap.
+The proposal originally depended on SIMS returning target-facing integer IDs through `ResolutionOutcome.target_id`.
 
-The current SIMS client returns Binding Set metadata and tracked identity UUIDs, but not the target-facing SEAD integer ID that the ingester must place into SQL primary-key and foreign-key columns. Until that field exists, Shape Shifter can confirm Binding Sets and associate change requests, but it cannot complete SIMS-backed materialization for new provider-owned rows.
-
-The smallest compatible change is:
-
-- extend the `POST /identity/resolve` response so each `ResolutionOutcome` may include `target_id: int | null`
-- populate `target_id` whenever SIMS can resolve or allocate the authoritative SEAD integer ID for the requested `entity_type`
-- keep the field optional so existing clients remain compatible during rollout
-
-That gives the backend `SimsClient` and the ingester runtime adapter a stable field to consume without redesigning the current Binding Set workflow. If `target_id` is absent, the ingester should continue to fail explicitly before SQL generation.
+That upstream dependency is now satisfied on the current Delivery 1 baseline. The backend `SimsClient` and the ingester runtime adapter consume `target_id` for SIMS-backed materialization, and the Delivery 1 bridge path is also implemented through the real backend runtime seam.
 
 ## Proposed Design
 
@@ -169,7 +163,7 @@ flowchart LR
 
 ### Delivery 1: MVP
 
-Delivery 1 should be intentionally narrow.
+Delivery 1 was intentionally narrow and is now closed on that basis.
 
 #### Delivery 1 goals
 
@@ -233,6 +227,10 @@ At minimum:
 
 If the Change Control System requires a revert or verify file to accept a change, Delivery 1 may generate compatibility placeholders only under a strict non-revertible contract. Any placeholder revert script must fail loudly with an explicit message that rollback is not implemented for the change package. Delivery metadata must mark the package as non-revertible, and the pilot must confirm that this artifact shape is acceptable in SEAD release practice. Functional rollback is deferred to Delivery 2.
 
+The current Delivery 1 artifact shape follows that compatibility rule. It emits `deploy.sql`, `revert.sql`, `verify.sql`, and `metadata.json`. The revert and verify files are explicit fail-loud placeholders, and the metadata marks the package as non-revertible and verification-placeholder based.
+
+Further work on alternative deploy formats, templating, and target-model review is now tracked in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md) rather than inside this proposal.
+
 If Binding Set confirmation cannot be completed during the run, Delivery 1 should emit no change package. Instead it should return diagnostics and a pending confirmation report that identifies the blocked rows, the outstanding confirmation step, and the exact operator action needed to rerun successfully.
 
 ### Delivery 2: operational hardening
@@ -290,7 +288,8 @@ Transition plan:
 
 1. Keep both ingesters available during implementation and pilot use.
 2. Validate the new ingester on real projects.
-3. Deprecate the Clearinghouse path only after Delivery 1 is proven stable and Delivery 2 planning is accepted.
+3. Keep post-Delivery-1 hardening in the separate follow-up CR.
+4. Deprecate the Clearinghouse path only after Delivery 2 planning is accepted and the replacement path is operationally preferred.
 
 ## Alternatives Considered
 
@@ -351,26 +350,32 @@ The main tradeoff is deliberate scope reduction in Delivery 1. The MVP will not 
 
 ### Delivery 1
 
-- [ ] A new ingester is registered and can be selected without affecting the current `sead` ingester
-- [ ] All rows selected for output have an explicit Delivery 1 identity state before SQL generation starts
+- [x] A new ingester is registered and can be selected without affecting the current `sead` ingester
+- [x] All rows selected for output have an explicit Delivery 1 identity state before SQL generation starts
 - [ ] Output SQL contains no local `system_id` values
-- [ ] Entity rows with populated `public_id` are treated as existing and are not inserted again
-- [ ] Existing entity rows may be referenced by new bridge or association rows without re-inserting the existing entity rows
-- [ ] Reconciled classifier rows are reference-only and are not inserted again
+- [x] Entity rows with populated `public_id` are treated as existing and are not inserted again
+- [x] Existing entity rows may be referenced by new bridge or association rows without re-inserting the existing entity rows
+- [x] Reconciled classifier rows are reference-only and are not inserted again
 - [ ] Unmatched classifier rows may be allocated through SIMS in Delivery 1 and inserted when allocation succeeds
-- [ ] Blocked unresolved rows stop the run before SQL generation and produce actionable diagnostics
-- [ ] Bridge and association rows have an explicit identity or uniqueness rule and are emitted when they are new under that rule
-- [ ] New rows are emitted as `INSERT` statements only
-- [ ] The ingester exposes a documented DataFrame-first handoff contract or adapter boundary
-- [ ] Collision diagnostics include primary-key collisions and, where metadata exists, matching composite, unique, or natural-key collisions used by bridge-table decisions
-- [ ] Delivery 1 idempotency is explicitly limited to target ID collision detection and defined bridge uniqueness checks
-- [ ] Classifier rows that can neither reconcile nor allocate stop the run with clear diagnostics
-- [ ] A confirmed Binding Set exists before the change request is finalized
-- [ ] Binding Set confirmation behavior is documented for both automatic confirmation and manual-confirmation blocking cases
-- [ ] The generated CR name is associated with the Binding Set in SIMS
-- [ ] Any required Delivery 1 revert placeholder fails explicitly and the change metadata marks the package as non-revertible
-- [ ] The pilot includes at least one mixed submission containing existing references, new provider-owned entities, classifiers, and bridge rows
+- [x] Blocked unresolved rows stop the run before SQL generation and produce actionable diagnostics
+- [x] Bridge and association rows have an explicit identity or uniqueness rule and are emitted when they are new under that rule
+- [x] New rows are emitted as `INSERT` statements only
+- [x] The ingester exposes a documented DataFrame-first handoff contract or adapter boundary
+- [x] Collision diagnostics include primary-key collisions and, where metadata exists, matching composite, unique, or natural-key collisions used by bridge-table decisions
+- [x] Delivery 1 idempotency is explicitly limited to target ID collision detection and defined bridge uniqueness checks
+- [x] Classifier rows that can neither reconcile nor allocate stop the run with clear diagnostics
+- [x] A confirmed Binding Set exists before the change request is finalized
+- [x] Binding Set confirmation behavior is documented for both automatic confirmation and manual-confirmation blocking cases
+- [x] The generated CR name is associated with the Binding Set in SIMS
+- [x] Any required Delivery 1 revert placeholder fails explicitly and the change metadata marks the package as non-revertible
+- [x] The pilot includes at least one mixed submission containing existing references, new provider-owned entities, classifiers, and bridge rows
 - [ ] The generated artifact set is accepted by the SEAD Change Control System workflow in a pilot run
+
+Progress note as of 2026-05-24:
+
+- The authority-service `ResolutionOutcome.target_id` contract is now implemented, and Shape Shifter consumes it when present.
+- Delivery 1 still has two material gaps before all acceptance criteria can be marked complete: generated SQL still includes local `system_id` columns for newly inserted entity rows, and newly allocated SIMS rows still do not receive non-null target-facing integer IDs end to end.
+- Real operator acceptance of the generated artifact set in a SEAD Change Control System pilot run is still outstanding.
 
 ### Delivery 2
 

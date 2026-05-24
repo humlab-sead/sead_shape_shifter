@@ -34,7 +34,11 @@ def build_project(*, local_entity: str = "orders", remote_entity: str = "custome
 
 
 def build_fk(*, local_entity: str = "orders", remote_entity: str = "customers", constraints: dict | None = None) -> ForeignKeyConfig:
-    return build_project(local_entity=local_entity, remote_entity=remote_entity, constraints=constraints).get_table(local_entity).foreign_keys[0]
+    return (
+        build_project(local_entity=local_entity, remote_entity=remote_entity, constraints=constraints)
+        .get_table(local_entity)
+        .foreign_keys[0]
+    )
 
 
 def test_validator_registry_lookup():
