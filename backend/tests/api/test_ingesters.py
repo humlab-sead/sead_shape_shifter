@@ -3,6 +3,11 @@
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from backend.app.services.ingester_runtime import (
+    SeadChangeRequestReconciliationAdapter,
+    SeadChangeRequestSimsAdapter,
+    SeadChangeRequestTargetCollisionChecker,
+)
 from backend.app.services.ingester_service import IngesterService
 
 client = TestClient(app)
@@ -80,8 +85,11 @@ class TestIngestersEndpoints:
             assert "is_valid" in data
             assert "errors" in data
             assert "warnings" in data
+            assert "infos" in data
+            assert "pending_confirmation_report" in data
             assert isinstance(data["errors"], list)
             assert isinstance(data["warnings"], list)
+            assert isinstance(data["infos"], list)
 
     def test_ingest_missing_ingester(self):
         """Test ingestion with non-existent ingester."""
@@ -131,10 +139,15 @@ class TestIngestersEndpoints:
             },
         )
 
-        # Will fail (file doesn't exist) but should return structured error
-        assert response.status_code == 500
+        # Will fail (file doesn't exist) but should return a structured ingestion response
+        assert response.status_code == 200
         data = response.json()
-        assert "detail" in data
+        assert "success" in data
+        assert "message" in data
+        assert "error_details" in data
+        assert "deploy_artifact" in data
+        assert "pending_confirmation_report" in data
+        assert data["success"] is False
 
 
 class TestIngesterServiceIntegration:
@@ -170,3 +183,40 @@ class TestIngesterServiceIntegration:
 
         assert config.extra["ignore_columns"] == ["col1", "col2"]
         assert config.extra["custom_param"] == "value"
+
+    def test_service_create_config_injects_sead_change_request_runtime_clients(self):
+        """SEAD change request runtime clients should be injected at the backend service boundary."""
+        config = IngesterService._create_config({"custom_param": "value"}, key="sead_change_request")
+
+        assert config.extra is not None
+        assert isinstance(config.extra["sims_client"], SeadChangeRequestSimsAdapter)
+        assert isinstance(config.extra["reconciliation_client"], SeadChangeRequestReconciliationAdapter)
+
+    def test_service_create_config_preserves_explicit_runtime_clients(self):
+        """Explicitly supplied runtime clients should not be overwritten by backend injection."""
+        explicit_sims_client = object()
+        explicit_reconciliation_client = object()
+
+        config = IngesterService._create_config(
+            {
+                "sims_client": explicit_sims_client,
+                "reconciliation_client": explicit_reconciliation_client,
+            },
+            key="sead_change_request",
+        )
+
+        assert config.extra is not None
+        assert config.extra["sims_client"] is explicit_sims_client
+        assert config.extra["reconciliation_client"] is explicit_reconciliation_client
+
+    def test_service_create_config_injects_collision_checker_when_database_config_present(self):
+        """SEAD change request config should inject a DB-backed collision checker when DB config is available."""
+        config = IngesterService._create_config(
+            {
+                "database": {"host": "localhost", "port": 5432, "dbname": "test_db", "user": "test_user"},
+            },
+            key="sead_change_request",
+        )
+
+        assert config.extra is not None
+        assert isinstance(config.extra["collision_checker"], SeadChangeRequestTargetCollisionChecker)

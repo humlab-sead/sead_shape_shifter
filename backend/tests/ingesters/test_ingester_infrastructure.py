@@ -3,6 +3,7 @@
 from backend.app.ingesters import IngesterConfig, IngesterMetadata, Ingesters
 from backend.app.ingesters.protocol import IngestionResult, ValidationResult
 from ingesters.sead import SeadIngester
+from ingesters.sead_change_request import SeadChangeRequestIngester
 
 
 class TestIngesterRegistry:
@@ -30,6 +31,17 @@ class TestIngesterRegistry:
         ingester_cls = Ingesters.get("sead")
         assert ingester_cls is not None
         assert ingester_cls == SeadIngester
+
+    def test_sead_change_request_ingester_registered(self):
+        """Test that SeadChangeRequestIngester is automatically registered."""
+        assert "sead_change_request" in Ingesters.items
+        assert Ingesters.items["sead_change_request"] == SeadChangeRequestIngester
+
+    def test_get_sead_change_request_ingester_by_key(self):
+        """Test getting the new scaffold ingester by key."""
+        ingester_cls = Ingesters.get("sead_change_request")
+        assert ingester_cls is not None
+        assert ingester_cls == SeadChangeRequestIngester
 
 
 class TestSeadIngester:
@@ -94,6 +106,34 @@ class TestSeadIngester:
         assert result.tables_processed == 5
         assert result.records_inserted == 100
         assert result.error_details is None
+
+
+class TestSeadChangeRequestIngester:
+    """Tests for the SeadChangeRequestIngester scaffold."""
+
+    def test_get_metadata(self):
+        """Test getting scaffold ingester metadata."""
+        metadata = SeadChangeRequestIngester.get_metadata()
+
+        assert isinstance(metadata, IngesterMetadata)
+        assert metadata.key == "sead_change_request"
+        assert metadata.name == "SEAD Change Request"
+        assert metadata.version == "0.1.0"
+        assert metadata.requires_config is True
+        assert metadata.supported_formats == ["xlsx", "xls"]
+
+    def test_ingester_creation(self):
+        """Test creating the scaffold ingester instance."""
+        config = IngesterConfig(
+            host="localhost",
+            port=5432,
+            dbname="test_db",
+            user="test_user",
+        )
+
+        ingester = SeadChangeRequestIngester(config)
+        assert ingester is not None
+        assert ingester.config == config
 
 
 class TestIngesterConfig:

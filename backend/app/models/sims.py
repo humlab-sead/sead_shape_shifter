@@ -125,6 +125,10 @@ class ResolutionOutcome(BaseModel):
     entity_type: str
     outcome: str = Field(description="'matched' or 'new'")
     tracked_identity_uuid: UUID | None = None
+    target_id: int | None = Field(
+        default=None,
+        description="Target-facing integer ID resolved or allocated for the entity when the authority service can materialize one.",
+    )
 
 
 class BindingSetResponse(BaseModel):
