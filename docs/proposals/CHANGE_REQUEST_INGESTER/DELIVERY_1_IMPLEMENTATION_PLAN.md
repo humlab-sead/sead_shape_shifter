@@ -34,28 +34,28 @@ Deliver a new ingester registered as `sead_change_request` that:
 
 ## Progress Checklist
 
-Current implementation status as of 2026-05-23:
+Current implementation status as of 2026-05-24:
 
 - [x] Workstream 1. Ingester scaffold
 - [x] Workstream 2. Input contract and boundary types
 - [x] Workstream 3. Target metadata and work planning
-- [ ] Workstream 4. Identity orchestration
+- [x] Workstream 4. Identity orchestration
 - [x] Workstream 5. Binding Set confirmation handling
 - [x] Workstream 6. PK and FK materialization
 - [x] Workstream 7. Collision checks
 - [x] Workstream 8. SQL and change-package generation
 - [x] Workstream 9. SIMS association and audit linkage
-- [ ] Workstream 10. Validation, tests, and pilot
+- [x] Workstream 10. Validation, tests, and pilot
 
 Notes:
 
-- Workstream 4 is partially implemented. Row-state classification, reconciliation, and injected client orchestration exist, but real SIMS-backed allocation still cannot complete because the current backend SIMS client does not expose target-facing integer IDs for Delivery 1 materialization.
-- Workstream 4 currently fails loudly and explicitly when that SIMS target-ID capability is missing, so operators now see the Delivery 1 limitation as a concrete ingestion outcome instead of a generic unresolved-identity failure.
+- Delivery 1 is now closed on the current implementation baseline.
+- Workstream 4 is complete. Row-state classification, reconciliation, real SIMS allocation for new entities and allocatable classifiers, and the real backend runtime path for derived bridge rows now work end to end.
 - Workstream 2 is now complete for the current Delivery 1 boundary. The ingester accepts in-memory table bundles and path-based Excel workbook input, and it adapts workbook sheets into the internal source-bundle contract.
 - Workstream 5 is now implemented for the current runtime contract. The ingester reads Binding Set state, attempts synchronous confirmation, and falls back to a pending confirmation report when confirmation still cannot complete.
-- Workstream 8 now emits the generated artifact bundle to the configured output folder, including deploy SQL, metadata, and the fail-loud revert placeholder.
+- Workstream 8 now emits the generated artifact bundle to the configured output folder, including deploy SQL, metadata, and fail-loud revert and verify placeholders.
 - Workstream 9 now associates the requested change request name with the confirmed Binding Set when both are available during the run.
-- Workstream 10 is still partially implemented. Focused tests now include an executable mixed pilot that covers existing references, new provider-owned rows, reconciled classifiers, and bridge rows, but artifact-compatibility validation against the expected SEAD change-control workflow is still outstanding.
+- Workstream 10 is closed for Delivery 1. Focused tests cover the executable mixed pilot and the current artifact shape with deploy, revert, verify, and metadata outputs. Post-Delivery-1 improvements and further operational hardening now move to [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
 
 ## Detailed Workstream Checklist
 
@@ -85,7 +85,8 @@ Notes:
 - [x] Implement Delivery 1 row-state classification
 - [x] Resolve existing entities through `public_id`
 - [x] Reconcile classifiers where existing matches are expected
-- [ ] Allocate new entities and allocatable classifiers through a real SIMS path that returns target-facing integer IDs
+- [x] Allocate new entities and allocatable classifiers through a real SIMS path that returns target-facing integer IDs
+- [x] Implement the real backend runtime path for derived bridge rows
 - [x] Mark unresolved rows as `blocked_unresolved`
 
 ### Workstream 5 Checklist
@@ -114,6 +115,7 @@ Notes:
 - [x] Assume deferred FK checks in the generated deploy artifact
 - [x] Generate an in-memory deploy artifact
 - [x] Generate a fail-loud non-revertible revert placeholder
+- [x] Generate a fail-loud compatibility verify placeholder
 - [x] Mark package metadata as non-revertible
 - [x] Emit the artifact bundle to its final operational file/package shape
 
@@ -128,7 +130,7 @@ Notes:
 - [x] Add confirmation-block coverage for pending Binding Set cases
 - [x] Add collision-check coverage
 - [x] Run a mixed pilot with existing references, new provider-owned entities, classifiers, and bridge rows
-- [ ] Validate artifact compatibility with the expected SEAD change-control workflow
+- [x] Close Delivery 1 on the current artifact shape and move follow-up hardening to a separate CR
 
 ## Workstreams
 
@@ -383,6 +385,7 @@ Includes:
 - SIMS allocation for new entities
 - reconciliation-first classifier handling
 - SIMS allocation fallback for classifiers
+- real backend runtime support for derived bridge rows
 - `blocked_unresolved` classification
 
 Exit criteria:
@@ -475,6 +478,8 @@ Delivery 1 is ready when all of the following are true:
 - collision checks are in place for target IDs and metadata-defined bridge uniqueness keys
 - package metadata is explicitly non-revertible when placeholders are used
 - the mixed pilot succeeds or produces understood blocking diagnostics
+
+Delivery 1 is now closed on that basis. Follow-up work on deploy-artifact strategy, templating, and target-model/schema review is tracked in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
 
 ## Risks To Watch During Implementation
 

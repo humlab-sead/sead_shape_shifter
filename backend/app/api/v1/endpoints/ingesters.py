@@ -62,13 +62,8 @@ async def ingest_data(key: str, request: IngestRequest) -> IngestResponse:
         HTTPException: 404 if ingester not found, 500 if ingestion fails
     """
     try:
-        result = await IngesterService.ingest(key, request)
-        if not result.success:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result.message)
-        return result
+        return await IngesterService.ingest(key, request)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Ingestion failed: {str(e)}") from e
