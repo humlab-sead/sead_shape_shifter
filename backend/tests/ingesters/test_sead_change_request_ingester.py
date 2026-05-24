@@ -7,7 +7,7 @@ import pytest
 
 from backend.app.ingesters import IngesterConfig
 from backend.app.services.ingester_runtime import SeadChangeRequestSimsAdapter
-from ingesters.sead_change_request import ChangeRowState, SourceTableBundle
+from ingesters.sead_change_request import ChangeRowState, DeployArtifact, SourceTableBundle
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
 
 
@@ -142,6 +142,21 @@ class FakeCollisionChecker:
 
     async def row_exists(self, table_name: str, filters: dict[str, object]) -> bool:
         return (table_name, tuple(sorted(filters.items()))) in self.rows
+
+
+class StubBundleFileDeployStrategy:
+    """Test strategy that emits an extra sidecar file in the artifact bundle."""
+
+    def build_artifact(self, change_package, target_model, submission_context):
+        return DeployArtifact(
+            deploy_sql="SELECT 1;",
+            statements=["SELECT 1;"],
+            metadata={"deploy_strategy": "stub_bundle_file"},
+            revert_placeholder_sql="ROLLBACK;",
+            verify_placeholder_sql="ROLLBACK;",
+            metadata_artifact={"artifact_type": "stub", "deploy_strategy": "stub_bundle_file"},
+            bundle_files={"payload/sample.csv": "sample_id\n501\n"},
+        )
 
 
 def minimal_target_model(**extra_entities: dict) -> dict:
@@ -673,12 +688,151 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.deploy_artifact is not None
         assert "Rollback is not implemented" in result.deploy_artifact["revert_placeholder_sql"]
         assert "Verification is not implemented" in result.deploy_artifact["verify_placeholder_sql"]
+        assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_insert"
         assert result.deploy_artifact["metadata_artifact"]["non_revertible"] is True
+        assert result.deploy_artifact["metadata_artifact"]["deploy_strategy"] == "inline_insert"
         assert result.deploy_artifact["metadata_artifact"]["verify_placeholder"] is True
         assert (tmp_path / "test-submission" / "deploy.sql").exists()
         assert (tmp_path / "test-submission" / "revert.sql").exists()
         assert (tmp_path / "test-submission" / "verify.sql").exists()
         assert (tmp_path / "test-submission" / "metadata.json").exists()
+
+    @pytest.mark.asyncio
+    async def test_ingest_accepts_named_deploy_strategy(self, tmp_path):
+        """Ingest should accept the default named deploy strategy from config.extra."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [None]})},
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"}),
+                    "submission_context": minimal_submission_context(),
+                    "deploy_strategy": "inline_insert",
+                    "identity_assignments": {
+                        "sample": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 501,
+                            }
+                        }
+                    },
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert result.success is True
+        assert result.deploy_artifact is not None
+        assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_insert"
+        assert 'INSERT INTO "tbl_sample" ("sample_id") VALUES (501);' in result.deploy_artifact["deploy_sql"]
+
+    @pytest.mark.asyncio
+    async def test_ingest_emits_strategy_sidecar_files(self, tmp_path):
+        """Ingest should write additional files emitted by a deploy strategy into the artifact bundle."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [None]})},
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(),
+                    "deploy_strategy": StubBundleFileDeployStrategy(),
+                    "identity_assignments": {
+                        "sample": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 501,
+                            }
+                        }
+                    },
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert result.success is True
+        assert result.deploy_artifact is not None
+        assert result.deploy_artifact["bundle_files"] == {"payload/sample.csv": "sample_id\n501\n"}
+        assert (tmp_path / "test-submission" / "payload" / "sample.csv").read_text(encoding="utf-8") == "sample_id\n501\n"
+
+    @pytest.mark.asyncio
+    async def test_ingest_rejects_unknown_named_deploy_strategy(self):
+        """Ingest should fail cleanly when config.extra requests an unsupported deploy strategy."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [None]})},
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(),
+                    "deploy_strategy": "unknown_strategy",
+                    "identity_assignments": {
+                        "sample": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 501,
+                            }
+                        }
+                    },
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert result.success is False
+        assert result.message == "Invalid deploy strategy"
+        assert result.error_details == "Unsupported deploy strategy 'unknown_strategy'; expected 'inline_insert' or 'copy_csv'"
+
+    @pytest.mark.asyncio
+    async def test_ingest_accepts_copy_csv_deploy_strategy(self, tmp_path):
+        """Ingest should emit a CSV-backed artifact bundle for the copy_csv strategy."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [None]})},
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(),
+                    "deploy_strategy": "copy_csv",
+                    "identity_assignments": {
+                        "sample": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 501,
+                            }
+                        }
+                    },
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert result.success is True
+        assert result.deploy_artifact is not None
+        assert result.deploy_artifact["metadata"]["deploy_strategy"] == "copy_csv"
+        assert result.deploy_artifact["metadata_artifact"]["bundle_file_count"] == 1
+        assert "\\copy \"sample\" (\"sample_id\") FROM 'payload/sample.csv' WITH (FORMAT csv, HEADER true);" in result.deploy_artifact["deploy_sql"]
+        assert result.deploy_artifact["bundle_files"] == {"payload/sample.csv": "sample_id\n501\n"}
+        assert (tmp_path / "test-submission" / "payload" / "sample.csv").read_text(encoding="utf-8") == "sample_id\n501\n"
 
     @pytest.mark.asyncio
     async def test_ingest_stops_when_target_id_collision_detected(self):
@@ -863,8 +1017,10 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.deploy_artifact["metadata"]["binding_set_uuid"] == "binding-123"
         assert result.deploy_artifact["metadata"]["change_request_name"] == "deploy/mixed-pilot"
         assert result.deploy_artifact["metadata"]["change_request_associated"] is True
+        assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_insert"
         assert result.deploy_artifact["metadata"]["verify_placeholder"] is True
         assert result.deploy_artifact["metadata_artifact"]["deploy_statement_count"] == 2
+        assert result.deploy_artifact["metadata_artifact"]["deploy_strategy"] == "inline_insert"
         assert result.deploy_artifact["metadata_artifact"]["verify_placeholder"] is True
         assert 'INSERT INTO "tbl_sample" ("system_id", "sample_id", "sample_name") VALUES (2, 501, ' in result.deploy_artifact["deploy_sql"]
         assert (
