@@ -2,152 +2,39 @@
 
 ## Overview
 
-This folder contains the proposal for replacing the current SEAD Clearinghouse ingester (`ingesters/sead/`) with a new ingester that generates Sqitch-ready SQL DML change requests directly from normalized DataFrames.
+This folder contains the current proposal and Delivery 1 implementation-planning material for replacing the existing SEAD Clearinghouse ingester with a new `sead_change_request` ingester.
+
+The accepted Delivery 1 direction is:
+
+- DataFrame-first ingestion inside the ingester core
+- identity resolution before SQL generation
+- SIMS allocation for new entities and allocatable classifiers
+- reconciliation-first handling for existing classifier matches
+- forward-only change-package generation with non-revertible placeholder handling when required
 
 ## Documents
 
-- [SEAD_INGESTER_DESIGN.md](./SEAD_INGESTER_DESIGN.md) — Proposal: new ingester design and architecture
-- [CHANGE_REQUEST_INGESTER.md](./CHANGE_REQUEST_INGESTER.md) — Original design notes (historical)
+- [SEAD_CHANGE_REQUEST_INGESTER.md](./SEAD_CHANGE_REQUEST_INGESTER.md) — Current proposal and accepted Delivery 1 design decisions
+- [DELIVERY_1_IMPLEMENTATION_PLAN.md](./DELIVERY_1_IMPLEMENTATION_PLAN.md) — Delivery 1 implementation plan, workstreams, and issue breakdown
 
-## Context
+## Current Status
 
-### What exists today
+- Proposal status: ready for Delivery 1 implementation planning
+- Ingester key: `sead_change_request`
+- Delivery 1 input contract: DataFrame-first, with adapter boundary only if framework compatibility requires it
+- Delivery 1 confirmation model: synchronous at the change-package boundary; manual confirmation blocks artifact generation and returns a pending confirmation report
 
-| Component                    | Status            | Location                                                                                         |
-|------------------------------|-------------------|--------------------------------------------------------------------------------------------------|
-| **Current SEAD ingester**    | Production        | `ingesters/sead/` — Clearinghouse CSV-based ingestion into staging tables                        |
-| **SIMS**                     | Fully implemented | `sead_authority_service/src/identity/` — Identity resolution, UUID allocation, binding lifecycle |
-| **SimsClient**               | Fully implemented | `backend/app/clients/sims_client.py` — Async HTTP client wrapping SIMS `/identity` endpoints     |
-| **Target model conformance** | Implemented       | `sead_standard_model.yml` + six registered conformance validators                                |
-| **Ingester framework**       | Implemented       | `backend/app/ingesters/` — Protocol, registry, dynamic discovery                                 |
+## Delivery 1 Scope Snapshot
 
-### What this proposal adds
+- existing entity rows remain reference-only when `public_id` is populated
+- bridge and association rows are evaluated independently using metadata-defined uniqueness rules where available
+- classifier rows try reconciliation first and may allocate through SIMS in Delivery 1 if needed
+- blocked unresolved rows stop the run before SQL generation
+- collision checks cover target ID collisions plus metadata-defined bridge uniqueness checks
 
-A new ingester registered under the same framework that:
+## Related References
 
-1. Consumes normalized DataFrames (output of Shape Shifter core pipeline)
-2. Resolves **all** entity identities via SIMS — reconciliation for existing entities, allocation for new ones
-3. Resolves foreign keys from local `system_id` to SIMS-allocated SEAD integer IDs
-4. Generates topologically-sorted SQL INSERT statements
-5. Outputs a Sqitch-ready change request
-
-### Key principle
-
-**A change request must not be emitted until every entity identity is resolved.** This means every row in every entity table must have either a reconciled match to an existing SEAD entity or an allocated new SEAD identity, confirmed through a SIMS Binding Set. No unresolved `system_id` values may appear in the output SQL.
-
-## Boundary
-
-| Concern                                                            | Owner                                     |
-|--------------------------------------------------------------------|-------------------------------------------|
-| Identity resolution, allocation, policy, binding lifecycle         | SIMS (sead_authority_service)             |
-| SIMS API consumption, SQL generation, FK resolution, Sqitch output | This ingester (Shape Shifter)             |
-| Target model metadata (entity roles, identity columns, FKs)        | `sead_standard_model.yml` (Shape Shifter) |
-| Core ETL pipeline (extract, filter, link, unnest, translate)       | Shape Shifter core (unchanged)            |
-
-## Related documentation
-
-- SIMS design: `sead_authority_service/docs/SIMS/`
-- SIMS operations: `sead_authority_service/docs/SIMS/OPERATIONS.md`
-- Current ingester architecture: `ingesters/sead/ARCHITECTURE.md`
-- Ingester framework: `ingesters/README.md`
-- **Rate Limiting:** 1000 requests/min per client
-
-### SQL Generation
-- **Parameterized queries:** No string concatenation
-- **Input validation:** Whitelist entity/table names
-- **Code review:** Security audit required
-
-### Data Privacy
-- **Audit trail:** All operations logged
-- **Access control:** Role-based permissions
-- **Data retention:** 90 days for rollback data
-
----
-
-## 📈 Success Metrics
-
-### Technical
-- ✅ 100% FK referential integrity
-- ✅ Zero ID collisions
-- ✅ < 1 hour for 10,000 entity project
-- ✅ 99%+ API uptime
-
-### Business
-- ✅ 5x faster ingestion (days → hours)
-- ✅ 3+ concurrent submissions
-- ✅ 95%+ reconciliation accuracy
-- ✅ Zero manual ID mapping steps
-
-### Adoption
-- ✅ 10+ production ingestions in 3 months
-- ✅ Positive user feedback
-- ✅ Old workflow deprecated after 6 months
-
----
-
-## ⚠️ Risk Mitigation
-
-| Risk              | Mitigation                                |
-|-------------------|-------------------------------------------|
-| **API downtime**  | Queue-based retry, fallback workflow      |
-| **FK errors**     | Extensive validation, dry-run mode        |
-| **SQL injection** | Parameterized queries, input sanitization |
-| **Data loss**     | Atomic transactions, rollback tests       |
-| **Performance**   | Batch allocation, connection pooling      |
-
-See individual documents for detailed risk analysis.
-
----
-
-## 🔮 Future Enhancements
-
-### Post-MVP (Phase 2)
-- Partial commits (savepoint-based rollback)
-- Real-time validation (WebSocket feedback)
-- Fuzzy reconciliation (confidence scores)
-- Schema introspection (auto-generate table_mapping)
-
-### Long-Term Vision
-- Natural key integration (DOIs, ORCIDs)
-
----
-
-### Related Documentation
 - [Shape Shifter Design](../DESIGN.md)
 - [Configuration Guide](../CONFIGURATION_GUIDE.md)
 - [Developer Guide](../DEVELOPMENT.md)
 - [Ingester System](../../backend/app/ingesters/README.md)
-
----
-
-## ❓ FAQ
-
-### Q: Why hybrid Integer + UUID instead of pure UUID PKs?
-
-**A:** Performance and backward compatibility. Integer PKs are 4x smaller, faster for JOINs, and SEAD's existing ecosystem expects them. UUIDs are complementary identifiers for external systems.
-
-### Q: Can we use this ingester for non-SEAD targets?
-
-**A:** No, this ingester is SEAD-specific (by design). For other targets, create a new ingester following Shape Shifter's ingester protocol. The core normalizer remains reusable.
-
-### Q: What happens if SEAD API is unreachable?
-
-**A:** The ingester fails fast with clear error message. Optionally, implement queue-based retry logic or fallback to old file-based workflow.
-
-### Q: How are duplicates prevented?
-
-**A:** Idempotent allocation (same UUID → same integer) + SQL UPSERT (`ON CONFLICT DO UPDATE`). Re-running same data updates existing records instead of creating duplicates.
-
-### Q: Can we preview SQL without allocating IDs?
-
-**A:** Yes, use `--dry-run` mode. Validates data and generates SQL with placeholder IDs, but doesn't call SEAD API.
-
-### Q: What's the rollback strategy?
-
-**A:** Two-phase: Call SEAD API to rollback allocations (soft delete by default), optionally hard delete for testing. Generated SQL is never executed in rollback scenarios.
-
----
-
-**Last Updated:** February 21, 2026  
-**Status:** Design Phase  
-**Next Review:** After Phase 1 (SEAD Identity API deployment)
