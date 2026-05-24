@@ -45,6 +45,7 @@ class ValidationResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     infos: list[str] = field(default_factory=list)
+    pending_confirmation_report: dict[str, Any] | None = None
 
     @property
     def has_errors(self) -> bool:
@@ -76,6 +77,8 @@ class IngestionResult:
     tables_processed: int = 0
     records_inserted: int = 0
     error_details: str | None = None
+    deploy_artifact: dict[str, Any] | None = None
+    pending_confirmation_report: dict[str, Any] | None = None
 
 
 @dataclass
