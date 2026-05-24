@@ -26,14 +26,26 @@ from ingesters.sead_change_request.materialization import materialize_resolved_t
 from ingesters.sead_change_request.orchestration import IdentityOrchestrationResult, orchestrate_identity_assignments
 from ingesters.sead_change_request.package_builder import build_change_request_package
 from ingesters.sead_change_request.planning import plan_table
-from ingesters.sead_change_request.sql_builder import build_deploy_artifact
+from ingesters.sead_change_request.sql_builder import (
+    COPY_CSV_DEPLOY_ARTIFACT_STRATEGY,
+    DEFAULT_DEPLOY_ARTIFACT_STRATEGY,
+    CopyCsvDeployStrategy,
+    DeployArtifactStrategy,
+    InlineInsertDeployStrategy,
+    build_deploy_artifact,
+    resolve_deploy_artifact_strategy,
+)
 
 __all__ = [
     "ChangeRequestPackage",
     "ChangeRequestTable",
     "ChangeRowState",
     "CollisionCheckResult",
+    "COPY_CSV_DEPLOY_ARTIFACT_STRATEGY",
+    "DEFAULT_DEPLOY_ARTIFACT_STRATEGY",
+    "CopyCsvDeployStrategy",
     "DeployArtifact",
+    "DeployArtifactStrategy",
     "IdentityAssignment",
     "IdentityOrchestrationResult",
     "IdentityResolutionResult",
@@ -47,6 +59,7 @@ __all__ = [
     "SeadChangeRequestIngester",
     "SourceTableBundle",
     "SubmissionContext",
+    "InlineInsertDeployStrategy",
     "build_change_request_package",
     "build_deploy_artifact",
     "check_materialized_collisions",
@@ -56,4 +69,5 @@ __all__ = [
     "resolve_planned_tables",
     "build_identity_work_plan",
     "plan_table",
+    "resolve_deploy_artifact_strategy",
 ]

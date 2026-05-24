@@ -33,7 +33,7 @@ from ingesters.sead_change_request.materialization import materialize_resolved_t
 from ingesters.sead_change_request.orchestration import SIMS_TARGET_ID_CAPABILITY_NOTE, orchestrate_identity_assignments
 from ingesters.sead_change_request.package_builder import build_change_request_package
 from ingesters.sead_change_request.planning import plan_table
-from ingesters.sead_change_request.sql_builder import build_deploy_artifact
+from ingesters.sead_change_request.sql_builder import build_deploy_artifact, resolve_deploy_artifact_strategy
 from src.target_model.models import TargetModel
 from src.utility import sanitize_columns
 
@@ -88,13 +88,14 @@ class SeadChangeRequestIngester:
             warnings: list[str] = []
 
             for sheet_name in workbook.sheet_names:
-                if sheet_name == "data_table_index":
+                normalized_sheet_name = str(sheet_name)
+                if normalized_sheet_name == "data_table_index":
                     warnings.append("Ignored sheet 'data_table_index' from Excel source bundle")
                     continue
 
-                frame = pd.read_excel(workbook, sheet_name=sheet_name)
+                frame = pd.read_excel(workbook, sheet_name=normalized_sheet_name)
                 frame.columns = sanitize_columns(list(frame.columns))
-                table_mapping[sheet_name] = frame
+                table_mapping[normalized_sheet_name] = frame
 
         if not table_mapping:
             raise ValueError(f"No usable sheets were found in source file: {source_path}")
@@ -277,6 +278,10 @@ class SeadChangeRequestIngester:
         client = extras.get(key)
         return client
 
+    def _coerce_deploy_strategy(self) -> Any | None:
+        """Resolve the optional deploy-rendering strategy from the ingester boundary."""
+        return resolve_deploy_artifact_strategy(self._get_client("deploy_strategy"))
+
     def _emit_artifact_bundle(self, deploy_artifact: dict[str, Any], submission_context: SubmissionContext) -> Path:
         """Write the Delivery 1 artifact bundle to the configured output folder."""
         output_root = Path(self.config.output_folder)
@@ -290,6 +295,10 @@ class SeadChangeRequestIngester:
             json.dumps(deploy_artifact["metadata_artifact"], indent=2, sort_keys=True),
             encoding="utf-8",
         )
+        for relative_path, content in deploy_artifact.get("bundle_files", {}).items():
+            artifact_path = artifact_directory / relative_path
+            artifact_path.parent.mkdir(parents=True, exist_ok=True)
+            artifact_path.write_text(str(content), encoding="utf-8")
         return artifact_directory
 
     def _artifact_directory_name(self, submission_context: SubmissionContext) -> str:
@@ -326,6 +335,12 @@ class SeadChangeRequestIngester:
             fallback_assignments = self._coerce_identity_assignments()
         except ValueError as exc:
             logger.warning(f"SEAD change request validation failed at identity-assignment boundary: {exc}")
+            return ValidationResult(is_valid=False, errors=[str(exc)], warnings=list(bundle.warnings), infos=[])
+
+        try:
+            self._coerce_deploy_strategy()
+        except ValueError as exc:
+            logger.warning(f"SEAD change request validation failed at deploy-strategy boundary: {exc}")
             return ValidationResult(is_valid=False, errors=[str(exc)], warnings=list(bundle.warnings), infos=[])
 
         planned_tables, planning_errors, warnings, planning_infos = self._plan_bundle(bundle, target_model)
@@ -457,6 +472,19 @@ class SeadChangeRequestIngester:
                 error_details=str(exc),
             )
 
+        try:
+            deploy_strategy = self._coerce_deploy_strategy()
+        except ValueError as exc:
+            logger.warning(f"SEAD change request ingest failed at deploy-strategy boundary: {exc}")
+            return IngestionResult(
+                success=False,
+                message="Invalid deploy strategy",
+                submission_id=None,
+                tables_processed=0,
+                records_inserted=0,
+                error_details=str(exc),
+            )
+
         planned_tables, planning_errors, _, _ = self._plan_bundle(bundle, target_model)
         if planning_errors:
             return IngestionResult(
@@ -539,7 +567,23 @@ class SeadChangeRequestIngester:
         change_package = build_change_request_package(materialization_result, resolution_result)
         package_table_count = len(change_package.tables)
         insert_row_count = sum(len(table.frame.index) for table in change_package.tables.values())
-        deploy_artifact = build_deploy_artifact(change_package, target_model, submission_context)
+        try:
+            deploy_artifact = build_deploy_artifact(
+                change_package,
+                target_model,
+                submission_context,
+                strategy=deploy_strategy,
+            )
+        except NotImplementedError as exc:
+            logger.warning(f"SEAD change request ingest failed at deploy-rendering boundary: {exc}")
+            return IngestionResult(
+                success=False,
+                message="Deploy strategy not implemented",
+                submission_id=None,
+                tables_processed=0,
+                records_inserted=0,
+                error_details=str(exc),
+            )
 
         sims_client = self._get_client("sims_client")
         if sims_client is not None and submission_context.binding_set_uuid and submission_context.change_request_name:

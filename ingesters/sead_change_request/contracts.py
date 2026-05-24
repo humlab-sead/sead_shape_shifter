@@ -181,3 +181,4 @@ class DeployArtifact:
     revert_placeholder_sql: str = ""
     verify_placeholder_sql: str = ""
     metadata_artifact: dict[str, Any] = field(default_factory=dict)
+    bundle_files: dict[str, str] = field(default_factory=dict)
