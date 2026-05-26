@@ -7,6 +7,8 @@ from ingesters.sead_change_request import ChangeRowState, SubmissionContext, orc
 from ingesters.sead_change_request.orchestration import SIMS_TARGET_ID_CAPABILITY_NOTE
 from src.target_model.models import EntitySpec
 
+# pylint: disable=unused-argument
+
 
 class FakeReconciliationClient:
     """Simple fake reconciliation client for ingester tests."""

@@ -11,6 +11,8 @@ from backend.app.models.reconciliation import ReconciliationCandidate
 from backend.app.services.ingester_runtime import SeadChangeRequestReconciliationAdapter, SeadChangeRequestSimsAdapter
 from ingesters.sead_change_request.contracts import SubmissionContext
 
+# pylint: disable=unused-argument
+
 
 class FakeBackendReconciliationClient:
     """Minimal fake backend reconciliation client."""

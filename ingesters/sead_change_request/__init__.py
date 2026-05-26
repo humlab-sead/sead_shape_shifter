@@ -62,7 +62,6 @@ __all__ = [
     "build_change_request_package",
     "build_deploy_artifact",
     "check_materialized_collisions",
-    "build_pending_confirmation_report",
     "materialize_resolved_tables",
     "orchestrate_identity_assignments",
     "resolve_planned_tables",

@@ -15,6 +15,8 @@ from ingesters.sead_change_request import ChangeRowState, DeployArtifact, Source
 from ingesters.sead_change_request.contracts import SubmissionContext, resolve_bundle_name
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
 
+# pylint: disable=unused-argument
+
 
 class FakeReconciliationClient:
     """Simple fake reconciliation client for ingester tests."""

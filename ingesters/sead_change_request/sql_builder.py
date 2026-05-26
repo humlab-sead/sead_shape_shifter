@@ -238,7 +238,7 @@ def _base_deploy_artifact_metadata(submission_context: SubmissionContext, strate
 
 
 def _common_contract_metadata(
-    submission_context: SubmissionContext,
+    submission_context: SubmissionContext,  # pylint: disable=unused-argument
     *,
     statements: list[str],
     bundle_files: dict[str, str],

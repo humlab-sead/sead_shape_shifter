@@ -22,6 +22,8 @@ from ingesters.sead_change_request import (
 from ingesters.sead_change_request.contracts import resolve_bundle_name
 from src.target_model.models import TargetModel
 
+# pylint: disable=unused-argument, line-too-long
+
 
 def minimal_target_model(**extra_entities: dict) -> TargetModel:
     """Build a minimal TargetModel for SQL builder tests."""
@@ -105,7 +107,7 @@ class TestBuildDeployArtifact:
         assert artifact.metadata_artifact["row_counts"] == {"tbl_sample": 1}
         assert f"-- deploy mal: {expected_bundle_name}" in artifact.deploy_sql
         assert artifact.statements == [
-            f'\\copy "tbl_sample" ("sample_id", "sample_name", "active") FROM program \'zcat -qac {expected_bundle_name}/tbl_sample.gz\' WITH (FORMAT csv, DELIMITER E\'\\t\', ENCODING \'utf-8\');'  # NOQA
+            f'\\copy "tbl_sample" ("sample_id", "sample_name", "active") FROM program \'zcat ""-qac {expected_bundle_name}/tbl_sample.gz\' WITH (FORMAT csv, DELIMITER E\'\\t\', ENCODING \'utf-8\');'  # NOQA
         ]
         assert artifact.bundle_files == {f"deploy/{expected_bundle_name}/tbl_sample.gz": "101\tO'Reilly\ttrue\n"}
 

@@ -80,4 +80,4 @@ class TestBuildChangeRequestPackage:
 
         package = build_change_request_package(materialization_result, identity_result)
 
-        assert package.tables == {}
+        assert not package.tables
