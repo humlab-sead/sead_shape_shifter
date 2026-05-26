@@ -20,22 +20,22 @@ The package currently supports two main entry points defined by the Shape Shifte
 The implementation follows this high-level flow:
 
 ```text
-source tables or Excel workbook
+load source tables or an Excel workbook
   -> normalize and validate the inputs
-  -> per-table planning against target model
-  -> identity orchestration via injected clients
-  -> PK/FK materialization
-  -> optional collision checks
-  -> change-package assembly
-  -> deploy-artifact rendering
-  -> artifact bundle emission
+  -> plan each table against the target model
+  -> orchestrate identity work via injected clients
+  -> materialize PK/FK values
+  -> run optional collision checks
+  -> assemble the change package
+  -> render the deploy artifact
+  -> emit the artifact bundle
 ```
 
-The shared workflow up to materialization lives in `SeadChangeRequestPreparationService` in [preparation.py](./preparation.py).
+The shared workflow up to materialization lives in `prepare_change_request()` in [preparation.py](./preparation.py).
 
 ## Key Concepts
 
-### Boundary Inputs
+### Resolved Inputs
 
 The public ingester protocol still accepts file paths and `IngesterConfig` values.
 
@@ -49,13 +49,13 @@ Inside the package, those inputs are normalized into stable internal contracts d
 - `ChangeRequestPackage`: rows selected for insertion into the final change request
 - `DeployArtifact`: rendered SQL plus bundle metadata and sidecar files
 
-### Preparation Service
+### Preparation Workflow
 
-`SeadChangeRequestPreparationService` exists to keep the shared workflow out of the protocol adapter.
+`prepare_change_request()` exists to keep the shared workflow out of the protocol adapter.
 
 It prepares:
 
-- validated boundary inputs
+- resolved inputs
 - per-table planning output
 - identity orchestration output
 - resolved identity tables
@@ -77,7 +77,7 @@ The ingester resolves the requested strategy from `IngesterConfig.extra["deploy_
 
 ## Module Map
 
-- [ingester.py](./ingester.py): protocol adapter, boundary resolution, validation and ingestion entry points, bundle emission
+- [ingester.py](./ingester.py): protocol adapter, input resolution, validation and ingestion entry points, bundle emission
 - [preparation.py](./preparation.py): shared workflow up to identity resolution and materialization
 - [contracts.py](./contracts.py): stable internal data structures and helper functions
 - [planning.py](./planning.py): per-table planning against the target model
@@ -125,7 +125,7 @@ The exact payload shape depends on the selected deploy strategy.
 
 `validate()` and `ingest()` intentionally remain separate.
 
-- `validate()` reports boundary failures, planning issues, blocked identity work, and materialization problems as structured validation output
+- `validate()` reports input-resolution failures, planning issues, blocked identity work, and materialization problems as structured validation output
 - `ingest()` can optionally call `validate()` first, then continues into collision checks, package assembly, artifact rendering, and bundle emission
 
 This separation keeps validation side-effect free while allowing ingestion to perform file emission and collaborator callbacks such as change-request association.
