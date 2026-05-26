@@ -1,9 +1,9 @@
 """Internal contracts for the SEAD change request ingester.
 
-These types define the first stable internal boundary for Delivery 1. The
-public ingester protocol still accepts the existing source/config inputs, while
-the implementation can move toward a DataFrame-first workflow behind that
-boundary.
+These types define the stable internal boundary used by the current
+implementation. The public ingester protocol still accepts the existing
+source/config inputs, while the implementation normalizes them into a
+DataFrame-first workflow behind that boundary.
 """
 
 from dataclasses import dataclass, field
