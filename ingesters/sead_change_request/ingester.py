@@ -564,16 +564,27 @@ class SeadChangeRequestIngester:
         ]
         if preparation.inputs.bundle.source_name:
             infos.append(f"Source bundle name: {preparation.inputs.bundle.source_name}")
-        infos.append(f"Submission timestamp: {preparation.inputs.submission_context.timestamp.isoformat()}")
-        if preparation.inputs.submission_context.binding_set_uuid:
-            infos.append(f"Binding Set UUID: {preparation.inputs.submission_context.binding_set_uuid}")
-        if preparation.inputs.submission_context.change_request_name:
-            infos.append(f"Requested CR name: {preparation.inputs.submission_context.change_request_name}")
-        infos.extend(preparation.planned.infos)
-        infos.extend(self._summarize_identity_work(preparation.planned.work_plan))
-        infos.append(f"Resolved identity tables: {len(preparation.resolution_result.tables)}")
-        infos.append(f"Blocked rows after identity resolution: {preparation.resolution_result.blocked_rows}")
-        infos.append(f"Materialized tables: {len(preparation.materialization_result.tables)}")
+
+        infos.extend(
+            [f"Submission timestamp: {preparation.inputs.submission_context.timestamp.isoformat()}"] +
+            (
+                [f"Binding Set UUID: {preparation.inputs.submission_context.binding_set_uuid}"]
+                if preparation.inputs.submission_context.binding_set_uuid
+                else []
+            )
+            + (
+                [f"Requested CR name: {preparation.inputs.submission_context.change_request_name}"]
+                if preparation.inputs.submission_context.change_request_name
+                else []
+            )
+            + preparation.planned.infos
+            + self._summarize_identity_work(preparation.planned.work_plan)
+            + [
+                f"Resolved identity tables: {len(preparation.resolution_result.tables)}",
+                f"Blocked rows after identity resolution: {preparation.resolution_result.blocked_rows}",
+                f"Materialized tables: {len(preparation.materialization_result.tables)}",
+            ]
+        )
 
         logger.info(
             "Validated SEAD change request source bundle with {} table(s), {} row(s), and {} planned table(s)",

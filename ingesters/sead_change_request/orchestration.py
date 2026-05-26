@@ -56,7 +56,7 @@ async def orchestrate_identity_assignments(
     binding_set_state: str | None = None
 
     for planned_table in planned_tables:
-        entity_assignments = assignments.setdefault(planned_table.entity_name, {})
+        entity_assignments: dict[object, IdentityAssignment] = assignments.setdefault(planned_table.entity_name, {})
         for row_index, planned_action in planned_table.planned_actions.items():
             if planned_action == PlannedRowAction.REFERENCE_EXISTING:
                 continue

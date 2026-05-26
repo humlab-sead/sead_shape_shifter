@@ -85,7 +85,7 @@ class PlannedTable:
 
 @dataclass(slots=True)
 class IdentityWorkPlan:
-    """Partitioned row work queues for identity orchestration."""
+    """Groups of planned rows organized by the identity work they need."""
 
     existing_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     allocation_rows: dict[str, pd.DataFrame] = field(default_factory=dict)

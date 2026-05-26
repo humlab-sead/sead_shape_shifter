@@ -1,5 +1,7 @@
 """In-memory change-package assembly for the SEAD change request ingester."""
 
+import pandas as pd
+
 from ingesters.sead_change_request.contracts import (
     ChangeRequestPackage,
     ChangeRequestTable,
@@ -15,8 +17,7 @@ INSERTABLE_ROW_STATES: set[ChangeRowState] = {
 
 
 def build_change_request_package(
-    materialization_result: MaterializationResult,
-    identity_result: IdentityResolutionResult,
+    materialization_result: MaterializationResult, identity_result: IdentityResolutionResult
 ) -> ChangeRequestPackage:
     """Build the first in-memory Delivery 1 change package from materialized tables."""
     tables: dict[str, ChangeRequestTable] = {}
@@ -27,12 +28,12 @@ def build_change_request_package(
         if resolved_table is None:
             continue
 
-        insert_mask = resolved_table.row_states.isin(INSERTABLE_ROW_STATES)
+        insert_mask: pd.Series = resolved_table.row_states.isin(INSERTABLE_ROW_STATES)
         if not bool(insert_mask.any()):
             continue
 
-        package_frame = materialized_table.frame.loc[insert_mask].copy()
-        package_row_states = resolved_table.row_states.loc[insert_mask].copy()
+        package_frame: pd.DataFrame = materialized_table.frame.loc[insert_mask].copy()
+        package_row_states: pd.Series = resolved_table.row_states.loc[insert_mask].copy()
         tables[entity_name] = ChangeRequestTable(name=entity_name, frame=package_frame, row_states=package_row_states)
         infos.append(f"Prepared change-package table '{entity_name}' with {len(package_frame.index)} insert row(s)")
 
