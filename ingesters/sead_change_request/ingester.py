@@ -1,9 +1,7 @@
-"""SEAD change request ingester scaffold.
+"""Main protocol adapter for the SEAD change request ingester.
 
-This module provides the initial registry-visible scaffold for the
-`sead_change_request` ingester. Delivery 1 implementation work will add the
-DataFrame-first ingestion contract and SQL generation workflow in follow-up
-changes.
+This module resolves external inputs, runs the shared preparation flow, and
+turns the result into validation or ingestion output.
 """
 
 import json
@@ -446,7 +444,7 @@ class SeadChangeRequestIngester:
         )
 
     def _emit_artifact_bundle(self, deploy_artifact: dict[str, Any], submission_context: SubmissionContext) -> Path:
-        """Write the Delivery 1 artifact bundle to the configured output folder."""
+        """Write the artifact bundle to the configured output folder."""
         output_root = Path(self.config.output_folder)
         artifact_directory = output_root / self._artifact_directory_name(submission_context)
         if artifact_directory.exists():
@@ -475,12 +473,12 @@ class SeadChangeRequestIngester:
         return artifact_directory
 
     def _artifact_directory_name(self, submission_context: SubmissionContext) -> str:
-        """Build a filesystem-safe directory name for emitted Delivery 1 artifacts."""
+        """Build a filesystem-safe directory name for emitted artifacts."""
         return resolve_bundle_name(submission_context)
 
     @staticmethod
     def _is_sims_target_id_capability_gap(diagnostics: list[str]) -> bool:
-        """Detect the current backend SIMS limitation for Delivery 1 target-ID materialization."""
+        """Detect the current SIMS limitation where allocation returns no target-facing integer ID."""
         return bool(diagnostics) and all(SIMS_TARGET_ID_CAPABILITY_NOTE in diagnostic for diagnostic in diagnostics)
 
     @staticmethod

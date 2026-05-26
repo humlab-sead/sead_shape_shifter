@@ -31,7 +31,7 @@ class DeployArtifactStrategy(Protocol):
 
 
 class InlineInsertDeployStrategy:
-    """Default Delivery 1 deploy strategy using inline INSERT statements."""
+    """Default deploy strategy that uses inline INSERT statements."""
 
     strategy_name = DEFAULT_DEPLOY_ARTIFACT_STRATEGY
 
@@ -123,7 +123,7 @@ def build_deploy_artifact(
     submission_context: SubmissionContext,
     strategy: DeployArtifactStrategy | str | None = None,
 ) -> DeployArtifact:
-    """Build the first in-memory Delivery 1 deploy artifact."""
+    """Build the in-memory deploy artifact."""
     resolved_strategy = resolve_deploy_artifact_strategy(strategy)
     return resolved_strategy.build_artifact(change_package, target_model, submission_context)
 
@@ -148,7 +148,7 @@ def resolve_deploy_artifact_strategy(strategy: DeployArtifactStrategy | str | No
 
 
 def _build_revert_placeholder_sql() -> str:
-    """Build the explicit fail-loud Delivery 1 revert placeholder."""
+    """Build the revert placeholder that fails loudly."""
     return "\n".join(
         [
             "BEGIN;",
@@ -161,7 +161,7 @@ def _build_revert_placeholder_sql() -> str:
 
 
 def _build_verify_placeholder_sql() -> str:
-    """Build the explicit fail-loud Delivery 1 verify placeholder."""
+    """Build the verify placeholder that fails loudly."""
     return "\n".join(
         [
             "BEGIN;",

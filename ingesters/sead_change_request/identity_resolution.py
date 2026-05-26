@@ -20,7 +20,7 @@ def resolve_planned_tables(
     target_model: TargetModel,
     assignments: dict[str, dict[object, IdentityAssignment]] | None = None,
 ) -> IdentityResolutionResult:
-    """Resolve planned rows into Delivery 1 row states and target IDs."""
+    """Resolve planned rows into row states and target IDs."""
     assignments = assignments or {}
     resolved_tables: dict[str, ResolvedIdentityTable] = {}
     diagnostics: list[str] = []

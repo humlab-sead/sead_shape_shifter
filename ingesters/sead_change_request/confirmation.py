@@ -9,7 +9,7 @@ def build_pending_confirmation_report(
     *,
     binding_set_state: str | None,
 ) -> PendingConfirmationReport:
-    """Build the Delivery 1 pending-confirmation report for operator action."""
+    """Build the pending-confirmation report for operator action."""
     blocked_entities: list[str] = []
     blocked_rows = 0
 
