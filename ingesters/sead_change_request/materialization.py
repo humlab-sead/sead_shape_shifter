@@ -3,7 +3,7 @@
 import pandas as pd
 
 from ingesters.sead_change_request.contracts import IdentityResolutionResult, MaterializationResult, MaterializedTable
-from src.target_model.models import TargetModel
+from src.target_model.models import EntitySpec, TargetModel
 
 
 def materialize_resolved_tables(identity_result: IdentityResolutionResult, target_model: TargetModel) -> MaterializationResult:
@@ -12,8 +12,8 @@ def materialize_resolved_tables(identity_result: IdentityResolutionResult, targe
     diagnostics: list[str] = []
 
     for entity_name, resolved_table in identity_result.tables.items():
-        entity_spec = target_model.entities[entity_name]
-        frame = resolved_table.frame.copy()
+        entity_spec: EntitySpec = target_model.entities[entity_name]
+        frame: pd.DataFrame = resolved_table.frame.copy()
         table_diagnostics: list[str] = []
 
         if entity_spec.public_id:

@@ -1,5 +1,7 @@
 """Row planning for the SEAD change request ingester."""
 
+import math
+
 import pandas as pd
 
 from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable
@@ -8,10 +10,12 @@ from src.target_model.models import EntitySpec
 
 def _has_public_id_value(value: object) -> bool:
     """Return True when a Delivery 1 public_id value should be treated as present."""
-    if pd.isna(value):
+    if value is None or value is pd.NA or value is pd.NaT:
         return False
     if isinstance(value, str):
         return bool(value.strip())
+    if isinstance(value, int | float):
+        return not math.isnan(value)
     return True
 
 
