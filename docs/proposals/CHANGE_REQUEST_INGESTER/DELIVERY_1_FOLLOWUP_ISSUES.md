@@ -10,7 +10,7 @@ Current status snapshot:
 - Issue 2: prototype complete on current branch
 - Issue 3: implemented on current branch
 - Issue 4: open
-- Issue 5: partial progress on current branch
+- Issue 5: resolved on current branch
 - Issue 6: open
 
 Each issue body follows the repository's preferred `Problem`, `Solution`, and `Files` structure.
@@ -156,7 +156,7 @@ Files:
 
 Status:
 
-`Partial progress on current branch`
+`Resolved on current branch`
 
 Title:
 
