@@ -140,8 +140,8 @@ class IdentityResolutionResult:
 
 
 @dataclass(slots=True)
-class MaterializedTable:
-    """Output-ready table with target-facing PK/FK values materialized."""
+class ProjectedTable:
+    """Output-ready table with target-facing PK/FK values projected."""
 
     entity_name: str
     frame: pd.DataFrame
@@ -149,10 +149,10 @@ class MaterializedTable:
 
 
 @dataclass(slots=True)
-class MaterializationResult:
-    """Materialized target-facing tables and diagnostics."""
+class TargetProjectionResult:
+    """Projected target-facing tables and diagnostics."""
 
-    tables: dict[str, MaterializedTable] = field(default_factory=dict)
+    tables: dict[str, ProjectedTable] = field(default_factory=dict)
     diagnostics: list[str] = field(default_factory=list)
 
 

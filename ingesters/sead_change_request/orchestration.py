@@ -6,7 +6,7 @@ from typing import Any, Protocol
 from ingesters.sead_change_request.contracts import ChangeRowState, IdentityAssignment, PlannedRowAction, PlannedTable, SubmissionContext
 
 SIMS_TARGET_ID_CAPABILITY_NOTE = (
-    "SIMS allocation could not complete Delivery 1 materialization because no target-facing integer ID was returned"
+    "SIMS allocation could not complete target projection because no target-facing integer ID was returned"
 )
 
 

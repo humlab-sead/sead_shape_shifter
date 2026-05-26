@@ -5,9 +5,9 @@ import pandas as pd
 from ingesters.sead_change_request import ChangeRowState, build_change_request_package
 from ingesters.sead_change_request.contracts import (
     IdentityResolutionResult,
-    MaterializationResult,
-    MaterializedTable,
+    ProjectedTable,
     ResolvedIdentityTable,
+    TargetProjectionResult,
 )
 
 
@@ -48,14 +48,14 @@ class TestBuildChangeRequestPackage:
                 ),
             }
         )
-        materialization_result = MaterializationResult(
+        projection_result = TargetProjectionResult(
             tables={
-                "sample": MaterializedTable(entity_name="sample", frame=sample_frame.copy()),
-                "sample_taxon": MaterializedTable(entity_name="sample_taxon", frame=bridge_frame.copy()),
+                "sample": ProjectedTable(entity_name="sample", frame=sample_frame.copy()),
+                "sample_taxon": ProjectedTable(entity_name="sample_taxon", frame=bridge_frame.copy()),
             }
         )
 
-        package = build_change_request_package(materialization_result, identity_result)
+        package = build_change_request_package(projection_result, identity_result)
 
         assert set(package.tables) == {"sample", "sample_taxon"}
         assert package.tables["sample"].frame["sample_name"].tolist() == ["new"]
@@ -76,8 +76,8 @@ class TestBuildChangeRequestPackage:
                 )
             }
         )
-        materialization_result = MaterializationResult(tables={"site": MaterializedTable(entity_name="site", frame=frame.copy())})
+        projection_result = TargetProjectionResult(tables={"site": ProjectedTable(entity_name="site", frame=frame.copy())})
 
-        package = build_change_request_package(materialization_result, identity_result)
+        package = build_change_request_package(projection_result, identity_result)
 
         assert not package.tables

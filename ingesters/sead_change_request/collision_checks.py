@@ -5,7 +5,7 @@ from typing import Protocol
 
 import pandas as pd
 
-from ingesters.sead_change_request.contracts import ChangeRowState, IdentityResolutionResult, MaterializationResult, ResolvedIdentityTable
+from ingesters.sead_change_request.contracts import ChangeRowState, IdentityResolutionResult, ResolvedIdentityTable, TargetProjectionResult
 from src.target_model.models import EntitySpec, TargetModel
 
 INSERTABLE_ROW_STATES: set[ChangeRowState] = {
@@ -33,8 +33,8 @@ class CollisionCheckResult:
         return bool(self.diagnostics)
 
 
-async def check_materialized_collisions(
-    materialization_result: MaterializationResult,
+async def check_projected_collisions(
+    projection_result: TargetProjectionResult,
     identity_result: IdentityResolutionResult,
     target_model: TargetModel,
     collision_checker: TargetCollisionChecker,
@@ -42,7 +42,7 @@ async def check_materialized_collisions(
     """Run target-side collision checks for rows that would be inserted."""
     diagnostics: list[str] = []
 
-    for entity_name, materialized_table in materialization_result.tables.items():
+    for entity_name, projected_table in projection_result.tables.items():
         resolved_table: ResolvedIdentityTable | None = identity_result.tables.get(entity_name)
         entity_spec: EntitySpec | None = target_model.entities.get(entity_name)
         if resolved_table is None or entity_spec is None:
@@ -52,7 +52,7 @@ async def check_materialized_collisions(
         if not bool(insert_mask.any()):
             continue
 
-        insert_frame: pd.DataFrame = materialized_table.frame.loc[insert_mask]
+        insert_frame: pd.DataFrame = projected_table.frame.loc[insert_mask]
         table_name: str = entity_spec.target_table or entity_name
 
         if entity_spec.role == "bridge":
@@ -73,7 +73,7 @@ async def _check_target_id_collisions(
     if not public_id_column:
         return [f"Entity '{entity_name}' cannot run collision checks because public_id metadata is missing"]
     if public_id_column not in insert_frame.columns:
-        return [f"Entity '{entity_name}' cannot run collision checks because '{public_id_column}' is missing from the materialized frame"]
+        return [f"Entity '{entity_name}' cannot run collision checks because '{public_id_column}' is missing from the projected frame"]
 
     for row_index, row in insert_frame.iterrows():
         target_id = row[public_id_column]
@@ -116,7 +116,7 @@ async def _check_bridge_collisions(
         if not evaluable_sets:
             diagnostics.append(
                 f"Bridge entity '{entity_name}' row '{row_index}' cannot run collision checks "
-                "because no complete unique_set is materialized"
+                "because no complete unique_set is projected"
             )
             continue
 

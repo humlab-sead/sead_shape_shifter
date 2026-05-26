@@ -165,7 +165,7 @@ class TestSeadChangeRequestSimsAdapter:
 
         assert bridge["state"] == "derived_bridge_row"
         assert bridge["target_id"] is None
-        assert "materialized from resolved parent IDs" in bridge["note"]
+        assert "projected from resolved parent IDs" in bridge["note"]
 
     @pytest.mark.asyncio
     async def test_get_binding_set_state_reads_backend_client(self):
