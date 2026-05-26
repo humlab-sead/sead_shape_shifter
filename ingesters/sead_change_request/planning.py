@@ -1,6 +1,6 @@
 """Row planning for the SEAD change request ingester."""
 
-import math
+from typing import Any
 
 import pandas as pd
 from pandas import Series
@@ -10,15 +10,11 @@ from ingesters.sead_change_request.preparation import PlannedBundle
 from src.target_model.models import EntitySpec
 
 
-def _has_public_id_value(value: object) -> bool:
+def _has_public_id_value(value: Any) -> bool:
     """Return True when a public_id value should count as present."""
-    if value is None or value is pd.NA or value is pd.NaT:
-        return False
     if isinstance(value, str):
         return bool(value.strip())
-    if isinstance(value, int | float):
-        return not math.isnan(value)
-    return True
+    return not bool(pd.isna(value))
 
 
 def plan_table(entity_name: str, frame: pd.DataFrame, entity_spec: EntitySpec) -> PlannedTable:
