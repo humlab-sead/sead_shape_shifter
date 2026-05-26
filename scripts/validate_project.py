@@ -261,6 +261,9 @@ def print_summary(results: dict[str, WorkflowResult]) -> None:
 
     print(f"\nCompleted {len(results)} workflow(s): {failed} failed, {skipped} skipped.")
 
+def load_project(project_path: str, env_file: str) -> ShapeShiftProject:
+    """Load the project file, raising an exception if loading fails."""
+    return ShapeShiftProject.from_file(filename=project_path, env_file=env_file, env_prefix="SHAPE_SHIFTER")
 
 def execute(
     project_name: str, *, workflow: str, env_file: Path, verbose: bool, log_level: str | None, log_file: Path | None, ignore: str
@@ -289,9 +292,7 @@ def execute(
         return 2
 
     try:
-        project: ShapeShiftProject = ShapeShiftProject.from_file(
-            filename=str(project_file), env_file=str(env_file), env_prefix="SHAPE_SHIFTER"
-        )
+        project: ShapeShiftProject = load_project(str(project_file), str(env_file))
     except Exception as exc:  # pylint: disable=broad-except
         logger.exception("Failed to load project file {}", project_file)
         click.echo(f"Failed to load project file: {exc}", err=True)
