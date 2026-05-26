@@ -1,9 +1,8 @@
-"""Internal contracts for the SEAD change request ingester.
+"""Internal data structures for the SEAD change request ingester.
 
-These types define the stable internal boundary used by the current
-implementation. The public ingester protocol still accepts the existing
-source/config inputs, while the implementation normalizes them into a
-DataFrame-first workflow behind that boundary.
+These types describe the data shapes used inside this package. The public
+ingester protocol still accepts source files and config values, and the code
+converts those inputs into this DataFrame-based workflow.
 """
 
 from dataclasses import dataclass, field
@@ -30,7 +29,7 @@ APPROVED_DATATYPES: frozenset[str] = frozenset(
 
 
 class ChangeRowState(StrEnum):
-    """Resolved Delivery 1 row states for change-request generation."""
+    """Resolved row states used when building a change request."""
 
     EXISTING_ENTITY = "existing_entity"
     NEWLY_ALLOCATED_ENTITY = "newly_allocated_entity"
@@ -40,7 +39,7 @@ class ChangeRowState(StrEnum):
 
 
 class PlannedRowAction(StrEnum):
-    """Initial Delivery 1 row actions before identity orchestration completes."""
+    """Planned row actions before identity work is carried out."""
 
     REFERENCE_EXISTING = "reference_existing"
     ALLOCATE = "allocate"
@@ -59,7 +58,7 @@ class SourceTableBundle:
 
 @dataclass(slots=True)
 class SubmissionContext:
-    """Submission-scoped metadata for Delivery 1 change-package generation."""
+    """Submission metadata used to build change-package output."""
 
     submission_name: str
     project_name: str
@@ -193,7 +192,7 @@ class ChangeRequestPackage:
 
 @dataclass(slots=True)
 class DeployArtifact:
-    """In-memory Delivery 1 deploy artifact and metadata."""
+    """In-memory deploy artifact plus its metadata."""
 
     deploy_sql: str
     statements: list[str] = field(default_factory=list)
@@ -205,17 +204,17 @@ class DeployArtifact:
 
 
 def normalize_submission_identifier(identifier: str) -> str:
-    """Normalize the CR identifier to the current bundle-contract format."""
+    """Normalize the change-request identifier for bundle naming."""
     return identifier.strip().upper()
 
 
 def is_valid_submission_identifier(identifier: str) -> bool:
-    """Return whether an identifier satisfies the hardened CR-name contract."""
+    """Return whether an identifier matches the bundle naming rules."""
     return bool(re.fullmatch(r"[A-Z0-9_]+", identifier)) and len(identifier) < 40
 
 
 def resolve_bundle_name(submission_context: SubmissionContext) -> str:
-    """Build the canonical CR bundle name for a submission context."""
+    """Build the standard bundle name for a submission."""
     date_component = submission_context.timestamp.strftime("%Y%m%d")
     datatype_component = (submission_context.datatype or submission_context.project_name).strip()
     identifier_component = normalize_submission_identifier(submission_context.identifier or submission_context.submission_name)

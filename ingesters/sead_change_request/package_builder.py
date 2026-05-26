@@ -19,7 +19,7 @@ INSERTABLE_ROW_STATES: set[ChangeRowState] = {
 def build_change_request_package(
     materialization_result: MaterializationResult, identity_result: IdentityResolutionResult
 ) -> ChangeRequestPackage:
-    """Build the first in-memory Delivery 1 change package from materialized tables."""
+    """Build the in-memory change package from materialized tables."""
     tables: dict[str, ChangeRequestTable] = {}
     infos: list[str] = []
 

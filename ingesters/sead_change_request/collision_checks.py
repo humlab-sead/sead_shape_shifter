@@ -39,7 +39,7 @@ async def check_materialized_collisions(
     target_model: TargetModel,
     collision_checker: TargetCollisionChecker,
 ) -> CollisionCheckResult:
-    """Run Delivery 1 target-side collision checks for rows that would be inserted."""
+    """Run target-side collision checks for rows that would be inserted."""
     diagnostics: list[str] = []
 
     for entity_name, materialized_table in materialization_result.tables.items():

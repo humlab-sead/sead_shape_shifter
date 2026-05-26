@@ -9,7 +9,7 @@ from src.target_model.models import EntitySpec
 
 
 def _has_public_id_value(value: object) -> bool:
-    """Return True when a Delivery 1 public_id value should be treated as present."""
+    """Return True when a public_id value should count as present."""
     if value is None or value is pd.NA or value is pd.NaT:
         return False
     if isinstance(value, str):
@@ -20,7 +20,7 @@ def _has_public_id_value(value: object) -> bool:
 
 
 def plan_table(entity_name: str, frame: pd.DataFrame, entity_spec: EntitySpec) -> PlannedTable:
-    """Build a deterministic Delivery 1 work plan for a single entity table."""
+    """Plan row actions for one entity table in a deterministic way."""
     diagnostics: list[str] = []
 
     if entity_spec.role == "bridge":
