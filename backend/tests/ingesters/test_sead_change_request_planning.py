@@ -1,5 +1,6 @@
 """Tests for SEAD change request row planning."""
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -38,6 +39,24 @@ class TestPlanTable:
         plan = plan_table("abundance_class", frame, entity_spec)
 
         assert plan.planned_actions.tolist() == [PlannedRowAction.RECONCILE, PlannedRowAction.RECONCILE]
+
+    def test_fact_rows_treat_numpy_missing_public_ids_as_missing(self):
+        """NumPy-backed missing public_id values should not be treated as existing references."""
+        frame = pd.DataFrame(
+            {
+                "sample_id": pd.Series([np.int64(101), np.float64(np.nan), np.int64(104)], dtype="object"),
+                "sample_name": ["A", "B", "C"],
+            }
+        )
+        entity_spec = EntitySpec(role="fact", public_id="sample_id")
+
+        plan = plan_table("sample", frame, entity_spec)
+
+        assert plan.planned_actions.tolist() == [
+            PlannedRowAction.REFERENCE_EXISTING,
+            PlannedRowAction.ALLOCATE,
+            PlannedRowAction.REFERENCE_EXISTING,
+        ]
 
     def test_bridge_rows_plan_for_bridge_evaluation(self):
         """Bridge rows should be evaluated independently from public_id presence."""
