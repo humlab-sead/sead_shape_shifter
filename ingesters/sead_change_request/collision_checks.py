@@ -85,7 +85,8 @@ async def _check_target_id_collisions(
 
         if await collision_checker.target_id_exists(table_name, public_id_column, int(target_id)):
             diagnostics.append(
-                f"Entity '{entity_name}' row '{row_index}' collides with existing target ID {int(target_id)} in '{table_name}.{public_id_column}'"
+                f"Entity '{entity_name}' row '{row_index}' collides "
+                f"with existing target ID {int(target_id)} in '{table_name}.{public_id_column}'"
             )
 
     return diagnostics
@@ -114,7 +115,8 @@ async def _check_bridge_collisions(
 
         if not evaluable_sets:
             diagnostics.append(
-                f"Bridge entity '{entity_name}' row '{row_index}' cannot run collision checks because no complete unique_set is materialized"
+                f"Bridge entity '{entity_name}' row '{row_index}' cannot run collision checks "
+                "because no complete unique_set is materialized"
             )
             continue
 
@@ -122,7 +124,8 @@ async def _check_bridge_collisions(
             filters = {column: row[column] for column in unique_set}
             if await collision_checker.row_exists(table_name, filters):
                 diagnostics.append(
-                    f"Bridge entity '{entity_name}' row '{row_index}' collides with an existing target row in '{table_name}' on unique_set {unique_set}"
+                    f"Bridge entity '{entity_name}' row '{row_index}' collides with an existing "
+                    f"target row in '{table_name}' on unique_set {unique_set}"
                 )
                 break
 

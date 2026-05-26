@@ -1,8 +1,9 @@
 """Pure identity resolution for the SEAD change request ingester."""
 
 from collections.abc import Hashable
-import pandas as pd
 from typing import cast
+
+import pandas as pd
 
 from ingesters.sead_change_request.contracts import (
     ChangeRowState,
@@ -27,7 +28,9 @@ def resolve_planned_tables(
 
     for planned_table in planned_tables:
         entity_spec: EntitySpec = target_model.entities[planned_table.entity_name]
-        resolved_table: ResolvedIdentityTable = _resolve_table(planned_table, entity_spec.public_id, assignments.get(planned_table.entity_name, {}))
+        resolved_table: ResolvedIdentityTable = _resolve_table(
+            planned_table, entity_spec.public_id, assignments.get(planned_table.entity_name, {})
+        )
         resolved_tables[planned_table.entity_name] = resolved_table
         diagnostics.extend(resolved_table.diagnostics)
 
@@ -60,7 +63,8 @@ def _resolve_table(
         if assignment is None:
             row_states.at[row_key] = ChangeRowState.BLOCKED_UNRESOLVED
             diagnostics.append(
-                f"Entity '{planned_table.entity_name}' row '{row_index}' is missing an identity assignment for planned action '{planned_action}'"
+                f"Entity '{planned_table.entity_name}' row '{row_index}' is missing an identity "
+                f"assignment for planned action '{planned_action}'"
             )
             continue
 

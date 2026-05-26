@@ -5,14 +5,13 @@ ingester protocol still accepts source files and config values, and the code
 converts those inputs into this DataFrame-based workflow.
 """
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-import re
 from typing import Any
 
 import pandas as pd
-
 
 APPROVED_DATATYPES: frozenset[str] = frozenset(
     {
@@ -171,6 +170,36 @@ class PendingConfirmationReport:
     operator_action: str = ""
     rerun_instruction: str = ""
 
+    @staticmethod
+    def create(
+        submission_context: SubmissionContext, identity_result: IdentityResolutionResult, *, binding_set_state: str | None
+    ) -> "PendingConfirmationReport":
+        """Build the pending-confirmation report for operator action."""
+        blocked_entities: list[str] = []
+        blocked_rows: int = 0
+
+        for entity_name, resolved_table in identity_result.tables.items():
+            entity_blocked_rows: int = int((resolved_table.row_states == ChangeRowState.BLOCKED_UNRESOLVED).sum())
+            if not entity_blocked_rows:
+                continue
+            blocked_entities.append(entity_name)
+            blocked_rows += entity_blocked_rows
+
+        return PendingConfirmationReport(
+            submission_name=submission_context.submission_name,
+            project_name=submission_context.project_name,
+            binding_set_uuid=submission_context.binding_set_uuid,
+            binding_set_state=binding_set_state,
+            blocked_entities=blocked_entities,
+            blocked_rows=blocked_rows,
+            outstanding_step="Confirm the Binding Set before change-package generation can continue",
+            operator_action="Confirm the Binding Set in SIMS, then rerun the ingester with the same submission context",
+            rerun_instruction=(
+                f"Rerun submission '{submission_context.submission_name}' for project '{submission_context.project_name}' "
+                "after the Binding Set is confirmed"
+            ),
+        )
+
 
 @dataclass(slots=True)
 class ChangeRequestTable:
@@ -197,8 +226,8 @@ class DeployArtifact:
     deploy_sql: str
     statements: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
-    revert_placeholder_sql: str = ""
-    verify_placeholder_sql: str = ""
+    revert_sql: str = ""
+    verify_sql: str = ""
     metadata_artifact: dict[str, Any] = field(default_factory=dict)
     bundle_files: dict[str, str] = field(default_factory=dict)
 

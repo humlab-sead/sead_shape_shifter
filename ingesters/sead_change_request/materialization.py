@@ -40,13 +40,15 @@ def materialize_resolved_tables(identity_result: IdentityResolutionResult, targe
             remote_table = identity_result.tables.get(remote_entity)
             if remote_table is None:
                 table_diagnostics.append(
-                    f"Entity '{entity_name}' cannot materialize foreign key '{fk_column}' because resolved table '{remote_entity}' is missing"
+                    f"Entity '{entity_name}' cannot materialize foreign key '{fk_column}' because "
+                    f"resolved table '{remote_entity}' is missing"
                 )
                 continue
 
             if "system_id" not in remote_table.frame.columns:
                 table_diagnostics.append(
-                    f"Entity '{entity_name}' cannot materialize foreign key '{fk_column}' because resolved table '{remote_entity}' has no system_id column"
+                    f"Entity '{entity_name}' cannot materialize foreign key '{fk_column}' "
+                    f"because resolved table '{remote_entity}' has no system_id column"
                 )
                 continue
 
