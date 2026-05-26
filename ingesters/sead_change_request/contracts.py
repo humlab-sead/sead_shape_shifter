@@ -9,9 +9,24 @@ boundary.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
+import re
 from typing import Any
 
 import pandas as pd
+
+
+APPROVED_DATATYPES: frozenset[str] = frozenset(
+    {
+        "mal",
+        "archaeobotany",
+        "dendrochronology",
+        "adna",
+        "bugs",
+        "isotope",
+        "ceramics",
+        "radiocarbon",
+    }
+)
 
 
 class ChangeRowState(StrEnum):
@@ -51,6 +66,11 @@ class SubmissionContext:
     timestamp: datetime
     binding_set_uuid: str | None = None
     change_request_name: str | None = None
+    datatype: str | None = None
+    identifier: str | None = None
+    description: str | None = None
+    issue_number: str | None = None
+    author: str | None = None
 
 
 @dataclass(slots=True)
@@ -182,3 +202,21 @@ class DeployArtifact:
     verify_placeholder_sql: str = ""
     metadata_artifact: dict[str, Any] = field(default_factory=dict)
     bundle_files: dict[str, str] = field(default_factory=dict)
+
+
+def normalize_submission_identifier(identifier: str) -> str:
+    """Normalize the CR identifier to the current bundle-contract format."""
+    return identifier.strip().upper()
+
+
+def is_valid_submission_identifier(identifier: str) -> bool:
+    """Return whether an identifier satisfies the hardened CR-name contract."""
+    return bool(re.fullmatch(r"[A-Z0-9_]+", identifier)) and len(identifier) < 40
+
+
+def resolve_bundle_name(submission_context: SubmissionContext) -> str:
+    """Build the canonical CR bundle name for a submission context."""
+    date_component = submission_context.timestamp.strftime("%Y%m%d")
+    datatype_component = (submission_context.datatype or submission_context.project_name).strip()
+    identifier_component = normalize_submission_identifier(submission_context.identifier or submission_context.submission_name)
+    return f"{date_component}_DML_{datatype_component}_{identifier_component}"

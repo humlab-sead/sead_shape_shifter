@@ -1,5 +1,9 @@
 """Tests for the SEAD change request ingester scaffold behavior."""
 
+from datetime import datetime
+import gzip
+import json
+from hashlib import sha256
 from typing import Any, cast
 
 import pandas as pd
@@ -8,6 +12,7 @@ import pytest
 from backend.app.ingesters import IngesterConfig
 from backend.app.services.ingester_runtime import SeadChangeRequestSimsAdapter
 from ingesters.sead_change_request import ChangeRowState, DeployArtifact, SourceTableBundle
+from ingesters.sead_change_request.contracts import SubmissionContext, resolve_bundle_name
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
 
 
@@ -155,7 +160,7 @@ class StubBundleFileDeployStrategy:
             revert_placeholder_sql="ROLLBACK;",
             verify_placeholder_sql="ROLLBACK;",
             metadata_artifact={"artifact_type": "stub", "deploy_strategy": "stub_bundle_file"},
-            bundle_files={"payload/sample.csv": "sample_id\n501\n"},
+            bundle_files={"deploy/test-submission/sample.csv": "sample_id\n501\n"},
         )
 
 
@@ -174,9 +179,31 @@ def minimal_submission_context(**overrides: object) -> dict:
         "submission_name": "test-submission",
         "project_name": "test-project",
         "timestamp": "2026-05-23T22:00:00",
+        "datatype": "mal",
+        "identifier": "TEST_SUBMISSION",
+        "description": "test bundle",
+        "issue_number": "NNN",
+        "author": "SEAD Expert",
     }
     payload.update(overrides)
     return payload
+
+
+def expected_bundle_name(**overrides: object) -> str:
+    """Build the expected CR bundle name for tests."""
+    payload = minimal_submission_context(**overrides)
+    submission_context = SubmissionContext(
+        submission_name=str(payload["submission_name"]),
+        project_name=str(payload["project_name"]),
+        timestamp=datetime.fromisoformat(str(payload["timestamp"])),
+        change_request_name=payload.get("change_request_name") if isinstance(payload.get("change_request_name"), str) else None,
+        datatype=str(payload["datatype"]),
+        identifier=str(payload["identifier"]),
+        description=payload.get("description") if isinstance(payload.get("description"), str) else None,
+        issue_number=payload.get("issue_number") if isinstance(payload.get("issue_number"), str) else None,
+        author=payload.get("author") if isinstance(payload.get("author"), str) else None,
+    )
+    return resolve_bundle_name(submission_context)
 
 
 class TestSeadChangeRequestIngesterValidation:
@@ -372,6 +399,50 @@ class TestSeadChangeRequestIngesterValidation:
 
         assert result.is_valid is False
         assert result.errors == ["Submission context timestamp must be a valid ISO-8601 datetime string"]
+
+    @pytest.mark.asyncio
+    async def test_validate_fails_when_submission_context_description_multiline(self):
+        """Validation should reject multiline SQL-header descriptions at the boundary."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [1]})},
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(description="line one\nline two"),
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert result.errors == ["Submission context description must be a single line"]
+
+    @pytest.mark.asyncio
+    async def test_validate_fails_when_submission_context_description_too_long(self):
+        """Validation should reject overlong SQL-header descriptions at the boundary."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [1]})},
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(description="x" * 80),
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert result.errors == ["Submission context description must be shorter than 80 characters"]
 
     @pytest.mark.asyncio
     async def test_validate_fails_when_identity_assignments_malformed(self):
@@ -586,7 +657,8 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.tables_processed == 0
         assert result.records_inserted == 0
         assert result.error_details is None
-        assert (tmp_path / "test-submission" / "deploy.sql").exists()
+        bundle_name = expected_bundle_name()
+        assert (tmp_path / bundle_name / "deploy" / f"{bundle_name}.sql").exists()
 
     @pytest.mark.asyncio
     async def test_ingest_returns_validation_failure_for_invalid_bundle(self):
@@ -628,6 +700,31 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.success is False
         assert result.message == "Invalid submission context"
         assert result.error_details == "Submission context timestamp must be a valid ISO-8601 datetime string"
+
+    @pytest.mark.asyncio
+    async def test_ingest_returns_invalid_submission_context_error_for_multiline_description(self, tmp_path):
+        """Ingest should reject malformed descriptions before emitting any bundle files."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [1]})},
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(description="line one\nline two"),
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert result.success is False
+        assert result.message == "Invalid submission context"
+        assert result.error_details == "Submission context description must be a single line"
+        assert not (tmp_path / expected_bundle_name()).exists()
 
     @pytest.mark.asyncio
     async def test_ingest_blocks_when_identity_resolution_incomplete(self):
@@ -688,14 +785,18 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.deploy_artifact is not None
         assert "Rollback is not implemented" in result.deploy_artifact["revert_placeholder_sql"]
         assert "Verification is not implemented" in result.deploy_artifact["verify_placeholder_sql"]
+        bundle_name = expected_bundle_name()
+        assert result.deploy_artifact["deploy_sql"].startswith(f"-- deploy mal: {bundle_name}\n/")
         assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_insert"
         assert result.deploy_artifact["metadata_artifact"]["non_revertible"] is True
         assert result.deploy_artifact["metadata_artifact"]["deploy_strategy"] == "inline_insert"
         assert result.deploy_artifact["metadata_artifact"]["verify_placeholder"] is True
-        assert (tmp_path / "test-submission" / "deploy.sql").exists()
-        assert (tmp_path / "test-submission" / "revert.sql").exists()
-        assert (tmp_path / "test-submission" / "verify.sql").exists()
-        assert (tmp_path / "test-submission" / "metadata.json").exists()
+        assert result.deploy_artifact["metadata_artifact"]["contract_version"] == 1
+        assert result.deploy_artifact["metadata_artifact"]["description"] == "test bundle"
+        assert (tmp_path / bundle_name / "deploy" / f"{bundle_name}.sql").exists()
+        assert (tmp_path / bundle_name / "revert" / f"{bundle_name}.sql").exists()
+        assert (tmp_path / bundle_name / "verify" / f"{bundle_name}.sql").exists()
+        assert (tmp_path / bundle_name / "manifest.json").exists()
 
     @pytest.mark.asyncio
     async def test_ingest_accepts_named_deploy_strategy(self, tmp_path):
@@ -762,8 +863,9 @@ class TestSeadChangeRequestIngesterIngest:
 
         assert result.success is True
         assert result.deploy_artifact is not None
-        assert result.deploy_artifact["bundle_files"] == {"payload/sample.csv": "sample_id\n501\n"}
-        assert (tmp_path / "test-submission" / "payload" / "sample.csv").read_text(encoding="utf-8") == "sample_id\n501\n"
+        assert result.deploy_artifact["bundle_files"] == {"deploy/test-submission/sample.csv": "sample_id\n501\n"}
+        bundle_name = expected_bundle_name()
+        assert (tmp_path / bundle_name / "deploy" / "test-submission" / "sample.csv").read_text(encoding="utf-8") == "sample_id\n501\n"
 
     @pytest.mark.asyncio
     async def test_ingest_rejects_unknown_named_deploy_strategy(self):
@@ -830,9 +932,129 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.deploy_artifact is not None
         assert result.deploy_artifact["metadata"]["deploy_strategy"] == "copy_csv"
         assert result.deploy_artifact["metadata_artifact"]["bundle_file_count"] == 1
-        assert "\\copy \"sample\" (\"sample_id\") FROM 'payload/sample.csv' WITH (FORMAT csv, HEADER true);" in result.deploy_artifact["deploy_sql"]
-        assert result.deploy_artifact["bundle_files"] == {"payload/sample.csv": "sample_id\n501\n"}
-        assert (tmp_path / "test-submission" / "payload" / "sample.csv").read_text(encoding="utf-8") == "sample_id\n501\n"
+        assert result.deploy_artifact["metadata_artifact"]["payload_format"] == "csv"
+        assert result.deploy_artifact["metadata_artifact"]["payload_empty_string_rule"] == "quoted_empty_field"
+        bundle_name = expected_bundle_name()
+        assert (
+            f"\\copy \"sample\" (\"sample_id\") FROM program 'zcat -qac {bundle_name}/sample.gz' WITH (FORMAT csv, DELIMITER E'\\t', ENCODING 'utf-8');"
+            in result.deploy_artifact["deploy_sql"]
+        )
+        assert result.deploy_artifact["bundle_files"] == {f"deploy/{bundle_name}/sample.gz": "501\n"}
+        assert gzip.decompress((tmp_path / bundle_name / "deploy" / bundle_name / "sample.gz").read_bytes()).decode("utf-8") == "501\n"
+        assert '"description": "test bundle"' in (tmp_path / bundle_name / "manifest.json").read_text(encoding="utf-8")
+
+    @pytest.mark.asyncio
+    async def test_ingest_overwrites_existing_bundle_deterministically(self, tmp_path):
+        """Ingest should replace a prior bundle directory and emit stable gzip payload bytes."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [None]})},
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(),
+                    "deploy_strategy": "copy_csv",
+                    "identity_assignments": {
+                        "sample": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 501,
+                            }
+                        }
+                    },
+                },
+            )
+        )
+
+        first_result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert first_result.success is True
+        bundle_name = expected_bundle_name()
+        bundle_root = tmp_path / bundle_name
+        payload_path = bundle_root / "deploy" / bundle_name / "sample.gz"
+        first_bytes = payload_path.read_bytes()
+
+        stale_file = bundle_root / "deploy" / bundle_name / "stale.txt"
+        stale_file.write_text("stale", encoding="utf-8")
+
+        second_result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert second_result.success is True
+        assert payload_path.read_bytes() == first_bytes
+        assert not stale_file.exists()
+
+    @pytest.mark.asyncio
+    async def test_ingest_copy_csv_manifest_matches_emitted_files_for_multitable_bundle(self, tmp_path):
+        """Ingest should emit manifest checksums and row counts that match the on-disk bundle files."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {
+                        "sample": pd.DataFrame(
+                            {
+                                "sample_id": [None],
+                                "sample_note": ['tab\tquote"slash\\line\nend'],
+                            }
+                        ),
+                        "site": pd.DataFrame(
+                            {
+                                "site_id": [None],
+                                "site_name": ["North Ridge"],
+                            }
+                        ),
+                    },
+                    "target_model": minimal_target_model(
+                        sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"},
+                        site={"role": "fact", "public_id": "site_id", "target_table": "tbl_site"},
+                    ),
+                    "submission_context": minimal_submission_context(),
+                    "deploy_strategy": "copy_csv",
+                    "identity_assignments": {
+                        "sample": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 501,
+                            }
+                        },
+                        "site": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 601,
+                            }
+                        },
+                    },
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert result.success is True
+        bundle_name = expected_bundle_name()
+        bundle_root = tmp_path / bundle_name
+        manifest = json.loads((bundle_root / "manifest.json").read_text(encoding="utf-8"))
+
+        assert manifest["table_order"] == ["tbl_sample", "tbl_site"]
+        assert manifest["row_counts"] == {"tbl_sample": 1, "tbl_site": 1}
+
+        for relative_path in manifest["files"]:
+            file_path = bundle_root / relative_path
+            assert file_path.exists()
+            assert manifest["checksums"][relative_path] == sha256(file_path.read_bytes()).hexdigest()
+
+        assert gzip.decompress((bundle_root / "deploy" / bundle_name / "tbl_sample.gz").read_bytes()).decode("utf-8") == (
+            '501\t"tab\tquote""slash\\line\nend"\n'
+        )
+        assert gzip.decompress((bundle_root / "deploy" / bundle_name / "tbl_site.gz").read_bytes()).decode("utf-8") == "601\tNorth Ridge\n"
 
     @pytest.mark.asyncio
     async def test_ingest_stops_when_target_id_collision_detected(self):
@@ -1029,9 +1251,10 @@ class TestSeadChangeRequestIngesterIngest:
         )
         assert "tbl_taxon" not in result.deploy_artifact["deploy_sql"]
         assert "Existing Sample" not in result.deploy_artifact["deploy_sql"]
-        assert (tmp_path / "deploy_mixed-pilot" / "deploy.sql").exists()
-        assert (tmp_path / "deploy_mixed-pilot" / "verify.sql").exists()
-        assert (tmp_path / "deploy_mixed-pilot" / "metadata.json").exists()
+        bundle_name = expected_bundle_name(change_request_name="deploy/mixed-pilot")
+        assert (tmp_path / bundle_name / "deploy" / f"{bundle_name}.sql").exists()
+        assert (tmp_path / bundle_name / "verify" / f"{bundle_name}.sql").exists()
+        assert (tmp_path / bundle_name / "manifest.json").exists()
 
     @pytest.mark.asyncio
     async def test_ingest_runs_mixed_pilot_bundle_with_backend_bridge_adapter(self, tmp_path):
@@ -1095,7 +1318,8 @@ class TestSeadChangeRequestIngesterIngest:
             'INSERT INTO "tbl_sample_taxon" ("sample_id", "taxon_id", "abundance") VALUES (501, 9200, 3);'
             in result.deploy_artifact["deploy_sql"]
         )
-        assert (tmp_path / "deploy_backend-bridge" / "deploy.sql").exists()
+        bundle_name = expected_bundle_name(change_request_name="deploy/backend-bridge")
+        assert (tmp_path / bundle_name / "deploy" / f"{bundle_name}.sql").exists()
 
     @pytest.mark.asyncio
     async def test_ingest_associates_change_request_after_confirmation(self, tmp_path):
@@ -1124,7 +1348,8 @@ class TestSeadChangeRequestIngesterIngest:
         assert sims_client.associated_change_requests == [("binding-123", "deploy/test-change")]
         assert result.deploy_artifact is not None
         assert result.deploy_artifact["metadata"]["change_request_associated"] is True
-        assert (tmp_path / "deploy_test-change" / "deploy.sql").exists()
+        bundle_name = expected_bundle_name(change_request_name="deploy/test-change")
+        assert (tmp_path / bundle_name / "deploy" / f"{bundle_name}.sql").exists()
 
     @pytest.mark.asyncio
     async def test_ingest_returns_validation_failure_for_unknown_target_model_table(self):
