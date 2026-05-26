@@ -252,7 +252,7 @@ Exit criteria:
 
 ### Issue 5. Complete SEAD v2 Target Model Review
 
-Status: partial progress on current branch
+Status: resolved on current branch
 
 Includes:
 
