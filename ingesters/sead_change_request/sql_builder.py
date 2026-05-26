@@ -303,7 +303,7 @@ def _resolved_author(submission_context: SubmissionContext) -> str:
 
 
 def _render_insert_statement(table_name: str, row: pd.Series) -> str:
-    """Render a single INSERT statement from a materialized row."""
+    """Render a single INSERT statement from a projected row."""
     columns = _renderable_columns(row)
     identifiers = ", ".join(_quote_identifier(column) for column in columns)
     values = ", ".join(_render_literal(row[column]) for column in columns)

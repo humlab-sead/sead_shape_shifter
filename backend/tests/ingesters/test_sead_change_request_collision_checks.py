@@ -3,12 +3,12 @@
 import pandas as pd
 import pytest
 
-from ingesters.sead_change_request import ChangeRowState, check_materialized_collisions
+from ingesters.sead_change_request import ChangeRowState, check_projected_collisions
 from ingesters.sead_change_request.contracts import (
     IdentityResolutionResult,
-    MaterializationResult,
-    MaterializedTable,
+    ProjectedTable,
     ResolvedIdentityTable,
+    TargetProjectionResult,
 )
 from src.target_model.models import TargetModel
 
@@ -39,7 +39,7 @@ class FakeCollisionChecker:
         return (table_name, tuple(sorted(filters.items()))) in self.rows
 
 
-class TestCheckMaterializedCollisions:
+class TestCheckProjectedCollisions:
     """Tests for Delivery 1 target-side collision checks."""
 
     @pytest.mark.asyncio
@@ -55,10 +55,10 @@ class TestCheckMaterializedCollisions:
                 )
             }
         )
-        materialization_result = MaterializationResult(tables={"sample": MaterializedTable(entity_name="sample", frame=frame.copy())})
+        projection_result = TargetProjectionResult(tables={"sample": ProjectedTable(entity_name="sample", frame=frame.copy())})
 
-        result = await check_materialized_collisions(
-            materialization_result,
+        result = await check_projected_collisions(
+            projection_result,
             identity_result,
             minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"}),
             FakeCollisionChecker(target_ids={("tbl_sample", "sample_id", 501)}),
@@ -80,12 +80,12 @@ class TestCheckMaterializedCollisions:
                 )
             }
         )
-        materialization_result = MaterializationResult(
-            tables={"sample_taxon": MaterializedTable(entity_name="sample_taxon", frame=frame.copy())}
+        projection_result = TargetProjectionResult(
+            tables={"sample_taxon": ProjectedTable(entity_name="sample_taxon", frame=frame.copy())}
         )
 
-        result = await check_materialized_collisions(
-            materialization_result,
+        result = await check_projected_collisions(
+            projection_result,
             identity_result,
             minimal_target_model(sample_taxon={"role": "bridge", "unique_sets": [["sample_id", "taxon_id"]]}),
             FakeCollisionChecker(rows={("sample_taxon", (("sample_id", 101), ("taxon_id", 9001)))}),
@@ -110,12 +110,12 @@ class TestCheckMaterializedCollisions:
                 )
             }
         )
-        materialization_result = MaterializationResult(
-            tables={"sample_taxon": MaterializedTable(entity_name="sample_taxon", frame=frame.copy())}
+        projection_result = TargetProjectionResult(
+            tables={"sample_taxon": ProjectedTable(entity_name="sample_taxon", frame=frame.copy())}
         )
 
-        result = await check_materialized_collisions(
-            materialization_result,
+        result = await check_projected_collisions(
+            projection_result,
             identity_result,
             minimal_target_model(sample_taxon={"role": "bridge"}),
             FakeCollisionChecker(),

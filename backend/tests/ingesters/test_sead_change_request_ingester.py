@@ -1173,7 +1173,7 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.success is False
         assert result.message == "SIMS target ID allocation capability incomplete"
         assert result.error_details is not None
-        assert "Delivery 1 materialization" in result.error_details
+        assert "complete target projection" in result.error_details
         assert "target-facing integer ID" in result.error_details
 
     @pytest.mark.asyncio

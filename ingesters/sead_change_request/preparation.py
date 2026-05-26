@@ -7,16 +7,16 @@ from ingesters.sead_change_request.contracts import (
     IdentityAssignment,
     IdentityResolutionResult,
     IdentityWorkPlan,
-    MaterializationResult,
     PendingConfirmationReport,
     PlannedTable,
     SourceTableBundle,
     SubmissionContext,
+    TargetProjectionResult,
 )
 from ingesters.sead_change_request.identity_resolution import resolve_planned_tables
 from ingesters.sead_change_request.identity_work import build_identity_work_plan
-from ingesters.sead_change_request.materialization import materialize_resolved_tables
 from ingesters.sead_change_request.orchestration import IdentityOrchestrationResult, orchestrate_identity_assignments
+from ingesters.sead_change_request.target_projection import project_target_ids
 from src.target_model.models import TargetModel
 
 
@@ -53,7 +53,7 @@ class PreparationResult:
     planned: PlannedBundle
     orchestration_result: IdentityOrchestrationResult
     resolution_result: IdentityResolutionResult
-    materialization_result: MaterializationResult
+    projection_result: TargetProjectionResult
     pending_confirmation_report: dict[str, Any] | None = None
 
 
@@ -80,14 +80,14 @@ async def prepare_change_request(
         inputs.target_model,
         orchestration_result.assignments,
     )
-    materialization_result: MaterializationResult = materialize_resolved_tables(resolution_result, inputs.target_model)
+    projection_result: TargetProjectionResult = project_target_ids(resolution_result, inputs.target_model)
 
     return PreparationResult(
         inputs=inputs,
         planned=planned,
         orchestration_result=orchestration_result,
         resolution_result=resolution_result,
-        materialization_result=materialization_result,
+        projection_result=projection_result,
         pending_confirmation_report=_build_pending_confirmation_report(
             inputs.submission_context,
             orchestration_result,

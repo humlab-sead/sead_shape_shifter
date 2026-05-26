@@ -10,7 +10,7 @@ from ingesters.sead_change_request.preparation import PreparationResult
 
 def build_validation_result(preparation: PreparationResult) -> ValidationResult:
     """Build the protocol validation result from a shared preparation output."""
-    validation_errors = preparation.planned.errors + preparation.materialization_result.diagnostics
+    validation_errors = preparation.planned.errors + preparation.projection_result.diagnostics
     warnings = list(preparation.planned.warnings)
 
     if preparation.resolution_result.blocked_rows:
@@ -63,7 +63,7 @@ def build_validation_infos(preparation: PreparationResult) -> list[str]:
         + [
             f"Resolved identity tables: {len(preparation.resolution_result.tables)}",
             f"Blocked rows after identity resolution: {preparation.resolution_result.blocked_rows}",
-            f"Materialized tables: {len(preparation.materialization_result.tables)}",
+            f"Projected tables: {len(preparation.projection_result.tables)}",
         ]
     )
     return infos
@@ -113,10 +113,10 @@ def check_ingestion_preconditions(preparation: PreparationResult) -> IngestionRe
             pending_confirmation_report=preparation.pending_confirmation_report,
         )
 
-    if preparation.materialization_result.diagnostics:
+    if preparation.projection_result.diagnostics:
         return IngestionResult.create_failed_result(
-            message="PK/FK materialization incomplete",
-            details=failure_details(preparation.materialization_result.diagnostics),
+            message="PK/FK projection incomplete",
+            details=failure_details(preparation.projection_result.diagnostics),
         )
 
     return None

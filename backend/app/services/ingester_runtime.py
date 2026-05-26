@@ -76,7 +76,7 @@ class SeadChangeRequestSimsAdapter:
         """Resolve the row in SIMS and return Binding Set information.
 
         The current SIMS client exposes tracked-identity UUIDs and Binding Sets, but not
-        target-facing integer IDs required by Delivery 1 materialization.
+        target-facing integer IDs required by Delivery 1 target projection.
         """
         request = ResolveRequest(
             scope_name=self._build_scope_name(submission_context),
@@ -120,7 +120,7 @@ class SeadChangeRequestSimsAdapter:
         row: dict[str, Any],  # pylint: disable=unused-argument
         submission_context: SubmissionContext,
     ) -> dict[str, Any]:
-        """Return a successful bridge derivation decision for downstream materialization.
+        """Return a successful bridge derivation decision for downstream target projection.
 
         Bridge rows do not need SIMS allocation of their own target-facing ID.
         They become insertable once parent rows have resolved target IDs and the
@@ -131,7 +131,7 @@ class SeadChangeRequestSimsAdapter:
             "target_id": None,
             "binding_set_uuid": submission_context.binding_set_uuid,
             "binding_set_state": None,
-            "note": (f"Bridge row '{entity_name}' will be materialized from resolved parent IDs and checked via unique_sets"),
+            "note": (f"Bridge row '{entity_name}' will be projected from resolved parent IDs and checked via unique_sets"),
         }
 
     async def get_binding_set_state(self, binding_set_uuid: str) -> str:

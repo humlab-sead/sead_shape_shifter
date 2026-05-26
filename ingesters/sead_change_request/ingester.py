@@ -13,7 +13,7 @@ from loguru import logger
 from backend.app.ingesters.protocol import IngesterConfig, IngesterMetadata, IngestionResult, ValidationResult
 from backend.app.ingesters.registry import Ingesters
 from ingesters.sead_change_request.artifact_writer import write_artifact_bundle
-from ingesters.sead_change_request.collision_checks import CollisionCheckResult, check_materialized_collisions
+from ingesters.sead_change_request.collision_checks import CollisionCheckResult, check_projected_collisions
 from ingesters.sead_change_request.contracts import ChangeRequestPackage, DeployArtifact
 from ingesters.sead_change_request.input_resolution import InputResolutionError, resolve_inputs
 from ingesters.sead_change_request.package_builder import build_change_request_package
@@ -95,8 +95,8 @@ class SeadChangeRequestIngester:
 
         collision_checker = self._get_client("collision_checker")
         if collision_checker is not None:
-            collision_result: CollisionCheckResult = await check_materialized_collisions(
-                preparation.materialization_result,
+            collision_result: CollisionCheckResult = await check_projected_collisions(
+                preparation.projection_result,
                 preparation.resolution_result,
                 preparation.inputs.target_model,
                 collision_checker,
@@ -108,7 +108,7 @@ class SeadChangeRequestIngester:
                 )
 
         change_package: ChangeRequestPackage = build_change_request_package(
-            preparation.materialization_result,
+            preparation.projection_result,
             preparation.resolution_result,
         )
         package_table_count: int = len(change_package.tables)
