@@ -4,8 +4,8 @@ from datetime import datetime
 
 import pandas as pd
 
-from ingesters.sead_change_request import ChangeRowState, SubmissionContext, build_pending_confirmation_report
-from ingesters.sead_change_request.contracts import IdentityResolutionResult, ResolvedIdentityTable
+from ingesters.sead_change_request import ChangeRowState, SubmissionContext
+from ingesters.sead_change_request.contracts import IdentityResolutionResult, PendingConfirmationReport, ResolvedIdentityTable
 
 
 class TestBuildPendingConfirmationReport:
@@ -37,7 +37,7 @@ class TestBuildPendingConfirmationReport:
             change_request_name="CR-2026-001",
         )
 
-        report = build_pending_confirmation_report(
+        report = PendingConfirmationReport.create(
             submission_context,
             identity_result,
             binding_set_state="proposed",

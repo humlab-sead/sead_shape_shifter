@@ -1,19 +1,19 @@
-"""PK/FK materialization for the SEAD change request ingester."""
+"""PK/FK target projection for the SEAD change request ingester."""
 
 import pandas as pd
 
-from ingesters.sead_change_request.contracts import IdentityResolutionResult, MaterializationResult, MaterializedTable
-from src.target_model.models import TargetModel
+from ingesters.sead_change_request.contracts import IdentityResolutionResult, ProjectedTable, TargetProjectionResult
+from src.target_model.models import EntitySpec, TargetModel
 
 
-def materialize_resolved_tables(identity_result: IdentityResolutionResult, target_model: TargetModel) -> MaterializationResult:
+def project_target_ids(identity_result: IdentityResolutionResult, target_model: TargetModel) -> TargetProjectionResult:
     """Replace local identity values with target-facing PK/FK values."""
-    tables: dict[str, MaterializedTable] = {}
+    tables: dict[str, ProjectedTable] = {}
     diagnostics: list[str] = []
 
     for entity_name, resolved_table in identity_result.tables.items():
-        entity_spec = target_model.entities[entity_name]
-        frame = resolved_table.frame.copy()
+        entity_spec: EntitySpec = target_model.entities[entity_name]
+        frame: pd.DataFrame = resolved_table.frame.copy()
         table_diagnostics: list[str] = []
 
         if entity_spec.public_id:
@@ -29,7 +29,7 @@ def materialize_resolved_tables(identity_result: IdentityResolutionResult, targe
             remote_spec = target_model.entities.get(remote_entity)
             if remote_spec is None or not remote_spec.public_id:
                 table_diagnostics.append(
-                    f"Entity '{entity_name}' cannot materialize foreign key to '{remote_entity}' because the target public_id is undefined"
+                    f"Entity '{entity_name}' cannot project foreign key to '{remote_entity}' because the target public_id is undefined"
                 )
                 continue
 
@@ -40,27 +40,29 @@ def materialize_resolved_tables(identity_result: IdentityResolutionResult, targe
             remote_table = identity_result.tables.get(remote_entity)
             if remote_table is None:
                 table_diagnostics.append(
-                    f"Entity '{entity_name}' cannot materialize foreign key '{fk_column}' because resolved table '{remote_entity}' is missing"
+                    f"Entity '{entity_name}' cannot project foreign key '{fk_column}' because "
+                    f"resolved table '{remote_entity}' is missing"
                 )
                 continue
 
             if "system_id" not in remote_table.frame.columns:
                 table_diagnostics.append(
-                    f"Entity '{entity_name}' cannot materialize foreign key '{fk_column}' because resolved table '{remote_entity}' has no system_id column"
+                    f"Entity '{entity_name}' cannot project foreign key '{fk_column}' "
+                    f"because resolved table '{remote_entity}' has no system_id column"
                 )
                 continue
 
             remote_mapping = _build_remote_id_mapping(remote_table.frame["system_id"], remote_table.resolved_target_ids)
-            materialized_fk = frame[fk_column].map(remote_mapping).astype("Int64")
-            unresolved_fk_count = int(frame[fk_column].notna().sum() - materialized_fk.notna().sum())
-            frame[fk_column] = materialized_fk
+            projected_fk = frame[fk_column].map(remote_mapping).astype("Int64")
+            unresolved_fk_count = int(frame[fk_column].notna().sum() - projected_fk.notna().sum())
+            frame[fk_column] = projected_fk
             if unresolved_fk_count:
                 table_diagnostics.append(f"Entity '{entity_name}' has {unresolved_fk_count} unresolved FK value(s) for '{fk_column}'")
 
-        tables[entity_name] = MaterializedTable(entity_name=entity_name, frame=frame, diagnostics=table_diagnostics)
+        tables[entity_name] = ProjectedTable(entity_name=entity_name, frame=frame, diagnostics=table_diagnostics)
         diagnostics.extend(table_diagnostics)
 
-    return MaterializationResult(tables=tables, diagnostics=diagnostics)
+    return TargetProjectionResult(tables=tables, diagnostics=diagnostics)
 
 
 def _build_remote_id_mapping(system_ids: pd.Series, resolved_target_ids: pd.Series) -> dict[object, int]:

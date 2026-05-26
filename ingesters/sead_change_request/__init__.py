@@ -1,7 +1,6 @@
 """SEAD change request ingester implementation."""
 
-from ingesters.sead_change_request.collision_checks import CollisionCheckResult, check_materialized_collisions
-from ingesters.sead_change_request.confirmation import build_pending_confirmation_report
+from ingesters.sead_change_request.collision_checks import CollisionCheckResult, check_projected_collisions
 from ingesters.sead_change_request.contracts import (
     ChangeRequestPackage,
     ChangeRequestTable,
@@ -10,8 +9,8 @@ from ingesters.sead_change_request.contracts import (
     IdentityAssignment,
     IdentityResolutionResult,
     IdentityWorkPlan,
-    MaterializationResult,
-    MaterializedTable,
+    ProjectedTable,
+    TargetProjectionResult,
     PendingConfirmationReport,
     PlannedRowAction,
     PlannedTable,
@@ -22,24 +21,36 @@ from ingesters.sead_change_request.contracts import (
 from ingesters.sead_change_request.identity_resolution import resolve_planned_tables
 from ingesters.sead_change_request.identity_work import build_identity_work_plan
 from ingesters.sead_change_request.ingester import SeadChangeRequestIngester
-from ingesters.sead_change_request.materialization import materialize_resolved_tables
 from ingesters.sead_change_request.orchestration import IdentityOrchestrationResult, orchestrate_identity_assignments
 from ingesters.sead_change_request.package_builder import build_change_request_package
 from ingesters.sead_change_request.planning import plan_table
-from ingesters.sead_change_request.sql_builder import build_deploy_artifact
+from ingesters.sead_change_request.sql_builder import (
+    COPY_CSV_DEPLOY_ARTIFACT_STRATEGY,
+    DEFAULT_DEPLOY_ARTIFACT_STRATEGY,
+    CopyCsvDeployStrategy,
+    DeployArtifactStrategy,
+    InlineInsertDeployStrategy,
+    build_deploy_artifact,
+    resolve_deploy_artifact_strategy,
+)
+from ingesters.sead_change_request.target_projection import project_target_ids
 
 __all__ = [
     "ChangeRequestPackage",
     "ChangeRequestTable",
     "ChangeRowState",
     "CollisionCheckResult",
+    "COPY_CSV_DEPLOY_ARTIFACT_STRATEGY",
+    "DEFAULT_DEPLOY_ARTIFACT_STRATEGY",
+    "CopyCsvDeployStrategy",
     "DeployArtifact",
+    "DeployArtifactStrategy",
     "IdentityAssignment",
     "IdentityOrchestrationResult",
     "IdentityResolutionResult",
     "IdentityWorkPlan",
-    "MaterializationResult",
-    "MaterializedTable",
+    "ProjectedTable",
+    "TargetProjectionResult",
     "PendingConfirmationReport",
     "PlannedRowAction",
     "PlannedTable",
@@ -47,13 +58,14 @@ __all__ = [
     "SeadChangeRequestIngester",
     "SourceTableBundle",
     "SubmissionContext",
+    "InlineInsertDeployStrategy",
     "build_change_request_package",
     "build_deploy_artifact",
-    "check_materialized_collisions",
-    "build_pending_confirmation_report",
-    "materialize_resolved_tables",
+    "check_projected_collisions",
+    "project_target_ids",
     "orchestrate_identity_assignments",
     "resolve_planned_tables",
     "build_identity_work_plan",
     "plan_table",
+    "resolve_deploy_artifact_strategy",
 ]

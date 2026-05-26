@@ -6,7 +6,7 @@ from ingesters.sead_change_request.contracts import IdentityWorkPlan, PlannedRow
 
 
 def build_identity_work_plan(planned_tables: list[PlannedTable]) -> IdentityWorkPlan:
-    """Partition planned rows into the Delivery 1 identity work queues."""
+    """Group planned rows by the identity work each row needs."""
     work_plan = IdentityWorkPlan()
 
     for planned_table in planned_tables:
@@ -16,7 +16,7 @@ def build_identity_work_plan(planned_tables: list[PlannedTable]) -> IdentityWork
             (PlannedRowAction.RECONCILE, work_plan.reconciliation_rows),
             (PlannedRowAction.EVALUATE_BRIDGE, work_plan.bridge_rows),
         ):
-            action_rows = _select_action_rows(planned_table, action)
+            action_rows: pd.DataFrame | None = _select_action_rows(planned_table, action)
             if action_rows is not None:
                 target[planned_table.entity_name] = action_rows
 
