@@ -114,7 +114,12 @@ class SeadChangeRequestSimsAdapter:
             ),
         }
 
-    async def derive_bridge_row(self, entity_name: str, row: dict[str, Any], submission_context: SubmissionContext) -> dict[str, Any]:
+    async def derive_bridge_row(
+        self,
+        entity_name: str,
+        row: dict[str, Any],  # pylint: disable=unused-argument
+        submission_context: SubmissionContext,
+    ) -> dict[str, Any]:
         """Return a successful bridge derivation decision for downstream materialization.
 
         Bridge rows do not need SIMS allocation of their own target-facing ID.
@@ -286,5 +291,5 @@ def _is_missing_value(value: object) -> bool:
     if isinstance(value, str):
         return not value.strip()
     if isinstance(value, float):
-        return value != value
+        return value != value  # pylint: disable=comparison-with-itself
     return False

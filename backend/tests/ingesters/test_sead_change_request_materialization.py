@@ -42,7 +42,7 @@ class TestMaterializeResolvedTables:
         result = materialize_resolved_tables(identity_result, minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}))
 
         assert result.tables["sample"].frame["sample_id"].tolist() == [101, 102]
-        assert result.diagnostics == []
+        assert not result.diagnostics
 
     def test_materializes_foreign_keys_from_parent_system_id_mapping(self):
         """FK columns should be rewritten from parent local system_id values to parent resolved target IDs."""
@@ -81,7 +81,7 @@ class TestMaterializeResolvedTables:
 
         assert result.tables["sample"].frame["sample_id"].tolist() == [601, 602]
         assert result.tables["sample"].frame["site_id"].tolist() == [501, 502]
-        assert result.diagnostics == []
+        assert not result.diagnostics
 
     def test_reports_unresolved_foreign_keys_when_parent_mapping_missing(self):
         """Unmapped FK values should become null and produce a diagnostic."""

@@ -22,7 +22,7 @@ class TestPlanTable:
 
         plan = plan_table("sample", frame, entity_spec)
 
-        assert plan.diagnostics == []
+        assert not plan.diagnostics
         assert plan.planned_actions.tolist() == [
             PlannedRowAction.REFERENCE_EXISTING,
             PlannedRowAction.ALLOCATE,
@@ -47,7 +47,7 @@ class TestPlanTable:
         plan = plan_table("sample_taxon", frame, entity_spec)
 
         assert plan.planned_actions.tolist() == [PlannedRowAction.EVALUATE_BRIDGE]
-        assert plan.diagnostics == []
+        assert not plan.diagnostics
 
     def test_bridge_rows_report_missing_uniqueness_metadata(self):
         """Bridge rows should surface missing uniqueness metadata as an early diagnostic."""

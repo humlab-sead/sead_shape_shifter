@@ -31,7 +31,7 @@ class TestSourceTableBundle:
 
         assert bundle.tables["sample"].equals(sample)
         assert bundle.source_name == ""
-        assert bundle.warnings == []
+        assert not bundle.warnings
 
 
 class TestChangeRequestPackage:
@@ -41,9 +41,9 @@ class TestChangeRequestPackage:
         """Package should start empty with no messages."""
         package = ChangeRequestPackage()
 
-        assert package.tables == {}
-        assert package.warnings == []
-        assert package.infos == []
+        assert not package.tables
+        assert not package.warnings
+        assert not package.infos
 
     def test_change_request_table_carries_row_states(self):
         """Prepared tables should keep DataFrame content and row-state annotations together."""
