@@ -10,7 +10,7 @@
 	- artifact bundle writing extracted to `artifact_writer.py`
 	- validation and ingestion result assembly extracted to `result_builders.py`
 	- bundle-planning orchestration moved into `planning.py`
-- Remaining focus: keep reducing protocol-adapter weight without changing ingest behavior
+- Current decision: stop here; the adapter is now readable enough without more local extraction
 
 ## Summary
 
@@ -172,7 +172,7 @@ The rest should live in focused modules.
 5. Completed: move bundle-planning orchestration out of the ingester.
 6. Completed: run the focused ingester test file after each slice.
 7. Completed: run the full ingester test slice.
-8. Next: decide whether any remaining ingester-local flow should move, or stop here if the adapter is now readable enough.
+8. Completed: stop here; the remaining ingester-local flow is small enough to keep in the adapter.
 
 ## Validation And Acceptance Criteria
 
@@ -198,11 +198,12 @@ Current branch validation completed:
 
 ## Final Recommendation
 
-Do this refactor in small slices.
+Stop the refactor at the current boundary.
 
-The first slice should be:
+The main readability goals are already met:
 
-- restore a green baseline
-- extract input resolution
+- `SeadChangeRequestIngester` is now a much thinner protocol adapter
+- input resolution, artifact writing, result assembly, and bundle planning already live in focused helpers
+- the remaining local control flow is small enough that moving more code would likely add indirection without a comparable readability gain
 
-That gives the biggest readability improvement with the lowest behavior risk.
+Treat any further extraction as a separate follow-up only if a new concrete readability problem appears.

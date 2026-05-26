@@ -20,8 +20,8 @@ The current branch has already completed two of the original follow-up steps:
 The next change request should focus on the remaining follow-up work:
 
 - harden the `copy_csv` prototype into a stable operator-facing artifact contract
-- evaluate whether Jinja2 improves SQL and artifact rendering once that strategy split exists
-- review the use and completeness of the SEAD v2 target model and compare it with the older live-schema approach based on `SeadSchema`
+- defer Jinja2 for now and keep plain Python rendering at the current strategy boundary
+- treat [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the detailed home for the SEAD v2 target-model review and the `SeadSchema` comparison
 
 These are follow-up improvements. They should not reopen Delivery 1 identity, confirmation, materialization, or collision-check behavior.
 
@@ -44,9 +44,9 @@ Third, the metadata source of truth still needs review. Delivery 1 uses the SEAD
 This follow-up CR covers:
 
 - hardening the current `copy_csv` plus `\copy` deploy prototype
-- evaluation of Jinja2 as a rendering mechanism for deploy artifacts
-- completion of the SEAD v2 target-model completeness review
-- comparison of target-model-driven generation with the older `SeadSchema` live-schema approach
+- recording the decision to defer Jinja2 for deploy rendering for now
+- completion of the SEAD v2 target-model completeness review through [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+- comparison of target-model-driven generation with the older `SeadSchema` live-schema approach through that same proposal
 
 ## Non-Goals
 
@@ -109,52 +109,40 @@ That hardening should use the current contract decisions in [docs/proposals/CHAN
 - unquoted empty-field null encoding and quoted-empty-field empty-string encoding
 - `\copy` plus `zcat` as the current SCCS execution assumption
 
-### 2. Evaluate Jinja2 only at the rendering boundary
+### 2. Defer Jinja2 and keep the current rendering boundary
 
-Jinja2 should be considered only after the strategy split exists.
+The strategy split already gives the package a clean rendering boundary.
 
-If adopted, Jinja2 should be limited to rendering deploy-artifact templates from structured inputs. It should not become the place where row selection, identity rules, or FK logic are encoded.
+For now, the repository should keep deploy rendering in plain Python. The current inline and `copy_csv` renderers are still small enough to stay readable without templates, and adding Jinja2 now would add another abstraction layer before a concrete maintenance problem exists.
 
-The decision criteria should be practical:
+This is a deferral, not a permanent rejection.
 
-- does Jinja2 make the deploy templates easier to read and maintain
-- does it improve support for multiple artifact strategies
-- does it reduce duplication without hiding too much logic in template files
+Reopen the question only if one or more of these become true:
 
-The follow-up CR does not require adopting Jinja2. It requires making that decision from a cleaner architecture boundary.
+- strategy-local rendering grows enough that plain Python becomes materially harder to read
+- template duplication across deploy strategies becomes hard to control
+- operator-facing artifact formats require larger, mostly-static text templates that would clearly benefit from a template engine
 
-### 3. Complete the target-model completeness review
+If the question is reopened later, Jinja2 should still be limited to formatting structured inputs at the rendering boundary. It should not become the place where row selection, identity rules, or FK logic are encoded.
 
-Finish [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) so it becomes a usable decision document rather than an unfinished inventory.
+### 3. Use the target-model completeness proposal as the detailed metadata review surface
 
-The result should state:
+The detailed home for the remaining metadata review work is now [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
 
-- what parts of the SEAD target model are complete enough for change-request generation
-- what gaps still matter in practice
-- whether those gaps are documentation gaps, metadata-model gaps, or real schema-coverage gaps
+That proposal now carries both parts of the remaining metadata work:
 
-### 4. Compare target-model-driven generation with `SeadSchema`
+- completion of the SEAD v2 target-model completeness review
+- comparison of the current target-model-driven approach with the older `SeadSchema` live-schema approach in [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py)
 
-Document the tradeoffs between:
+This follow-up CR should stay high level.
 
-- the current target-model-driven approach used by `sead_change_request`
-- the older live-schema approach centered on `SeadSchema` in [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py)
-
-That comparison should cover at least:
-
-- source of truth and drift risk
-- testability and reproducibility
-- support for offline planning and validation
-- support for SEAD-specific output generation
-- operational dependence on a live database schema
-
-The goal is not to force one approach immediately. The goal is to make the decision explicit before the next round of output-format work grows around the wrong metadata boundary.
+It only needs to make the dependency clear: further output-format work should not harden the wrong metadata boundary before that proposal is accepted.
 
 ## Risks And Tradeoffs
 
 - A strategy split adds one more abstraction layer. That is worthwhile only if the boundary stays narrow and data-driven.
 - A `\copy` plus CSV strategy may produce artifacts that are closer to older SEAD operational practice, but it also increases packaging and file-layout complexity.
-- Jinja2 can improve readability for large SQL templates, but it can also hide logic in templates if the boundary is not kept strict.
+- Deferring Jinja2 avoids extra complexity now, but it may need to be revisited if rendering logic becomes significantly larger.
 - A target-model versus live-schema review may expose mismatches that lead to broader follow-up work than this CR should absorb directly.
 
 ## Testing And Validation
@@ -165,8 +153,7 @@ Validation for this follow-up CR should include:
 - focused hardening tests for the current `copy_csv` output, including generated payload files, deploy SQL structure, CSV edge cases, and emitted bundle metadata
 - focused hardening tests that prove conformance to [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md)
 - comparison of the hardened `copy_csv` output shape with the historical example in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](./example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql), with any intentional differences documented explicitly
-- completion and review of [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
-- a short written comparison of the target-model path and the `SeadSchema` path
+- review of [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the detailed home for both the completeness review and the `SeadSchema` comparison
 
 ## Acceptance Criteria
 
@@ -174,16 +161,13 @@ Validation for this follow-up CR should include:
 - the current inline-`INSERT` behavior remains available as the default strategy
 - the `copy_csv` artifact contract is hardened enough for operator review and stable test coverage
 - the `copy_csv` artifact contract conforms to [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md)
-- the Jinja2 decision is documented, either as accepted or deferred with reasons
-- [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is completed to the point that it supports a concrete decision
-- the tradeoffs between the target model and `SeadSchema` are documented clearly enough to guide follow-up implementation
+- the Jinja2 decision is documented as deferred with reasons
+- [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for both the completeness review and the `SeadSchema` comparison
 
 ## Recommended Delivery Order
 
 1. Harden the current `copy_csv` prototype against the historical artifact shape and realistic operator needs.
-2. Decide whether Jinja2 improves the strategy implementation enough to adopt.
-3. Complete the target-model completeness review.
-4. Compare the target-model path with the `SeadSchema` path.
+2. Finish the remaining metadata review through [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
 
 ## Suggested Issue Breakdown
 
@@ -237,28 +221,27 @@ Exit criteria:
 
 ### Issue 4. Decide On Jinja2 For Rendering
 
-Status: open
+Status: resolved by decision on current branch
 
 Includes:
 
-- evaluate Jinja2 for strategy-local rendering only
-- compare template readability and maintainability against plain Python rendering
-- document whether Jinja2 is accepted or deferred
+- document that Jinja2 is deferred for now
+- keep deploy rendering in plain Python at the current strategy boundary
+- record when the question should be revisited
 
 Exit criteria:
 
 - the Jinja2 decision is explicit and recorded with reasons
-- rendering logic stays outside templates except for formatting concerns
+- plain Python remains the current rendering approach
+- any future Jinja2 adoption stays limited to formatting concerns at the rendering boundary
 
 ### Issue 5. Complete SEAD v2 Target Model Review
 
 Status: resolved on current branch
 
-Includes:
+Detailed proposal home:
 
-- finish `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
-- identify remaining high-value schema coverage gaps
-- separate documentation gaps from real target-model gaps
+- [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 Exit criteria:
 
@@ -269,11 +252,9 @@ Exit criteria:
 
 Status: open
 
-Includes:
+Detailed proposal home:
 
-- document the current target-model-driven approach
-- document the older live-schema approach based on `SeadSchema`
-- compare drift risk, testability, offline use, and operational dependency on a live schema
+- [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 Exit criteria:
 
@@ -284,7 +265,7 @@ Exit criteria:
 
 Close Delivery 1 on the current working implementation and treat this as the next focused CR.
 
-Start from the current strategy boundary and the existing `copy_csv` prototype rather than reopening that groundwork. Treat `copy_csv` hardening as the next implementation slice, then make the Jinja2 decision and complete the metadata review before further output-format work hardens the current metadata boundary.
+Start from the current strategy boundary and the existing `copy_csv` prototype rather than reopening that groundwork. Treat `copy_csv` hardening as the next implementation slice, keep Jinja2 deferred unless rendering complexity materially grows, and complete the metadata review before further output-format work hardens the current metadata boundary.
 
 ## Issue-Ready Drafts
 
