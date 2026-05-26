@@ -1,8 +1,8 @@
 """Tests for the SEAD change request ingester scaffold behavior."""
 
-from datetime import datetime
 import gzip
 import json
+from datetime import datetime
 from hashlib import sha256
 from typing import Any, cast
 
@@ -157,8 +157,8 @@ class StubBundleFileDeployStrategy:
             deploy_sql="SELECT 1;",
             statements=["SELECT 1;"],
             metadata={"deploy_strategy": "stub_bundle_file"},
-            revert_placeholder_sql="ROLLBACK;",
-            verify_placeholder_sql="ROLLBACK;",
+            revert_sql="ROLLBACK;",
+            verify_sql="ROLLBACK;",
             metadata_artifact={"artifact_type": "stub", "deploy_strategy": "stub_bundle_file"},
             bundle_files={"deploy/test-submission/sample.csv": "sample_id\n501\n"},
         )
@@ -783,8 +783,8 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.records_inserted == 1
         assert result.error_details is None
         assert result.deploy_artifact is not None
-        assert "Rollback is not implemented" in result.deploy_artifact["revert_placeholder_sql"]
-        assert "Verification is not implemented" in result.deploy_artifact["verify_placeholder_sql"]
+        assert "Rollback is not implemented" in result.deploy_artifact["revert_sql"]
+        assert "Verification is not implemented" in result.deploy_artifact["verify_sql"]
         bundle_name = expected_bundle_name()
         assert result.deploy_artifact["deploy_sql"].startswith(f"-- deploy mal: {bundle_name}\n/")
         assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_insert"
@@ -936,8 +936,8 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.deploy_artifact["metadata_artifact"]["payload_empty_string_rule"] == "quoted_empty_field"
         bundle_name = expected_bundle_name()
         assert (
-            f"\\copy \"sample\" (\"sample_id\") FROM program 'zcat -qac {bundle_name}/sample.gz' WITH (FORMAT csv, DELIMITER E'\\t', ENCODING 'utf-8');"
-            in result.deploy_artifact["deploy_sql"]
+            f'\\copy "sample" ("sample_id") FROM program \'zcat -qac {bundle_name}/sample.gz\' '
+            "WITH (FORMAT csv, DELIMITER E'\\t', ENCODING 'utf-8');" in result.deploy_artifact["deploy_sql"]
         )
         assert result.deploy_artifact["bundle_files"] == {f"deploy/{bundle_name}/sample.gz": "501\n"}
         assert gzip.decompress((tmp_path / bundle_name / "deploy" / bundle_name / "sample.gz").read_bytes()).decode("utf-8") == "501\n"

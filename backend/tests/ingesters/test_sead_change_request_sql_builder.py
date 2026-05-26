@@ -1,7 +1,7 @@
 """Tests for SEAD change request deploy SQL generation."""
 
-from datetime import datetime
 import gzip
+from datetime import datetime
 from hashlib import sha256
 
 import pandas as pd
@@ -105,7 +105,7 @@ class TestBuildDeployArtifact:
         assert artifact.metadata_artifact["row_counts"] == {"tbl_sample": 1}
         assert f"-- deploy mal: {expected_bundle_name}" in artifact.deploy_sql
         assert artifact.statements == [
-            f'\\copy "tbl_sample" ("sample_id", "sample_name", "active") FROM program \'zcat -qac {expected_bundle_name}/tbl_sample.gz\' WITH (FORMAT csv, DELIMITER E\'\\t\', ENCODING \'utf-8\');'
+            f'\\copy "tbl_sample" ("sample_id", "sample_name", "active") FROM program \'zcat -qac {expected_bundle_name}/tbl_sample.gz\' WITH (FORMAT csv, DELIMITER E\'\\t\', ENCODING \'utf-8\');'  # NOQA
         ]
         assert artifact.bundle_files == {f"deploy/{expected_bundle_name}/tbl_sample.gz": "101\tO'Reilly\ttrue\n"}
 
@@ -211,8 +211,8 @@ class TestBuildDeployArtifact:
                     deploy_sql="SELECT 1;",
                     statements=["SELECT 1;"],
                     metadata={"strategy": "stub"},
-                    revert_placeholder_sql="ROLLBACK;",
-                    verify_placeholder_sql="ROLLBACK;",
+                    revert_sql="ROLLBACK;",
+                    verify_sql="ROLLBACK;",
                     metadata_artifact={"artifact_type": "stub"},
                     bundle_files={"payload/sample.csv": "sample_id\n101\n"},
                 )
@@ -277,10 +277,10 @@ class TestBuildDeployArtifact:
         assert artifact.metadata["verify_placeholder"] is True
         assert artifact.metadata["deploy_strategy"] == "inline_insert"
         assert artifact.metadata["submission_name"] == "test-submission"
-        assert "Rollback is not implemented" in artifact.revert_placeholder_sql
-        assert "Verification is not implemented" in artifact.verify_placeholder_sql
-        assert f"-- revert mal: {expected_bundle_name}" in artifact.revert_placeholder_sql
-        assert f"-- verify mal: {expected_bundle_name}" in artifact.verify_placeholder_sql
+        assert "Rollback is not implemented" in artifact.revert_sql
+        assert "Verification is not implemented" in artifact.verify_sql
+        assert f"-- revert mal: {expected_bundle_name}" in artifact.revert_sql
+        assert f"-- verify mal: {expected_bundle_name}" in artifact.verify_sql
         assert artifact.metadata_artifact["non_revertible"] is True
         assert artifact.metadata_artifact["verify_placeholder"] is True
         assert artifact.metadata_artifact["deploy_strategy"] == "inline_insert"

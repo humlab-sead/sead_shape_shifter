@@ -13,6 +13,7 @@ from typing import Any
 
 import pandas as pd
 from loguru import logger
+from pandas import Series
 
 from backend.app.ingesters.protocol import IngesterConfig, IngesterMetadata, IngestionResult, ValidationResult
 from backend.app.ingesters.registry import Ingesters
@@ -41,7 +42,7 @@ from ingesters.sead_change_request.preparation import (
     prepare_change_request,
 )
 from ingesters.sead_change_request.sql_builder import build_deploy_artifact, encode_bundle_file_content, resolve_deploy_artifact_strategy
-from src.target_model.models import TargetModel
+from src.target_model.models import EntitySpec, TargetModel
 from src.utility import sanitize_columns
 
 
@@ -140,7 +141,7 @@ class SeadChangeRequestIngester:
 
     def _resolve_source_bundle(self, source: object) -> SourceTableBundle:
         """Resolve the current protocol edge into the internal bundle contract."""
-        extras = self.config.extra or {}
+        extras: dict[str, Any] = self.config.extra or {}
 
         if isinstance(source, SourceTableBundle):
             return source
@@ -176,7 +177,7 @@ class SeadChangeRequestIngester:
                     warnings.append("Ignored sheet 'data_table_index' from Excel source bundle")
                     continue
 
-                frame = pd.read_excel(workbook, sheet_name=normalized_sheet_name)
+                frame: pd.DataFrame = pd.read_excel(workbook, sheet_name=normalized_sheet_name)
                 frame.columns = sanitize_columns(list(frame.columns))
                 table_mapping[normalized_sheet_name] = frame
 
@@ -203,7 +204,7 @@ class SeadChangeRequestIngester:
 
     def _resolve_target_model(self) -> TargetModel:
         """Load the target model from the ingester config input."""
-        extras = self.config.extra or {}
+        extras: dict[str, Any] = self.config.extra or {}
         target_model_data = extras.get("target_model")
 
         if isinstance(target_model_data, TargetModel):
@@ -218,7 +219,7 @@ class SeadChangeRequestIngester:
 
     def _resolve_submission_context(self) -> SubmissionContext:
         """Load submission-scoped metadata from the ingester config input."""
-        extras = self.config.extra or {}
+        extras: dict[str, Any] = self.config.extra or {}
         context_data = extras.get("submission_context")
 
         if isinstance(context_data, SubmissionContext):
@@ -238,17 +239,17 @@ class SeadChangeRequestIngester:
 
         parsed_timestamp = self._parse_submission_timestamp(timestamp)
 
-        binding_set_uuid = self._optional_string(context_data, "binding_set_uuid", SubmissionContextError)
-        change_request_name = self._optional_string(context_data, "change_request_name", SubmissionContextError)
-        datatype = self._optional_string(context_data, "datatype", SubmissionContextError)
-        identifier = self._optional_string(context_data, "identifier", SubmissionContextError)
-        description = self._optional_string(context_data, "description", SubmissionContextError)
-        issue_number = self._optional_string(context_data, "issue_number", SubmissionContextError)
-        author = self._optional_string(context_data, "author", SubmissionContextError)
+        binding_set_uuid: str | None = self._optional_string(context_data, "binding_set_uuid", SubmissionContextError)
+        change_request_name: str | None = self._optional_string(context_data, "change_request_name", SubmissionContextError)
+        datatype: str | None = self._optional_string(context_data, "datatype", SubmissionContextError)
+        identifier: str | None = self._optional_string(context_data, "identifier", SubmissionContextError)
+        description: str | None = self._optional_string(context_data, "description", SubmissionContextError)
+        issue_number: str | None = self._optional_string(context_data, "issue_number", SubmissionContextError)
+        author: str | None = self._optional_string(context_data, "author", SubmissionContextError)
 
-        normalized_datatype = self._normalize_datatype(datatype)
-        normalized_identifier = self._normalize_identifier(identifier)
-        normalized_description = self._normalize_description(description)
+        normalized_datatype: str = self._normalize_datatype(datatype)
+        normalized_identifier: str = self._normalize_identifier(identifier)
+        normalized_description: str | None = self._normalize_description(description)
 
         return SubmissionContext(
             submission_name=submission_name.strip(),
@@ -264,11 +265,7 @@ class SeadChangeRequestIngester:
         )
 
     @staticmethod
-    def _optional_string(
-        data: dict[str, Any],
-        field_name: str,
-        error_type: type[InputResolutionError],
-    ) -> str | None:
+    def _optional_string(data: dict[str, Any], field_name: str, error_type: type[InputResolutionError]) -> str | None:
         """Return an optional string config value or raise an input error."""
         value = data.get(field_name)
         if value is not None and not isinstance(value, str):
@@ -291,7 +288,7 @@ class SeadChangeRequestIngester:
         if not isinstance(identifier, str) or not identifier.strip():
             raise SubmissionContextError("Submission context requires a non-empty identifier")
 
-        normalized_identifier = normalize_submission_identifier(identifier)
+        normalized_identifier: str = normalize_submission_identifier(identifier)
         if not is_valid_submission_identifier(normalized_identifier):
             raise SubmissionContextError(
                 "Submission context identifier must contain only A-Z, 0-9, and '_' characters and be shorter than 40 chars"
@@ -300,7 +297,7 @@ class SeadChangeRequestIngester:
 
     @staticmethod
     def _normalize_description(description: str | None) -> str | None:
-        normalized_description = description.strip() if isinstance(description, str) else None
+        normalized_description: str | None = description.strip() if isinstance(description, str) else None
         if normalized_description == "":
             return None
         if normalized_description is None:
@@ -331,13 +328,13 @@ class SeadChangeRequestIngester:
         infos: list[str] = []
 
         for entity_name, frame in bundle.tables.items():
-            entity_spec = target_model.entities.get(entity_name)
+            entity_spec: EntitySpec | None = target_model.entities.get(entity_name)
             if entity_spec is None:
                 errors.append(f"Source table '{entity_name}' is not present in the target model")
                 continue
 
             try:
-                planned_table = plan_table(entity_name, frame, entity_spec)
+                planned_table: PlannedTable = plan_table(entity_name, frame, entity_spec)
             except ValueError as exc:
                 errors.append(str(exc))
                 continue
@@ -345,8 +342,8 @@ class SeadChangeRequestIngester:
             planned_tables.append(planned_table)
             warnings.extend(planned_table.diagnostics)
 
-            action_counts = planned_table.planned_actions.value_counts(sort=False)
-            action_summary = ", ".join(f"{int(count)} {action}" for action, count in action_counts.items())
+            action_counts: Series = planned_table.planned_actions.value_counts(sort=False)
+            action_summary: str = ", ".join(f"{int(count)} {action}" for action, count in action_counts.items())
             infos.append(f"Planned '{entity_name}': {action_summary}")
 
         return PlannedBundle(tables=planned_tables, errors=errors, warnings=warnings, infos=infos)
@@ -365,7 +362,7 @@ class SeadChangeRequestIngester:
 
     def _resolve_identity_assignments(self) -> dict[str, dict[object, IdentityAssignment]]:
         """Load optional identity assignments from the ingester config input."""
-        extras = self.config.extra or {}
+        extras: dict[str, Any] = self.config.extra or {}
         raw_assignments = extras.get("identity_assignments")
 
         if raw_assignments is None:
@@ -451,23 +448,21 @@ class SeadChangeRequestIngester:
             shutil.rmtree(artifact_directory)
         artifact_directory.mkdir(parents=True, exist_ok=True)
 
-        deploy_directory = artifact_directory / "deploy"
-        revert_directory = artifact_directory / "revert"
-        verify_directory = artifact_directory / "verify"
-        deploy_directory.mkdir(parents=True, exist_ok=True)
-        revert_directory.mkdir(parents=True, exist_ok=True)
-        verify_directory.mkdir(parents=True, exist_ok=True)
+        bundle_name: str = self._artifact_directory_name(submission_context)
 
-        bundle_name = self._artifact_directory_name(submission_context)
-        (deploy_directory / f"{bundle_name}.sql").write_text(str(deploy_artifact["deploy_sql"]), encoding="utf-8")
-        (revert_directory / f"{bundle_name}.sql").write_text(str(deploy_artifact["revert_placeholder_sql"]), encoding="utf-8")
-        (verify_directory / f"{bundle_name}.sql").write_text(str(deploy_artifact["verify_placeholder_sql"]), encoding="utf-8")
+        for deploy_target in ["deploy", "revert", "verify"]:
+            sql_key: str = f"{deploy_target}_sql"
+            if sql_key not in deploy_artifact:
+                raise ValueError(f"Deploy artifact is missing required '{sql_key}' field")
+            target_folder = artifact_directory / deploy_target
+            target_folder.mkdir(parents=True, exist_ok=True)
+            (target_folder / f"{bundle_name}.sql").write_text(str(deploy_artifact[sql_key]), encoding="utf-8")
+
         (artifact_directory / "manifest.json").write_text(
-            json.dumps(deploy_artifact["metadata_artifact"], indent=2, sort_keys=True),
-            encoding="utf-8",
+            json.dumps(deploy_artifact["metadata_artifact"], indent=2, sort_keys=True), encoding="utf-8"
         )
         for relative_path, content in deploy_artifact.get("bundle_files", {}).items():
-            artifact_path = artifact_directory / relative_path
+            artifact_path: Path = artifact_directory / relative_path
             artifact_path.parent.mkdir(parents=True, exist_ok=True)
             artifact_path.write_bytes(encode_bundle_file_content(str(relative_path), str(content)))
         return artifact_directory
@@ -492,43 +487,7 @@ class SeadChangeRequestIngester:
 
     def _ingestion_input_failure(self, exc: InputResolutionError) -> IngestionResult:
         logger.warning("SEAD change request ingest failed while resolving {} input: {}", exc.scope, exc.user_message)
-        return self._failed_ingestion(message=exc.ingest_message, details=exc.user_message)
-
-    @staticmethod
-    def _failed_ingestion(
-        *,
-        message: str,
-        details: str,
-        deploy_artifact: dict[str, Any] | None = None,
-        pending_confirmation_report: dict[str, Any] | None = None,
-    ) -> IngestionResult:
-        """Build a standard failed ingestion result."""
-        return IngestionResult(
-            success=False,
-            message=message,
-            submission_id=None,
-            tables_processed=0,
-            records_inserted=0,
-            error_details=details,
-            deploy_artifact=deploy_artifact,
-            pending_confirmation_report=pending_confirmation_report,
-        )
-
-    @staticmethod
-    def _successful_ingestion(
-        *, message: str, tables_processed: int, records_inserted: int, deploy_artifact: dict[str, Any]
-    ) -> IngestionResult:
-        """Build a standard successful ingestion result."""
-        return IngestionResult(
-            success=True,
-            message=message,
-            submission_id=None,
-            tables_processed=tables_processed,
-            records_inserted=records_inserted,
-            error_details=None,
-            deploy_artifact=deploy_artifact,
-            pending_confirmation_report=None,
-        )
+        return IngestionResult.create_failed_result(message=exc.ingest_message, details=exc.user_message)
 
     def _identity_resolution_message(self, diagnostics: list[str], pending_confirmation_report: dict[str, Any] | None) -> str:
         if pending_confirmation_report is not None:
@@ -564,8 +523,13 @@ class SeadChangeRequestIngester:
             infos.append(f"Source bundle name: {preparation.inputs.bundle.source_name}")
 
         infos.extend(
-            [f"Submission timestamp: {preparation.inputs.submission_context.timestamp.isoformat()}"] +
             (
+                [f"Submission context datatype: {preparation.inputs.submission_context.datatype}"]
+                if preparation.inputs.submission_context.datatype
+                else []
+            )
+            + [f"Submission timestamp: {preparation.inputs.submission_context.timestamp.isoformat()}"]
+            + (
                 [f"Binding Set UUID: {preparation.inputs.submission_context.binding_set_uuid}"]
                 if preparation.inputs.submission_context.binding_set_uuid
                 else []
@@ -602,31 +566,29 @@ class SeadChangeRequestIngester:
         if validate_first:
             validation: ValidationResult = await self.validate(excel_file)
             if not validation.is_valid:
-                return self._failed_ingestion(
-                    message="Validation failed",
-                    details=self._failure_details(validation.errors),
-                )
+                return IngestionResult.create_failed_result(message="Validation failed", details=self._failure_details(validation.errors))
 
         try:
             preparation: PreparationResult = await self._prepare_change_request(excel_file)
         except InputResolutionError as exc:
-            return self._ingestion_input_failure(exc)
+            return IngestionResult.create_failed_result(message=exc.ingest_message, details=exc.user_message)
 
         if preparation.planned.errors:
-            return self._failed_ingestion(message="Validation failed", details=self._failure_details(preparation.planned.errors))
+            return IngestionResult.create_failed_result(
+                message="Validation failed", details=self._failure_details(preparation.planned.errors)
+            )
 
         if preparation.resolution_result.blocked_rows:
-            return self._failed_ingestion(
+            return IngestionResult.create_failed_result(
                 message=self._identity_resolution_message(
-                    preparation.resolution_result.diagnostics,
-                    preparation.pending_confirmation_report,
+                    preparation.resolution_result.diagnostics, preparation.pending_confirmation_report
                 ),
                 details=self._failure_details(preparation.resolution_result.diagnostics),
                 pending_confirmation_report=preparation.pending_confirmation_report,
             )
 
         if preparation.materialization_result.diagnostics:
-            return self._failed_ingestion(
+            return IngestionResult.create_failed_result(
                 message="PK/FK materialization incomplete",
                 details=self._failure_details(preparation.materialization_result.diagnostics),
             )
@@ -640,7 +602,7 @@ class SeadChangeRequestIngester:
                 collision_checker,
             )
             if collision_result.has_conflicts:
-                return self._failed_ingestion(
+                return IngestionResult.create_failed_result(
                     message="Target collision checks failed",
                     details=self._failure_details(collision_result.diagnostics),
                 )
@@ -661,7 +623,7 @@ class SeadChangeRequestIngester:
             )
         except NotImplementedError as exc:
             logger.warning("SEAD change request ingest failed at deploy-rendering boundary: {}", exc)
-            return self._failed_ingestion(message="Deploy strategy not implemented", details=str(exc))
+            return IngestionResult.create_failed_result(message="Deploy strategy not implemented", details=str(exc))
 
         sims_client: Any | None = self._get_client("sims_client")
         if (
@@ -684,7 +646,7 @@ class SeadChangeRequestIngester:
             "Prepared SEAD change request ingestion scaffold for {} planned table(s)",
             len(preparation.planned.tables),
         )
-        return self._successful_ingestion(
+        return IngestionResult.create_success_result(
             message=f"Deploy artifact emitted to '{artifact_directory}'",
             tables_processed=package_table_count,
             records_inserted=insert_row_count,

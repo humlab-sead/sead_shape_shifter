@@ -93,7 +93,8 @@ class TestCheckMaterializedCollisions:
 
         assert result.has_conflicts is True
         assert result.diagnostics == [
-            "Bridge entity 'sample_taxon' row '0' collides with an existing target row in 'sample_taxon' on unique_set ['sample_id', 'taxon_id']"
+            "Bridge entity 'sample_taxon' row '0' collides with an existing "
+            "target row in 'sample_taxon' on unique_set ['sample_id', 'taxon_id']"
         ]
 
     @pytest.mark.asyncio

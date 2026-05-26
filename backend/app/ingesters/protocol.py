@@ -80,6 +80,42 @@ class IngestionResult:
     deploy_artifact: dict[str, Any] | None = None
     pending_confirmation_report: dict[str, Any] | None = None
 
+    @staticmethod
+    def create_success_result(
+        *, message: str, tables_processed: int, records_inserted: int, deploy_artifact: dict[str, Any]
+    ) -> "IngestionResult":
+        """Build a standard successful ingestion result."""
+        return IngestionResult(
+            success=True,
+            message=message,
+            submission_id=None,
+            tables_processed=tables_processed,
+            records_inserted=records_inserted,
+            error_details=None,
+            deploy_artifact=deploy_artifact,
+            pending_confirmation_report=None,
+        )
+
+    @staticmethod
+    def create_failed_result(
+        *,
+        message: str,
+        details: str,
+        deploy_artifact: dict[str, Any] | None = None,
+        pending_confirmation_report: dict[str, Any] | None = None,
+    ) -> "IngestionResult":
+        """Build a standard failed ingestion result."""
+        return IngestionResult(
+            success=False,
+            message=message,
+            submission_id=None,
+            tables_processed=0,
+            records_inserted=0,
+            error_details=details,
+            deploy_artifact=deploy_artifact,
+            pending_confirmation_report=pending_confirmation_report,
+        )
+
 
 @dataclass
 class IngesterConfig:

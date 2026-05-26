@@ -3,12 +3,12 @@
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from ingesters.sead_change_request.confirmation import build_pending_confirmation_report
 from ingesters.sead_change_request.contracts import (
     IdentityAssignment,
     IdentityResolutionResult,
     IdentityWorkPlan,
     MaterializationResult,
+    PendingConfirmationReport,
     PlannedTable,
     SourceTableBundle,
     SubmissionContext,
@@ -110,7 +110,7 @@ def _build_pending_confirmation_report(
         return None
 
     return asdict(
-        build_pending_confirmation_report(
+        PendingConfirmationReport.create(
             submission_context,
             resolution_result,
             binding_set_state=orchestration_result.binding_set_state,

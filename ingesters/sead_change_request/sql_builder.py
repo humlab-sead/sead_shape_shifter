@@ -1,8 +1,7 @@
 """Deploy SQL generation for the SEAD change request ingester."""
 
-from csv import QUOTE_MINIMAL
-from datetime import datetime
 import gzip
+from datetime import datetime
 from hashlib import sha256
 from io import StringIO
 from numbers import Integral, Real
@@ -12,7 +11,6 @@ import pandas as pd
 
 from ingesters.sead_change_request.contracts import ChangeRequestPackage, DeployArtifact, SubmissionContext, resolve_bundle_name
 from src.target_model.models import TargetModel
-
 
 DEFAULT_DEPLOY_ARTIFACT_STRATEGY = "inline_insert"
 COPY_CSV_DEPLOY_ARTIFACT_STRATEGY = "copy_csv"
@@ -26,8 +24,7 @@ class DeployArtifactStrategy(Protocol):
         change_package: ChangeRequestPackage,
         target_model: TargetModel,
         submission_context: SubmissionContext,
-    ) -> DeployArtifact:
-        ...
+    ) -> DeployArtifact: ...
 
 
 class InlineInsertDeployStrategy:
@@ -198,8 +195,8 @@ def _build_deploy_artifact_payload(
         deploy_sql=_render_sql_file("deploy", submission_context, deploy_sql_body),
         statements=statements,
         metadata=payload_metadata,
-        revert_placeholder_sql=_render_sql_file("revert", submission_context, revert_placeholder_sql or _build_revert_placeholder_sql()),
-        verify_placeholder_sql=_render_sql_file("verify", submission_context, verify_placeholder_sql or _build_verify_placeholder_sql()),
+        revert_sql=_render_sql_file("revert", submission_context, revert_placeholder_sql or _build_revert_placeholder_sql()),
+        verify_sql=_render_sql_file("verify", submission_context, verify_placeholder_sql or _build_verify_placeholder_sql()),
         metadata_artifact=payload_artifact_metadata,
         bundle_files=bundle_files or {},
     )
@@ -264,7 +261,7 @@ def _common_contract_metadata(
         "payload_compression": "gzip" if bundle_files else None,
         "header_row": False,
         "payload_null_rule": "unquoted_empty_field",
-        "payload_empty_string_rule": 'quoted_empty_field',
+        "payload_empty_string_rule": "quoted_empty_field",
         "sccs_runtime_assumption": "psql+zcat",
         "statement_count": len(statements),
     }
@@ -278,10 +275,7 @@ def _render_sql_file(file_type: str, submission_context: SubmissionContext, body
         f"  Author            {_resolved_author(submission_context)}",
         f"  Date              {submission_context.timestamp.date().isoformat()}",
         f"  Description       {_resolved_description(submission_context)}",
-        (
-            "  Issue             "
-            f"https://github.com/humlab-sead/sead_change_control/issues/{_resolved_issue_number(submission_context)}"
-        ),
+        ("  Issue             " f"https://github.com/humlab-sead/sead_change_control/issues/{_resolved_issue_number(submission_context)}"),
         "***************************************************************************/",
         "",
     ]
@@ -357,9 +351,11 @@ def _render_copy_csv_field(value: object) -> str:
 
 def _renderable_columns(row_like: pd.Series | pd.DataFrame) -> list[str]:
     """Return non-internal column names in stable order for artifact rendering."""
-    return [str(column) for column in row_like.columns if not str(column).startswith("_")] if isinstance(row_like, pd.DataFrame) else [
-        str(column) for column in row_like.index if not str(column).startswith("_")
-    ]
+    return (
+        [str(column) for column in row_like.columns if not str(column).startswith("_")]
+        if isinstance(row_like, pd.DataFrame)
+        else [str(column) for column in row_like.index if not str(column).startswith("_")]
+    )
 
 
 def _quote_identifier(identifier: str) -> str:
@@ -397,7 +393,7 @@ def _quote_copy_csv_text(value: str) -> str:
     if value == "":
         return '""'
 
-    needs_quotes = any(character in value for character in ('\t', '\n', '\r', '"'))
+    needs_quotes = any(character in value for character in ("\t", "\n", "\r", '"'))
     escaped = value.replace('"', '""')
     return f'"{escaped}"' if needs_quotes else escaped
 

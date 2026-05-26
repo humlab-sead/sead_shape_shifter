@@ -1,7 +1,6 @@
 """SEAD change request ingester implementation."""
 
 from ingesters.sead_change_request.collision_checks import CollisionCheckResult, check_materialized_collisions
-from ingesters.sead_change_request.confirmation import build_pending_confirmation_report
 from ingesters.sead_change_request.contracts import (
     ChangeRequestPackage,
     ChangeRequestTable,
