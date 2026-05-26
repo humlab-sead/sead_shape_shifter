@@ -3,8 +3,10 @@
 import math
 
 import pandas as pd
+from pandas import Series
 
-from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable
+from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable, SourceTableBundle
+from ingesters.sead_change_request.preparation import PlannedBundle
 from src.target_model.models import EntitySpec
 
 
@@ -41,3 +43,32 @@ def plan_table(entity_name: str, frame: pd.DataFrame, entity_spec: EntitySpec) -
     planned_actions.loc[existing_mask] = PlannedRowAction.REFERENCE_EXISTING
 
     return PlannedTable(entity_name=entity_name, frame=frame, planned_actions=planned_actions, diagnostics=diagnostics)
+
+
+def plan_bundle(bundle: SourceTableBundle, target_model_entities: dict[str, EntitySpec]) -> PlannedBundle:
+    """Plan all source tables against the target model and collect diagnostics."""
+    planned_tables: list[PlannedTable] = []
+    errors: list[str] = []
+    warnings: list[str] = list(bundle.warnings)
+    infos: list[str] = []
+
+    for entity_name, frame in bundle.tables.items():
+        entity_spec = target_model_entities.get(entity_name)
+        if entity_spec is None:
+            errors.append(f"Source table '{entity_name}' is not present in the target model")
+            continue
+
+        try:
+            planned_table = plan_table(entity_name, frame, entity_spec)
+        except ValueError as exc:
+            errors.append(str(exc))
+            continue
+
+        planned_tables.append(planned_table)
+        warnings.extend(planned_table.diagnostics)
+
+        action_counts: Series = planned_table.planned_actions.value_counts(sort=False)
+        action_summary = ", ".join(f"{int(count)} {action}" for action, count in action_counts.items())
+        infos.append(f"Planned '{entity_name}': {action_summary}")
+
+    return PlannedBundle(tables=planned_tables, errors=errors, warnings=warnings, infos=infos)

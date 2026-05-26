@@ -18,6 +18,7 @@ The accepted Delivery 1 direction is:
 - [DELIVERY_1_IMPLEMENTATION_PLAN.md](./DELIVERY_1_IMPLEMENTATION_PLAN.md) — Delivery 1 implementation plan, workstreams, and issue breakdown
 - [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md) — Follow-up CR for post-Delivery-1 SQL rendering strategy and target-model review
 - [DELIVERY_1_FOLLOWUP_ISSUES.md](./DELIVERY_1_FOLLOWUP_ISSUES.md) — GitHub-ready issue drafts for the follow-up CR
+- [INGESTER_READABILITY_REFACTOR_PLAN.md](./INGESTER_READABILITY_REFACTOR_PLAN.md) — Focused plan for reducing `SeadChangeRequestIngester` size and mixed responsibilities
 
 ## Current Status
 
