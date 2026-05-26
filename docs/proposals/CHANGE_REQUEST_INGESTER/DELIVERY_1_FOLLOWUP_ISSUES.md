@@ -2,14 +2,14 @@
 
 This document turns the follow-up CR into GitHub-ready issue drafts and records their current status on this branch.
 
-Issues 1 through 3 are now satisfied by branch work. Keep them only if the repository needs backfilled tracking history. Remaining follow-up work starts at Issue 4.
+Issues 1 through 4 are now satisfied by branch work or by an explicit decision on this branch. Keep them only if the repository needs backfilled tracking history. Remaining follow-up work starts at Issue 5.
 
 Current status snapshot:
 
 - Issue 1: resolved on current branch
 - Issue 2: prototype complete on current branch
 - Issue 3: implemented on current branch
-- Issue 4: open
+- Issue 4: resolved by decision on current branch
 - Issue 5: resolved on current branch
 - Issue 6: open
 
@@ -131,7 +131,7 @@ Files:
 
 Status:
 
-`Open`
+`Resolved by decision on current branch`
 
 Title:
 
@@ -146,6 +146,18 @@ Solution:
 Evaluate plain Python rendering against Jinja2 at the strategy boundary and document whether Jinja2 is accepted or deferred.
 
 If adopted, Jinja2 should be limited to rendering deploy templates from structured inputs and should not contain row-selection, identity, or FK logic.
+
+Current branch decision:
+
+- defer Jinja2 for now
+- keep deploy rendering in plain Python at the current strategy boundary
+- reopen the question only if the renderers become materially harder to read or duplication grows enough to justify templates
+
+Reasoning:
+
+- the current strategy split already gives a clean rendering boundary without adding another abstraction layer
+- the current inline and `copy_csv` renderers are still small enough to keep readable in plain Python
+- adding Jinja2 now would increase moving parts without solving a demonstrated maintenance problem
 
 Files:
 
@@ -162,15 +174,19 @@ Title:
 
 `docs(target_model): complete SEAD v2 target model completeness review`
 
-Problem:
+Detailed proposal home:
 
-`docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md` is useful as an inventory, but it does not yet clearly separate documentation gaps, metadata-model gaps, and real schema-coverage gaps.
+- [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
-Solution:
+Summary:
 
-Finish the completeness review so it supports concrete follow-up decisions.
+Issue 5 is now tracked in detail in the SEAD v2 target-model completeness proposal.
 
-The result should identify the highest-value remaining gaps and classify them by type and priority.
+That document now records:
+
+- verified current YAML coverage
+- separation of documentation gaps, target-model gaps, and schema-boundary decisions
+- prioritized missing areas for follow-up model work
 
 Files:
 
@@ -188,15 +204,19 @@ Title:
 
 `docs(metadata): compare SEAD target model with SeadSchema live-schema approach`
 
-Problem:
+Detailed proposal home:
 
-The current change-request ingester uses target-model metadata, while the older `sead` ingester uses `SeadSchema` from the live SQL schema. The repository needs a clear written comparison before more output-format work hardens the wrong metadata boundary.
+- [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
-Solution:
+Summary:
 
-Document the tradeoffs between the target-model-driven approach and the older `SeadSchema` live-schema approach.
+Issue 6 should now be worked from the same target-model completeness proposal rather than from this change-request issue draft.
 
-The comparison should cover source of truth, drift risk, testability, offline reproducibility, SEAD-specific output generation, and operational dependence on a live schema.
+That document now includes:
+
+- an explicit target-model versus `SeadSchema` comparison
+- a recommendation to keep the target model as the current metadata boundary for `sead_change_request`
+- issue-specific acceptance criteria for closing the comparison work cleanly
 
 Files:
 

@@ -3,8 +3,20 @@
 ## Status
 
 - Current state: rewritten against the current target model
-- Scope: classify remaining SEAD v2 target-model gaps for follow-up work
-- Decision goal: identify what is missing in documentation, what is missing in the model, and what needs a schema-boundary decision before more model growth
+- Scope: classify remaining SEAD v2 target-model gaps and document the metadata-boundary comparison with `SeadSchema`
+- Decision goal: identify what is missing in documentation, what is missing in the model, and what should remain target-model-driven versus schema-driven before more model growth
+
+## Tracked Issues
+
+This proposal now carries the detailed scope for these follow-up issues:
+
+- Issue 5: complete the SEAD v2 target-model completeness review
+- Issue 6: compare the SEAD target model with the older `SeadSchema` live-schema approach
+
+Current issue state on this branch:
+
+- Issue 5: resolved on current branch
+- Issue 6: still open, but detailed analysis should now live in this document rather than in the change-request follow-up proposal
 
 ## Summary
 
@@ -78,6 +90,16 @@ Examples called out in earlier work include `natural_region`, `cultural_group`, 
 
 Issue 5 is not complete until those categories are separated explicitly.
 
+### 4. Metadata-Boundary Comparison
+
+Issue 6 should not be tracked as a separate, context-free note.
+
+It depends directly on the same review work as Issue 5 because the practical question is not only "what is missing from the target model" but also "what should be modeled here at all".
+
+The current change-request ingester uses the target model in [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml). The older `sead` ingester uses `SeadSchema` in [ingesters/sead/metadata.py](../../ingesters/sead/metadata.py), which derives metadata from the live SQL schema.
+
+Before more follow-up work grows around the current metadata boundary, this document should make the tradeoffs between those two approaches explicit.
+
 ## Gap Classification
 
 The next useful shape for this review is a prioritized decision document.
@@ -111,18 +133,59 @@ These gaps are real candidates, but they look broader, more model-shaping, or le
 - `project_type`, `project_stage`
 - extension-like concepts that may belong outside the shared core model until their reuse is proven
 
+## Target Model Versus `SeadSchema`
+
+This comparison is the detailed home for Issue 6.
+
+### Source Of Truth
+
+- Target model approach: the YAML model is the explicit source of truth for what Shape Shifter currently understands and validates.
+- `SeadSchema` approach: the live SQL schema is the source of truth, which can be attractive for fidelity to a running database but weaker for offline review.
+
+### Drift Risk
+
+- Target model approach: drift risk exists between YAML and the live schema, but the drift is inspectable in version control and can be reviewed deliberately.
+- `SeadSchema` approach: drift risk shifts in the other direction because behavior can silently follow whichever schema the runtime database exposes.
+
+### Testability And Offline Reproducibility
+
+- Target model approach: easier to test deterministically because the metadata is file-based, versioned, and available without a live database.
+- `SeadSchema` approach: harder to reproduce offline because tests and review depend more directly on a running schema source.
+
+### SEAD-Specific Output Generation
+
+- Target model approach: better for explicit, curated output generation rules when Shape Shifter needs to generate SEAD-specific artifacts from reviewed metadata.
+- `SeadSchema` approach: better when the main need is direct reflection of the current database shape rather than curated modeling decisions.
+
+### Operational Dependency
+
+- Target model approach: lower operational dependency during planning, validation, and review.
+- `SeadSchema` approach: tighter dependency on live schema access and on the operational environment matching expectations.
+
+### Recommendation
+
+Keep the target model as the current source of truth for `sead_change_request` planning, validation, and artifact generation.
+
+Use the `SeadSchema` comparison as a review tool and as a prompt for finding real metadata gaps, not as a reason to switch the change-request ingester back to live-schema-driven behavior without a separate architecture decision.
+
 ## Recommendation
 
+Issues 5 and 6 should be treated as one linked review surface in this proposal.
+
 Issue 5 should be closed only when this review supports an implementation decision rather than just restating a backlog.
+Issue 6 should be closed only when this document contains an explicit comparison between the target-model path and the `SeadSchema` path, with a clear recommendation.
 
 The next steps should be:
 
 1. Keep [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml) as the source of truth for current coverage.
 2. Use this document to track only verified missing areas and verified decisions.
 3. Separate core-model gaps from extension-model candidates before adding more entities.
-4. Promote only the highest-value missing entities into implementation work.
+4. Keep the target model as the active metadata boundary for `sead_change_request` unless a later architecture proposal explicitly changes that decision.
+5. Promote only the highest-value missing entities into implementation work.
 
-## Acceptance Criteria For Issue 5
+## Acceptance Criteria
+
+### Issue 5
 
 Issue 5 should count as complete when all of the following are true:
 
@@ -131,9 +194,18 @@ Issue 5 should count as complete when all of the following are true:
 - the highest-value missing areas are prioritized clearly enough to drive follow-up implementation
 - the document is useful as a decision input for future model edits without requiring readers to reverse-engineer stale claims
 
+### Issue 6
+
+Issue 6 should count as complete when all of the following are true:
+
+- this document compares the current target-model-driven path with the older `SeadSchema` live-schema path explicitly
+- the comparison covers source of truth, drift risk, testability, offline reproducibility, SEAD-specific output generation, and operational dependency
+- the recommendation is clear enough to guide future follow-up work without reopening the metadata boundary by accident
+
 ## References
 
 - [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml)
 - [docs/TARGET_MODEL_GUIDE.md](../TARGET_MODEL_GUIDE.md)
+- [ingesters/sead/metadata.py](../../ingesters/sead/metadata.py)
 - [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md](./CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md)
 - [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md](./CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md)
