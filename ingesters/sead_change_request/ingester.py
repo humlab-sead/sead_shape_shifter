@@ -6,7 +6,9 @@ DataFrame-first ingestion contract and SQL generation workflow in follow-up
 changes.
 """
 
+import gzip
 import json
+import shutil
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -20,12 +22,16 @@ from backend.app.ingesters.registry import Ingesters
 from ingesters.sead_change_request.collision_checks import check_materialized_collisions
 from ingesters.sead_change_request.confirmation import build_pending_confirmation_report
 from ingesters.sead_change_request.contracts import (
+    APPROVED_DATATYPES,
     ChangeRowState,
     IdentityAssignment,
     IdentityWorkPlan,
     PlannedTable,
     SourceTableBundle,
     SubmissionContext,
+    is_valid_submission_identifier,
+    normalize_submission_identifier,
+    resolve_bundle_name,
 )
 from ingesters.sead_change_request.identity_resolution import resolve_planned_tables
 from ingesters.sead_change_request.identity_work import build_identity_work_plan
@@ -33,7 +39,7 @@ from ingesters.sead_change_request.materialization import materialize_resolved_t
 from ingesters.sead_change_request.orchestration import SIMS_TARGET_ID_CAPABILITY_NOTE, orchestrate_identity_assignments
 from ingesters.sead_change_request.package_builder import build_change_request_package
 from ingesters.sead_change_request.planning import plan_table
-from ingesters.sead_change_request.sql_builder import build_deploy_artifact, resolve_deploy_artifact_strategy
+from ingesters.sead_change_request.sql_builder import build_deploy_artifact, encode_bundle_file_content, resolve_deploy_artifact_strategy
 from src.target_model.models import TargetModel
 from src.utility import sanitize_columns
 
@@ -155,11 +161,51 @@ class SeadChangeRequestIngester:
 
         binding_set_uuid = context_data.get("binding_set_uuid")
         change_request_name = context_data.get("change_request_name")
+        datatype = context_data.get("datatype")
+        identifier = context_data.get("identifier")
+        description = context_data.get("description")
+        issue_number = context_data.get("issue_number")
+        author = context_data.get("author")
 
         if binding_set_uuid is not None and not isinstance(binding_set_uuid, str):
             raise ValueError("Submission context binding_set_uuid must be a string when provided")
         if change_request_name is not None and not isinstance(change_request_name, str):
             raise ValueError("Submission context change_request_name must be a string when provided")
+        if datatype is not None and not isinstance(datatype, str):
+            raise ValueError("Submission context datatype must be a string when provided")
+        if identifier is not None and not isinstance(identifier, str):
+            raise ValueError("Submission context identifier must be a string when provided")
+        if description is not None and not isinstance(description, str):
+            raise ValueError("Submission context description must be a string when provided")
+        if issue_number is not None and not isinstance(issue_number, str):
+            raise ValueError("Submission context issue_number must be a string when provided")
+        if author is not None and not isinstance(author, str):
+            raise ValueError("Submission context author must be a string when provided")
+
+        if not isinstance(datatype, str) or not datatype.strip():
+            raise ValueError("Submission context requires a non-empty datatype")
+        normalized_datatype = datatype.strip().lower()
+        if normalized_datatype not in APPROVED_DATATYPES:
+            raise ValueError(
+                "Submission context datatype must be one of: " + ", ".join(sorted(APPROVED_DATATYPES))
+            )
+
+        if not isinstance(identifier, str) or not identifier.strip():
+            raise ValueError("Submission context requires a non-empty identifier")
+        normalized_identifier = normalize_submission_identifier(identifier)
+        if not is_valid_submission_identifier(normalized_identifier):
+            raise ValueError(
+                "Submission context identifier must contain only A-Z, 0-9, and '_' characters and be shorter than 40 chars"
+            )
+
+        normalized_description = description.strip() if isinstance(description, str) else None
+        if normalized_description == "":
+            normalized_description = None
+        if normalized_description is not None:
+            if "\n" in normalized_description or "\r" in normalized_description:
+                raise ValueError("Submission context description must be a single line")
+            if len(normalized_description) >= 80:
+                raise ValueError("Submission context description must be shorter than 80 characters")
 
         return SubmissionContext(
             submission_name=submission_name.strip(),
@@ -167,6 +213,11 @@ class SeadChangeRequestIngester:
             timestamp=parsed_timestamp,
             binding_set_uuid=binding_set_uuid,
             change_request_name=change_request_name,
+            datatype=normalized_datatype,
+            identifier=normalized_identifier,
+            description=normalized_description,
+            issue_number=issue_number.strip() if isinstance(issue_number, str) else None,
+            author=author.strip() if isinstance(author, str) else None,
         )
 
     def _parse_submission_timestamp(self, value: object) -> datetime:
@@ -286,26 +337,34 @@ class SeadChangeRequestIngester:
         """Write the Delivery 1 artifact bundle to the configured output folder."""
         output_root = Path(self.config.output_folder)
         artifact_directory = output_root / self._artifact_directory_name(submission_context)
+        if artifact_directory.exists():
+            shutil.rmtree(artifact_directory)
         artifact_directory.mkdir(parents=True, exist_ok=True)
 
-        (artifact_directory / "deploy.sql").write_text(str(deploy_artifact["deploy_sql"]), encoding="utf-8")
-        (artifact_directory / "revert.sql").write_text(str(deploy_artifact["revert_placeholder_sql"]), encoding="utf-8")
-        (artifact_directory / "verify.sql").write_text(str(deploy_artifact["verify_placeholder_sql"]), encoding="utf-8")
-        (artifact_directory / "metadata.json").write_text(
+        deploy_directory = artifact_directory / "deploy"
+        revert_directory = artifact_directory / "revert"
+        verify_directory = artifact_directory / "verify"
+        deploy_directory.mkdir(parents=True, exist_ok=True)
+        revert_directory.mkdir(parents=True, exist_ok=True)
+        verify_directory.mkdir(parents=True, exist_ok=True)
+
+        bundle_name = self._artifact_directory_name(submission_context)
+        (deploy_directory / f"{bundle_name}.sql").write_text(str(deploy_artifact["deploy_sql"]), encoding="utf-8")
+        (revert_directory / f"{bundle_name}.sql").write_text(str(deploy_artifact["revert_placeholder_sql"]), encoding="utf-8")
+        (verify_directory / f"{bundle_name}.sql").write_text(str(deploy_artifact["verify_placeholder_sql"]), encoding="utf-8")
+        (artifact_directory / "manifest.json").write_text(
             json.dumps(deploy_artifact["metadata_artifact"], indent=2, sort_keys=True),
             encoding="utf-8",
         )
         for relative_path, content in deploy_artifact.get("bundle_files", {}).items():
             artifact_path = artifact_directory / relative_path
             artifact_path.parent.mkdir(parents=True, exist_ok=True)
-            artifact_path.write_text(str(content), encoding="utf-8")
+            artifact_path.write_bytes(encode_bundle_file_content(str(relative_path), str(content)))
         return artifact_directory
 
     def _artifact_directory_name(self, submission_context: SubmissionContext) -> str:
         """Build a filesystem-safe directory name for emitted Delivery 1 artifacts."""
-        base_name = submission_context.change_request_name or submission_context.submission_name or "change-request"
-        sanitized = "".join(character if character.isalnum() or character in {"-", "_", "."} else "_" for character in base_name)
-        return sanitized.strip("_") or "change-request"
+        return resolve_bundle_name(submission_context)
 
     @staticmethod
     def _is_sims_target_id_capability_gap(diagnostics: list[str]) -> bool:
