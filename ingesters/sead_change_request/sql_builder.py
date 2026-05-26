@@ -1,6 +1,8 @@
 """Deploy SQL generation for the SEAD change request ingester."""
 
+from decimal import Decimal, InvalidOperation
 import gzip
+import re
 from datetime import datetime
 from hashlib import sha256
 from io import StringIO
@@ -14,6 +16,7 @@ from src.target_model.models import TargetModel
 
 DEFAULT_DEPLOY_ARTIFACT_STRATEGY = "inline_insert"
 COPY_CSV_DEPLOY_ARTIFACT_STRATEGY = "copy_csv"
+SAFE_BUNDLE_TABLE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
 
 
 class DeployArtifactStrategy(Protocol):
@@ -85,7 +88,7 @@ class CopyCsvDeployStrategy:
                 continue
 
             bundle_name = _artifact_directory_name(submission_context)
-            payload_relative_path = f"{bundle_name}/{table_name}.gz"
+            payload_relative_path = _build_bundle_payload_relative_path(bundle_name, table_name)
             bundle_files[f"deploy/{payload_relative_path}"] = _render_copy_csv_bundle_file(package_table.frame, columns)
             emitted_table_order.append(table_name)
             emitted_row_counts[table_name] = len(package_table.frame.index)
@@ -342,11 +345,27 @@ def _render_copy_csv_field(value: object) -> str:
     if isinstance(value, Integral):
         return str(value)
     if isinstance(value, Real):
-        return format(value, "f").rstrip("0").rstrip(".") if format(value, "f").find(".") >= 0 else format(value, "f")
+        return _render_copy_csv_real(value)
     if isinstance(value, (datetime, pd.Timestamp)):
         return _quote_copy_csv_text(value.isoformat())
 
     return _quote_copy_csv_text(str(value))
+
+
+def _render_copy_csv_real(value: Real) -> str:
+    """Render real numbers without scientific notation while preserving input precision."""
+    rendered = str(value)
+
+    if "e" in rendered.lower():
+        try:
+            rendered = format(Decimal(rendered), "f")
+        except InvalidOperation:
+            rendered = format(value, "f")
+
+    if "." in rendered:
+        rendered = rendered.rstrip("0").rstrip(".")
+
+    return "0" if rendered == "-0" else rendered
 
 
 def _renderable_columns(row_like: pd.Series | pd.DataFrame) -> list[str]:
@@ -404,6 +423,23 @@ def encode_bundle_file_content(relative_path: str, content: str) -> bytes:
     if relative_path.endswith(".gz"):
         return gzip.compress(encoded, mtime=0)
     return encoded
+
+
+def _build_bundle_payload_relative_path(bundle_name: str, table_name: str) -> str:
+    """Build a safe relative payload path for a rendered CSV sidecar."""
+    validated_table_name = _validate_bundle_table_name(table_name)
+    return f"{bundle_name}/{validated_table_name}.gz"
+
+
+def _validate_bundle_table_name(table_name: str) -> str:
+    """Reject table names that are unsafe to embed in bundle paths or shell commands."""
+    if SAFE_BUNDLE_TABLE_NAME_PATTERN.fullmatch(table_name):
+        return table_name
+
+    raise ValueError(
+        "Unsafe table name "
+        f"'{table_name}' for copy_csv deploy artifact; expected only letters, digits, and underscores"
+    )
 
 
 def _artifact_directory_name(submission_context: SubmissionContext) -> str:

@@ -169,6 +169,36 @@ class TestBuildDeployArtifact:
             '101\t"tab\tquote""slash\\line\nend"\t"prefix\rsuffix"\n'
         )
 
+    def test_copy_csv_preserves_precise_real_values_without_scientific_notation(self):
+        """CSV-mode payloads should preserve precise real values without rounding them to zero."""
+        precise_value = 0.1234567890123456
+        frame = pd.DataFrame({"sample_id": [101], "small_value": [1e-7], "precise_value": [precise_value]})
+        package = ChangeRequestPackage(
+            tables={
+                "sample": ChangeRequestTable(
+                    name="sample",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index, name="_row_state"),
+                )
+            }
+        )
+        target_model = minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"})
+        submission_context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+        artifact = build_deploy_artifact(package, target_model, submission_context, strategy="copy_csv")
+
+        rendered_payload = artifact.bundle_files[f"deploy/{bundle_name(submission_context)}/tbl_sample.gz"]
+        rendered_fields = rendered_payload.rstrip("\n").split("\t")
+
+        assert rendered_fields == ["101", "0.0000001", str(precise_value)]
+        assert "e" not in rendered_fields[1].lower()
+
     def test_copy_csv_manifest_uses_emission_order_and_real_row_counts(self):
         """Manifest metadata should preserve emitted table order and row counts even with multiline payload text."""
         alpha_frame = pd.DataFrame({"alpha_id": [101], "alpha_note": ["line one\nline two"]})
@@ -203,6 +233,54 @@ class TestBuildDeployArtifact:
 
         assert artifact.metadata_artifact["table_order"] == ["tbl_beta", "tbl_alpha"]
         assert artifact.metadata_artifact["row_counts"] == {"tbl_beta": 1, "tbl_alpha": 1}
+
+    def test_copy_csv_rejects_unsafe_target_table_name_for_bundle_path(self):
+        """CSV deploy rendering should reject target table names that are unsafe in bundle paths."""
+        frame = pd.DataFrame({"sample_id": [101]})
+        package = ChangeRequestPackage(
+            tables={
+                "sample": ChangeRequestTable(
+                    name="sample",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index, name="_row_state"),
+                )
+            }
+        )
+        target_model = minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "../tbl_sample"})
+        submission_context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+        with pytest.raises(ValueError, match="Unsafe table name '../tbl_sample'"):
+            build_deploy_artifact(package, target_model, submission_context, strategy="copy_csv")
+
+    def test_copy_csv_rejects_unsafe_entity_name_when_target_table_missing(self):
+        """CSV deploy rendering should validate fallback entity names before using them in bundle paths."""
+        frame = pd.DataFrame({"site_id": [501]})
+        package = ChangeRequestPackage(
+            tables={
+                "../site": ChangeRequestTable(
+                    name="../site",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index, name="_row_state"),
+                )
+            }
+        )
+        target_model = minimal_target_model(**{"../site": {"role": "lookup", "public_id": "site_id"}})
+        submission_context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+        with pytest.raises(ValueError, match="Unsafe table name '../site'"):
+            build_deploy_artifact(package, target_model, submission_context, strategy="copy_csv")
 
     def test_delegates_to_injected_strategy(self):
         """Deploy artifact generation should delegate to an injected rendering strategy."""
