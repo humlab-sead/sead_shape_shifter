@@ -5,7 +5,7 @@ from typing import Protocol
 
 import pandas as pd
 
-from ingesters.sead_change_request.contracts import ChangeRowState, IdentityResolutionResult, MaterializationResult
+from ingesters.sead_change_request.contracts import ChangeRowState, IdentityResolutionResult, MaterializationResult, ResolvedIdentityTable
 from src.target_model.models import EntitySpec, TargetModel
 
 INSERTABLE_ROW_STATES: set[ChangeRowState] = {
@@ -43,17 +43,17 @@ async def check_materialized_collisions(
     diagnostics: list[str] = []
 
     for entity_name, materialized_table in materialization_result.tables.items():
-        resolved_table = identity_result.tables.get(entity_name)
-        entity_spec = target_model.entities.get(entity_name)
+        resolved_table: ResolvedIdentityTable | None = identity_result.tables.get(entity_name)
+        entity_spec: EntitySpec | None = target_model.entities.get(entity_name)
         if resolved_table is None or entity_spec is None:
             continue
 
-        insert_mask = resolved_table.row_states.isin(INSERTABLE_ROW_STATES)
+        insert_mask: pd.Series = resolved_table.row_states.isin(INSERTABLE_ROW_STATES)
         if not bool(insert_mask.any()):
             continue
 
-        insert_frame = materialized_table.frame.loc[insert_mask]
-        table_name = entity_spec.target_table or entity_name
+        insert_frame: pd.DataFrame = materialized_table.frame.loc[insert_mask]
+        table_name: str = entity_spec.target_table or entity_name
 
         if entity_spec.role == "bridge":
             diagnostics.extend(await _check_bridge_collisions(entity_name, table_name, entity_spec, insert_frame, collision_checker))
@@ -65,14 +65,10 @@ async def check_materialized_collisions(
 
 
 async def _check_target_id_collisions(
-    entity_name: str,
-    table_name: str,
-    entity_spec: EntitySpec,
-    insert_frame: pd.DataFrame,
-    collision_checker: TargetCollisionChecker,
+    entity_name: str, table_name: str, entity_spec: EntitySpec, insert_frame: pd.DataFrame, collision_checker: TargetCollisionChecker
 ) -> list[str]:
     diagnostics: list[str] = []
-    public_id_column = entity_spec.public_id
+    public_id_column: str | None = entity_spec.public_id
 
     if not public_id_column:
         return [f"Entity '{entity_name}' cannot run collision checks because public_id metadata is missing"]
