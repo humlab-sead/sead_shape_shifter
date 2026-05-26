@@ -946,6 +946,43 @@ class TestSeadChangeRequestIngesterIngest:
         assert '"description": "test bundle"' in (tmp_path / bundle_name / "manifest.json").read_text(encoding="utf-8")
 
     @pytest.mark.asyncio
+    async def test_ingest_rejects_unsafe_copy_csv_target_table_name(self, tmp_path):
+        """Ingest should return a structured failure when copy_csv table names are unsafe for bundle paths."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [None]})},
+                    "target_model": minimal_target_model(
+                        sample={"role": "fact", "public_id": "sample_id", "target_table": "../tbl_sample"}
+                    ),
+                    "submission_context": minimal_submission_context(),
+                    "deploy_strategy": "copy_csv",
+                    "identity_assignments": {
+                        "sample": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 501,
+                            }
+                        }
+                    },
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert result.success is False
+        assert result.message == "Invalid deploy artifact input"
+        assert result.error_details == (
+            "Unsafe table name '../tbl_sample' for copy_csv deploy artifact; expected only letters, digits, and underscores"
+        )
+
+    @pytest.mark.asyncio
     async def test_ingest_overwrites_existing_bundle_deterministically(self, tmp_path):
         """Ingest should replace a prior bundle directory and emit stable gzip payload bytes."""
         ingester = SeadChangeRequestIngester(

@@ -121,6 +121,9 @@ class SeadChangeRequestIngester:
                 preparation.inputs.submission_context,
                 strategy=preparation.inputs.deploy_strategy,
             )
+        except ValueError as exc:
+            logger.warning("SEAD change request ingest rejected invalid deploy artifact input: {}", exc)
+            return IngestionResult.create_failed_result(message="Invalid deploy artifact input", details=str(exc))
         except NotImplementedError as exc:
             logger.warning("SEAD change request ingest failed at deploy-rendering boundary: {}", exc)
             return IngestionResult.create_failed_result(message="Deploy strategy not implemented", details=str(exc))
