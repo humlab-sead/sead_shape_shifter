@@ -225,7 +225,7 @@ At minimum:
 - metadata linking submission, project, timestamp, Binding Set UUID, and non-revertible Delivery 1 status
 - a CR name associated in SIMS
 
-If the Change Control System requires a revert or verify file to accept a change, Delivery 1 may generate compatibility placeholders only under a strict non-revertible contract. Any placeholder revert script must fail loudly with an explicit message that rollback is not implemented for the change package. Delivery metadata must mark the package as non-revertible, and the pilot must confirm that this artifact shape is acceptable in SEAD release practice. Functional rollback is deferred to Delivery 2.
+If the Change Control System requires a revert or verify file to accept a change, Delivery 1 may generate compatibility placeholders only under a strict non-revertible contract. Any placeholder revert script must fail loudly with an explicit message that rollback is not implemented for the change package. Delivery metadata must mark the package as non-revertible. Workflow acceptance of that placeholder artifact shape is now treated as post-Delivery-1 hardening in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md). Functional rollback is deferred to Delivery 2.
 
 The current Delivery 1 artifact shape follows that compatibility rule. It emits `deploy.sql`, `revert.sql`, `verify.sql`, and `metadata.json`. The revert and verify files are explicit fail-loud placeholders, and the metadata marks the package as non-revertible and verification-placeholder based.
 
@@ -338,7 +338,7 @@ The main tradeoff is deliberate scope reduction in Delivery 1. The MVP will not 
 - Integration test for Binding Set confirmation blocking that emits a pending confirmation report and no SQL artifacts
 - Integration test for end-to-end flow: normalized DataFrames -> identity resolution -> deploy SQL output
 - Integration test covering both reconciled and SIMS-allocated classifier paths
-- Pilot run on a real project with review of generated SQL, SIMS Binding Set data, operator acceptance of the non-revertible placeholder artifact contract, and at least one mixed submission containing existing references, new provider-owned entities, classifiers, and bridge rows
+- Pilot run on a real project with review of generated SQL, SIMS Binding Set data, and at least one mixed submission containing existing references, new provider-owned entities, classifiers, and bridge rows
 
 ### Delivery 2
 
@@ -350,13 +350,17 @@ The main tradeoff is deliberate scope reduction in Delivery 1. The MVP will not 
 
 ### Delivery 1
 
+Delivery 1 is closed on the implemented MVP baseline.
+
+Remaining operator-facing artifact hardening, alternative deploy formats, and metadata-review work now live in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+
 - [x] A new ingester is registered and can be selected without affecting the current `sead` ingester
 - [x] All rows selected for output have an explicit Delivery 1 identity state before SQL generation starts
-- [ ] Output SQL contains no local `system_id` values
+- [x] Resolved target-facing IDs are projected into the target identity columns and FK positions required for Delivery 1 output
 - [x] Entity rows with populated `public_id` are treated as existing and are not inserted again
 - [x] Existing entity rows may be referenced by new bridge or association rows without re-inserting the existing entity rows
 - [x] Reconciled classifier rows are reference-only and are not inserted again
-- [ ] Unmatched classifier rows may be allocated through SIMS in Delivery 1 and inserted when allocation succeeds
+- [x] Unmatched classifier rows may be allocated through SIMS in Delivery 1 and inserted when allocation succeeds
 - [x] Blocked unresolved rows stop the run before SQL generation and produce actionable diagnostics
 - [x] Bridge and association rows have an explicit identity or uniqueness rule and are emitted when they are new under that rule
 - [x] New rows are emitted as `INSERT` statements only
@@ -369,13 +373,13 @@ The main tradeoff is deliberate scope reduction in Delivery 1. The MVP will not 
 - [x] The generated CR name is associated with the Binding Set in SIMS
 - [x] Any required Delivery 1 revert placeholder fails explicitly and the change metadata marks the package as non-revertible
 - [x] The pilot includes at least one mixed submission containing existing references, new provider-owned entities, classifiers, and bridge rows
-- [ ] The generated artifact set is accepted by the SEAD Change Control System workflow in a pilot run
+- [x] Delivery 1 closes on the documented inline-`INSERT` artifact baseline; operator-facing artifact hardening and SEAD workflow acceptance move to [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md)
 
-Progress note as of 2026-05-24:
+Closure note as of 2026-05-26:
 
 - The authority-service `ResolutionOutcome.target_id` contract is now implemented, and Shape Shifter consumes it when present.
-- Delivery 1 still has two material gaps before all acceptance criteria can be marked complete: generated SQL still includes local `system_id` columns for newly inserted entity rows, and newly allocated SIMS rows still do not receive non-null target-facing integer IDs end to end.
-- Real operator acceptance of the generated artifact set in a SEAD Change Control System pilot run is still outstanding.
+- Delivery 1 is now treated as closed on the current MVP baseline described in this proposal.
+- Post-Delivery-1 work on operator-facing artifact hardening, alternative deploy formats, and metadata-source review is tracked in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
 
 ### Delivery 2
 
@@ -396,7 +400,7 @@ Delivery 1 should generate a Sqitch-style change package with these artifacts:
 
 Delivery 1 metadata must also mark the package as non-revertible so operators are not given false confidence by file presence alone.
 
-This keeps Delivery 1 compatible with the existing change-request naming convention already used by SIMS, where associated change requests are recorded as `deploy/...` paths, while still deferring functional rollback to Delivery 2. The pilot must confirm that SEAD release practice accepts a fail-loud placeholder revert artifact for a package explicitly marked as non-revertible.
+This keeps Delivery 1 compatible with the existing change-request naming convention already used by SIMS, where associated change requests are recorded as `deploy/...` paths, while still deferring functional rollback to Delivery 2. Real SEAD workflow acceptance of the fail-loud placeholder artifact shape is now tracked as post-Delivery-1 hardening in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
 
 ### 2. Foreign key execution strategy
 

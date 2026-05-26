@@ -11,6 +11,8 @@ from backend.app.models.reconciliation import ReconciliationCandidate
 from backend.app.services.ingester_runtime import SeadChangeRequestReconciliationAdapter, SeadChangeRequestSimsAdapter
 from ingesters.sead_change_request.contracts import SubmissionContext
 
+# pylint: disable=unused-argument
+
 
 class FakeBackendReconciliationClient:
     """Minimal fake backend reconciliation client."""
@@ -163,7 +165,7 @@ class TestSeadChangeRequestSimsAdapter:
 
         assert bridge["state"] == "derived_bridge_row"
         assert bridge["target_id"] is None
-        assert "materialized from resolved parent IDs" in bridge["note"]
+        assert "projected from resolved parent IDs" in bridge["note"]
 
     @pytest.mark.asyncio
     async def test_get_binding_set_state_reads_backend_client(self):

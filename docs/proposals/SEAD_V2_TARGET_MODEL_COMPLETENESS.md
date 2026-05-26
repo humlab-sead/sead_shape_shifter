@@ -1,256 +1,211 @@
-# Proposal: Complete SEAD v2 Target Model Specification
+# Proposal: Complete SEAD v2 Target Model Review
 
-## Context
+## Status
 
-The `sead_standard_model.yml` target model specification covers ~36 entities. An extended model `sead_standard_model.yml` has been created that adds Phase 1-4 entities (spatial, sample-metadata, dating, taxonomy, ecology, and analysis), bringing coverage to 70 entities. The actual SEAD Clearinghouse database contains 100+ tables. Analysis of the Arbodat Shape Shifter project reveals significant remaining gaps in entity coverage that prevent effective conformance validation.
+- Current state: rewritten against the current target model
+- Scope: classify remaining SEAD v2 target-model gaps and document the metadata-boundary comparison with `SeadSchema`
+- Decision goal: identify what is missing in documentation, what is missing in the model, and what should remain target-model-driven versus schema-driven before more model growth
 
-## Problem Statement
+## Tracked Issues
 
-**Missing Coverage:** Many entities used in real-world SEAD data transformation projects (e.g., Arbodat) are not specified in the target model, resulting in:
-- Inability to validate conformance for complete projects
-- No formal specification for spatial coordinates, dating details, site properties, sample dimensions, or taxon metadata
-- Inconsistent entity naming and relationship documentation
+This proposal now carries the detailed scope for these follow-up issues:
 
-**Coverage in `sead_standard_model.yml` (36 entities):**
-Core: location, location_type, site, site_location, sample_group, sample, analysis_entity, dataset, method, project, citation, contact
+- Issue 5: complete the SEAD v2 target-model completeness review
+- Issue 6: compare the SEAD target model with the older `SeadSchema` live-schema approach
 
-Abundance: abundance, abundance_element, abundance_element_group, abundance_modification, abundance_property
+Current issue state on this branch:
 
-Dating: relative_ages, relative_dating, geochronology, dating_lab
+- Issue 5: resolved on current branch
+- Issue 6: still open, but detailed analysis should now live in this document rather than in the change-request follow-up proposal
 
-Taxonomy: taxa_tree_master, taxa_common_names
+## Summary
 
-Classifiers: sample_type, sample_description_type, site_type, site_type_group, contact_type, method_group, modification_type, feature_type, feature
+The previous completeness note was no longer reliable.
 
-Bridges: dataset_contact, sample_feature
+It mixed historical expansion plans with current-state claims and overstated implemented coverage. A direct check against [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml) shows a verified surface of 51 top-level entities in the current model, not the larger phase-based inventory described in the older draft.
 
-**Coverage in `sead_standard_model.yml` (70 entities — adds 34):**
+Issue 5 should therefore be treated as a review and decision task first.
 
-*Phase 1 additions (13):* dimension, coordinate_method_dimension, sample_coordinate, alt_ref_type, sample_alt_ref, sample_dimension, identification_level, abundance_ident_level, age_type, relative_age_type, chronology, dating_uncertainty, dating_material
+The immediate job is not to add more entities blindly. It is to produce a usable gap classification so later model edits are driven by real SEAD workflows rather than by an outdated wish list.
 
-*Phase 2 additions (9):* sample_group_description_type, sample_group_description, sampling_context, lithology, site_preservation_status, site_other_record, dataset_method, dataset_submission_type, dataset_submission
+## Verified Current Coverage
 
-*Phase 3 additions (7):* ecocode_system, ecocode_group, ecocode_definition, ecocode, activity_type, season_type, season
+The current target model already covers a substantial core for Delivery 1 and early SEAD ingestion work.
 
-*Phase 4 additions (5):* record_type, unit, data_type_group, data_type, measured_value
+Verified entity surface in [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml):
 
-**Total in `sead_standard_model.yml`: 70 entities (all fully specified)**
+- Core and provenance: `location`, `location_type`, `site`, `site_location`, `sample_group`, `sample`, `method`, `dataset`, `master_dataset`, `project`, `citation`, `contact`, `contact_type`, `dataset_contact`
+- Sample and coordinate support: `sample_description_type`, `sample_description`, `sample_type`, `dimension`, `coordinate_method_dimension`, `sample_coordinate`, `alt_ref_type`, `sample_alt_ref`, `sample_dimension`
+- Analysis and abundance: `analysis_entity`, `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `modification_type`, `abundance_property`, `identification_level`, `abundance_ident_level`
+- Dating: `age_type`, `relative_age_type`, `chronology`, `dating_uncertainty`, `dating_material`, `relative_ages`, `relative_dating`, `geochronology`, `dating_lab`
+- Taxonomy and features: `taxa_tree_master`, `taxa_common_names`, `feature_type`, `feature`, `sample_feature`
+- Classification and measurement support: `method_group`, `data_type`, `unit`, `site_type_group`, `site_type`
 
-**Arbodat Project Uses (54 entities):**
-Includes all above PLUS: coordinate_system, coordinate_method_dimension, dimension, sample_coordinate, dating (general), dating_period, archaeological_period, chronological_period, epoch, cultural_group, feature_property, feature_property_type, site_property, site_property_type, site_natural_region, natural_region, natural_region_group, dataset_submission, dataset_submission_type, abundance_property_type, identification_level, taxa (general taxon), taxa_use_categories, taxa_plant_sociological_behaviour
+This is enough to support the current change-request work, but it is not yet a complete SEAD v2 target-model review.
 
-## Gap Analysis by Domain
+## Problem
 
-### 1. Spatial/Coordinate Domain (High Priority)
-**Addressed in `sead_standard_model.yml`:** dimension ✅, coordinate_method_dimension ✅, sample_coordinate ✅
+The remaining completeness problem now has three separate parts that should not be conflated.
 
-**Still missing:** coordinate_system, sample_group_coordinate, site_natgridref
+### 1. Documentation Gaps
 
-**Impact:** Cannot validate spatial metadata for samples or sample groups
+The old review document drifted away from the actual YAML model.
 
-**SEAD Tables:**
-- `tbl_coordinate_method_dimensions` - coordinate measurement methods with dimensional constraints
-- `tbl_dimensions` - measurement dimensions (X, Y, Z, depth, altitude, etc.)
-- `tbl_sample_coordinates` - coordinates attached to physical samples
-- `tbl_sample_group_coordinates` - coordinates attached to sample groups
-- `tbl_site_natgridrefs` - national grid references for sites
+Examples:
 
-### 2. Dating Domain (Medium Priority)
-**Fully specified in `sead_standard_model.yml`:** dating_material ✅, dating_uncertainty ✅, chronology ✅, age_type ✅, relative_age_type ✅
+- it reported a larger entity count than the current file contains
+- it described several planned entity additions as already present
+- it mixed implementation status, Arbodat-specific needs, and general SEAD backlog into one inventory
 
-**Still missing:** dating_period (analysis_entity → archaeological/chronological period)
+That makes it hard to tell whether a gap is real, already solved, or only proposed.
 
-**Impact:** Cannot validate complete dating workflows or period assignments
+### 2. Target-Model Gaps
 
-**SEAD Tables:**
-- `tbl_dating_material` - material dated (links to abundance_element)
-- `tbl_dating_uncertainty` - uncertainty qualifiers for dates
-- `tbl_chronologies` - chronological frameworks
-- `tbl_age_types` - age notation systems (AD, BC, BP, cal BP)
-- Analysis entity links to relative_age via `tbl_relative_dates`
+Several entity families still appear to be missing from the current model and should remain under active review.
 
-### 3. Feature Domain (Medium Priority)
-**Missing:** feature_property, feature_property_type, sample_feature (exists but minimal)
+Verified missing candidates from the current YAML include:
 
-**Impact:** Cannot validate feature metadata or sample-feature relationships
+- Spatial and site-location support: `coordinate_system`, `sample_group_coordinate`, `site_natgridref`
+- Dating and period support: `dating_period`
+- Feature and site metadata: `feature_property`, `feature_property_type`, `site_property`, `site_property_type`
+- Site-region support: `site_natural_region`, `natural_region`, `natural_region_group`
+- Sample metadata: `sample_horizon`, `sample_location`, `sample_location_type`, `sample_note`, `sample_colour`, `colour`
+- Sample-group metadata: `sample_group_dimension`, `sample_group_note`, `sample_group_reference`
+- Taxon and ecology extensions: `taxon_synonyms`, `rdb`, `taxon_measured_attributes`
+- Abundance typing: `abundance_property_type`
+- Generic analysis values: `analysis_value`, `analysis_categorical_value`, `analysis_boolean_value`, `analysis_integer_value`, `analysis_numerical_value`, `analysis_date_range`, `analysis_note`, `analysis_identifier`
+- Project classification: `project_type`, `project_stage`
 
-**SEAD Tables:**
-- `tbl_physical_sample_features` - bridge between samples and features
-- Feature properties would use `tbl_sample_description_types` pattern
+This list is useful, but it is still only a candidate backlog until each item is tied to an actual validation or ingestion need.
 
-### 4. Site Domain (Medium Priority)
-**Addressed in `sead_standard_model.yml`:** site_preservation_status ✅, site_other_record ✅
+### 3. Schema-Boundary Decisions
 
-**Still missing:** site_property, site_property_type, site_natural_region, natural_region, natural_region_group, site_reference
+Some gaps may not belong in the core SEAD target model at all.
 
-**Impact:** Cannot validate rich site metadata present in archaeological projects
+Examples called out in earlier work include `natural_region`, `cultural_group`, `archaeological_period`, and related region-specific or project-specific concepts. Those may be:
 
-**SEAD Tables:**
-- `tbl_site_other_records` - additional site documentation/references
-- Natural region data appears custom to Arbodat (German geographic classification)
-- Site properties would follow description pattern
+- real core SEAD gaps
+- valid extension-model concerns
+- data-project conveniences that should not be promoted into the shared target model yet
 
-### 5. Sample Domain (High Priority)
-**Addressed in `sead_standard_model.yml`:** sample_dimension ✅, sample_alt_ref ✅, alt_ref_type ✅
+Issue 5 is not complete until those categories are separated explicitly.
 
-**Still missing:** sample_horizon, sample_location, sample_location_type, sample_note, sample_colour, colour
+### 4. Metadata-Boundary Comparison
 
-**Impact:** Cannot validate sample physical characteristics and alternate identifiers
+Issue 6 should not be tracked as a separate, context-free note.
 
-**SEAD Tables:**
-- `tbl_sample_dimensions` - physical dimensions of samples
-- `tbl_sample_horizons` - horizon associations
-- `tbl_sample_locations` - location metadata
-- `tbl_sample_alt_refs` - alternative references (lab numbers, field IDs)
-- `tbl_alt_ref_types` - classifier for alt reference types
-- `tbl_sample_notes` - free-text notes
-- `tbl_sample_colours` - Munsell/colour classifications
+It depends directly on the same review work as Issue 5 because the practical question is not only "what is missing from the target model" but also "what should be modeled here at all".
 
-### 6. Sample Group Domain (Medium Priority)
-**Addressed in `sead_standard_model.yml`:** sample_group_description_type ✅, sample_group_description ✅, sampling_context ✅, lithology ✅
+The current change-request ingester uses the target model in [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml). The older `sead` ingester uses `SeadSchema` in [ingesters/sead/metadata.py](../../ingesters/sead/metadata.py), which derives metadata from the live SQL schema.
 
-**Still missing:** sample_group_dimension, sample_group_note, sample_group_reference
+Before more follow-up work grows around the current metadata boundary, this document should make the tradeoffs between those two approaches explicit.
 
-**Impact:** Cannot validate sample group metadata and context
+## Gap Classification
 
-**SEAD Tables:**
-- `tbl_sample_group_descriptions` - typed descriptions
-- `tbl_sample_group_description_types` - description classifiers
-- `tbl_sample_group_dimensions` - physical dimensions
-- `tbl_sample_group_notes` - free-text notes
-- `tbl_sample_group_references` - bibliography links
-- `tbl_sample_group_sampling_contexts` - sampling context classifier
-- `tbl_lithology` - lithological descriptions linked to sample groups
+The next useful shape for this review is a prioritized decision document.
 
-### 7. Dataset Domain (Low Priority)
-**Fully addressed in `sead_standard_model.yml`:** dataset_method ✅, dataset_submission ✅, dataset_submission_type ✅
+### High Priority
 
-**Impact:** Cannot validate multi-method datasets or submission workflow
+These gaps are the strongest candidates for near-term target-model work because they affect validation of physical context, location context, or commonly expected SEAD relationships.
 
-**SEAD Tables:**
-- `tbl_dataset_methods` - multiple methods per dataset
-- `tbl_dataset_submissions` - submission tracking
-- `tbl_dataset_submission_types` - submission type classifier
-
-### 8. Taxon Domain (Medium Priority)
-**Addressed in `sead_standard_model.yml`:** ecocode_system ✅, ecocode_group ✅, ecocode_definition ✅, ecocode ✅, activity_type ✅, season_type ✅, season ✅
+- `coordinate_system`, `sample_group_coordinate`, `site_natgridref`
+- `dating_period`
+- `sample_horizon`, `sample_location`, `sample_location_type`
+- `feature_property`, `feature_property_type`
 
-**Still missing:** taxon_synonyms, rdb (red data book), taxon_measured_attributes
+### Medium Priority
 
-**Impact:** Cannot validate taxon metadata, ecological classifications, or conservation status
+These gaps matter, but they should follow only after the high-priority spatial, dating, and physical-context gaps are clarified.
 
-**SEAD Tables:**
-- `tbl_taxa_tree_master` (exists) - taxonomic hierarchy backbone
-- `tbl_taxa_synonyms` - synonym relationships
-- `tbl_ecocodes` - ecological indicator codes per taxon
-- `tbl_ecocode_definitions` - ecocode value definitions
-- `tbl_ecocode_groups` - ecocode category grouping
-- `tbl_ecocode_systems` - ecocode classification systems
-- `tbl_rdb` - red data book conservation status
-- `tbl_activity_types` - phenological/activity states
-- `tbl_seasons` - seasonal classifications
+- `site_property`, `site_property_type`
+- `site_natural_region`, `natural_region`, `natural_region_group`
+- `sample_note`, `sample_colour`, `colour`
+- `sample_group_dimension`, `sample_group_note`, `sample_group_reference`
+- `abundance_property_type`
+- `taxon_synonyms`, `rdb`, `taxon_measured_attributes`
 
-### 9. Abundance Domain (Low Priority)
-**Fully specified in `sead_standard_model.yml`:** identification_level ✅, abundance_ident_level ✅
+### Lower Priority Or Deferred
 
-**Still missing:** abundance_property_type
+These gaps are real candidates, but they look broader, more model-shaping, or less urgent for current ingestion validation work.
 
-**Impact:** Cannot validate identification confidence or typed abundance properties
+- `analysis_value` and its typed value family
+- `analysis_note`, `analysis_identifier`
+- `project_type`, `project_stage`
+- extension-like concepts that may belong outside the shared core model until their reuse is proven
 
-**SEAD Tables:**
-- `tbl_abundance_ident_levels` - confidence in taxonomic ID (cf. Family, cf. Species)
-- `tbl_identification_levels` - classifier for ID levels
-- Abundance property types would follow standard pattern
+## Target Model Versus `SeadSchema`
 
-### 10. Analysis Value Domain (Low Priority)
-**Missing:** analysis_value (generic), analysis_categorical_value, analysis_boolean_value, analysis_integer_value, analysis_numerical_value, analysis_date_range, measured_value, analysis_note, analysis_identifier
+This comparison is the detailed home for Issue 6.
 
-**Impact:** Cannot validate non-abundance analytical observations (chemistry, isotopes, dimensions)
+### Source Of Truth
 
-**SEAD Tables:**
-- `tbl_analysis_values` - generic analysis value parent
-- `tbl_analysis_categorical_values` - categorical results
-- `tbl_analysis_boolean_values` - true/false results
-- `tbl_analysis_integer_values` - integer measurements
-- `tbl_analysis_numerical_values` - decimal measurements
-- `tbl_analysis_dating_ranges` - date range values
-- `tbl_measured_values` - direct measurements
-- `tbl_analysis_notes` - free-text analytical notes
-- `tbl_analysis_identifiers` - analytical identifiers
+- Target model approach: the YAML model is the explicit source of truth for what Shape Shifter currently understands and validates.
+- `SeadSchema` approach: the live SQL schema is the source of truth, which can be attractive for fidelity to a running database but weaker for offline review.
 
-### 11. Project Domain (Low Priority)
-**Missing:** project_type, project_stage
+### Drift Risk
 
-**Impact:** Cannot validate project classification and workflow stage
+- Target model approach: drift risk exists between YAML and the live schema, but the drift is inspectable in version control and can be reviewed deliberately.
+- `SeadSchema` approach: drift risk shifts in the other direction because behavior can silently follow whichever schema the runtime database exposes.
 
-**SEAD Tables:**
-- `tbl_project_types` - project classification
-- `tbl_project_stages` - project workflow stages
+### Testability And Offline Reproducibility
 
-### 12. Method Domain (Low Priority)
-**Fully addressed in `sead_standard_model.yml`:** record_type ✅, unit ✅, data_type_group ✅, data_type ✅
+- Target model approach: easier to test deterministically because the metadata is file-based, versioned, and available without a live database.
+- `SeadSchema` approach: harder to reproduce offline because tests and review depend more directly on a running schema source.
 
-**Impact:** Cannot validate method classification and result typing
+### SEAD-Specific Output Generation
 
-**SEAD Tables:**
-- `tbl_record_types` - type of record produced by method
-- `tbl_units` - measurement units
-- `tbl_data_types` - data type produced by method
-- `tbl_data_type_groups` - data type grouping
+- Target model approach: better for explicit, curated output generation rules when Shape Shifter needs to generate SEAD-specific artifacts from reviewed metadata.
+- `SeadSchema` approach: better when the main need is direct reflection of the current database shape rather than curated modeling decisions.
 
-## Reference Implementation
+### Operational Dependency
 
-**Authoritative Source:** `resources/target_models/sead_standard_model.yml`
+- Target model approach: lower operational dependency during planning, validation, and review.
+- `SeadSchema` approach: tighter dependency on live schema access and on the operational environment matching expectations.
 
-This file contains the complete and current SEAD v2 target model specification developed through Arbodat requirements analysis. All entity definitions, foreign keys, column specifications, and domain classifications are maintained in this YAML file to avoid duplication and synchronization issues.
+### Recommendation
 
-For entity specifications, constraints, and relationship details, refer directly to `sead_standard_model.yml`.
+Keep the target model as the current source of truth for `sead_change_request` planning, validation, and artifact generation.
 
-## Implementation Plan
+Use the `SeadSchema` comparison as a review tool and as a prompt for finding real metadata gaps, not as a reason to switch the change-request ingester back to live-schema-driven behavior without a separate architecture decision.
 
-### Phase 1: Core Enhancements (Immediately needed for Arbodat)
-- [x] Add spatial/coordinate entities (dimension, coordinate_method_dimension, sample_coordinate) — fully specified in `sead_standard_model.yml`
-- [x] Add sample metadata entities (alt_ref_type, sample_alt_ref, sample_dimension) — fully specified in `sead_standard_model.yml`
-- [x] Add abundance precision entities (identification_level, abundance_ident_level) — fully specified in `sead_standard_model.yml`
-- [x] Add dating metadata entities (dating_material, dating_uncertainty, age_type, relative_age_type, chronology) — fully specified in `sead_standard_model.yml`
-- [x] All Phase 1 entities fully specified in `sead_standard_model.yml` — 13 additions complete
-- [x] Update key existing entity specs (sample now includes sample_type_id, alt_ref_type_id, date_sampled; method includes method_group_id, biblio_id)
+## Recommendation
 
-### Phase 2: Metadata Completeness
-- [x] Add sample group entities (description, description_type, sampling_context, lithology) — fully specified in `sead_standard_model.yml`
-- [x] Add site entities (site_preservation_status, site_other_record) — fully specified in `sead_standard_model.yml`
-- [x] Add dataset workflow (dataset_method, dataset_submission, dataset_submission_type) — fully specified in `sead_standard_model.yml`
+Issues 5 and 6 should be treated as one linked review surface in this proposal.
 
-### Phase 3: Taxonomy & Ecology
-- [x] Add ecocode system (ecocode_system, ecocode_group, ecocode_definition, ecocode) — fully specified in `sead_standard_model.yml`
-- [x] Add phenology (activity_type, season_type, season) — fully specified in `sead_standard_model.yml`
-- [ ] Enhance taxa_tree_master specification (genus hierarchy, synonym support)
+Issue 5 should be closed only when this review supports an implementation decision rather than just restating a backlog.
+Issue 6 should be closed only when this document contains an explicit comparison between the target-model path and the `SeadSchema` path, with a clear recommendation.
 
-### Phase 4: Advanced Analysis
-- [x] Add method classification (record_type, unit, data_type, data_type_group) — fully specified in `sead_standard_model.yml`
-- [x] Add measured_value entity — fully specified in `sead_standard_model.yml`
-- [ ] Add analysis value types (categorical, boolean, integer, numerical, date_range)
-- [ ] Add project classification (project_type, project_stage)
+The next steps should be:
 
-## Success Criteria
+1. Keep [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml) as the source of truth for current coverage.
+2. Use this document to track only verified missing areas and verified decisions.
+3. Separate core-model gaps from extension-model candidates before adding more entities.
+4. Keep the target model as the active metadata boundary for `sead_change_request` unless a later architecture proposal explicitly changes that decision.
+5. Promote only the highest-value missing entities into implementation work.
 
-1. **Arbodat Conformance**: All 54 entities in Arbodat project can be validated against target model
-2. **SEAD Coverage**: 80%+ of commonly used SEAD Clearinghouse tables are specified
-3. **Relationship Clarity**: All foreign keys documented with required/optional status
-4. **Column Documentation**: Required columns specified for all entities
-5. **Domain Organization**: Entities grouped into coherent domains (spatial, dating, taxonomy, etc.)
+## Acceptance Criteria
 
-## Notes
+### Issue 5
 
-- **Custom Entities**: Some Arbodat entities (natural_region, cultural_group, archaeological_period) appear specific to German archaeology. These may not belong in core SEAD model but should be documentable as extensions.
-- **Legacy Tables**: Some SEAD tables appear deprecated or low-usage. Prioritize entities actively used in data submissions.
-- **Naming Conventions**: Maintain consistency between `target_table` names and entity names (e.g., `sample` → `tbl_physical_samples`).
-- **Bridge vs Via**: Use proper role classification and consider `via` attribute for many-to-many relationships.
+Issue 5 should count as complete when all of the following are true:
+
+- this review matches the current YAML model rather than a historical expansion plan
+- remaining gaps are grouped into documentation gaps, target-model gaps, and schema-boundary decisions
+- the highest-value missing areas are prioritized clearly enough to drive follow-up implementation
+- the document is useful as a decision input for future model edits without requiring readers to reverse-engineer stale claims
+
+### Issue 6
+
+Issue 6 should count as complete when all of the following are true:
+
+- this document compares the current target-model-driven path with the older `SeadSchema` live-schema path explicitly
+- the comparison covers source of truth, drift risk, testability, offline reproducibility, SEAD-specific output generation, and operational dependency
+- the recommendation is clear enough to guide future follow-up work without reopening the metadata boundary by accident
 
 ## References
 
-- SEAD Database Schema: `docs/sead/01_tables.sql`, `05_constraints.sql`, `07_comments.sql`
-- Arbodat Project: `sead-tools/sead_shape_shifter/data/projects/arbodat/arbodat-rebecka/shapeshifter.yml`
-- Current Target Model (Extended): `resources/target_models/sead_standard_model.yml`
-- Base Target Model: `resources/target_models/sead_standard_model.yml`
-- Target Model Guide: `docs/TARGET_MODEL_GUIDE.md`
+- [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml)
+- [docs/TARGET_MODEL_GUIDE.md](../TARGET_MODEL_GUIDE.md)
+- [ingesters/sead/metadata.py](../../ingesters/sead/metadata.py)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md](./CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md](./CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md)
