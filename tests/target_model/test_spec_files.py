@@ -34,6 +34,12 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
     issues = TargetModelSpecValidator().validate(target_model)
+    analysis_value = target_model.entities["analysis_value"]
+    analysis_note = target_model.entities["analysis_note"]
+    analysis_identifier = target_model.entities["analysis_identifier"]
+    analysis_integer_value = target_model.entities["analysis_integer_value"]
+    analysis_numerical_value = target_model.entities["analysis_numerical_value"]
+    analysis_dating_range = target_model.entities["analysis_dating_range"]
     value_qualifier = target_model.entities["value_qualifier"]
     value_qualifier_symbol = target_model.entities["value_qualifier_symbol"]
     sample_group_coordinate = target_model.entities["sample_group_coordinate"]
@@ -47,12 +53,32 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     sample_horizon = target_model.entities["sample_horizon"]
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
-    assert len(target_model.entities) == 61
+    assert len(target_model.entities) == 67
+    assert {
+        "analysis_value",
+        "analysis_note",
+        "analysis_identifier",
+        "analysis_integer_value",
+        "analysis_numerical_value",
+        "analysis_dating_range",
+    }.issubset(target_model.entities)
     assert {"sample_horizon", "sample_location", "sample_location_type", "sample_note"}.issubset(target_model.entities)
     assert {"value_qualifier", "value_qualifier_symbol"}.issubset(target_model.entities)
     assert {"sample_group_coordinate", "sample_group_dimension", "sample_group_note", "sample_group_reference"}.issubset(
         target_model.entities
     )
+    assert analysis_value.target_table == "tbl_analysis_values"
+    assert analysis_value.aggregate_parent == "analysis_entity"
+    assert analysis_note.target_table == "tbl_analysis_notes"
+    assert analysis_note.aggregate_parent == "analysis_value"
+    assert analysis_identifier.target_table == "tbl_analysis_identifiers"
+    assert analysis_identifier.aggregate_parent == "analysis_value"
+    assert analysis_integer_value.target_table == "tbl_analysis_integer_values"
+    assert any(foreign_key.entity == "value_qualifier_symbol" for foreign_key in analysis_integer_value.foreign_keys)
+    assert analysis_numerical_value.target_table == "tbl_analysis_numerical_values"
+    assert any(foreign_key.entity == "value_qualifier_symbol" for foreign_key in analysis_numerical_value.foreign_keys)
+    assert analysis_dating_range.target_table == "tbl_analysis_dating_ranges"
+    assert any(foreign_key.entity == "value_qualifier_symbol" for foreign_key in analysis_dating_range.foreign_keys)
     assert value_qualifier.target_table == "tbl_value_qualifiers"
     assert value_qualifier_symbol.target_table == "tbl_value_qualifier_symbols"
     assert any(foreign_key.entity == "value_qualifier" for foreign_key in value_qualifier_symbol.foreign_keys)
