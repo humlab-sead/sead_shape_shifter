@@ -2194,6 +2194,34 @@ entities:
       - entity: property_type
         required: true
 
+  feature_property:
+    role: fact
+    required: false
+    description: Property/value observation attached to an archaeological feature.
+    aggregate_parent: feature
+    domains: [excavation]
+    target_table: tbl_feature_properties
+    public_id: feature_property_id
+    identity_columns: [feature_id, property_type_id, property_value]
+    columns:
+      feature_id:
+        required: true
+        type: integer
+        nullable: false
+      property_type_id:
+        required: true
+        type: integer
+        nullable: false
+      property_value:
+        required: true
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: feature
+        required: true
+      - entity: property_type
+        required: true
+
   site_natgridref:
     role: fact
     required: false

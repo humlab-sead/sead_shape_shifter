@@ -47,6 +47,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     analysis_dating_range = target_model.entities["analysis_dating_range"]
     analysis_taxon_count = target_model.entities["analysis_taxon_count"]
     analysis_value_dimension = target_model.entities["analysis_value_dimension"]
+    feature_property = target_model.entities["feature_property"]
     horizon = target_model.entities["horizon"]
     property_type = target_model.entities["property_type"]
     value_class = target_model.entities["value_class"]
@@ -69,7 +70,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     sample_horizon = target_model.entities["sample_horizon"]
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
-    assert len(target_model.entities) == 81
+    assert len(target_model.entities) == 82
     assert {
         "analysis_value",
         "analysis_boolean_value",
@@ -87,6 +88,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
         "value_type",
         "value_type_item",
         "property_type",
+        "feature_property",
         "site_property",
         "site_natgridref",
     }.issubset(target_model.entities)
@@ -124,6 +126,9 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in analysis_taxon_count.foreign_keys)
     assert analysis_value_dimension.target_table == "tbl_analysis_value_dimensions"
     assert any(foreign_key.entity == "dimension" for foreign_key in analysis_value_dimension.foreign_keys)
+    assert feature_property.target_table == "tbl_feature_properties"
+    assert feature_property.aggregate_parent == "feature"
+    assert any(foreign_key.entity == "property_type" for foreign_key in feature_property.foreign_keys)
     assert property_type.target_table == "tbl_property_types"
     assert any(foreign_key.entity == "value_type" for foreign_key in property_type.foreign_keys)
     assert any(foreign_key.entity == "value_class" for foreign_key in property_type.foreign_keys)
