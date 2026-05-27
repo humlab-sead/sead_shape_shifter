@@ -169,6 +169,8 @@ Solution:
 
 Design and add a generic analysis-value family to the target model, including the core `analysis_value` entity and the smallest necessary set of typed value entities needed to represent the broader SEAD analysis surface cleanly.
 
+Reuse the shared qualifier lookup family from [#452](https://github.com/humlab-sead/sead_shape_shifter/issues/452) for single-value qualifiers and range-bound qualifiers instead of introducing a separate analysis-only qualifier vocabulary.
+
 Keep this issue focused on the analysis-value family. Do not mix in taxonomy extensions, project lookups, or broader backlog slices that deserve separate design decisions.
 
 Files:
