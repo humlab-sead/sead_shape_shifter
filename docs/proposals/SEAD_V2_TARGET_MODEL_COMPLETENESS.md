@@ -3,8 +3,8 @@
 ## Status
 
 - Current state: rewritten against the current target model
-- Scope: classify remaining SEAD v2 target-model gaps and document the metadata-boundary comparison with `SeadSchema`
-- Decision goal: identify what is missing in documentation, what is missing in the model, and what should remain target-model-driven versus schema-driven before more model growth
+- Scope: classify remaining SEAD v2 target-model gaps, define the intended completeness boundary for the shared SEAD model, and document the metadata-boundary comparison with `SeadSchema`
+- Decision goal: define a near-complete, provider-independent SEAD target model while keeping project-specific Shape Shifter configurations as curated subsets of that larger model
 
 ## Tracked Issues
 
@@ -15,7 +15,7 @@ This proposal now carries the detailed scope for these follow-up issues:
 
 Current issue state on this branch:
 
-- Issue 5: resolved on current branch
+- Issue 5: review structure improved on current branch, but not yet fully aligned to the SEAD-wide superset goal
 - Issue 6: still open, but detailed analysis should now live in this document rather than in the change-request follow-up proposal
 
 ## Summary
@@ -26,7 +26,15 @@ It mixed historical expansion plans with current-state claims and overstated imp
 
 Issue 5 should therefore be treated as a review and decision task first.
 
-The immediate job is not to add more entities blindly. It is to produce a usable gap classification so later model edits are driven by real SEAD workflows rather than by an outdated wish list.
+The immediate job is not to narrow the model to one provider, one project, or one import slice. It is to produce a usable completeness review so later model edits are driven by the current SEAD schema surface and by shared SEAD concepts rather than by an outdated wish list.
+
+The intended target is a close-to-complete SEAD target model.
+
+That shared model should contain almost all current SEAD tables and concepts, independent of any one data provider or data type.
+
+Individual Shape Shifter projects can then use manually curated subsets of that larger target model.
+
+The filtered Issue 6 snapshots are still useful, but they are only one evidence source for the metadata-boundary comparison. They are not the full completeness boundary for the SEAD target model.
 
 ## Verified Current Coverage
 
@@ -41,7 +49,7 @@ Verified entity surface in [resources/target_models/sead_standard_model.yml](../
 - Taxonomy and features: `taxa_tree_master`, `taxa_common_names`, `feature_type`, `feature`, `sample_feature`
 - Classification and measurement support: `method_group`, `data_type`, `unit`, `site_type_group`, `site_type`
 
-This is enough to support the current change-request work, but it is not yet a complete SEAD v2 target-model review.
+This is enough to support the current change-request work, but it is not yet a near-complete SEAD-wide target model.
 
 ## Problem
 
@@ -58,6 +66,8 @@ Examples:
 - it mixed implementation status, Arbodat-specific needs, and general SEAD backlog into one inventory
 
 That makes it hard to tell whether a gap is real, already solved, or only proposed.
+
+It also makes it hard to tell whether the document is describing the shared SEAD target model or only one project's current subset.
 
 ### 2. Target-Model Gaps
 
@@ -76,13 +86,13 @@ Verified missing candidates from the current YAML include:
 - Generic analysis values: `analysis_value`, `analysis_categorical_value`, `analysis_boolean_value`, `analysis_integer_value`, `analysis_numerical_value`, `analysis_date_range`, `analysis_note`, `analysis_identifier`
 - Project classification: `project_type`, `project_stage`
 
-This list is useful, but it is still only a candidate backlog until each item is tied to an actual validation or ingestion need.
+This list is useful, but it still needs to be grouped into first-slice work, broader SEAD-wide follow-up, and derived or operational schema artifacts that do not need first-class target-model entities.
 
 For Issue 5, keep this broader backlog visible.
 
-For Issue 6, use the filtered `SeadSchema` snapshots as the narrower evidence surface.
+For Issue 6, use the filtered `SeadSchema` snapshots as one narrower evidence surface for the metadata-boundary comparison.
 
-On that narrower surface, the strongest supported follow-up areas are:
+On that narrower surface, the strongest first implementation slices are:
 
 - sample and sample-group context additions such as `sample_group_coordinate`, `sample_horizon`, `sample_location`, `sample_location_type`, `sample_note`, `sample_group_dimension`, `sample_group_note`, and `sample_group_reference`
 - site and feature property patterns such as `site_natgridref`, `feature_property`, `feature_property_type`, `site_property`, and `site_property_type`
@@ -90,15 +100,17 @@ On that narrower surface, the strongest supported follow-up areas are:
 
 The current filtered snapshots do not support using `coordinate_system`, `dating_period`, `natural_region*`, `sample_colour`, `colour`, or `abundance_property_type` to close Issue 6.
 
+That does not mean those concepts are out of scope for the complete SEAD target model. It only means the filtered Issue 6 comparison should not be used as the sole justification for prioritizing them ahead of the current first slices.
+
 ### 3. Schema-Boundary Decisions
 
-Some gaps may not belong in the core SEAD target model at all.
+Some gaps may still need special handling, but the default assumption should now be inclusion in the shared SEAD target model unless there is a strong reason to classify the schema surface as derived, operational, or non-domain metadata.
 
-Examples called out in earlier work include `natural_region`, `cultural_group`, `archaeological_period`, and related region-specific or project-specific concepts. Those may be:
+Examples called out in earlier work include `natural_region`, `cultural_group`, `archaeological_period`, and related region-specific concepts. Those may be:
 
 - real core SEAD gaps
-- valid extension-model concerns
-- data-project conveniences that should not be promoted into the shared target model yet
+- broad shared-model concerns that should be scheduled later rather than discarded
+- derived or operational schema concerns that should not be promoted into the shared target model as first-class entities
 
 Issue 5 is not complete until those categories are separated explicitly.
 
@@ -106,7 +118,7 @@ Issue 5 is not complete until those categories are separated explicitly.
 
 Issue 6 should not be tracked as a separate, context-free note.
 
-It depends directly on the same review work as Issue 5 because the practical question is not only "what is missing from the target model" but also "what should be modeled here at all".
+It depends directly on the same review work as Issue 5 because the practical question is not only "what is missing from the target model" but also "which schema concepts belong in the near-complete shared SEAD model and which are only operational artifacts".
 
 The current change-request ingester uses the target model in [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml). The older `sead` ingester uses `SeadSchema` in [ingesters/sead/metadata.py](../../ingesters/sead/metadata.py), which derives metadata from the live SQL schema.
 
@@ -142,7 +154,7 @@ These gaps remain part of the broader Issue 5 review, but the current filtered I
 - `project_type`, `project_stage`
 - `coordinate_system`, `dating_period`, `natural_region*`
 - `sample_colour`, `colour`, `abundance_property_type`
-- extension-like concepts that may belong outside the shared core model until their reuse is proven
+- broader SEAD-wide concepts that should be scheduled after the first slices or clarified against the live schema before they are modeled
 
 ## Target Model Versus `SeadSchema`
 
@@ -246,8 +258,8 @@ For each bucket, record one of four outcomes: already covered, partially covered
 4. Use [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](./CHANGE_REQUEST_INGESTER/filtered_import_columns.csv) to check whether the apparent table-level gaps are real entity gaps or only column-level differences.
 Do not propose a new target-model entity until the filtered column snapshot shows that the live-schema table carries a distinct business concept rather than only extra operational columns such as legacy XML names or analysis-value-specific structure.
 
-5. Separate true core-model candidates from extension or legacy candidates.
-If a missing concept only exists in deprecated table families, only exists in derived tables, or is tightly tied to a legacy method-specific structure, keep it out of the core target-model gap list.
+5. Separate true shared-model candidates from derived, operational, or legacy-only schema artifacts.
+If a missing concept only exists in deprecated table families, only exists in derived tables, or is tightly tied to a legacy method-specific structure, keep it out of the shared target-model gap list.
 
 6. Rewrite the current candidate-gap lists in this document against the filtered CSV evidence.
 Promote only those gaps that still survive the deprecated-table filter and that map to an active imported concept in the remaining live-schema set.
@@ -256,7 +268,7 @@ Promote only those gaps that still survive the deprecated-table filter and that 
 State that the comparison was performed against filtered offline snapshots of `get_sead_tables()` and `get_sead_columns()`, not against an unfiltered live schema dump.
 
 8. Produce a short decision table in this document for the remaining open Issue 6 scope.
-Each row should name the live-schema concept or table family, the matching target-model entity if one exists, the decision (`keep in target model`, `candidate target-model addition`, `extension candidate`, or `ignore for Issue 6`), and a one-line reason.
+Each row should name the live-schema concept or table family, the matching target-model entity if one exists, the decision (`keep in target model`, `candidate target-model addition`, `later shared-model candidate`, or `ignore for Issue 6`), and a one-line reason.
 
 9. Close Issue 6 only after the document contains both parts of the final outcome.
 The first part is the filtered comparison method. The second part is a decision-ready list of the live-schema concepts that still justify target-model follow-up.
@@ -280,7 +292,7 @@ The current review should use these buckets.
 | Chronology and dating | `tbl_chronologies`, `tbl_geochronology`, `tbl_dating_labs`, `tbl_dating_material`, `tbl_dating_uncertainty`, `tbl_age_types`, `tbl_relative_age_types`, `tbl_relative_ages`, `tbl_relative_dates` | `chronology`, `geochronology`, `dating_lab`, `dating_material`, `dating_uncertainty`, `age_type`, `relative_age_type`, `relative_ages`, `relative_dating` | already covered | For Issue 6, this bucket mostly confirms current coverage. The earlier `dating_period` candidate is not supported by the filtered snapshot and should stay out of this review surface. |
 | Abundance and identification | `tbl_abundances`, `tbl_abundance_elements`, `tbl_abundance_modifications`, `tbl_modification_types`, `tbl_identification_levels`, `tbl_abundance_ident_levels`, `tbl_abundance_properties` | `abundance`, `abundance_element`, `abundance_modification`, `modification_type`, `identification_level`, `abundance_ident_level`, `abundance_property` | already covered | This bucket mostly validates the current abundance model. The remaining question is whether the shared property-type surface should later be modeled more explicitly. |
 | Analysis values and typed value families | `tbl_analysis_entities`, `tbl_analysis_values`, `tbl_analysis_boolean_values`, `tbl_analysis_categorical_values`, `tbl_analysis_integer_values`, `tbl_analysis_numerical_values`, `tbl_analysis_dating_ranges`, `tbl_analysis_notes`, `tbl_analysis_identifiers`, `tbl_analysis_value_dimensions`, `tbl_analysis_taxon_counts` | `analysis_entity` exists; the generic analysis-value family does not | partially covered | This is the clearest model gap in the filtered snapshots and the strongest candidate for future target-model growth after the current review closes. |
-| Taxonomy and ecology extensions | `tbl_taxa_common_names`, `tbl_taxa_synonyms`, `tbl_taxa_measured_attributes`, `tbl_rdb`, `tbl_rdb_codes`, `tbl_rdb_systems`, `tbl_ecocodes`, `tbl_ecocode_groups`, `tbl_ecocode_systems` | `taxa_tree_master`, `taxa_common_names`; no direct entities for the wider enrichment surface | partially covered | The filtered tables show a real extension surface, but it still looks more like enrichment and specialist context than core metadata required for current change-request planning. |
+| Taxonomy and ecology extensions | `tbl_taxa_common_names`, `tbl_taxa_synonyms`, `tbl_taxa_measured_attributes`, `tbl_rdb`, `tbl_rdb_codes`, `tbl_rdb_systems`, `tbl_ecocodes`, `tbl_ecocode_groups`, `tbl_ecocode_systems` | `taxa_tree_master`, `taxa_common_names`; no direct entities for the wider enrichment surface | partially covered | The filtered tables show a real SEAD-wide enrichment surface, but it still looks better suited to a later shared-model slice than to the current first implementation tranche. |
 | Project classification and support lookups | `tbl_project_types`, `tbl_project_stages` plus broad support tables such as `tbl_activity_types`, `tbl_record_types`, `tbl_languages`, `tbl_seasons` | `project` already carries project-type and project-stage fields; most support lookups have no direct entity need in the current model | partially covered | This bucket should stay conservative. `project_type` and `project_stage` may justify future controlled-vocabulary entities, but the current evidence does not force them into the core model now. |
 
 ### Done Condition For This Plan
@@ -292,7 +304,7 @@ Issue 6 is ready to close when this document makes all of the following explicit
 - `tbl_image_types`, `tbl_colours`, `tbl_sample_colours`, `tbl_aggregate_datasets`, `tbl_aggregate_order_types`, `tbl_aggregate_sample_ages`, and `tbl_aggregate_samples` were also excluded from the Issue 6 review surface
 - `date_updated` was excluded from the column-level review surface
 - the remaining live-schema concepts were mapped against the current target model
-- the document clearly separates core-model follow-up from legacy, derived, or extension-only candidates
+- the document clearly separates shared-model follow-up from legacy, derived, or operational-only schema artifacts
 - the final recommendation still keeps the target model as the active metadata boundary for `sead_change_request`
 
 ## Issue 6 Decision Table
@@ -309,7 +321,7 @@ It uses the filtered `get_sead_tables()` and `get_sead_columns()` outputs in [do
 | Sample and sample-group context extensions | `tbl_sample_group_dimensions`, `tbl_sample_group_notes`, `tbl_sample_group_references` | `sample_group` exists, but the grouped-dimension, note, and reference surfaces are absent | candidate target-model addition | These are active imported concepts in the filtered CSV set and are a better fit for grouped sampling context than ad hoc free-text extensions. |
 | Feature context and generic properties | `tbl_feature_properties`, `tbl_site_properties`, with shared lookup support from `tbl_property_types` | `feature` and `site` exist, but the generic property pattern is not modeled in the current target model | candidate target-model addition | The column snapshots show a consistent property pattern built from `property_type_id` plus `property_value`, which makes this a reusable active concept rather than a one-off legacy table. |
 | Project classification and support lookups | `tbl_project_types`, `tbl_project_stages` | `project` already carries `project_type_id` and `project_stage_id` columns, but no dedicated lookup entities are modeled | keep in target model | The concept is already represented at the `project` entity boundary. Dedicated lookup entities can stay deferred unless validation or reconciliation needs controlled-vocabulary modeling. |
-| Taxonomy and ecology extensions | `tbl_taxa_synonyms`, `tbl_taxa_measured_attributes`, `tbl_rdb`, `tbl_rdb_codes`, `tbl_rdb_systems` | `taxa_tree_master` and `taxa_common_names` exist, but these enrichment tables are not modeled | extension candidate | These tables are present in the filtered import set, but they look like taxonomy and ecology enrichment rather than core metadata needed for current `sead_change_request` planning. |
+| Taxonomy and ecology extensions | `tbl_taxa_synonyms`, `tbl_taxa_measured_attributes`, `tbl_rdb`, `tbl_rdb_codes`, `tbl_rdb_systems` | `taxa_tree_master` and `taxa_common_names` exist, but these enrichment tables are not modeled | later shared-model candidate | These tables are present in the filtered import set and may belong in the broader SEAD target model, but they are not the best first slice for the current implementation order. |
 | Excluded review surface | `tbl_image_types`, `tbl_colours`, `tbl_sample_colours`, `tbl_aggregate_datasets`, `tbl_aggregate_order_types`, `tbl_aggregate_sample_ages`, `tbl_aggregate_samples` | Present in the raw CSV snapshots, but explicitly excluded from the Issue 6 review surface | ignore for Issue 6 | These tables are intentionally outside the current target-model boundary review for `sead_change_request`. |
 | Excluded review surface | `tbl_ceramic*`, `tbl_isotope*`, `tbl_dendro*` | Present in the raw CSV snapshots, but explicitly excluded from the Issue 6 review surface | ignore for Issue 6 | These families are superseded by the `tbl_analysis_values` path and should not drive new target-model decisions. |
 | Excluded review surface | `tbl_mcr*` | Present in the raw CSV snapshots, but explicitly excluded from the Issue 6 review surface | ignore for Issue 6 | These are live derived tables rather than imported source tables. |
@@ -326,20 +338,22 @@ Issue 6 should be closed only when this document contains an explicit comparison
 The next steps should be:
 
 1. Keep [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml) as the source of truth for current coverage.
-2. Use this document to track only verified missing areas and verified decisions.
-3. Separate core-model gaps from extension-model candidates before adding more entities.
+2. Use this document to track verified missing areas, verified decisions, and the intended completeness boundary for the shared SEAD model.
+3. Separate true shared-model entities from derived or operational schema artifacts before adding more entities.
 4. Keep the target model as the active metadata boundary for `sead_change_request` unless a later architecture proposal explicitly changes that decision.
-5. Promote only the highest-value missing entities into implementation work.
+5. Promote the highest-value missing entities into implementation work first without shrinking the broader SEAD-wide completeness backlog to one project's current scope.
 
 ## Recommended Follow-Up Order
 
 If follow-up implementation work starts after this review, it should proceed in small slices ordered by change size and reuse value.
 
+These slices are the first tranche of work toward the near-complete SEAD target model. They are not the full completeness inventory.
+
 ### 1. Sample And Sample-Group Context First
 
 Tracked by [#447](https://github.com/humlab-sead/sead_shape_shifter/issues/447) and [#448](https://github.com/humlab-sead/sead_shape_shifter/issues/448).
 
-Start with the sample and sample-group context additions that are clearly supported by the filtered review surface and fit the existing model shape.
+Start with the sample and sample-group context additions that are both clearly supported by the filtered review surface and broadly aligned with the SEAD-wide shared model.
 
 Suggested first slice:
 
@@ -389,13 +403,15 @@ This slice likely has the highest design impact because it affects how the targe
 
 Tracked by [#451](https://github.com/humlab-sead/sead_shape_shifter/issues/451).
 
-Do not mix the more extension-like or controlled-vocabulary-driven candidates into the first implementation rounds.
+Use a separate pass for the broader SEAD-wide backlog that does not fit cleanly into the first implementation rounds.
 
-Keep these deferred unless a concrete validation or ingestion use case forces them forward:
+This pass should keep the first slices narrow while still acknowledging the wider completeness target:
 
 - `project_type`, `project_stage`
 - `taxon_synonyms`, `rdb`, `taxon_measured_attributes`
-- broader Issue 5 backlog items not supported by the filtered Issue 6 surface
+- `coordinate_system`, `dating_period`, `natural_region*`
+- `sample_colour`, `colour`, `abundance_property_type`
+- broader SEAD-wide backlog items not covered by the current first slices
 
 ## Implementation Handoff
 
@@ -403,26 +419,27 @@ When this proposal is used to start model work, each follow-up change should:
 
 - name the exact target-model entities being added
 - cite which Issue 6 bucket and decision-table row justified the change
+- state whether the slice is part of the shared SEAD superset or only a project-level subset decision
 - avoid mixing one bucket's work with another unless the model shape requires it
-- keep deferred and extension-candidate concepts out of the same change set
+- keep derived or operational schema artifacts out of the same change set
 
 ## Suggested Issue Slices
 
 The follow-up order above can be turned into small tracked issues without reopening the full review.
 
-Use these slices as the default breakdown.
+Use these slices as the default first breakdown.
 
 | Order | Suggested issue title | Target-model scope | Keep out of scope | Done signal |
 | --- | --- | --- | --- | --- |
-| 1 | [#447 feat(target_model): add sample-context entities](https://github.com/humlab-sead/sead_shape_shifter/issues/447) | `sample_horizon`, `sample_location`, `sample_location_type`, `sample_note` | property-pattern work, analysis-value work, taxonomy extensions | The target model can represent the main sample-context tables from the filtered review surface without reusing ad hoc free-text placeholders. |
-| 2 | [#448 feat(target_model): add sample-group context entities](https://github.com/humlab-sead/sead_shape_shifter/issues/448) | `sample_group_coordinate`, `sample_group_dimension`, `sample_group_note`, `sample_group_reference` | site and feature properties, analysis-value work, deferred lookups | The target model can represent grouped sampling context from the filtered review surface with explicit entities tied to `sample_group`. |
-| 3 | [#449 feat(target_model): add site and feature property entities](https://github.com/humlab-sead/sead_shape_shifter/issues/449) | `feature_property_type`, `feature_property`, `site_property_type`, `site_property`, `site_natgridref` | sample-context entities already covered by earlier slices, analysis-value work | The target model has an explicit reusable property pattern for the active site and feature metadata still missing from the filtered review surface. |
-| 4 | [#450 feat(target_model): design generic analysis-value family](https://github.com/humlab-sead/sead_shape_shifter/issues/450) | `analysis_value`, `analysis_note`, `analysis_identifier`, typed analysis-value variants | extension candidates, project lookup entities, unsupported Issue 6 backlog items | The target model has an agreed shape for generic typed analysis values that can replace method-specific assumptions without forcing unrelated extensions into the same change. |
-| 5 | [#451 proposal(target_model): reassess deferred lookup and extension candidates](https://github.com/humlab-sead/sead_shape_shifter/issues/451) | `project_type`, `project_stage`, `taxon_synonyms`, `rdb`, `taxon_measured_attributes` only if justified by concrete use cases | unsupported Issue 6 backlog such as `coordinate_system`, `dating_period`, `natural_region*`, `sample_colour`, `colour`, `abundance_property_type` unless new evidence appears | A separate decision confirms which deferred concepts need core-model promotion and which should remain extension candidates or broader Issue 5 backlog. |
+| 1 | [#447 feat(target_model): add sample-context entities](https://github.com/humlab-sead/sead_shape_shifter/issues/447) | `sample_horizon`, `sample_location`, `sample_location_type`, `sample_note` | property-pattern work, analysis-value work, later SEAD-wide backlog slices | The shared target model can represent a major sample-context surface cleanly as part of the broader SEAD superset. |
+| 2 | [#448 feat(target_model): add sample-group context entities](https://github.com/humlab-sead/sead_shape_shifter/issues/448) | `sample_group_coordinate`, `sample_group_dimension`, `sample_group_note`, `sample_group_reference` | site and feature properties, analysis-value work, later SEAD-wide backlog slices | The shared target model can represent grouped sampling context with explicit entities tied to `sample_group`. |
+| 3 | [#449 feat(target_model): add site and feature property entities](https://github.com/humlab-sead/sead_shape_shifter/issues/449) | `feature_property_type`, `feature_property`, `site_property_type`, `site_property`, `site_natgridref` | sample-context entities already covered by earlier slices, analysis-value work | The shared target model has an explicit reusable property pattern for important site and feature metadata that is still missing from the current YAML. |
+| 4 | [#450 feat(target_model): design generic analysis-value family](https://github.com/humlab-sead/sead_shape_shifter/issues/450) | `analysis_value`, `analysis_note`, `analysis_identifier`, typed analysis-value variants | derived method-specific artifacts, project-only subset choices | The shared target model has an agreed shape for generic typed analysis values that can support multiple SEAD data families without forcing provider-specific assumptions into the model. |
+| 5 | [#451 proposal(target_model): reassess deferred lookup and extension candidates](https://github.com/humlab-sead/sead_shape_shifter/issues/451) | `project_type`, `project_stage`, `taxon_synonyms`, `rdb`, `taxon_measured_attributes`, plus broader backlog candidates such as `coordinate_system`, `dating_period`, `natural_region*`, `sample_colour`, `colour`, and `abundance_property_type` | derived tables, operational-only columns, and project-level subset decisions that do not belong in the shared model definition | A separate decision confirms which remaining SEAD-wide concepts need promotion into the near-complete shared target model and which schema surfaces are only operational artifacts. |
 
 These issue slices are intentionally narrow.
 
-They preserve the main review decision from Issue 6: start with the entities that are both supported by the filtered snapshots and closest to the existing target-model shape.
+They preserve the main review decision from Issue 6: use the filtered snapshots to sequence the first slices without treating that comparison surface as the full boundary of the SEAD target model.
 
 ## Implementation Plan Table
 
@@ -434,7 +451,7 @@ If this proposal is used as the handoff document for execution, the implementati
 | Phase 2 | Sample-group context | Extends the same part of the model while keeping the pattern simple | Splitting group-level versus sample-level concepts inconsistently |
 | Phase 3 | Site and feature properties | Introduces a reusable pattern after simpler context entities are settled | Over-generalizing the property model too early |
 | Phase 4 | Analysis-value family | Highest reuse potential, but also the largest design decision | Pulling too many method-specific assumptions into one generic model |
-| Phase 5 | Deferred lookups and extensions | Only after the core review-backed gaps are addressed | Reopening Issue 6 with weak evidence or convenience-driven additions |
+| Phase 5 | Broader SEAD-wide coverage review | Only after the first cross-cutting gaps are addressed | Mistaking one project's current subset or one filtered comparison surface for the full shared-model boundary |
 
 ## GitHub-Ready Issue Drafts
 
@@ -442,7 +459,7 @@ The GitHub-ready issue bodies derived from this proposal are tracked separately 
 
 The live issues are [#447](https://github.com/humlab-sead/sead_shape_shifter/issues/447), [#448](https://github.com/humlab-sead/sead_shape_shifter/issues/448), [#449](https://github.com/humlab-sead/sead_shape_shifter/issues/449), [#450](https://github.com/humlab-sead/sead_shape_shifter/issues/450), and [#451](https://github.com/humlab-sead/sead_shape_shifter/issues/451).
 
-That file keeps the issue text in a reusable `Problem`, `Solution`, and `Files` format without expanding this proposal further.
+That file keeps the first implementation slices in a reusable `Problem`, `Solution`, and `Files` format without pretending to be the full SEAD completeness plan.
 
 ## Acceptance Criteria
 
@@ -451,8 +468,10 @@ That file keeps the issue text in a reusable `Problem`, `Solution`, and `Files` 
 Issue 5 should count as complete when all of the following are true:
 
 - this review matches the current YAML model rather than a historical expansion plan
+- this review states explicitly that the shared target model is intended as a near-complete, provider-independent SEAD superset
+- this review distinguishes the shared SEAD target model from project-specific curated subsets
 - remaining gaps are grouped into documentation gaps, target-model gaps, and schema-boundary decisions
-- the highest-value missing areas are prioritized clearly enough to drive follow-up implementation
+- the highest-value missing areas are prioritized clearly enough to drive follow-up implementation without collapsing the broader SEAD backlog to one import slice
 - the document is useful as a decision input for future model edits without requiring readers to reverse-engineer stale claims
 
 ### Issue 6
@@ -462,7 +481,7 @@ Issue 6 should count as complete when all of the following are true:
 - this document compares the current target-model-driven path with the older `SeadSchema` live-schema path explicitly
 - the comparison states that it was run against the filtered CSV snapshots rather than against an unfiltered live schema dump
 - the comparison covers source of truth, drift risk, testability, offline reproducibility, SEAD-specific output generation, and operational dependency
-- the final candidate list is constrained by the filtered review surface rather than by the broader historical backlog
+- the Issue 6 candidate list is constrained by the filtered review surface without redefining the broader completeness boundary for the SEAD target model
 - the recommendation is clear enough to guide future follow-up work without reopening the metadata boundary by accident
 
 ## References

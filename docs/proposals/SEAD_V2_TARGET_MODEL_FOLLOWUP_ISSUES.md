@@ -1,6 +1,14 @@
 # SEAD v2 Target Model Follow-Up Issue Drafts
 
-This document turns the SEAD v2 target-model follow-up slices into GitHub-ready issue drafts.
+This document turns the first SEAD v2 target-model follow-up slices into GitHub-ready issue drafts.
+
+These issues are the first implementation tranche toward a near-complete, provider-independent SEAD target model.
+
+They are not a full inventory of all remaining SEAD target-model work.
+
+The shared target model is intended to cover almost all current SEAD tables and concepts.
+
+Individual Shape Shifter projects can then use curated subsets of that larger model.
 
 Detailed proposal home:
 
@@ -28,7 +36,9 @@ Title:
 
 Problem:
 
-The filtered Issue 6 review shows that the current target model covers the main sample core but still lacks explicit entities for several active sample-context concepts.
+The broader completeness review shows that the current target model covers the main sample core but still lacks explicit entities for several active sample-context concepts.
+
+The filtered Issue 6 review strengthens the priority of this slice, but it is not the only reason these entities belong in the shared SEAD target model.
 
 The clearest missing concepts on the filtered review surface are:
 
@@ -37,13 +47,13 @@ The clearest missing concepts on the filtered review surface are:
 - `sample_location_type`
 - `sample_note`
 
-Without these entities, the target model cannot represent the filtered sample-context tables cleanly and instead risks pushing those concepts into generic descriptions or later ad hoc extensions.
+Without these entities, the shared target model remains incomplete on an important sample-context surface and risks pushing standard SEAD concepts into generic descriptions or later ad hoc extensions.
 
 Solution:
 
 Add explicit sample-context entities for `sample_horizon`, `sample_location`, `sample_location_type`, and `sample_note`.
 
-Keep this issue limited to sample-level context. Do not mix in sample-group entities, property-pattern work, analysis-value work, or extension candidates.
+Keep this issue limited to sample-level context. Do not mix in sample-group entities, property-pattern work, analysis-value work, or broader SEAD backlog slices.
 
 Files:
 
@@ -64,7 +74,9 @@ Title:
 
 Problem:
 
-The filtered Issue 6 review also shows a distinct sample-group context surface that is still missing from the target model.
+The broader completeness review also shows a distinct sample-group context surface that is still missing from the target model.
+
+The filtered Issue 6 review strengthens the priority of this slice, but the rationale for inclusion is broader than that one comparison surface.
 
 The clearest missing concepts on that surface are:
 
@@ -73,7 +85,7 @@ The clearest missing concepts on that surface are:
 - `sample_group_note`
 - `sample_group_reference`
 
-These concepts belong with `sample_group`, but the current model does not represent them explicitly.
+These concepts belong with `sample_group`, but the current shared model does not represent them explicitly.
 
 Solution:
 
@@ -100,7 +112,9 @@ Title:
 
 Problem:
 
-The filtered Issue 6 review identifies a reusable property pattern that is present in the live-schema surface but still absent from the target model.
+The broader completeness review identifies a reusable property pattern that is present in the SEAD schema surface but still absent from the target model.
+
+The filtered Issue 6 review makes this a strong early slice, but the underlying need is broader SEAD-wide metadata coverage.
 
 The strongest current candidates are:
 
@@ -110,7 +124,7 @@ The strongest current candidates are:
 - `site_property`
 - `site_natgridref`
 
-This is more than a few isolated tables. It is a cross-cutting metadata pattern that needs an explicit target-model shape.
+This is more than a few isolated tables. It is a cross-cutting metadata pattern that needs an explicit shared-model shape.
 
 Solution:
 
@@ -137,7 +151,9 @@ Title:
 
 Problem:
 
-The filtered Issue 6 review shows that `analysis_entity` exists, but the generic analysis-value family is still missing from the target model.
+The broader completeness review shows that `analysis_entity` exists, but the generic analysis-value family is still missing from the target model.
+
+The filtered Issue 6 review makes this gap highly visible, but the need is SEAD-wide rather than specific to one provider or one current import slice.
 
 The missing surface includes:
 
@@ -146,13 +162,13 @@ The missing surface includes:
 - `analysis_identifier`
 - typed value entities such as boolean, categorical, integer, numerical, and dating-range variants
 
-This is the clearest active gap in the filtered review surface, but it also has the highest design impact because it affects how the model represents flexible typed analysis data across multiple workflows.
+This is one of the clearest active gaps, but it also has the highest design impact because it affects how the model represents flexible typed analysis data across multiple workflows and data families.
 
 Solution:
 
-Design and add a generic analysis-value family to the target model, including the core `analysis_value` entity and the smallest necessary set of typed value entities needed to represent the filtered live-schema surface cleanly.
+Design and add a generic analysis-value family to the target model, including the core `analysis_value` entity and the smallest necessary set of typed value entities needed to represent the broader SEAD analysis surface cleanly.
 
-Keep this issue focused on the analysis-value family. Do not mix in taxonomy extensions, project lookups, or unsupported Issue 6 backlog items.
+Keep this issue focused on the analysis-value family. Do not mix in taxonomy extensions, project lookups, or broader backlog slices that deserve separate design decisions.
 
 Files:
 
@@ -173,20 +189,24 @@ Title:
 
 Problem:
 
-Some concepts remain visible in the broader Issue 5 backlog, but the filtered Issue 6 evidence does not justify promoting them into immediate core-model work.
+Some concepts remain outside the first implementation slices even though they may still belong in the near-complete shared SEAD target model.
+
+The filtered Issue 6 evidence is not broad enough to settle those areas, but that does not make them out of scope for the full target-model plan.
 
 The current deferred set includes:
 
 - `project_type`, `project_stage`
 - `taxon_synonyms`, `rdb`, `taxon_measured_attributes`
+- `coordinate_system`, `dating_period`, `natural_region*`
+- `sample_colour`, `colour`, `abundance_property_type`
 
-If these concepts move forward, they should do so from explicit use cases rather than from convenience or from historical schema presence alone.
+If these concepts move forward, they should do so from explicit SEAD-wide model criteria and schema evidence rather than from one project's current subset.
 
 Solution:
 
-Run a separate decision pass for the deferred lookup and extension candidates.
+Run a separate decision pass for the broader backlog beyond the first implementation slices.
 
-Promote only the concepts that have a concrete validation or ingestion need. Leave unsupported Issue 6 backlog items such as `coordinate_system`, `dating_period`, `natural_region*`, `sample_colour`, `colour`, and `abundance_property_type` out of scope unless new evidence appears.
+Promote the concepts that belong in the near-complete shared SEAD target model, and separate them from derived tables, operational-only schema elements, and project-level subset choices.
 
 Files:
 
