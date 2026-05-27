@@ -252,3 +252,39 @@ Files:
 - `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
 - `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
+
+## Issue 7 [feat(target_model): add sampling context and horizon lookups](https://github.com/humlab-sead/sead_shape_shifter/issues/453)
+
+Status:
+
+`Open as #453`
+
+Title:
+
+`feat(target_model): add sampling context and horizon lookups`
+
+Problem:
+
+The current target model still treats `sample_group.sampling_context_id` and `sample_horizon.horizon_id` as untyped integers even though both columns point to named SEAD lookup tables.
+
+Schema evidence shows that `sampling_context_id` is reused beyond `tbl_sample_groups`, including sample description and sample-location-type context tables. `horizon_id` points to `tbl_horizons`, which carries its own vocabulary fields and a `method_id` reference.
+
+Leaving both columns unmodeled keeps shared SEAD vocabularies hidden inside typed integer columns and blocks clean foreign-key wiring in the sample-context slice.
+
+Solution:
+
+Add explicit target-model lookup entities for the shared context family:
+
+- `sample_group_sampling_context` for `tbl_sample_group_sampling_contexts`
+- `horizon` for `tbl_horizons`
+
+Update the direct consumer entities to reference those lookups explicitly, starting with `sample_group` and `sample_horizon`.
+
+Keep this issue focused on the shared lookup entities and the direct foreign keys already present in the current model. Do not mix in broader sample-description extension tables unless they are needed to complete the same lookup family cleanly.
+
+Files:
+
+- `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
+- `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
+- `resources/target_models/sead_superset_model.yml`
+- `docs/TARGET_MODEL_GUIDE.md`
