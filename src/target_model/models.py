@@ -2,16 +2,20 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ForeignKeySpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     entity: str
     required: bool = False
     via: str | None = None  # Bridge entity name for many-to-many relationships
 
 
 class ColumnSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     required: bool = False
     type: str | None = None
     nullable: bool | None = None
@@ -19,6 +23,8 @@ class ColumnSpec(BaseModel):
 
 
 class EntitySpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     role: Literal["fact", "lookup", "classifier", "bridge"] | None = None
     required: bool = False
     description: str | None = None
@@ -37,20 +43,28 @@ class EntitySpec(BaseModel):
 
 
 class NamingConventions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     public_id_suffix: str | None = None
 
 
 class GlobalConstraint(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     type: str
 
 
 class ModelMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str
     version: str
     description: str | None = None
 
 
 class TargetModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     model: ModelMetadata
     entities: dict[str, EntitySpec] = Field(default_factory=dict)
     naming: NamingConventions | None = None
