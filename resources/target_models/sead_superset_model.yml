@@ -944,6 +944,215 @@ entities:
       - entity: dataset
         required: true
 
+  analysis_value:
+    role: fact
+    required: false
+    description: Core analysis value record attached to an analysis entity.
+    aggregate_parent: analysis_entity
+    domains: [analysis]
+    target_table: tbl_analysis_values
+    public_id: analysis_value_id
+    identity_columns: [analysis_entity_id, value_class_id, analysis_value]
+    columns:
+      analysis_entity_id:
+        required: true
+        type: integer
+        nullable: false
+      value_class_id:
+        type: integer
+        nullable: true
+      analysis_value:
+        type: string
+        nullable: true
+      boolean_value:
+        type: boolean
+        nullable: true
+      is_boolean:
+        type: boolean
+        nullable: true
+      is_uncertain:
+        type: boolean
+        nullable: true
+      is_undefined:
+        type: boolean
+        nullable: true
+      is_not_analyzed:
+        type: boolean
+        nullable: true
+      is_indeterminable:
+        type: boolean
+        nullable: true
+      is_anomaly:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_entity
+        required: true
+
+  analysis_note:
+    role: fact
+    required: false
+    description: Free-text note attached to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_notes
+    public_id: analysis_note_id
+    identity_columns: [analysis_value_id, value]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      value:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [analysis_value_id, value]
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+
+  analysis_identifier:
+    role: fact
+    required: false
+    description: Identifier string attached to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_identifiers
+    public_id: analysis_identifier_id
+    identity_columns: [analysis_value_id, value]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      value:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [analysis_value_id, value]
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+
+  analysis_integer_value:
+    role: fact
+    required: false
+    description: Integer-valued analysis result with an optional qualifier symbol.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_integer_values
+    public_id: analysis_integer_value_id
+    identity_columns: [analysis_value_id, qualifier, value]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      qualifier:
+        type: string
+        nullable: true
+      value:
+        required: true
+        type: integer
+        nullable: false
+      is_variant:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: value_qualifier_symbol
+        required: false
+
+  analysis_numerical_value:
+    role: fact
+    required: false
+    description: Numerical analysis result with an optional qualifier symbol.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_numerical_values
+    public_id: analysis_numerical_value_id
+    identity_columns: [analysis_value_id, qualifier, value]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      qualifier:
+        type: string
+        nullable: true
+      value:
+        required: true
+        type: decimal
+        nullable: false
+      is_variant:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: value_qualifier_symbol
+        required: false
+
+  analysis_dating_range:
+    role: fact
+    required: false
+    description: Qualified dating range attached to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis, dating]
+    target_table: tbl_analysis_dating_ranges
+    public_id: analysis_dating_range_id
+    identity_columns: [analysis_value_id, low_value, high_value, low_qualifier, high_qualifier]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      low_value:
+        required: true
+        type: integer
+        nullable: false
+      high_value:
+        required: true
+        type: integer
+        nullable: false
+      low_is_uncertain:
+        type: boolean
+        nullable: true
+      high_is_uncertain:
+        type: boolean
+        nullable: true
+      low_qualifier:
+        type: string
+        nullable: true
+      high_qualifier:
+        type: string
+        nullable: true
+      age_type_id:
+        type: integer
+        nullable: true
+      season_id:
+        type: integer
+        nullable: true
+      dating_uncertainty_id:
+        type: integer
+        nullable: true
+      is_variant:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: value_qualifier_symbol
+        required: false
+      - entity: age_type
+        required: false
+      - entity: dating_uncertainty
+        required: false
+
   abundance:
     role: fact
     required: false
