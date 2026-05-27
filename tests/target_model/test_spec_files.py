@@ -34,19 +34,24 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
     issues = TargetModelSpecValidator().validate(target_model)
+    analysis_categorical_value = target_model.entities["analysis_categorical_value"]
     analysis_value = target_model.entities["analysis_value"]
     analysis_boolean_value = target_model.entities["analysis_boolean_value"]
     analysis_note = target_model.entities["analysis_note"]
     analysis_identifier = target_model.entities["analysis_identifier"]
     analysis_integer_range = target_model.entities["analysis_integer_range"]
     analysis_integer_value = target_model.entities["analysis_integer_value"]
+    analysis_numerical_range = target_model.entities["analysis_numerical_range"]
     analysis_numerical_value = target_model.entities["analysis_numerical_value"]
     analysis_dating_range = target_model.entities["analysis_dating_range"]
     analysis_taxon_count = target_model.entities["analysis_taxon_count"]
     analysis_value_dimension = target_model.entities["analysis_value_dimension"]
     horizon = target_model.entities["horizon"]
+    value_class = target_model.entities["value_class"]
     value_qualifier = target_model.entities["value_qualifier"]
     value_qualifier_symbol = target_model.entities["value_qualifier_symbol"]
+    value_type = target_model.entities["value_type"]
+    value_type_item = target_model.entities["value_type_item"]
     sample_group = target_model.entities["sample_group"]
     sample_group_coordinate = target_model.entities["sample_group_coordinate"]
     sample_group_dimension = target_model.entities["sample_group_dimension"]
@@ -60,18 +65,23 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     sample_horizon = target_model.entities["sample_horizon"]
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
-    assert len(target_model.entities) == 73
+    assert len(target_model.entities) == 78
     assert {
         "analysis_value",
         "analysis_boolean_value",
+        "analysis_categorical_value",
         "analysis_note",
         "analysis_identifier",
         "analysis_integer_range",
         "analysis_integer_value",
+        "analysis_numerical_range",
         "analysis_numerical_value",
         "analysis_dating_range",
         "analysis_taxon_count",
         "analysis_value_dimension",
+        "value_class",
+        "value_type",
+        "value_type_item",
     }.issubset(target_model.entities)
     assert {"sample_horizon", "sample_location", "sample_location_type", "sample_note", "horizon"}.issubset(target_model.entities)
     assert {"value_qualifier", "value_qualifier_symbol"}.issubset(target_model.entities)
@@ -80,8 +90,12 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     )
     assert analysis_value.target_table == "tbl_analysis_values"
     assert analysis_value.aggregate_parent == "analysis_entity"
+    assert analysis_value.columns["value_class_id"].nullable is False
+    assert any(foreign_key.entity == "value_class" for foreign_key in analysis_value.foreign_keys)
     assert analysis_boolean_value.target_table == "tbl_analysis_boolean_values"
     assert analysis_boolean_value.aggregate_parent == "analysis_value"
+    assert analysis_categorical_value.target_table == "tbl_analysis_categorical_values"
+    assert any(foreign_key.entity == "value_type_item" for foreign_key in analysis_categorical_value.foreign_keys)
     assert analysis_note.target_table == "tbl_analysis_notes"
     assert analysis_note.aggregate_parent == "analysis_value"
     assert analysis_identifier.target_table == "tbl_analysis_identifiers"
@@ -90,6 +104,9 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert any(foreign_key.entity == "value_qualifier_symbol" for foreign_key in analysis_integer_range.foreign_keys)
     assert analysis_integer_value.target_table == "tbl_analysis_integer_values"
     assert any(foreign_key.entity == "value_qualifier_symbol" for foreign_key in analysis_integer_value.foreign_keys)
+    assert analysis_numerical_range.target_table == "tbl_analysis_numerical_ranges"
+    assert analysis_numerical_range.columns["value"].type == "numrange"
+    assert any(foreign_key.entity == "value_qualifier_symbol" for foreign_key in analysis_numerical_range.foreign_keys)
     assert analysis_numerical_value.target_table == "tbl_analysis_numerical_values"
     assert any(foreign_key.entity == "value_qualifier_symbol" for foreign_key in analysis_numerical_value.foreign_keys)
     assert analysis_dating_range.target_table == "tbl_analysis_dating_ranges"
@@ -98,9 +115,16 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in analysis_taxon_count.foreign_keys)
     assert analysis_value_dimension.target_table == "tbl_analysis_value_dimensions"
     assert any(foreign_key.entity == "dimension" for foreign_key in analysis_value_dimension.foreign_keys)
+    assert value_class.target_table == "tbl_value_classes"
+    assert any(foreign_key.entity == "value_type" for foreign_key in value_class.foreign_keys)
+    assert any(foreign_key.entity == "method" for foreign_key in value_class.foreign_keys)
     assert value_qualifier.target_table == "tbl_value_qualifiers"
     assert value_qualifier_symbol.target_table == "tbl_value_qualifier_symbols"
     assert any(foreign_key.entity == "value_qualifier" for foreign_key in value_qualifier_symbol.foreign_keys)
+    assert value_type.target_table == "tbl_value_types"
+    assert any(foreign_key.entity == "unit" for foreign_key in value_type.foreign_keys)
+    assert value_type_item.target_table == "tbl_value_type_items"
+    assert any(foreign_key.entity == "value_type" for foreign_key in value_type_item.foreign_keys)
     assert sample_group.target_table == "tbl_sample_groups"
     assert any(foreign_key.entity == "sample_group_sampling_context" for foreign_key in sample_group.foreign_keys)
     assert sample_group_coordinate.target_table == "tbl_sample_group_coordinates"

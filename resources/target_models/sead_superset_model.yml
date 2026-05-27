@@ -598,6 +598,108 @@ entities:
       - entity: value_qualifier
         required: true
 
+  value_type:
+    role: classifier
+    required: false
+    description: Value-type definition describing the base storage shape and optional unit for analytical values.
+    domains: [analysis]
+    target_table: tbl_value_types
+    public_id: value_type_id
+    identity_columns: [name]
+    columns:
+      unit_id:
+        type: integer
+        nullable: true
+      data_type_id:
+        type: integer
+        nullable: true
+      name:
+        required: true
+        type: string
+        nullable: false
+      base_type:
+        required: true
+        type: string
+        nullable: false
+      precision:
+        type: integer
+        nullable: true
+      description:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [name]
+    foreign_keys:
+      - entity: unit
+        required: false
+      - entity: data_type
+        required: false
+
+  value_type_item:
+    role: classifier
+    required: false
+    description: Category value attached to a categorical value type.
+    domains: [analysis]
+    target_table: tbl_value_type_items
+    public_id: value_type_item_id
+    identity_columns: [value_type_id, name]
+    columns:
+      value_type_id:
+        required: true
+        type: integer
+        nullable: false
+      name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [value_type_id, name]
+    foreign_keys:
+      - entity: value_type
+        required: true
+
+  value_class:
+    role: classifier
+    required: false
+    description: Analytical value class describing a data column or measurement family.
+    domains: [analysis]
+    target_table: tbl_value_classes
+    public_id: value_class_id
+    identity_columns: [value_type_id, method_id, name]
+    columns:
+      value_type_id:
+        required: true
+        type: integer
+        nullable: false
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+      parent_id:
+        type: integer
+        nullable: true
+      name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [value_type_id, method_id, name]
+    foreign_keys:
+      - entity: value_type
+        required: true
+      - entity: method
+        required: true
+      - entity: value_class
+        required: false
+
   sample_alt_ref:
     role: fact
     required: false
@@ -1011,8 +1113,9 @@ entities:
         type: integer
         nullable: false
       value_class_id:
+        required: true
         type: integer
-        nullable: true
+        nullable: false
       analysis_value:
         type: string
         nullable: true
@@ -1039,6 +1142,8 @@ entities:
         nullable: true
     foreign_keys:
       - entity: analysis_entity
+        required: true
+      - entity: value_class
         required: true
 
   analysis_note:
@@ -1112,6 +1217,36 @@ entities:
         nullable: false
     foreign_keys:
       - entity: analysis_value
+        required: true
+
+  analysis_categorical_value:
+    role: fact
+    required: false
+    description: Categorical analysis result linked to a controlled value-type item.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_categorical_values
+    public_id: analysis_categorical_value_id
+    identity_columns: [analysis_value_id, value_type_item_id]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      value_type_item_id:
+        required: true
+        type: integer
+        nullable: false
+      value:
+        type: decimal
+        nullable: true
+      is_variant:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: value_type_item
         required: true
 
   analysis_integer_value:
@@ -1208,6 +1343,45 @@ entities:
         required: true
         type: decimal
         nullable: false
+      is_variant:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: value_qualifier_symbol
+        required: false
+
+  analysis_numerical_range:
+    role: fact
+    required: false
+    description: Numerical range stored in the SEAD `numrange` column format and attached to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_numerical_ranges
+    public_id: analysis_numerical_range_id
+    identity_columns: [analysis_value_id, value, low_qualifier, high_qualifier]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      value:
+        required: true
+        type: numrange
+        nullable: false
+      low_is_uncertain:
+        type: boolean
+        nullable: true
+      high_is_uncertain:
+        type: boolean
+        nullable: true
+      low_qualifier:
+        type: string
+        nullable: true
+      high_qualifier:
+        type: string
+        nullable: true
       is_variant:
         type: boolean
         nullable: true
