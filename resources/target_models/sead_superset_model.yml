@@ -202,6 +202,118 @@ entities:
       - entity: method
         required: true
 
+  sample_group_coordinate:
+    role: fact
+    required: false
+    description: Coordinate or position measurement attached to a sample group.
+    aggregate_parent: sample_group
+    domains: [spatial, sample-metadata]
+    target_table: tbl_sample_group_coordinates
+    public_id: sample_group_position_id
+    identity_columns: [sample_group_id, coordinate_method_dimension_id]
+    columns:
+      sample_group_id:
+        required: true
+        type: integer
+        nullable: false
+      coordinate_method_dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      sample_group_position:
+        required: true
+        type: decimal
+        nullable: false
+      position_accuracy:
+        type: string
+        nullable: true
+    foreign_keys:
+      - entity: sample_group
+        required: true
+      - entity: coordinate_method_dimension
+        required: true
+
+  sample_group_dimension:
+    role: fact
+    required: false
+    description: Physical dimension measurement attached to a sample group.
+    aggregate_parent: sample_group
+    domains: [sample-metadata, physical-properties]
+    target_table: tbl_sample_group_dimensions
+    public_id: sample_group_dimension_id
+    identity_columns: [sample_group_id, dimension_id]
+    columns:
+      sample_group_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_value:
+        required: true
+        type: decimal
+        nullable: false
+      qualifier_id:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: sample_group
+        required: true
+      - entity: dimension
+        required: true
+
+  sample_group_note:
+    role: fact
+    required: false
+    description: Free-text note attached to a sample group.
+    aggregate_parent: sample_group
+    domains: [sample-metadata]
+    target_table: tbl_sample_group_notes
+    public_id: sample_group_note_id
+    identity_columns: [sample_group_id, note]
+    columns:
+      sample_group_id:
+        required: true
+        type: integer
+        nullable: false
+      note:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [sample_group_id, note]
+    foreign_keys:
+      - entity: sample_group
+        required: true
+
+  sample_group_reference:
+    role: fact
+    required: false
+    description: Bibliographic reference attached to a sample group.
+    aggregate_parent: sample_group
+    domains: [sample-metadata, provenance, bibliography]
+    target_table: tbl_sample_group_references
+    public_id: sample_group_reference_id
+    identity_columns: [sample_group_id, biblio_id]
+    columns:
+      sample_group_id:
+        required: true
+        type: integer
+        nullable: false
+      biblio_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [sample_group_id, biblio_id]
+    foreign_keys:
+      - entity: sample_group
+        required: true
+      - entity: citation
+        required: true
+
   sample:
     role: fact
     required: true
