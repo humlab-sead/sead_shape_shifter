@@ -23,6 +23,7 @@ Current status snapshot:
 - Issue 3: open as [#449](https://github.com/humlab-sead/sead_shape_shifter/issues/449)
 - Issue 4: open as [#450](https://github.com/humlab-sead/sead_shape_shifter/issues/450)
 - Issue 5: open as [#451](https://github.com/humlab-sead/sead_shape_shifter/issues/451)
+- Issue 6: open as [#452](https://github.com/humlab-sead/sead_shape_shifter/issues/452)
 
 ## Issue 1 [feat(target_model): add sample-context entities](https://github.com/humlab-sead/sead_shape_shifter/issues/447)
 
@@ -207,6 +208,41 @@ Solution:
 Run a separate decision pass for the broader backlog beyond the first implementation slices.
 
 Promote the concepts that belong in the near-complete shared SEAD target model, and separate them from derived tables, operational-only schema elements, and project-level subset choices.
+
+Files:
+
+- `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
+- `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
+- `resources/target_models/sead_superset_model.yml`
+- `docs/TARGET_MODEL_GUIDE.md`
+
+## Issue 6 [feat(target_model): add value qualifier lookup entities](https://github.com/humlab-sead/sead_shape_shifter/issues/452)
+
+Status:
+
+`Open as #452`
+
+Title:
+
+`feat(target_model): add value qualifier lookup entities`
+
+Problem:
+
+The recent sample and sample-group context work exposed a missing shared lookup family rather than a local gap in one entity.
+
+Both `sample_dimension` and `sample_group_dimension` use `qualifier_id`, but the target model still treats that field as an untyped integer because there is no explicit target-model entity for `tbl_value_qualifiers`.
+
+The same lookup family also appears in multiple analysis value and range tables through `tbl_value_qualifier_symbols`.
+
+Without explicit qualifier lookup entities, projects cannot model these references cleanly, and follow-up slices keep accumulating deferred foreign keys that all point to the same shared SEAD vocabulary.
+
+Solution:
+
+Add explicit shared lookup entities for the SEAD value qualifier family, starting with `value_qualifier` and `value_qualifier_symbol`.
+
+Update the target model so sample dimension entities can reference that lookup family explicitly, and document how later analysis-value work should reuse the same qualifier entities instead of inventing a parallel representation.
+
+Keep this issue focused on the shared lookup family and the direct references already present in sample dimension entities. Do not mix in the broader design of the generic analysis-value family.
 
 Files:
 
