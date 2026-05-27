@@ -10,11 +10,13 @@
 
 Replace the current SEAD Clearinghouse ingester with a new ingester that generates SEAD Change Control System-ready SQL directly from normalized DataFrames. The new ingester resolves identities before SQL generation by using SIMS for provider-owned entities and for classifier entities that require Delivery 1 allocation, while still using the existing reconciliation API where matching existing SEAD-managed entities is appropriate.
 
-The recommendation was to deliver this in two stages. Delivery 1 is now closed on the current MVP baseline: forward-only, INSERT-only, no rollback support, no UPDATE handling, and no dependency on topological insert order if the target constraints can be deferred. Delivery 2 remains the place for rollback support, richer change handling, and stronger idempotency guarantees.
+The recommendation was to deliver this in two stages. Delivery 1 is now closed on the current MVP baseline: forward-only, INSERT-only, no rollback support, no UPDATE handling, and no dependency on topological insert order if the target constraints can be deferred.
 
 This keeps the first delivery small enough to implement and validate while still removing the Clearinghouse staging layer and the Transport System from the main ingestion path.
 
-Post-Delivery-1 hardening is now tracked separately in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+Post-Delivery-1 hardening is now tracked separately in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md).
+
+Candidate next-delivery capabilities are tracked in [../NEXT_DELIVERY_CANDIDATES.md](../NEXT_DELIVERY_CANDIDATES.md), and frontend workflow integration is tracked separately in [../FRONTEND_UX_INTEGRATION_CR.md](../FRONTEND_UX_INTEGRATION_CR.md).
 
 ## Problem
 
@@ -225,28 +227,19 @@ At minimum:
 - metadata linking submission, project, timestamp, Binding Set UUID, and non-revertible Delivery 1 status
 - a CR name associated in SIMS
 
-If the Change Control System requires a revert or verify file to accept a change, Delivery 1 may generate compatibility placeholders only under a strict non-revertible contract. Any placeholder revert script must fail loudly with an explicit message that rollback is not implemented for the change package. Delivery metadata must mark the package as non-revertible. Workflow acceptance of that placeholder artifact shape is now treated as post-Delivery-1 hardening in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md). Functional rollback is deferred to Delivery 2.
+If the Change Control System requires a revert or verify file to accept a change, Delivery 1 may generate compatibility placeholders only under a strict non-revertible contract. Any placeholder revert script must fail loudly with an explicit message that rollback is not implemented for the change package. Delivery metadata must mark the package as non-revertible. Workflow acceptance of that placeholder artifact shape is now treated as post-Delivery-1 hardening in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md). Functional rollback is deferred beyond this closed baseline.
 
 The current Delivery 1 artifact shape follows that compatibility rule. It emits `deploy.sql`, `revert.sql`, `verify.sql`, and `metadata.json`. The revert and verify files are explicit fail-loud placeholders, and the metadata marks the package as non-revertible and verification-placeholder based.
 
-Further work on alternative deploy formats, templating, and target-model review is now tracked in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md) rather than inside this proposal.
+Further work on alternative deploy formats, templating, and target-model review is now tracked in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md) rather than inside this proposal.
 
 If Binding Set confirmation cannot be completed during the run, Delivery 1 should emit no change package. Instead it should return diagnostics and a pending confirmation report that identifies the blocked rows, the outstanding confirmation step, and the exact operator action needed to rerun successfully.
 
-### Delivery 2: operational hardening
+### Post-Delivery-1 follow-up
 
-Delivery 2 should extend the MVP rather than redesign it.
+This closed baseline no longer defines a committed Delivery 2 scope.
 
-#### Delivery 2 scope
-
-- Real rollback support
-- UPDATE handling for existing rows that have changed
-- Stronger idempotency and re-submission behavior
-- Optional change detection through SIMS change APIs or equivalent target-side checks
-- More precise ordering if deferred constraints are not sufficient across all target tables
-- Verification artifacts if required by the Change Control System workflow
-
-Delivery 2 is where the ingester becomes a full replacement for the current path in operational terms, not just a functional replacement for insert-only submissions.
+Candidate next-delivery capabilities now live in [../NEXT_DELIVERY_CANDIDATES.md](../NEXT_DELIVERY_CANDIDATES.md). User-interaction and frontend workflow requirements now live in [../FRONTEND_UX_INTEGRATION_CR.md](../FRONTEND_UX_INTEGRATION_CR.md).
 
 ### Entity handling by role
 
@@ -289,7 +282,7 @@ Transition plan:
 1. Keep both ingesters available during implementation and pilot use.
 2. Validate the new ingester on real projects.
 3. Keep post-Delivery-1 hardening in the separate follow-up CR.
-4. Deprecate the Clearinghouse path only after Delivery 2 planning is accepted and the replacement path is operationally preferred.
+4. Deprecate the Clearinghouse path only after the next-delivery scope is accepted, the required frontend UX integration is in place, and the replacement path is operationally preferred.
 
 ## Alternatives Considered
 
@@ -312,7 +305,7 @@ Deferred. It should only be required if deferred FK checks are not sufficient in
 | SIMS or reconciliation API unavailable                                | No CR can be generated                 | Fail fast with clear diagnostics; keep old ingester available during transition |
 | Target schema does not support deferred FK checks everywhere          | Delivery 1 SQL may fail                | Validate target constraints early; fall back to ordered inserts if required     |
 | Entity or bridge rows are classified with the wrong new-versus-existing rule | Duplicate inserts, missed associations, or collisions | Separate entity-row `public_id` handling from bridge uniqueness checks, use metadata-defined unique/composite keys where available, and fail when uniqueness rules are incomplete |
-| Delivery 1 idempotency is mistaken for semantic deduplication | Natural-key or composite-key duplicates may still slip through | State the Delivery 1 limit explicitly and defer broader duplicate detection to Delivery 2 |
+| Delivery 1 idempotency is mistaken for semantic deduplication | Natural-key or composite-key duplicates may still slip through | State the Delivery 1 limit explicitly and defer broader duplicate detection to later-delivery candidate work |
 | Placeholder revert artifacts are mistaken for functional rollback     | Operators may assume a rollback path exists when it does not | Make revert placeholders fail loudly, mark Delivery 1 packages as non-revertible, and confirm operator acceptance in the pilot |
 | Binding Set confirmation requires operator action outside the run | Change package generation may stall or produce ambiguous state | Keep Delivery 1 synchronous, emit a pending confirmation report instead of partial artifacts, and require an explicit rerun after confirmation |
 | Classifier reconciliation or allocation rules are misapplied         | Wrong classifier inserts or blocked submissions | Prefer reconciliation first, allow Delivery 1 SIMS allocation, and surface which path was chosen in diagnostics |
@@ -340,11 +333,7 @@ The main tradeoff is deliberate scope reduction in Delivery 1. The MVP will not 
 - Integration test covering both reconciled and SIMS-allocated classifier paths
 - Pilot run on a real project with review of generated SQL, SIMS Binding Set data, and at least one mixed submission containing existing references, new provider-owned entities, classifiers, and bridge rows
 
-### Delivery 2
-
-- Tests for rollback script correctness
-- Tests for UPDATE generation rules
-- Tests for re-submission and change-detection behavior
+Later-delivery validation work is now tracked as candidate scope in [../NEXT_DELIVERY_CANDIDATES.md](../NEXT_DELIVERY_CANDIDATES.md), not as committed acceptance work in this closed baseline.
 
 ## Acceptance Criteria
 
@@ -352,7 +341,7 @@ The main tradeoff is deliberate scope reduction in Delivery 1. The MVP will not 
 
 Delivery 1 is closed on the implemented MVP baseline.
 
-Remaining operator-facing artifact hardening, alternative deploy formats, and metadata-review work now live in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+Remaining operator-facing artifact hardening, alternative deploy formats, and metadata-review work now live in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md).
 
 - [x] A new ingester is registered and can be selected without affecting the current `sead` ingester
 - [x] All rows selected for output have an explicit Delivery 1 identity state before SQL generation starts
@@ -373,20 +362,17 @@ Remaining operator-facing artifact hardening, alternative deploy formats, and me
 - [x] The generated CR name is associated with the Binding Set in SIMS
 - [x] Any required Delivery 1 revert placeholder fails explicitly and the change metadata marks the package as non-revertible
 - [x] The pilot includes at least one mixed submission containing existing references, new provider-owned entities, classifiers, and bridge rows
-- [x] Delivery 1 closes on the documented inline-`INSERT` artifact baseline; operator-facing artifact hardening and SEAD workflow acceptance move to [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md)
+- [x] Delivery 1 closes on the documented inline-`INSERT` artifact baseline; operator-facing artifact hardening and SEAD workflow acceptance move to [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md)
 
 Closure note as of 2026-05-26:
 
 - The authority-service `ResolutionOutcome.target_id` contract is now implemented, and Shape Shifter consumes it when present.
 - Delivery 1 is now treated as closed on the current MVP baseline described in this proposal.
-- Post-Delivery-1 work on operator-facing artifact hardening, alternative deploy formats, and metadata-source review is tracked in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+- Post-Delivery-1 work on operator-facing artifact hardening, alternative deploy formats, and metadata-source review is tracked in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md).
 
-### Delivery 2
+- Candidate next-delivery capabilities are tracked separately in [../NEXT_DELIVERY_CANDIDATES.md](../NEXT_DELIVERY_CANDIDATES.md).
 
-- [ ] Functional rollback support is available
-- [ ] UPDATE handling is defined and implemented
-- [ ] Re-submission behavior is deterministic and documented
-- [ ] The new ingester is operationally capable of replacing the legacy path
+- Frontend workflow integration is tracked separately in [../FRONTEND_UX_INTEGRATION_CR.md](../FRONTEND_UX_INTEGRATION_CR.md).
 
 ## Resolved Delivery 1 Decisions
 
@@ -400,7 +386,7 @@ Delivery 1 should generate a Sqitch-style change package with these artifacts:
 
 Delivery 1 metadata must also mark the package as non-revertible so operators are not given false confidence by file presence alone.
 
-This keeps Delivery 1 compatible with the existing change-request naming convention already used by SIMS, where associated change requests are recorded as `deploy/...` paths, while still deferring functional rollback to Delivery 2. Real SEAD workflow acceptance of the fail-loud placeholder artifact shape is now tracked as post-Delivery-1 hardening in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+This keeps Delivery 1 compatible with the existing change-request naming convention already used by SIMS, where associated change requests are recorded as `deploy/...` paths, while still deferring functional rollback beyond this closed baseline. Real SEAD workflow acceptance of the fail-loud placeholder artifact shape is now tracked as post-Delivery-1 hardening in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md).
 
 ### 2. Foreign key execution strategy
 
@@ -418,7 +404,7 @@ This is the simplest fit with the current ingester architecture:
 - the current `sead` ingester already connects directly to PostgreSQL
 - introducing a new validation endpoint or proxy service would add another dependency without reducing MVP risk
 
-The Delivery 1 collision check should stay narrow: for each row planned for insertion, verify that either the resolved target-facing ID does not already exist in the target table or, for derived bridge rows, that the bridge row is absent under metadata-defined unique or composite keys where that metadata exists. If the target metadata does not define a usable bridge uniqueness rule, the row becomes blocked unresolved and the run must stop with diagnostics rather than guess. Delivery 1 idempotency is therefore limited to target ID collision detection and explicit bridge uniqueness checks. It does not guarantee semantic duplicate detection across natural keys, lookup-like rows, or broader composite relationship keys beyond what target metadata explicitly exposes. More advanced change detection remains a Delivery 2 concern.
+The Delivery 1 collision check should stay narrow: for each row planned for insertion, verify that either the resolved target-facing ID does not already exist in the target table or, for derived bridge rows, that the bridge row is absent under metadata-defined unique or composite keys where that metadata exists. If the target metadata does not define a usable bridge uniqueness rule, the row becomes blocked unresolved and the run must stop with diagnostics rather than guess. Delivery 1 idempotency is therefore limited to target ID collision detection and explicit bridge uniqueness checks. It does not guarantee semantic duplicate detection across natural keys, lookup-like rows, or broader composite relationship keys beyond what target metadata explicitly exposes. More advanced change detection remains later-delivery candidate work.
 
 ### 4. Existing entities versus bridge and association rows
 
@@ -637,7 +623,7 @@ Scope:
 Done when:
 
 - Delivery 1 acceptance criteria pass
-- The pilot confirms the artifact contract, including non-revertible placeholder behavior if used, and exposes the concrete Delivery 2 gaps
+- The pilot confirms the artifact contract, including non-revertible placeholder behavior if used, and exposes the concrete later-delivery gaps
 
 ## Recommended Delivery Order
 
@@ -650,7 +636,7 @@ Done when:
 7. Implement forward-only INSERT SQL generation and CR packaging.
 8. Validate deferred-FK assumptions and fall back to ordered inserts if required.
 9. Associate the CR name with the Binding Set.
-10. Pilot on real project data and use findings to define Delivery 2 precisely.
+10. Pilot on real project data and use findings to define the next delivery precisely.
 
 ## Open Questions
 
@@ -660,4 +646,4 @@ Done when:
 
 Build the new ingester alongside the current `sead` ingester and treat Delivery 1 as a constrained MVP, not as the full end state. Delivery 1 should be forward-only and INSERT-only, should rely on SIMS and reconciliation to resolve all identities before SQL generation, should allow classifier entities to reconcile first and allocate through SIMS when needed, should use an explicit DataFrame-first handoff contract into the ingester core, should treat populated `public_id` values as existing entity rows rather than as a blanket exclusion rule, should treat missing `public_id` only as the rule for entity-row newness, should register the ingester under `sead_change_request`, and should use a direct read-only target DB check for simple collision detection.
 
-Delivery 1 should emit a deploy script plus placeholder change-package companions as needed by the SEAD Change Control workflow, and it should prefer deferred FK checks with ordered inserts as an implementation fallback. Bridge and association rows should be evaluated under metadata-defined uniqueness rules so new relationship rows are not suppressed just because their parent entities already exist. Rows that cannot be resolved safely, including manual-confirmation blocks, should enter a blocked-unresolved state that stops the run and produces actionable diagnostics rather than partial artifacts. Any legacy path-based interface should terminate at an adapter boundary rather than shape the ingester orchestration itself. If placeholder revert artifacts are required, they must fail loudly and the package metadata must mark the change as non-revertible. Delivery 1 idempotency should be described narrowly: it catches target ID collisions and metadata-defined bridge-row collisions, but it does not guarantee semantic duplicate detection across natural or composite keys beyond what target metadata exposes. Do not include functional rollback or UPDATE handling in the first delivery. Those capabilities belong in Delivery 2 after the direct path has been piloted. The proposal now provides enough concrete decisions and work breakdown to start implementation.
+Delivery 1 should emit a deploy script plus placeholder change-package companions as needed by the SEAD Change Control workflow, and it should prefer deferred FK checks with ordered inserts as an implementation fallback. Bridge and association rows should be evaluated under metadata-defined uniqueness rules so new relationship rows are not suppressed just because their parent entities already exist. Rows that cannot be resolved safely, including manual-confirmation blocks, should enter a blocked-unresolved state that stops the run and produces actionable diagnostics rather than partial artifacts. Any legacy path-based interface should terminate at an adapter boundary rather than shape the ingester orchestration itself. If placeholder revert artifacts are required, they must fail loudly and the package metadata must mark the change as non-revertible. Delivery 1 idempotency should be described narrowly: it catches target ID collisions and metadata-defined bridge-row collisions, but it does not guarantee semantic duplicate detection across natural or composite keys beyond what target metadata exposes. Do not include functional rollback or UPDATE handling in the first delivery. Those capabilities now move to later-delivery candidate work after the direct path has been piloted. The proposal now provides enough concrete decisions and work breakdown to start implementation.
