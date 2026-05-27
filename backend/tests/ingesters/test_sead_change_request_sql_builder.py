@@ -199,6 +199,31 @@ class TestBuildDeployArtifact:
         assert rendered_fields == ["101", "0.0000001", str(precise_value)]
         assert "e" not in rendered_fields[1].lower()
 
+    def test_copy_csv_renders_date_only_timestamps_without_time_component(self):
+        """CSV-mode payloads should render date-only pandas timestamps as YYYY-MM-DD."""
+        frame = pd.DataFrame({"sample_id": [101], "sample_date": [pd.Timestamp("2026-05-23")]})
+        package = ChangeRequestPackage(
+            tables={
+                "sample": ChangeRequestTable(
+                    name="sample",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=frame.index, name="_row_state"),
+                )
+            }
+        )
+        target_model = minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"})
+        submission_context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+        artifact = build_deploy_artifact(package, target_model, submission_context, strategy="copy_csv")
+
+        assert artifact.bundle_files[f"deploy/{bundle_name(submission_context)}/tbl_sample.gz"] == "101\t2026-05-23\n"
+
     def test_copy_csv_manifest_uses_emission_order_and_real_row_counts(self):
         """Manifest metadata should preserve emitted table order and row counts even with multiline payload text."""
         alpha_frame = pd.DataFrame({"alpha_id": [101], "alpha_note": ["line one\nline two"]})
