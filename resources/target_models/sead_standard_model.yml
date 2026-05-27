@@ -818,8 +818,6 @@ entities:
       - entity: abundance
         required: false
 
-  # PHASE 1 ADDITIONS - Abundance Precision
-
   identification_level:
     role: classifier
     required: false
