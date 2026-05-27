@@ -417,16 +417,16 @@ naming:
 
 ## SEAD Superset Spec (`sead_superset_model.yml`)
 
-The bundled SEAD superset spec at `resources/target_models/sead_superset_model.yml` currently covers 82 entities. It is intended to be the near-complete shared SEAD model from which individual Shape Shifter projects can select curated subsets.
+The bundled SEAD superset spec at `resources/target_models/sead_superset_model.yml` currently covers 92 entities. It is intended to be the near-complete shared SEAD model from which individual Shape Shifter projects can select curated subsets.
 
 | Domain       | Entities                                                                                                                                                                |
 |--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `core` | Core context entities such as `location`, `site`, `sample_group`, `sample`, `method`, `dataset`, `analysis_entity`, and provenance lookups |
 | `analysis` | Generic analysis values, value-class lookups, notes, identifiers, categorical, boolean, and numeric typed values, range variants, taxon counts, and analysis-value dimensions attached to `analysis_entity` records |
 | `spatial` | Spatial context and coordinate-related entities such as `location`, `site_location`, `dimension`, site property and national-grid-reference entities, and site, sample, or sample-group coordinate extensions |
-| `sample-metadata` | Sample and sample-group descriptions, sampling-context and horizon lookups, locations, notes, dimensions, qualifier vocabularies, references, and other attached metadata entities |
+| `sample-metadata` | Sample and sample-group descriptions, sampling-context and horizon lookups, locations, notes, colours, dimensions, qualifier vocabularies, references, and other attached metadata entities |
 | `abundance` | Abundance observations, shared property-type vocabularies, abundance property entities, and related classifiers |
-| `taxonomy` | Taxonomy entities such as `taxa_tree_master`, `taxa_common_names`, and taxonomy support lookups |
+| `taxonomy` | Taxonomy entities such as `taxa_tree_master`, `taxa_common_names`, synonyms, measured attributes, Red Data Book lookups, and related taxonomy support tables |
 | `dating` | Relative dating, chronology, dating lab, and uncertainty entities |
 | `provenance` | Project, dataset, citation, contact, and dataset-contact provenance entities |
 

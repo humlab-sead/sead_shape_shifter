@@ -64,13 +64,24 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     site_natgridref = target_model.entities["site_natgridref"]
     site_property = target_model.entities["site_property"]
     sample_dimension = target_model.entities["sample_dimension"]
+    coordinate_system = target_model.entities["coordinate_system"]
+    colour = target_model.entities["colour"]
+    sample_colour = target_model.entities["sample_colour"]
+    project = target_model.entities["project"]
+    project_type = target_model.entities["project_type"]
+    project_stage = target_model.entities["project_stage"]
+    taxa_synonyms = target_model.entities["taxa_synonyms"]
+    taxa_measured_attributes = target_model.entities["taxa_measured_attributes"]
+    rdb_system = target_model.entities["rdb_system"]
+    rdb_code = target_model.entities["rdb_code"]
+    rdb = target_model.entities["rdb"]
     sample_location_type = target_model.entities["sample_location_type"]
     sample_location = target_model.entities["sample_location"]
     sample_note = target_model.entities["sample_note"]
     sample_horizon = target_model.entities["sample_horizon"]
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
-    assert len(target_model.entities) == 82
+    assert len(target_model.entities) == 92
     assert {
         "analysis_value",
         "analysis_boolean_value",
@@ -92,7 +103,25 @@ def test_sead_superset_spec_loads_and_validates() -> None:
         "site_property",
         "site_natgridref",
     }.issubset(target_model.entities)
-    assert {"sample_horizon", "sample_location", "sample_location_type", "sample_note", "horizon"}.issubset(target_model.entities)
+    assert {
+        "sample_horizon",
+        "sample_location",
+        "sample_location_type",
+        "sample_note",
+        "horizon",
+        "coordinate_system",
+        "colour",
+        "sample_colour",
+        "project_type",
+        "project_stage",
+        "taxa_synonyms",
+        "taxa_measured_attributes",
+        "rdb_system",
+        "rdb_code",
+        "rdb",
+    }.issubset(
+        target_model.entities
+    )
     assert {"value_qualifier", "value_qualifier_symbol"}.issubset(target_model.entities)
     assert {"sample_group_coordinate", "sample_group_dimension", "sample_group_note", "sample_group_reference", "sample_group_sampling_context"}.issubset(
         target_model.entities
@@ -138,6 +167,30 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert value_qualifier.target_table == "tbl_value_qualifiers"
     assert value_qualifier_symbol.target_table == "tbl_value_qualifier_symbols"
     assert any(foreign_key.entity == "value_qualifier" for foreign_key in value_qualifier_symbol.foreign_keys)
+    assert colour.target_table == "tbl_colours"
+    assert any(foreign_key.entity == "method" for foreign_key in colour.foreign_keys)
+    assert sample_colour.target_table == "tbl_sample_colours"
+    assert sample_colour.aggregate_parent == "sample"
+    assert any(foreign_key.entity == "colour" for foreign_key in sample_colour.foreign_keys)
+    assert coordinate_system.target_table == "tbl_coordinate_systems"
+    assert project_type.target_table == "tbl_project_types"
+    assert project_stage.target_table == "tbl_project_stages"
+    assert any(foreign_key.entity == "project_type" for foreign_key in project.foreign_keys)
+    assert any(foreign_key.entity == "project_stage" for foreign_key in project.foreign_keys)
+    assert taxa_synonyms.target_table == "tbl_taxa_synonyms"
+    assert taxa_synonyms.aggregate_parent == "taxa_tree_master"
+    assert any(foreign_key.entity == "citation" for foreign_key in taxa_synonyms.foreign_keys)
+    assert taxa_measured_attributes.target_table == "tbl_taxa_measured_attributes"
+    assert taxa_measured_attributes.aggregate_parent == "taxa_tree_master"
+    assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in taxa_measured_attributes.foreign_keys)
+    assert rdb_system.target_table == "tbl_rdb_systems"
+    assert any(foreign_key.entity == "location" for foreign_key in rdb_system.foreign_keys)
+    assert any(foreign_key.entity == "citation" for foreign_key in rdb_system.foreign_keys)
+    assert rdb_code.target_table == "tbl_rdb_codes"
+    assert any(foreign_key.entity == "rdb_system" for foreign_key in rdb_code.foreign_keys)
+    assert rdb.target_table == "tbl_rdb"
+    assert rdb.aggregate_parent == "taxa_tree_master"
+    assert any(foreign_key.entity == "rdb_code" for foreign_key in rdb.foreign_keys)
     assert value_type.target_table == "tbl_value_types"
     assert any(foreign_key.entity == "unit" for foreign_key in value_type.foreign_keys)
     assert value_type_item.target_table == "tbl_value_type_items"

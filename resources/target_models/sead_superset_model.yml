@@ -423,6 +423,32 @@ entities:
       - entity: sample_description_type
         required: true
 
+  sample_colour:
+    role: fact
+    required: false
+    description: Colour observation attached to a physical sample.
+    aggregate_parent: sample
+    domains: [sample-metadata]
+    target_table: tbl_sample_colours
+    public_id: sample_colour_id
+    identity_columns: [physical_sample_id, colour_id]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      colour_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [physical_sample_id, colour_id]
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: colour
+        required: true
+
   sample_type:
     role: classifier
     required: true
@@ -504,6 +530,25 @@ entities:
       - entity: dimension
         required: true
 
+  coordinate_system:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for coordinate reference systems used by SEAD spatial data.
+    domains: [spatial]
+    target_table: tbl_coordinate_systems
+    public_id: coordinate_system_id
+    identity_columns: [coordinate_system]
+    columns:
+      coordinate_system:
+        required: true
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [coordinate_system]
+
   sample_coordinate:
     role: fact
     required: false
@@ -555,6 +600,32 @@ entities:
         nullable: true
     unique_sets:
       - [alt_ref_type]
+
+  colour:
+    role: classifier
+    required: false
+    description: Controlled colour vocabulary used by sample-colour observations.
+    domains: [sample-metadata]
+    target_table: tbl_colours
+    public_id: colour_id
+    identity_columns: [method_id, colour_name]
+    columns:
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+      colour_name:
+        required: true
+        type: string
+        nullable: false
+      rgb:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [method_id, colour_name]
+    foreign_keys:
+      - entity: method
+        required: true
 
   value_qualifier:
     role: classifier
@@ -1035,6 +1106,49 @@ entities:
         nullable: true
     unique_sets:
       - [project_abbrev_name]
+    foreign_keys:
+      - entity: project_type
+        required: false
+      - entity: project_stage
+        required: false
+
+  project_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for project classification.
+    domains: [core, provenance]
+    target_table: tbl_project_types
+    public_id: project_type_id
+    identity_columns: [project_type_name]
+    columns:
+      project_type_name:
+        required: true
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [project_type_name]
+
+  project_stage:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for project stage or lifecycle state.
+    domains: [core, provenance]
+    target_table: tbl_project_stages
+    public_id: project_stage_id
+    identity_columns: [stage_name]
+    columns:
+      stage_name:
+        required: true
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [stage_name]
 
   citation:
     role: lookup
@@ -1763,6 +1877,173 @@ entities:
         type: integer
         nullable: true
     foreign_keys:
+      - entity: taxa_tree_master
+        required: true
+
+  taxa_synonyms:
+    role: lookup
+    required: false
+    description: Alternate taxon names recorded for SEAD taxonomy entries.
+    aggregate_parent: taxa_tree_master
+    domains: [taxonomy]
+    target_table: tbl_taxa_synonyms
+    public_id: synonym_id
+    identity_columns: [taxon_id, biblio_id, synonym]
+    columns:
+      biblio_id:
+        required: true
+        type: integer
+        nullable: false
+      family_id:
+        type: integer
+        nullable: true
+      genus_id:
+        type: integer
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+      taxon_id:
+        type: integer
+        nullable: true
+      author_id:
+        type: integer
+        nullable: true
+      synonym:
+        type: string
+        nullable: true
+      reference_type:
+        type: string
+        nullable: true
+      synonym_uuid:
+        required: true
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: citation
+        required: true
+      - entity: taxa_tree_master
+        required: false
+
+  taxa_measured_attributes:
+    role: fact
+    required: false
+    description: Measured attribute values attached to a taxon record.
+    aggregate_parent: taxa_tree_master
+    domains: [taxonomy]
+    target_table: tbl_taxa_measured_attributes
+    public_id: measured_attribute_id
+    identity_columns: [taxon_id, attribute_type, attribute_measure]
+    columns:
+      attribute_measure:
+        type: string
+        nullable: true
+      attribute_type:
+        type: string
+        nullable: true
+      attribute_units:
+        type: string
+        nullable: true
+      data:
+        type: decimal
+        nullable: true
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: taxa_tree_master
+        required: true
+
+  rdb_system:
+    role: lookup
+    required: false
+    description: Definition of a Red Data Book classification system.
+    domains: [taxonomy]
+    target_table: tbl_rdb_systems
+    public_id: rdb_system_id
+    identity_columns: [location_id, rdb_system, rdb_version]
+    columns:
+      biblio_id:
+        required: true
+        type: integer
+        nullable: false
+      location_id:
+        required: true
+        type: integer
+        nullable: false
+      rdb_first_published:
+        type: integer
+        nullable: true
+      rdb_system:
+        type: string
+        nullable: true
+      rdb_system_date:
+        type: integer
+        nullable: true
+      rdb_version:
+        type: string
+        nullable: true
+      rdb_system_uuid:
+        required: true
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: citation
+        required: true
+      - entity: location
+        required: true
+
+  rdb_code:
+    role: classifier
+    required: false
+    description: Code within a Red Data Book classification system.
+    domains: [taxonomy]
+    target_table: tbl_rdb_codes
+    public_id: rdb_code_id
+    identity_columns: [rdb_system_id, rdb_category]
+    columns:
+      rdb_category:
+        type: string
+        nullable: true
+      rdb_definition:
+        type: string
+        nullable: true
+      rdb_system_id:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [rdb_system_id, rdb_category]
+    foreign_keys:
+      - entity: rdb_system
+        required: false
+
+  rdb:
+    role: fact
+    required: false
+    description: Red Data Book status record for a taxon at a location.
+    aggregate_parent: taxa_tree_master
+    domains: [taxonomy]
+    target_table: tbl_rdb
+    public_id: rdb_id
+    identity_columns: [taxon_id, location_id, rdb_code_id]
+    columns:
+      location_id:
+        required: true
+        type: integer
+        nullable: false
+      rdb_code_id:
+        type: integer
+        nullable: true
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: location
+        required: true
+      - entity: rdb_code
+        required: false
       - entity: taxa_tree_master
         required: true
 
