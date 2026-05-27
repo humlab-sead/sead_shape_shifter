@@ -15,14 +15,14 @@ This proposal now carries the detailed scope for these follow-up issues:
 
 Current issue state on this branch:
 
-- Issue 5: review structure improved on current branch, but not yet fully aligned to the SEAD-wide superset goal
+- Issue 5: reassessment decisions are now implemented on the current branch for the remaining shared-model candidates, and the branch also records which earlier candidates are out of scope for the shared SEAD superset
 - Issue 6: still open, but detailed analysis should now live in this document rather than in the change-request follow-up proposal
 
 ## Summary
 
 The previous completeness note was no longer reliable.
 
-It mixed historical expansion plans with current-state claims and overstated implemented coverage. A direct check against [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml) shows a verified surface of 51 top-level entities in the current model, not the larger phase-based inventory described in the older draft.
+It mixed historical expansion plans with current-state claims and overstated implemented coverage. A direct check against [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml) shows a verified surface of 61 top-level entities in the current model, not the larger phase-based inventory described in the older draft.
 
 Issue 5 should therefore be treated as a review and decision task first.
 
@@ -42,11 +42,11 @@ The current target model already covers a substantial core for Delivery 1 and ea
 
 Verified entity surface in [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml):
 
-- Core and provenance: `location`, `location_type`, `site`, `site_location`, `sample_group`, `sample`, `method`, `dataset`, `master_dataset`, `project`, `citation`, `contact`, `contact_type`, `dataset_contact`
-- Sample and coordinate support: `sample_description_type`, `sample_description`, `sample_type`, `dimension`, `coordinate_method_dimension`, `sample_coordinate`, `alt_ref_type`, `sample_alt_ref`, `sample_dimension`
+- Core and provenance: `location`, `location_type`, `site`, `site_location`, `sample_group`, `sample`, `method`, `dataset`, `master_dataset`, `project`, `project_type`, `project_stage`, `citation`, `contact`, `contact_type`, `dataset_contact`
+- Sample and coordinate support: `sample_description_type`, `sample_description`, `sample_type`, `dimension`, `coordinate_method_dimension`, `coordinate_system`, `sample_coordinate`, `alt_ref_type`, `sample_alt_ref`, `sample_dimension`
 - Analysis and abundance: `analysis_entity`, `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `modification_type`, `abundance_property`, `identification_level`, `abundance_ident_level`
 - Dating: `age_type`, `relative_age_type`, `chronology`, `dating_uncertainty`, `dating_material`, `relative_ages`, `relative_dating`, `geochronology`, `dating_lab`
-- Taxonomy and features: `taxa_tree_master`, `taxa_common_names`, `feature_type`, `feature`, `sample_feature`
+- Taxonomy and features: `taxa_tree_master`, `taxa_common_names`, `taxa_synonyms`, `taxa_measured_attributes`, `rdb_system`, `rdb_code`, `rdb`, `feature_type`, `feature`, `sample_feature`
 - Classification and measurement support: `method_group`, `data_type`, `unit`, `site_type_group`, `site_type`
 
 This is enough to support the current change-request work, but it is not yet a near-complete SEAD-wide target model.
@@ -75,18 +75,17 @@ Several entity families still appear to be missing from the current model and sh
 
 Verified missing candidates from the current YAML include:
 
-- Spatial and site-location support: `coordinate_system`, `sample_group_coordinate`, `site_natgridref`
-- Dating and period support: `dating_period`
+- Spatial and site-location support: `sample_group_coordinate`, `site_natgridref`
 - Feature and site metadata: `feature_property`, `feature_property_type`, `site_property`, `site_property_type`
-- Site-region support: `site_natural_region`, `natural_region`, `natural_region_group`
-- Sample metadata: `sample_horizon`, `sample_location`, `sample_location_type`, `sample_note`, `sample_colour`, `colour`
+- Sample metadata: `sample_horizon`, `sample_location`, `sample_location_type`, `sample_note`
 - Sample-group metadata: `sample_group_dimension`, `sample_group_note`, `sample_group_reference`
-- Taxon and ecology extensions: `taxon_synonyms`, `rdb`, `taxon_measured_attributes`
-- Abundance typing: `abundance_property_type`
 - Generic analysis values: `analysis_value`, `analysis_categorical_value`, `analysis_boolean_value`, `analysis_integer_value`, `analysis_numerical_value`, `analysis_date_range`, `analysis_note`, `analysis_identifier`
-- Project classification: `project_type`, `project_stage`
 
 This list is useful, but it still needs to be grouped into first-slice work, broader SEAD-wide follow-up, and derived or operational schema artifacts that do not need first-class target-model entities.
+
+The current branch has now resolved the earlier deferred shared-model candidates that survived review: `colour` and `sample_colour` are modeled explicitly, `project_type` plus `project_stage` are modeled as controlled vocabularies referenced by `project`, `coordinate_system` is kept in the shared superset, and the taxonomy and ecology slice is now modeled through `taxa_synonyms`, `taxa_measured_attributes`, `rdb_system`, `rdb_code`, and `rdb`.
+
+The branch also records two negative Issue 5 decisions: `dating_period` and `natural_region*` are treated as Arbodat-specific and are not being promoted into the shared SEAD target model.
 
 For Issue 5, keep this broader backlog visible.
 
@@ -98,9 +97,9 @@ On that narrower surface, the strongest first implementation slices are:
 - site and feature property patterns such as `site_natgridref`, `feature_property`, `feature_property_type`, `site_property`, and `site_property_type`
 - the generic analysis-value family such as `analysis_value`, typed analysis values, `analysis_note`, and `analysis_identifier`
 
-The current filtered snapshots do not support using `coordinate_system`, `dating_period`, `natural_region*`, `sample_colour`, `colour`, or `abundance_property_type` to close Issue 6.
+The current filtered snapshots do not support using `coordinate_system`, `dating_period`, `natural_region*`, `sample_colour`, or `colour` to close Issue 6.
 
-That does not mean those concepts are out of scope for the complete SEAD target model. It only means the filtered Issue 6 comparison should not be used as the sole justification for prioritizing them ahead of the current first slices.
+That does not mean all of those concepts belong in the same final category. On the current branch, the broader Issue 5 review keeps `coordinate_system` in the shared target model, while `dating_period` and `natural_region*` are treated as Arbodat-specific rather than shared SEAD-superset requirements.
 
 ### 3. Schema-Boundary Decisions
 
@@ -145,16 +144,16 @@ These gaps matter, but they should follow only after the high-priority spatial, 
 - `site_property`, `site_property_type`
 - `sample_note`
 - `sample_group_dimension`, `sample_group_note`, `sample_group_reference`
-- `taxon_synonyms`, `rdb`, `taxon_measured_attributes`
 
 ### Lower Priority Or Deferred
 
 These gaps remain part of the broader Issue 5 review, but the current filtered Issue 6 evidence does not justify using them as near-term closure items.
 
-- `project_type`, `project_stage`
-- `coordinate_system`, `dating_period`, `natural_region*`
-- `sample_colour`, `colour`, `abundance_property_type`
 - broader SEAD-wide concepts that should be scheduled after the first slices or clarified against the live schema before they are modeled
+
+`abundance_property_type` is no longer kept as a separate target-model candidate in this review. The live schema evidence on the current branch shows `abundance_property` already points to the shared `property_type` table, so a second abundance-only type entity would duplicate the now-implemented property pattern.
+
+`dating_period` and `natural_region*` are also no longer kept as shared-model backlog items in this review. They are treated as Arbodat-specific rather than as required parts of the near-complete SEAD superset.
 
 ## Target Model Versus `SeadSchema`
 
@@ -292,8 +291,8 @@ The current review should use these buckets.
 | Chronology and dating | `tbl_chronologies`, `tbl_geochronology`, `tbl_dating_labs`, `tbl_dating_material`, `tbl_dating_uncertainty`, `tbl_age_types`, `tbl_relative_age_types`, `tbl_relative_ages`, `tbl_relative_dates` | `chronology`, `geochronology`, `dating_lab`, `dating_material`, `dating_uncertainty`, `age_type`, `relative_age_type`, `relative_ages`, `relative_dating` | already covered | For Issue 6, this bucket mostly confirms current coverage. The earlier `dating_period` candidate is not supported by the filtered snapshot and should stay out of this review surface. |
 | Abundance and identification | `tbl_abundances`, `tbl_abundance_elements`, `tbl_abundance_modifications`, `tbl_modification_types`, `tbl_identification_levels`, `tbl_abundance_ident_levels`, `tbl_abundance_properties` | `abundance`, `abundance_element`, `abundance_modification`, `modification_type`, `identification_level`, `abundance_ident_level`, `abundance_property` | already covered | This bucket mostly validates the current abundance model. The remaining question is whether the shared property-type surface should later be modeled more explicitly. |
 | Analysis values and typed value families | `tbl_analysis_entities`, `tbl_analysis_values`, `tbl_analysis_boolean_values`, `tbl_analysis_categorical_values`, `tbl_analysis_integer_values`, `tbl_analysis_numerical_values`, `tbl_analysis_dating_ranges`, `tbl_analysis_notes`, `tbl_analysis_identifiers`, `tbl_analysis_value_dimensions`, `tbl_analysis_taxon_counts` | `analysis_entity` exists; the generic analysis-value family does not | partially covered | This is the clearest model gap in the filtered snapshots and the strongest candidate for future target-model growth after the current review closes. |
-| Taxonomy and ecology extensions | `tbl_taxa_common_names`, `tbl_taxa_synonyms`, `tbl_taxa_measured_attributes`, `tbl_rdb`, `tbl_rdb_codes`, `tbl_rdb_systems`, `tbl_ecocodes`, `tbl_ecocode_groups`, `tbl_ecocode_systems` | `taxa_tree_master`, `taxa_common_names`; no direct entities for the wider enrichment surface | partially covered | The filtered tables show a real SEAD-wide enrichment surface, but it still looks better suited to a later shared-model slice than to the current first implementation tranche. |
-| Project classification and support lookups | `tbl_project_types`, `tbl_project_stages` plus broad support tables such as `tbl_activity_types`, `tbl_record_types`, `tbl_languages`, `tbl_seasons` | `project` already carries project-type and project-stage fields; most support lookups have no direct entity need in the current model | partially covered | This bucket should stay conservative. `project_type` and `project_stage` may justify future controlled-vocabulary entities, but the current evidence does not force them into the core model now. |
+| Taxonomy and ecology extensions | `tbl_taxa_common_names`, `tbl_taxa_synonyms`, `tbl_taxa_measured_attributes`, `tbl_rdb`, `tbl_rdb_codes`, `tbl_rdb_systems`, `tbl_ecocodes`, `tbl_ecocode_groups`, `tbl_ecocode_systems` | `taxa_tree_master`, `taxa_common_names`, `taxa_synonyms`, `taxa_measured_attributes`, `rdb_system`, `rdb_code`, and `rdb`; the ecocode family is still outside the current model | partially covered | The branch now models the main taxonomy and Red Data Book slice as shared SEAD concepts, while the wider ecocode surface stays outside the current implementation boundary. |
+| Project classification and support lookups | `tbl_project_types`, `tbl_project_stages` plus broad support tables such as `tbl_activity_types`, `tbl_record_types`, `tbl_languages`, `tbl_seasons` | `project`, `project_type`, and `project_stage`; most support lookups still have no direct entity need in the current model | already covered | The project classification lookups are now modeled explicitly, while the broader support-table surface can stay outside the current target-model boundary until it has clearer shared-model value. |
 
 ### Done Condition For This Plan
 
@@ -320,13 +319,13 @@ It uses the filtered `get_sead_tables()` and `get_sead_columns()` outputs in [do
 | Sample and sample-group context extensions | `tbl_sample_horizons`, `tbl_sample_notes` | `sample`, `sample_description`, and `sample_dimension` exist, but these sample-context concepts are not modeled explicitly | candidate target-model addition | These are active imported tables that add material sample context beyond the current generic description coverage. |
 | Sample and sample-group context extensions | `tbl_sample_group_dimensions`, `tbl_sample_group_notes`, `tbl_sample_group_references` | `sample_group` exists, but the grouped-dimension, note, and reference surfaces are absent | candidate target-model addition | These are active imported concepts in the filtered CSV set and are a better fit for grouped sampling context than ad hoc free-text extensions. |
 | Feature context and generic properties | `tbl_feature_properties`, `tbl_site_properties`, with shared lookup support from `tbl_property_types` | `feature` and `site` exist, but the generic property pattern is not modeled in the current target model | candidate target-model addition | The column snapshots show a consistent property pattern built from `property_type_id` plus `property_value`, which makes this a reusable active concept rather than a one-off legacy table. |
-| Project classification and support lookups | `tbl_project_types`, `tbl_project_stages` | `project` already carries `project_type_id` and `project_stage_id` columns, but no dedicated lookup entities are modeled | keep in target model | The concept is already represented at the `project` entity boundary. Dedicated lookup entities can stay deferred unless validation or reconciliation needs controlled-vocabulary modeling. |
-| Taxonomy and ecology extensions | `tbl_taxa_synonyms`, `tbl_taxa_measured_attributes`, `tbl_rdb`, `tbl_rdb_codes`, `tbl_rdb_systems` | `taxa_tree_master` and `taxa_common_names` exist, but these enrichment tables are not modeled | later shared-model candidate | These tables are present in the filtered import set and may belong in the broader SEAD target model, but they are not the best first slice for the current implementation order. |
+| Project classification and support lookups | `tbl_project_types`, `tbl_project_stages` | `project_type` and `project_stage` are now modeled explicitly and linked from `project` | keep in target model | The branch now models these controlled vocabularies directly, which removes them from the deferred lookup backlog for the shared SEAD superset. |
+| Taxonomy and ecology extensions | `tbl_taxa_synonyms`, `tbl_taxa_measured_attributes`, `tbl_rdb`, `tbl_rdb_codes`, `tbl_rdb_systems` | `taxa_synonyms`, `taxa_measured_attributes`, `rdb_system`, `rdb_code`, and `rdb` are now modeled explicitly | keep in target model | The current branch now treats this taxonomy and Red Data Book slice as part of the shared SEAD superset rather than as a deferred extension candidate. |
 | Excluded review surface | `tbl_image_types`, `tbl_colours`, `tbl_sample_colours`, `tbl_aggregate_datasets`, `tbl_aggregate_order_types`, `tbl_aggregate_sample_ages`, `tbl_aggregate_samples` | Present in the raw CSV snapshots, but explicitly excluded from the Issue 6 review surface | ignore for Issue 6 | These tables are intentionally outside the current target-model boundary review for `sead_change_request`. |
 | Excluded review surface | `tbl_ceramic*`, `tbl_isotope*`, `tbl_dendro*` | Present in the raw CSV snapshots, but explicitly excluded from the Issue 6 review surface | ignore for Issue 6 | These families are superseded by the `tbl_analysis_values` path and should not drive new target-model decisions. |
 | Excluded review surface | `tbl_mcr*` | Present in the raw CSV snapshots, but explicitly excluded from the Issue 6 review surface | ignore for Issue 6 | These are live derived tables rather than imported source tables. |
 | Excluded review surface | `tbl*_images` | Present in the raw CSV snapshots, but explicitly excluded from the Issue 6 review surface | ignore for Issue 6 | Image tables are not imported in the current scope. |
-| Lower Priority Or Deferred | Candidate families mentioned earlier in this proposal but not present in the filtered CSV snapshots, including `coordinate_system`, `dating_period`, and `natural_region*` | Not modeled explicitly in the current target model and not evidenced by the current import snapshots | ignore for Issue 6 | They may still matter later for Issue 5, but they are not supported by the current offline `SeadSchema` baseline and should not be used to close or broaden Issue 6 now. |
+| Lower Priority Or Deferred | Candidate families mentioned earlier in this proposal but not present in the filtered CSV snapshots, including `coordinate_system`, `dating_period`, and `natural_region*` | `coordinate_system` is now modeled explicitly; `dating_period` and `natural_region*` are intentionally out of scope for the shared superset | ignore for Issue 6 | The filtered offline baseline still does not support using these concepts to close or broaden Issue 6, even though the broader Issue 5 review now keeps `coordinate_system` and rejects the Arbodat-specific candidates. |
 
 ## Recommendation
 
@@ -405,13 +404,14 @@ Tracked by [#451](https://github.com/humlab-sead/sead_shape_shifter/issues/451).
 
 Use a separate pass for the broader SEAD-wide backlog that does not fit cleanly into the first implementation rounds.
 
-This pass should keep the first slices narrow while still acknowledging the wider completeness target:
+The current branch has already completed that pass for the shared-model candidates that remained after review by promoting `colour`, `sample_colour`, `project_type`, `project_stage`, `coordinate_system`, `taxa_synonyms`, `taxa_measured_attributes`, `rdb_system`, `rdb_code`, and `rdb`.
 
-- `project_type`, `project_stage`
-- `taxon_synonyms`, `rdb`, `taxon_measured_attributes`
-- `coordinate_system`, `dating_period`, `natural_region*`
-- `sample_colour`, `colour`, `abundance_property_type`
-- broader SEAD-wide backlog items not covered by the current first slices
+This pass also records which earlier candidates are not part of the shared superset:
+
+- `dating_period`
+- `natural_region*`
+
+The branch also treats `abundance_property_type` as subsumed by the shared `property_type` entity rather than as a separate remaining lookup family.
 
 ## Implementation Handoff
 
@@ -435,7 +435,7 @@ Use these slices as the default first breakdown.
 | 2 | [#448 feat(target_model): add sample-group context entities](https://github.com/humlab-sead/sead_shape_shifter/issues/448) | `sample_group_coordinate`, `sample_group_dimension`, `sample_group_note`, `sample_group_reference` | site and feature properties, analysis-value work, later SEAD-wide backlog slices | The shared target model can represent grouped sampling context with explicit entities tied to `sample_group`. |
 | 3 | [#449 feat(target_model): add site and feature property entities](https://github.com/humlab-sead/sead_shape_shifter/issues/449) | `feature_property_type`, `feature_property`, `site_property_type`, `site_property`, `site_natgridref` | sample-context entities already covered by earlier slices, analysis-value work | The shared target model has an explicit reusable property pattern for important site and feature metadata that is still missing from the current YAML. |
 | 4 | [#450 feat(target_model): design generic analysis-value family](https://github.com/humlab-sead/sead_shape_shifter/issues/450) | `analysis_value`, `analysis_note`, `analysis_identifier`, typed analysis-value variants | derived method-specific artifacts, project-only subset choices | The shared target model has an agreed shape for generic typed analysis values that can support multiple SEAD data families without forcing provider-specific assumptions into the model. |
-| 5 | [#451 proposal(target_model): reassess deferred lookup and extension candidates](https://github.com/humlab-sead/sead_shape_shifter/issues/451) | `project_type`, `project_stage`, `taxon_synonyms`, `rdb`, `taxon_measured_attributes`, plus broader backlog candidates such as `coordinate_system`, `dating_period`, `natural_region*`, `sample_colour`, `colour`, and `abundance_property_type` | derived tables, operational-only columns, and project-level subset decisions that do not belong in the shared model definition | A separate decision confirms which remaining SEAD-wide concepts need promotion into the near-complete shared target model and which schema surfaces are only operational artifacts. |
+| 5 | [#451 proposal(target_model): reassess deferred lookup and extension candidates](https://github.com/humlab-sead/sead_shape_shifter/issues/451) | promote shared candidates such as `coordinate_system`, `taxa_synonyms`, `taxa_measured_attributes`, `rdb`, `rdb_code`, and `rdb_system`; reject Arbodat-specific candidates such as `dating_period` and `natural_region*`; keep abundance properties on the shared `property_type` model | unrelated project-level subset choices and operational-only schema artifacts | The review is done when the branch both promotes the remaining shared SEAD candidates and records which earlier lookup candidates do not belong in the shared superset. |
 
 These issue slices are intentionally narrow.
 

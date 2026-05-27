@@ -20,9 +20,9 @@ Current status snapshot:
 
 - Issue 1: open as [#447](https://github.com/humlab-sead/sead_shape_shifter/issues/447); implemented on branch in `6103f693` and `0e6a8233`
 - Issue 2: open as [#448](https://github.com/humlab-sead/sead_shape_shifter/issues/448); implemented on branch in `f934760f` and `d8a1ee64`
-- Issue 3: open as [#449](https://github.com/humlab-sead/sead_shape_shifter/issues/449); implemented on branch in `4e21a10f` plus follow-up `feature_property` work
+- Issue 3: open as [#449](https://github.com/humlab-sead/sead_shape_shifter/issues/449); implemented on branch in `4e21a10f` and `fb770680`
 - Issue 4: open as [#450](https://github.com/humlab-sead/sead_shape_shifter/issues/450); implemented on branch in `f40f96cf`, `5c02cb34`, and `41adecfe`
-- Issue 5: open as [#451](https://github.com/humlab-sead/sead_shape_shifter/issues/451); not started on branch
+- Issue 5: open as [#451](https://github.com/humlab-sead/sead_shape_shifter/issues/451); implemented in working tree on branch with promoted shared lookups and explicit out-of-scope decisions
 - Issue 6: open as [#452](https://github.com/humlab-sead/sead_shape_shifter/issues/452); implemented on branch in `68d154c0`
 - Issue 7: open as [#453](https://github.com/humlab-sead/sead_shape_shifter/issues/453); implemented on branch in `30c01497` and `5c02cb34`
 
@@ -187,7 +187,7 @@ Files:
 
 Status:
 
-`Open as #451; not started on branch`
+`Open as #451; implemented in working tree on branch`
 
 Title:
 
@@ -199,18 +199,19 @@ Some concepts remain outside the first implementation slices even though they ma
 
 The filtered Issue 6 evidence is not broad enough to settle those areas, but that does not make them out of scope for the full target-model plan.
 
-The current deferred set includes:
+The current branch resolves the earlier deferred candidates in three ways:
 
-- `project_type`, `project_stage`
-- `taxon_synonyms`, `rdb`, `taxon_measured_attributes`
-- `coordinate_system`, `dating_period`, `natural_region*`
-- `sample_colour`, `colour`, `abundance_property_type`
-
-If these concepts move forward, they should do so from explicit SEAD-wide model criteria and schema evidence rather than from one project's current subset.
+- promote shared SEAD candidates: `coordinate_system`, `taxa_synonyms`, `taxa_measured_attributes`, `rdb`, `rdb_code`, `rdb_system`
+- keep `abundance_property_type` covered by the shared `property_type` model instead of adding a second abundance-only lookup family
+- reject `dating_period` and `natural_region*` as shared target-model entities because they are treated as Arbodat-specific
 
 Solution:
 
-Run a separate decision pass for the broader backlog beyond the first implementation slices.
+Run the remaining decision pass for deferred lookup and extension candidates, then either promote them into the shared superset or mark them out of scope explicitly.
+
+The current branch completes that pass for the candidates tracked in this issue by promoting `colour`, `sample_colour`, `project_type`, `project_stage`, `coordinate_system`, `taxa_synonyms`, `taxa_measured_attributes`, `rdb`, `rdb_code`, and `rdb_system` into the shared target model.
+
+It also treats `abundance_property_type` as covered by the shared `property_type` pattern rather than as a separate remaining target-model entity, and it keeps `dating_period` plus `natural_region*` out of the shared superset as Arbodat-specific concepts.
 
 Promote the concepts that belong in the near-complete shared SEAD target model, and separate them from derived tables, operational-only schema elements, and project-level subset choices.
 
