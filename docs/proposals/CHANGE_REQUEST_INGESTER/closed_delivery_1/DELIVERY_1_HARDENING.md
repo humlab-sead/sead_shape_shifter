@@ -278,7 +278,7 @@ The following points are fixed for Delivery 1 hardening:
 
 ## Intentional Differences From The Historical SCCS Example
 
-The historical example in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](./example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql) is a useful operational reference.
+The historical example in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](../example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql) is a useful operational reference.
 
 Delivery 1 hardening does not adopt that script wholesale.
 

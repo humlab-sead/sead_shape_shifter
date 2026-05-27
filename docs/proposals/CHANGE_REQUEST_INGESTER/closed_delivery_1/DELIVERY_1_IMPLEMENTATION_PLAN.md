@@ -55,7 +55,7 @@ Notes:
 - Workstream 5 is now implemented for the current runtime contract. The ingester reads Binding Set state, attempts synchronous confirmation, and falls back to a pending confirmation report when confirmation still cannot complete.
 - Workstream 8 now emits the generated artifact bundle to the configured output folder, including deploy SQL, metadata, and fail-loud revert and verify placeholders.
 - Workstream 9 now associates the requested change request name with the confirmed Binding Set when both are available during the run.
-- Workstream 10 is closed for Delivery 1. Focused tests cover the executable mixed pilot and the current artifact shape with deploy, revert, verify, and metadata outputs. Post-Delivery-1 improvements and further operational hardening now move to [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+- Workstream 10 is closed for Delivery 1. Focused tests cover the executable mixed pilot and the current artifact shape with deploy, revert, verify, and metadata outputs. Post-Delivery-1 improvements and further operational hardening now move to [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md).
 
 ## Detailed Workstream Checklist
 
@@ -465,7 +465,7 @@ Includes:
 Exit criteria:
 
 - Delivery 1 acceptance criteria are satisfied
-- pilot confirms artifact contract and exposes Delivery 2 gaps
+- pilot confirms artifact contract and exposes later-delivery gaps
 
 ## Exit Gate For Delivery 1
 
@@ -479,7 +479,7 @@ Delivery 1 is ready when all of the following are true:
 - package metadata is explicitly non-revertible when placeholders are used
 - the mixed pilot succeeds or produces understood blocking diagnostics
 
-Delivery 1 is now closed on that basis. Follow-up work on deploy-artifact strategy, templating, and target-model/schema review is tracked in [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
+Delivery 1 is now closed on that basis. Follow-up work on deploy-artifact strategy, templating, and target-model/schema review is tracked in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md).
 
 ## Risks To Watch During Implementation
 
