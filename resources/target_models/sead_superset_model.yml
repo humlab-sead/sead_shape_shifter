@@ -1637,6 +1637,39 @@ entities:
     foreign_keys:
       - entity: abundance
         required: false
+      - entity: property_type
+        required: true
+
+  property_type:
+    role: classifier
+    required: false
+    description: Shared property-type vocabulary used by SEAD property tables.
+    domains: [abundance, spatial]
+    target_table: tbl_property_types
+    public_id: property_type_id
+    identity_columns: [property_type_name]
+    columns:
+      property_type_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        required: true
+        type: string
+        nullable: false
+      value_type_id:
+        type: integer
+        nullable: true
+      value_class_id:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [property_type_name]
+    foreign_keys:
+      - entity: value_type
+        required: false
+      - entity: value_class
+        required: false
 
   identification_level:
     role: classifier
@@ -2131,6 +2164,62 @@ entities:
         nullable: true
     foreign_keys:
       - entity: feature_type
+        required: true
+
+  site_property:
+    role: fact
+    required: false
+    description: Property/value observation attached to a site.
+    aggregate_parent: site
+    domains: [spatial]
+    target_table: tbl_site_properties
+    public_id: site_property_id
+    identity_columns: [site_id, property_type_id, property_value]
+    columns:
+      site_id:
+        required: true
+        type: integer
+        nullable: false
+      property_type_id:
+        required: true
+        type: integer
+        nullable: false
+      property_value:
+        required: true
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: site
+        required: true
+      - entity: property_type
+        required: true
+
+  site_natgridref:
+    role: fact
+    required: false
+    description: National-grid reference attached to a site using a specific method or coordinate system.
+    aggregate_parent: site
+    domains: [spatial]
+    target_table: tbl_site_natgridrefs
+    public_id: site_natgridref_id
+    identity_columns: [site_id, method_id, natgridref]
+    columns:
+      site_id:
+        required: true
+        type: integer
+        nullable: false
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+      natgridref:
+        required: true
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: site
+        required: true
+      - entity: method
         required: true
 
   sample_feature:

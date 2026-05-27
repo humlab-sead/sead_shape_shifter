@@ -18,18 +18,19 @@ Each issue body follows the repository's preferred `Problem`, `Solution`, and `F
 
 Current status snapshot:
 
-- Issue 1: open as [#447](https://github.com/humlab-sead/sead_shape_shifter/issues/447)
-- Issue 2: open as [#448](https://github.com/humlab-sead/sead_shape_shifter/issues/448)
-- Issue 3: open as [#449](https://github.com/humlab-sead/sead_shape_shifter/issues/449)
-- Issue 4: open as [#450](https://github.com/humlab-sead/sead_shape_shifter/issues/450)
-- Issue 5: open as [#451](https://github.com/humlab-sead/sead_shape_shifter/issues/451)
-- Issue 6: open as [#452](https://github.com/humlab-sead/sead_shape_shifter/issues/452)
+- Issue 1: open as [#447](https://github.com/humlab-sead/sead_shape_shifter/issues/447); implemented on branch in `6103f693` and `0e6a8233`
+- Issue 2: open as [#448](https://github.com/humlab-sead/sead_shape_shifter/issues/448); implemented on branch in `f934760f` and `d8a1ee64`
+- Issue 3: open as [#449](https://github.com/humlab-sead/sead_shape_shifter/issues/449); partial branch implementation in progress (`property_type`, `site_property`, `site_natgridref`)
+- Issue 4: open as [#450](https://github.com/humlab-sead/sead_shape_shifter/issues/450); implemented on branch in `f40f96cf`, `5c02cb34`, and `41adecfe`
+- Issue 5: open as [#451](https://github.com/humlab-sead/sead_shape_shifter/issues/451); not started on branch
+- Issue 6: open as [#452](https://github.com/humlab-sead/sead_shape_shifter/issues/452); implemented on branch in `68d154c0`
+- Issue 7: open as [#453](https://github.com/humlab-sead/sead_shape_shifter/issues/453); implemented on branch in `30c01497` and `5c02cb34`
 
 ## Issue 1 [feat(target_model): add sample-context entities](https://github.com/humlab-sead/sead_shape_shifter/issues/447)
 
 Status:
 
-`Open as #447`
+`Open as #447; implemented on branch`
 
 Title:
 
@@ -67,7 +68,7 @@ Files:
 
 Status:
 
-`Open as #448`
+`Open as #448; implemented on branch`
 
 Title:
 
@@ -105,7 +106,7 @@ Files:
 
 Status:
 
-`Open as #449`
+`Open as #449; partial branch implementation in progress`
 
 Title:
 
@@ -129,7 +130,11 @@ This is more than a few isolated tables. It is a cross-cutting metadata pattern 
 
 Solution:
 
-Add explicit site and feature property entities, including the shared property-type pattern needed to represent `feature_property` and `site_property` cleanly.
+Add the schema-backed property-pattern slice first: a shared `property_type` lookup plus explicit `site_property` and `site_natgridref` entities.
+
+Wire the existing `abundance_property` entity to the same shared property-type lookup so the target model no longer leaves that SEAD foreign key untyped.
+
+Keep the feature side of the issue open until the target-model representation is grounded in the SEAD schema evidence used for this proposal pass.
 
 Keep this issue limited to the property-pattern slice plus `site_natgridref`. Do not mix in sample-context entities or the generic analysis-value family.
 
@@ -144,7 +149,7 @@ Files:
 
 Status:
 
-`Open as #450`
+`Open as #450; implemented on branch`
 
 Title:
 
@@ -184,7 +189,7 @@ Files:
 
 Status:
 
-`Open as #451`
+`Open as #451; not started on branch`
 
 Title:
 
@@ -222,7 +227,7 @@ Files:
 
 Status:
 
-`Open as #452`
+`Open as #452; implemented on branch`
 
 Title:
 
@@ -257,7 +262,7 @@ Files:
 
 Status:
 
-`Open as #453`
+`Open as #453; implemented on branch`
 
 Title:
 

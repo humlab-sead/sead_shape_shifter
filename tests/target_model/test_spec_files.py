@@ -37,6 +37,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     analysis_categorical_value = target_model.entities["analysis_categorical_value"]
     analysis_value = target_model.entities["analysis_value"]
     analysis_boolean_value = target_model.entities["analysis_boolean_value"]
+    abundance_property = target_model.entities["abundance_property"]
     analysis_note = target_model.entities["analysis_note"]
     analysis_identifier = target_model.entities["analysis_identifier"]
     analysis_integer_range = target_model.entities["analysis_integer_range"]
@@ -47,6 +48,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     analysis_taxon_count = target_model.entities["analysis_taxon_count"]
     analysis_value_dimension = target_model.entities["analysis_value_dimension"]
     horizon = target_model.entities["horizon"]
+    property_type = target_model.entities["property_type"]
     value_class = target_model.entities["value_class"]
     value_qualifier = target_model.entities["value_qualifier"]
     value_qualifier_symbol = target_model.entities["value_qualifier_symbol"]
@@ -58,6 +60,8 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     sample_group_note = target_model.entities["sample_group_note"]
     sample_group_reference = target_model.entities["sample_group_reference"]
     sample_group_sampling_context = target_model.entities["sample_group_sampling_context"]
+    site_natgridref = target_model.entities["site_natgridref"]
+    site_property = target_model.entities["site_property"]
     sample_dimension = target_model.entities["sample_dimension"]
     sample_location_type = target_model.entities["sample_location_type"]
     sample_location = target_model.entities["sample_location"]
@@ -65,7 +69,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     sample_horizon = target_model.entities["sample_horizon"]
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
-    assert len(target_model.entities) == 78
+    assert len(target_model.entities) == 81
     assert {
         "analysis_value",
         "analysis_boolean_value",
@@ -82,6 +86,9 @@ def test_sead_superset_spec_loads_and_validates() -> None:
         "value_class",
         "value_type",
         "value_type_item",
+        "property_type",
+        "site_property",
+        "site_natgridref",
     }.issubset(target_model.entities)
     assert {"sample_horizon", "sample_location", "sample_location_type", "sample_note", "horizon"}.issubset(target_model.entities)
     assert {"value_qualifier", "value_qualifier_symbol"}.issubset(target_model.entities)
@@ -111,10 +118,15 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert any(foreign_key.entity == "value_qualifier_symbol" for foreign_key in analysis_numerical_value.foreign_keys)
     assert analysis_dating_range.target_table == "tbl_analysis_dating_ranges"
     assert any(foreign_key.entity == "value_qualifier_symbol" for foreign_key in analysis_dating_range.foreign_keys)
+    assert abundance_property.target_table == "tbl_abundance_properties"
+    assert any(foreign_key.entity == "property_type" for foreign_key in abundance_property.foreign_keys)
     assert analysis_taxon_count.target_table == "tbl_analysis_taxon_counts"
     assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in analysis_taxon_count.foreign_keys)
     assert analysis_value_dimension.target_table == "tbl_analysis_value_dimensions"
     assert any(foreign_key.entity == "dimension" for foreign_key in analysis_value_dimension.foreign_keys)
+    assert property_type.target_table == "tbl_property_types"
+    assert any(foreign_key.entity == "value_type" for foreign_key in property_type.foreign_keys)
+    assert any(foreign_key.entity == "value_class" for foreign_key in property_type.foreign_keys)
     assert value_class.target_table == "tbl_value_classes"
     assert any(foreign_key.entity == "value_type" for foreign_key in value_class.foreign_keys)
     assert any(foreign_key.entity == "method" for foreign_key in value_class.foreign_keys)
@@ -138,6 +150,12 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert sample_group_reference.target_table == "tbl_sample_group_references"
     assert sample_group_reference.aggregate_parent == "sample_group"
     assert sample_group_sampling_context.target_table == "tbl_sample_group_sampling_contexts"
+    assert site_property.target_table == "tbl_site_properties"
+    assert site_property.aggregate_parent == "site"
+    assert any(foreign_key.entity == "property_type" for foreign_key in site_property.foreign_keys)
+    assert site_natgridref.target_table == "tbl_site_natgridrefs"
+    assert site_natgridref.aggregate_parent == "site"
+    assert any(foreign_key.entity == "method" for foreign_key in site_natgridref.foreign_keys)
     assert any(foreign_key.entity == "value_qualifier" for foreign_key in sample_dimension.foreign_keys)
     assert sample_location_type.target_table == "tbl_sample_location_types"
     assert sample_location.target_table == "tbl_sample_locations"
