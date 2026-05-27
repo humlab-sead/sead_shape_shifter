@@ -482,6 +482,106 @@ entities:
       - entity: method
         required: true
 
+  sample_location_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for within-sample location descriptions.
+    domains: [sample-metadata, spatial]
+    target_table: tbl_sample_location_types
+    public_id: sample_location_type_id
+    identity_columns: [location_type]
+    columns:
+      location_type:
+        required: true
+        type: string
+        nullable: false
+      location_type_description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [location_type]
+
+  sample_location:
+    role: fact
+    required: false
+    description: Typed within-sample location note attached to a physical sample.
+    aggregate_parent: sample
+    domains: [sample-metadata, spatial]
+    target_table: tbl_sample_locations
+    public_id: sample_location_id
+    identity_columns: [physical_sample_id, sample_location_type_id, location]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      sample_location_type_id:
+        required: true
+        type: integer
+        nullable: false
+      location:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [physical_sample_id, sample_location_type_id, location]
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: sample_location_type
+        required: true
+
+  sample_note:
+    role: fact
+    required: false
+    description: Free-text note attached to a physical sample.
+    aggregate_parent: sample
+    domains: [sample-metadata]
+    target_table: tbl_sample_notes
+    public_id: sample_note_id
+    identity_columns: [physical_sample_id, note_type, note]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      note_type:
+        type: string
+        nullable: true
+      note:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [physical_sample_id, note_type, note]
+    foreign_keys:
+      - entity: sample
+        required: true
+
+  sample_horizon:
+    role: fact
+    required: false
+    description: Horizon assignment attached to a physical sample.
+    aggregate_parent: sample
+    domains: [sample-metadata]
+    target_table: tbl_sample_horizons
+    public_id: sample_horizon_id
+    identity_columns: [physical_sample_id, horizon_id]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      horizon_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [physical_sample_id, horizon_id]
+    foreign_keys:
+      - entity: sample
+        required: true
+
   method:
     role: classifier
     required: true

@@ -34,9 +34,21 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
     issues = TargetModelSpecValidator().validate(target_model)
+    sample_location_type = target_model.entities["sample_location_type"]
+    sample_location = target_model.entities["sample_location"]
+    sample_note = target_model.entities["sample_note"]
+    sample_horizon = target_model.entities["sample_horizon"]
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
-    assert len(target_model.entities) == 51
+    assert len(target_model.entities) == 55
+    assert {"sample_horizon", "sample_location", "sample_location_type", "sample_note"}.issubset(target_model.entities)
+    assert sample_location_type.target_table == "tbl_sample_location_types"
+    assert sample_location.target_table == "tbl_sample_locations"
+    assert sample_location.aggregate_parent == "sample"
+    assert sample_note.target_table == "tbl_sample_notes"
+    assert sample_note.aggregate_parent == "sample"
+    assert sample_horizon.target_table == "tbl_sample_horizons"
+    assert sample_horizon.aggregate_parent == "sample"
     assert issues == []
 
 
