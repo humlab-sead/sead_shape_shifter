@@ -261,6 +261,33 @@ def test_core_conformance_reports_missing_entity_and_wrong_public_id() -> None:
     assert ("UNEXPECTED_PUBLIC_ID", "sample") in issues
 
 
+def test_core_conformance_accepts_sample_note_example_fixture() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "sample": {
+                "required": True,
+                "public_id": "physical_sample_id",
+                "columns": {
+                    "sample_name": {"required": True},
+                },
+            },
+            "sample_note": {
+                "required": False,
+                "public_id": "sample_note_id",
+                "columns": {
+                    "physical_sample_id": {"required": True},
+                    "note_type": {"required": False},
+                    "note": {"required": True},
+                },
+                "foreign_keys": [{"entity": "sample", "required": True}],
+            },
+        }
+    )
+    project: ShapeShiftProject = load_project("sead_sample_note_context.yml")
+
+    assert issue_pairs(target_model, project) == []
+
+
 def test_core_conformance_keeps_alias_like_names_strict() -> None:
     target_model: TargetModel = load_target_model()
     project = ShapeShiftProject(
