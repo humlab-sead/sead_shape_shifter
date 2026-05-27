@@ -223,3 +223,34 @@ Files:
 - `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md`
 - `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
 - `ingesters/sead/metadata.py`
+
+## Issue 7 [fix(sead_change_request): render date-only copy_csv values as YYYY-MM-DD](https://github.com/humlab-sead/sead_shape_shifter/issues/446)
+
+Status:
+
+`Implemented on current branch`
+
+Title:
+
+`fix(sead_change_request): render date-only copy_csv values as YYYY-MM-DD`
+
+Problem:
+
+The hardened `copy_csv` contract says date-only values must be rendered as `YYYY-MM-DD`.
+
+The current renderer serializes `datetime`-like values with `isoformat()`. That is acceptable for timestamps, but pandas date columns can arrive as midnight `Timestamp` values and currently render as `YYYY-MM-DDT00:00:00` instead of the contract format.
+
+This is a narrow renderer mismatch, not a reason to reopen the broader `copy_csv` hardening issue.
+
+Solution:
+
+Keep the current hardened `copy_csv` contract and fix only the date-only rendering path.
+
+Detect date-only payload values before generic timestamp serialization, render them as `YYYY-MM-DD`, and add focused regression coverage for both in-memory artifact rendering and emitted bundle output where appropriate.
+
+Files:
+
+- `docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md`
+- `ingesters/sead_change_request/sql_builder.py`
+- `backend/tests/ingesters/test_sead_change_request_sql_builder.py`

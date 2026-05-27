@@ -346,10 +346,27 @@ def _render_copy_csv_field(value: object) -> str:
         return str(value)
     if isinstance(value, Real):
         return _render_copy_csv_real(value)
-    if isinstance(value, (datetime, pd.Timestamp)):
+    if isinstance(value, pd.Timestamp):
+        return _quote_copy_csv_text(_render_copy_csv_timestamp(value))
+    if isinstance(value, datetime):
         return _quote_copy_csv_text(value.isoformat())
 
     return _quote_copy_csv_text(str(value))
+
+
+def _render_copy_csv_timestamp(value: pd.Timestamp) -> str:
+    """Render pandas timestamps using the hardened copy_csv date-only contract."""
+    if (
+        value.tz is None
+        and value.hour == 0
+        and value.minute == 0
+        and value.second == 0
+        and value.microsecond == 0
+        and value.nanosecond == 0
+    ):
+        return value.date().isoformat()
+
+    return value.isoformat()
 
 
 def _render_copy_csv_real(value: Real) -> str:
