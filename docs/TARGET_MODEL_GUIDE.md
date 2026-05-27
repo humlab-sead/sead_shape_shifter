@@ -417,7 +417,7 @@ naming:
 
 ## SEAD Superset Spec (`sead_superset_model.yml`)
 
-The bundled SEAD superset spec at `resources/target_models/sead_superset_model.yml` currently covers 81 entities. It is intended to be the near-complete shared SEAD model from which individual Shape Shifter projects can select curated subsets.
+The bundled SEAD superset spec at `resources/target_models/sead_superset_model.yml` currently covers 82 entities. It is intended to be the near-complete shared SEAD model from which individual Shape Shifter projects can select curated subsets.
 
 | Domain       | Entities                                                                                                                                                                |
 |--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
