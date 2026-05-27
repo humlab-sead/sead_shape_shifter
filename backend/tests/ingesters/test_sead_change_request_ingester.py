@@ -946,6 +946,43 @@ class TestSeadChangeRequestIngesterIngest:
         assert '"description": "test bundle"' in (tmp_path / bundle_name / "manifest.json").read_text(encoding="utf-8")
 
     @pytest.mark.asyncio
+    async def test_ingest_copy_csv_writes_date_only_timestamps_without_time_component(self, tmp_path):
+        """Ingest should emit date-only pandas timestamps as YYYY-MM-DD in bundle payloads."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {"sample": pd.DataFrame({"sample_id": [None], "sample_date": [pd.Timestamp("2026-05-23")]})},
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(),
+                    "deploy_strategy": "copy_csv",
+                    "identity_assignments": {
+                        "sample": {
+                            0: {
+                                "state": ChangeRowState.NEWLY_ALLOCATED_ENTITY,
+                                "target_id": 501,
+                            }
+                        }
+                    },
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx", validate_first=False)
+
+        assert result.success is True
+        bundle_name = expected_bundle_name()
+        assert result.deploy_artifact is not None
+        assert result.deploy_artifact["bundle_files"] == {f"deploy/{bundle_name}/sample.gz": "501\t2026-05-23\n"}
+        assert gzip.decompress((tmp_path / bundle_name / "deploy" / bundle_name / "sample.gz").read_bytes()).decode("utf-8") == (
+            "501\t2026-05-23\n"
+        )
+
+    @pytest.mark.asyncio
     async def test_ingest_rejects_unsafe_copy_csv_target_table_name(self, tmp_path):
         """Ingest should return a structured failure when copy_csv table names are unsafe for bundle paths."""
         ingester = SeadChangeRequestIngester(

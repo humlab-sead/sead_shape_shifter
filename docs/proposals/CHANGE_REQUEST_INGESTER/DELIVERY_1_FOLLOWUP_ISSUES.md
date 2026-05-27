@@ -2,7 +2,7 @@
 
 This document turns the follow-up CR into GitHub-ready issue drafts and records their current status on this branch.
 
-Issues 1 through 4 are now satisfied by branch work or by an explicit decision on this branch. Keep them only if the repository needs backfilled tracking history. Remaining follow-up work starts at Issue 5.
+Issues 1 through 4 are now satisfied by branch work or by an explicit decision on this branch. Keep them only if the repository needs backfilled tracking history. Remaining follow-up work starts at Issue 6, plus any narrow post-hardening fixes tracked separately.
 
 Current status snapshot:
 
@@ -12,6 +12,7 @@ Current status snapshot:
 - Issue 4: resolved by decision on current branch
 - Issue 5: resolved on current branch
 - Issue 6: open
+- Issue 7: implemented on current branch
 
 Each issue body follows the repository's preferred `Problem`, `Solution`, and `Files` structure.
 
@@ -97,7 +98,7 @@ Solution:
 
 Harden the `copy_csv` artifact bundle rather than redesigning the strategy.
 
-Keep the current planning and identity logic unchanged. Use [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md) as the target contract for this work.
+Keep the current planning and identity logic unchanged. Use [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md](./closed_delivery_1/DELIVERY_1_HARDENING.md) as the target contract for this work.
 
 Concrete steps:
 
@@ -121,7 +122,7 @@ Current branch result:
 Files:
 
 - `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_HARDENING.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md`
 - `ingesters/sead_change_request/sql_builder.py`
 - `ingesters/sead_change_request/ingester.py`
 - `backend/tests/ingesters/test_sead_change_request_sql_builder.py`
@@ -217,6 +218,11 @@ That document now includes:
 - an explicit target-model versus `SeadSchema` comparison
 - a recommendation to keep the target model as the current metadata boundary for `sead_change_request`
 - issue-specific acceptance criteria for closing the comparison work cleanly
+
+Issue status note:
+
+- the detailed analysis is now in `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
+- GitHub issue `#442` remains open until that comparison work is explicitly accepted and closed
 
 Files:
 

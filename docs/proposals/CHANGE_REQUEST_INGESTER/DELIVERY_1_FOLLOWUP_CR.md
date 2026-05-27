@@ -17,36 +17,36 @@ The current branch has already completed two of the original follow-up steps:
 - deploy rendering is split behind an explicit strategy boundary
 - an initial `copy_csv` plus `\copy` deploy strategy now exists beside the default inline-`INSERT` renderer
 
-The next change request should focus on the remaining follow-up work:
+Most of the original follow-up work is now complete on the current branch:
 
-- harden the `copy_csv` prototype into a stable operator-facing artifact contract
-- defer Jinja2 for now and keep plain Python rendering at the current strategy boundary
-- treat [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the detailed home for the SEAD v2 target-model review and the `SeadSchema` comparison
+- `copy_csv` hardening is implemented
+- Jinja2 is explicitly deferred for now
+- the SEAD v2 target-model review is documented in [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+
+The remaining open follow-up work is narrower:
+
+- keep [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the detailed home for the target-model versus `SeadSchema` comparison tracked by Issue 6
 
 These are follow-up improvements. They should not reopen Delivery 1 identity, confirmation, materialization, or collision-check behavior.
+
+Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](./FRONTEND_UX_INTEGRATION_CR.md). This CR now mainly serves as a historical record of the completed deploy-artifact follow-up work and keeps the remaining metadata-review follow-up in one place.
 
 ## Problem
 
 The current Delivery 1 output path is intentionally narrow. It emits deploy SQL as inline `INSERT` statements and packages that output directly.
 
-That is enough to close Delivery 1, but it still leaves three practical follow-up problems.
+That was enough to close Delivery 1, and the deploy-artifact follow-up work on this branch is now largely complete.
 
-First, the repository now has a strategy boundary and an initial `copy_csv` prototype, but that second path is still rough. It needs a stable artifact contract, better CSV hardening, clearer operator execution support, and stronger bundle metadata before it should be treated as an operational format.
+The remaining open problem is the metadata source of truth. Delivery 1 uses the SEAD v2 target model, but the tradeoffs versus the older live-schema approach based on `SeadSchema` in [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py) still need a final accepted comparison in [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
 
-The target contract for that hardening work is now documented in [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md).
-
-Second, the repository now has a clear historical example of a different deploy shape in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](./example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql). The current prototype proves the architecture path, but it does not yet match the older pattern closely enough to settle path rules, payload shape, or operator workflow.
-
-Third, the metadata source of truth still needs review. Delivery 1 uses the SEAD v2 target model, but the completeness review in [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is unfinished, and the tradeoffs versus the older live-schema approach based on `SeadSchema` in [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py) have not been documented clearly enough.
+The completed `copy_csv` hardening and Jinja2 deferral work remains in this CR as historical context and issue history, not as the current open implementation scope.
 
 ## Scope
 
-This follow-up CR covers:
+This follow-up CR now covers:
 
-- hardening the current `copy_csv` plus `\copy` deploy prototype
-- recording the decision to defer Jinja2 for deploy rendering for now
-- completion of the SEAD v2 target-model completeness review through [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
-- comparison of target-model-driven generation with the older `SeadSchema` live-schema approach through that same proposal
+- keeping the completed deploy-artifact follow-up work recorded in one place for history and issue traceability
+- using [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the detailed home for the remaining open metadata-boundary comparison
 
 ## Non-Goals
 
@@ -101,7 +101,7 @@ The current strategy set is:
 
 The next step is not another architecture split. It is to harden the prototype around deterministic file layout, value-shape handling, operator execution support, and artifact metadata.
 
-That hardening should use the current contract decisions in [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md), including:
+That hardening should use the current contract decisions in [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md](./closed_delivery_1/DELIVERY_1_HARDENING.md), including:
 
 - unpacked directory output as the only Delivery 1 artifact form
 - approved `datatype` validation against the current SCCS project subset
@@ -147,27 +147,27 @@ It only needs to make the dependency clear: further output-format work should no
 
 ## Testing And Validation
 
-Validation for this follow-up CR should include:
+Validation completed on the current branch includes:
 
 - regression tests proving the current inline-`INSERT` strategy still emits the existing Delivery 1 artifact shape
 - focused hardening tests for the current `copy_csv` output, including generated payload files, deploy SQL structure, CSV edge cases, and emitted bundle metadata
-- focused hardening tests that prove conformance to [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md)
+- focused hardening tests that prove conformance to [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md](./closed_delivery_1/DELIVERY_1_HARDENING.md)
 - comparison of the hardened `copy_csv` output shape with the historical example in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](./example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql), with any intentional differences documented explicitly
-- review of [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the detailed home for both the completeness review and the `SeadSchema` comparison
+
+Remaining validation for open work is review and acceptance of [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the detailed home for the `SeadSchema` comparison.
 
 ## Acceptance Criteria
 
 - the current deploy-strategy boundary remains intact
 - the current inline-`INSERT` behavior remains available as the default strategy
 - the `copy_csv` artifact contract is hardened enough for operator review and stable test coverage
-- the `copy_csv` artifact contract conforms to [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md)
+- the `copy_csv` artifact contract conforms to [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md](./closed_delivery_1/DELIVERY_1_HARDENING.md)
 - the Jinja2 decision is documented as deferred with reasons
 - [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for both the completeness review and the `SeadSchema` comparison
 
 ## Recommended Delivery Order
 
-1. Harden the current `copy_csv` prototype against the historical artifact shape and realistic operator needs.
-2. Finish the remaining metadata review through [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
+1. Finish the remaining metadata review through [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
 
 ## Suggested Issue Breakdown
 
@@ -203,21 +203,25 @@ Exit criteria:
 
 ### Issue 3. Harden `copy_csv` Deploy Artifacts
 
-Status: open
+Status: implemented on current branch
 
 Includes:
 
 - lock down path rules, naming rules, and deterministic table ordering
 - harden CSV value handling for realistic payloads
-- add an operator execution wrapper or equivalent bundle guidance
 - expand strategy metadata and end-to-end artifact tests
-- implement the contract documented in `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_HARDENING.md`
+- implement the contract documented in `docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md`
 
 Exit criteria:
 
 - the `copy_csv` bundle shape is stable enough for operator review
 - the emitted bundle matches the hardened contract note
 - artifact-level tests cover both bundle structure and CSV edge cases
+
+Follow-up note:
+
+- operator-facing bundle execution guidance is now tracked with the frontend workflow in `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_CR.md`
+- a narrow renderer mismatch around date-only payload formatting should be tracked as a separate bug rather than by reopening this hardening issue
 
 ### Issue 4. Decide On Jinja2 For Rendering
 
@@ -263,9 +267,9 @@ Exit criteria:
 
 ## Final Recommendation
 
-Close Delivery 1 on the current working implementation and treat this as the next focused CR.
+Close Delivery 1 on the current working implementation and treat this document as mostly historical record plus one remaining open follow-up thread.
 
-Start from the current strategy boundary and the existing `copy_csv` prototype rather than reopening that groundwork. Treat `copy_csv` hardening as the next implementation slice, keep Jinja2 deferred unless rendering complexity materially grows, and complete the metadata review before further output-format work hardens the current metadata boundary.
+Do not reopen `copy_csv` hardening or the Jinja2 decision in this CR. Keep the target-model completeness proposal as the active place for the remaining target-model versus `SeadSchema` comparison, and close this follow-up CR cleanly once that metadata-boundary decision is accepted.
 
 ## Issue-Ready Drafts
 
