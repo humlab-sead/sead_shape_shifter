@@ -288,6 +288,32 @@ def test_core_conformance_accepts_sample_note_example_fixture() -> None:
     assert issue_pairs(target_model, project) == []
 
 
+def test_core_conformance_accepts_sample_group_note_example_fixture() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "sample_group": {
+                "required": True,
+                "public_id": "sample_group_id",
+                "columns": {
+                    "sample_group_name": {"required": True},
+                },
+            },
+            "sample_group_note": {
+                "required": False,
+                "public_id": "sample_group_note_id",
+                "columns": {
+                    "sample_group_id": {"required": True},
+                    "note": {"required": True},
+                },
+                "foreign_keys": [{"entity": "sample_group", "required": True}],
+            },
+        }
+    )
+    project: ShapeShiftProject = load_project("sead_sample_group_note_context.yml")
+
+    assert issue_pairs(target_model, project) == []
+
+
 def test_core_conformance_keeps_alias_like_names_strict() -> None:
     target_model: TargetModel = load_target_model()
     project = ShapeShiftProject(
