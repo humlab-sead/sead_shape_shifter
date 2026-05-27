@@ -58,27 +58,31 @@ def main():
         epilog="""
 Output formats
 --------------
-  html      Interactive web page with entity cards, live search, domain groupings,
-            and relationship arrows. Recommended for stakeholder presentations and
-            reference documentation. Opens in any browser; no software required.
+    html      Interactive web page with entity cards, live search, domain groupings,
+                        and relationship arrows. Recommended for stakeholder presentations and
+                        reference documentation. Opens in any browser; no software required.
 
-  excel     Excel workbook with three sheets (Entities, Columns, Relationships).
-            Sortable and filterable. Best for review workshops, gap analysis, and
-            collecting structured feedback. Add review columns ("Complete?",
-            "Priority", "Comments") and distribute to domain experts.
+    excel     Excel workbook with three sheets (Entities, Columns, Relationships).
+                        Sortable and filterable. Best for review workshops, gap analysis, and
+                        collecting structured feedback. Add review columns ("Complete?",
+                        "Priority", "Comments") and distribute to domain experts.
 
-  markdown  Plain-text Markdown grouped by domain. Renders on GitHub/GitLab.
-            Version-controlled and can be converted to PDF or Word.
+    markdown  Plain-text Markdown grouped by domain. Renders on GitHub/GitLab.
+                        Version-controlled and can be converted to PDF or Word.
 
-  all       Generates all three formats in one pass (default).
+    sims      Markdown register focused on SIMS identity categories, aggregate
+                        boundaries, business keys, and reconciliation strategy groupings.
+
+    all       Generates every supported format in one pass (default).
 
 Output files
 ------------
   Files are written to --output-dir (default: docs/generated/) using the input
   file stem as the base name, e.g.:
-    docs/generated/sead_standard_model.html
-    docs/generated/sead_standard_model.md
-    docs/generated/sead_standard_model.xlsx
+    docs/generated/sead_superset_model.html
+    docs/generated/sead_superset_model.md
+    docs/generated/sead_superset_model.xlsx
+    docs/generated/sead_superset_model.sims.md
 
 Understanding entity cards (HTML)
 ----------------------------------
@@ -104,13 +108,16 @@ Understanding entity cards (HTML)
 Examples
 --------
   # Generate all formats from the bundled SEAD spec
-  python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml
+    python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml
 
   # HTML only (recommended for stakeholder review)
-  python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format html
+    python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format html
 
   # Excel for gap-analysis workshop
-  python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format excel
+    python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format excel
+
+    # SIMS entity register for the Authority Service docs
+    python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format sims --output-dir /tmp
 
   # Custom output directory
   python scripts/generate_target_model_docs.py my_model.yml --format all --output-dir /tmp/model-docs
@@ -119,9 +126,9 @@ Examples
     parser.add_argument("input", type=Path, help="Input YAML file (e.g., resources/target_models/sead_standard_model.yml)")
     parser.add_argument(
         "--format",
-        choices=["html", "markdown", "excel", "all"],
+        choices=["html", "markdown", "excel", "sims", "all"],
         default="all",
-        help="Output format: html (interactive), markdown (plain text), excel (spreadsheet), all (default)",
+        help="Output format: html (interactive), markdown (plain text), excel (spreadsheet), sims (identity register), all (default)",
     )
     parser.add_argument("--output-dir", type=Path, default=Path("docs/generated"), help="Output directory (default: docs/generated)")
 
@@ -147,7 +154,7 @@ Examples
     # Generate requested formats
     formats_to_generate = []
     if args.format == "all":
-        formats_to_generate = [DocumentFormat.HTML, DocumentFormat.MARKDOWN, DocumentFormat.EXCEL]
+        formats_to_generate = [DocumentFormat.HTML, DocumentFormat.MARKDOWN, DocumentFormat.EXCEL, DocumentFormat.SIMS]
     else:
         formats_to_generate = [DocumentFormat(args.format)]
 
@@ -156,6 +163,7 @@ Examples
             DocumentFormat.HTML: "html",
             DocumentFormat.MARKDOWN: "md",
             DocumentFormat.EXCEL: "xlsx",
+            DocumentFormat.SIMS: "sims.md",
         }
         output_path = args.output_dir / f"{base_name}.{extensions[doc_format]}"
 
