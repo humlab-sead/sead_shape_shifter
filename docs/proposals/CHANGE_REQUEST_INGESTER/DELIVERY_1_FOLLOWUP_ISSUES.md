@@ -193,7 +193,7 @@ Files:
 
 - `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md`
-- `resources/target_models/sead_standard_model.yml`
+- `resources/target_models/sead_superset_model.yml`
 
 ## Issue 6 [docs(metadata): compare SEAD target model with SeadSchema live-schema approach](https://github.com/humlab-sead/sead_shape_shifter/issues/442)
 

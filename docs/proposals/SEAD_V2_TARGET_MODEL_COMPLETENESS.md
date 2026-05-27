@@ -22,7 +22,7 @@ Current issue state on this branch:
 
 The previous completeness note was no longer reliable.
 
-It mixed historical expansion plans with current-state claims and overstated implemented coverage. A direct check against [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml) shows a verified surface of 51 top-level entities in the current model, not the larger phase-based inventory described in the older draft.
+It mixed historical expansion plans with current-state claims and overstated implemented coverage. A direct check against [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml) shows a verified surface of 51 top-level entities in the current model, not the larger phase-based inventory described in the older draft.
 
 Issue 5 should therefore be treated as a review and decision task first.
 
@@ -40,7 +40,7 @@ The filtered Issue 6 snapshots are still useful, but they are only one evidence 
 
 The current target model already covers a substantial core for Delivery 1 and early SEAD ingestion work.
 
-Verified entity surface in [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml):
+Verified entity surface in [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml):
 
 - Core and provenance: `location`, `location_type`, `site`, `site_location`, `sample_group`, `sample`, `method`, `dataset`, `master_dataset`, `project`, `citation`, `contact`, `contact_type`, `dataset_contact`
 - Sample and coordinate support: `sample_description_type`, `sample_description`, `sample_type`, `dimension`, `coordinate_method_dimension`, `sample_coordinate`, `alt_ref_type`, `sample_alt_ref`, `sample_dimension`
@@ -120,7 +120,7 @@ Issue 6 should not be tracked as a separate, context-free note.
 
 It depends directly on the same review work as Issue 5 because the practical question is not only "what is missing from the target model" but also "which schema concepts belong in the near-complete shared SEAD model and which are only operational artifacts".
 
-The current change-request ingester uses the target model in [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml). The older `sead` ingester uses `SeadSchema` in [ingesters/sead/metadata.py](../../ingesters/sead/metadata.py), which derives metadata from the live SQL schema.
+The current change-request ingester uses the target model in [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml). The older `sead` ingester uses `SeadSchema` in [ingesters/sead/metadata.py](../../ingesters/sead/metadata.py), which derives metadata from the live SQL schema.
 
 Before more follow-up work grows around the current metadata boundary, this document should make the tradeoffs between those two approaches explicit.
 
@@ -252,7 +252,7 @@ Current branch status: this step is initialized in [docs/proposals/CHANGE_REQUES
 2. Group the remaining live-schema tables into comparison buckets rather than reviewing them one by one.
 Use practical buckets such as core provenance, site and location, sample and sample group, feature context, chronology and dating, taxonomy, abundance, analysis values, project metadata, and lookup tables.
 
-3. Map each filtered live-schema bucket to the current target-model entities in [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml).
+3. Map each filtered live-schema bucket to the current target-model entities in [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml).
 For each bucket, record one of four outcomes: already covered, partially covered, missing from the target model, or intentionally out of scope for the shared model.
 
 4. Use [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](./CHANGE_REQUEST_INGESTER/filtered_import_columns.csv) to check whether the apparent table-level gaps are real entity gaps or only column-level differences.
@@ -337,7 +337,7 @@ Issue 6 should be closed only when this document contains an explicit comparison
 
 The next steps should be:
 
-1. Keep [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml) as the source of truth for current coverage.
+1. Keep [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml) as the source of truth for current coverage.
 2. Use this document to track verified missing areas, verified decisions, and the intended completeness boundary for the shared SEAD model.
 3. Separate true shared-model entities from derived or operational schema artifacts before adding more entities.
 4. Keep the target model as the active metadata boundary for `sead_change_request` unless a later architecture proposal explicitly changes that decision.
@@ -486,7 +486,7 @@ Issue 6 should count as complete when all of the following are true:
 
 ## References
 
-- [resources/target_models/sead_standard_model.yml](../../resources/target_models/sead_standard_model.yml)
+- [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml)
 - [docs/TARGET_MODEL_GUIDE.md](../TARGET_MODEL_GUIDE.md)
 - [ingesters/sead/metadata.py](../../ingesters/sead/metadata.py)
 - [docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md](./SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md)

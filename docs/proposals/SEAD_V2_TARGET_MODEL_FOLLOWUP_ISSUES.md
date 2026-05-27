@@ -59,7 +59,7 @@ Files:
 
 - `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
 - `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
-- `resources/target_models/sead_standard_model.yml`
+- `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
 
 ## Issue 2 [feat(target_model): add sample-group context entities](https://github.com/humlab-sead/sead_shape_shifter/issues/448)
@@ -97,7 +97,7 @@ Files:
 
 - `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
 - `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
-- `resources/target_models/sead_standard_model.yml`
+- `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
 
 ## Issue 3 [feat(target_model): add site and feature property entities](https://github.com/humlab-sead/sead_shape_shifter/issues/449)
@@ -136,7 +136,7 @@ Files:
 
 - `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
 - `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
-- `resources/target_models/sead_standard_model.yml`
+- `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
 
 ## Issue 4 [feat(target_model): design generic analysis-value family](https://github.com/humlab-sead/sead_shape_shifter/issues/450)
@@ -174,7 +174,7 @@ Files:
 
 - `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
 - `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
-- `resources/target_models/sead_standard_model.yml`
+- `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
 
 ## Issue 5 [proposal(target_model): reassess deferred lookup and extension candidates](https://github.com/humlab-sead/sead_shape_shifter/issues/451)
@@ -212,5 +212,5 @@ Files:
 
 - `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
 - `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
-- `resources/target_models/sead_standard_model.yml`
+- `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
