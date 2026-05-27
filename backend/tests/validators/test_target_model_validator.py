@@ -133,6 +133,43 @@ class TestTargetModelValidatorErrorPaths:
 
         assert any(e.code == "MISSING_REQUIRED_COLUMN" for e in errors)
 
+    def test_unknown_foreign_key_entity_returns_specific_spec_issue(self):
+        """Spec self-consistency issues should surface their specific code, not INVALID_TARGET_MODEL."""
+        project = _make_project({})
+        target_model_data = _minimal_target_model(
+            entities={
+                "site": {
+                    "public_id": "site_id",
+                    "foreign_keys": [{"entity": "location", "required": True}],
+                }
+            }
+        )
+
+        errors = TargetModelValidator().validate(target_model_data, project)
+
+        assert [error.code for error in errors] == ["UNKNOWN_FOREIGN_KEY_ENTITY"]
+        assert errors[0].entity == "site"
+        assert errors[0].field is None
+        assert errors[0].suggestion == "Fix the target model specification and rerun validation."
+
+    def test_aggregate_parent_spec_issue_blocks_conformance_and_surfaces_specific_code(self):
+        """Aggregate-parent self-consistency issues should be returned directly before project conformance runs."""
+        project = _make_project({"sample": _minimal_entity(public_id="sample_id")})
+        target_model_data = _minimal_target_model(
+            entities={
+                "sample": {"public_id": "sample_id"},
+                "sample_description": {
+                    "public_id": "sample_description_id",
+                    "aggregate_parent": "sample",
+                },
+            }
+        )
+
+        errors = TargetModelValidator().validate(target_model_data, project)
+
+        assert [error.code for error in errors] == ["MISSING_AGGREGATE_PARENT_FOREIGN_KEY"]
+        assert errors[0].entity == "sample_description"
+
 
 # ---------------------------------------------------------------------------
 # ValidationError shape produced by the adapter
@@ -155,3 +192,25 @@ class TestValidationErrorShape:
             assert err.priority == ValidationPriority.HIGH
             assert err.auto_fixable is False
             assert err.suggestion is None
+
+    def test_spec_errors_have_correct_metadata(self):
+        """Spec validation errors should use conformance metadata and keep their specific code."""
+        project = _make_project({})
+        target_model_data = _minimal_target_model(
+            entities={
+                "site": {
+                    "public_id": "site_id",
+                    "foreign_keys": [{"entity": "location", "required": True}],
+                }
+            }
+        )
+
+        errors = TargetModelValidator().validate(target_model_data, project)
+
+        assert errors, "Expected at least one target-model spec error"
+        for err in errors:
+            assert err.severity == "error"
+            assert err.category == ValidationCategory.CONFORMANCE
+            assert err.priority == ValidationPriority.HIGH
+            assert err.auto_fixable is False
+            assert err.suggestion == "Fix the target model specification and rerun validation."

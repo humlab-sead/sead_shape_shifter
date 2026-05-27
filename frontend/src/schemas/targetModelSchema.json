@@ -1,6 +1,7 @@
 {
   "$defs": {
     "ColumnSpec": {
+      "additionalProperties": false,
       "properties": {
         "required": {
           "default": false,
@@ -48,6 +49,7 @@
       "type": "object"
     },
     "EntitySpec": {
+      "additionalProperties": false,
       "properties": {
         "role": {
           "anyOf": [
@@ -201,6 +203,7 @@
       "type": "object"
     },
     "ForeignKeySpec": {
+      "additionalProperties": false,
       "properties": {
         "entity": {
           "title": "Entity",
@@ -231,6 +234,7 @@
       "type": "object"
     },
     "GlobalConstraint": {
+      "additionalProperties": false,
       "properties": {
         "type": {
           "title": "Type",
@@ -244,6 +248,7 @@
       "type": "object"
     },
     "ModelMetadata": {
+      "additionalProperties": false,
       "properties": {
         "name": {
           "title": "Name",
@@ -274,6 +279,7 @@
       "type": "object"
     },
     "NamingConventions": {
+      "additionalProperties": false,
       "properties": {
         "public_id_suffix": {
           "anyOf": [
@@ -292,6 +298,7 @@
       "type": "object"
     }
   },
+  "additionalProperties": false,
   "properties": {
     "model": {
       "$ref": "#/$defs/ModelMetadata"
