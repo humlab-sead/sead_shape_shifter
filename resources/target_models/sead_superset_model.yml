@@ -263,6 +263,8 @@ entities:
         required: true
       - entity: dimension
         required: true
+      - entity: value_qualifier
+        required: false
 
   sample_group_note:
     role: fact
@@ -530,6 +532,48 @@ entities:
     unique_sets:
       - [alt_ref_type]
 
+  value_qualifier:
+    role: classifier
+    required: false
+    description: Base qualifier vocabulary for qualified values such as greater-than or less-than.
+    domains: [sample-metadata, analysis]
+    target_table: tbl_value_qualifiers
+    public_id: qualifier_id
+    identity_columns: [symbol]
+    columns:
+      symbol:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [symbol]
+
+  value_qualifier_symbol:
+    role: classifier
+    required: false
+    description: Alternate symbol mapped to a base value qualifier.
+    domains: [sample-metadata, analysis]
+    target_table: tbl_value_qualifier_symbols
+    public_id: qualifier_symbol_id
+    identity_columns: [symbol]
+    columns:
+      symbol:
+        required: true
+        type: string
+        nullable: false
+      cardinal_qualifier_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [symbol]
+    foreign_keys:
+      - entity: value_qualifier
+        required: true
+
   sample_alt_ref:
     role: fact
     required: false
@@ -586,6 +630,9 @@ entities:
         required: true
         type: decimal
         nullable: false
+      qualifier_id:
+        type: integer
+        nullable: true
     foreign_keys:
       - entity: sample
         required: true
@@ -593,6 +640,8 @@ entities:
         required: true
       - entity: method
         required: true
+      - entity: value_qualifier
+        required: false
 
   sample_location_type:
     role: classifier

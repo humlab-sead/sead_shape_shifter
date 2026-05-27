@@ -417,13 +417,13 @@ naming:
 
 ## SEAD Superset Spec (`sead_superset_model.yml`)
 
-The bundled SEAD superset spec at `resources/target_models/sead_superset_model.yml` currently covers 59 entities. It is intended to be the near-complete shared SEAD model from which individual Shape Shifter projects can select curated subsets.
+The bundled SEAD superset spec at `resources/target_models/sead_superset_model.yml` currently covers 61 entities. It is intended to be the near-complete shared SEAD model from which individual Shape Shifter projects can select curated subsets.
 
 | Domain       | Entities                                                                                                                                                                |
 |--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `core` | Core context entities such as `location`, `site`, `sample_group`, `sample`, `method`, `dataset`, `analysis_entity`, and provenance lookups |
 | `spatial` | Spatial context and coordinate-related entities such as `location`, `site_location`, `dimension`, and site, sample, or sample-group coordinate extensions |
-| `sample-metadata` | Sample and sample-group descriptions, locations, notes, horizons, dimensions, references, and other attached metadata entities |
+| `sample-metadata` | Sample and sample-group descriptions, locations, notes, horizons, dimensions, qualifier vocabularies, references, and other attached metadata entities |
 | `abundance` | Abundance observations, abundance property entities, and related classifiers |
 | `taxonomy` | Taxonomy entities such as `taxa_tree_master`, `taxa_common_names`, and taxonomy support lookups |
 | `dating` | Relative dating, chronology, dating lab, and uncertainty entities |
