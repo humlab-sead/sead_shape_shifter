@@ -201,6 +201,30 @@ entities:
         required: true
       - entity: method
         required: true
+      - entity: sample_group_sampling_context
+        required: false
+
+  sample_group_sampling_context:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for sampling contexts attached to sample groups and related sample metadata tables.
+    domains: [core, sample-metadata]
+    target_table: tbl_sample_group_sampling_contexts
+    public_id: sampling_context_id
+    identity_columns: [sampling_context]
+    columns:
+      sampling_context:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+      sort_order:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [sampling_context]
 
   sample_group_coordinate:
     role: fact
@@ -742,6 +766,34 @@ entities:
     foreign_keys:
       - entity: sample
         required: true
+      - entity: horizon
+        required: true
+
+  horizon:
+    role: classifier
+    required: false
+    description: Controlled horizon vocabulary referenced by sample horizon assignments.
+    domains: [sample-metadata]
+    target_table: tbl_horizons
+    public_id: horizon_id
+    identity_columns: [horizon_name, method_id]
+    columns:
+      horizon_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [horizon_name, method_id]
+    foreign_keys:
+      - entity: method
+        required: true
 
   method:
     role: classifier
@@ -1037,6 +1089,31 @@ entities:
       - entity: analysis_value
         required: true
 
+  analysis_boolean_value:
+    role: fact
+    required: false
+    description: Boolean analysis result recorded as a typed child row of an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_boolean_values
+    public_id: analysis_boolean_value_id
+    identity_columns: [analysis_value_id, qualifier, value]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      qualifier:
+        type: string
+        nullable: true
+      value:
+        required: true
+        type: boolean
+        nullable: false
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+
   analysis_integer_value:
     role: fact
     required: false
@@ -1058,6 +1135,49 @@ entities:
         required: true
         type: integer
         nullable: false
+      is_variant:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: value_qualifier_symbol
+        required: false
+
+  analysis_integer_range:
+    role: fact
+    required: false
+    description: Qualified integer range attached to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_integer_ranges
+    public_id: analysis_integer_range_id
+    identity_columns: [analysis_value_id, low_value, high_value, low_qualifier, high_qualifier]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      low_value:
+        required: true
+        type: integer
+        nullable: false
+      high_value:
+        required: true
+        type: integer
+        nullable: false
+      low_is_uncertain:
+        type: boolean
+        nullable: true
+      high_is_uncertain:
+        type: boolean
+        nullable: true
+      low_qualifier:
+        type: string
+        nullable: true
+      high_qualifier:
+        type: string
+        nullable: true
       is_variant:
         type: boolean
         nullable: true
@@ -1096,6 +1216,62 @@ entities:
         required: true
       - entity: value_qualifier_symbol
         required: false
+
+  analysis_taxon_count:
+    role: fact
+    required: false
+    description: Taxon-specific count attached to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis, taxonomy]
+    target_table: tbl_analysis_taxon_counts
+    public_id: analysis_taxon_count_id
+    identity_columns: [analysis_value_id, taxon_id]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+      value:
+        required: true
+        type: decimal
+        nullable: false
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: taxa_tree_master
+        required: true
+
+  analysis_value_dimension:
+    role: fact
+    required: false
+    description: Dimension measurement attached directly to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_value_dimensions
+    public_id: analysis_value_dimension_id
+    identity_columns: [analysis_value_id, dimension_id]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      value:
+        required: true
+        type: decimal
+        nullable: false
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: dimension
+        required: true
 
   analysis_dating_range:
     role: fact
