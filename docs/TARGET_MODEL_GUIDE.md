@@ -4,6 +4,8 @@
 
 A **target model specification** is a YAML file that describes what an external destination system — such as the SEAD Clearinghouse — expects from a Shape Shifter project. It defines which entities are required, what columns and foreign-key relationships they must have, and what naming conventions apply.
 
+The field-level schema authority lives in the Pydantic models in `src/target_model/models.py`. Use `TARGET_MODEL_GUIDE.md` as the narrative guide and `TARGET_MODEL_SCHEMA_REFERENCE.md` as the generated key-by-key reference derived from that schema.
+
 When a project references a target model, Shape Shifter can perform **conformance validation**: checking whether the project entities actually satisfy the requirements described in the spec. This catches semantic modeling errors at configuration time, before you run the pipeline or attempt a dispatch.
 
 Target model specs are optional. Existing projects without a `target_model` reference continue to work without any changes.
@@ -82,6 +84,8 @@ The Metadata Editor in the project workspace surfaces this as a **Target Model**
 ## Target Model File Format
 
 Target model files are parsed with strict Pydantic models. Unknown keys in these blocks are rejected during load instead of being silently ignored.
+
+For the full generated reference of accepted sections, keys, defaults, and enum values, see [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md).
 
 ### Top-Level Structure
 
@@ -469,5 +473,6 @@ Output files are written to `docs/generated/` by default. Run `python scripts/ge
 ## Related Documentation
 
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — full project YAML reference, including the `metadata.target_model` field
+- [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) — generated field-by-field schema reference derived from the Pydantic models
 - [USER_GUIDE.md](USER_GUIDE.md) — editor UI guide, including the Check Conformance button and Conformance panel
 - [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md) — deferred and future work backlog
