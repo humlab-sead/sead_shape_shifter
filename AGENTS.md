@@ -17,6 +17,18 @@
 - `make test` — full suite; `uv run pytest tests -v` (Core); `uv run pytest backend/tests -v` (backend).
 - `make lint` / `make tidy` (Black + isort) before committing.
 
+## Documentation Vocabulary
+
+- Use plain, concrete language in generated code, comments, docstrings, PR text, and documentation.
+- Prefer words that name the actual thing, action, rule, input, output, or result directly.
+- Do not treat any word as forbidden, but use abstract or overloaded terms carefully. If a technical term is necessary, define it nearby or pair it with a plain-language explanation.
+- Use these terms carefully unless they are established project vocabulary: `evidence`, `boundary`, `framing`, `canonical`, `surface`, `facing`, `slice`, `signal`.
+- Prefer explicit wording such as `data`, `result`, `source`, `check`, `validation result`, `limit`, `responsibility`, `allowed range`, `rule`, `purpose`, `reason`, `background`, `request details`, `standard`, `preferred`, `normalized`, `official`, `interface`, `page`, `endpoint`, `entry point`, `used by`, `shown to`, `exposed to`, `part`, `section`, `subset`, `step`, `indicator`, `warning`, `metric`, `status`, `input`, `output`, `error`, and `side effect`.
+- Write for a mixed audience: junior developers, maintainers, testers, data managers, researchers, and non-technical stakeholders.
+- The closer text is to code or user-visible behavior, the more concrete the vocabulary should be.
+- Comments and docstrings should explain behavior, responsibility, assumptions, inputs, outputs, and side effects. Avoid metaphorical or fashion-driven wording when a simpler phrase is equally accurate.
+- Write docstrings using concrete behavior-first wording. Prefer direct statements such as `Reads sample rows from a CSV file.`, `Returns validation errors for missing required fields.`, `Uses the site ID to find matching sample groups.`, and `Does not write changes to the database.` Avoid vague wording such as `Ingests artifacts across the import boundary.`, `Resolves canonical entities for downstream consumers.`, and `Emits signals for the review surface.`
+
 ## Cross-Cutting Rules
 
 - **Absolute imports only**: `from src...` and `from backend.app...` — never relative across packages.
