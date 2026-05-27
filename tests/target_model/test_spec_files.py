@@ -34,14 +34,30 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
     issues = TargetModelSpecValidator().validate(target_model)
+    sample_group_coordinate = target_model.entities["sample_group_coordinate"]
+    sample_group_dimension = target_model.entities["sample_group_dimension"]
+    sample_group_note = target_model.entities["sample_group_note"]
+    sample_group_reference = target_model.entities["sample_group_reference"]
     sample_location_type = target_model.entities["sample_location_type"]
     sample_location = target_model.entities["sample_location"]
     sample_note = target_model.entities["sample_note"]
     sample_horizon = target_model.entities["sample_horizon"]
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
-    assert len(target_model.entities) == 55
+    assert len(target_model.entities) == 59
     assert {"sample_horizon", "sample_location", "sample_location_type", "sample_note"}.issubset(target_model.entities)
+    assert {"sample_group_coordinate", "sample_group_dimension", "sample_group_note", "sample_group_reference"}.issubset(
+        target_model.entities
+    )
+    assert sample_group_coordinate.target_table == "tbl_sample_group_coordinates"
+    assert sample_group_coordinate.public_id == "sample_group_position_id"
+    assert sample_group_coordinate.aggregate_parent == "sample_group"
+    assert sample_group_dimension.target_table == "tbl_sample_group_dimensions"
+    assert sample_group_dimension.aggregate_parent == "sample_group"
+    assert sample_group_note.target_table == "tbl_sample_group_notes"
+    assert sample_group_note.aggregate_parent == "sample_group"
+    assert sample_group_reference.target_table == "tbl_sample_group_references"
+    assert sample_group_reference.aggregate_parent == "sample_group"
     assert sample_location_type.target_table == "tbl_sample_location_types"
     assert sample_location.target_table == "tbl_sample_locations"
     assert sample_location.aggregate_parent == "sample"
