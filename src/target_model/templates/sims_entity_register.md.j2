@@ -1,6 +1,8 @@
 # SIMS Entity Register
 
 > Auto-generated from {{ model.name }} v{{ model.version }}
+>
+> This register reflects target-model metadata. Compare it with `config/identity_policy.yml` when reviewing current Authority Service rollout state.
 
 ## Summary
 
@@ -33,10 +35,10 @@ Controlled vocabularies maintained by SEAD administrators; providers reference e
 Association entities whose identity is derived from their foreign key references.
 {% endif %}
 
-| Entity | Role | Reconciliation | Aggregate Parent | Domains |
-|--------|------|----------------|------------------|---------|
+| Entity | Target Table | Role | Business Key | Required | Reconciliation | Aggregate Parent | Domains |
+|--------|--------------|------|--------------|----------|----------------|------------------|---------|
 {% for e in group_entities %}
-| {{ e.name }} | {{ e.spec.role or '-' }} | {{ e.reconciliation or '-' }} | {{ e.aggregate_parent or '-' }} | {{ e.spec.domains|join(', ') }} |
+| {{ e.name }} | {{ e.spec.target_table or '-' }} | {{ e.spec.role or '-' }} | {{ e.spec.identity_columns|join(', ') or '-' }} | {{ 'yes' if e.spec.required else 'no' }} | {{ e.reconciliation or '-' }} | {{ e.aggregate_parent or '-' }} | {{ e.spec.domains|join(', ') or '-' }} |
 {% endfor %}
 
 {% endif %}
