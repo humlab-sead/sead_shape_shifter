@@ -29,6 +29,17 @@ def test_sead_v2_spec_loads_and_validates() -> None:
     assert issues == []
 
 
+def test_sead_superset_spec_loads_and_validates() -> None:
+    spec_path = Path("resources/target_models/sead_superset_model.yml")
+    target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
+
+    issues = TargetModelSpecValidator().validate(target_model)
+
+    assert target_model.model.name == "SEAD Clearinghouse Extended"
+    assert len(target_model.entities) == 51
+    assert issues == []
+
+
 def test_non_sead_target_model_expresses_cleanly() -> None:
     """Acceptance criterion #5: at least one non-SEAD model can be expressed without schema changes.
 

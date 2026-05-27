@@ -14,10 +14,11 @@ from typing import Any
 from loguru import logger
 
 from backend.app.mappers.validation_mapper import ValidationMapper
-from backend.app.models.validation import ValidationError
+from backend.app.models.validation import ValidationCategory, ValidationError, ValidationPriority
 from src.model import ShapeShiftProject
 from src.target_model.conformance import ConformanceIssue, TargetModelConformanceValidator
 from src.target_model.models import TargetModel
+from src.target_model.spec_validator import SpecValidationIssue, TargetModelSpecValidator
 
 
 class TargetModelValidator:
@@ -57,6 +58,24 @@ class TargetModelValidator:
                     suggestion="Ensure the target model YAML matches the TargetModel schema.",
                 )
             ]
+
+        spec_issues: list[SpecValidationIssue] = TargetModelSpecValidator().validate(target_model)
+        if spec_issues:
+            logger.debug(f"Target-model spec validation: {len(spec_issues)} issue(s) found")
+            errors: list[ValidationError] = []
+            for issue in spec_issues:
+                error = ValidationMapper.from_core_issue(
+                    issue,
+                    default_category=ValidationCategory.CONFORMANCE,
+                    default_priority=ValidationPriority.HIGH,
+                    default_suggestion="Fix the target model specification and rerun validation.",
+                    default_auto_fixable=False,
+                )
+                error.category = ValidationCategory.CONFORMANCE
+                error.priority = ValidationPriority.HIGH
+                errors.append(error)
+
+            return errors
 
         issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
         errors: list[ValidationError] = [ValidationMapper.from_conformance_issue(issue) for issue in issues]

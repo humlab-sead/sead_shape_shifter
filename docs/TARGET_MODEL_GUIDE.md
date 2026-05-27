@@ -12,14 +12,14 @@ Target model specs are optional. Existing projects without a `target_model` refe
 
 ## Quick Start
 
-1. Pick or create a spec file — e.g., `resources/target_models/sead_standard_model.yml` (the SEAD Clearinghouse spec ships with Shape Shifter).
+1. Pick or create a spec file — e.g., `resources/target_models/sead_superset_model.yml` (the current bundled SEAD superset spec ships with Shape Shifter).
 2. Add a `target_model` reference to your project's `metadata` section:
 
 ```yaml
 metadata:
   type: 'shapeshifter-project'
   name: "Dendrochronology Import"
-  target_model: "@include: resources/target_models/sead_standard_model.yml"
+  target_model: "@include: resources/target_models/sead_superset_model.yml"
 ```
 
 3. Open your project in the editor, go to the **Validate** tab, and click **Check Conformance**.
@@ -29,14 +29,14 @@ metadata:
 
 ## File Location
 
-The built-in SEAD spec lives at `resources/target_models/sead_standard_model.yml`. Custom or project-specific specs can live anywhere; reference them with a path relative to the project file or an absolute path.
+The current bundled SEAD spec lives at `resources/target_models/sead_superset_model.yml`. Custom or project-specific specs can live anywhere; reference them with a path relative to the project file or an absolute path.
 
 Recommended layout for project-specific specs:
 
 ```
 target_models/
   specs/
-    sead_standard_model.yml           ← bundled SEAD clearinghouse spec
+    sead_superset_model.yml           ← bundled SEAD superset spec
     my_museum.yml         ← custom target model
 ```
 
@@ -50,7 +50,7 @@ Use the `metadata.target_model` field. The value may be either a file reference 
 ```yaml
 metadata:
   type: 'shapeshifter-project'
-  target_model: "@include: resources/target_models/sead_standard_model.yml"
+  target_model: "@include: resources/target_models/sead_superset_model.yml"
 ```
 
 **Inline definition (for small custom models):**
@@ -80,6 +80,8 @@ The Metadata Editor in the project workspace surfaces this as a **Target Model**
 ---
 
 ## Target Model File Format
+
+Target model files are parsed with strict Pydantic models. Unknown keys in these blocks are rejected during load instead of being silently ignored.
 
 ### Top-Level Structure
 
@@ -125,24 +127,27 @@ Each key is an entity name that must match the project entity name. Each value i
 
 ```yaml
 entities:
-  location:
+  site:
     role: lookup
     required: true
-    description: "Geographic location"
+    description: "Archaeological site"
     domains: [core, spatial]
-    target_table: tbl_locations
-    public_id: location_id
-    identity_columns: [location_type_id, location_name]
+    target_table: tbl_sites
+    public_id: site_id
+    identity_columns: [site_name]
+    identity_tracking: reconciled
+    reconciliation: reconcile-fuzzy
     columns:
-      location_name:
+      site_name:
         required: true
         type: string
         nullable: false
     unique_sets:
-      - [location_type_id, location_name]
+      - [site_name]
     foreign_keys:
-      - entity: location_type
+      - entity: location
         required: true
+        via: site_location
 ```
 
 #### Entity Spec Fields
@@ -159,6 +164,9 @@ entities:
 | `columns`          | No       | Map of column name → column spec; conformance checks these against the project |
 | `unique_sets`      | No       | List of unique-set column groups                                               |
 | `foreign_keys`     | No       | List of foreign key specs                                                      |
+| `identity_tracking`| No       | Identity handling mode: `tracked`, `reconciled`, `derived`, or `child`        |
+| `reconciliation`   | No       | Expected matching or allocation mode for this entity                           |
+| `aggregate_parent` | No       | Parent entity name when this entity inherits aggregate identity                |
 
 ---
 
@@ -194,8 +202,9 @@ columns:
 | Field      | Required | Description                                                                                          |
 |------------|----------|------------------------------------------------------------------------------------------------------|
 | `required` | No       | `true` means the project entity must expose this column                                              |
-| `type`     | No       | Hint type: `string`, `integer`, `decimal`, `boolean` (informational; no hard type enforcement in v1) |
+| `type`     | No       | Hint type such as `string`, `integer`, `decimal`, `boolean`, or `date` (informational in v1)       |
 | `nullable` | No       | Whether the column is expected to allow null values (informational)                                  |
+| `description` | No    | Human-readable note for reviewers, generated docs, and editor help                                   |
 
 Shape Shifter counts a column as present in a project entity when it appears as:
 - an explicit entry in `columns` or `keys`
@@ -212,6 +221,7 @@ Shape Shifter counts a column as present in a project entity when it appears as:
 foreign_keys:
   - entity: location
     required: true
+    via: site_location
   - entity: site_type
     required: false
 ```
@@ -220,8 +230,33 @@ foreign_keys:
 |------------|----------|-------------------------------------------------------------------------------------|
 | `entity`   | Yes      | Name of the target entity this FK must point to                                     |
 | `required` | No       | `true` means the project entity must declare a FK to this entity (default: `false`) |
+| `via`      | No       | Bridge entity name for many-to-many relationships such as `site -> site_location -> location` |
 
 Conformance checks whether the project entity has at least one foreign key whose target matches the required entity name.
+
+When `via` is present, conformance first checks the source entity points to the bridge entity, then checks whether the bridge points to the ultimate target entity.
+
+---
+
+### Identity And Reconciliation Fields
+
+These fields describe how an entity participates in SIMS identity handling and lookup/allocation workflows.
+
+Shape Shifter validates these fields together when a target model loads:
+
+- `aggregate_parent` must name another entity in the same model
+- entities with `aggregate_parent` must also declare a foreign key to that parent
+- `identity_tracking: child` requires `aggregate_parent`
+- `tracked` entities resolve to `allocate`
+- `derived` entities resolve to `derive`
+- `child` entities must not declare a reconciliation strategy
+- `reconciled` entities must resolve to one of `reconcile-exact`, `reconcile-fuzzy`, `lookup-only`, or `lookup-extensible`
+
+| Field | Allowed values | Description |
+|-------|----------------|-------------|
+| `identity_tracking` | `tracked`, `reconciled`, `derived`, `child` | Declares whether the entity gets its own tracked identity, is matched by business keys, derives identity from related rows, or inherits from an aggregate parent |
+| `reconciliation` | `allocate`, `reconcile-exact`, `reconcile-fuzzy`, `lookup-only`, `lookup-extensible`, `derive` | Declares the expected matching or allocation mode for this entity |
+| `aggregate_parent` | Entity name | Required when identity is inherited from a parent aggregate such as `analysis_entity` or `sample` |
 
 ---
 
@@ -242,10 +277,16 @@ naming:
 
 ```yaml
 constraints:
-  - type: no_orphan_facts
+  - type: no_circular_dependencies
 ```
 
-Global constraints are planned for future validation phases. `no_orphan_facts` is declared in the SEAD spec but not yet enforced by the conformance engine. It records the *intent* that every fact entity must be reachable from at least one required lookup.
+| Field | Required | Description |
+|-------|----------|-------------|
+| `type` | Yes | Global rule name applied to the whole target model |
+
+Current constraints are modeled as simple typed entries. Add new constraint-specific keys only after extending the Pydantic schema.
+
+Global constraints are planned for future validation phases. `no_orphan_facts` is declared in the SEAD spec but not yet enforced by the conformance engine. It records the intended rule that every fact entity must be reachable from at least one required lookup.
 
 ---
 
@@ -257,8 +298,9 @@ When you click **Check Conformance** in the editor, Shape Shifter:
 
 1. Loads the project and resolves the `target_model` reference (expanding `@include:` if needed).
 2. Parses the target model spec into a `TargetModel` domain object.
-3. Runs the five built-in conformance validators against the resolved project.
-4. Returns a list of `ConformanceIssue` objects, each including a code, message, affected entity and field, and a suggestion.
+3. Runs the target-model spec validator to check self-consistency, including unknown FK targets, invalid aggregate-parent relationships, and invalid identity-tracking or reconciliation combinations.
+4. Runs the built-in conformance validators against the resolved project.
+5. Returns a list of `ConformanceIssue` objects, each including a code, message, affected entity and field, and a suggestion.
 
 Conformance results appear in their own **Conformance** panel in the Validate tab, separate from structural and data validation results.
 
@@ -291,7 +333,7 @@ The conformance engine can also be used from the CLI for quick checks:
 
 ```bash
 python -m src.target_model.conformance \
-  --spec resources/target_models/sead_standard_model.yml \
+  --spec resources/target_models/sead_superset_model.yml \
   --project data/projects/my_project/shapeshifter.yml
 ```
 
@@ -303,18 +345,18 @@ The template generator creates a starter project YAML pre-populated with the ent
 
 ```bash
 python -m src.target_model.template_generator \
-  --spec resources/target_models/sead_standard_model.yml \
+  --spec resources/target_models/sead_superset_model.yml \
   --output my_project_scaffold.yml
 
 # Filter to a specific domain
 python -m src.target_model.template_generator \
-  --spec resources/target_models/sead_standard_model.yml \
+  --spec resources/target_models/sead_superset_model.yml \
   --domain core \
   --output core_entities.yml
 
 # Include only specific entities
 python -m src.target_model.template_generator \
-  --spec resources/target_models/sead_standard_model.yml \
+  --spec resources/target_models/sead_superset_model.yml \
   --entities location,site,sample \
   --output minimal.yml
 ```
@@ -373,44 +415,47 @@ naming:
 
 ---
 
-## SEAD Clearinghouse Spec (`sead_standard_model.yml`)
+## SEAD Superset Spec (`sead_superset_model.yml`)
 
-The bundled SEAD spec at `resources/target_models/sead_standard_model.yml` currently covers 35 entities organized across these domains:
+The bundled SEAD superset spec at `resources/target_models/sead_superset_model.yml` currently covers 51 entities. It is intended to be the near-complete shared SEAD model from which individual Shape Shifter projects can select curated subsets.
 
 | Domain       | Entities                                                                                                                                                                |
 |--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `core`       | location, location_type, site, site_type, site_type_group, sample_group, sample, sample_type, method, dataset, master_dataset, project, citation                        |
-| `spatial`    | location, location_type, site, site_type                                                                                                                                |
-| `analysis`   | dataset, analysis_entity, abundance, abundance_element, abundance_element_group, abundance_modification, modification_type, abundance_property, abundance_element_group |
-| `taxa`       | taxa_tree_master, taxa_common_names                                                                                                                                     |
-| `dating`     | relative_ages, relative_dating, geochronology, dating_lab                                                                                                               |
-| `method`     | method, method_group                                                                                                                                                    |
-| `contact`    | contact, contact_type, dataset_contact                                                                                                                                  |
-| `excavation` | feature_type, feature, sample_feature                                                                                                                                   |
+| `core` | Core context entities such as `location`, `site`, `sample_group`, `sample`, `method`, `dataset`, `analysis_entity`, and provenance lookups |
+| `spatial` | Spatial context and coordinate-related entities such as `location`, `site_location`, `dimension`, and site or sample-group spatial extensions |
+| `sample-metadata` | Sample descriptions, notes, dimensions, and other sample-attached metadata entities |
+| `abundance` | Abundance observations, abundance property entities, and related classifiers |
+| `taxonomy` | Taxonomy entities such as `taxa_tree_master`, `taxa_common_names`, and taxonomy support lookups |
+| `dating` | Relative dating, chronology, dating lab, and uncertainty entities |
+| `provenance` | Project, dataset, citation, contact, and dataset-contact provenance entities |
 
-The SEAD spec uses `naming.public_id_suffix: "_id"` and declares `constraints: [{type: no_orphan_facts}]`.
+The SEAD superset spec uses `naming.public_id_suffix: "_id"` and declares `constraints: [{type: no_orphan_facts}]`.
 
 ---
 
 ## Generating Documentation from a Target Model
 
-`scripts/generate_target_model_docs.py` produces human-readable output from any target model YAML spec. Three formats are supported:
+`scripts/generate_target_model_docs.py` produces human-readable output from any target model YAML spec. Four formats are supported:
 
 | Format     | Best for                              | Output file   |
 |------------|---------------------------------------|---------------|
 | `html`     | Stakeholder presentations, reference  | `<stem>.html` |
 | `excel`    | Review workshops, gap analysis        | `<stem>.xlsx` |
 | `markdown` | GitHub wikis, version-controlled docs | `<stem>.md`   |
+| `sims`     | SIMS entity register and identity review | `<stem>.sims.md` |
 
 ```bash
 # Generate all formats (default)
-python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml
+python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml
 
 # HTML only — recommended for sharing with archaeologists and data managers
-python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format html
+python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format html
 
 # Excel for gap-analysis workshops
-python scripts/generate_target_model_docs.py resources/target_models/sead_standard_model.yml --format excel
+python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format excel
+
+# SIMS entity register for Authority Service docs
+python scripts/generate_target_model_docs.py resources/target_models/sead_superset_model.yml --format sims
 
 # Custom output directory
 python scripts/generate_target_model_docs.py my_model.yml --format all --output-dir /tmp/model-docs
