@@ -13,7 +13,7 @@
 
 ### Persistence and Save Path
 - [x] Boundary-based project persistence — subtree-merge primitives for `metadata`, `options`, `entities[name]`
-- [ ] Comment-preserving save path — full comment-preserving round-trips across the editor (foundation in place)
+- [x] Comment-preserving save path — full comment-preserving round-trips across the editor (foundation in place)
 
 ### Target-Schema-Aware Validation
 - [x] Conformance validation engine — registry-based, wired into UX (see [done/TARGET_SCHEMA_AWARE_VALIDATION.md](done/TARGET_SCHEMA_AWARE_VALIDATION.md))
