@@ -2047,6 +2047,127 @@ entities:
       - entity: taxa_tree_master
         required: true
 
+  ecocode_system:
+    role: lookup
+    required: false
+    description: Definition of an ecocode classification system.
+    domains: [taxonomy]
+    target_table: tbl_ecocode_systems
+    public_id: ecocode_system_id
+    identity_columns: [name]
+    columns:
+      biblio_id:
+        type: integer
+        nullable: true
+      name:
+        required: true
+        type: string
+        nullable: false
+      notes:
+        type: string
+        nullable: true
+      definition:
+        type: string
+        nullable: true
+      ecocode_system_uuid:
+        type: string
+        nullable: true
+    unique_sets:
+      - [name]
+    foreign_keys:
+      - entity: citation
+        required: false
+
+  ecocode_group:
+    role: classifier
+    required: false
+    description: Controlled grouping within an ecocode classification system.
+    domains: [taxonomy]
+    target_table: tbl_ecocode_groups
+    public_id: ecocode_group_id
+    identity_columns: [ecocode_system_id, name]
+    columns:
+      ecocode_system_id:
+        required: true
+        type: integer
+        nullable: false
+      definition:
+        type: string
+        nullable: true
+      name:
+        required: true
+        type: string
+        nullable: false
+      abbreviation:
+        type: string
+        nullable: true
+    unique_sets:
+      - [ecocode_system_id, name]
+    foreign_keys:
+      - entity: ecocode_system
+        required: true
+
+  ecocode_definition:
+    role: classifier
+    required: false
+    description: Named ecocode definition grouped under an ecocode group.
+    domains: [taxonomy]
+    target_table: tbl_ecocode_definitions
+    public_id: ecocode_definition_id
+    identity_columns: [ecocode_group_id, name]
+    columns:
+      abbreviation:
+        type: string
+        nullable: true
+      definition:
+        type: string
+        nullable: true
+      ecocode_group_id:
+        required: true
+        type: integer
+        nullable: false
+      name:
+        required: true
+        type: string
+        nullable: false
+      notes:
+        type: string
+        nullable: true
+      sort_order:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [ecocode_group_id, name]
+    foreign_keys:
+      - entity: ecocode_group
+        required: true
+
+  ecocode:
+    role: fact
+    required: false
+    description: Ecocode assignment for a taxon.
+    aggregate_parent: taxa_tree_master
+    domains: [taxonomy]
+    target_table: tbl_ecocodes
+    public_id: ecocode_id
+    identity_columns: [taxon_id, ecocode_definition_id]
+    columns:
+      ecocode_definition_id:
+        required: true
+        type: integer
+        nullable: false
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [taxon_id, ecocode_definition_id]
+    foreign_keys:
+      - entity: ecocode_definition
+        required: true
+      - entity: taxa_tree_master
+        required: true
+
   # PHASE 1 ADDITIONS - Dating Domain
 
   age_type:
