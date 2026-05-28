@@ -84,7 +84,7 @@ Seven conformance validators are registered and active:
 |--------------------------------|-------------------------------------------------------------------------------------------|
 | `required_entity`              | Required entities present in the project                                                  |
 | `public_id`                    | `public_id` present and not unexpected                                                    |
-| `foreign_key`                  | Required FK targets present on entities that are in the project (with bridge support)     |
+| `foreign_key`                  | Required FK targets present on entities that are in the project (with bridge and transitive path support) |
 | `required_columns`             | Required columns present                                                                  |
 | `naming_convention`            | `public_id` values end with `naming.public_id_suffix`                                    |
 | `induced_requirements`         | If optional entity X is present and has a required FK to Y, then Y is required (transitively) |
@@ -507,11 +507,13 @@ Some column names include a redundant entity prefix. For example, `sead_method_g
 
 ### Transitive FK Satisfaction
 
-A project may satisfy a required FK transitively through an intermediate entity not named in the target model. The current FK conformance validator only does direct matching.
+A project may satisfy a required FK transitively through an intermediate entity not named in the target model.
 
 **Example:** Target model requires `sample → site`. Project has `sample → sample_group → site`. The requirement is satisfied transitively but would currently fail.
 
-**Approach when ready:** Add a BFS/DFS walk through the project FK graph to find transitive paths to required FK targets.
+**Status:** Implemented. `ForeignKeyConformanceValidator` now walks the project's target-facing FK graph before emitting `MISSING_REQUIRED_FOREIGN_KEY_TARGET`, which removes direct-only false positives such as `sample → sample_group → site`.
+
+**Current limitation:** This is path detection only. The format-level FK modes proposed earlier (`direct`, `transitive`, explicit `path`) are still deferred.
 
 ### Value-Level Checks
 
@@ -754,10 +756,8 @@ Out of scope for this backlog:
 
 When resuming work on this backlog, a sensible order is:
 
-1. **Rule disabling** — needed before shipping Phase 4 checks widely
+1. **`no_orphan_facts`** check — the FK graph walk now exists, so the remaining work is rule design and issue shaping
 2. **Semantic mismatch detection** — requires tuning; start with a conservative threshold
-3. **Transitive FK satisfaction** — well-defined algorithm, removes real false-positives
-4. **`no_orphan_facts`** check — depends on FK graph walk being tested first
-5. **Alias matching / normalization** — only after alias table or metric is agreed on
+3. **Alias matching / normalization** — only after alias table or metric is agreed on
 
 Items in the "Future Enhancements" section (remote refs, registry, diff tooling) are speculative — implement only if a concrete need arises.
