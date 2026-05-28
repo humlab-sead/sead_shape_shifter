@@ -69,6 +69,37 @@ class TestTargetModelValidatorHappyPaths:
 
         assert errors == []
 
+    def test_transitive_foreign_key_path_returns_no_errors(self):
+        """A required FK satisfied through an intermediate project entity should not raise a direct-FK error."""
+        project = _make_project(
+            {
+                "site": {"public_id": "site_id", "columns": ["site_name"]},
+                "sample_group": {
+                    "public_id": "sample_group_id",
+                    "columns": ["sample_group_name"],
+                    "foreign_keys": [{"entity": "site", "local_keys": ["site_id"], "remote_keys": ["site_id"]}],
+                },
+                "sample": {
+                    "public_id": "sample_id",
+                    "columns": ["sample_name"],
+                    "foreign_keys": [
+                        {"entity": "sample_group", "local_keys": ["sample_group_id"], "remote_keys": ["sample_group_id"]}
+                    ],
+                },
+            }
+        )
+        target_model_data = _minimal_target_model(
+            entities={
+                "site": {"required": True, "public_id": "site_id"},
+                "sample_group": {"required": True, "public_id": "sample_group_id", "foreign_keys": [{"entity": "site", "required": True}]},
+                "sample": {"required": True, "public_id": "sample_id", "foreign_keys": [{"entity": "site", "required": True}]},
+            }
+        )
+
+        errors = TargetModelValidator().validate(target_model_data, project)
+
+        assert errors == []
+
 
 # ---------------------------------------------------------------------------
 # TargetModelValidator.validate – error paths

@@ -111,6 +111,33 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
         # for full bridge-aware logic. Keep this simple for backward compatibility.
         return []
 
+    def has_foreign_key_path(self, source_entity: str, target_entity: str, project: ShapeShiftProject) -> bool:
+        """Return whether the project FK graph reaches the target entity from the source entity."""
+        if source_entity == target_entity:
+            return True
+        if not project.has_table(source_entity) or not project.has_table(target_entity):
+            return False
+
+        visited: set[str] = {source_entity}
+        queue: list[str] = sorted(project.get_table(source_entity).get_target_facing_foreign_key_targets())
+
+        while queue:
+            current_entity = queue.pop(0)
+            if current_entity in visited:
+                continue
+            if current_entity == target_entity:
+                return True
+            visited.add(current_entity)
+
+            if not project.has_table(current_entity):
+                continue
+
+            queue.extend(
+                sorted(project.get_table(current_entity).get_target_facing_foreign_key_targets() - visited)
+            )
+
+        return False
+
     def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
         """Validate FK targets with bridge entity support (requires project access)."""
         issues: list[ConformanceIssue] = []
@@ -128,7 +155,7 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
 
                 # Direct FK target (no bridge)
                 if not foreign_key.via:
-                    if foreign_key.entity not in project_targets:
+                    if foreign_key.entity not in project_targets and not self.has_foreign_key_path(entity_name, foreign_key.entity, project):
                         issues.append(
                             ConformanceIssue(
                                 code="MISSING_REQUIRED_FOREIGN_KEY_TARGET",
