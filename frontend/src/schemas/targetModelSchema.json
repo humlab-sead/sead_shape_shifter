@@ -264,6 +264,22 @@
         "type": {
           "title": "Type",
           "type": "string"
+        },
+        "required": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "const": "strict",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Required"
         }
       },
       "required": [

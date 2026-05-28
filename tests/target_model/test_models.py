@@ -101,3 +101,18 @@ def test_target_model_round_trip_preserves_format_version() -> None:
     round_tripped = TargetModel.model_validate(target_model.model_dump(mode="json"))
 
     assert round_tripped == target_model
+
+
+def test_target_model_constraint_parses_strict_required_mode() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {
+                "name": "SEAD Clearinghouse",
+                "version": "2.0.0",
+            },
+            "constraints": [{"type": "no_orphan_facts", "required": "strict"}],
+        }
+    )
+
+    assert target_model.constraints[0].type == "no_orphan_facts"
+    assert target_model.constraints[0].required == "strict"
