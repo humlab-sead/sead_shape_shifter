@@ -286,7 +286,7 @@ The project-level YAML view currently shows only the `shapeshifter.yml` file. Wh
 
 **Constraints:**
 - Raw YAML only — no structured form or entity-level UI.
-- Backend read/write access is limited to **project-local files** (i.e. the `@include:` path lives inside the project's own directory). Shared/global spec files (e.g. `resources/target_models/sead_superset_model.yml`) are read-only in this view, and the frontend still needs a tighter visibility check for that case.
+- Backend read/write access is limited to **project-local files** (i.e. the `@include:` path lives inside the project's own directory). Shared/global spec files (e.g. `resources/target_models/sead_superset_model.yml`) are read-only in this view, and the frontend now hides the edit tab for those references.
 - API passes the YAML file content as raw text; the server validates syntax but **never re-serialises** it, so comments and formatting survive the round-trip.
 - Save writes directly to the referenced target model YAML file.
 - Changing the file triggers a re-run of conformance validation (same as editing the project YAML).
@@ -357,7 +357,7 @@ No extra service layer was needed for the current local-file scope.
 
 ---
 
-#### Frontend (Low–Medium) — PARTIALLY COMPLETE
+#### Frontend (Low–Medium) — COMPLETE
 
 **Completed:**
 1. ✅ **Monaco schema integration** — `targetModelSchema.json` generated and wired into Monaco YAML editor with `mode="target-model"`
@@ -367,10 +367,7 @@ No extra service layer was needed for the current local-file scope.
 5. ✅ **API methods** — `getTargetModelYaml(projectName)` and `updateTargetModelYaml(projectName, yaml)` are implemented in `frontend/src/api/projects.ts`
 6. ✅ **Backend integration** — load/save handlers are wired to the target-model YAML endpoints
 
-**Remaining work:**
-1. **Conditional visibility** — refine tab visibility so the target-model tab is hidden for shared/global target model references instead of relying on backend 403 handling.
-
-The core Monaco editing experience with autocomplete and save/load wiring is in place. The main remaining UX gap is tab visibility for non-project-local target models.
+The core Monaco editing experience with autocomplete, save/load wiring, and project-local visibility behavior is in place.
 
 ---
 
