@@ -15,7 +15,6 @@
 - [x] `induced_requirements` — optional entity present → its required FK targets are induced-required (transitive)
 - [x] `source_type_appropriateness` — classifiers should not use `type: entity`
 - [x] `no_orphan_facts` — fact entities must have a direct or transitive FK path to at least one lookup or classifier when the global constraint is declared
-~~- [ ] `semantic_mismatch` — entity name role disagrees with `public_id` role (Phase 4, high false-positive risk)~~
 - [ ] `schema_aware_append` — appended columns conform to target model column spec
 
 ### Data Conformance Validators
@@ -235,20 +234,6 @@ entity_a:
 ## Advanced Semantic Validation (Phase 4)
 
 These items were labeled "Phase 4 — Advanced Semantic Rules" in the implementation sketch. None are implemented.
-
-### Semantic Mismatch Detection
-
-Detect when an entity's name implies a different semantic role than its `public_id` style.
-
-**Motivating example:** An entity named `relative_dating` (implies a fact) using `public_id: relative_age_id` (implies a lookup). The mismatch is detectable without running the pipeline.
-
-**Approach:**
-- Classify entity names using heuristics (noun patterns, role keywords)
-- Classify `public_id` values using suffix patterns
-- Emit `UNEXPECTED_PUBLIC_ID` or a new `SEMANTIC_ROLE_MISMATCH` code when name-role and id-role disagree
-- Keep detection conservative: only emit for clear, low-noise cases
-
-**Prerequisite:** Define the heuristic threshold before implementing. Avoid false positives at all cost.
 
 ### Global Role-Informed Checks
 
@@ -603,7 +588,6 @@ These test areas were identified in the implementation sketch but not yet covere
 
 ### Warning vs Error Severity (Phase 4)
 
-- Semantic mismatch checks emit warnings, not errors
 - Orphan-fact check is configurable (warning by default, error when `required: strict`)
 - Severity can be overridden via `options.validation.severity_overrides`
 
@@ -757,7 +741,6 @@ Out of scope for this backlog:
 
 When resuming work on this backlog, a sensible order is:
 
-1. **Semantic mismatch detection** — requires tuning; start with a conservative threshold
-2. **Alias matching / normalization** — only after alias table or metric is agreed on
+1. **Alias matching / normalization** — only after alias table or metric is agreed on
 
 Items in the "Future Enhancements" section (remote refs, registry, diff tooling) are speculative — implement only if a concrete need arises.
