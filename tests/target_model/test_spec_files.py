@@ -71,6 +71,8 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     ecocode_definition = target_model.entities["ecocode_definition"]
     ecocode_group = target_model.entities["ecocode_group"]
     ecocode_system = target_model.entities["ecocode_system"]
+    taxonomic_order = target_model.entities["taxonomic_order"]
+    taxonomic_order_system = target_model.entities["taxonomic_order_system"]
     project = target_model.entities["project"]
     project_type = target_model.entities["project_type"]
     project_stage = target_model.entities["project_stage"]
@@ -85,7 +87,8 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     sample_horizon = target_model.entities["sample_horizon"]
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
-    assert len(target_model.entities) == 96
+    assert target_model.model.format_version == "1"
+    assert len(target_model.entities) == 98
     assert {
         "analysis_value",
         "analysis_boolean_value",
@@ -124,6 +127,8 @@ def test_sead_superset_spec_loads_and_validates() -> None:
         "ecocode_group",
         "ecocode_definition",
         "ecocode",
+        "taxonomic_order_system",
+        "taxonomic_order",
         "rdb_system",
         "rdb_code",
         "rdb",
@@ -201,6 +206,11 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert ecocode.aggregate_parent == "taxa_tree_master"
     assert any(foreign_key.entity == "ecocode_definition" for foreign_key in ecocode.foreign_keys)
     assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in ecocode.foreign_keys)
+    assert taxonomic_order_system.target_table == "tbl_taxonomic_order_systems"
+    assert taxonomic_order.target_table == "tbl_taxonomic_order"
+    assert taxonomic_order.aggregate_parent == "taxa_tree_master"
+    assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in taxonomic_order.foreign_keys)
+    assert any(foreign_key.entity == "taxonomic_order_system" for foreign_key in taxonomic_order.foreign_keys)
     assert rdb_system.target_table == "tbl_rdb_systems"
     assert any(foreign_key.entity == "location" for foreign_key in rdb_system.foreign_keys)
     assert any(foreign_key.entity == "citation" for foreign_key in rdb_system.foreign_keys)
