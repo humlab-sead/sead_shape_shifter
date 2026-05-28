@@ -8,7 +8,7 @@ Each issue body follows the repository's preferred `Problem`, `Solution`, and `F
 
 Status:
 
-`Open`
+`Implemented in PR #456`
 
 Title:
 
@@ -36,7 +36,7 @@ Files:
 
 Status:
 
-`Open`
+`Implemented in PR #456`
 
 Title:
 
@@ -64,7 +64,7 @@ Files:
 
 Status:
 
-`Open`
+`Implemented in PR #456`
 
 Title:
 
@@ -92,7 +92,7 @@ Files:
 
 Status:
 
-`Open`
+`Implemented in PR #456`
 
 Title:
 
@@ -115,3 +115,33 @@ Files:
 - `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_CR.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_ISSUES.md`
 - `frontend/src/**`
+
+## Issue 5
+
+Status:
+
+`Future`
+
+Title:
+
+`feat(project-metadata): persist stable sead_change_request submission defaults`
+
+Problem:
+
+Some `sead_change_request` operator inputs are stable project defaults rather than true per-run decisions.
+
+If those values stay transient in the run form, reruns can drift and operators must keep re-entering context that belongs with the project configuration.
+
+Solution:
+
+Add a follow-up change request that evaluates which `sead_change_request` submission defaults should be stored in project YAML.
+
+Prefer an ingester-specific metadata subsection over adding flat workflow-specific fields to the generic metadata editor.
+
+Files:
+
+- `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_ISSUES.md`
+- `frontend/src/components/MetadataEditor.vue`
+- `backend/app/models/project.py`
+- `backend/app/api/v1/endpoints/projects.py`

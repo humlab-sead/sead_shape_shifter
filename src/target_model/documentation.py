@@ -23,6 +23,7 @@ import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 from jinja2.environment import Template
 
+from src.target_model.schema_reference import generate_target_model_schema_reference
 from src.target_model.models import EntitySpec, TargetModel
 from src.utility import Registry
 
@@ -37,6 +38,7 @@ class DocumentFormat(str, Enum):
     MARKDOWN = "markdown"
     EXCEL = "excel"
     SIMS = "sims"
+    SCHEMA_REFERENCE = "schema-reference"
 
 
 class DocumentGenerator(ABC):
@@ -386,6 +388,16 @@ class SimsDocumentGenerator(TextDocumentGenerator):
             "reconciliation_groups": reconciliation_groups,
             "stats": stats,
         }
+
+
+@DOCUMENT_GENERATORS.register(key=DocumentFormat.SCHEMA_REFERENCE)
+class SchemaReferenceDocumentGenerator(DocumentGenerator):
+    """Generate the schema-derived Markdown reference for target-model YAML."""
+
+    def generate(self, target_model: TargetModel, project: ShapeShiftProject | None = None) -> bytes:
+        """Return the generated schema reference as UTF-8 Markdown bytes."""
+        del target_model, project
+        return generate_target_model_schema_reference().encode("utf-8")
 
 
 class TargetModelDocumentGenerator:
