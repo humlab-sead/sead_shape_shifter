@@ -290,7 +290,7 @@ constraints:
 
 Current constraints are modeled as simple typed entries. Add new constraint-specific keys only after extending the Pydantic schema.
 
-Global constraints are planned for future validation phases. `no_orphan_facts` is declared in the SEAD spec but not yet enforced by the conformance engine. It records the intended rule that every fact entity must be reachable from at least one required lookup.
+`no_orphan_facts` is now enforced by the conformance engine when the target model declares it. The rule checks that each fact entity present in the project reaches at least one lookup or classifier through the target-facing FK graph.
 
 ---
 

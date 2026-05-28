@@ -14,7 +14,7 @@
 - [x] `naming_convention` — `public_id` values end with configured suffix
 - [x] `induced_requirements` — optional entity present → its required FK targets are induced-required (transitive)
 - [x] `source_type_appropriateness` — classifiers should not use `type: entity`
-- [ ] `no_orphan_facts` — fact entities must have a required FK path to at least one required lookup
+- [x] `no_orphan_facts` — fact entities must have a direct or transitive FK path to at least one lookup or classifier when the global constraint is declared
 ~~- [ ] `semantic_mismatch` — entity name role disagrees with `public_id` role (Phase 4, high false-positive risk)~~
 - [ ] `schema_aware_append` — appended columns conform to target model column spec
 
@@ -78,7 +78,7 @@ This proposal consolidates deferred and future items from:
 
 ## What Is Already Implemented
 
-Seven conformance validators are registered and active:
+Eight conformance validators are registered and active:
 
 | Key                            | What it checks                                                                            |
 |--------------------------------|-------------------------------------------------------------------------------------------|
@@ -89,6 +89,7 @@ Seven conformance validators are registered and active:
 | `naming_convention`            | `public_id` values end with `naming.public_id_suffix`                                    |
 | `induced_requirements`         | If optional entity X is present and has a required FK to Y, then Y is required (transitively) |
 | `source_type_appropriateness`  | Classifiers (`role: classifier`) must use `type: fixed` or `type: sql`, not `type: entity` |
+| `no_orphan_facts`              | Fact entities present in the project must reach at least one lookup or classifier when the target model declares that global constraint |
 
 Backend wiring, frontend Check Conformance button, and Conformance panel in ValidationPanel are all live.
 
@@ -253,9 +254,9 @@ Detect when an entity's name implies a different semantic role than its `public_
 
 Check global modeling requirements that depend on understanding the *combination* of entity roles.
 
-**Candidate rule:** `no_orphan_facts` — a fact entity must be linked (directly or transitively) to at least one required lookup entity. A fact with no FK path to any required parent is likely misconfigured.
+**Implemented rule:** `no_orphan_facts` — when the target model declares `constraints: [{type: no_orphan_facts}]`, each fact entity present in the project must be linked (directly or transitively) to at least one lookup or classifier entity declared in the target model.
 
-**Implementation note:** BFS over the required-FK graph is already implemented in `InducedRequirementConformanceValidator`. A `GlobalConformanceValidator` base type and the `no_orphan_facts` rule can reuse that traversal pattern. The FK graph walk no longer needs `ProcessState` as a prerequisite.
+**Implementation note:** The rule reuses the same target-facing FK graph walk used by transitive foreign-key conformance. It runs only when the global constraint is declared, so target models that do not opt in keep current behavior.
 
 ### Source-Type Appropriateness
 
@@ -756,8 +757,7 @@ Out of scope for this backlog:
 
 When resuming work on this backlog, a sensible order is:
 
-1. **`no_orphan_facts`** check — the FK graph walk now exists, so the remaining work is rule design and issue shaping
-2. **Semantic mismatch detection** — requires tuning; start with a conservative threshold
-3. **Alias matching / normalization** — only after alias table or metric is agreed on
+1. **Semantic mismatch detection** — requires tuning; start with a conservative threshold
+2. **Alias matching / normalization** — only after alias table or metric is agreed on
 
 Items in the "Future Enhancements" section (remote refs, registry, diff tooling) are speculative — implement only if a concrete need arises.
