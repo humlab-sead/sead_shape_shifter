@@ -63,6 +63,17 @@ class EntityConformanceValidator(ConformanceValidator):
         return issues
 
 
+class GlobalConformanceValidator(ConformanceValidator):
+    """Base type for validators that inspect the whole target model or project graph."""
+
+    @abstractmethod
+    def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        """Validate project-wide or cross-entity rules."""
+
+    def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        return self.validate_global(target_model, project)
+
+
 def has_target_facing_foreign_key_path(source_entity: str, target_entity: str, project: ShapeShiftProject) -> bool:
     """Return whether the project's target-facing FK graph reaches the target entity from the source entity."""
     if source_entity == target_entity:
@@ -237,7 +248,7 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
 
 
 @CONFORMANCE_VALIDATORS.register(key="no_orphan_facts")
-class NoOrphanFactsConformanceValidator(ConformanceValidator):
+class NoOrphanFactsConformanceValidator(GlobalConformanceValidator):
     """Fact entities must reach at least one required lookup or classifier when the constraint is declared."""
 
     PARENT_ROLES: frozenset[str] = frozenset({"lookup", "classifier"})
@@ -253,7 +264,7 @@ class NoOrphanFactsConformanceValidator(ConformanceValidator):
         """Return the declared orphan-fact constraint, if present."""
         return next((constraint for constraint in target_model.constraints if constraint.type == "no_orphan_facts"), None)
 
-    def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+    def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
         if self.get_constraint(target_model) is None:
             return []
 
@@ -343,9 +354,9 @@ class RequiredColumnsConformanceValidator(EntityConformanceValidator):
 
 
 @CONFORMANCE_VALIDATORS.register(key="required_entity")
-class RequiredEntityConformanceValidator(ConformanceValidator):
+class RequiredEntityConformanceValidator(GlobalConformanceValidator):
 
-    def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+    def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
         issues: list[ConformanceIssue] = []
         for entity_name, entity_spec in target_model.entities.items():
             if not project.has_table(entity_name) and entity_spec.required:
@@ -360,10 +371,10 @@ class RequiredEntityConformanceValidator(ConformanceValidator):
 
 
 @CONFORMANCE_VALIDATORS.register(key="naming_convention")
-class NamingConventionConformanceValidator(ConformanceValidator):
+class NamingConventionConformanceValidator(GlobalConformanceValidator):
     """Validate that project entity public_id values conform to the target model naming conventions."""
 
-    def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+    def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
         if not target_model.naming or not target_model.naming.public_id_suffix:
             return []
 
@@ -392,7 +403,7 @@ class NamingConventionConformanceValidator(ConformanceValidator):
 
 
 @CONFORMANCE_VALIDATORS.register(key="induced_requirements")
-class InducedRequirementConformanceValidator(ConformanceValidator):
+class InducedRequirementConformanceValidator(GlobalConformanceValidator):
     """If entity X is present in the project and has a required FK to Y, then Y is required — transitively.
 
     Uses BFS (Breadth-First Search) over the required-FK graph starting from all present,
@@ -403,7 +414,7 @@ class InducedRequirementConformanceValidator(ConformanceValidator):
     Example: X (present) → Y (absent) → Z (absent).  Both Y and Z are reported.
     """
 
-    def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+    def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
         """Validate that if entity X is present and has a required FK to Y, then Y is also present (transitively)."""
 
         # Seed the queue with every present, non-globally-required entity.
