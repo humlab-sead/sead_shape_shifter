@@ -25,6 +25,9 @@ Unknown keys in these sections are rejected because each model uses `extra="forb
 - `entities.<entity_name>.columns`: map[string, ColumnSpec] (optional)
 - `entities.<entity_name>.columns.<column_name>`: ColumnSpec (map value)
 - `entities.<entity_name>.columns.<column_name>.required`: boolean (optional)
+- `entities.<entity_name>.columns.<column_name>.generated`: boolean (optional)
+- `entities.<entity_name>.columns.<column_name>.allowed_values`: list[string | integer | number | boolean] (optional)
+- `entities.<entity_name>.columns.<column_name>.allowed_values[]`: string | integer | number | boolean (list item)
 - `entities.<entity_name>.columns.<column_name>.type`: string | null (optional)
 - `entities.<entity_name>.columns.<column_name>.nullable`: boolean | null (optional)
 - `entities.<entity_name>.columns.<column_name>.description`: string | null (optional)
@@ -42,6 +45,7 @@ Unknown keys in these sections are rejected because each model uses `extra="forb
 - `constraints`: list[GlobalConstraint] (optional)
 - `constraints[]`: GlobalConstraint (list item)
 - `constraints[].type`: string (required)
+- `constraints[].required`: boolean | string | null (optional)
 
 ## TargetModel
 
@@ -63,6 +67,7 @@ Values under the `model` section that identify the specification.
 | Field | Type | Required | Default | Allowed |
 |---|---|---|---|---|
 | name | string | Yes | - | - |
+| format_version | string | No | "1" | - |
 | version | string | Yes | - | - |
 | description | string \| null | No | null | null |
 
@@ -97,6 +102,8 @@ Values under `entities.<entity_name>.columns.<column_name>` for each declared co
 | Field | Type | Required | Default | Allowed |
 |---|---|---|---|---|
 | required | boolean | No | false | - |
+| generated | boolean | No | false | - |
+| allowed_values | list[string \| integer \| number \| boolean] | No | [] | - |
 | type | string \| null | No | null | null |
 | nullable | boolean \| null | No | null | null |
 | description | string \| null | No | null | null |
@@ -132,5 +139,6 @@ Entries under the optional `constraints[]` list.
 | Field | Type | Required | Default | Allowed |
 |---|---|---|---|---|
 | type | string | Yes | - | - |
+| required | boolean \| string \| null | No | null | null |
 
 Additional keys allowed: No

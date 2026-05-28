@@ -378,4 +378,32 @@ describe('ProjectDetailView', () => {
     expect(wrapper.text()).toContain('Save the project to persist these changes.')
     expect(wrapper.text()).toContain("Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)")
   })
+
+  it('shows the target-model yaml tab for project-local target models', async () => {
+    mockProjectState.selectedProjectRef.value = {
+      metadata: { name: 'arbodat', target_model: '@include: target-model.yml' },
+      options: {},
+      entities: {},
+    }
+
+    const wrapper = mountProjectDetailView()
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Target Model')
+  })
+
+  it('hides the target-model yaml tab for shared target models', async () => {
+    mockProjectState.selectedProjectRef.value = {
+      metadata: { name: 'arbodat', target_model: '@include: resources/target_models/sead_superset_model.yml' },
+      options: {},
+      entities: {},
+    }
+
+    const wrapper = mountProjectDetailView()
+
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Target Model')
+  })
 })

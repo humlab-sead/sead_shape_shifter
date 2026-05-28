@@ -3,7 +3,7 @@
 ## Status
 
 - **Milestones 1–3: complete** — core engine, backend integration, frontend wiring all done
-- **Remaining backlog:** see [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
+- **Closed follow-through record:** see [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
 - Scope: implementation approach for [TARGET_SCHEMA_AWARE_VALIDATION.md](TARGET_SCHEMA_AWARE_VALIDATION.md)
 
 ## Summary
@@ -160,12 +160,12 @@ class TableConfig:
 
 The standalone validator in `target_models/` was a useful prototype but depended on a reduced project model with only literal `columns`, `keys`, a shallow `foreign_keys` list, and `extra_columns`. That model cannot answer conformance questions for projects that use append inheritance, materialized state, unnest transformations, or FK-generated columns. Moving conformance onto `TableConfig` recovers DRY and makes the column contract authoritative.
 
-### Backend Adapter (Pending)
+### Backend Adapter (Implemented)
 
-When backend integration is implemented, the adapter should remain thin:
+Backend integration is complete. The adapter remains thin:
 
 ```python
-# backend/app/validators/target_model_validator.py  — not yet written
+# backend/app/validators/target_model_validator.py
 class TargetModelValidator:
     def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ValidationError]:
         from src.target_model.conformance import TargetModelConformanceValidator
@@ -174,12 +174,12 @@ class TargetModelValidator:
         return [ValidationMapper.to_api_error(issue) for issue in issues]
 ```
 
-## Validation Service Integration (Pending)
+## Validation Service Integration (Implemented)
 
-The integration point will be the existing `ValidationService`:
+The integration point is the existing `ValidationService`:
 
 ```python
-# backend/app/services/validation_service.py  — not yet modified
+# backend/app/services/validation_service.py
 async def validate_project(self, project_name: str, use_target_model: bool = True) -> ValidationResponse:
     api_project = self.project_service.load_project(project_name)
     core_project = ProjectMapper.to_core(api_project)
@@ -227,7 +227,7 @@ Key constraints remain: structural validation stays first; target-model validati
 
 ### Phase 4 and Future Enhancements
 
-Phase 4 advanced semantic rules, future enhancements, and remaining deferred items are tracked in [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Phase 4 advanced semantic rules, future enhancements, and remaining deferred items are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Testing Strategy
 
@@ -238,8 +238,8 @@ Phase 4 advanced semantic rules, future enhancements, and remaining deferred ite
 
 ### Remaining test areas
 
-Test coverage gaps are tracked in [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Test coverage gaps are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Open Technical Questions
 
-Open technical questions (target model loading location, validation code naming, rule disabling) are tracked in [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Open technical questions (target model loading location, validation code naming, rule disabling) are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).

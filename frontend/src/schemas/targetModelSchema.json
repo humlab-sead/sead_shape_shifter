@@ -8,6 +8,31 @@
           "title": "Required",
           "type": "boolean"
         },
+        "generated": {
+          "default": false,
+          "title": "Generated",
+          "type": "boolean"
+        },
+        "allowed_values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Allowed Values",
+          "type": "array"
+        },
         "type": {
           "anyOf": [
             {
@@ -239,6 +264,22 @@
         "type": {
           "title": "Type",
           "type": "string"
+        },
+        "required": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "const": "strict",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Required"
         }
       },
       "required": [
@@ -252,6 +293,11 @@
       "properties": {
         "name": {
           "title": "Name",
+          "type": "string"
+        },
+        "format_version": {
+          "default": "1",
+          "title": "Format Version",
           "type": "string"
         },
         "version": {

@@ -67,6 +67,32 @@ class TargetModelSpecValidator:
                             )
                         )
 
+            for column_name, column_spec in entity_spec.columns.items():
+                if column_spec.allowed_values and column_spec.type not in {None, "enum"}:
+                    issues.append(
+                        SpecValidationIssue(
+                            code="ALLOWED_VALUES_REQUIRE_ENUM_TYPE",
+                            message=(
+                                f"Entity '{entity_name}' column '{column_name}' declares allowed_values but uses type "
+                                f"'{column_spec.type}' instead of 'enum'"
+                            ),
+                            entity=entity_name,
+                            field=column_name,
+                        )
+                    )
+
+                if column_spec.type == "enum" and not column_spec.allowed_values:
+                    issues.append(
+                        SpecValidationIssue(
+                            code="ENUM_MISSING_ALLOWED_VALUES",
+                            message=(
+                                f"Entity '{entity_name}' column '{column_name}' uses type 'enum' but does not declare allowed_values"
+                            ),
+                            entity=entity_name,
+                            field=column_name,
+                        )
+                    )
+
             issues.extend(self._validate_aggregate_parent(target_model, entity_name, entity_spec))
             issues.extend(self._validate_identity_rules(entity_name, entity_spec))
 
