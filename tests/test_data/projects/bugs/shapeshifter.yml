@@ -757,6 +757,10 @@ entities:
   #   on tbl_relative_dates itself
   # - missing uncertainty symbol emits an error row instead of leaving an
   #   unmatched string behind
+  #
+  # Explicit Shape Shifter cleanup policy:
+  # - blank or whitespace-only uncertainty values are treated as null so they
+  #   do not surface as unmatched classifier keys during pilot validation
   relative_dating:
     type: sql
     public_id: relative_date_id
@@ -803,7 +807,7 @@ entities:
         [PeriodDateCODE] as [bugs_period_date_code],
         [SampleCODE] as [bugs_sample_code],
         [PeriodCODE] as [bugs_period_code],
-        trim([Uncertainty]) as [dating_uncertainty],
+        iif(len(trim([Uncertainty] & '')) = 0, null, trim([Uncertainty])) as [dating_uncertainty],
         [Notes] as [notes]
       from [TDatesPeriod]
       where [PeriodDateCODE] is not null and [PeriodDateCODE] <> ''
@@ -877,7 +881,7 @@ entities:
         [Date] as [age],
         [AgeErrorOrPlusError] as [error_older],
         iif([AgeErrorMinus] is null, [AgeErrorOrPlusError], [AgeErrorMinus]) as [error_younger],
-        trim([Uncertainty]) as [dating_uncertainty],
+        iif(len(trim([Uncertainty] & '')) = 0, null, trim([Uncertainty])) as [dating_uncertainty],
         [Notes] as [notes]
       from [TDatesRadio]
       where [DateCODE] is not null and [DateCODE] <> ''
