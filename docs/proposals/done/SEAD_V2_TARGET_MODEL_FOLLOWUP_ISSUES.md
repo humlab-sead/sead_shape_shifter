@@ -12,7 +12,7 @@ Individual Shape Shifter projects can then use curated subsets of that larger mo
 
 Detailed proposal home:
 
-- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](./done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](./SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 Each issue body follows the repository's preferred `Problem`, `Solution`, and `Files` structure.
 
@@ -60,7 +60,7 @@ Keep this issue limited to sample-level context. Do not mix in sample-group enti
 Files:
 
 - `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
-- `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
+- `docs/proposals/done/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
 - `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
 
@@ -98,7 +98,7 @@ Keep this issue limited to group-level context tied to `sample_group`. Do not mi
 Files:
 
 - `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
-- `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
+- `docs/proposals/done/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
 - `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
 
@@ -139,7 +139,7 @@ Keep this issue limited to the property-pattern slice plus `site_natgridref`. Do
 Files:
 
 - `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
-- `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
+- `docs/proposals/done/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
 - `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
 
@@ -179,7 +179,7 @@ Keep this issue focused on the analysis-value family. Do not mix in taxonomy ext
 Files:
 
 - `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
-- `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
+- `docs/proposals/done/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
 - `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
 
@@ -218,7 +218,7 @@ Promote the concepts that belong in the near-complete shared SEAD target model, 
 Files:
 
 - `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
-- `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
+- `docs/proposals/done/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
 - `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
 
@@ -253,7 +253,7 @@ Keep this issue focused on the shared lookup family and the direct references al
 Files:
 
 - `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
-- `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
+- `docs/proposals/done/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
 - `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
 
@@ -289,6 +289,6 @@ Keep this issue focused on the shared lookup entities and the direct foreign key
 Files:
 
 - `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
-- `docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
+- `docs/proposals/done/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md`
 - `resources/target_models/sead_superset_model.yml`
 - `docs/TARGET_MODEL_GUIDE.md`
