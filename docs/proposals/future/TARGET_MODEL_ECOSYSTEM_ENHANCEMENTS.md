@@ -62,6 +62,16 @@ metadata:
 
 **Recommendation:** Only implement this if a shared registry becomes a real operational need. Local file references cover current use cases.
 
+### Target Model Loading And Caching Service
+
+If remote references or registry resolution are added, extract target-model loading out of `ValidationService` into a dedicated `TargetModelService`.
+
+**Why it belongs here:** The current direct load path is simple and sufficient for local files. A dedicated service only becomes useful once validation and documentation flows need shared caching, remote fetch rules, version pinning, or registry lookups.
+
+**Current behavior:** `ValidationService.validate_target_model()` works directly with the resolved `target_model` dict from the mapped core project.
+
+**Recommendation:** Keep loading in `ValidationService` for the current local-file workflow. Introduce `TargetModelService` only as part of a real remote-reference or registry delivery.
+
 ### Curated Target Model Registry
 
 A registry of community-contributed target models distributed with Shape Shifter or via a companion package.

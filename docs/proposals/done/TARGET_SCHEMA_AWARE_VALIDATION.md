@@ -38,7 +38,7 @@
 
 ### Pending
 
-Naming convention conformance and standalone test migration are complete (Milestone 3). Remaining deferred and future items — including semantic mismatch detection, Phase 4 advanced rules, format extensions, and open technical questions — have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Naming convention conformance and standalone test migration are complete (Milestone 3). The consolidation record for the delivered follow-through and deferred notes lives in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Summary
 
@@ -110,7 +110,7 @@ This proposal does not:
 
 ### Still absent from any validation path
 
-- Entity semantic roles (fact vs lookup vs classifier) — semantic mismatch detection deferred to [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
+- Entity semantic roles (fact vs lookup vs classifier) — semantic mismatch follow-up is recorded in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
 - Source type appropriateness (classifiers should use `fixed` or `sql`) — deferred
 - Backend wiring for Phase 4 checks — deferred
 
@@ -247,7 +247,7 @@ metadata:
 - [x] Expected/unexpected public_id checks (`PublicIdConformanceValidator`)
 - [ ] Naming convention checks against project entities — public_id_suffix validated in `TargetModelSpecValidator` only; not yet in conformance
 
-**Phase 2: Semantic Checks** — deferred; see [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
+**Phase 2: Semantic Checks** — see the closed follow-through record in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
 - [ ] Global role-informed checks such as `no_orphan_facts`
 - [ ] Semantic naming mismatches where entity key and expected identifier clearly diverge
 
@@ -256,7 +256,7 @@ metadata:
 - [ ] Branch-scoped consumer validity
 - [ ] Schema-aware append conformance
 
-Deferred items and open technical questions are tracked in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Deferred items and open technical questions are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Architecture Decisions
 
@@ -441,7 +441,7 @@ entities:
 
 ## Open Questions
 
-Deferred open questions (severity defaults, custom validators, multiple target models, target model inheritance, validation configuration / rule disabling) have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Deferred open questions (severity defaults, custom validators, multiple target models, target model inheritance, validation configuration / rule disabling) have been consolidated into [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Final Recommendation
 

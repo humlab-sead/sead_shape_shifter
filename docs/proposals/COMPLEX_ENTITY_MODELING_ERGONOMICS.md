@@ -201,7 +201,7 @@ This would make multi-branch parent modeling less error-prone while preserving t
 
 **Status: Completed — see **[done/FIRST_CLASS_MERGED_PARENT_ENTITIES](done/FIRST_CLASS_MERGED_PARENT_ENTITIES.md)**
 
-Conformance validation is implemented and wired into the UX. The final delivered scope covers structural conformance (column presence, naming conventions, FK requirements, induced requirements), standalone target-model checks, and a registry-based conformance validator architecture. Remaining enhancement backlog is tracked in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Conformance validation is implemented and wired into the UX. The final delivered scope covers structural conformance (column presence, naming conventions, FK requirements, induced requirements), standalone target-model checks, and a registry-based conformance validator architecture. The closed follow-through record lives in [done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Proposal 7: Derived Lookup Helpers
 
@@ -292,7 +292,7 @@ The delivery order below is organized by implementation risk, not only by concep
 - ✔️ FOUNDATION COMPLETE **[Proposal 8: Comment-Preserving Save Path](COMMENT_PRESERVING_SAVE_PATH.md)**
   The boundary-based persistence layer is now in place (see [done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md](done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md)), providing the subtree-merge primitives this feature requires. Full comment-preserving round-trips across the editor are still pending.
 - ✔️ COMPLETED **[Proposal 6: Target-Schema-Aware Validation](done/TARGET_SCHEMA_AWARE_VALIDATION.md)**
-  Conformance validation is implemented and wired into the UX. Remaining backlog (data conformance, branch-aware rules) is tracked in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+  Conformance validation is implemented and wired into the UX. Remaining follow-up notes (data conformance, branch-aware rules) are summarized in [done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ### Phase 2: Branch-Aware Modeling Helpers
 
@@ -301,7 +301,7 @@ The delivery order below is organized by implementation risk, not only by concep
 - ✔️ FOUNDATION COMPLETE **Proposal 5: Source-Based Append With Alignment** (see [done/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md](done/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md))
   Source-based append and column alignment modes are now implemented. The higher-level `branches:` entity syntax from the original proposal sketch remains conceptual. Proposal 4 (branch-scoped consumers) is the natural next step now that heterogeneous source appends can be expressed and aligned correctly.
 - ✔️ COMPLETED **[Proposal 6: Target-Schema-Aware Validation](done/TARGET_SCHEMA_AWARE_VALIDATION.md)**
-  Completed in Phase 1. Phase 2 expansion rules (branch-aware conformance) are tracked in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+  Completed in Phase 1. Phase 2 expansion rules (branch-aware conformance) are summarized in [done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ### Phase 3: First-Class Modeling Constructs
 docs/proposals/done/FIRST_CLASS_MERGED_PARENT_ENTITIES.md
