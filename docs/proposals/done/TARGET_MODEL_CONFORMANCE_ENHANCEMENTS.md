@@ -2,7 +2,7 @@
 
 ## Status
 
-**Active — backlog.** Core conformance engine (Milestones 1–3) is complete. This proposal tracks the remaining deferred and future work gathered from five now-archived source documents.
+**Closed — implemented or deferred.** The delivered conformance and format work in this proposal is complete. Remaining heuristic follow-up is now tracked in GitHub issue #457, and ecosystem-dependent work lives in future proposals.
 
 ## Implementation Checklist
 
@@ -14,9 +14,8 @@
 - [x] `naming_convention` — `public_id` values end with configured suffix
 - [x] `induced_requirements` — optional entity present → its required FK targets are induced-required (transitive)
 - [x] `source_type_appropriateness` — classifiers should not use `type: entity`
-- [ ] `no_orphan_facts` — fact entities must have a required FK path to at least one required lookup
-~~- [ ] `semantic_mismatch` — entity name role disagrees with `public_id` role (Phase 4, high false-positive risk)~~
-- [ ] `schema_aware_append` — appended columns conform to target model column spec
+- [x] `no_orphan_facts` — fact entities must have a direct or transitive FK path to at least one lookup or classifier when the global constraint is declared
+- [x] `schema_aware_append` — append branches satisfy the parent's required target-model column contract after append renaming is applied
 
 ### Data Conformance Validators
 - [x] `nullable` — required-not-null columns must have no null values in produced data
@@ -26,33 +25,32 @@
 See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) for design rationale and implementation notes.
 
 ### Format Extensions
-- [ ] `format_version` field in `model:` block
-- [ ] `generated: true` flag on `ColumnSpec` (suppress missing-column warnings for auto-generated columns)
-- [ ] `allowed_values` / `type: enum` on `ColumnSpec`
+- [x] `format_version` field in `model:` block
+- [x] `generated: true` flag on `ColumnSpec` (required generated columns are advisory and do not trigger missing-column conformance errors)
+- [x] `allowed_values` / `type: enum` on `ColumnSpec`
 - [x] Richer FK semantics — bridge entity support via `via` attribute in FK spec
-- [ ] Advanced FK validation modes — `direct`, `transitive`, explicit path constraints
 ~~- [ ] Entity spec inheritance (`extends:`) — defer until 5+ target models exist~~
 
 ### Test Coverage
-- [ ] Target model spec parsing — valid and invalid cases are covered; round-trip coverage is still missing
-- [ ] `@include:` resolution at mapper boundary (inline dict, file ref, missing file, relative path)
-- [ ] Projects without target model — structural validation unaffected, conformance returns empty
+- [x] Target model spec parsing — valid and invalid cases are covered; round-trip coverage is still missing
+- [x] `@include:` resolution at mapper boundary (inline dict, file ref, missing file, relative path)
+- [x] Projects without target model — structural validation unaffected, conformance returns empty
 - [x] Missing target model file — graceful handling, treated as no target model rather than a 500
 - [x] Backend adapter integration — `TargetModelValidator` code mapping, endpoint response, category tagging
-- [ ] Warning vs error severity (Phase 4 checks)
+- [x] Warning vs error severity (Phase 4 checks)
 
 ### Infrastructure
-- [ ] Rule disabling via `options.validation.disabled_rules`
-- [ ] `GlobalConformanceValidator` base type for multi-entity checks
-- [ ] `TargetModelService` — extract loading/caching when remote refs become real
+- [x] Rule disabling via `options.validation.disabled_rules`
+- [x] `GlobalConformanceValidator` base type for multi-entity checks
 - [x] Target model YAML editor tab — raw YAML edit tab for the project's **project-local** target model file alongside the project YAML tab
 - [x] Monaco editor schema support for target model YAML files — autocomplete and IntelliSense using `targetModelSchema.json`
 
+Deferred target-model loading and caching extraction has been moved to [docs/proposals/future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md](../future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md).
+
 ### Tooling / Ecosystem
 - [x] Target model documentation downloads — Project-aware HTML/Markdown/Excel documentation accessible from UX
-- [ ] Target model diff report (version upgrade planning)
-- [ ] Remote target model references (SSRF-safe, with caching)
-- [ ] Curated target model registry (bundled YAML short-name resolution)
+
+Speculative tooling and ecosystem follow-up items have been moved to [docs/proposals/future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md](../future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md).
 
 ### SEAD spec coverage (`resources/target_models/sead_superset_model.yml`)
 - [x] Abundance chain — `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `modification_type`, `abundance_property`
@@ -61,8 +59,8 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [x] Sample context and sample-group context — `sample_horizon`, `sample_location`, `sample_location_type`, `sample_note`, `sample_group_coordinate`, `sample_group_dimension`, `sample_group_note`, `sample_group_reference`, `sample_group_sampling_context`, `horizon`
 - [x] Analysis-value family and shared lookups — `analysis_value`, `analysis_note`, `analysis_identifier`, typed analysis value entities, `property_type`, `value_class`, `value_type`, `value_type_item`, `value_qualifier`, `value_qualifier_symbol`
 - [x] Property and lookup follow-up coverage — `site_property`, `feature_property`, `site_natgridref`, `coordinate_system`, `colour`, `sample_colour`, `project_type`, `project_stage`, `taxa_synonyms`, `taxa_measured_attributes`, `rdb`, `rdb_code`, `rdb_system`
-- [ ] Taxonomy — `taxa_tree_master`, `taxa_common_names`, `taxa_synonyms`, `taxa_measured_attributes`, `ecocode_system`, `ecocode_group`, `ecocode_definition`, `ecocode`, `rdb`, `rdb_code`, and `rdb_system` are present, but `taxonomic_order` is still missing
-~~- [ ] Data-type-specific tables (ceramics, dendrochronology, insects)~~ — legacy or specialized method-specific tables are not part of the current shared `sead_superset_model.yml` boundary; see [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+- [x] Taxonomy — `taxa_tree_master`, `taxa_common_names`, `taxa_synonyms`, `taxa_measured_attributes`, `ecocode_system`, `ecocode_group`, `ecocode_definition`, `ecocode`, `taxonomic_order_system`, `taxonomic_order`, `rdb`, `rdb_code`, and `rdb_system`
+~~- [ ] Data-type-specific tables (ceramics, dendrochronology, insects)~~ — legacy or specialized method-specific tables are not part of the current shared `sead_superset_model.yml` boundary; see [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 ---
 
@@ -78,17 +76,19 @@ This proposal consolidates deferred and future items from:
 
 ## What Is Already Implemented
 
-Seven conformance validators are registered and active:
+Nine conformance validators are registered and active:
 
 | Key                            | What it checks                                                                            |
 |--------------------------------|-------------------------------------------------------------------------------------------|
 | `required_entity`              | Required entities present in the project                                                  |
 | `public_id`                    | `public_id` present and not unexpected                                                    |
-| `foreign_key`                  | Required FK targets present on entities that are in the project (with bridge support)     |
+| `foreign_key`                  | Required FK targets present on entities that are in the project (with bridge and transitive path support) |
 | `required_columns`             | Required columns present                                                                  |
 | `naming_convention`            | `public_id` values end with `naming.public_id_suffix`                                    |
 | `induced_requirements`         | If optional entity X is present and has a required FK to Y, then Y is required (transitively) |
 | `source_type_appropriateness`  | Classifiers (`role: classifier`) must use `type: fixed` or `type: sql`, not `type: entity` |
+| `no_orphan_facts`              | Fact entities present in the project must reach at least one lookup or classifier when the target model declares that global constraint |
+| `schema_aware_append`          | Each append branch must provide the parent's required target-facing columns after `align_by_position` or `column_mapping` is applied |
 
 Backend wiring, frontend Check Conformance button, and Conformance panel in ValidationPanel are all live.
 
@@ -157,115 +157,35 @@ site_location:
 
 Many-to-many relationships are common in relational models. The `via` attribute makes bridge patterns explicit in the target model specification, enabling validators to understand transitive FK relationships without requiring deep graph traversal. This documents intent and prevents false positives when the direct FK relationship doesn't exist.
 
-### Advanced FK Validation Modes — Future Enhancement
-
-The current bridge entity support (`via` attribute) handles the most common many-to-many pattern. Future enhancements could add more flexible FK validation modes to handle complex relationship patterns.
-
-**Proposed FK validation mode attributes:**
-
-```yaml
-# Mode 1: Direct FK only (no transitive relationships allowed)
-entity_a:
-  foreign_keys:
-    - entity: entity_b
-      direct: true          # Must be a direct FK, fail if only transitive path exists
-      required: true
-
-# Mode 2: Bridge-mediated (current implementation)
-entity_a:
-  foreign_keys:
-    - entity: entity_c
-      via: bridge_entity    # Must go through specific bridge entity
-      required: true
-
-# Mode 3: Transitive FK (any path allowed)
-entity_a:
-  foreign_keys:
-    - entity: entity_d
-      transitive: true      # Can be satisfied by any FK chain (BFS/DFS walk)
-      required: true
-      max_depth: 3          # Optional: limit transitive search depth
-
-# Mode 4: Explicit path constraint
-entity_a:
-  foreign_keys:
-    - entity: entity_e
-      path: [intermediary_1, intermediary_2]  # Must follow specific FK chain
-      required: true
-```
-
-**Validation strategies:**
-
-1. **Direct mode** (`direct: true`)
-   - Default if no mode specified
-   - Check that target entity appears in source's immediate FK targets
-   - Reject transitive paths
-
-2. **Bridge mode** (`via: bridge_name`)
-   - Current implementation ✅
-   - Validate bridge presence in direct FK targets
-   - Validate bridge has FK to ultimate target
-
-3. **Transitive mode** (`transitive: true`)
-   - BFS/DFS graph walk through FK graph
-   - Accept any valid FK chain from source to target
-   - Optional `max_depth` to prevent infinite loops
-   - Performance consideration: may require full FK graph construction
-
-4. **Explicit path mode** (`path: [...]`)
-   - Validate that each entity in path has FK to next entity
-   - Strictest validation: only accept specified route
-   - Use case: documenting canonical FK traversal paths
-
-**Implementation considerations:**
-
-- **Mutual exclusivity**: Only one mode per FK spec (enforced by Pydantic validators)
-- **Default behavior**: No mode specified = `direct: true` (backward compatible)
-- **Performance**: Transitive and path modes require FK graph access (may need `ProcessState` or equivalent)
-- **False positive risk**: Transitive mode may be too permissive; use with caution
-
-**Deferred until:**
-- Real-world use cases demonstrate need for modes beyond `via`
-- FK graph structure is stable and available at validation time
-- Performance implications of graph traversal are analyzed
+Advanced FK validation modes are no longer part of this closed proposal. The deferred design work now lives in [docs/proposals/future/ADVANCED_FK_VALIDATION_MODES.md](../future/ADVANCED_FK_VALIDATION_MODES.md).
 
 ---
 
 ## Advanced Semantic Validation (Phase 4)
 
-These items were labeled "Phase 4 — Advanced Semantic Rules" in the implementation sketch. None are implemented.
-
-### Semantic Mismatch Detection
-
-Detect when an entity's name implies a different semantic role than its `public_id` style.
-
-**Motivating example:** An entity named `relative_dating` (implies a fact) using `public_id: relative_age_id` (implies a lookup). The mismatch is detectable without running the pipeline.
-
-**Approach:**
-- Classify entity names using heuristics (noun patterns, role keywords)
-- Classify `public_id` values using suffix patterns
-- Emit `UNEXPECTED_PUBLIC_ID` or a new `SEMANTIC_ROLE_MISMATCH` code when name-role and id-role disagree
-- Keep detection conservative: only emit for clear, low-noise cases
-
-**Prerequisite:** Define the heuristic threshold before implementing. Avoid false positives at all cost.
+These items were labeled "Phase 4 — Advanced Semantic Rules" in the implementation sketch. Some remain deferred, but `no_orphan_facts` and `schema_aware_append` are now implemented.
 
 ### Global Role-Informed Checks
 
 Check global modeling requirements that depend on understanding the *combination* of entity roles.
 
-**Candidate rule:** `no_orphan_facts` — a fact entity must be linked (directly or transitively) to at least one required lookup entity. A fact with no FK path to any required parent is likely misconfigured.
+**Implemented rule:** `no_orphan_facts` — when the target model declares `constraints: [{type: no_orphan_facts}]`, each fact entity present in the project must be linked (directly or transitively) to at least one lookup or classifier entity declared in the target model.
 
-**Implementation note:** BFS over the required-FK graph is already implemented in `InducedRequirementConformanceValidator`. A `GlobalConformanceValidator` base type and the `no_orphan_facts` rule can reuse that traversal pattern. The FK graph walk no longer needs `ProcessState` as a prerequisite.
+**Implementation note:** The rule reuses the same target-facing FK graph walk used by transitive foreign-key conformance. It runs only when the global constraint is declared, so target models that do not opt in keep current behavior. It now emits a warning by default and upgrades to an error when the constraint is declared with `required: strict`. Projects can still override the severity via `options.validation.severity_overrides.no_orphan_facts`.
 
 ### Source-Type Appropriateness
 
-Classifiers declared with `role: classifier` should use `type: fixed` or `type: sql` rather than `type: entity`. Emit a warning when a classifier is configured as a row-extraction entity.
+Classifiers declared with `role: classifier` should use `type: fixed` or `type: sql` rather than `type: entity`. The implemented rule emits a warning when a classifier is configured as a row-extraction entity. Projects can override that severity via `options.validation.severity_overrides.source_type_appropriateness`.
 
 **Difficulty:** Low. Single-pass check against entity type field.
 
 ### Schema-Aware Append Conformance
 
-When a project uses append mode, validate that the appended columns conform to the target-model column spec for that entity. Currently append operations are not checked against the target model at all.
+**Implemented rule:** `schema_aware_append` — when a project entity uses `append`, each append branch is checked against the subset of required target-model columns already exposed by the parent entity's target-facing contract.
+
+This closes the gap where the parent entity looks conformant, but one append source still contributes rows that are missing required target-facing columns or omit expected FK-facing columns.
+
+**Implementation note:** The validator applies static append renaming before checking branch shape, so `align_by_position` and `column_mapping` are treated as part of the append contract. It emits `APPEND_MISSING_REQUIRED_COLUMN` only for required target-model columns that the parent entity already exposes, which avoids duplicating the base required-column errors when the parent entity is itself non-conformant.
 
 ### Branch-Aware Semantic Validation
 
@@ -286,7 +206,7 @@ The project-level YAML view currently shows only the `shapeshifter.yml` file. Wh
 
 **Constraints:**
 - Raw YAML only — no structured form or entity-level UI.
-- Backend read/write access is limited to **project-local files** (i.e. the `@include:` path lives inside the project's own directory). Shared/global spec files (e.g. `resources/target_models/sead_superset_model.yml`) are read-only in this view, and the frontend still needs a tighter visibility check for that case.
+- Backend read/write access is limited to **project-local files** (i.e. the `@include:` path lives inside the project's own directory). Shared/global spec files (e.g. `resources/target_models/sead_superset_model.yml`) are read-only in this view, and the frontend now hides the edit tab for those references.
 - API passes the YAML file content as raw text; the server validates syntax but **never re-serialises** it, so comments and formatting survive the round-trip.
 - Save writes directly to the referenced target model YAML file.
 - Changing the file triggers a re-run of conformance validation (same as editing the project YAML).
@@ -330,7 +250,7 @@ The Monaco YAML editor now provides autocomplete and IntelliSense for target mod
 
 **Remaining Work:**
 
-Backend endpoints and frontend save/load wiring are complete. The remaining gap is frontend visibility behavior for shared/global target model references.
+Backend endpoints, save/load wiring, Monaco schema support, and frontend visibility behavior for shared/global target model references are complete.
 
 ### Complexity Assessment
 
@@ -357,7 +277,7 @@ No extra service layer was needed for the current local-file scope.
 
 ---
 
-#### Frontend (Low–Medium) — PARTIALLY COMPLETE
+#### Frontend (Low–Medium) — COMPLETE
 
 **Completed:**
 1. ✅ **Monaco schema integration** — `targetModelSchema.json` generated and wired into Monaco YAML editor with `mode="target-model"`
@@ -367,10 +287,7 @@ No extra service layer was needed for the current local-file scope.
 5. ✅ **API methods** — `getTargetModelYaml(projectName)` and `updateTargetModelYaml(projectName, yaml)` are implemented in `frontend/src/api/projects.ts`
 6. ✅ **Backend integration** — load/save handlers are wired to the target-model YAML endpoints
 
-**Remaining work:**
-1. **Conditional visibility** — refine tab visibility so the target-model tab is hidden for shared/global target model references instead of relying on backend 403 handling.
-
-The core Monaco editing experience with autocomplete and save/load wiring is in place. The main remaining UX gap is tab visibility for non-project-local target models.
+The core Monaco editing experience with autocomplete, save/load wiring, and project-local visibility behavior is in place.
 
 ---
 
@@ -487,7 +404,7 @@ The `ColumnSpec.type` field uses logical types (`integer`, `string`, `boolean`, 
 
 ### Deferred
 
-- `allowed_values` / enum value checks — depends on `allowed_values` field in `ColumnSpec` (not yet in format)
+- `allowed_values` / enum value checks — implemented in the data-validation layer for columns that declare `type: enum` and `allowed_values`
 - Row-count constraints — out of scope (the format deliberately does not express cardinality requirements)
 
 ---
@@ -510,11 +427,13 @@ Some column names include a redundant entity prefix. For example, `sead_method_g
 
 ### Transitive FK Satisfaction
 
-A project may satisfy a required FK transitively through an intermediate entity not named in the target model. The current FK conformance validator only does direct matching.
+A project may satisfy a required FK transitively through an intermediate entity not named in the target model.
 
 **Example:** Target model requires `sample → site`. Project has `sample → sample_group → site`. The requirement is satisfied transitively but would currently fail.
 
-**Approach when ready:** Add a BFS/DFS walk through the project FK graph to find transitive paths to required FK targets.
+**Status:** Implemented. `ForeignKeyConformanceValidator` now walks the project's target-facing FK graph before emitting `MISSING_REQUIRED_FOREIGN_KEY_TARGET`, which removes direct-only false positives such as `sample → sample_group → site`.
+
+**Current limitation:** This is path detection only. Format-level FK modes such as `direct`, `transitive`, and explicit `path` constraints have been moved to [docs/proposals/future/ADVANCED_FK_VALIDATION_MODES.md](../future/ADVANCED_FK_VALIDATION_MODES.md).
 
 ### Value-Level Checks
 
@@ -544,7 +463,7 @@ Should target models support `extends:` to share column sets across entity specs
 
 A `format_version` field alongside `model.version` would allow the parser to reject incompatible target model files cleanly.
 
-**Recommendation:** Add `format_version: "1"` to the top-level `model:` block in a minor update. No behavior change in v1 — treat missing as `"1"`. Start enforcing with any breaking format change.
+**Status:** Implemented. `format_version` now lives under `model:` and defaults to `"1"` when omitted, so older target models still parse.
 
 ### Richer Foreign Key Semantics
 
@@ -554,15 +473,13 @@ The current FK spec (`entity`, `required`, `columns`) does not express join-colu
 
 ### Allowed Values / Enum Support
 
-Add `allowed_values` or `type: enum` to `ColumnSpec` for validating classifier content without running the pipeline.
-
-**Prerequisite:** Align with any value-level validation design (see value-level checks above).
+**Implemented:** `ColumnSpec` now supports `allowed_values` and `type: enum`. `TargetModelSpecValidator` enforces that `allowed_values` is paired with `type: enum`, and the data-validation pipeline emits `VALUE_NOT_IN_ALLOWED_SET` when produced values fall outside the declared set.
 
 ### Database Defaults and Generated Values
 
 Should the target model spec record which columns have database defaults or are auto-generated?
 
-**Recommendation:** Advisory only. Add an optional `generated: true` flag that validators can use to suppress "column not present in source" warnings. Not normative.
+**Implemented:** `ColumnSpec.generated: true` is now available as advisory metadata. Required columns marked this way are kept in the format and generated schema/docs, but the structural conformance checks skip missing-column errors for them, including append-branch column checks.
 
 ### Inheritance / Mixins for Entity Templates
 
@@ -582,6 +499,8 @@ These test areas were identified in the implementation sketch but not yet covere
 - Parse invalid YAML — missing required `model.name`, unknown `role` value, malformed `columns`
 - Round-trip: parse → serialize → re-parse produces equivalent object
 
+**Status:** Valid payloads, invalid field rejection, and round-trip coverage are now in place.
+
 ### `@include:` Resolution (Backend Boundary)
 
 - Inline `target_model: {...}` dict passes through mapper unchanged
@@ -589,17 +508,23 @@ These test areas were identified in the implementation sketch but not yet covere
 - Missing include file produces a clear error, not a cryptic KeyError
 - Relative path resolution from project file location
 
+**Status:** Covered for project-local include resolution and missing include files.
+
 ### Projects Without Target Model
 
 - Structural validation runs normally when `metadata.target_model` is absent
 - Conformance endpoint returns empty result (not error) when no target model is set
 - Adding `target_model: null` clears the reference cleanly
 
+**Status:** Covered for missing and null resolved target models.
+
 ### Warning vs Error Severity (Phase 4)
 
-- Semantic mismatch checks emit warnings, not errors
-- Orphan-fact check is configurable (warning by default, error when `required: strict`)
-- Severity can be overridden via `options.validation.severity_overrides`
+**Implemented:**
+
+- `no_orphan_facts` emits a warning by default and upgrades to an error when the target model declares `required: strict`
+- `source_type_appropriateness` emits a warning by default
+- Projects can override registered conformance-rule severities via `options.validation.severity_overrides`
 
 ### Missing Target Model File
 
@@ -618,17 +543,7 @@ These test areas were identified in the implementation sketch but not yet covere
 
 ## Open Technical Questions
 
-### 1. Target Model Loading Location
-
-Should `ValidationService` load and parse the target model directly, or should there be a dedicated `TargetModelLoader` service?
-
-**Current behaviour:** `ValidationService.validate_target_model()` extracts the resolved `target_model` dict from the mapped core project and passes it to `TargetModelConformanceValidator`.
-
-**Question:** As target model loading gains complexity (caching, remote refs, registry lookups), should this be extracted to a `TargetModelService`?
-
-**Recommendation:** Extract to `TargetModelService` when remote references or caching become real requirements. For now, keep it in `ValidationService`.
-
-### 2. Validation Code Naming
+### 1. Validation Code Naming
 
 Should conformance issue codes be prefixed with `TARGET_` (e.g., `TARGET_MISSING_REQUIRED_ENTITY`, `TARGET_PUBLIC_ID_NAMING_VIOLATION`)?
 
@@ -636,47 +551,21 @@ Should conformance issue codes be prefixed with `TARGET_` (e.g., `TARGET_MISSING
 
 **Recommendation:** Add prefix when expanding to Phase 4. It makes log messages and issue exports unambiguous.
 
-### 3. Rule Disabling
+### 2. Rule Disabling
 
 Should projects be able to suppress specific conformance rules?
 
 **Proposal:** Via `options.validation.disabled_rules: ["naming_convention", "no_orphan_facts"]` in the project YAML.
 
-**Current state:** No rule suppression exists. The conformance engine runs all registered validators unconditionally.
+**Current state:** Implemented for registered target-model conformance validators. Unknown rule keys produce a warning instead of being silently ignored.
 
-**Recommendation:** Implement when false-positive feedback from real projects accumulates. Design as an allow-list that strips matching validators from the registry copy used for that project.
+**Recommendation:** Keep both `disabled_rules` and `severity_overrides` limited to registered conformance validator keys until there is a concrete need for broader validation-rule scoping.
 
 ---
 
 ## Future Enhancements
 
-### Target Model Diff Tooling
-
-When a target model version changes, provide a diff report showing which conformance checks are new, changed, or removed. Useful for upgrade planning.
-
-**Approach:** Compare two `TargetModel` instances field-by-field. Output a structured diff as YAML or markdown.
-
-### Remote Target Model References
-
-Allow `target_model: "https://registry.example.com/sead/v2.yml"` in addition to `@include:` file references.
-
-**Prerequisites:**
-- SSRF prevention (allowlist of permitted domains or a local proxy)
-- Caching with TTL to avoid network calls on every validation
-- Version pinning to prevent silent breakage on upstream changes
-
-**Recommendation:** Only implement if a shared community registry becomes real. Local file references cover all current use cases.
-
-### Curated Target Model Registry
-
-A registry of community-contributed target models distributed alongside Shape Shifter or via a companion package.
-
-**Candidates:**
-- `sead_standard_model` — SEAD Clearinghouse v2 (already exists in `resources/target_models/`)
-- Generic archaeological site model
-- Museum specimen model
-
-**Approach:** Bundled YAML files in `resources/target_models/`, referenced by short name without a path. The mapper resolves short names to the bundled file before resolving `@include:`.
+Speculative target-model tooling and ecosystem work has been moved to [docs/proposals/future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md](../future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md).
 
 ### Target Model Documentation Downloads
 
@@ -734,7 +623,7 @@ Generate human-readable documentation for target models in HTML, Markdown, or Ex
 
 Remaining shared-model SEAD coverage gaps in `resources/target_models/sead_superset_model.yml`:
 
-- Taxonomy-order support (`taxonomic_order` and any supporting order-system entities that belong in the shared superset)
+- No currently identified shared-model gaps in the agreed taxonomy slice.
 
 Out of scope for this backlog:
 
@@ -751,13 +640,6 @@ Out of scope for this backlog:
 
 When resuming work on this backlog, a sensible order is:
 
-1. **Source-type appropriateness** — low complexity, high value, zero false-positives
-2. **`format_version` field** — trivial parser change, prevents future breakage
-3. **Test coverage gaps** — fill the backend adapter and missing-file tests
-4. **Rule disabling** — needed before shipping Phase 4 checks widely
-5. **Semantic mismatch detection** — requires tuning; start with a conservative threshold
-6. **Transitive FK satisfaction** — well-defined algorithm, removes real false-positives
-7. **`no_orphan_facts`** check — depends on FK graph walk being tested first
-8. **Alias matching / normalization** — only after alias table or metric is agreed on
+1. **Alias matching / normalization** — only after alias table or metric is agreed on
 
 Items in the "Future Enhancements" section (remote refs, registry, diff tooling) are speculative — implement only if a concrete need arises.

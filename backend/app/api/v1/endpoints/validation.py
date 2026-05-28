@@ -96,7 +96,7 @@ async def validate_target_model(name: str) -> ValidationResult:
         name: Project name
 
     Returns:
-        Validation result with conformance errors (severity="error").
+        Validation result with conformance issues grouped by severity.
         ``is_valid`` is True when there are zero conformance issues.
     """
     validation_service: ValidationService = get_validation_service()

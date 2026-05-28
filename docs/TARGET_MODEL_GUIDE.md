@@ -290,7 +290,7 @@ constraints:
 
 Current constraints are modeled as simple typed entries. Add new constraint-specific keys only after extending the Pydantic schema.
 
-Global constraints are planned for future validation phases. `no_orphan_facts` is declared in the SEAD spec but not yet enforced by the conformance engine. It records the intended rule that every fact entity must be reachable from at least one required lookup.
+`no_orphan_facts` is now enforced by the conformance engine when the target model declares it. The rule checks that each fact entity present in the project reaches at least one lookup or classifier through the target-facing FK graph.
 
 ---
 
@@ -475,4 +475,4 @@ Output files are written to `docs/generated/` by default. Run `python scripts/ge
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — full project YAML reference, including the `metadata.target_model` field
 - [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) — generated field-by-field schema reference derived from the Pydantic models
 - [USER_GUIDE.md](USER_GUIDE.md) — editor UI guide, including the Check Conformance button and Conformance panel
-- [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md) — deferred and future work backlog
+- [docs/proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md) — closed consolidation record for the delivered conformance backlog and deferred follow-up

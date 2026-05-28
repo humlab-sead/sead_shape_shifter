@@ -20,6 +20,7 @@ from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.table_store import TableStore
 from src.target_model.data_validators import (
+    AllowedValuesConformanceValidator,
     FKReferentialIntegrityConformanceValidator,
     NullabilityConformanceValidator,
     TypeCompatibilityConformanceValidator,
@@ -239,6 +240,7 @@ class DataValidationOrchestrator:
                 if entity_spec is not None:
                     issues.extend(NullabilityConformanceValidator.validate(df, entity_spec, entity_name))
                     issues.extend(TypeCompatibilityConformanceValidator.validate(df, entity_spec, entity_name))
+                    issues.extend(AllowedValuesConformanceValidator.validate(df, entity_spec, entity_name))
 
                     for fk_spec in entity_spec.foreign_keys:
                         if not fk_spec.required or fk_spec.via:

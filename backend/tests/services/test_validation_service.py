@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from backend.app.models.validation import ValidationCategory, ValidationPriority
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.services import validation_service as validation_service_module
@@ -454,6 +455,40 @@ class TestDataValidation:
 class TestValidateTargetModel:
     """Tests for validate_target_model error-handling path."""
 
+    def test_projects_without_target_model_return_empty_valid_result(self, validation_service: ValidationService):
+        """Projects without a target model should skip conformance cleanly."""
+        mock_api_project = Mock(spec=Project)
+        mock_core_project = Mock()
+        mock_core_project.metadata.target_model = None
+
+        with patch("backend.app.services.validation_service.get_project_service") as mock_get_service:
+            mock_project_service = Mock()
+            mock_project_service.load_project.return_value = mock_api_project
+            mock_get_service.return_value = mock_project_service
+
+            with patch("backend.app.services.validation_service.ProjectMapper.to_core", return_value=mock_core_project):
+                result = validation_service.validate_target_model("test-project")
+
+        assert result.is_valid is True
+        assert result.errors == []
+
+    def test_target_model_null_is_treated_as_missing(self, validation_service: ValidationService):
+        """A resolved null target_model should behave the same as an absent target model."""
+        mock_api_project = Mock(spec=Project)
+        mock_core_project = Mock()
+        mock_core_project.metadata.target_model = None
+
+        with patch("backend.app.services.validation_service.get_project_service") as mock_get_service:
+            mock_project_service = Mock()
+            mock_project_service.load_project.return_value = mock_api_project
+            mock_get_service.return_value = mock_project_service
+
+            with patch("backend.app.services.validation_service.ProjectMapper.to_core", return_value=mock_core_project):
+                result = validation_service.validate_target_model("test-project")
+
+        assert result.is_valid is True
+        assert result.errors == []
+
     def test_missing_target_model_file_is_silently_ignored(self, validation_service: ValidationService):
         """FileNotFoundError from @include resolution must be silently ignored (valid=True, no errors)."""
         mock_api_project = Mock(spec=Project)
@@ -471,3 +506,37 @@ class TestValidateTargetModel:
 
         assert result.is_valid is True
         assert result.errors == []
+
+    def test_target_model_validation_groups_warnings_by_severity(self, validation_service: ValidationService):
+        """Target-model validation should keep conformance warnings out of the error bucket."""
+        mock_api_project = Mock(spec=Project)
+        mock_core_project = Mock()
+        mock_core_project.metadata.target_model = {"model": {"name": "Test Model", "version": "1.0.0"}, "entities": {}}
+
+        with patch("backend.app.services.validation_service.get_project_service") as mock_get_service:
+            mock_project_service = Mock()
+            mock_project_service.load_project.return_value = mock_api_project
+            mock_get_service.return_value = mock_project_service
+
+            with patch("backend.app.services.validation_service.ProjectMapper.to_core", return_value=mock_core_project):
+                with patch("backend.app.validators.target_model_validator.TargetModelValidator") as mock_validator_cls:
+                    mock_validator = Mock()
+                    mock_validator.validate.return_value = [
+                        validation_service_module.ValidationError(
+                            severity="warning",
+                            entity="analysis_entity",
+                            field=None,
+                            message="Warning",
+                            code="ORPHAN_FACT_ENTITY",
+                            category=ValidationCategory.CONFORMANCE,
+                            priority=ValidationPriority.HIGH,
+                            auto_fixable=False,
+                        )
+                    ]
+                    mock_validator_cls.return_value = mock_validator
+
+                    result = validation_service.validate_target_model("test-project")
+
+        assert result.is_valid is True
+        assert result.errors == []
+        assert [warning.code for warning in result.warnings] == ["ORPHAN_FACT_ENTITY"]

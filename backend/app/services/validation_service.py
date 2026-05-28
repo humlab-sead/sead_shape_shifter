@@ -250,7 +250,7 @@ class ValidationService:
             project_name: Project name to validate.
 
         Returns:
-            ValidationResult with conformance errors (severity="error") only.
+            ValidationResult with conformance issues grouped by severity.
             is_valid is True only when there are zero conformance errors.
         """
         from backend.app.validators.target_model_validator import TargetModelValidator  # pylint: disable=import-outside-toplevel
@@ -273,9 +273,13 @@ class ValidationService:
             return ValidationResult(is_valid=True)
 
         logger.debug(f"Running target-model conformance for project: {project_name}")
-        errors: list[ValidationError] = TargetModelValidator().validate(target_model_data, core_project)
+        issues: list[ValidationError] = TargetModelValidator().validate(target_model_data, core_project)
 
-        return ValidationResult(is_valid=len(errors) == 0, errors=errors)
+        errors: list[ValidationError] = [issue for issue in issues if issue.severity == "error"]
+        warnings: list[ValidationError] = [issue for issue in issues if issue.severity == "warning"]
+        info: list[ValidationError] = [issue for issue in issues if issue.severity == "info"]
+
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings, info=info)
 
 
 # Singleton instance

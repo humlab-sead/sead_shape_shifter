@@ -36,9 +36,9 @@
 - `frontend/src/views/ProjectDetailView.vue` — `useConformanceValidation` imported and wired; `handleConformanceValidate()` handler added; `mergedValidationResult` extended to include conformance results alongside structural and data results
 - `frontend/src/components/MetadataEditor.vue` — **Target Model** combobox added; lists project YAML files as `@include: <file>` suggestions; allows free-text entry; clearable; included in save payload
 
-### Pending
+### Follow-Through
 
-Naming convention conformance and standalone test migration are complete (Milestone 3). Remaining deferred and future items — including semantic mismatch detection, Phase 4 advanced rules, format extensions, and open technical questions — have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Milestones 1-3 are complete. The delivered follow-through and deferred notes live in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md), and the remaining non-ecosystem follow-up is tracked in GitHub issue #457.
 
 ## Summary
 
@@ -108,15 +108,15 @@ This proposal does not:
 - Public ID conformance (missing, unexpected)
 - Spec self-consistency (unknown FK targets, identity columns, unique-set columns, naming conventions)
 
-### Still absent from any validation path
+### Remaining Follow-Up Outside The Current Validation Path
 
-- Entity semantic roles (fact vs lookup vs classifier) — semantic mismatch detection deferred to [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
-- Source type appropriateness (classifiers should use `fixed` or `sql`) — deferred
-- Backend wiring for Phase 4 checks — deferred
+- Branch-aware semantic validation for merged-parent branch coverage
+- Alias matching and semantic normalization heuristics
+- Broader semantic-role mismatch heuristics beyond the delivered role-informed checks
 
 ## Proposed Design
 
-The target-model format is defined in [TARGET_MODEL_SPECIFICATION_FORMAT.md](TARGET_MODEL_SPECIFICATION_FORMAT.md). Implementation details and code-level sketches are documented in [TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md](TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md). Phased rollout for the first SEAD model is tracked in [target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md](../../target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md).
+The target-model format is defined in [TARGET_MODEL_SPECIFICATION_FORMAT.md](TARGET_MODEL_SPECIFICATION_FORMAT.md). Implementation details and code-level sketches are documented in [TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md](TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md). Phased rollout for the first SEAD model is tracked in [SEAD_V2_IMPLEMENTATION_PLAN.md](SEAD_V2_IMPLEMENTATION_PLAN.md).
 
 ### Key Concepts
 
@@ -247,7 +247,7 @@ metadata:
 - [x] Expected/unexpected public_id checks (`PublicIdConformanceValidator`)
 - [ ] Naming convention checks against project entities — public_id_suffix validated in `TargetModelSpecValidator` only; not yet in conformance
 
-**Phase 2: Semantic Checks** — deferred; see [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
+**Phase 2: Semantic Checks** — see the closed follow-through record in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
 - [ ] Global role-informed checks such as `no_orphan_facts`
 - [ ] Semantic naming mismatches where entity key and expected identifier clearly diverge
 
@@ -256,7 +256,7 @@ metadata:
 - [ ] Branch-scoped consumer validity
 - [ ] Schema-aware append conformance
 
-Deferred items and open technical questions are tracked in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Deferred items and open technical questions are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Architecture Decisions
 
@@ -441,7 +441,7 @@ entities:
 
 ## Open Questions
 
-Deferred open questions (severity defaults, custom validators, multiple target models, target model inheritance, validation configuration / rule disabling) have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Deferred open questions (severity defaults, custom validators, multiple target models, target model inheritance, validation configuration / rule disabling) have been consolidated into [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Final Recommendation
 

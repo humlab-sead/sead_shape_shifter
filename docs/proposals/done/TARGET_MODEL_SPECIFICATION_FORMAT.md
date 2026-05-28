@@ -3,7 +3,7 @@
 ## Status
 
 - **Format: v1 implemented and stable** — Pydantic domain model, spec validator, and conformance engine are all in `src/target_model/`
-- **SEAD specification: active** — `resources/target_models/sead_standard_model.yml` covers 35 entities across core, spatial, abundance, dating, taxonomy, method/contact, and provenance domains
+- **SEAD specification: implemented** — `resources/target_models/sead_standard_model.yml` covers the delivered core, spatial, abundance, dating, taxonomy, method/contact, and provenance scope described in this proposal
 - **Validator integration: done** — `TargetModelConformanceValidator` runs against resolved `ShapeShiftProject`; backend endpoint and frontend Check Conformance button are wired (see [TARGET_SCHEMA_AWARE_VALIDATION](TARGET_SCHEMA_AWARE_VALIDATION.md))
 - Scope: Specification format (YAML schema + semantics) and initial SEAD model definition
 - Goal: Define a reusable, system-independent format for describing target data model requirements, and produce a concrete SEAD specification as the first consumer
@@ -36,7 +36,7 @@ This means:
 This proposal covers two deliverables developed in parallel:
 
 1. **The format** — A YAML schema defining how to express target model requirements: entities, roles, columns, relationships, naming rules, and constraints.
-2. **SEAD v2 specification** — A concrete file (`sead_standard_model.yml`) that describes the SEAD archaeological database using this format, covering the entities and patterns most commonly used in Shape Shifter projects. Until Shape Shifter integration is completed, the working version lives at `resources/target_models/sead_standard_model.yml`.
+2. **SEAD v2 specification** — A concrete file (`sead_standard_model.yml`) that describes the SEAD archaeological database using this format, covering the entities and patterns most commonly used in Shape Shifter projects. The implemented first-spec version lives at `resources/target_models/sead_standard_model.yml`.
 
 ## Non-Goals
 
@@ -552,7 +552,7 @@ Rejected because it defeats reusability. The whole point is that target model re
 
 ## Open Questions
 
-Deferred format open questions (schema-qualified target_table names, entity spec inheritance, format_version field, richer FK semantics, database defaults, relationship to ENTITY_SEMANTIC_ROLES) have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Deferred format open questions (schema-qualified target_table names, entity spec inheritance, format_version field, richer FK semantics, database defaults, relationship to ENTITY_SEMANTIC_ROLES) are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Final Recommendation
 
