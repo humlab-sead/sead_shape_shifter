@@ -3,6 +3,7 @@
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from backend.app.models.ingester import IngestResponse, ValidateResponse
 from backend.app.services.ingester_runtime import (
     SeadChangeRequestReconciliationAdapter,
     SeadChangeRequestSimsAdapter,
@@ -91,6 +92,51 @@ class TestIngestersEndpoints:
             assert isinstance(data["warnings"], list)
             assert isinstance(data["infos"], list)
 
+    def test_validate_passes_submission_context_and_deploy_strategy_to_service(self, monkeypatch):
+        """Validate route should preserve change-request payload fields when calling the service."""
+        captured: dict[str, object] = {}
+
+        async def fake_validate(key: str, request):
+            captured["key"] = key
+            captured["request"] = request
+            return ValidateResponse(
+                is_valid=True,
+                errors=[],
+                warnings=[],
+                infos=[],
+                pending_confirmation_report=None,
+            )
+
+        monkeypatch.setattr(IngesterService, "validate", staticmethod(fake_validate))
+
+        response = client.post(
+            "/api/v1/ingesters/sead_change_request/validate",
+            json={
+                "source": "/tmp/input.xlsx",
+                "config": {"ignore_columns": ["date_updated"]},
+                "submission_context": {
+                    "submission_name": "bugs_delivery_1",
+                    "project_name": "pilot_bugs",
+                    "timestamp": "2026-06-01T09:15",
+                    "datatype": "bugs",
+                    "identifier": "PILOT_BUGS",
+                    "description": "Pilot bugs change package",
+                    "issue_number": "455",
+                    "author": "SEAD Operator",
+                },
+                "deploy_strategy": "copy_csv",
+            },
+        )
+
+        assert response.status_code == 200
+        assert captured["key"] == "sead_change_request"
+
+        request = captured["request"]
+        assert request.submission_context is not None
+        assert request.submission_context["project_name"] == "pilot_bugs"
+        assert request.submission_context["identifier"] == "PILOT_BUGS"
+        assert request.deploy_strategy == "copy_csv"
+
     def test_ingest_missing_ingester(self):
         """Test ingestion with non-existent ingester."""
         response = client.post(
@@ -148,6 +194,61 @@ class TestIngestersEndpoints:
         assert "deploy_artifact" in data
         assert "pending_confirmation_report" in data
         assert data["success"] is False
+
+    def test_ingest_passes_submission_context_and_deploy_strategy_to_service(self, monkeypatch):
+        """Ingest route should preserve change-request payload fields when calling the service."""
+        captured: dict[str, object] = {}
+
+        async def fake_ingest(key: str, request):
+            captured["key"] = key
+            captured["request"] = request
+            return IngestResponse(
+                success=True,
+                records_processed=2,
+                message="ok",
+                submission_id=11,
+                output_path="output/pilot-bugs-001",
+                error_details=None,
+                deploy_artifact=None,
+                pending_confirmation_report=None,
+            )
+
+        monkeypatch.setattr(IngesterService, "ingest", staticmethod(fake_ingest))
+
+        response = client.post(
+            "/api/v1/ingesters/sead_change_request/ingest",
+            json={
+                "source": "/tmp/input.xlsx",
+                "config": {"ignore_columns": ["date_updated"]},
+                "submission_name": "bugs_delivery_1",
+                "data_types": "bugs",
+                "output_folder": "output",
+                "do_register": False,
+                "explode": False,
+                "submission_context": {
+                    "submission_name": "bugs_delivery_1",
+                    "project_name": "pilot_bugs",
+                    "timestamp": "2026-06-01T09:15",
+                    "datatype": "bugs",
+                    "identifier": "PILOT_BUGS",
+                    "description": "Pilot bugs change package",
+                    "issue_number": "455",
+                    "author": "SEAD Operator",
+                },
+                "deploy_strategy": "copy_csv",
+            },
+        )
+
+        assert response.status_code == 200
+        assert captured["key"] == "sead_change_request"
+
+        request = captured["request"]
+        assert request.submission_name == "bugs_delivery_1"
+        assert request.data_types == "bugs"
+        assert request.submission_context is not None
+        assert request.submission_context["project_name"] == "pilot_bugs"
+        assert request.submission_context["identifier"] == "PILOT_BUGS"
+        assert request.deploy_strategy == "copy_csv"
 
 
 class TestIngesterServiceIntegration:
@@ -220,3 +321,29 @@ class TestIngesterServiceIntegration:
 
         assert config.extra is not None
         assert isinstance(config.extra["collision_checker"], SeadChangeRequestTargetCollisionChecker)
+
+    def test_service_create_config_preserves_submission_context_and_deploy_strategy(self):
+        """SEAD change request config should pass submission context and deploy strategy through to ingester extras."""
+        config = IngesterService._create_config(
+            {
+                "submission_name": "bugs_delivery_1",
+                "data_types": "bugs",
+                "submission_context": {
+                    "submission_name": "bugs_delivery_1",
+                    "project_name": "pilot_bugs",
+                    "timestamp": "2026-06-01T09:15",
+                    "datatype": "bugs",
+                    "identifier": "pilot-bugs-001",
+                    "issue_number": "455",
+                },
+                "deploy_strategy": "copy_csv",
+            },
+            key="sead_change_request",
+        )
+
+        assert config.submission_name == "bugs_delivery_1"
+        assert config.data_types == "bugs"
+        assert config.extra is not None
+        assert config.extra["deploy_strategy"] == "copy_csv"
+        assert config.extra["submission_context"]["project_name"] == "pilot_bugs"
+        assert config.extra["submission_context"]["identifier"] == "pilot-bugs-001"

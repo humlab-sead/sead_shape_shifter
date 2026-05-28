@@ -2,9 +2,24 @@
 
 ## Status
 
-- Proposed change request
+- Implemented in this PR
 - Scope: frontend workflow integration for `sead_change_request`
 - Goal: give operators a usable frontend flow for the user interaction that this ingester requires
+
+## Current Delivery Status
+
+The implementation in this PR covers the main frontend workflow in this change request.
+
+Implemented in this PR:
+
+- explicit `sead_change_request` workflow selection and operator-facing workflow copy
+- focused submission-context form inputs and deploy-strategy selection
+- distinct pending-confirmation state and rerun guidance during validation and ingestion
+- operator-facing deploy artifact summary and handoff guidance
+
+Still deferred:
+
+- persisting stable `sead_change_request` submission defaults in project metadata
 
 ## Summary
 
@@ -46,6 +61,7 @@ This proposal covers:
 - implementing rollback, update handling, or other later-delivery backend capabilities
 - reproducing SCCS internals in the frontend
 - turning the frontend into the place where identity or SQL logic is decided
+- persisting stable `sead_change_request` submission defaults in project metadata; treat that as a later change request once the first frontend workflow lands
 
 ## Proposed Design
 
@@ -105,6 +121,12 @@ On success, the UI should show the operator enough information to understand wha
 - a separate frontend branch adds UI scope, but the alternative is hiding important operator behavior in backend-only details
 - exposing too much low-level detail would make the UI noisy, so the frontend should summarize state rather than mirror the full internal planning model
 - if the backend response shape is not yet stable enough for these states, this CR may need a small backend API follow-up
+
+## Future Follow-Up
+
+A later change request should evaluate which stable `sead_change_request` submission defaults belong in project YAML rather than being entered for each run.
+
+That follow-up should likely persist project-scoped defaults under an ingester-specific metadata section rather than flattening workflow-specific fields into the generic project metadata editor.
 
 ## Validation And Acceptance Criteria
 

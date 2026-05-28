@@ -65,7 +65,13 @@ class IngesterService:
             raise ValueError(f"Ingester '{key}' not found")
 
         # Create configuration
-        config = IngesterService._create_config(request.config, key=key)
+        config_dict = request.config.copy()
+        if request.submission_context is not None:
+            config_dict["submission_context"] = request.submission_context
+        if request.deploy_strategy is not None:
+            config_dict["deploy_strategy"] = request.deploy_strategy
+
+        config = IngesterService._create_config(config_dict, key=key)
 
         # Instantiate and validate
         try:
@@ -119,6 +125,11 @@ class IngesterService:
                 "explode": request.explode,
             }
         )
+        if request.submission_context is not None:
+            config_dict["submission_context"] = request.submission_context
+        if request.deploy_strategy is not None:
+            config_dict["deploy_strategy"] = request.deploy_strategy
+
         config = IngesterService._create_config(config_dict, key=key)
 
         # Instantiate and ingest

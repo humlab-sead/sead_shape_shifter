@@ -70,7 +70,7 @@ tidy:
 	@uv run black src tests backend ingesters
 
 .PHONY: lint
-lint: tidy ruff pylint
+lint: tidy ruff pylint check-target-model-schema-reference
 
 .PHONY: check-imports
 check-imports:
@@ -89,6 +89,20 @@ generate-schemas:
 check-schemas:
 	@echo "Checking if JSON schemas are in sync with Pydantic models..."
 	@PYTHONPATH=.:backend uv run python scripts/generate_schemas.py --check
+
+################################################################################
+# Target-model schema reference generation
+################################################################################
+
+.PHONY: generate-target-model-schema-reference
+generate-target-model-schema-reference:
+	@echo "Generating target-model schema reference from Pydantic models..."
+	@uv run python scripts/generate_target_model_schema_reference.py
+
+.PHONY: check-target-model-schema-reference
+check-target-model-schema-reference:
+	@echo "Checking if target-model schema reference is in sync with Pydantic models..."
+	@uv run python scripts/generate_target_model_schema_reference.py --check
 
 ################################################################################
 # Target-model template generation
