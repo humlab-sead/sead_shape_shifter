@@ -10,9 +10,40 @@ export interface IngesterMetadata {
   supported_formats: string[]
 }
 
+export interface SubmissionContextInput {
+  submission_name: string
+  project_name: string
+  timestamp: string
+  datatype: string
+  identifier: string
+  description?: string | null
+  issue_number?: string | null
+  author?: string | null
+}
+
+export interface PendingConfirmationReport {
+  submission_name: string
+  project_name: string
+  binding_set_uuid?: string | null
+  binding_set_state?: string | null
+  blocked_entities: string[]
+  blocked_rows: number
+  outstanding_step: string
+  operator_action: string
+  rerun_instruction: string
+}
+
+export interface DeployArtifact {
+  metadata?: Record<string, any>
+  metadata_artifact?: Record<string, any>
+  bundle_files?: Record<string, string>
+}
+
 export interface ValidateRequest {
   source: string
   config?: Record<string, any>
+  submission_context?: SubmissionContextInput
+  deploy_strategy?: string
 }
 
 export interface ValidateResponse {
@@ -20,7 +51,7 @@ export interface ValidateResponse {
   errors: string[]
   warnings: string[]
   infos: string[]
-  pending_confirmation_report?: Record<string, any>
+  pending_confirmation_report?: PendingConfirmationReport
 }
 
 export interface IngestRequest {
@@ -31,6 +62,8 @@ export interface IngestRequest {
   output_folder?: string
   do_register?: boolean
   explode?: boolean
+  submission_context?: SubmissionContextInput
+  deploy_strategy?: string
 }
 
 export interface IngestResponse {
@@ -40,8 +73,8 @@ export interface IngestResponse {
   submission_id?: number
   output_path?: string
   error_details?: string
-  deploy_artifact?: Record<string, any>
-  pending_confirmation_report?: Record<string, any>
+  deploy_artifact?: DeployArtifact
+  pending_confirmation_report?: PendingConfirmationReport
 }
 
 export interface DatabaseConfig {
