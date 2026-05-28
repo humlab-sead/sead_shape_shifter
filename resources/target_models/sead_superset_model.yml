@@ -1,5 +1,6 @@
 model:
   name: SEAD Clearinghouse Extended
+  format_version: "1"
   version: 2.1.0
   description: SEAD archaeological research data model with enhanced spatial, dating, and metadata coverage
 
@@ -2166,6 +2167,57 @@ entities:
       - entity: ecocode_definition
         required: true
       - entity: taxa_tree_master
+        required: true
+
+  taxonomic_order_system:
+    role: lookup
+    required: false
+    description: Controlled system used to define taxonomic ordering codes.
+    domains: [taxonomy]
+    target_table: tbl_taxonomic_order_systems
+    public_id: taxonomic_order_system_id
+    identity_columns: [system_name]
+    columns:
+      system_name:
+        required: true
+        type: string
+        nullable: true
+      system_description:
+        type: string
+        nullable: true
+      taxonomic_order_system_uuid:
+        type: string
+        nullable: true
+    unique_sets:
+      - [system_name]
+
+  taxonomic_order:
+    role: fact
+    required: false
+    description: Taxonomic ordering code assigned to a taxon under a named order system.
+    aggregate_parent: taxa_tree_master
+    domains: [taxonomy]
+    target_table: tbl_taxonomic_order
+    public_id: taxonomic_order_id
+    identity_columns: [taxon_id, taxonomic_order_system_id, taxonomic_code]
+    columns:
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+      taxonomic_order_system_id:
+        required: true
+        type: integer
+        nullable: false
+      taxonomic_code:
+        type: decimal
+        nullable: true
+    unique_sets:
+      - [taxon_id, taxonomic_order_system_id, taxonomic_code]
+    foreign_keys:
+      - entity: taxa_tree_master
+        required: true
+      - entity: taxonomic_order_system
         required: true
 
   # PHASE 1 ADDITIONS - Dating Domain

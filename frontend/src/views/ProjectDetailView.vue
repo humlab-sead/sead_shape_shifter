@@ -662,7 +662,7 @@
           <v-window-item value="yaml">
             <!-- Sub-tab bar: only shown when project has a project-local target model file reference -->
             <v-tabs
-              v-if="typeof selectedProject?.metadata?.target_model === 'string'"
+              v-if="hasEditableTargetModelYaml"
               v-model="activeYamlSubTab"
               density="compact"
               class="mb-3"
@@ -726,7 +726,7 @@
 
               <!-- Target Model sub-tab (only mounted when project has a string target_model file reference) -->
               <v-window-item
-                v-if="typeof selectedProject?.metadata?.target_model === 'string'"
+                v-if="hasEditableTargetModelYaml"
                 value="target-model-yaml"
               >
                 <v-card variant="outlined">
@@ -1172,6 +1172,22 @@ const targetModelYamlSaving = ref(false)
 const targetModelYamlError = ref<string | null>(null)
 const targetModelYamlHasChanges = ref(false)
 const targetModelDocsDownloading = ref(false)
+
+function getProjectLocalTargetModelPath(targetModel: string | null | undefined): string | null {
+  if (!targetModel) {
+    return null
+  }
+
+  const rawPath = targetModel.startsWith('@include:') ? targetModel.slice('@include:'.length).trim() : targetModel.trim()
+  if (!rawPath) {
+    return null
+  }
+
+  return rawPath.includes('/') || rawPath.includes('\\') ? null : rawPath
+}
+
+const editableTargetModelPath = computed(() => getProjectLocalTargetModelPath(selectedProject.value?.metadata?.target_model ?? null))
+const hasEditableTargetModelYaml = computed(() => editableTargetModelPath.value !== null)
 
 // Computed
 const mergedValidationResult = computed(() => {
@@ -2553,6 +2569,12 @@ watch(activeTab, async (newTab) => {
 watch(activeYamlSubTab, async (newSubTab) => {
   if (newSubTab === 'target-model-yaml' && targetModelYamlContent.value === null) {
     await handleLoadTargetModelYaml()
+  }
+})
+
+watch(hasEditableTargetModelYaml, (isEditable) => {
+  if (!isEditable && activeYamlSubTab.value === 'target-model-yaml') {
+    activeYamlSubTab.value = 'project-yaml'
   }
 })
 

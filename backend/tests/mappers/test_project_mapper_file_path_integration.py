@@ -125,6 +125,65 @@ class TestProjectMapperFilePathIntegration:
             expected_path = str(mock_settings.global_data_dir / "global_data.csv")
             assert entity_options["filename"] == expected_path
 
+    def test_to_core_resolves_project_local_target_model_include(self, mock_settings: Settings) -> None:
+        """Test that to_core() resolves a project-local target model include to a dict."""
+        with patch("backend.app.mappers.project_mapper.settings", mock_settings):
+            project_dir = mock_settings.projects_root / "test_project"
+            project_file = project_dir / "shapeshifter.yml"
+            project_file.write_text("metadata:\n  name: test_project\nentities: {}\n", encoding="utf-8")
+            target_model_path = project_dir / "target-model.yml"
+            target_model_path.write_text(
+                "model:\n  name: Test Model\n  format_version: '1'\n  version: '1.0.0'\nentities: {}\n",
+                encoding="utf-8",
+            )
+
+            api_project = Project(
+                metadata=ProjectMetadata(
+                    name="test_project",
+                    file_path=str(project_file),
+                    type="shapeshifter-project",
+                    description="Test project",
+                    version="1.0.0",
+                    entity_count=0,
+                    target_model="@include: target-model.yml",
+                ),
+                entities={},
+                options={},
+            )
+
+            core_project = ProjectMapper.to_core(api_project)
+
+            assert isinstance(core_project.metadata.target_model, dict)
+            assert core_project.metadata.target_model["model"] == {
+                "name": "Test Model",
+                "format_version": "1",
+                "version": "1.0.0",
+            }
+            assert core_project.metadata.target_model["entities"] == {}
+
+    def test_to_core_raises_file_not_found_for_missing_target_model_include(self, mock_settings: Settings) -> None:
+        """Test that to_core() raises a clear FileNotFoundError for missing target model includes."""
+        with patch("backend.app.mappers.project_mapper.settings", mock_settings):
+            project_dir = mock_settings.projects_root / "test_project"
+            project_file = project_dir / "shapeshifter.yml"
+            project_file.write_text("metadata:\n  name: test_project\nentities: {}\n", encoding="utf-8")
+            api_project = Project(
+                metadata=ProjectMetadata(
+                    name="test_project",
+                    file_path=str(project_file),
+                    type="shapeshifter-project",
+                    description="Test project",
+                    version="1.0.0",
+                    entity_count=0,
+                    target_model="@include: missing-target-model.yml",
+                ),
+                entities={},
+                options={},
+            )
+
+            with pytest.raises(FileNotFoundError, match="missing-target-model.yml"):
+                ProjectMapper.to_core(api_project)
+
     def test_to_api_config_restores_location_for_global_file(self, mock_settings: Settings) -> None:
         """Test that to_api_config() decomposes absolute paths back to location + filename."""
         with patch("backend.app.mappers.project_mapper.settings", mock_settings):
