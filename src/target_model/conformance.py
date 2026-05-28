@@ -85,6 +85,36 @@ def has_target_facing_foreign_key_path(source_entity: str, target_entity: str, p
     return False
 
 
+def get_append_column_rename_map(parent_table_cfg: TableConfig, append_table_cfg: TableConfig) -> dict[str, str]:
+    """Return the static column rename map applied to an append branch, if any."""
+    column_mapping = append_table_cfg.entity_cfg.get("column_mapping")
+    if isinstance(column_mapping, dict):
+        return {src: tgt for src, tgt in column_mapping.items() if isinstance(src, str) and isinstance(tgt, str)}
+
+    if not append_table_cfg.entity_cfg.get("align_by_position", False):
+        return {}
+
+    parent_columns = [
+        column for column in parent_table_cfg.columns if column not in {parent_table_cfg.system_id, parent_table_cfg.public_id}
+    ]
+    source_columns = [
+        column
+        for column in append_table_cfg.columns
+        if column not in {append_table_cfg.system_id, append_table_cfg.public_id, append_table_cfg.get_source_public_id()}
+    ]
+
+    if len(parent_columns) != len(source_columns):
+        return {}
+
+    return dict(zip(source_columns, parent_columns))
+
+
+def get_effective_append_target_facing_columns(parent_table_cfg: TableConfig, append_table_cfg: TableConfig) -> set[str]:
+    """Return the append branch's target-facing columns after static append renaming is applied."""
+    rename_map = get_append_column_rename_map(parent_table_cfg, append_table_cfg)
+    return {rename_map.get(column, column) for column in append_table_cfg.get_target_facing_columns()}
+
+
 @CONFORMANCE_VALIDATORS.register(key="public_id")
 class PublicIdConformanceValidator(EntityConformanceValidator):
 
@@ -239,6 +269,41 @@ class NoOrphanFactsConformanceValidator(ConformanceValidator):
                     entity=entity_name,
                 )
             )
+
+        return issues
+
+
+@CONFORMANCE_VALIDATORS.register(key="schema_aware_append")
+class SchemaAwareAppendConformanceValidator(EntityConformanceValidator):
+    """Append branches must also satisfy the target-model column contract for their parent entity."""
+
+    def guard(self, target_model: TargetModel, project: ShapeShiftProject, entity_name) -> bool:
+        return project.has_table(entity_name) and project.get_table(entity_name).has_append
+
+    def validate_entity(self, entity_name: str, entity_spec: EntitySpec, table_cfg: TableConfig) -> list[ConformanceIssue]:
+        issues: list[ConformanceIssue] = []
+        parent_columns = set(table_cfg.get_target_facing_columns())
+        required_columns = {
+            column_name for column_name, column_spec in entity_spec.columns.items() if column_spec.required and column_name in parent_columns
+        }
+        if not required_columns:
+            return issues
+
+        for append_index, append_table_cfg in enumerate(list(table_cfg.get_sub_table_configs())[1:], start=1):
+            effective_columns = get_effective_append_target_facing_columns(table_cfg, append_table_cfg)
+            missing_columns = sorted(required_columns - effective_columns)
+
+            for column_name in missing_columns:
+                issues.append(
+                    ConformanceIssue(
+                        code="APPEND_MISSING_REQUIRED_COLUMN",
+                        field=f"append[{append_index - 1}]",
+                        message=(
+                            f"Entity '{entity_name}' append item #{append_index} does not provide required target column '{column_name}'"
+                        ),
+                        entity=entity_name,
+                    )
+                )
 
         return issues
 
