@@ -128,6 +128,54 @@ class TypeCompatibilityConformanceValidator:
         return issues
 
 
+class AllowedValuesConformanceValidator:
+    """Columns with allowed_values must only contain values declared by the target model."""
+
+    @staticmethod
+    def validate(df: pd.DataFrame, entity_spec: EntitySpec, entity_name: str) -> list[ValidationIssue]:
+        """Check that produced values stay within the declared allowed_values set.
+
+        Columns absent from the DataFrame are skipped because structural conformance covers them.
+        Null values are ignored here and remain the responsibility of nullability checks.
+        """
+        if df.empty:
+            return []
+
+        issues: list[ValidationIssue] = []
+        for col_name, col_spec in entity_spec.columns.items():
+            if not col_spec.allowed_values or col_name not in df.columns:
+                continue
+
+            non_null_values = df[col_name].dropna()
+            if non_null_values.empty:
+                continue
+
+            invalid_values = sorted({value for value in non_null_values.unique().tolist() if value not in col_spec.allowed_values}, key=str)
+            if not invalid_values:
+                continue
+
+            sample = ", ".join(str(value) for value in invalid_values[:5])
+            issues.append(
+                ValidationIssue(
+                    severity="error",
+                    entity=entity_name,
+                    field=col_name,
+                    message=(
+                        f"Column '{col_name}' in entity '{entity_name}' contains values outside the declared allowed_values set"
+                    ),
+                    code="VALUE_NOT_IN_ALLOWED_SET",
+                    suggestion=(
+                        f"Update the mapping or target model so '{col_name}' only contains allowed values. Sample unexpected values: {sample}"
+                    ),
+                    category="conformance",
+                    priority="high",
+                    auto_fixable=False,
+                )
+            )
+
+        return issues
+
+
 class FKReferentialIntegrityConformanceValidator:
     """FK values in produced data must exist in the parent entity's output.
 

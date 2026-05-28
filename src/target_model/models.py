@@ -18,6 +18,7 @@ class ColumnSpec(BaseModel):
 
     required: bool = False
     generated: bool = False
+    allowed_values: list[str | int | float | bool] = Field(default_factory=list)
     type: str | None = None
     nullable: bool | None = None
     description: str | None = None

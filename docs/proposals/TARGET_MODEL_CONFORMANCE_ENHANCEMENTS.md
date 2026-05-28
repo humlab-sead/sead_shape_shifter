@@ -27,7 +27,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 ### Format Extensions
 - [x] `format_version` field in `model:` block
 - [x] `generated: true` flag on `ColumnSpec` (required generated columns are advisory and do not trigger missing-column conformance errors)
-- [ ] `allowed_values` / `type: enum` on `ColumnSpec`
+- [x] `allowed_values` / `type: enum` on `ColumnSpec`
 - [x] Richer FK semantics — bridge entity support via `via` attribute in FK spec
 - [ ] Advanced FK validation modes — `direct`, `transitive`, explicit path constraints
 ~~- [ ] Entity spec inheritance (`extends:`) — defer until 5+ target models exist~~
@@ -475,7 +475,7 @@ The `ColumnSpec.type` field uses logical types (`integer`, `string`, `boolean`, 
 
 ### Deferred
 
-- `allowed_values` / enum value checks — depends on `allowed_values` field in `ColumnSpec` (not yet in format)
+- `allowed_values` / enum value checks — implemented in the data-validation layer for columns that declare `type: enum` and `allowed_values`
 - Row-count constraints — out of scope (the format deliberately does not express cardinality requirements)
 
 ---
@@ -544,9 +544,7 @@ The current FK spec (`entity`, `required`, `columns`) does not express join-colu
 
 ### Allowed Values / Enum Support
 
-Add `allowed_values` or `type: enum` to `ColumnSpec` for validating classifier content without running the pipeline.
-
-**Prerequisite:** Align with any value-level validation design (see value-level checks above).
+**Implemented:** `ColumnSpec` now supports `allowed_values` and `type: enum`. `TargetModelSpecValidator` enforces that `allowed_values` is paired with `type: enum`, and the data-validation pipeline emits `VALUE_NOT_IN_ALLOWED_SET` when produced values fall outside the declared set.
 
 ### Database Defaults and Generated Values
 
