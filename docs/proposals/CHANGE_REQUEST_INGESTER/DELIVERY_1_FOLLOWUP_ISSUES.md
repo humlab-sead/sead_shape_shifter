@@ -11,7 +11,7 @@ Current status snapshot:
 - Issue 3: implemented on current branch
 - Issue 4: resolved by decision on current branch
 - Issue 5: resolved on current branch
-- Issue 6: open
+- Issue 6: resolved on current branch
 - Issue 7: implemented on current branch
 
 Each issue body follows the repository's preferred `Problem`, `Solution`, and `Files` structure.
@@ -177,7 +177,7 @@ Title:
 
 Detailed proposal home:
 
-- [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 Summary:
 
@@ -191,7 +191,7 @@ That document now records:
 
 Files:
 
-- `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
+- `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md`
 - `resources/target_models/sead_superset_model.yml`
 
@@ -199,7 +199,7 @@ Files:
 
 Status:
 
-`Open`
+`Resolved on current branch`
 
 Title:
 
@@ -207,27 +207,27 @@ Title:
 
 Detailed proposal home:
 
-- [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 Summary:
 
-Issue 6 should now be worked from the same target-model completeness proposal rather than from this change-request issue draft.
+Issue 6 is now resolved through the same target-model completeness proposal rather than through this change-request issue draft.
 
 That document now includes:
 
 - an explicit target-model versus `SeadSchema` comparison
 - a recommendation to keep the target model as the current metadata boundary for `sead_change_request`
-- issue-specific acceptance criteria for closing the comparison work cleanly
+- issue-specific acceptance criteria that are now satisfied on the current branch
 
 Issue status note:
 
-- the detailed analysis is now in `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
-- GitHub issue `#442` remains open until that comparison work is explicitly accepted and closed
+- the detailed analysis is now in `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
+- the comparison and recommendation are complete on the current branch; GitHub issue `#442` can be closed if it is still open
 
 Files:
 
 - `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md`
-- `docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
+- `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
 - `ingesters/sead/metadata.py`
 
 ## Issue 7 [fix(sead_change_request): render date-only copy_csv values as YYYY-MM-DD](https://github.com/humlab-sead/sead_shape_shifter/issues/446)
