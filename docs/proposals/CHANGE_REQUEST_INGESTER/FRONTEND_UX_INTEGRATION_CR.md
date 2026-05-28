@@ -2,15 +2,15 @@
 
 ## Status
 
-- Implemented in the `dev` working tree and awaiting commit/review
+- Implemented in this PR
 - Scope: frontend workflow integration for `sead_change_request`
 - Goal: give operators a usable frontend flow for the user interaction that this ingester requires
 
 ## Current Delivery Status
 
-The current uncommitted `dev` branch work covers the main frontend workflow in this change request.
+The implementation in this PR covers the main frontend workflow in this change request.
 
-Implemented in the current working tree:
+Implemented in this PR:
 
 - explicit `sead_change_request` workflow selection and operator-facing workflow copy
 - focused submission-context form inputs and deploy-strategy selection

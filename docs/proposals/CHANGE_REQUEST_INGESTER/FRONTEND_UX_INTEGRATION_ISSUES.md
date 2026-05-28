@@ -8,7 +8,7 @@ Each issue body follows the repository's preferred `Problem`, `Solution`, and `F
 
 Status:
 
-`Implemented in dev (uncommitted)`
+`Implemented in PR #456`
 
 Title:
 
@@ -36,7 +36,7 @@ Files:
 
 Status:
 
-`Implemented in dev (uncommitted)`
+`Implemented in PR #456`
 
 Title:
 
@@ -64,7 +64,7 @@ Files:
 
 Status:
 
-`Implemented in dev (uncommitted)`
+`Implemented in PR #456`
 
 Title:
 
@@ -92,7 +92,7 @@ Files:
 
 Status:
 
-`Implemented in dev (uncommitted)`
+`Implemented in PR #456`
 
 Title:
 
