@@ -212,6 +212,27 @@ class TestTargetModelValidatorErrorPaths:
         assert errors[0].severity == "warning"
         assert errors[0].field == "options.validation.disabled_rules"
 
+    def test_orphan_fact_constraint_returns_error(self):
+        """Declared orphan-fact constraints should surface as conformance errors through the adapter."""
+        project = _make_project(
+            {
+                "analysis_entity": {"public_id": "analysis_entity_id", "columns": ["analysis_name"]},
+                "dataset": {"public_id": "dataset_id", "columns": ["dataset_name"]},
+            }
+        )
+        target_model_data = {
+            "model": {"name": "Test Model", "version": "1.0.0"},
+            "constraints": [{"type": "no_orphan_facts"}],
+            "entities": {
+                "dataset": {"role": "lookup", "required": True, "public_id": "dataset_id"},
+                "analysis_entity": {"role": "fact", "required": True, "public_id": "analysis_entity_id"},
+            },
+        }
+
+        errors = TargetModelValidator().validate(target_model_data, project)
+
+        assert any(error.code == "ORPHAN_FACT_ENTITY" for error in errors)
+
 
 # ---------------------------------------------------------------------------
 # ValidationError shape produced by the adapter
