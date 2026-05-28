@@ -2,7 +2,7 @@
 
 ## Status
 
-**Active — backlog.** Core conformance engine (Milestones 1–3) is complete. This proposal tracks the remaining deferred and future work gathered from five now-archived source documents.
+**Closed — implemented or deferred.** The delivered conformance and format work in this proposal is complete. Remaining heuristic follow-up is now tracked in GitHub issue #457, and ecosystem-dependent work lives in future proposals.
 
 ## Implementation Checklist
 
@@ -42,14 +42,15 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 ### Infrastructure
 - [x] Rule disabling via `options.validation.disabled_rules`
 - [x] `GlobalConformanceValidator` base type for multi-entity checks
-- [ ] `TargetModelService` — extract loading/caching when remote refs become real
 - [x] Target model YAML editor tab — raw YAML edit tab for the project's **project-local** target model file alongside the project YAML tab
 - [x] Monaco editor schema support for target model YAML files — autocomplete and IntelliSense using `targetModelSchema.json`
+
+Deferred target-model loading and caching extraction has been moved to [docs/proposals/future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md](../future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md).
 
 ### Tooling / Ecosystem
 - [x] Target model documentation downloads — Project-aware HTML/Markdown/Excel documentation accessible from UX
 
-Speculative tooling and ecosystem follow-up items have been moved to [docs/proposals/future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md](future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md).
+Speculative tooling and ecosystem follow-up items have been moved to [docs/proposals/future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md](../future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md).
 
 ### SEAD spec coverage (`resources/target_models/sead_superset_model.yml`)
 - [x] Abundance chain — `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `modification_type`, `abundance_property`
@@ -59,7 +60,7 @@ Speculative tooling and ecosystem follow-up items have been moved to [docs/propo
 - [x] Analysis-value family and shared lookups — `analysis_value`, `analysis_note`, `analysis_identifier`, typed analysis value entities, `property_type`, `value_class`, `value_type`, `value_type_item`, `value_qualifier`, `value_qualifier_symbol`
 - [x] Property and lookup follow-up coverage — `site_property`, `feature_property`, `site_natgridref`, `coordinate_system`, `colour`, `sample_colour`, `project_type`, `project_stage`, `taxa_synonyms`, `taxa_measured_attributes`, `rdb`, `rdb_code`, `rdb_system`
 - [x] Taxonomy — `taxa_tree_master`, `taxa_common_names`, `taxa_synonyms`, `taxa_measured_attributes`, `ecocode_system`, `ecocode_group`, `ecocode_definition`, `ecocode`, `taxonomic_order_system`, `taxonomic_order`, `rdb`, `rdb_code`, and `rdb_system`
-~~- [ ] Data-type-specific tables (ceramics, dendrochronology, insects)~~ — legacy or specialized method-specific tables are not part of the current shared `sead_superset_model.yml` boundary; see [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+~~- [ ] Data-type-specific tables (ceramics, dendrochronology, insects)~~ — legacy or specialized method-specific tables are not part of the current shared `sead_superset_model.yml` boundary; see [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 ---
 
@@ -156,7 +157,7 @@ site_location:
 
 Many-to-many relationships are common in relational models. The `via` attribute makes bridge patterns explicit in the target model specification, enabling validators to understand transitive FK relationships without requiring deep graph traversal. This documents intent and prevents false positives when the direct FK relationship doesn't exist.
 
-Advanced FK validation modes are no longer part of this active CR. The deferred design work now lives in [docs/proposals/future/ADVANCED_FK_VALIDATION_MODES.md](future/ADVANCED_FK_VALIDATION_MODES.md).
+Advanced FK validation modes are no longer part of this closed proposal. The deferred design work now lives in [docs/proposals/future/ADVANCED_FK_VALIDATION_MODES.md](../future/ADVANCED_FK_VALIDATION_MODES.md).
 
 ---
 
@@ -432,7 +433,7 @@ A project may satisfy a required FK transitively through an intermediate entity 
 
 **Status:** Implemented. `ForeignKeyConformanceValidator` now walks the project's target-facing FK graph before emitting `MISSING_REQUIRED_FOREIGN_KEY_TARGET`, which removes direct-only false positives such as `sample → sample_group → site`.
 
-**Current limitation:** This is path detection only. Format-level FK modes such as `direct`, `transitive`, and explicit `path` constraints have been moved to [docs/proposals/future/ADVANCED_FK_VALIDATION_MODES.md](future/ADVANCED_FK_VALIDATION_MODES.md).
+**Current limitation:** This is path detection only. Format-level FK modes such as `direct`, `transitive`, and explicit `path` constraints have been moved to [docs/proposals/future/ADVANCED_FK_VALIDATION_MODES.md](../future/ADVANCED_FK_VALIDATION_MODES.md).
 
 ### Value-Level Checks
 
@@ -542,17 +543,7 @@ These test areas were identified in the implementation sketch but not yet covere
 
 ## Open Technical Questions
 
-### 1. Target Model Loading Location
-
-Should `ValidationService` load and parse the target model directly, or should there be a dedicated `TargetModelLoader` service?
-
-**Current behaviour:** `ValidationService.validate_target_model()` extracts the resolved `target_model` dict from the mapped core project and passes it to `TargetModelConformanceValidator`.
-
-**Question:** As target model loading gains complexity (caching, remote refs, registry lookups), should this be extracted to a `TargetModelService`?
-
-**Recommendation:** Extract to `TargetModelService` when remote references or caching become real requirements. For now, keep it in `ValidationService`.
-
-### 2. Validation Code Naming
+### 1. Validation Code Naming
 
 Should conformance issue codes be prefixed with `TARGET_` (e.g., `TARGET_MISSING_REQUIRED_ENTITY`, `TARGET_PUBLIC_ID_NAMING_VIOLATION`)?
 
@@ -560,7 +551,7 @@ Should conformance issue codes be prefixed with `TARGET_` (e.g., `TARGET_MISSING
 
 **Recommendation:** Add prefix when expanding to Phase 4. It makes log messages and issue exports unambiguous.
 
-### 3. Rule Disabling
+### 2. Rule Disabling
 
 Should projects be able to suppress specific conformance rules?
 
@@ -574,7 +565,7 @@ Should projects be able to suppress specific conformance rules?
 
 ## Future Enhancements
 
-Speculative target-model tooling and ecosystem work has been moved to [docs/proposals/future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md](future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md).
+Speculative target-model tooling and ecosystem work has been moved to [docs/proposals/future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md](../future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md).
 
 ### Target Model Documentation Downloads
 

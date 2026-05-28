@@ -127,8 +127,8 @@ Current proposals:
 - **[proposals/QUERY_FILTER_ENGINE_SELECTION.md](proposals/QUERY_FILTER_ENGINE_SELECTION.md)**
   - Proposes adding an explicit `engine` field to `type: query` filters for advanced pandas query behavior.
 
-- **[proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)**
-  - Tracks the remaining deferred target-model conformance work after the completed core milestones.
+- **[proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)**
+  - Records the completed conformance backlog rollout and the deferred follow-up that moved out of the active proposal set.
 
 - **[proposals/CHANGE_REQUEST_INGESTER/](proposals/CHANGE_REQUEST_INGESTER/)**
   - Groups the active change-request ingester design and follow-up proposal documents.

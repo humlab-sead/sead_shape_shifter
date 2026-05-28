@@ -583,9 +583,9 @@ Exit criteria:
 
 ## Future Phase: Deferred Issues
 
-Milestones 1–3 are complete. All deferred format issues, validation issues, and SEAD coverage issues have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](../../docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Milestones 1–3 are complete. The consolidated follow-through record lives in [docs/proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](../../docs/proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Near-Term Order
 
-Milestones 1–3 are complete. For remaining backlog and suggested resumption order, see [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](../../docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Milestones 1–3 are complete. For the closed consolidation record and deferred follow-up notes, see [docs/proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](../../docs/proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 8. Revisit backend integration only after the standalone validator and expanded standalone coverage have stabilized.

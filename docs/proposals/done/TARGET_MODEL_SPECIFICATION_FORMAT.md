@@ -552,7 +552,7 @@ Rejected because it defeats reusability. The whole point is that target model re
 
 ## Open Questions
 
-Deferred format open questions (schema-qualified target_table names, entity spec inheritance, format_version field, richer FK semantics, database defaults, relationship to ENTITY_SEMANTIC_ROLES) have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Deferred format open questions (schema-qualified target_table names, entity spec inheritance, format_version field, richer FK semantics, database defaults, relationship to ENTITY_SEMANTIC_ROLES) are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Final Recommendation
 
