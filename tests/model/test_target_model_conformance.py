@@ -905,11 +905,29 @@ def test_no_orphan_facts_emits_issue_for_fact_without_required_lookup_path() -> 
     )
     project: ShapeShiftProject = _minimal_project({"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}})
 
-    codes_entities: set[tuple[str, str | None]] = set(
-        (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
-    )
+    issues = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert ("ORPHAN_FACT_ENTITY", "analysis_entity") in codes_entities
+    assert any(issue.code == "ORPHAN_FACT_ENTITY" and issue.entity == "analysis_entity" for issue in issues)
+    assert next(issue for issue in issues if issue.code == "ORPHAN_FACT_ENTITY").severity == "warning"
+
+
+def test_no_orphan_facts_uses_error_severity_when_constraint_is_strict() -> None:
+    """Strict orphan-fact constraints should be promoted from warning to error."""
+    target_model: TargetModel = TargetModel.model_validate(
+        {
+            "model": {"name": "test", "version": "1.0"},
+            "constraints": [{"type": "no_orphan_facts", "required": "strict"}],
+            "entities": {
+                "dataset": {"role": "lookup", "required": True},
+                "analysis_entity": {"role": "fact", "required": True},
+            },
+        }
+    )
+    project: ShapeShiftProject = _minimal_project({"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}})
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert any(issue.code == "ORPHAN_FACT_ENTITY" and issue.severity == "error" for issue in issues)
 
 
 def test_no_orphan_facts_accepts_transitive_required_lookup_path() -> None:
@@ -944,3 +962,48 @@ def test_no_orphan_facts_accepts_transitive_required_lookup_path() -> None:
     codes: list[str] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "ORPHAN_FACT_ENTITY" not in codes
+
+
+def test_source_type_appropriateness_emits_warning_by_default() -> None:
+    """Classifier source-type mismatches should stay advisory unless overridden."""
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "taxon": {
+                "role": "classifier",
+                "required": True,
+            }
+        }
+    )
+    project: ShapeShiftProject = _minimal_project({"taxon": {"type": "entity", "columns": ["taxon_name"]}})
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert any(issue.code == "CLASSIFIER_WRONG_SOURCE_TYPE" and issue.severity == "warning" for issue in issues)
+
+
+def test_rule_severity_override_promotes_phase_four_rule_to_error() -> None:
+    """Project severity overrides should replace the default severity for a conformance rule."""
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "taxon": {
+                "role": "classifier",
+                "required": True,
+            }
+        }
+    )
+    project: ShapeShiftProject = ShapeShiftProject(
+        cfg={
+            "metadata": {"name": "severity-override-example", "type": "shapeshifter-project"},
+            "entities": {
+                "taxon": {
+                    "type": "entity",
+                    "columns": ["taxon_name"],
+                }
+            },
+            "options": {"validation": {"severity_overrides": {"source_type_appropriateness": "error"}}},
+        }
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert any(issue.code == "CLASSIFIER_WRONG_SOURCE_TYPE" and issue.severity == "error" for issue in issues)

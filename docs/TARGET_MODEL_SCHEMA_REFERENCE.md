@@ -45,6 +45,7 @@ Unknown keys in these sections are rejected because each model uses `extra="forb
 - `constraints`: list[GlobalConstraint] (optional)
 - `constraints[]`: GlobalConstraint (list item)
 - `constraints[].type`: string (required)
+- `constraints[].required`: boolean | string | null (optional)
 
 ## TargetModel
 
@@ -138,5 +139,6 @@ Entries under the optional `constraints[]` list.
 | Field | Type | Required | Default | Allowed |
 |---|---|---|---|---|
 | type | string | Yes | - | - |
+| required | boolean \| string \| null | No | null | null |
 
 Additional keys allowed: No
