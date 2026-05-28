@@ -59,6 +59,32 @@ class EntityConformanceValidator(ConformanceValidator):
         return issues
 
 
+def has_target_facing_foreign_key_path(source_entity: str, target_entity: str, project: ShapeShiftProject) -> bool:
+    """Return whether the project's target-facing FK graph reaches the target entity from the source entity."""
+    if source_entity == target_entity:
+        return True
+    if not project.has_table(source_entity) or not project.has_table(target_entity):
+        return False
+
+    visited: set[str] = {source_entity}
+    queue: list[str] = sorted(project.get_table(source_entity).get_target_facing_foreign_key_targets())
+
+    while queue:
+        current_entity = queue.pop(0)
+        if current_entity in visited:
+            continue
+        if current_entity == target_entity:
+            return True
+        visited.add(current_entity)
+
+        if not project.has_table(current_entity):
+            continue
+
+        queue.extend(sorted(project.get_table(current_entity).get_target_facing_foreign_key_targets() - visited))
+
+    return False
+
+
 @CONFORMANCE_VALIDATORS.register(key="public_id")
 class PublicIdConformanceValidator(EntityConformanceValidator):
 
@@ -111,33 +137,6 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
         # for full bridge-aware logic. Keep this simple for backward compatibility.
         return []
 
-    def has_foreign_key_path(self, source_entity: str, target_entity: str, project: ShapeShiftProject) -> bool:
-        """Return whether the project FK graph reaches the target entity from the source entity."""
-        if source_entity == target_entity:
-            return True
-        if not project.has_table(source_entity) or not project.has_table(target_entity):
-            return False
-
-        visited: set[str] = {source_entity}
-        queue: list[str] = sorted(project.get_table(source_entity).get_target_facing_foreign_key_targets())
-
-        while queue:
-            current_entity = queue.pop(0)
-            if current_entity in visited:
-                continue
-            if current_entity == target_entity:
-                return True
-            visited.add(current_entity)
-
-            if not project.has_table(current_entity):
-                continue
-
-            queue.extend(
-                sorted(project.get_table(current_entity).get_target_facing_foreign_key_targets() - visited)
-            )
-
-        return False
-
     def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
         """Validate FK targets with bridge entity support (requires project access)."""
         issues: list[ConformanceIssue] = []
@@ -155,7 +154,7 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
 
                 # Direct FK target (no bridge)
                 if not foreign_key.via:
-                    if foreign_key.entity not in project_targets and not self.has_foreign_key_path(entity_name, foreign_key.entity, project):
+                    if foreign_key.entity not in project_targets and not has_target_facing_foreign_key_path(entity_name, foreign_key.entity, project):
                         issues.append(
                             ConformanceIssue(
                                 code="MISSING_REQUIRED_FOREIGN_KEY_TARGET",
@@ -199,6 +198,47 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
                             entity=bridge_name,
                         )
                     )
+
+        return issues
+
+
+@CONFORMANCE_VALIDATORS.register(key="no_orphan_facts")
+class NoOrphanFactsConformanceValidator(ConformanceValidator):
+    """Fact entities must reach at least one required lookup or classifier when the constraint is declared."""
+
+    PARENT_ROLES: frozenset[str] = frozenset({"lookup", "classifier"})
+
+    def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+        constraint_types = {constraint.type for constraint in target_model.constraints}
+        if "no_orphan_facts" not in constraint_types:
+            return []
+
+        parent_entities = {
+            entity_name
+            for entity_name, entity_spec in target_model.entities.items()
+            if entity_spec.role in self.PARENT_ROLES
+        }
+        if not parent_entities:
+            return []
+
+        issues: list[ConformanceIssue] = []
+        for entity_name, entity_spec in target_model.entities.items():
+            if entity_spec.role != "fact" or not project.has_table(entity_name):
+                continue
+
+            if any(has_target_facing_foreign_key_path(entity_name, parent_entity, project) for parent_entity in parent_entities):
+                continue
+
+            issues.append(
+                ConformanceIssue(
+                    code="ORPHAN_FACT_ENTITY",
+                    message=(
+                        f"Fact entity '{entity_name}' does not reach any lookup or classifier entity "
+                        f"declared by the target model ({', '.join(sorted(parent_entities))})"
+                    ),
+                    entity=entity_name,
+                )
+            )
 
         return issues
 

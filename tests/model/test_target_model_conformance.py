@@ -432,6 +432,7 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
     assert sorted(issue_pairs(target_model, project)) == sorted(
         [
             ("MISSING_INDUCED_REQUIRED_ENTITY", "taxa_tree_master"),
+            ("ORPHAN_FACT_ENTITY", "abundance_property"),
             ("MISSING_REQUIRED_COLUMN", "abundance_ident_level"),
             ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
@@ -472,7 +473,12 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
             }
         ),
         "arbodat_full": Counter(
-            {"MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3, "MISSING_REQUIRED_COLUMN": 2, "MISSING_INDUCED_REQUIRED_ENTITY": 1}
+            {
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
+                "MISSING_REQUIRED_COLUMN": 2,
+                "MISSING_INDUCED_REQUIRED_ENTITY": 1,
+                "ORPHAN_FACT_ENTITY": 1,
+            }
         ),
     }
 
@@ -731,3 +737,73 @@ def test_induced_requirement_transitive_stops_at_present_intermediate() -> None:
 
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon_group") in codes_entities
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon") not in codes_entities  # taxon is present
+
+
+def test_no_orphan_facts_is_silent_when_constraint_is_not_declared() -> None:
+    """The orphan-fact rule should only run when the target model declares that global constraint."""
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "dataset": {"role": "lookup", "required": True},
+            "analysis_entity": {"role": "fact", "required": True},
+        }
+    )
+    project: ShapeShiftProject = _minimal_project({"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}})
+
+    codes: list[str] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "ORPHAN_FACT_ENTITY" not in codes
+
+
+def test_no_orphan_facts_emits_issue_for_fact_without_required_lookup_path() -> None:
+    """A fact with no path to any required lookup or classifier should be reported when the constraint is enabled."""
+    target_model: TargetModel = TargetModel.model_validate(
+        {
+            "model": {"name": "test", "version": "1.0"},
+            "constraints": [{"type": "no_orphan_facts"}],
+            "entities": {
+                "dataset": {"role": "lookup", "required": True},
+                "analysis_entity": {"role": "fact", "required": True},
+            },
+        }
+    )
+    project: ShapeShiftProject = _minimal_project({"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}})
+
+    codes_entities: set[tuple[str, str | None]] = set(
+        (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
+    )
+
+    assert ("ORPHAN_FACT_ENTITY", "analysis_entity") in codes_entities
+
+
+def test_no_orphan_facts_accepts_transitive_required_lookup_path() -> None:
+    """A fact linked transitively to a required lookup should satisfy the orphan-fact rule."""
+    target_model: TargetModel = TargetModel.model_validate(
+        {
+            "model": {"name": "test", "version": "1.0"},
+            "constraints": [{"type": "no_orphan_facts"}],
+            "entities": {
+                "site": {"role": "lookup", "required": True},
+                "sample_group": {"role": "bridge", "required": True},
+                "sample": {"role": "fact", "required": True},
+            },
+        }
+    )
+    project: ShapeShiftProject = _minimal_project(
+        {
+            "site": {"public_id": "site_id", "columns": ["site_name"]},
+            "sample_group": {
+                "public_id": "sample_group_id",
+                "columns": ["sample_group_name"],
+                "foreign_keys": [{"entity": "site", "local_keys": ["site_id"], "remote_keys": ["site_id"]}],
+            },
+            "sample": {
+                "public_id": "sample_id",
+                "columns": ["sample_name"],
+                "foreign_keys": [{"entity": "sample_group", "local_keys": ["sample_group_id"], "remote_keys": ["sample_group_id"]}],
+            },
+        }
+    )
+
+    codes: list[str] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "ORPHAN_FACT_ENTITY" not in codes
