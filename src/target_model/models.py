@@ -17,6 +17,7 @@ class ColumnSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     required: bool = False
+    generated: bool = False
     type: str | None = None
     nullable: bool | None = None
     description: str | None = None

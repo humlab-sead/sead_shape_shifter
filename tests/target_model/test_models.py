@@ -41,7 +41,7 @@ def test_target_model_parses_richer_entity_payload() -> None:
                     "identity_columns": ["location_type_id", "location_name"],
                     "columns": {
                         "location_name": {"required": True, "type": "string", "nullable": False},
-                        "location_type_id": {"required": True, "type": "integer", "nullable": False},
+                        "location_type_id": {"required": True, "generated": True, "type": "integer", "nullable": False},
                     },
                     "unique_sets": [["location_type_id", "location_name"]],
                     "foreign_keys": [{"entity": "location_type", "required": True}],
@@ -61,6 +61,7 @@ def test_target_model_parses_richer_entity_payload() -> None:
     assert location.identity_columns == ["location_type_id", "location_name"]
     assert list(location.columns) == ["location_name", "location_type_id"]
     assert location.columns["location_name"].required is True
+    assert location.columns["location_type_id"].generated is True
     assert location.unique_sets == [["location_type_id", "location_name"]]
 
 
