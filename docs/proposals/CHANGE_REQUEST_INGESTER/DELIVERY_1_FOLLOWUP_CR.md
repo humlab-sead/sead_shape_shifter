@@ -2,7 +2,7 @@
 
 ## Status
 
-- Proposed change request
+- Resolved follow-up change request on current branch
 - Scope: Post-Delivery-1 hardening and extensibility for `sead_change_request`
 - Goal: Harden the current deploy-strategy baseline and review the SEAD metadata source-of-truth strategy
 - Current branch status: deploy rendering is already split behind a strategy boundary
@@ -21,15 +21,15 @@ Most of the original follow-up work is now complete on the current branch:
 
 - `copy_csv` hardening is implemented
 - Jinja2 is explicitly deferred for now
-- the SEAD v2 target-model review is documented in [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+- the SEAD v2 target-model review is documented in [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
-The remaining open follow-up work is narrower:
+The final metadata-review follow-up is now complete:
 
-- keep [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the detailed home for the target-model versus `SeadSchema` comparison tracked by Issue 6
+- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for the target-model versus `SeadSchema` comparison tracked by Issue 6
 
 These are follow-up improvements. They should not reopen Delivery 1 identity, confirmation, materialization, or collision-check behavior.
 
-Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](./FRONTEND_UX_INTEGRATION_CR.md). This CR now mainly serves as a historical record of the completed deploy-artifact follow-up work and keeps the remaining metadata-review follow-up in one place.
+Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](./FRONTEND_UX_INTEGRATION_CR.md). This CR now serves as a historical record of the completed deploy-artifact and metadata-review follow-up work.
 
 ## Problem
 
@@ -37,7 +37,7 @@ The current Delivery 1 output path is intentionally narrow. It emits deploy SQL 
 
 That was enough to close Delivery 1, and the deploy-artifact follow-up work on this branch is now largely complete.
 
-The remaining open problem is the metadata source of truth. Delivery 1 uses the SEAD v2 target model, but the tradeoffs versus the older live-schema approach based on `SeadSchema` in [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py) still need a final accepted comparison in [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
+The metadata source-of-truth review is now complete. Delivery 1 uses the SEAD v2 target model, and the accepted comparison with the older live-schema approach based on `SeadSchema` in [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py) now lives in [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
 
 The completed `copy_csv` hardening and Jinja2 deferral work remains in this CR as historical context and issue history, not as the current open implementation scope.
 
@@ -46,7 +46,7 @@ The completed `copy_csv` hardening and Jinja2 deferral work remains in this CR a
 This follow-up CR now covers:
 
 - keeping the completed deploy-artifact follow-up work recorded in one place for history and issue traceability
-- using [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the detailed home for the remaining open metadata-boundary comparison
+- using [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the accepted detailed home for the metadata-boundary comparison
 
 ## Non-Goals
 
@@ -127,7 +127,7 @@ If the question is reopened later, Jinja2 should still be limited to formatting 
 
 ### 3. Use the target-model completeness proposal as the detailed metadata review surface
 
-The detailed home for the remaining metadata review work is now [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
+The detailed home for the metadata review work is now [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
 
 That proposal now carries both parts of the remaining metadata work:
 
@@ -136,7 +136,7 @@ That proposal now carries both parts of the remaining metadata work:
 
 This follow-up CR should stay high level.
 
-It only needs to make the dependency clear: further output-format work should not harden the wrong metadata boundary before that proposal is accepted.
+It only needs to make the dependency clear: further output-format work should not harden the wrong metadata boundary without revisiting the accepted recommendation in that proposal.
 
 ## Risks And Tradeoffs
 
@@ -154,7 +154,7 @@ Validation completed on the current branch includes:
 - focused hardening tests that prove conformance to [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md](./closed_delivery_1/DELIVERY_1_HARDENING.md)
 - comparison of the hardened `copy_csv` output shape with the historical example in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](./example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql), with any intentional differences documented explicitly
 
-Remaining validation for open work is review and acceptance of [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the detailed home for the `SeadSchema` comparison.
+The metadata review validation is now complete: [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for the `SeadSchema` comparison.
 
 ## Acceptance Criteria
 
@@ -163,11 +163,11 @@ Remaining validation for open work is review and acceptance of [docs/proposals/S
 - the `copy_csv` artifact contract is hardened enough for operator review and stable test coverage
 - the `copy_csv` artifact contract conforms to [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md](./closed_delivery_1/DELIVERY_1_HARDENING.md)
 - the Jinja2 decision is documented as deferred with reasons
-- [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for both the completeness review and the `SeadSchema` comparison
+- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for both the completeness review and the `SeadSchema` comparison
 
 ## Recommended Delivery Order
 
-1. Finish the remaining metadata review through [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
+No remaining delivery steps stay in scope for this CR.
 
 ## Suggested Issue Breakdown
 
@@ -245,7 +245,7 @@ Status: resolved on current branch
 
 Detailed proposal home:
 
-- [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 Exit criteria:
 
@@ -254,11 +254,11 @@ Exit criteria:
 
 ### Issue 6. Compare Target Model With `SeadSchema`
 
-Status: open
+Status: resolved on current branch
 
 Detailed proposal home:
 
-- [docs/proposals/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 Exit criteria:
 
@@ -267,9 +267,9 @@ Exit criteria:
 
 ## Final Recommendation
 
-Close Delivery 1 on the current working implementation and treat this document as mostly historical record plus one remaining open follow-up thread.
+Keep Delivery 1 closed on the current working implementation and treat this document as historical record of the completed follow-up work.
 
-Do not reopen `copy_csv` hardening or the Jinja2 decision in this CR. Keep the target-model completeness proposal as the active place for the remaining target-model versus `SeadSchema` comparison, and close this follow-up CR cleanly once that metadata-boundary decision is accepted.
+Do not reopen `copy_csv` hardening or the Jinja2 decision in this CR. Keep the accepted target-model completeness proposal as the reference point for the target-model versus `SeadSchema` comparison, and treat this follow-up CR as done unless a new change request reopens the metadata-boundary decision explicitly.
 
 ## Issue-Ready Drafts
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-- Current state: rewritten against the current target model
+- Current state: review complete and accepted on the current branch
 - Scope: classify remaining SEAD v2 target-model gaps, define the intended completeness boundary for the shared SEAD model, and document the metadata-boundary comparison with `SeadSchema`
 - Decision goal: define a near-complete, provider-independent SEAD target model while keeping project-specific Shape Shifter configurations as curated subsets of that larger model
 
@@ -15,14 +15,14 @@ This proposal now carries the detailed scope for these follow-up issues:
 
 Current issue state on this branch:
 
-- Issue 5: reassessment decisions are now implemented on the current branch for the remaining shared-model candidates, and the branch also records which earlier candidates are out of scope for the shared SEAD superset
-- Issue 6: still open, but detailed analysis should now live in this document rather than in the change-request follow-up proposal
+- Issue 5: resolved on the current branch; the reassessment decisions are implemented and the out-of-scope shared-model candidates are recorded explicitly
+- Issue 6: resolved on the current branch; the accepted target-model versus `SeadSchema` comparison and recommendation now live in this document
 
 ## Summary
 
 The previous completeness note was no longer reliable.
 
-It mixed historical expansion plans with current-state claims and overstated implemented coverage. A direct check against [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml) shows a verified surface of 61 top-level entities in the current model, not the larger phase-based inventory described in the older draft.
+It mixed historical expansion plans with current-state claims and overstated implemented coverage. A direct check against [resources/target_models/sead_superset_model.yml](../../../resources/target_models/sead_superset_model.yml) shows a verified surface of 61 top-level entities in the current model, not the larger phase-based inventory described in the older draft.
 
 Issue 5 should therefore be treated as a review and decision task first.
 
@@ -40,7 +40,7 @@ The filtered Issue 6 snapshots are still useful, but they are only one evidence 
 
 The current target model already covers a substantial core for Delivery 1 and early SEAD ingestion work.
 
-Verified entity surface in [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml):
+Verified entity surface in [resources/target_models/sead_superset_model.yml](../../../resources/target_models/sead_superset_model.yml):
 
 - Core and provenance: `location`, `location_type`, `site`, `site_location`, `sample_group`, `sample`, `method`, `dataset`, `master_dataset`, `project`, `project_type`, `project_stage`, `citation`, `contact`, `contact_type`, `dataset_contact`
 - Sample and coordinate support: `sample_description_type`, `sample_description`, `sample_type`, `dimension`, `coordinate_method_dimension`, `coordinate_system`, `sample_coordinate`, `alt_ref_type`, `sample_alt_ref`, `sample_dimension`
@@ -119,7 +119,7 @@ Issue 6 should not be tracked as a separate, context-free note.
 
 It depends directly on the same review work as Issue 5 because the practical question is not only "what is missing from the target model" but also "which schema concepts belong in the near-complete shared SEAD model and which are only operational artifacts".
 
-The current change-request ingester uses the target model in [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml). The older `sead` ingester uses `SeadSchema` in [ingesters/sead/metadata.py](../../ingesters/sead/metadata.py), which derives metadata from the live SQL schema.
+The current change-request ingester uses the target model in [resources/target_models/sead_superset_model.yml](../../../resources/target_models/sead_superset_model.yml). The older `sead` ingester uses `SeadSchema` in [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py), which derives metadata from the live SQL schema.
 
 Before more follow-up work grows around the current metadata boundary, this document should make the tradeoffs between those two approaches explicit.
 
@@ -186,7 +186,7 @@ This comparison is the detailed home for Issue 6.
 
 ### Review Method
 
-For Issue 6, the comparison was performed against the filtered offline snapshots in [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_tables.csv](./CHANGE_REQUEST_INGESTER/filtered_import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](./CHANGE_REQUEST_INGESTER/filtered_import_columns.csv), not against an unfiltered live schema dump.
+For Issue 6, the comparison was performed against the filtered offline snapshots in [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_tables.csv](../CHANGE_REQUEST_INGESTER/filtered_import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/filtered_import_columns.csv), not against an unfiltered live schema dump.
 
 That matters because this review is intended to support a stable target-model decision, not to mirror every runtime table that may exist in a live SEAD database.
 
@@ -206,15 +206,15 @@ Issue 6 should now be finished as a short, explicit review process rather than a
 
 Use these files as the offline baseline for the live-schema side of the comparison:
 
-- [docs/proposals/CHANGE_REQUEST_INGESTER/import_tables.csv](./CHANGE_REQUEST_INGESTER/import_tables.csv)
-- [docs/proposals/CHANGE_REQUEST_INGESTER/import_columns.csv](./CHANGE_REQUEST_INGESTER/import_columns.csv)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/import_tables.csv](../CHANGE_REQUEST_INGESTER/import_tables.csv)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/import_columns.csv](../CHANGE_REQUEST_INGESTER/import_columns.csv)
 
 The filtered working set initialized on the current branch is:
 
-- [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_tables.csv](./CHANGE_REQUEST_INGESTER/filtered_import_tables.csv)
-- [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](./CHANGE_REQUEST_INGESTER/filtered_import_columns.csv)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_tables.csv](../CHANGE_REQUEST_INGESTER/filtered_import_tables.csv)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/filtered_import_columns.csv)
 
-These files are snapshots of the outputs from `SchemaService.get_sead_tables()` and `SchemaService.get_sead_columns()` in [ingesters/sead/metadata.py](../../ingesters/sead/metadata.py).
+These files are snapshots of the outputs from `SchemaService.get_sead_tables()` and `SchemaService.get_sead_columns()` in [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py).
 
 For this review, ignore table families that should not drive target-model decisions:
 
@@ -242,19 +242,19 @@ It is a legacy update timestamp and should not influence target-model boundary d
 
 ### Step-By-Step Plan
 
-1. Build a filtered live-schema working set from [docs/proposals/CHANGE_REQUEST_INGESTER/import_tables.csv](./CHANGE_REQUEST_INGESTER/import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/import_columns.csv](./CHANGE_REQUEST_INGESTER/import_columns.csv).
+1. Build a filtered live-schema working set from [docs/proposals/CHANGE_REQUEST_INGESTER/import_tables.csv](../CHANGE_REQUEST_INGESTER/import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/import_columns.csv](../CHANGE_REQUEST_INGESTER/import_columns.csv).
 Remove the deprecated and out-of-scope table families listed above before doing any target-model comparison.
 For the column snapshot, also remove `date_updated` before doing any entity-level comparison.
 
-Current branch status: this step is initialized in [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_tables.csv](./CHANGE_REQUEST_INGESTER/filtered_import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](./CHANGE_REQUEST_INGESTER/filtered_import_columns.csv).
+Current branch status: this step is initialized in [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_tables.csv](../CHANGE_REQUEST_INGESTER/filtered_import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/filtered_import_columns.csv).
 
 2. Group the remaining live-schema tables into comparison buckets rather than reviewing them one by one.
 Use practical buckets such as core provenance, site and location, sample and sample group, feature context, chronology and dating, taxonomy, abundance, analysis values, project metadata, and lookup tables.
 
-3. Map each filtered live-schema bucket to the current target-model entities in [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml).
+3. Map each filtered live-schema bucket to the current target-model entities in [resources/target_models/sead_superset_model.yml](../../../resources/target_models/sead_superset_model.yml).
 For each bucket, record one of four outcomes: already covered, partially covered, missing from the target model, or intentionally out of scope for the shared model.
 
-4. Use [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](./CHANGE_REQUEST_INGESTER/filtered_import_columns.csv) to check whether the apparent table-level gaps are real entity gaps or only column-level differences.
+4. Use [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/filtered_import_columns.csv) to check whether the apparent table-level gaps are real entity gaps or only column-level differences.
 Do not propose a new target-model entity until the filtered column snapshot shows that the live-schema table carries a distinct business concept rather than only extra operational columns such as legacy XML names or analysis-value-specific structure.
 
 5. Separate true shared-model candidates from derived, operational, or legacy-only schema artifacts.
@@ -310,7 +310,7 @@ Issue 6 is ready to close when this document makes all of the following explicit
 
 This table applies the Issue 6 plan to the current CSV snapshots.
 
-It uses the filtered `get_sead_tables()` and `get_sead_columns()` outputs in [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_tables.csv](./CHANGE_REQUEST_INGESTER/filtered_import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](./CHANGE_REQUEST_INGESTER/filtered_import_columns.csv), derived from the raw snapshots after excluding the deprecated and out-of-scope table families listed above and the legacy `date_updated` column from column-level review.
+It uses the filtered `get_sead_tables()` and `get_sead_columns()` outputs in [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_tables.csv](../CHANGE_REQUEST_INGESTER/filtered_import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/filtered_import_columns.csv), derived from the raw snapshots after excluding the deprecated and out-of-scope table families listed above and the legacy `date_updated` column from column-level review.
 
 | Comparison bucket | Live-schema concept or table family | Current target-model state | Decision | Reason |
 | --- | --- | --- | --- | --- |
@@ -336,7 +336,7 @@ Issue 6 should be closed only when this document contains an explicit comparison
 
 The next steps should be:
 
-1. Keep [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml) as the source of truth for current coverage.
+1. Keep [resources/target_models/sead_superset_model.yml](../../../resources/target_models/sead_superset_model.yml) as the source of truth for current coverage.
 2. Use this document to track verified missing areas, verified decisions, and the intended completeness boundary for the shared SEAD model.
 3. Separate true shared-model entities from derived or operational schema artifacts before adding more entities.
 4. Keep the target model as the active metadata boundary for `sead_change_request` unless a later architecture proposal explicitly changes that decision.
@@ -455,7 +455,7 @@ If this proposal is used as the handoff document for execution, the implementati
 
 ## GitHub-Ready Issue Drafts
 
-The GitHub-ready issue bodies derived from this proposal are tracked separately in [docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md](./SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md).
+The GitHub-ready issue bodies derived from this proposal are tracked separately in [docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md](../SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md).
 
 The live issues are [#447](https://github.com/humlab-sead/sead_shape_shifter/issues/447), [#448](https://github.com/humlab-sead/sead_shape_shifter/issues/448), [#449](https://github.com/humlab-sead/sead_shape_shifter/issues/449), [#450](https://github.com/humlab-sead/sead_shape_shifter/issues/450), and [#451](https://github.com/humlab-sead/sead_shape_shifter/issues/451).
 
@@ -486,9 +486,9 @@ Issue 6 should count as complete when all of the following are true:
 
 ## References
 
-- [resources/target_models/sead_superset_model.yml](../../resources/target_models/sead_superset_model.yml)
-- [docs/TARGET_MODEL_GUIDE.md](../TARGET_MODEL_GUIDE.md)
-- [ingesters/sead/metadata.py](../../ingesters/sead/metadata.py)
-- [docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md](./SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md)
-- [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md](./CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md)
-- [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md](./CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md)
+- [resources/target_models/sead_superset_model.yml](../../../resources/target_models/sead_superset_model.yml)
+- [docs/TARGET_MODEL_GUIDE.md](../../TARGET_MODEL_GUIDE.md)
+- [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py)
+- [docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md](../SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md](../CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md](../CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md)
