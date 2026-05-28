@@ -71,7 +71,6 @@ The pilot currently includes these main SEAD-facing slices:
 
 The current accepted review warnings are:
 
-- one unmatched `dating_uncertainty`
 - two unmatched `dating_lab` values: `Suerc` and `Birmingham`
 
 ## Proposed Design
@@ -98,6 +97,7 @@ The pilot already depends on several explicit decisions.
 - UCanAccess union literals are normalized with `trim(...)` so padded strings do not break joins
 - blank `TDatesPeriod.DatingMethod` uses `UnknownCal`, matching the Java relative-date fallback
 - blank `TDatesRadio.DatingMethod` now uses explicit project policy `UnknownRadio`, so the row stays visible instead of being dropped during dataset-method linking
+- unmatched `dating_lab` values `Suerc` and `Birmingham` stay accepted review warnings for the current pilot instead of being normalized in this phase
 
 ### Migration Strategy
 
@@ -131,6 +131,8 @@ This keeps the pilot honest.
 - [x] Replace provisional dating methods and data types with importer-aligned method abbreviations and Java-aligned data-type names
 - [x] Add the Java-style `UnknownCal` fallback for blank relative-date methods
 - [x] Add the explicit Shape Shifter `UnknownRadio` policy for blank geochronology methods
+- [x] Normalize blank or whitespace-only dating uncertainty values to `null` so they do not surface as unmatched classifier warnings
+- [x] Review `Suerc` and `Birmingham` in `dating_lab` and keep them as accepted review warnings for the current pilot
 - [x] Mirror the project into [tests/test_data/projects/bugs/shapeshifter.yml](../../tests/test_data/projects/bugs/shapeshifter.yml)
 - [x] Validate the pilot repeatedly against `bugsdata_20231219.mdb`
 - [x] Reduce current validation output to accepted review warnings rather than workflow errors
@@ -143,7 +145,7 @@ The pilot is useful now, but it still carries deliberate tradeoffs.
 - It does not yet replicate the full Java trace, update, and external-edit protection logic as executable Shape Shifter behavior.
 - Some project behavior is currently documented in comments rather than modeled in first-class configuration constructs.
 - The explicit `UnknownRadio` rule is a project policy, not a copied Java behavior.
-- Remaining unmatched-lab and unmatched-uncertainty warnings still need review, even if they are acceptable for the pilot.
+- Remaining unmatched-lab warnings still need review, even if they are acceptable for the pilot.
 - The current dataset and analysis-entity backbone is enough for dating work, but not yet a full representation of all Bugs sample behavior.
 
 These tradeoffs are acceptable for a pilot as long as they remain visible and deliberate.
@@ -154,7 +156,7 @@ Each future slice should be validated in the same way as the current pilot.
 
 - Run `scripts/validate_project.py` against the real BugsCEP `.mdb` file.
 - Treat workflow errors as blockers.
-- Treat known unmatched-lab and unmatched-uncertainty issues as review warnings unless policy changes.
+- Treat `Suerc` and `Birmingham` in `dating_lab` as accepted review warnings unless pilot policy changes.
 - Keep the mirrored test-data YAML copy in sync with the main pilot file.
 - When a new slice introduces row loss, inspect whether the loss is expected policy, missing method coverage, padded-literal behavior, or an incorrect join.
 
@@ -172,8 +174,6 @@ The pilot should be considered a stable baseline when these conditions hold.
 
 ### Near-Term Checklist
 
-- [ ] Review the remaining unmatched `dating_uncertainty` value and decide whether it should stay a warning, map to an existing classifier, or become a new fixed row
-- [ ] Review `Suerc` and `Birmingham` in `dating_lab` and decide whether they should be normalized, mapped, or remain review warnings
 - [ ] Add a proper `country_id` strategy for `dating_lab` without misusing `location_id`
 - [ ] Model `MaterialType` from `TDatesRadio` into a SEAD-facing dating-material slice if the target-model path is ready
 - [ ] Move more Java-only dating behavior from comments into executable configuration where Shape Shifter now supports it
