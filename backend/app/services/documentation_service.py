@@ -39,7 +39,7 @@ class DocumentationService:
 
         Args:
             project_name: Project name to generate docs for.
-            format: Output format (HTML, Markdown, or Excel).
+            format: Output format such as HTML, Markdown, Excel, SIMS, or schema reference.
 
         Returns:
             Documentation content as bytes (ready for download).

@@ -289,7 +289,7 @@ export const projectsApi = {
   /**
    * Download target model documentation in specified format
    */
-  downloadTargetModelDocs: async (name: string, format: 'html' | 'markdown' | 'excel'): Promise<Blob> => {
+  downloadTargetModelDocs: async (name: string, format: 'html' | 'markdown' | 'excel' | 'schema-reference'): Promise<Blob> => {
     const response = await apiClient.get(`/projects/${name}/target-model-docs`, {
       params: { format },
       responseType: 'blob',

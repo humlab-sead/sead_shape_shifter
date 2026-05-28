@@ -686,7 +686,7 @@ async def update_project_target_model_yaml(name: str, request: RawYamlUpdateRequ
 @handle_endpoint_errors
 async def download_target_model_docs(
     name: str,
-    format: str = Query("html", description="Documentation format: html, markdown, or excel"),  # pylint: disable=redefined-builtin
+    format: str = Query("html", description="Documentation format: html, markdown, excel, sims, or schema-reference"),  # pylint: disable=redefined-builtin
 ) -> Response:
     """
     Generate and download target model documentation for a project.
@@ -698,6 +698,8 @@ async def download_target_model_docs(
     - html: Interactive web page with entity cards, search, and visual indicators
     - markdown: Static documentation for GitHub/wikis
     - excel: Spreadsheet with 3 sheets (Entities, Columns, Relationships)
+    - sims: SIMS identity register grouped by identity behavior
+    - schema-reference: Markdown reference generated from the Pydantic target-model schema
 
     Args:
         name: Project name
@@ -717,7 +719,7 @@ async def download_target_model_docs(
     try:
         doc_format = DocumentFormat(format_lower)
     except ValueError as e:
-        raise BadRequestError(f"Invalid format '{format}'. Supported: html, markdown, excel") from e
+        raise BadRequestError(f"Invalid format '{format}'. Supported: html, markdown, excel, sims, schema-reference") from e
 
     # Generate documentation
     content: bytes = documentation_service.generate_target_model_docs(name, doc_format)
@@ -727,15 +729,22 @@ async def download_target_model_docs(
         DocumentFormat.HTML: "text/html",
         DocumentFormat.MARKDOWN: "text/markdown",
         DocumentFormat.EXCEL: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        DocumentFormat.SIMS: "text/markdown",
+        DocumentFormat.SCHEMA_REFERENCE: "text/markdown",
     }
     extensions: dict[DocumentFormat, str] = {
         DocumentFormat.HTML: "html",
         DocumentFormat.MARKDOWN: "md",
         DocumentFormat.EXCEL: "xlsx",
+        DocumentFormat.SIMS: "sims.md",
+        DocumentFormat.SCHEMA_REFERENCE: "schema-reference.md",
     }
 
     media_type: str = content_types[doc_format]
-    filename: str = f"{name}_target_model.{extensions[doc_format]}"
+    if doc_format is DocumentFormat.SCHEMA_REFERENCE:
+        filename = f"{name}_target_model_schema_reference.md"
+    else:
+        filename = f"{name}_target_model.{extensions[doc_format]}"
 
     logger.info(f"Serving {doc_format.value} target model documentation for project '{name}' ({len(content)} bytes)")
 
