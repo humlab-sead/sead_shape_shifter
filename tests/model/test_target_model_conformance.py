@@ -432,8 +432,10 @@ def _minimal_target_model(entities: dict) -> TargetModel:
     return TargetModel.model_validate({"model": {"name": "test", "version": "1.0"}, "entities": entities})
 
 
-def _minimal_project(entities: dict) -> ShapeShiftProject:
-    return ShapeShiftProject(cfg={"metadata": {"name": "test", "type": "shapeshifter-project"}, "entities": entities})
+def _minimal_project(entities: dict, options: dict | None = None) -> ShapeShiftProject:
+    return ShapeShiftProject(
+        cfg={"metadata": {"name": "test", "type": "shapeshifter-project"}, "entities": entities, "options": options or {}}
+    )
 
 
 def test_public_id_validator_produces_missing_public_id_when_project_entity_has_none() -> None:
@@ -456,6 +458,25 @@ def test_public_id_validator_is_silent_when_spec_declares_no_public_id() -> None
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
     assert not any(issue.code.startswith("MISSING_PUBLIC_ID") or issue.code.startswith("UNEXPECTED_PUBLIC_ID") for issue in issues)
+
+
+def test_disabled_rules_skip_named_conformance_validator() -> None:
+    """Disabled conformance rules should be skipped by registry key."""
+    target_model: TargetModel = TargetModel.model_validate(
+        {
+            "model": {"name": "test", "version": "1.0"},
+            "naming": {"public_id_suffix": "_id"},
+            "entities": {"location": {}},
+        }
+    )
+    project: ShapeShiftProject = _minimal_project(
+        {"location": {"public_id": "location_identifier", "columns": ["location_name"]}},
+        options={"validation": {"disabled_rules": ["naming_convention"]}},
+    )
+
+    codes: list[str] = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "PUBLIC_ID_NAMING_VIOLATION" not in codes
 
 
 # ---------------------------------------------------------------------------
