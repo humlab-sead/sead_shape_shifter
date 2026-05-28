@@ -34,10 +34,10 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 ~~- [ ] Entity spec inheritance (`extends:`) — defer until 5+ target models exist~~
 
 ### Test Coverage
-- [ ] Target model spec parsing — valid, invalid, round-trip
+- [ ] Target model spec parsing — valid and invalid cases are covered; round-trip coverage is still missing
 - [ ] `@include:` resolution at mapper boundary (inline dict, file ref, missing file, relative path)
 - [ ] Projects without target model — structural validation unaffected, conformance returns empty
-- [x] Missing target model file — graceful 422, not 500
+- [x] Missing target model file — graceful handling, treated as no target model rather than a 500
 - [x] Backend adapter integration — `TargetModelValidator` code mapping, endpoint response, category tagging
 - [ ] Warning vs error severity (Phase 4 checks)
 
@@ -58,8 +58,11 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [x] Abundance chain — `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `modification_type`, `abundance_property`
 - [x] Dating — `relative_dating`, `relative_ages`, `geochronology` (abs/radiocarbon), `dating_lab`
 - [x] Method/contacts — `method_group`, `citation` (`tbl_biblio`), `contact`, `contact_type`, `dataset_contact`
-- [ ] Taxonomy — `taxa_tree_master` present; `taxonomic_order`, `ecocodes` still missing
-- [ ] Data-type-specific tables (ceramics, dendrochronology, insects)
+- [x] Sample context and sample-group context — `sample_horizon`, `sample_location`, `sample_location_type`, `sample_note`, `sample_group_coordinate`, `sample_group_dimension`, `sample_group_note`, `sample_group_reference`, `sample_group_sampling_context`, `horizon`
+- [x] Analysis-value family and shared lookups — `analysis_value`, `analysis_note`, `analysis_identifier`, typed analysis value entities, `property_type`, `value_class`, `value_type`, `value_type_item`, `value_qualifier`, `value_qualifier_symbol`
+- [x] Property and lookup follow-up coverage — `site_property`, `feature_property`, `site_natgridref`, `coordinate_system`, `colour`, `sample_colour`, `project_type`, `project_stage`, `taxa_synonyms`, `taxa_measured_attributes`, `rdb`, `rdb_code`, `rdb_system`
+- [ ] Taxonomy — `taxa_tree_master`, `taxa_common_names`, `taxa_synonyms`, `taxa_measured_attributes`, `ecocode_system`, `ecocode_group`, `ecocode_definition`, `ecocode`, `rdb`, `rdb_code`, and `rdb_system` are present, but `taxonomic_order` is still missing
+~~- [ ] Data-type-specific tables (ceramics, dendrochronology, insects)~~ — legacy or specialized method-specific tables are not part of the current shared `sead_superset_model.yml` boundary; see [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 ---
 
@@ -283,14 +286,14 @@ The project-level YAML view currently shows only the `shapeshifter.yml` file. Wh
 
 **Constraints:**
 - Raw YAML only — no structured form or entity-level UI.
-- Tab visible only when the project has a `target_model:` reference that resolves to a **project-local file** (i.e. the `@include:` path lives inside the project's own directory). Shared/global spec files (e.g. `resources/target_models/sead_superset_model.yml`) are read-only in this view.
+- Backend read/write access is limited to **project-local files** (i.e. the `@include:` path lives inside the project's own directory). Shared/global spec files (e.g. `resources/target_models/sead_superset_model.yml`) are read-only in this view, and the frontend still needs a tighter visibility check for that case.
 - API passes the YAML file content as raw text; the server validates syntax but **never re-serialises** it, so comments and formatting survive the round-trip.
 - Save writes directly to the referenced target model YAML file.
 - Changing the file triggers a re-run of conformance validation (same as editing the project YAML).
 
 **Scope:**
 - Frontend: add a second `<v-tab>` to the project YAML panel; reuse the existing Monaco YAML editor component. ✅ **COMPLETE**
-- Backend: expose a `GET /api/v1/target-models/{name}` and `PUT /api/v1/target-models/{name}` endpoint pair for raw YAML read/write, mirroring the existing project file endpoints. ✅ **COMPLETE**
+- Backend: expose `GET /api/v1/projects/{name}/target-model-yaml` and `PUT /api/v1/projects/{name}/target-model-yaml` for raw YAML read/write, mirroring the existing project file endpoints. ✅ **COMPLETE**
 - Monaco schema support: Generate JSON Schema from `src/target_model/models.py` and wire into Monaco YAML editor for autocomplete. ✅ **COMPLETE**
 
 ### Monaco Editor Schema Support (Completed)
@@ -327,7 +330,7 @@ The Monaco YAML editor now provides autocomplete and IntelliSense for target mod
 
 **Remaining Work:**
 
-Backend endpoints for read/write operations remain to be implemented (see sections below).
+Backend endpoints and frontend save/load wiring are complete. The remaining gap is frontend visibility behavior for shared/global target model references.
 
 ### Complexity Assessment
 
@@ -335,24 +338,22 @@ Backend endpoints for read/write operations remain to be implemented (see sectio
 
 ---
 
-#### Backend (Low) — TO DO
+#### Backend (Low) — COMPLETE
 
-Two new endpoints modelled directly on the existing `GET/PUT /projects/{name}/raw-yaml` pattern (~60–80 lines):
-
-Two new endpoints modelled directly on the existing `GET/PUT /projects/{name}/raw-yaml` pattern (~60–80 lines):
+The raw target-model YAML read/write endpoints are implemented using the same pattern as the project raw-YAML endpoints:
 
 ```
-GET /api/v1/target-models/{name}   → { yaml_content: str }
-PUT /api/v1/target-models/{name}   ← { yaml_content: str }  → Project (after reload)
+GET /api/v1/projects/{name}/target-model-yaml   → { yaml_content: str }
+PUT /api/v1/projects/{name}/target-model-yaml   ← { yaml_content: str }  → Project (after reload)
 ```
 
-Work items:
-1. **Path resolution + locality check** — extract the file path from the `@include: ...` string in `project.metadata.target_model`. Resolve it relative to the project directory and confirm it is *inside* that directory (simple `Path.is_relative_to()` check). Return 403 if the path escapes the project directory (shared/global spec).
-2. **Inline-dict guard** — return 422 when `target_model` is an inline dict (no backing file to edit).
-3. **File read/write (text passthrough)** — read and write the file as raw text (`Path.read_text` / `Path.write_text`). On PUT: validate YAML syntax with `yaml.safe_load()` to catch parse errors, then write the *original* submitted string unchanged — never re-serialise through PyYAML, so comments and blank lines are preserved.
-4. **Cache invalidation** — call `project_service.load_project(name, force_reload=True)` (or the existing `refresh` path) after write so subsequent conformance runs see the updated spec.
+Completed backend work:
+1. **Path resolution + locality check** — implemented; shared/global files are rejected for in-place editing.
+2. **Inline-dict guard** — implemented; inline target models have no backing file endpoint.
+3. **File read/write (text passthrough)** — implemented; syntax is validated and the submitted YAML is written back verbatim.
+4. **Cache invalidation** — implemented via forced project reload after save.
 
-No new models, no new services, no router changes beyond adding the two route functions and registering them in `api.py`.
+No extra service layer was needed for the current local-file scope.
 
 ---
 
@@ -363,13 +364,13 @@ No new models, no new services, no router changes beyond adding the two route fu
 2. ✅ **Editor mode support** — `YamlEditor` component accepts `mode="target-model"` and configures autocomplete accordingly
 3. ✅ **Target model tab UI** — nested tabs structure in place with target model YAML editor
 4. ✅ **State management** — `targetModelYaml`, `targetModelYamlHasChanges`, `targetModelYamlLoading`, `targetModelYamlSaving` refs exist in `ProjectDetailView.vue`
+5. ✅ **API methods** — `getTargetModelYaml(projectName)` and `updateTargetModelYaml(projectName, yaml)` are implemented in `frontend/src/api/projects.ts`
+6. ✅ **Backend integration** — load/save handlers are wired to the target-model YAML endpoints
 
 **Remaining work:**
-1. **API methods** — add `getTargetModelYaml(projectName)` and `updateTargetModelYaml(projectName, yaml)` to `frontend/src/api/projects.ts` (~15 lines, identical shape to `getRawYaml`/`updateRawYaml`).
-2. **Backend integration** — wire load/save handlers to actual API endpoints once backend routes are implemented (~20 lines).
-3. **Conditional visibility** — refine tab visibility logic to check `isProjectLocal` flag from backend response.
+1. **Conditional visibility** — refine tab visibility so the target-model tab is hidden for shared/global target model references instead of relying on backend 403 handling.
 
-The core Monaco editing experience with autocomplete is fully functional. Only API integration remains.
+The core Monaco editing experience with autocomplete and save/load wiring is in place. The main remaining UX gap is tab visibility for non-project-local target models.
 
 ---
 
@@ -731,17 +732,18 @@ Generate human-readable documentation for target models in HTML, Markdown, or Ex
 
 ## SEAD Coverage Backlog
 
-Lower-frequency SEAD tables not yet represented in `resources/target_models/sead_superset_model.yml`:
+Remaining shared-model SEAD coverage gaps in `resources/target_models/sead_superset_model.yml`:
 
-- Abundance chain entities (`abundance`, `abundance_element`, `abundance_modification`)
-- Dating entities (`relative_dating`, `relative_age`, `radiocarbon_dating`)
-- Method-group and contact entities (`method_group`, `biblio`, `contact`)
-- Taxonomy-focused entities (`taxon`, `taxonomic_order`, `ecocodes`)
-- Specialized tables appearing only in specific data types (ceramics, dendrochronology, insects)
+- Taxonomy-order support (`taxonomic_order` and any supporting order-system entities that belong in the shared superset)
 
-**Note:** These are SEAD spec coverage gaps, not framework gaps. The conformance engine supports them — the spec YAML just has not been written yet.
+Out of scope for this backlog:
 
-**Approach:** Add entity blocks to `sead_superset_model.yml` incrementally as real projects exercise those entity types. Prefer driven-by-need over speculative coverage.
+- Legacy or specialized method-specific families such as ceramic and dendro tables are intentionally excluded from the current shared-model boundary.
+- Other provider- or workflow-specific tables should only be promoted when they represent stable shared SEAD concepts rather than legacy method-specific structure.
+
+**Note:** These are target-model coverage gaps or scope decisions, not framework gaps. The conformance engine supports them; the question here is what belongs in the shared SEAD superset.
+
+**Approach:** Add entity blocks to `sead_superset_model.yml` incrementally when they represent shared SEAD concepts and are supported by current project needs.
 
 ---
 
