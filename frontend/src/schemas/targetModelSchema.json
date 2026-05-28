@@ -254,6 +254,11 @@
           "title": "Name",
           "type": "string"
         },
+        "format_version": {
+          "default": "1",
+          "title": "Format Version",
+          "type": "string"
+        },
         "version": {
           "title": "Version",
           "type": "string"

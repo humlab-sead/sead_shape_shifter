@@ -58,6 +58,7 @@ class ModelMetadata(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
+    format_version: str = "1"
     version: str
     description: str | None = None
 
