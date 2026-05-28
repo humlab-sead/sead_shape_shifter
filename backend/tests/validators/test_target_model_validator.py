@@ -9,11 +9,12 @@ from src.model import ShapeShiftProject
 # ---------------------------------------------------------------------------
 
 
-def _make_project(entities: dict) -> ShapeShiftProject:
+def _make_project(entities: dict, options: dict | None = None) -> ShapeShiftProject:
     """Build a minimal resolved ShapeShiftProject with the given entity configs."""
     cfg: dict = {
         "metadata": {"name": "test-project", "type": "shapeshifter-project"},
         "entities": entities,
+        "options": options or {},
     }
     return ShapeShiftProject(cfg=cfg, filename="test.yml")
 
@@ -169,6 +170,16 @@ class TestTargetModelValidatorErrorPaths:
 
         assert [error.code for error in errors] == ["MISSING_AGGREGATE_PARENT_FOREIGN_KEY"]
         assert errors[0].entity == "sample_description"
+
+    def test_unknown_disabled_rule_returns_warning(self):
+        """Unknown disabled rule keys should surface as warnings instead of being silently ignored."""
+        project = _make_project({}, options={"validation": {"disabled_rules": ["not_a_real_rule"]}})
+
+        errors = TargetModelValidator().validate(_minimal_target_model(), project)
+
+        assert [error.code for error in errors] == ["UNKNOWN_DISABLED_CONFORMANCE_RULE"]
+        assert errors[0].severity == "warning"
+        assert errors[0].field == "options.validation.disabled_rules"
 
 
 # ---------------------------------------------------------------------------
