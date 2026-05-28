@@ -6,8 +6,8 @@ This document tracks the implementation phases for the first SEAD target-model s
 
 It complements, but does not replace:
 
-- `docs/proposals/TARGET_MODEL_SPECIFICATION_FORMAT.md` for the format contract and semantics
-- `docs/proposals/TARGET_SCHEMA_AWARE_VALIDATION.md` for how Shape Shifter consumes target models during validation
+- `docs/proposals/done/TARGET_MODEL_SPECIFICATION_FORMAT.md` for the format contract and semantics
+- `docs/proposals/done/TARGET_SCHEMA_AWARE_VALIDATION.md` for how Shape Shifter consumes target models during validation
 
 The goal here is practical sequencing: what must be decided before drafting, what will be delivered in the first iterations, and what is explicitly deferred.
 
@@ -18,10 +18,10 @@ The words `phase` and `iteration` mean different things in this document.
 - **Phase** = a broad stage of work with a distinct goal and exit criteria.
 - **Iteration** = one pass within a phase where we refine the output using real examples, feedback, or tests.
 
-In practice:
+In this completed roadmap:
 
-- We are currently using **phases** to describe the roadmap.
-- We use **iterations** to describe refinement loops within a phase.
+- **phases** describe the delivery stages that were used
+- **iterations** describe the refinement loops that happened within those stages
 
 Examples:
 
@@ -31,7 +31,7 @@ Examples:
 
 For the next stretch of work, the important distinction is:
 
-- we can add new **phases** for standalone conformance-validation work inside `target_models/`
+- we can add new **phases** for standalone conformance-validation work inside the target-model implementation track
 - and still expect multiple **iterations** within those phases before any backend integration is justified
 
 ## Proposal Milestone Tracking
@@ -53,15 +53,15 @@ Checklist:
 - [x] Spec validation exists for the current standalone target-model format
 - [x] Standalone conformance validation exists for project-versus-target checks
 - [x] The current standalone format supports entities, roles, required, nullability, identity_columns, unique_sets, domains, foreign_keys, naming, and constraint declarations
-- [x] The current standalone SEAD spec covers the Milestone 1 core spine and additional iteration-1 entities in `resources/target_modelsdels/sead_standard_model.yml`
-- [x] The proposal now treats `resources/target_modelsdels/sead_standard_model.yml` as the working version until Shape Shifter integration is completed
+- [x] The current standalone SEAD spec covers the Milestone 1 core spine and additional iteration-1 entities in `resources/target_models/sead_standard_model.yml`
+- [x] The proposal now treats `resources/target_models/sead_standard_model.yml` as the working version until Shape Shifter integration is completed
 - [x] Implementation matches the current proposal column contract (mapping-based `columns` with logical `type` metadata)
 - [x] Proposal and implementation are aligned tightly enough to claim "without schema changes"
 
 Current status:
 - **Milestone 1 is complete.**
 - The parser, standalone validators, and working core SEAD spec all exist.
-- The proposal now matches the current standalone reality: until integration is completed, the working `sead_standard_model.yml` remains in `resources/target_modelsdels/sead_standard_model.yml` and uses the implemented mapping-based column contract with logical `type` metadata.
+- The proposal now matches the current standalone reality: until integration is completed, the working `sead_standard_model.yml` remains in `resources/target_models/sead_standard_model.yml` and uses the implemented mapping-based column contract with logical `type` metadata.
 
 ### Milestone 2: Expanded Coverage
 
@@ -73,7 +73,7 @@ Proposal intent:
 Checklist:
 - [x] Resolve the Milestone 1 proposal-versus-implementation alignment gaps
 - [x] Expand the canonical SEAD spec toward the current Milestone 2 backlog: abundance, dating, method/contact, and taxonomy coverage
-- [x] Reach the explicit Milestone 2 target of 20-24 total entities in `resources/target_modelsdels/sead_standard_model.yml`
+- [x] Reach the explicit Milestone 2 target of 20-24 total entities in `resources/target_models/sead_standard_model.yml`
 - [x] Reach the preferred planning target of 23 total entities if all currently named Milestone 2 backlog entities remain in scope
 - [x] Add a template-generation proof of concept using the target model, optionally filtered by domain/profile
 - [x] Validate the expanded model with parser, spec-validation, and conformance tests
@@ -151,8 +151,8 @@ Decision:
 ### 0.2 Canonical spec location
 
 Decision:
-- During format iteration, the SEAD spec lives at `resources/target_modelsdels/sead_standard_model.yml`
-- Phase documents and implementation notes live under `target_models/docs/`
+- During format iteration, the SEAD spec lives at `resources/target_models/sead_standard_model.yml`
+- Phase documents and implementation notes live under `docs/proposals/done/`
 
 ### 0.3 Iteration-1 entity set
 
@@ -269,14 +269,14 @@ Goals:
 - [x] Format proposal points to the implementation plan
 - [x] Format proposal no longer carries phased rollout content
 - [x] Validation proposal uses the canonical top-level target-model shape
-- [x] Validation proposal points to `resources/target_modelsdels/sead_standard_model.yml`
+- [x] Validation proposal points to `resources/target_models/sead_standard_model.yml`
 - [x] Implementation sketch is aligned with the current format
 - [x] All phase-related cross-references are consistent
 
 Deliverables:
-- `docs/proposals/TARGET_MODEL_SPECIFICATION_FORMAT.md`
-- `docs/proposals/TARGET_SCHEMA_AWARE_VALIDATION.md`
-- `docs/proposals/TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md`
+- `docs/proposals/done/TARGET_MODEL_SPECIFICATION_FORMAT.md`
+- `docs/proposals/done/TARGET_SCHEMA_AWARE_VALIDATION.md`
+- `docs/proposals/done/TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md`
 
 Exit criteria:
 - The docs no longer disagree on structure, location, or iteration-1 scope
@@ -306,12 +306,12 @@ Exit criteria:
 ## Phase 3: Author First SEAD Draft
 
 Goals:
-- Produce the first usable `resources/target_modelsdels/sead_standard_model.yml`
+- Produce the first usable `resources/target_models/sead_standard_model.yml`
 - Cover only the iteration-1 core entities with minimal metadata
 
 ### Checklist
 
-- [x] `resources/target_modelsdels/sead_standard_model.yml` created
+- [x] `resources/target_models/sead_standard_model.yml` created
 - [x] Iteration-1 core entities present in the draft
 - [x] `target_table` mappings added for iteration-1 entities
 - [x] `public_id` mappings added for iteration-1 entities
@@ -323,7 +323,7 @@ Goals:
 - [x] Draft cross-checked against SEAD source schema and a real Shape Shifter project
 
 Deliverables:
-- `resources/target_modelsdels/sead_standard_model.yml`
+- `resources/target_models/sead_standard_model.yml`
 
 Iteration-1 content rules:
 - Prefer minimal but correct metadata over broad but speculative coverage
@@ -408,18 +408,18 @@ Goals:
 
 - [x] Run the standalone conformance validator against multiple real project fixtures
 - [x] Classify findings into stable errors, warnings, and deferred heuristics
-- [x] Record false positives and ambiguous cases in `target_models/docs/`
+- [x] Record false positives and ambiguous cases in `docs/proposals/done/`
 - [x] Confirm whether `sead_standard_model.yml` needs refinement based on real project evidence
 - [x] Identify the minimal check set safe for eventual backend integration
 
 Deliverables:
 - Refined conformance tests
-- Notes on noisy versus stable rules in `target_models/docs/TARGET_MODEL_CONFORMANCE_REFINEMENT.md`
+- Notes on noisy versus stable rules in `docs/proposals/done/TARGET_MODEL_CONFORMANCE_REFINEMENT.md`
 - A documented minimal rule set for future backend integration
 
 Current Phase 6 decision:
 - Keep `sead_standard_model.yml` canonical and unchanged for now; the current real-project evidence does not justify alias metadata or weaker conformance semantics.
-- Freeze the standalone integration candidate to the conservative checks already documented in `target_models/docs/TARGET_MODEL_CONFORMANCE_REFINEMENT.md`.
+- Freeze the standalone integration candidate to the conservative checks already documented in `docs/proposals/done/TARGET_MODEL_CONFORMANCE_REFINEMENT.md`.
 - Treat Phase 6 as complete for the current standalone conformance-refinement scope.
 
 Exit criteria:
@@ -440,14 +440,14 @@ Goals:
 
 ### Checklist
 
-- [x] Draft the abundance package in `resources/target_modelsdels/sead_standard_model.yml`: `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `abundance_property`
-- [x] Draft the dating package in `resources/target_modelsdels/sead_standard_model.yml`: `relative_ages`, `relative_dating`, `geochronology`, `dating_lab`
-- [x] Draft the method/contact package in `resources/target_modelsdels/sead_standard_model.yml`: `method_group`, `contact`, `contact_type`
-- [x] Draft the taxonomy package in `resources/target_modelsdels/sead_standard_model.yml`: `taxa_tree_master`, `taxa_common_names`
+- [x] Draft the abundance package in `resources/target_models/sead_standard_model.yml`: `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `abundance_property`
+- [x] Draft the dating package in `resources/target_models/sead_standard_model.yml`: `relative_ages`, `relative_dating`, `geochronology`, `dating_lab`
+- [x] Draft the method/contact package in `resources/target_models/sead_standard_model.yml`: `method_group`, `contact`, `contact_type`
+- [x] Draft the taxonomy package in `resources/target_models/sead_standard_model.yml`: `taxa_tree_master`, `taxa_common_names`
 - [x] Reach the explicit Milestone 2 target of 20-24 total entities in the working SEAD spec
 - [x] Reach the preferred planning target of 23 total entities if all currently named backlog entities remain in scope
-- [x] Update `docs/proposals/TARGET_MODEL_SPECIFICATION_FORMAT.md` so its milestone language, examples, and success criteria reflect the expanded-coverage target
-- [x] Update `target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md` to track the Milestone 2 completion work and any scope decisions made during expansion
+- [x] Update `docs/proposals/done/TARGET_MODEL_SPECIFICATION_FORMAT.md` so its milestone language, examples, and success criteria reflect the expanded-coverage target
+- [x] Update `docs/proposals/done/SEAD_V2_IMPLEMENTATION_PLAN.md` to track the Milestone 2 completion work and any scope decisions made during expansion
 - [x] Decide and document the minimum acceptable template-generation proof of concept for Milestone 2
 - [x] Add or update parser, spec-validation, and conformance tests to cover the expanded entity set and any new format decisions
 - [x] Reassess whether any newly observed ambiguities belong in deferred format issues versus the Milestone 2 scope
@@ -455,7 +455,7 @@ Goals:
 ### Milestone 2 Backlog Basis
 
 Current baseline:
-- 23 entities now exist in `resources/target_modelsdels/sead_standard_model.yml`
+- 23 entities now exist in `resources/target_models/sead_standard_model.yml`
 
 Remaining named expansion backlog:
 - 0 additional entities remain in scope for Milestone 2
@@ -466,8 +466,8 @@ Planning arithmetic:
 - Treat 23 entities as the preferred planning target because it corresponds to the full currently named Milestone 2 backlog
 
 Deliverables:
-- Expanded `resources/target_modelsdels/sead_standard_model.yml`
-- Updated milestone and roadmap documentation in `docs/proposals/` and `target_models/docs/`
+- Expanded `resources/target_models/sead_standard_model.yml`
+- Updated milestone and roadmap documentation in `docs/proposals/done/`
 - Test coverage proving the expanded target model still loads and validates cleanly
 - A working standalone template-generation proof of concept plus its documentation
 
@@ -478,7 +478,7 @@ Purpose:
 
 Minimum scope:
 - A standalone script or notebook is sufficient; backend integration is not required for Milestone 2.
-- Input is the working target model at `resources/target_modelsdels/sead_standard_model.yml` plus an optional domain filter or explicit entity allowlist/profile.
+- Input is the working target model at `resources/target_models/sead_standard_model.yml` plus an optional domain filter or explicit entity allowlist/profile.
 - Output is a non-runnable starter scaffold in `shapeshifter.yml` style that is meant to be completed by a human author.
 
 Required output content:
@@ -536,9 +536,9 @@ Goals:
 
 - [x] Add a follow-on roadmap phase before backend integration so expanded standalone coverage is represented explicitly
 - [x] Update proposal and implementation-plan text so the current coverage and next-step sequencing match the implementation
-- [x] Draft a first common-entity package in `resources/target_modelsdels/sead_standard_model.yml`: `project`, `feature`, `feature_type`, `modification_type`, `sample_description`, `sample_description_type`, `site_type`, `site_type_group`
+- [x] Draft a first common-entity package in `resources/target_models/sead_standard_model.yml`: `project`, `feature`, `feature_type`, `modification_type`, `sample_description`, `sample_description_type`, `site_type`, `site_type_group`
 - [x] Improve related existing entities where the new package adds clearer target-model relationships (`dataset -> project`, `site -> site_type`, `abundance_modification -> modification_type`)
-- [x] Draft a second common/provenance bridge package in `resources/target_modelsdels/sead_standard_model.yml`: `citation`, `master_dataset`, `dataset_contact`, `sample_feature`
+- [x] Draft a second common/provenance bridge package in `resources/target_models/sead_standard_model.yml`: `citation`, `master_dataset`, `dataset_contact`, `sample_feature`
 - [x] Improve related existing entities where the new package adds clearer target-model relationships (`dataset -> master_dataset`, `dataset -> citation`, `method -> citation`, `sample <-> feature` via `sample_feature`, `dataset <-> contact` via `dataset_contact`)
 - [x] Reach roughly 30 total entities in the working SEAD spec without promoting Milestone 3 to complete
 - [x] Update standalone validation tests to cover the new common-entity package
@@ -551,7 +551,7 @@ Current status:
 - Still-deferred entities such as `sample_coordinate` and other alias-heavy mappings remain good candidates for later work, but they need either richer target metadata or broader conformance semantics to avoid noisy false positives.
 
 Deliverables:
-- A 35-entity working `resources/target_modelsdels/sead_standard_model.yml`
+- A 35-entity working `resources/target_models/sead_standard_model.yml`
 - Updated proposal and implementation-plan language for the post-23-entity standalone expansion
 - Updated standalone spec-validation coverage for the new entity package
 
@@ -576,7 +576,7 @@ Goals:
 - [x] Keep non-integrated experimental rules outside the backend path
 
 Deliverables:
-- Core conformance migration work described in `docs/proposals/TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md`
+- Core conformance migration work described in `docs/proposals/done/TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md`
 
 Exit criteria:
 - Target-model-aware validation runs against the resolved core project model and no longer depends on a duplicate standalone project-side conformance model
