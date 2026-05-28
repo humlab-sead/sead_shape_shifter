@@ -314,6 +314,55 @@ def test_core_conformance_accepts_sample_group_note_example_fixture() -> None:
     assert issue_pairs(target_model, project) == []
 
 
+def test_core_conformance_accepts_transitive_foreign_key_path() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "site": {
+                "required": True,
+                "public_id": "site_id",
+            },
+            "sample_group": {
+                "required": True,
+                "public_id": "sample_group_id",
+                "foreign_keys": [{"entity": "site", "required": True}],
+            },
+            "sample": {
+                "required": True,
+                "public_id": "sample_id",
+                "foreign_keys": [{"entity": "site", "required": True}],
+            },
+        }
+    )
+    project = ShapeShiftProject(
+        cfg={
+            "metadata": {
+                "name": "transitive-fk-example",
+                "type": "shapeshifter-project",
+            },
+            "entities": {
+                "site": {
+                    "public_id": "site_id",
+                    "columns": ["site_name"],
+                },
+                "sample_group": {
+                    "public_id": "sample_group_id",
+                    "columns": ["sample_group_name"],
+                    "foreign_keys": [{"entity": "site", "local_keys": ["site_id"], "remote_keys": ["site_id"]}],
+                },
+                "sample": {
+                    "public_id": "sample_id",
+                    "columns": ["sample_name"],
+                    "foreign_keys": [{"entity": "sample_group", "local_keys": ["sample_group_id"], "remote_keys": ["sample_group_id"]}],
+                },
+            },
+        }
+    )
+
+    issues = set(issue_pairs(target_model, project))
+
+    assert ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample") not in issues
+
+
 def test_core_conformance_keeps_alias_like_names_strict() -> None:
     target_model: TargetModel = load_target_model()
     project = ShapeShiftProject(
