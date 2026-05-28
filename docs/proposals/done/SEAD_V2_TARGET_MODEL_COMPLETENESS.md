@@ -455,7 +455,7 @@ If this proposal is used as the handoff document for execution, the implementati
 
 ## GitHub-Ready Issue Drafts
 
-The GitHub-ready issue bodies derived from this proposal are tracked separately in [docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md](../SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md).
+The GitHub-ready issue bodies derived from this proposal are tracked separately in [docs/proposals/done/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md](./SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md).
 
 The live issues are [#447](https://github.com/humlab-sead/sead_shape_shifter/issues/447), [#448](https://github.com/humlab-sead/sead_shape_shifter/issues/448), [#449](https://github.com/humlab-sead/sead_shape_shifter/issues/449), [#450](https://github.com/humlab-sead/sead_shape_shifter/issues/450), and [#451](https://github.com/humlab-sead/sead_shape_shifter/issues/451).
 
@@ -489,6 +489,6 @@ Issue 6 should count as complete when all of the following are true:
 - [resources/target_models/sead_superset_model.yml](../../../resources/target_models/sead_superset_model.yml)
 - [docs/TARGET_MODEL_GUIDE.md](../../TARGET_MODEL_GUIDE.md)
 - [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py)
-- [docs/proposals/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md](../SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md)
+- [docs/proposals/done/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md](./SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md)
 - [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md](../CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md)
 - [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md](../CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md)
