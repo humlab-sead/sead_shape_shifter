@@ -454,6 +454,40 @@ class TestDataValidation:
 class TestValidateTargetModel:
     """Tests for validate_target_model error-handling path."""
 
+    def test_projects_without_target_model_return_empty_valid_result(self, validation_service: ValidationService):
+        """Projects without a target model should skip conformance cleanly."""
+        mock_api_project = Mock(spec=Project)
+        mock_core_project = Mock()
+        mock_core_project.metadata.target_model = None
+
+        with patch("backend.app.services.validation_service.get_project_service") as mock_get_service:
+            mock_project_service = Mock()
+            mock_project_service.load_project.return_value = mock_api_project
+            mock_get_service.return_value = mock_project_service
+
+            with patch("backend.app.services.validation_service.ProjectMapper.to_core", return_value=mock_core_project):
+                result = validation_service.validate_target_model("test-project")
+
+        assert result.is_valid is True
+        assert result.errors == []
+
+    def test_target_model_null_is_treated_as_missing(self, validation_service: ValidationService):
+        """A resolved null target_model should behave the same as an absent target model."""
+        mock_api_project = Mock(spec=Project)
+        mock_core_project = Mock()
+        mock_core_project.metadata.target_model = None
+
+        with patch("backend.app.services.validation_service.get_project_service") as mock_get_service:
+            mock_project_service = Mock()
+            mock_project_service.load_project.return_value = mock_api_project
+            mock_get_service.return_value = mock_project_service
+
+            with patch("backend.app.services.validation_service.ProjectMapper.to_core", return_value=mock_core_project):
+                result = validation_service.validate_target_model("test-project")
+
+        assert result.is_valid is True
+        assert result.errors == []
+
     def test_missing_target_model_file_is_silently_ignored(self, validation_service: ValidationService):
         """FileNotFoundError from @include resolution must be silently ignored (valid=True, no errors)."""
         mock_api_project = Mock(spec=Project)

@@ -26,7 +26,7 @@
 See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) for design rationale and implementation notes.
 
 ### Format Extensions
-- [ ] `format_version` field in `model:` block
+- [x] `format_version` field in `model:` block
 - [ ] `generated: true` flag on `ColumnSpec` (suppress missing-column warnings for auto-generated columns)
 - [ ] `allowed_values` / `type: enum` on `ColumnSpec`
 - [x] Richer FK semantics — bridge entity support via `via` attribute in FK spec
@@ -34,9 +34,9 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 ~~- [ ] Entity spec inheritance (`extends:`) — defer until 5+ target models exist~~
 
 ### Test Coverage
-- [ ] Target model spec parsing — valid and invalid cases are covered; round-trip coverage is still missing
-- [ ] `@include:` resolution at mapper boundary (inline dict, file ref, missing file, relative path)
-- [ ] Projects without target model — structural validation unaffected, conformance returns empty
+- [x] Target model spec parsing — valid and invalid cases are covered; round-trip coverage is still missing
+- [x] `@include:` resolution at mapper boundary (inline dict, file ref, missing file, relative path)
+- [x] Projects without target model — structural validation unaffected, conformance returns empty
 - [x] Missing target model file — graceful handling, treated as no target model rather than a 500
 - [x] Backend adapter integration — `TargetModelValidator` code mapping, endpoint response, category tagging
 - [ ] Warning vs error severity (Phase 4 checks)
@@ -61,7 +61,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [x] Sample context and sample-group context — `sample_horizon`, `sample_location`, `sample_location_type`, `sample_note`, `sample_group_coordinate`, `sample_group_dimension`, `sample_group_note`, `sample_group_reference`, `sample_group_sampling_context`, `horizon`
 - [x] Analysis-value family and shared lookups — `analysis_value`, `analysis_note`, `analysis_identifier`, typed analysis value entities, `property_type`, `value_class`, `value_type`, `value_type_item`, `value_qualifier`, `value_qualifier_symbol`
 - [x] Property and lookup follow-up coverage — `site_property`, `feature_property`, `site_natgridref`, `coordinate_system`, `colour`, `sample_colour`, `project_type`, `project_stage`, `taxa_synonyms`, `taxa_measured_attributes`, `rdb`, `rdb_code`, `rdb_system`
-- [ ] Taxonomy — `taxa_tree_master`, `taxa_common_names`, `taxa_synonyms`, `taxa_measured_attributes`, `ecocode_system`, `ecocode_group`, `ecocode_definition`, `ecocode`, `rdb`, `rdb_code`, and `rdb_system` are present, but `taxonomic_order` is still missing
+- [x] Taxonomy — `taxa_tree_master`, `taxa_common_names`, `taxa_synonyms`, `taxa_measured_attributes`, `ecocode_system`, `ecocode_group`, `ecocode_definition`, `ecocode`, `taxonomic_order_system`, `taxonomic_order`, `rdb`, `rdb_code`, and `rdb_system`
 ~~- [ ] Data-type-specific tables (ceramics, dendrochronology, insects)~~ — legacy or specialized method-specific tables are not part of the current shared `sead_superset_model.yml` boundary; see [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 ---
@@ -330,7 +330,7 @@ The Monaco YAML editor now provides autocomplete and IntelliSense for target mod
 
 **Remaining Work:**
 
-Backend endpoints and frontend save/load wiring are complete. The remaining gap is frontend visibility behavior for shared/global target model references.
+Backend endpoints, save/load wiring, Monaco schema support, and frontend visibility behavior for shared/global target model references are complete.
 
 ### Complexity Assessment
 
@@ -544,7 +544,7 @@ Should target models support `extends:` to share column sets across entity specs
 
 A `format_version` field alongside `model.version` would allow the parser to reject incompatible target model files cleanly.
 
-**Recommendation:** Add `format_version: "1"` to the top-level `model:` block in a minor update. No behavior change in v1 — treat missing as `"1"`. Start enforcing with any breaking format change.
+**Status:** Implemented. `format_version` now lives under `model:` and defaults to `"1"` when omitted, so older target models still parse.
 
 ### Richer Foreign Key Semantics
 
@@ -582,6 +582,8 @@ These test areas were identified in the implementation sketch but not yet covere
 - Parse invalid YAML — missing required `model.name`, unknown `role` value, malformed `columns`
 - Round-trip: parse → serialize → re-parse produces equivalent object
 
+**Status:** Valid payloads, invalid field rejection, and round-trip coverage are now in place.
+
 ### `@include:` Resolution (Backend Boundary)
 
 - Inline `target_model: {...}` dict passes through mapper unchanged
@@ -589,11 +591,15 @@ These test areas were identified in the implementation sketch but not yet covere
 - Missing include file produces a clear error, not a cryptic KeyError
 - Relative path resolution from project file location
 
+**Status:** Covered for project-local include resolution and missing include files.
+
 ### Projects Without Target Model
 
 - Structural validation runs normally when `metadata.target_model` is absent
 - Conformance endpoint returns empty result (not error) when no target model is set
 - Adding `target_model: null` clears the reference cleanly
+
+**Status:** Covered for missing and null resolved target models.
 
 ### Warning vs Error Severity (Phase 4)
 
@@ -734,7 +740,7 @@ Generate human-readable documentation for target models in HTML, Markdown, or Ex
 
 Remaining shared-model SEAD coverage gaps in `resources/target_models/sead_superset_model.yml`:
 
-- Taxonomy-order support (`taxonomic_order` and any supporting order-system entities that belong in the shared superset)
+- No currently identified shared-model gaps in the agreed taxonomy slice.
 
 Out of scope for this backlog:
 
@@ -751,13 +757,10 @@ Out of scope for this backlog:
 
 When resuming work on this backlog, a sensible order is:
 
-1. **Source-type appropriateness** — low complexity, high value, zero false-positives
-2. **`format_version` field** — trivial parser change, prevents future breakage
-3. **Test coverage gaps** — fill the backend adapter and missing-file tests
-4. **Rule disabling** — needed before shipping Phase 4 checks widely
-5. **Semantic mismatch detection** — requires tuning; start with a conservative threshold
-6. **Transitive FK satisfaction** — well-defined algorithm, removes real false-positives
-7. **`no_orphan_facts`** check — depends on FK graph walk being tested first
-8. **Alias matching / normalization** — only after alias table or metric is agreed on
+1. **Rule disabling** — needed before shipping Phase 4 checks widely
+2. **Semantic mismatch detection** — requires tuning; start with a conservative threshold
+3. **Transitive FK satisfaction** — well-defined algorithm, removes real false-positives
+4. **`no_orphan_facts`** check — depends on FK graph walk being tested first
+5. **Alias matching / normalization** — only after alias table or metric is agreed on
 
 Items in the "Future Enhancements" section (remote refs, registry, diff tooling) are speculative — implement only if a concrete need arises.

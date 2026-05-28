@@ -63,6 +63,7 @@ Values under the `model` section that identify the specification.
 | Field | Type | Required | Default | Allowed |
 |---|---|---|---|---|
 | name | string | Yes | - | - |
+| format_version | string | No | "1" | - |
 | version | string | Yes | - | - |
 | description | string \| null | No | null | null |
 
