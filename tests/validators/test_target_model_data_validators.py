@@ -3,6 +3,7 @@
 import pandas as pd
 
 from src.target_model.data_validators import (
+    AllowedValuesConformanceValidator,
     FKReferentialIntegrityConformanceValidator,
     NullabilityConformanceValidator,
     TypeCompatibilityConformanceValidator,
@@ -145,6 +146,43 @@ class TestTypeCompatibilityConformanceValidator:
         spec = make_entity_spec(columns={"created": ColumnSpec(type="date")})
         df = pd.DataFrame({"created": pd.to_datetime(["2024-01-01", "2024-06-15"])})
         assert not TypeCompatibilityConformanceValidator.validate(df, spec, "entity")
+
+
+# ---------------------------------------------------------------------------
+# AllowedValuesConformanceValidator
+# ---------------------------------------------------------------------------
+
+
+class TestAllowedValuesConformanceValidator:
+    def test_passes_when_values_are_within_allowed_set(self):
+        spec = make_entity_spec(columns={"status": ColumnSpec(type="enum", allowed_values=["open", "closed"])})
+        df = pd.DataFrame({"status": ["open", "closed", None]})
+
+        assert not AllowedValuesConformanceValidator.validate(df, spec, "entity")
+
+    def test_reports_values_outside_allowed_set(self):
+        spec = make_entity_spec(columns={"status": ColumnSpec(type="enum", allowed_values=["open", "closed"])})
+        df = pd.DataFrame({"status": ["open", "pending"]})
+
+        issues = AllowedValuesConformanceValidator.validate(df, spec, "entity")
+
+        assert len(issues) == 1
+        assert issues[0].code == "VALUE_NOT_IN_ALLOWED_SET"
+        assert issues[0].severity == "error"
+        assert issues[0].field == "status"
+        assert "pending" in (issues[0].suggestion or "")
+
+    def test_skips_columns_without_allowed_values(self):
+        spec = make_entity_spec(columns={"status": ColumnSpec(type="string")})
+        df = pd.DataFrame({"status": ["open", "pending"]})
+
+        assert not AllowedValuesConformanceValidator.validate(df, spec, "entity")
+
+    def test_skips_column_absent_from_dataframe(self):
+        spec = make_entity_spec(columns={"status": ColumnSpec(type="enum", allowed_values=["open", "closed"])})
+        df = pd.DataFrame({"other": [1]})
+
+        assert not AllowedValuesConformanceValidator.validate(df, spec, "entity")
 
 
 # ---------------------------------------------------------------------------
