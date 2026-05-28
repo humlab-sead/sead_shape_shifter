@@ -3,7 +3,7 @@
 ## Status
 
 - **Milestones 1–3: complete** — core engine, backend integration, frontend wiring all done
-- **Remaining backlog:** see [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
+- **Closed follow-through record:** see [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
 - Scope: implementation approach for [TARGET_SCHEMA_AWARE_VALIDATION.md](TARGET_SCHEMA_AWARE_VALIDATION.md)
 
 ## Summary
@@ -227,7 +227,7 @@ Key constraints remain: structural validation stays first; target-model validati
 
 ### Phase 4 and Future Enhancements
 
-Phase 4 advanced semantic rules, future enhancements, and remaining deferred items are tracked in [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Phase 4 advanced semantic rules, future enhancements, and remaining deferred items are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Testing Strategy
 
@@ -238,8 +238,8 @@ Phase 4 advanced semantic rules, future enhancements, and remaining deferred ite
 
 ### Remaining test areas
 
-Test coverage gaps are tracked in [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Test coverage gaps are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Open Technical Questions
 
-Open technical questions (target model loading location, validation code naming, rule disabling) are tracked in [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Open technical questions (target model loading location, validation code naming, rule disabling) are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
