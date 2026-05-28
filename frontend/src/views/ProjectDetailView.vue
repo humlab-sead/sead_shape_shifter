@@ -764,6 +764,11 @@
                               <v-icon icon="mdi-file-excel" size="small" class="mr-2" />Excel Spreadsheet
                             </v-list-item-title>
                           </v-list-item>
+                          <v-list-item @click="handleDownloadTargetModelDocs('schema-reference')">
+                            <v-list-item-title>
+                              <v-icon icon="mdi-file-document-outline" size="small" class="mr-2" />Schema Reference (Markdown)
+                            </v-list-item-title>
+                          </v-list-item>
                         </v-list>
                       </v-menu>
                       <v-btn
@@ -2391,7 +2396,7 @@ async function handleSaveTargetModelYaml() {
   }
 }
 
-async function handleDownloadTargetModelDocs(format: 'html' | 'markdown' | 'excel') {
+async function handleDownloadTargetModelDocs(format: 'html' | 'markdown' | 'excel' | 'schema-reference') {
   if (!projectName.value) return
 
   targetModelDocsDownloading.value = true
@@ -2403,8 +2408,13 @@ async function handleDownloadTargetModelDocs(format: 'html' | 'markdown' | 'exce
     const link = document.createElement('a')
     link.href = url
     
-    const extensions = { html: 'html', markdown: 'md', excel: 'xlsx' }
-    link.download = `${projectName.value}_target_model.${extensions[format]}`
+    const filenames = {
+      html: `${projectName.value}_target_model.html`,
+      markdown: `${projectName.value}_target_model.md`,
+      excel: `${projectName.value}_target_model.xlsx`,
+      'schema-reference': `${projectName.value}_target_model_schema_reference.md`,
+    }
+    link.download = filenames[format]
     
     document.body.appendChild(link)
     link.click()

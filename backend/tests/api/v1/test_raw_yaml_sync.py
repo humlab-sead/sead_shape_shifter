@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from backend.app.core.config import settings
 from backend.app.core.state_manager import get_app_state
 from backend.app.main import app
-from backend.app.services import dependency_service, project_service, validation_service, yaml_service
+from backend.app.services import dependency_service, documentation_service, project_service, validation_service, yaml_service
 
 client = TestClient(app)
 
@@ -23,6 +23,7 @@ def reset_services_and_state():
 
     project_service._project_service = None
     dependency_service._dependency_service = None
+    documentation_service._documentation_service = None
     validation_service._validation_service = None
     yaml_service._yaml_service = None
 
@@ -36,6 +37,7 @@ def reset_services_and_state():
 
     project_service._project_service = None
     dependency_service._dependency_service = None
+    documentation_service._documentation_service = None
     validation_service._validation_service = None
     yaml_service._yaml_service = None
 
@@ -122,3 +124,39 @@ entities:
     assert deps_resp.status_code == 200
     graph = deps_resp.json()
     assert {n["name"] for n in graph["nodes"]} == {"datasheet", "sample", "site", "location", "site_location"}
+
+
+def test_download_schema_reference_target_model_docs(tmp_path, monkeypatch, reset_services_and_state):
+    """GET /target-model-docs with schema-reference returns Markdown and download headers."""
+
+    monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+    create_resp = client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+    assert create_resp.status_code == 201
+
+    yaml_with_target_model = """
+metadata:
+  name: test_project
+  type: shapeshifter-project
+  description: test
+  version: 1.0.0
+  target_model:
+    model:
+      name: Test Target Model
+      version: 0.1.0
+    entities:
+      site:
+        role: fact
+        public_id: site_id
+entities: {}
+""".lstrip()
+
+    update_resp = client.put("/api/v1/projects/test_project/raw-yaml", json={"yaml_content": yaml_with_target_model})
+    assert update_resp.status_code == 200
+
+    response = client.get("/api/v1/projects/test_project/target-model-docs?format=schema-reference")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/markdown")
+    assert response.headers["content-disposition"] == 'attachment; filename="test_project_target_model_schema_reference.md"'
+    assert response.text.startswith("# Target Model Schema Reference")

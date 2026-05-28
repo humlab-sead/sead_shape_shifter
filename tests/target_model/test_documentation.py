@@ -14,6 +14,7 @@ from src.target_model.documentation import (
     ExcelGenerator,
     HTMLDocumentGenerator,
     MarkdownDocumentGenerator,
+    SchemaReferenceDocumentGenerator,
     SimsDocumentGenerator,
     TargetModelDocumentGenerator,
 )
@@ -55,6 +56,7 @@ class TestDocumentFormat:
             DocumentFormat.MARKDOWN,
             DocumentFormat.EXCEL,
             DocumentFormat.SIMS,
+            DocumentFormat.SCHEMA_REFERENCE,
         }
 
     def test_string_values(self):
@@ -62,6 +64,7 @@ class TestDocumentFormat:
         assert DocumentFormat.MARKDOWN == "markdown"
         assert DocumentFormat.EXCEL == "excel"
         assert DocumentFormat.SIMS == "sims"
+        assert DocumentFormat.SCHEMA_REFERENCE == "schema-reference"
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +76,14 @@ class TestDocumentGeneratorsRegistry:
     def test_all_formats_registered(self):
         for fmt in DocumentFormat:
             assert DOCUMENT_GENERATORS.get(fmt) is not None
+
+
+class TestSchemaReferenceDocumentGenerator:
+    def test_generate_returns_markdown_bytes(self):
+        result = SchemaReferenceDocumentGenerator().generate(minimal_model())
+
+        assert isinstance(result, bytes)
+        assert result.decode("utf-8").startswith("# Target Model Schema Reference")
 
 
 # ---------------------------------------------------------------------------
