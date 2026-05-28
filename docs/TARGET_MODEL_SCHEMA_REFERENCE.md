@@ -25,6 +25,7 @@ Unknown keys in these sections are rejected because each model uses `extra="forb
 - `entities.<entity_name>.columns`: map[string, ColumnSpec] (optional)
 - `entities.<entity_name>.columns.<column_name>`: ColumnSpec (map value)
 - `entities.<entity_name>.columns.<column_name>.required`: boolean (optional)
+- `entities.<entity_name>.columns.<column_name>.generated`: boolean (optional)
 - `entities.<entity_name>.columns.<column_name>.type`: string | null (optional)
 - `entities.<entity_name>.columns.<column_name>.nullable`: boolean | null (optional)
 - `entities.<entity_name>.columns.<column_name>.description`: string | null (optional)
@@ -98,6 +99,7 @@ Values under `entities.<entity_name>.columns.<column_name>` for each declared co
 | Field | Type | Required | Default | Allowed |
 |---|---|---|---|---|
 | required | boolean | No | false | - |
+| generated | boolean | No | false | - |
 | type | string \| null | No | null | null |
 | nullable | boolean \| null | No | null | null |
 | description | string \| null | No | null | null |

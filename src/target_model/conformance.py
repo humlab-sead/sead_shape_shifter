@@ -284,7 +284,9 @@ class SchemaAwareAppendConformanceValidator(EntityConformanceValidator):
         issues: list[ConformanceIssue] = []
         parent_columns = set(table_cfg.get_target_facing_columns())
         required_columns = {
-            column_name for column_name, column_spec in entity_spec.columns.items() if column_spec.required and column_name in parent_columns
+            column_name
+            for column_name, column_spec in entity_spec.columns.items()
+            if column_spec.required and not column_spec.generated and column_name in parent_columns
         }
         if not required_columns:
             return issues
@@ -315,7 +317,7 @@ class RequiredColumnsConformanceValidator(EntityConformanceValidator):
         issues: list[ConformanceIssue] = []
         declared_columns: set[str] = set(table_cfg.get_target_facing_columns())
         for column_name, column_spec in entity_spec.columns.items():
-            if column_spec.required and column_name not in declared_columns:
+            if column_spec.required and not column_spec.generated and column_name not in declared_columns:
                 issues.append(
                     ConformanceIssue(
                         code="MISSING_REQUIRED_COLUMN",

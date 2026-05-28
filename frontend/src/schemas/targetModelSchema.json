@@ -8,6 +8,11 @@
           "title": "Required",
           "type": "boolean"
         },
+        "generated": {
+          "default": false,
+          "title": "Generated",
+          "type": "boolean"
+        },
         "type": {
           "anyOf": [
             {

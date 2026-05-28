@@ -440,6 +440,63 @@ def test_schema_aware_append_respects_align_by_position() -> None:
     assert "APPEND_MISSING_REQUIRED_COLUMN" not in codes
 
 
+def test_required_columns_ignores_required_generated_columns() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "site": {
+                "required": True,
+                "public_id": "site_id",
+                "columns": {
+                    "site_name": {"required": True},
+                    "site_slug": {"required": True, "generated": True},
+                },
+            }
+        }
+    )
+    project = _minimal_project({"site": {"public_id": "site_id", "columns": ["site_name"]}})
+
+    issues = issue_pairs(target_model, project)
+
+    assert ("MISSING_REQUIRED_COLUMN", "site") not in issues
+
+
+def test_schema_aware_append_ignores_required_generated_columns() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "site": {
+                "required": True,
+                "public_id": "site_id",
+                "columns": {
+                    "site_name": {"required": True},
+                    "site_slug": {"required": True, "generated": True},
+                },
+            }
+        }
+    )
+    project = ShapeShiftProject(
+        cfg={
+            "metadata": {"name": "append-generated-column", "type": "shapeshifter-project"},
+            "entities": {
+                "site": {
+                    "public_id": "site_id",
+                    "columns": ["site_name", "site_slug"],
+                    "append": [
+                        {
+                            "type": "fixed",
+                            "columns": ["site_name"],
+                            "values": [["Append Site"]],
+                        }
+                    ],
+                }
+            },
+        }
+    )
+
+    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "APPEND_MISSING_REQUIRED_COLUMN" not in codes
+
+
 def test_core_conformance_keeps_alias_like_names_strict() -> None:
     target_model: TargetModel = load_target_model()
     project = ShapeShiftProject(
