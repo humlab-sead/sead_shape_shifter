@@ -13,6 +13,26 @@
           "title": "Generated",
           "type": "boolean"
         },
+        "allowed_values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Allowed Values",
+          "type": "array"
+        },
         "type": {
           "anyOf": [
             {

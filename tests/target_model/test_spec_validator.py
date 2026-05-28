@@ -242,3 +242,30 @@ def test_validator_reports_invalid_identity_reconciliation_combinations() -> Non
         ("INVALID_IDENTITY_RECONCILIATION_COMBINATION", "derived_entity"),
         ("INVALID_IDENTITY_RECONCILIATION_COMBINATION", "ambiguous_lookup"),
     ]
+
+
+def test_validator_reports_invalid_allowed_values_usage() -> None:
+    target_model = TargetModel.model_validate(
+        {
+            "model": {
+                "name": "SEAD Clearinghouse",
+                "version": "2.0.0",
+            },
+            "entities": {
+                "sample": {
+                    "public_id": "sample_id",
+                    "columns": {
+                        "sample_kind": {"type": "string", "allowed_values": ["core", "control"]},
+                        "sample_status": {"type": "enum"},
+                    },
+                }
+            },
+        }
+    )
+
+    issues = TargetModelSpecValidator().validate(target_model)
+
+    assert [(issue.code, issue.field) for issue in issues] == [
+        ("ALLOWED_VALUES_REQUIRE_ENUM_TYPE", "sample_kind"),
+        ("ENUM_MISSING_ALLOWED_VALUES", "sample_status"),
+    ]

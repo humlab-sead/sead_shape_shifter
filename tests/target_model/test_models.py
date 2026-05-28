@@ -42,6 +42,7 @@ def test_target_model_parses_richer_entity_payload() -> None:
                     "columns": {
                         "location_name": {"required": True, "type": "string", "nullable": False},
                         "location_type_id": {"required": True, "generated": True, "type": "integer", "nullable": False},
+                        "location_kind": {"type": "enum", "allowed_values": ["site", "trench"]},
                     },
                     "unique_sets": [["location_type_id", "location_name"]],
                     "foreign_keys": [{"entity": "location_type", "required": True}],
@@ -59,9 +60,10 @@ def test_target_model_parses_richer_entity_payload() -> None:
     location = target_model.entities["location"]
     assert location.domains == ["core", "spatial"]
     assert location.identity_columns == ["location_type_id", "location_name"]
-    assert list(location.columns) == ["location_name", "location_type_id"]
+    assert list(location.columns) == ["location_name", "location_type_id", "location_kind"]
     assert location.columns["location_name"].required is True
     assert location.columns["location_type_id"].generated is True
+    assert location.columns["location_kind"].allowed_values == ["site", "trench"]
     assert location.unique_sets == [["location_type_id", "location_name"]]
 
 
