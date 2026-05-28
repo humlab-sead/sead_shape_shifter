@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 
 from src.model import ShapeShiftProject, TableConfig
-from src.target_model.conformance import ConformanceIssue, TargetModelConformanceValidator
+from src.target_model.conformance import CONFORMANCE_VALIDATORS, ConformanceIssue, EntityConformanceValidator, GlobalConformanceValidator, TargetModelConformanceValidator
 from src.target_model.models import TargetModel
 
 TEST_DATA_DIR: Path = Path(__file__).resolve().parent.parent / "test_data"
@@ -30,6 +30,44 @@ def load_real_project(project_name: str) -> ShapeShiftProject:
 def issue_pairs(target_model: TargetModel, project: ShapeShiftProject) -> list[tuple[str, str | None]]:
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
     return [(issue.code, issue.entity) for issue in issues]
+
+
+def test_conformance_registry_runs_global_and_entity_validator_base_types() -> None:
+    """The registry should execute both global and entity validator subclasses."""
+
+    @CONFORMANCE_VALIDATORS.register(key="test_global_conformance_validator")
+    class TestGlobalConformanceValidator(GlobalConformanceValidator):
+        def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+            return [ConformanceIssue(code="TEST_GLOBAL_CONFORMANCE_RULE", entity="sample", message="global validator executed")]
+
+    @CONFORMANCE_VALIDATORS.register(key="test_entity_conformance_validator")
+    class TestEntityConformanceValidator(EntityConformanceValidator):
+        def validate_entity(self, entity_name: str, entity_spec, table_cfg) -> list[ConformanceIssue]:
+            return [ConformanceIssue(code="TEST_ENTITY_CONFORMANCE_RULE", entity=entity_name, message="entity validator executed")]
+
+    target_model = TargetModel.model_validate(
+        {
+            "model": {"name": "test", "version": "1.0"},
+            "entities": {"sample": {"required": True, "public_id": "sample_id"}},
+        }
+    )
+    project = ShapeShiftProject(
+        cfg={
+            "metadata": {"name": "registry-base-types", "type": "shapeshifter-project"},
+            "entities": {"sample": {"public_id": "sample_id", "columns": ["sample_name"]}},
+        }
+    )
+
+    try:
+        issues = TargetModelConformanceValidator().validate(target_model, project)
+    finally:
+        CONFORMANCE_VALIDATORS.items.pop("test_global_conformance_validator", None)
+        CONFORMANCE_VALIDATORS.items.pop("test_entity_conformance_validator", None)
+
+    issue_codes = {issue.code for issue in issues}
+
+    assert "TEST_GLOBAL_CONFORMANCE_RULE" in issue_codes
+    assert "TEST_ENTITY_CONFORMANCE_RULE" in issue_codes
 
 
 def test_table_config_target_facing_columns_treat_materialized_entity_as_fixed_view() -> None:

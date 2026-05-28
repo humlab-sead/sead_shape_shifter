@@ -41,7 +41,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 
 ### Infrastructure
 - [x] Rule disabling via `options.validation.disabled_rules`
-- [ ] `GlobalConformanceValidator` base type for multi-entity checks
+- [x] `GlobalConformanceValidator` base type for multi-entity checks
 - [ ] `TargetModelService` — extract loading/caching when remote refs become real
 - [x] Target model YAML editor tab — raw YAML edit tab for the project's **project-local** target model file alongside the project YAML tab
 - [x] Monaco editor schema support for target model YAML files — autocomplete and IntelliSense using `targetModelSchema.json`
