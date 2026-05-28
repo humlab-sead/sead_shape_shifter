@@ -97,7 +97,7 @@ class ValidationMapper:
         Convert a core ConformanceIssue to an API ValidationError.
 
         Conformance issues are structural by category and high priority by default.
-        Severity is always 'error' — conformance violations are hard requirements.
+        Severity is preserved from the core conformance issue.
 
         Args:
             issue: Core conformance issue from TargetModelConformanceValidator

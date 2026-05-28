@@ -5,6 +5,9 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
+SeverityLevel = Literal["error", "warning", "info"]
+
+
 class ForeignKeySpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -54,6 +57,7 @@ class GlobalConstraint(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: str
+    required: bool | Literal["strict"] | None = None
 
 
 class ModelMetadata(BaseModel):

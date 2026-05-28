@@ -29,7 +29,6 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [x] `generated: true` flag on `ColumnSpec` (required generated columns are advisory and do not trigger missing-column conformance errors)
 - [x] `allowed_values` / `type: enum` on `ColumnSpec`
 - [x] Richer FK semantics — bridge entity support via `via` attribute in FK spec
-- [ ] Advanced FK validation modes — `direct`, `transitive`, explicit path constraints
 ~~- [ ] Entity spec inheritance (`extends:`) — defer until 5+ target models exist~~
 
 ### Test Coverage
@@ -38,7 +37,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [x] Projects without target model — structural validation unaffected, conformance returns empty
 - [x] Missing target model file — graceful handling, treated as no target model rather than a 500
 - [x] Backend adapter integration — `TargetModelValidator` code mapping, endpoint response, category tagging
-- [ ] Warning vs error severity (Phase 4 checks)
+- [x] Warning vs error severity (Phase 4 checks)
 
 ### Infrastructure
 - [x] Rule disabling via `options.validation.disabled_rules`
@@ -49,9 +48,8 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 
 ### Tooling / Ecosystem
 - [x] Target model documentation downloads — Project-aware HTML/Markdown/Excel documentation accessible from UX
-- [ ] Target model diff report (version upgrade planning)
-- [ ] Remote target model references (SSRF-safe, with caching)
-- [ ] Curated target model registry (bundled YAML short-name resolution)
+
+Speculative tooling and ecosystem follow-up items have been moved to [docs/proposals/future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md](future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md).
 
 ### SEAD spec coverage (`resources/target_models/sead_superset_model.yml`)
 - [x] Abundance chain — `abundance`, `abundance_element`, `abundance_element_group`, `abundance_modification`, `modification_type`, `abundance_property`
@@ -158,77 +156,7 @@ site_location:
 
 Many-to-many relationships are common in relational models. The `via` attribute makes bridge patterns explicit in the target model specification, enabling validators to understand transitive FK relationships without requiring deep graph traversal. This documents intent and prevents false positives when the direct FK relationship doesn't exist.
 
-### Advanced FK Validation Modes — Future Enhancement
-
-The current bridge entity support (`via` attribute) handles the most common many-to-many pattern. Future enhancements could add more flexible FK validation modes to handle complex relationship patterns.
-
-**Proposed FK validation mode attributes:**
-
-```yaml
-# Mode 1: Direct FK only (no transitive relationships allowed)
-entity_a:
-  foreign_keys:
-    - entity: entity_b
-      direct: true          # Must be a direct FK, fail if only transitive path exists
-      required: true
-
-# Mode 2: Bridge-mediated (current implementation)
-entity_a:
-  foreign_keys:
-    - entity: entity_c
-      via: bridge_entity    # Must go through specific bridge entity
-      required: true
-
-# Mode 3: Transitive FK (any path allowed)
-entity_a:
-  foreign_keys:
-    - entity: entity_d
-      transitive: true      # Can be satisfied by any FK chain (BFS/DFS walk)
-      required: true
-      max_depth: 3          # Optional: limit transitive search depth
-
-# Mode 4: Explicit path constraint
-entity_a:
-  foreign_keys:
-    - entity: entity_e
-      path: [intermediary_1, intermediary_2]  # Must follow specific FK chain
-      required: true
-```
-
-**Validation strategies:**
-
-1. **Direct mode** (`direct: true`)
-   - Default if no mode specified
-   - Check that target entity appears in source's immediate FK targets
-   - Reject transitive paths
-
-2. **Bridge mode** (`via: bridge_name`)
-   - Current implementation ✅
-   - Validate bridge presence in direct FK targets
-   - Validate bridge has FK to ultimate target
-
-3. **Transitive mode** (`transitive: true`)
-   - BFS/DFS graph walk through FK graph
-   - Accept any valid FK chain from source to target
-   - Optional `max_depth` to prevent infinite loops
-   - Performance consideration: may require full FK graph construction
-
-4. **Explicit path mode** (`path: [...]`)
-   - Validate that each entity in path has FK to next entity
-   - Strictest validation: only accept specified route
-   - Use case: documenting canonical FK traversal paths
-
-**Implementation considerations:**
-
-- **Mutual exclusivity**: Only one mode per FK spec (enforced by Pydantic validators)
-- **Default behavior**: No mode specified = `direct: true` (backward compatible)
-- **Performance**: Transitive and path modes require FK graph access (may need `ProcessState` or equivalent)
-- **False positive risk**: Transitive mode may be too permissive; use with caution
-
-**Deferred until:**
-- Real-world use cases demonstrate need for modes beyond `via`
-- FK graph structure is stable and available at validation time
-- Performance implications of graph traversal are analyzed
+Advanced FK validation modes are no longer part of this active CR. The deferred design work now lives in [docs/proposals/future/ADVANCED_FK_VALIDATION_MODES.md](future/ADVANCED_FK_VALIDATION_MODES.md).
 
 ---
 
@@ -242,11 +170,11 @@ Check global modeling requirements that depend on understanding the *combination
 
 **Implemented rule:** `no_orphan_facts` — when the target model declares `constraints: [{type: no_orphan_facts}]`, each fact entity present in the project must be linked (directly or transitively) to at least one lookup or classifier entity declared in the target model.
 
-**Implementation note:** The rule reuses the same target-facing FK graph walk used by transitive foreign-key conformance. It runs only when the global constraint is declared, so target models that do not opt in keep current behavior.
+**Implementation note:** The rule reuses the same target-facing FK graph walk used by transitive foreign-key conformance. It runs only when the global constraint is declared, so target models that do not opt in keep current behavior. It now emits a warning by default and upgrades to an error when the constraint is declared with `required: strict`. Projects can still override the severity via `options.validation.severity_overrides.no_orphan_facts`.
 
 ### Source-Type Appropriateness
 
-Classifiers declared with `role: classifier` should use `type: fixed` or `type: sql` rather than `type: entity`. Emit a warning when a classifier is configured as a row-extraction entity.
+Classifiers declared with `role: classifier` should use `type: fixed` or `type: sql` rather than `type: entity`. The implemented rule emits a warning when a classifier is configured as a row-extraction entity. Projects can override that severity via `options.validation.severity_overrides.source_type_appropriateness`.
 
 **Difficulty:** Low. Single-pass check against entity type field.
 
@@ -504,7 +432,7 @@ A project may satisfy a required FK transitively through an intermediate entity 
 
 **Status:** Implemented. `ForeignKeyConformanceValidator` now walks the project's target-facing FK graph before emitting `MISSING_REQUIRED_FOREIGN_KEY_TARGET`, which removes direct-only false positives such as `sample → sample_group → site`.
 
-**Current limitation:** This is path detection only. The format-level FK modes proposed earlier (`direct`, `transitive`, explicit `path`) are still deferred.
+**Current limitation:** This is path detection only. Format-level FK modes such as `direct`, `transitive`, and explicit `path` constraints have been moved to [docs/proposals/future/ADVANCED_FK_VALIDATION_MODES.md](future/ADVANCED_FK_VALIDATION_MODES.md).
 
 ### Value-Level Checks
 
@@ -591,8 +519,11 @@ These test areas were identified in the implementation sketch but not yet covere
 
 ### Warning vs Error Severity (Phase 4)
 
-- Orphan-fact check is configurable (warning by default, error when `required: strict`)
-- Severity can be overridden via `options.validation.severity_overrides`
+**Implemented:**
+
+- `no_orphan_facts` emits a warning by default and upgrades to an error when the target model declares `required: strict`
+- `source_type_appropriateness` emits a warning by default
+- Projects can override registered conformance-rule severities via `options.validation.severity_overrides`
 
 ### Missing Target Model File
 
@@ -637,39 +568,13 @@ Should projects be able to suppress specific conformance rules?
 
 **Current state:** Implemented for registered target-model conformance validators. Unknown rule keys produce a warning instead of being silently ignored.
 
-**Recommendation:** Keep this limited to registry-key filtering for conformance validators until there is a concrete need for severity overrides or broader validation-rule scoping.
+**Recommendation:** Keep both `disabled_rules` and `severity_overrides` limited to registered conformance validator keys until there is a concrete need for broader validation-rule scoping.
 
 ---
 
 ## Future Enhancements
 
-### Target Model Diff Tooling
-
-When a target model version changes, provide a diff report showing which conformance checks are new, changed, or removed. Useful for upgrade planning.
-
-**Approach:** Compare two `TargetModel` instances field-by-field. Output a structured diff as YAML or markdown.
-
-### Remote Target Model References
-
-Allow `target_model: "https://registry.example.com/sead/v2.yml"` in addition to `@include:` file references.
-
-**Prerequisites:**
-- SSRF prevention (allowlist of permitted domains or a local proxy)
-- Caching with TTL to avoid network calls on every validation
-- Version pinning to prevent silent breakage on upstream changes
-
-**Recommendation:** Only implement if a shared community registry becomes real. Local file references cover all current use cases.
-
-### Curated Target Model Registry
-
-A registry of community-contributed target models distributed alongside Shape Shifter or via a companion package.
-
-**Candidates:**
-- `sead_standard_model` — SEAD Clearinghouse v2 (already exists in `resources/target_models/`)
-- Generic archaeological site model
-- Museum specimen model
-
-**Approach:** Bundled YAML files in `resources/target_models/`, referenced by short name without a path. The mapper resolves short names to the bundled file before resolving `@include:`.
+Speculative target-model tooling and ecosystem work has been moved to [docs/proposals/future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md](future/TARGET_MODEL_ECOSYSTEM_ENHANCEMENTS.md).
 
 ### Target Model Documentation Downloads
 
