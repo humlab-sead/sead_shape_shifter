@@ -363,6 +363,83 @@ def test_core_conformance_accepts_transitive_foreign_key_path() -> None:
     assert ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample") not in issues
 
 
+def test_schema_aware_append_emits_issue_when_append_branch_misses_required_column() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "site": {
+                "required": True,
+                "public_id": "site_id",
+                "columns": {
+                    "site_name": {"required": True},
+                    "site_type": {"required": True},
+                },
+            }
+        }
+    )
+    project = ShapeShiftProject(
+        cfg={
+            "metadata": {"name": "append-missing-required", "type": "shapeshifter-project"},
+            "entities": {
+                "site": {
+                    "public_id": "site_id",
+                    "columns": ["site_name", "site_type"],
+                    "append": [
+                        {
+                            "type": "fixed",
+                            "columns": ["site_name"],
+                            "values": [["Append Site"]],
+                        }
+                    ],
+                }
+            },
+        }
+    )
+
+    issues = set(issue_pairs(target_model, project))
+
+    assert ("APPEND_MISSING_REQUIRED_COLUMN", "site") in issues
+
+
+def test_schema_aware_append_respects_align_by_position() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "site": {
+                "required": True,
+                "public_id": "site_id",
+                "columns": {
+                    "site_name": {"required": True},
+                    "site_type": {"required": True},
+                },
+            }
+        }
+    )
+    project = ShapeShiftProject(
+        cfg={
+            "metadata": {"name": "append-align-by-position", "type": "shapeshifter-project"},
+            "entities": {
+                "legacy_site": {
+                    "public_id": "legacy_site_id",
+                    "columns": ["legacy_name", "legacy_kind"],
+                },
+                "site": {
+                    "public_id": "site_id",
+                    "columns": ["site_name", "site_type"],
+                    "append": [
+                        {
+                            "source": "legacy_site",
+                            "align_by_position": True,
+                        }
+                    ],
+                },
+            },
+        }
+    )
+
+    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "APPEND_MISSING_REQUIRED_COLUMN" not in codes
+
+
 def test_core_conformance_keeps_alias_like_names_strict() -> None:
     target_model: TargetModel = load_target_model()
     project = ShapeShiftProject(
@@ -431,6 +508,8 @@ def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
 
     assert sorted(issue_pairs(target_model, project)) == sorted(
         [
+            ("APPEND_MISSING_REQUIRED_COLUMN", "analysis_entity"),
+            ("APPEND_MISSING_REQUIRED_COLUMN", "analysis_entity"),
             ("MISSING_INDUCED_REQUIRED_ENTITY", "taxa_tree_master"),
             ("ORPHAN_FACT_ENTITY", "abundance_property"),
             ("MISSING_REQUIRED_COLUMN", "abundance_ident_level"),
@@ -476,6 +555,7 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
             {
                 "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
                 "MISSING_REQUIRED_COLUMN": 2,
+                "APPEND_MISSING_REQUIRED_COLUMN": 2,
                 "MISSING_INDUCED_REQUIRED_ENTITY": 1,
                 "ORPHAN_FACT_ENTITY": 1,
             }
