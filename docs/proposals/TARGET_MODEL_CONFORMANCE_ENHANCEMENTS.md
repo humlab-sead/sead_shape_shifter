@@ -15,7 +15,7 @@
 - [x] `induced_requirements` — optional entity present → its required FK targets are induced-required (transitive)
 - [x] `source_type_appropriateness` — classifiers should not use `type: entity`
 - [x] `no_orphan_facts` — fact entities must have a direct or transitive FK path to at least one lookup or classifier when the global constraint is declared
-- [ ] `schema_aware_append` — appended columns conform to target model column spec
+- [x] `schema_aware_append` — append branches satisfy the parent's required target-model column contract after append renaming is applied
 
 ### Data Conformance Validators
 - [x] `nullable` — required-not-null columns must have no null values in produced data
@@ -77,7 +77,7 @@ This proposal consolidates deferred and future items from:
 
 ## What Is Already Implemented
 
-Eight conformance validators are registered and active:
+Nine conformance validators are registered and active:
 
 | Key                            | What it checks                                                                            |
 |--------------------------------|-------------------------------------------------------------------------------------------|
@@ -89,6 +89,7 @@ Eight conformance validators are registered and active:
 | `induced_requirements`         | If optional entity X is present and has a required FK to Y, then Y is required (transitively) |
 | `source_type_appropriateness`  | Classifiers (`role: classifier`) must use `type: fixed` or `type: sql`, not `type: entity` |
 | `no_orphan_facts`              | Fact entities present in the project must reach at least one lookup or classifier when the target model declares that global constraint |
+| `schema_aware_append`          | Each append branch must provide the parent's required target-facing columns after `align_by_position` or `column_mapping` is applied |
 
 Backend wiring, frontend Check Conformance button, and Conformance panel in ValidationPanel are all live.
 
@@ -233,7 +234,7 @@ entity_a:
 
 ## Advanced Semantic Validation (Phase 4)
 
-These items were labeled "Phase 4 — Advanced Semantic Rules" in the implementation sketch. None are implemented.
+These items were labeled "Phase 4 — Advanced Semantic Rules" in the implementation sketch. Some remain deferred, but `no_orphan_facts` and `schema_aware_append` are now implemented.
 
 ### Global Role-Informed Checks
 
@@ -251,7 +252,11 @@ Classifiers declared with `role: classifier` should use `type: fixed` or `type: 
 
 ### Schema-Aware Append Conformance
 
-When a project uses append mode, validate that the appended columns conform to the target-model column spec for that entity. Currently append operations are not checked against the target model at all.
+**Implemented rule:** `schema_aware_append` — when a project entity uses `append`, each append branch is checked against the subset of required target-model columns already exposed by the parent entity's target-facing contract.
+
+This closes the gap where the parent entity looks conformant, but one append source still contributes rows that are missing required target-facing columns or omit expected FK-facing columns.
+
+**Implementation note:** The validator applies static append renaming before checking branch shape, so `align_by_position` and `column_mapping` are treated as part of the append contract. It emits `APPEND_MISSING_REQUIRED_COLUMN` only for required target-model columns that the parent entity already exposes, which avoids duplicating the base required-column errors when the parent entity is itself non-conformant.
 
 ### Branch-Aware Semantic Validation
 

@@ -233,6 +233,31 @@ class TestTargetModelValidatorErrorPaths:
 
         assert any(error.code == "ORPHAN_FACT_ENTITY" for error in errors)
 
+    def test_schema_aware_append_returns_missing_required_column_error(self):
+        """Append branches missing required target columns should surface through the adapter."""
+        project = _make_project(
+            {
+                "site": {
+                    "public_id": "site_id",
+                    "columns": ["site_name", "site_type"],
+                    "append": [{"type": "fixed", "columns": ["site_name"], "values": [["Append Site"]]}],
+                }
+            }
+        )
+        target_model_data = _minimal_target_model(
+            entities={
+                "site": {
+                    "required": True,
+                    "public_id": "site_id",
+                    "columns": {"site_name": {"required": True}, "site_type": {"required": True}},
+                }
+            }
+        )
+
+        errors = TargetModelValidator().validate(target_model_data, project)
+
+        assert any(error.code == "APPEND_MISSING_REQUIRED_COLUMN" for error in errors)
+
 
 # ---------------------------------------------------------------------------
 # ValidationError shape produced by the adapter
