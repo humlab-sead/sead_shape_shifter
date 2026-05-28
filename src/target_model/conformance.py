@@ -343,9 +343,45 @@ class SourceTypeAppropriatenessConformanceValidator(EntityConformanceValidator):
 class TargetModelConformanceValidator(ConformanceValidator):
     """Validate a resolved Shape Shifter project against a target model."""
 
+    def get_disabled_rule_keys(self, project: ShapeShiftProject) -> set[str]:
+        """Read disabled conformance rule keys from project options."""
+        validation_options = project.options.get("validation", {}) or {}
+        raw_disabled_rules = validation_options.get("disabled_rules", [])
+
+        if raw_disabled_rules is None:
+            return set()
+        if isinstance(raw_disabled_rules, str):
+            return {raw_disabled_rules} if raw_disabled_rules else set()
+        if isinstance(raw_disabled_rules, (list, tuple, set)):
+            return {rule_key for rule_key in raw_disabled_rules if isinstance(rule_key, str) and rule_key}
+
+        return set()
+
+    def validate_disabled_rule_keys(self, disabled_rule_keys: set[str]) -> list[ConformanceIssue]:
+        """Return warning issues for unknown disabled rule keys."""
+        known_rule_keys = set(CONFORMANCE_VALIDATORS.items.keys())
+        unknown_rule_keys = sorted(disabled_rule_keys - known_rule_keys)
+
+        return [
+            ConformanceIssue(
+                severity="warning",
+                code="UNKNOWN_DISABLED_CONFORMANCE_RULE",
+                field="options.validation.disabled_rules",
+                message=(
+                    f"Project disables unknown conformance rule '{rule_key}'. "
+                    "Remove it or use a registered conformance validator key."
+                ),
+            )
+            for rule_key in unknown_rule_keys
+        ]
+
     def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
-        issues: list[ConformanceIssue] = []
-        for validator_cls in CONFORMANCE_VALIDATORS.items.values():
+        disabled_rule_keys = self.get_disabled_rule_keys(project)
+        issues: list[ConformanceIssue] = self.validate_disabled_rule_keys(disabled_rule_keys)
+
+        for rule_key, validator_cls in CONFORMANCE_VALIDATORS.items.items():
+            if rule_key in disabled_rule_keys:
+                continue
             validator: ConformanceValidator = validator_cls()
             issues.extend(validator.validate(target_model, project))
         return issues

@@ -42,7 +42,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 - [ ] Warning vs error severity (Phase 4 checks)
 
 ### Infrastructure
-- [ ] Rule disabling via `options.validation.disabled_rules`
+- [x] Rule disabling via `options.validation.disabled_rules`
 - [ ] `GlobalConformanceValidator` base type for multi-entity checks
 - [ ] `TargetModelService` — extract loading/caching when remote refs become real
 - [x] Target model YAML editor tab — raw YAML edit tab for the project's **project-local** target model file alongside the project YAML tab
@@ -645,9 +645,9 @@ Should projects be able to suppress specific conformance rules?
 
 **Proposal:** Via `options.validation.disabled_rules: ["naming_convention", "no_orphan_facts"]` in the project YAML.
 
-**Current state:** No rule suppression exists. The conformance engine runs all registered validators unconditionally.
+**Current state:** Implemented for registered target-model conformance validators. Unknown rule keys produce a warning instead of being silently ignored.
 
-**Recommendation:** Implement when false-positive feedback from real projects accumulates. Design as an allow-list that strips matching validators from the registry copy used for that project.
+**Recommendation:** Keep this limited to registry-key filtering for conformance validators until there is a concrete need for severity overrides or broader validation-rule scoping.
 
 ---
 
