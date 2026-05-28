@@ -67,6 +67,10 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     coordinate_system = target_model.entities["coordinate_system"]
     colour = target_model.entities["colour"]
     sample_colour = target_model.entities["sample_colour"]
+    ecocode = target_model.entities["ecocode"]
+    ecocode_definition = target_model.entities["ecocode_definition"]
+    ecocode_group = target_model.entities["ecocode_group"]
+    ecocode_system = target_model.entities["ecocode_system"]
     project = target_model.entities["project"]
     project_type = target_model.entities["project_type"]
     project_stage = target_model.entities["project_stage"]
@@ -81,7 +85,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     sample_horizon = target_model.entities["sample_horizon"]
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
-    assert len(target_model.entities) == 92
+    assert len(target_model.entities) == 96
     assert {
         "analysis_value",
         "analysis_boolean_value",
@@ -116,6 +120,10 @@ def test_sead_superset_spec_loads_and_validates() -> None:
         "project_stage",
         "taxa_synonyms",
         "taxa_measured_attributes",
+        "ecocode_system",
+        "ecocode_group",
+        "ecocode_definition",
+        "ecocode",
         "rdb_system",
         "rdb_code",
         "rdb",
@@ -183,6 +191,16 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert taxa_measured_attributes.target_table == "tbl_taxa_measured_attributes"
     assert taxa_measured_attributes.aggregate_parent == "taxa_tree_master"
     assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in taxa_measured_attributes.foreign_keys)
+    assert ecocode_system.target_table == "tbl_ecocode_systems"
+    assert any(foreign_key.entity == "citation" for foreign_key in ecocode_system.foreign_keys)
+    assert ecocode_group.target_table == "tbl_ecocode_groups"
+    assert any(foreign_key.entity == "ecocode_system" for foreign_key in ecocode_group.foreign_keys)
+    assert ecocode_definition.target_table == "tbl_ecocode_definitions"
+    assert any(foreign_key.entity == "ecocode_group" for foreign_key in ecocode_definition.foreign_keys)
+    assert ecocode.target_table == "tbl_ecocodes"
+    assert ecocode.aggregate_parent == "taxa_tree_master"
+    assert any(foreign_key.entity == "ecocode_definition" for foreign_key in ecocode.foreign_keys)
+    assert any(foreign_key.entity == "taxa_tree_master" for foreign_key in ecocode.foreign_keys)
     assert rdb_system.target_table == "tbl_rdb_systems"
     assert any(foreign_key.entity == "location" for foreign_key in rdb_system.foreign_keys)
     assert any(foreign_key.entity == "citation" for foreign_key in rdb_system.foreign_keys)
