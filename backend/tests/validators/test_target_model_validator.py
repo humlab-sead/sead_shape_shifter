@@ -165,6 +165,25 @@ class TestTargetModelValidatorErrorPaths:
 
         assert any(e.code == "MISSING_REQUIRED_COLUMN" for e in errors)
 
+    def test_generated_required_column_does_not_return_missing_required_column(self):
+        """Required generated columns should not produce missing-column conformance errors."""
+        project = _make_project({"location": _minimal_entity(public_id="location_id", columns=["location_name"])})
+        target_model_data = _minimal_target_model(
+            entities={
+                "location": {
+                    "public_id": "location_id",
+                    "columns": {
+                        "location_name": {"required": True},
+                        "location_slug": {"required": True, "generated": True},
+                    },
+                }
+            }
+        )
+
+        errors = TargetModelValidator().validate(target_model_data, project)
+
+        assert all(e.code != "MISSING_REQUIRED_COLUMN" for e in errors)
+
     def test_unknown_foreign_key_entity_returns_specific_spec_issue(self):
         """Spec self-consistency issues should surface their specific code, not INVALID_TARGET_MODEL."""
         project = _make_project({})

@@ -26,7 +26,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 
 ### Format Extensions
 - [x] `format_version` field in `model:` block
-- [ ] `generated: true` flag on `ColumnSpec` (suppress missing-column warnings for auto-generated columns)
+- [x] `generated: true` flag on `ColumnSpec` (required generated columns are advisory and do not trigger missing-column conformance errors)
 - [ ] `allowed_values` / `type: enum` on `ColumnSpec`
 - [x] Richer FK semantics — bridge entity support via `via` attribute in FK spec
 - [ ] Advanced FK validation modes — `direct`, `transitive`, explicit path constraints
@@ -552,7 +552,7 @@ Add `allowed_values` or `type: enum` to `ColumnSpec` for validating classifier c
 
 Should the target model spec record which columns have database defaults or are auto-generated?
 
-**Recommendation:** Advisory only. Add an optional `generated: true` flag that validators can use to suppress "column not present in source" warnings. Not normative.
+**Implemented:** `ColumnSpec.generated: true` is now available as advisory metadata. Required columns marked this way are kept in the format and generated schema/docs, but the structural conformance checks skip missing-column errors for them, including append-branch column checks.
 
 ### Inheritance / Mixins for Entity Templates
 
