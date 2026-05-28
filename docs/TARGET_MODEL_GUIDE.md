@@ -92,6 +92,7 @@ For the full generated reference of accepted sections, keys, defaults, and enum 
 ```yaml
 model:
   name: string          # Human-readable model name (required)
+  format_version: "1"   # Optional format version; defaults to "1"
   version: string       # Semantic version, e.g. "2.0.0" (required)
   description: string   # Optional description
 
@@ -104,6 +105,7 @@ naming:                 # Optional naming convention rules
 
 constraints:            # Optional global constraint list
   - type: string
+    required: true | strict
 ```
 
 ---
@@ -113,6 +115,7 @@ constraints:            # Optional global constraint list
 ```yaml
 model:
   name: "SEAD Clearinghouse"
+  format_version: "1"
   version: "2.0.0"
   description: "SEAD archaeological research data model"
 ```
@@ -120,6 +123,7 @@ model:
 | Field         | Required | Description                                       |
 |---------------|----------|---------------------------------------------------|
 | `name`        | Yes      | Display name of the target system                 |
+| `format_version` | No    | Target-model format version. Defaults to `"1"`  |
 | `version`     | Yes      | Version of *this spec file* (semantic versioning) |
 | `description` | No       | Free-text description shown in tooling            |
 
@@ -176,7 +180,7 @@ entities:
 
 ### Semantic Roles
 
-The `role` field describes the meaning of an entity in the target model. Roles are informational in v1 and help humans understand the model; future validators will use them for advanced semantic checks.
+The `role` field describes the meaning of an entity in the target model. Roles still help humans read the model, but they also drive implemented conformance rules such as orphan-fact detection and classifier source-type checks.
 
 | Role         | Meaning                                                                                                                                       |
 |--------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
@@ -200,14 +204,20 @@ columns:
     nullable: true
   site_type_id:
     type: integer
+    generated: true
     nullable: true
+  status:
+    type: string
+    allowed_values: [draft, final]
 ```
 
 | Field      | Required | Description                                                                                          |
 |------------|----------|------------------------------------------------------------------------------------------------------|
-| `required` | No       | `true` means the project entity must expose this column                                              |
-| `type`     | No       | Hint type such as `string`, `integer`, `decimal`, `boolean`, or `date` (informational in v1)       |
-| `nullable` | No       | Whether the column is expected to allow null values (informational)                                  |
+| `required` | No       | `true` means the project entity must expose this column unless it is marked as generated             |
+| `generated` | No      | Marks a target column that is produced downstream rather than directly supplied by the project        |
+| `allowed_values` | No | Literal allowed values for the column; useful for enums, docs, and downstream tooling                |
+| `type`     | No       | Hint type such as `string`, `integer`, `decimal`, `boolean`, or `date`                              |
+| `nullable` | No       | Whether the column is expected to allow null values                                                  |
 | `description` | No    | Human-readable note for reviewers, generated docs, and editor help                                   |
 
 Shape Shifter counts a column as present in a project entity when it appears as:
@@ -216,6 +226,8 @@ Shape Shifter counts a column as present in a project entity when it appears as:
 - the `public_id` value
 - a column contributed by a foreign key (parent's `public_id`)
 - a column that survives an `unnest` transformation (`id_vars`, `var_name`, `value_name`)
+
+Current conformance rules enforce `required` columns. `generated: true` excludes a required column from direct missing-column checks because the value is expected to be added later. `type`, `nullable`, and `allowed_values` remain descriptive metadata for now.
 
 ---
 
@@ -281,16 +293,18 @@ naming:
 
 ```yaml
 constraints:
-  - type: no_circular_dependencies
+  - type: no_orphan_facts
+    required: strict
 ```
 
 | Field | Required | Description |
 |-------|----------|-------------|
 | `type` | Yes | Global rule name applied to the whole target model |
+| `required` | No | Rule strictness for constraints that support it. Use `true` or `strict` for error mode |
 
-Current constraints are modeled as simple typed entries. Add new constraint-specific keys only after extending the Pydantic schema.
+Current constraints are modeled as typed entries with optional strictness. Add new constraint-specific keys only after extending the Pydantic schema.
 
-`no_orphan_facts` is now enforced by the conformance engine when the target model declares it. The rule checks that each fact entity present in the project reaches at least one lookup or classifier through the target-facing FK graph.
+`no_orphan_facts` is enforced by the conformance engine when the target model declares it. The rule checks that each fact entity present in the project reaches at least one lookup or classifier through the target-facing FK graph. When `required` is omitted, the rule emits warnings. When `required: true` or `required: strict` is set, the rule emits errors.
 
 ---
 
@@ -304,32 +318,65 @@ When you click **Check Conformance** in the editor, Shape Shifter:
 2. Parses the target model spec into a `TargetModel` domain object.
 3. Runs the target-model spec validator to check self-consistency, including unknown FK targets, invalid aggregate-parent relationships, and invalid identity-tracking or reconciliation combinations.
 4. Runs the built-in conformance validators against the resolved project.
-5. Returns a list of `ConformanceIssue` objects, each including a code, message, affected entity and field, and a suggestion.
+5. Returns `ConformanceIssue` objects grouped as errors, warnings, or info, each including a code, message, affected entity and field, and a suggestion when available.
 
 Conformance results appear in their own **Conformance** panel in the Validate tab, separate from structural and data validation results.
 
 ### Issue Codes
 
+Default severities are shown below. Project-level severity overrides can remap individual rules to `error`, `warning`, or `info`.
+
 | Code                                  | Severity | What It Means                                                                          |
 |---------------------------------------|----------|----------------------------------------------------------------------------------------|
 | `MISSING_REQUIRED_ENTITY`             | error    | An entity marked `required: true` in the target model is absent from the project       |
 | `MISSING_PUBLIC_ID`                   | error    | The target model declares a `public_id` for an entity, but the project entity has none |
-| `UNEXPECTED_PUBLIC_ID`                | warning  | The project entity has a `public_id` that the target model does not expect             |
+| `UNEXPECTED_PUBLIC_ID`                | error    | The project entity declares a different `public_id` than the target model expects      |
 | `MISSING_REQUIRED_FOREIGN_KEY_TARGET` | error    | A required FK target is not declared on the project entity                             |
-| `MISSING_REQUIRED_COLUMN`             | error    | A required column is not present in the project entity's target-facing columns         |
-| `PUBLIC_ID_NAMING_VIOLATION`          | warning  | A `public_id` value does not end with the `naming.public_id_suffix`                    |
+| `MISSING_BRIDGE_ENTITY`               | error    | A required bridge entity for a `via:` relationship is missing                          |
+| `BRIDGE_MISSING_TARGET_FK`            | error    | The bridge entity does not link to the declared ultimate target                        |
+| `MISSING_REQUIRED_COLUMN`             | error    | A required non-generated target column is not present in the entity's target-facing columns |
+| `APPEND_MISSING_REQUIRED_COLUMN`      | error    | An append branch does not satisfy the parent entity's required target columns          |
+| `PUBLIC_ID_NAMING_VIOLATION`          | error    | A `public_id` value does not end with the `naming.public_id_suffix`                    |
+| `MISSING_INDUCED_REQUIRED_ENTITY`     | error    | A non-global entity becomes required because a present entity depends on it            |
+| `ORPHAN_FACT_ENTITY`                  | warning  | A fact entity does not reach any lookup or classifier declared in the target model     |
+| `CLASSIFIER_WRONG_SOURCE_TYPE`        | warning  | A classifier entity uses a source type other than `fixed` or `sql`                     |
+| `UNKNOWN_DISABLED_CONFORMANCE_RULE`   | warning  | The project disables a conformance rule key that does not exist                        |
+| `UNKNOWN_CONFORMANCE_SEVERITY_OVERRIDE` | warning | The project overrides severity for an unknown conformance rule key                     |
+| `INVALID_CONFORMANCE_SEVERITY_OVERRIDE` | warning | The project uses an unsupported severity override value                                |
 
 ### Validators
 
-Five validators run in sequence. All are enabled by default; there is no per-project override mechanism in v1.
+Nine validators run in sequence. All are enabled by default, and projects can disable or remap specific rules through `options.validation`.
 
 | Validator key       | What it checks                                                                                    |
 |---------------------|---------------------------------------------------------------------------------------------------|
+| `public_id`         | Checks that each project entity matches the `public_id` declared in the target spec               |
+| `foreign_key`       | Checks required FK targets, including bridge-mediated `via:` relationships                        |
+| `no_orphan_facts`   | Checks that fact entities can reach at least one lookup or classifier when the constraint is declared |
+| `schema_aware_append` | Checks append branches against the parent entity's required target-facing columns               |
+| `required_columns`  | Checks that each required non-generated column is in the project entity's target-facing column set |
 | `required_entity`   | Checks that every entity with `required: true` exists in the project                              |
-| `public_id`         | Checks that each project entity has (or doesn't have) the `public_id` declared in the target spec |
-| `foreign_key`       | Checks that each required FK target is declared on the project entity                             |
-| `required_columns`  | Checks that each required column is in the project entity's target-facing column set              |
 | `naming_convention` | Checks that all `public_id` values end with `naming.public_id_suffix`                             |
+| `induced_requirements` | Checks transitive required-FK dependencies implied by present optional entities               |
+| `source_type_appropriateness` | Warns when classifier entities use source types other than `fixed` or `sql`          |
+
+### Rule Controls
+
+Projects can adjust conformance behavior under `options.validation`:
+
+```yaml
+options:
+  validation:
+    disabled_rules:
+      - source_type_appropriateness
+    severity_overrides:
+      no_orphan_facts: error
+      required_columns: warning
+```
+
+- `disabled_rules` accepts registered validator keys from the table above.
+- `severity_overrides` accepts `error`, `warning`, or `info`.
+- Unknown rule keys or invalid severity values do not stop validation, but they do emit warnings.
 
 ### Checking Conformance Without the UI
 
@@ -361,7 +408,9 @@ python -m src.target_model.template_generator \
 # Include only specific entities
 python -m src.target_model.template_generator \
   --spec resources/target_models/sead_superset_model.yml \
-  --entities location,site,sample \
+  --entity location \
+  --entity site \
+  --entity sample \
   --output minimal.yml
 ```
 
@@ -376,6 +425,7 @@ The generated scaffold has the correct identity fields and foreign keys pre-fill
 ```yaml
 model:
   name: "My Museum System"
+  format_version: "1"
   version: "1.0.0"
 
 entities:
@@ -391,6 +441,8 @@ entities:
       collection_date:
         type: string
         nullable: true
+      status:
+        allowed_values: [draft, final]
     foreign_keys:
       - entity: collection
         required: true
@@ -414,14 +466,16 @@ naming:
 - Start minimal: add only the entities and columns you actually want to enforce. Extra entities in the spec that are absent from the project do not cause errors unless they are marked `required: true`.
 - Use `required: false` (or omit `required`) for optional/conditional entities that only appear in some project shapes.
 - Set `required: true` on columns only when their absence indicates a genuine configuration error.
-- The `type` and `nullable` column fields are informational in v1 — they are recorded in the spec but not enforced by the conformance validators.
+- Use `generated: true` for target columns that are added later by database defaults, downstream transforms, or other post-extraction steps.
+- Use `allowed_values` when a column is effectively an enum and you want that constraint visible in generated docs and schema-driven tooling.
+- The `type`, `nullable`, and `allowed_values` column fields are descriptive metadata in the current validator set; only `required` columns are enforced directly.
 - Use `domains` tags to group entities so you can generate partial project scaffolds.
 
 ---
 
 ## SEAD Superset Spec (`sead_superset_model.yml`)
 
-The bundled SEAD superset spec at `resources/target_models/sead_superset_model.yml` currently covers 92 entities. It is intended to be the near-complete shared SEAD model from which individual Shape Shifter projects can select curated subsets.
+The bundled SEAD superset spec at `resources/target_models/sead_superset_model.yml` currently covers 98 entities. It is intended to be the near-complete shared SEAD model from which individual Shape Shifter projects can select curated subsets.
 
 | Domain       | Entities                                                                                                                                                                |
 |--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
