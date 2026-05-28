@@ -231,8 +231,28 @@ class TestTargetModelValidatorErrorPaths:
         assert errors[0].severity == "warning"
         assert errors[0].field == "options.validation.disabled_rules"
 
-    def test_orphan_fact_constraint_returns_error(self):
-        """Declared orphan-fact constraints should surface as conformance errors through the adapter."""
+    def test_unknown_severity_override_returns_warning(self):
+        """Unknown severity override keys should surface as warnings instead of being silently ignored."""
+        project = _make_project({}, options={"validation": {"severity_overrides": {"not_a_real_rule": "warning"}}})
+
+        errors = TargetModelValidator().validate(_minimal_target_model(), project)
+
+        assert [error.code for error in errors] == ["UNKNOWN_CONFORMANCE_SEVERITY_OVERRIDE"]
+        assert errors[0].severity == "warning"
+        assert errors[0].field == "options.validation.severity_overrides"
+
+    def test_invalid_severity_override_returns_warning(self):
+        """Invalid severity override values should surface as warnings instead of being silently ignored."""
+        project = _make_project({}, options={"validation": {"severity_overrides": {"required_entity": "fatal"}}})
+
+        errors = TargetModelValidator().validate(_minimal_target_model(), project)
+
+        assert [error.code for error in errors] == ["INVALID_CONFORMANCE_SEVERITY_OVERRIDE"]
+        assert errors[0].severity == "warning"
+        assert errors[0].field == "options.validation.severity_overrides.required_entity"
+
+    def test_orphan_fact_constraint_returns_warning_by_default(self):
+        """Declared orphan-fact constraints should surface as conformance warnings unless marked strict."""
         project = _make_project(
             {
                 "analysis_entity": {"public_id": "analysis_entity_id", "columns": ["analysis_name"]},
@@ -250,7 +270,48 @@ class TestTargetModelValidatorErrorPaths:
 
         errors = TargetModelValidator().validate(target_model_data, project)
 
-        assert any(error.code == "ORPHAN_FACT_ENTITY" for error in errors)
+        orphan_fact_error = next(error for error in errors if error.code == "ORPHAN_FACT_ENTITY")
+        assert orphan_fact_error.severity == "warning"
+
+    def test_orphan_fact_constraint_returns_error_when_strict(self):
+        """Strict orphan-fact constraints should surface as conformance errors through the adapter."""
+        project = _make_project(
+            {
+                "analysis_entity": {"public_id": "analysis_entity_id", "columns": ["analysis_name"]},
+                "dataset": {"public_id": "dataset_id", "columns": ["dataset_name"]},
+            }
+        )
+        target_model_data = {
+            "model": {"name": "Test Model", "version": "1.0.0"},
+            "constraints": [{"type": "no_orphan_facts", "required": "strict"}],
+            "entities": {
+                "dataset": {"role": "lookup", "required": True, "public_id": "dataset_id"},
+                "analysis_entity": {"role": "fact", "required": True, "public_id": "analysis_entity_id"},
+            },
+        }
+
+        errors = TargetModelValidator().validate(target_model_data, project)
+
+        orphan_fact_error = next(error for error in errors if error.code == "ORPHAN_FACT_ENTITY")
+        assert orphan_fact_error.severity == "error"
+
+    def test_source_type_appropriateness_returns_warning_by_default(self):
+        """Classifier source-type mismatches should surface as warnings through the adapter."""
+        project = _make_project(
+            {
+                "taxon": {"type": "entity", "public_id": "taxon_id", "columns": ["taxon_name"]},
+            }
+        )
+        target_model_data = _minimal_target_model(
+            entities={
+                "taxon": {"role": "classifier", "required": True, "public_id": "taxon_id"},
+            }
+        )
+
+        errors = TargetModelValidator().validate(target_model_data, project)
+
+        source_type_error = next(error for error in errors if error.code == "CLASSIFIER_WRONG_SOURCE_TYPE")
+        assert source_type_error.severity == "warning"
 
     def test_schema_aware_append_returns_missing_required_column_error(self):
         """Append branches missing required target columns should surface through the adapter."""

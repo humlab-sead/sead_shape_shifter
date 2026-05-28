@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from src.issues import CoreIssue
 from src.model import ShapeShiftProject, TableConfig
-from src.target_model.models import EntitySpec, TargetModel
+from src.target_model.models import EntitySpec, GlobalConstraint, SeverityLevel, TargetModel
 from src.utility import Registry
 
 
@@ -23,6 +23,10 @@ class ConformanceIssue(CoreIssue):
 
 
 class ConformanceValidator(ABC):
+
+    def get_default_severity(self, target_model: TargetModel, project: ShapeShiftProject) -> SeverityLevel:  # pylint: disable=unused-argument
+        """Return the default severity for issues emitted by this validator."""
+        return "error"
 
     @abstractmethod
     def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
@@ -238,9 +242,19 @@ class NoOrphanFactsConformanceValidator(ConformanceValidator):
 
     PARENT_ROLES: frozenset[str] = frozenset({"lookup", "classifier"})
 
+    def get_default_severity(self, target_model: TargetModel, project: ShapeShiftProject) -> SeverityLevel:  # pylint: disable=unused-argument
+        constraint = self.get_constraint(target_model)
+        if constraint and constraint.required in {True, "strict"}:
+            return "error"
+        return "warning"
+
+    @staticmethod
+    def get_constraint(target_model: TargetModel) -> GlobalConstraint | None:
+        """Return the declared orphan-fact constraint, if present."""
+        return next((constraint for constraint in target_model.constraints if constraint.type == "no_orphan_facts"), None)
+
     def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
-        constraint_types = {constraint.type for constraint in target_model.constraints}
-        if "no_orphan_facts" not in constraint_types:
+        if self.get_constraint(target_model) is None:
             return []
 
         parent_entities = {
@@ -457,6 +471,9 @@ class SourceTypeAppropriatenessConformanceValidator(EntityConformanceValidator):
 
     ALLOWED_TYPES: frozenset[str] = frozenset({"fixed", "sql"})
 
+    def get_default_severity(self, target_model: TargetModel, project: ShapeShiftProject) -> SeverityLevel:  # pylint: disable=unused-argument
+        return "warning"
+
     def validate_entity(self, entity_name: str, entity_spec: EntitySpec, table_cfg: TableConfig) -> list[ConformanceIssue]:
         if entity_spec.role != "classifier":
             return []
@@ -477,9 +494,17 @@ class SourceTypeAppropriatenessConformanceValidator(EntityConformanceValidator):
 class TargetModelConformanceValidator(ConformanceValidator):
     """Validate a resolved Shape Shifter project against a target model."""
 
+    VALID_SEVERITIES: frozenset[str] = frozenset({"error", "warning", "info"})
+
+    @staticmethod
+    def get_validation_options(project: ShapeShiftProject) -> dict:
+        """Return the project's validation options as a dict."""
+        validation_options = project.options.get("validation", {}) or {}
+        return validation_options if isinstance(validation_options, dict) else {}
+
     def get_disabled_rule_keys(self, project: ShapeShiftProject) -> set[str]:
         """Read disabled conformance rule keys from project options."""
-        validation_options = project.options.get("validation", {}) or {}
+        validation_options = self.get_validation_options(project)
         raw_disabled_rules = validation_options.get("disabled_rules", [])
 
         if raw_disabled_rules is None:
@@ -490,6 +515,20 @@ class TargetModelConformanceValidator(ConformanceValidator):
             return {rule_key for rule_key in raw_disabled_rules if isinstance(rule_key, str) and rule_key}
 
         return set()
+
+    def get_severity_overrides(self, project: ShapeShiftProject) -> dict[str, str]:
+        """Read conformance severity overrides keyed by validator registry key."""
+        validation_options = self.get_validation_options(project)
+        raw_severity_overrides = validation_options.get("severity_overrides", {})
+
+        if not isinstance(raw_severity_overrides, dict):
+            return {}
+
+        return {
+            rule_key: severity
+            for rule_key, severity in raw_severity_overrides.items()
+            if isinstance(rule_key, str) and rule_key and isinstance(severity, str) and severity
+        }
 
     def validate_disabled_rule_keys(self, disabled_rule_keys: set[str]) -> list[ConformanceIssue]:
         """Return warning issues for unknown disabled rule keys."""
@@ -509,13 +548,69 @@ class TargetModelConformanceValidator(ConformanceValidator):
             for rule_key in unknown_rule_keys
         ]
 
+    def validate_severity_overrides(self, severity_overrides: dict[str, str]) -> list[ConformanceIssue]:
+        """Return warning issues for unknown or invalid severity overrides."""
+        known_rule_keys = set(CONFORMANCE_VALIDATORS.items.keys())
+        issues: list[ConformanceIssue] = []
+
+        for rule_key in sorted(severity_overrides):
+            if rule_key not in known_rule_keys:
+                issues.append(
+                    ConformanceIssue(
+                        severity="warning",
+                        code="UNKNOWN_CONFORMANCE_SEVERITY_OVERRIDE",
+                        field="options.validation.severity_overrides",
+                        message=(
+                            f"Project overrides severity for unknown conformance rule '{rule_key}'. "
+                            "Remove it or use a registered conformance validator key."
+                        ),
+                    )
+                )
+
+        for rule_key, severity in sorted(severity_overrides.items()):
+            if severity in self.VALID_SEVERITIES:
+                continue
+            issues.append(
+                ConformanceIssue(
+                    severity="warning",
+                    code="INVALID_CONFORMANCE_SEVERITY_OVERRIDE",
+                    field=f"options.validation.severity_overrides.{rule_key}",
+                    message=(
+                        f"Project overrides conformance rule '{rule_key}' with unsupported severity '{severity}'. "
+                        "Use one of: error, warning, info."
+                    ),
+                )
+            )
+
+        return issues
+
+    def resolve_rule_severity(
+        self,
+        rule_key: str,
+        validator: ConformanceValidator,
+        target_model: TargetModel,
+        project: ShapeShiftProject,
+        severity_overrides: dict[str, str],
+    ) -> SeverityLevel:
+        """Resolve the effective severity for a registered conformance rule."""
+        override = severity_overrides.get(rule_key)
+        if override in self.VALID_SEVERITIES:
+            return override  # type: ignore[return-value]
+        return validator.get_default_severity(target_model, project)
+
     def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
         disabled_rule_keys = self.get_disabled_rule_keys(project)
+        severity_overrides = self.get_severity_overrides(project)
         issues: list[ConformanceIssue] = self.validate_disabled_rule_keys(disabled_rule_keys)
+        issues.extend(self.validate_severity_overrides(severity_overrides))
 
         for rule_key, validator_cls in CONFORMANCE_VALIDATORS.items.items():
             if rule_key in disabled_rule_keys:
                 continue
             validator: ConformanceValidator = validator_cls()
-            issues.extend(validator.validate(target_model, project))
+            issue_severity = self.resolve_rule_severity(rule_key, validator, target_model, project, severity_overrides)
+            rule_issues = validator.validate(target_model, project)
+            for issue in rule_issues:
+                issue.severity = issue_severity
+            issues.extend(rule_issues)
         return issues
