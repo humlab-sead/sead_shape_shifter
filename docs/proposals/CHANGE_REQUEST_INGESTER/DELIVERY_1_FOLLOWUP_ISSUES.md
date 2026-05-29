@@ -2,7 +2,7 @@
 
 This document turns the follow-up CR into GitHub-ready issue drafts and records their current status on this branch.
 
-Issues 1 through 4 are now satisfied by branch work or by an explicit decision on this branch. Keep them only if the repository needs backfilled tracking history. Remaining follow-up work starts at Issue 6, plus any narrow post-hardening fixes tracked separately.
+All issues captured here are now resolved or implemented on the current branch. Keep this file only if the repository needs backfilled tracking history.
 
 Current status snapshot:
 
@@ -43,7 +43,7 @@ Keep the current inline-`INSERT` output as the default strategy. Keep identity r
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md`
 - `ingesters/sead_change_request/sql_builder.py`
 - `ingesters/sead_change_request/ingester.py`
 
@@ -73,7 +73,7 @@ The prototype should preserve the current planning and identity logic and only c
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql`
 - `ingesters/sead_change_request/sql_builder.py`
 - `ingesters/sead_change_request/ingester.py`
@@ -121,7 +121,7 @@ Current branch result:
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md`
 - `ingesters/sead_change_request/sql_builder.py`
 - `ingesters/sead_change_request/ingester.py`
@@ -162,7 +162,7 @@ Reasoning:
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md`
 - `ingesters/sead_change_request/sql_builder.py`
 
 ## Issue 5 [docs(target_model): complete SEAD v2 target model completeness review](https://github.com/humlab-sead/sead_shape_shifter/issues/441)
@@ -192,7 +192,7 @@ That document now records:
 Files:
 
 - `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md`
 - `resources/target_models/sead_superset_model.yml`
 
 ## Issue 6 [docs(metadata): compare SEAD target model with SeadSchema live-schema approach](https://github.com/humlab-sead/sead_shape_shifter/issues/442)
@@ -226,7 +226,7 @@ Issue status note:
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md`
 - `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
 - `ingesters/sead/metadata.py`
 

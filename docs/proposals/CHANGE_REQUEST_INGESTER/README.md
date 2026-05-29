@@ -19,7 +19,7 @@ The accepted Delivery 1 direction is:
 - [closed_delivery_1/SEAD_CHANGE_REQUEST_INGESTER.md](./closed_delivery_1/SEAD_CHANGE_REQUEST_INGESTER.md) — Closed Delivery 1 baseline proposal and accepted design decisions
 - [closed_delivery_1/DELIVERY_1_IMPLEMENTATION_PLAN.md](./closed_delivery_1/DELIVERY_1_IMPLEMENTATION_PLAN.md) — Closed Delivery 1 implementation plan and workstream record
 - [closed_delivery_1/DELIVERY_1_HARDENING.md](./closed_delivery_1/DELIVERY_1_HARDENING.md) — Closed Delivery 1 hardening contract for the `copy_csv` artifact bundle
-- [DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md) — Follow-up CR for post-Delivery-1 SQL rendering strategy and target-model review
+- [closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md](./closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md) — Closed follow-up CR for post-Delivery-1 SQL rendering strategy and target-model review
 - [DELIVERY_1_FOLLOWUP_ISSUES.md](./DELIVERY_1_FOLLOWUP_ISSUES.md) — GitHub-ready issue drafts for the follow-up CR
 - [NEXT_DELIVERY_CANDIDATES.md](./NEXT_DELIVERY_CANDIDATES.md) — Candidate next-delivery capabilities carried forward from the old Delivery 2 section, explicitly undecided
 - [FRONTEND_UX_INTEGRATION_CR.md](./FRONTEND_UX_INTEGRATION_CR.md) — Separate CR for frontend workflow integration and required user interaction
