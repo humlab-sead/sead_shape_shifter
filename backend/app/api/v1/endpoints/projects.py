@@ -686,9 +686,9 @@ async def update_project_target_model_yaml(name: str, request: RawYamlUpdateRequ
 @handle_endpoint_errors
 async def download_target_model_docs(
     name: str,
-    format: str = Query(
+    format: str = Query(  # pylint: disable=redefined-builtin
         "html", description="Documentation format: html, markdown, excel, sims, or schema-reference"
-    ),  # pylint: disable=redefined-builtin
+    ),
 ) -> Response:
     """
     Generate and download target model documentation for a project.

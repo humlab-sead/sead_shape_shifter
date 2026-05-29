@@ -25,8 +25,8 @@ class ConformanceIssue(CoreIssue):
 class ConformanceValidator(ABC):
 
     def get_default_severity(
-        self, target_model: TargetModel, project: ShapeShiftProject
-    ) -> SeverityLevel:  # pylint: disable=unused-argument
+        self, target_model: TargetModel, project: ShapeShiftProject  # pylint: disable=unused-argument
+    ) -> SeverityLevel:
         """Return the default severity for issues emitted by this validator."""
         return "error"
 
