@@ -33,7 +33,7 @@ def load_real_project(project_name: str) -> ShapeShiftProject:
     return ShapeShiftProject(cfg=yaml.safe_load(project_path.read_text(encoding="utf-8")))
 
 
-def issue_pairs(target_model: TargetModel, project: ShapeShiftProject) -> list[tuple[str, str | None]]:
+def issue_pairs(target_model: TargetModel, project: ShapeShiftProject) -> list[tuple[str | None, str | None]]:
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
     return [(issue.code, issue.entity) for issue in issues]
 
@@ -42,16 +42,16 @@ def test_conformance_registry_runs_global_and_entity_validator_base_types() -> N
     """The registry should execute both global and entity validator subclasses."""
 
     @CONFORMANCE_VALIDATORS.register(key="test_global_conformance_validator")
-    class TestGlobalConformanceValidator(GlobalConformanceValidator):
+    class TestGlobalConformanceValidator(GlobalConformanceValidator):  # pylint: disable=unused-variable
         def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
             return [ConformanceIssue(code="TEST_GLOBAL_CONFORMANCE_RULE", entity="sample", message="global validator executed")]
 
     @CONFORMANCE_VALIDATORS.register(key="test_entity_conformance_validator")
-    class TestEntityConformanceValidator(EntityConformanceValidator):
+    class TestEntityConformanceValidator(EntityConformanceValidator):  # pylint: disable=unused-variable
         def validate_entity(self, entity_name: str, entity_spec, table_cfg) -> list[ConformanceIssue]:
             return [ConformanceIssue(code="TEST_ENTITY_CONFORMANCE_RULE", entity=entity_name, message="entity validator executed")]
 
-    target_model = TargetModel.model_validate(
+    target_model: TargetModel = TargetModel.model_validate(
         {
             "model": {"name": "test", "version": "1.0"},
             "entities": {"sample": {"required": True, "public_id": "sample_id"}},
@@ -299,7 +299,7 @@ def test_core_conformance_reports_missing_entity_and_wrong_public_id() -> None:
     target_model: TargetModel = load_target_model()
     project: ShapeShiftProject = load_project("sead_missing_sample_group.yml")
 
-    issues: set[tuple[str, str | None]] = set(issue_pairs(target_model, project))
+    issues: set[tuple[str | None, str | None]] = set(issue_pairs(target_model, project))
 
     assert ("MISSING_REQUIRED_ENTITY", "sample_group") in issues
     assert ("UNEXPECTED_PUBLIC_ID", "sample") in issues
@@ -630,7 +630,7 @@ def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
         "arbodat_full": load_real_project("arbodat"),
     }
 
-    issue_summary: dict[str, Counter[str]] = {
+    issue_summary: dict[str, Counter[str | None]] = {
         name: Counter(code for code, _entity in issue_pairs(target_model, project)) for name, project in corpus.items()
     }
 
@@ -680,7 +680,7 @@ def test_public_id_validator_produces_missing_public_id_when_project_entity_has_
     target_model: TargetModel = _minimal_target_model({"location": {"public_id": "location_id", "required": True}})
     project: ShapeShiftProject = _minimal_project({"location": {"columns": ["location_name"]}})  # no public_id
 
-    codes: list[str] = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "MISSING_PUBLIC_ID" in codes
 
@@ -693,7 +693,7 @@ def test_public_id_validator_is_silent_when_spec_declares_no_public_id() -> None
 
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert not any(issue.code.startswith("MISSING_PUBLIC_ID") or issue.code.startswith("UNEXPECTED_PUBLIC_ID") for issue in issues)
+    assert not any((issue.code or "").startswith("MISSING_PUBLIC_ID") or (issue.code or "").startswith("UNEXPECTED_PUBLIC_ID") for issue in issues)
 
 
 def test_disabled_rules_skip_named_conformance_validator() -> None:
@@ -710,7 +710,7 @@ def test_disabled_rules_skip_named_conformance_validator() -> None:
         options={"validation": {"disabled_rules": ["naming_convention"]}},
     )
 
-    codes: list[str] = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "PUBLIC_ID_NAMING_VIOLATION" not in codes
 
@@ -735,7 +735,7 @@ def test_induced_requirement_emits_issue_when_optional_entity_present_but_requir
     # project has site but NOT location
     project: ShapeShiftProject = _minimal_project({"site": {"columns": ["site_name"]}})
 
-    codes_entities: list[tuple[str, str | None]] = [
+    codes_entities: list[tuple[str | None, str | None]] = [
         (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
     ]
 
@@ -779,7 +779,7 @@ def test_induced_requirement_is_silent_when_optional_entity_is_absent_from_proje
     # project has neither site nor location — no rule triggered
     project: ShapeShiftProject = _minimal_project({"sample": {"columns": ["sample_name"]}})
 
-    codes: list[str] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "MISSING_INDUCED_REQUIRED_ENTITY" not in codes
 
@@ -800,7 +800,7 @@ def test_induced_requirement_does_not_double_report_when_entity_is_globally_requ
     project: ShapeShiftProject = _minimal_project({"sample": {"columns": ["sample_name"]}})
 
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
-    codes: list[str] = [i.code for i in issues]
+    codes: list[str | None] = [i.code for i in issues]
 
     assert "MISSING_REQUIRED_ENTITY" in codes  # site is globally required
     assert "MISSING_INDUCED_REQUIRED_ENTITY" not in codes  # induced validator skips globally-required entities
@@ -824,7 +824,7 @@ def test_induced_requirement_is_transitive() -> None:
     # only abundance is present — taxon and taxon_group must both be induced
     project: ShapeShiftProject = _minimal_project({"abundance": {"columns": ["count"]}})
 
-    codes_entities: set[tuple[str, str | None]] = set(
+    codes_entities: set[tuple[str | None, str | None]] = set(
         (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
     )
 
@@ -842,7 +842,7 @@ def test_source_type_appropriateness_emits_issue_for_classifier_with_entity_type
     target_model: TargetModel = _minimal_target_model({"sample_type": {"role": "classifier"}})
     project: ShapeShiftProject = _minimal_project({"sample_type": {"type": "entity", "columns": ["sample_type_name"]}})
 
-    codes_entities: list[tuple[str, str | None]] = [
+    codes_entities: list[tuple[str | None, str | None]] = [
         (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
     ]
 
@@ -854,7 +854,7 @@ def test_source_type_appropriateness_is_silent_for_classifier_with_fixed_type() 
     target_model: TargetModel = _minimal_target_model({"sample_type": {"role": "classifier"}})
     project: ShapeShiftProject = _minimal_project({"sample_type": {"type": "fixed", "columns": ["system_id", "sample_type_id"]}})
 
-    codes: list[str] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "CLASSIFIER_WRONG_SOURCE_TYPE" not in codes
 
@@ -864,7 +864,7 @@ def test_source_type_appropriateness_is_silent_for_classifier_with_sql_type() ->
     target_model: TargetModel = _minimal_target_model({"sample_type": {"role": "classifier"}})
     project: ShapeShiftProject = _minimal_project({"sample_type": {"type": "sql", "source": "SELECT * FROM sample_types"}})
 
-    codes: list[str] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "CLASSIFIER_WRONG_SOURCE_TYPE" not in codes
 
@@ -874,7 +874,7 @@ def test_source_type_appropriateness_is_silent_for_non_classifier_entity_type() 
     target_model: TargetModel = _minimal_target_model({"sample": {"role": "fact"}})
     project: ShapeShiftProject = _minimal_project({"sample": {"type": "entity", "columns": ["sample_name"]}})
 
-    codes: list[str] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "CLASSIFIER_WRONG_SOURCE_TYPE" not in codes
 
@@ -884,7 +884,7 @@ def test_source_type_appropriateness_is_silent_when_classifier_has_no_type() -> 
     target_model: TargetModel = _minimal_target_model({"sample_type": {"role": "classifier"}})
     project: ShapeShiftProject = _minimal_project({"sample_type": {"columns": ["sample_type_name"]}})  # no type key
 
-    codes: list[str] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "CLASSIFIER_WRONG_SOURCE_TYPE" not in codes
 
@@ -912,7 +912,7 @@ def test_induced_requirement_transitive_stops_at_present_intermediate() -> None:
         }
     )
 
-    codes_entities: set[tuple[str, str | None]] = set(
+    codes_entities: set[tuple[str | None, str | None]] = set(
         (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
     )
 
@@ -932,7 +932,7 @@ def test_no_orphan_facts_is_silent_when_constraint_is_not_declared() -> None:
         {"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}}
     )
 
-    codes: list[str] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "ORPHAN_FACT_ENTITY" not in codes
 
@@ -975,7 +975,7 @@ def test_no_orphan_facts_uses_error_severity_when_constraint_is_strict() -> None
         {"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}}
     )
 
-    issues = TargetModelConformanceValidator().validate(target_model, project)
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
     assert any(issue.code == "ORPHAN_FACT_ENTITY" and issue.severity == "error" for issue in issues)
 
@@ -1009,7 +1009,7 @@ def test_no_orphan_facts_accepts_transitive_required_lookup_path() -> None:
         }
     )
 
-    codes: list[str] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "ORPHAN_FACT_ENTITY" not in codes
 
@@ -1026,7 +1026,7 @@ def test_source_type_appropriateness_emits_warning_by_default() -> None:
     )
     project: ShapeShiftProject = _minimal_project({"taxon": {"type": "entity", "columns": ["taxon_name"]}})
 
-    issues = TargetModelConformanceValidator().validate(target_model, project)
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
     assert any(issue.code == "CLASSIFIER_WRONG_SOURCE_TYPE" and issue.severity == "warning" for issue in issues)
 
@@ -1054,6 +1054,6 @@ def test_rule_severity_override_promotes_phase_four_rule_to_error() -> None:
         }
     )
 
-    issues = TargetModelConformanceValidator().validate(target_model, project)
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
     assert any(issue.code == "CLASSIFIER_WRONG_SOURCE_TYPE" and issue.severity == "error" for issue in issues)

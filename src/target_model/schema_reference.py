@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from pydantic import BaseModel
-from pydantic.fields import PydanticUndefined
+from pydantic_core import PydanticUndefined
 
 from src.target_model.models import ColumnSpec, EntitySpec, ForeignKeySpec, GlobalConstraint, ModelMetadata, NamingConventions, TargetModel
 
@@ -32,7 +32,7 @@ SECTION_INTROS: dict[str, str] = {
 def generate_target_model_schema_reference() -> str:
     """Return a Markdown reference derived from the Pydantic target-model schema."""
     schema = TargetModel.model_json_schema(mode="serialization", by_alias=True, ref_template=SCHEMA_REF_TEMPLATE)
-    defs: dict[str, dict[str, object]] = schema.get("$defs", {})
+    defs = _as_schema_mapping(schema.get("$defs"))
 
     lines: list[str] = [
         "# Target Model Schema Reference",
@@ -76,8 +76,8 @@ def _collect_paths(
     seen: set[str],
 ) -> None:
     resolved = _resolve_schema(schema, defs)
-    properties = resolved.get("properties")
-    if not isinstance(properties, dict):
+    properties = _as_schema_mapping(resolved.get("properties"))
+    if not properties:
         return
 
     required_fields = set(_as_str_list(resolved.get("required")))
@@ -123,21 +123,15 @@ def _collect_child_paths(
 
 
 def _render_model_section(model: type[BaseModel], schema: dict[str, object]) -> list[str]:
-    lines = ["| Field | Type | Required | Default | Allowed |", "|---|---|---|---|---|"]
-    properties = schema.get("properties", {})
-    required_fields = set(_as_str_list(schema.get("required")))
+    lines: list[str] = ["| Field | Type | Required | Default | Allowed |", "|---|---|---|---|---|"]
+    properties: dict[str, dict[str, object]] = _as_schema_mapping(schema.get("properties"))
+    defs: dict[str, dict[str, object]] = _as_schema_mapping(schema.get("$defs"))
+    required_fields: set[str] = set(_as_str_list(schema.get("required")))
 
     for field_name, field_schema in properties.items():
-        if not isinstance(field_schema, dict):
-            continue
         lines.append(
-            "| {field} | {type_} | {required} | {default} | {allowed} |".format(
-                field=field_name,
-                type_=_escape_table(_format_type(field_schema, schema.get("$defs", {}))),
-                required="Yes" if field_name in required_fields else "No",
-                default=_escape_table(_format_default(model, field_name, field_schema)),
-                allowed=_escape_table(_format_allowed_values(field_schema)),
-            )
+            f"| {field_name} | {_escape_table(_format_type(field_schema, defs))} | {"Yes" if field_name in required_fields else "No"} "
+            f"| {_escape_table(_format_default(model, field_name, field_schema))} | {_escape_table(_format_allowed_values(field_schema))} |"
         )
 
     lines.extend(["", f"Additional keys allowed: {_extra_keys_allowed(schema)}"])
@@ -200,7 +194,7 @@ def _format_default(model: type[BaseModel], field_name: str, schema: dict[str, o
     model_field = model.model_fields.get(field_name)
     if model_field is not None:
         if model_field.default_factory is not None:
-            return _json_literal(model_field.default_factory())
+            return _json_literal(model_field.get_default(call_default_factory=True, validated_data={}))
         if model_field.default is not PydanticUndefined:
             return _json_literal(model_field.default)
     if "default" not in schema:
@@ -255,6 +249,12 @@ def _as_str_list(value: object) -> list[str]:
     if not isinstance(value, list):
         return []
     return [item for item in value if isinstance(item, str)]
+
+
+def _as_schema_mapping(value: object) -> dict[str, dict[str, object]]:
+    if not isinstance(value, dict):
+        return {}
+    return {key: item for key, item in value.items() if isinstance(key, str) and isinstance(item, dict)}
 
 
 def _json_literal(value: object) -> str:

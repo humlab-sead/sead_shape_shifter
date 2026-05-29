@@ -163,7 +163,8 @@ class AllowedValuesConformanceValidator:
                     message=(f"Column '{col_name}' in entity '{entity_name}' contains values outside the declared allowed_values set"),
                     code="VALUE_NOT_IN_ALLOWED_SET",
                     suggestion=(
-                        f"Update the mapping or target model so '{col_name}' only contains allowed values. Sample unexpected values: {sample}"
+                        f"Update the mapping or target model so '{col_name}' only "
+                        f"contains allowed values. Sample unexpected values: {sample}"
                     ),
                     category="conformance",
                     priority="high",

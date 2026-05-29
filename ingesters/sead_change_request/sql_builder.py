@@ -357,7 +357,7 @@ def _render_copy_csv_field(value: object) -> str:
 def _render_copy_csv_timestamp(value: pd.Timestamp) -> str:
     """Render pandas timestamps using the hardened copy_csv date-only contract."""
     if (
-        value.tz is None
+        value.tz is None  #  pylint: disable=too-many-boolean-expressions
         and value.hour == 0
         and value.minute == 0
         and value.second == 0
