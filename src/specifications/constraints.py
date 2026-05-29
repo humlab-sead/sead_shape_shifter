@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Self
+from typing import Any, Self, cast
 
 import pandas as pd
 from loguru import logger
@@ -71,12 +71,14 @@ class ConstraintValidator(ABC):
         entity: TableConfig,
         fk: ForeignKeyConfig,
         constraints: ForeignKeyConstraints,
+        remote_entity: TableConfig | None = None,
         runtime_options: ForeignKeyRuntimeOptions | None = None,
         raise_on_violation: bool = True,
     ) -> None:
         self.entity: TableConfig = entity
         self.fk: ForeignKeyConfig = fk
         self.constraints: ForeignKeyConstraints = constraints
+        self.remote_entity: TableConfig | None = remote_entity
         self.runtime_options: ForeignKeyRuntimeOptions = runtime_options or ForeignKeyRuntimeOptions.from_constraints(constraints)
         self.raise_on_violation: bool = raise_on_violation
 
@@ -93,6 +95,10 @@ class ConstraintValidator(ABC):
     @abstractmethod
     def validate(self, context: ValidationContext) -> None:
         """Execute the validation logic."""
+
+
+def _get_series(df: pd.DataFrame, column: str) -> pd.Series:
+    return cast(pd.Series, df[column])
 
 
 class ValidatorRegistry(Registry):
@@ -164,10 +170,9 @@ class NullKeyValidator(ConstraintValidator):
 
     def validate(self, context: ValidationContext) -> None:
         for col in self.fk.local_keys:
-            # FIXME: If tables public_id has a value, then this is a simple mapping system_id => public_id
-            # and nulls in the local key should be allowed
             new_rows_mask: pd.Series = self.get_new_rows_mask(context)
-            if context.local_df[new_rows_mask][col].isnull().any():
+            local_key_values = _get_series(context.local_df.loc[new_rows_mask], col)
+            if local_key_values.isnull().any():
                 if self.raise_on_violation:
                     raise ForeignKeyNullConstraintViolation(
                         local_entity=self.fk.local_entity, remote_entity=self.fk.remote_entity, key_side="local", key_column=col
@@ -176,8 +181,10 @@ class NullKeyValidator(ConstraintValidator):
                     f"{self.fk.local_entity} -> {self.fk.remote_entity}: Null values found in local key '{col}' (allow_null_keys=False)"
                 )
         if context.remote_df is not None:
+            remote_rows_mask = self.get_remote_rows_mask(context)
             for col in self.fk.remote_keys:
-                if context.remote_df[col].isnull().any():
+                remote_key_values = _get_series(context.remote_df.loc[remote_rows_mask], col)
+                if remote_key_values.isnull().any():
                     if self.raise_on_violation:
                         raise ForeignKeyNullConstraintViolation(
                             local_entity=self.fk.local_entity, remote_entity=self.fk.remote_entity, key_side="remote", key_column=col
@@ -190,7 +197,25 @@ class NullKeyValidator(ConstraintValidator):
     def get_new_rows_mask(self, context: ValidationContext) -> pd.Series:
         """Determine which rows in the local DataFrame are new (i.e., have null public_id)
         and should be included in the strict null key validation."""
-        null_public_ids: pd.Series = context.local_df[self.entity.public_id].isnull()
+        if not self.entity.public_id or self.entity.public_id not in context.local_df.columns:
+            return pd.Series(True, index=context.local_df.index)
+
+        null_public_ids: pd.Series = _get_series(context.local_df, self.entity.public_id).isnull()
+        return null_public_ids
+
+    def get_remote_rows_mask(self, context: ValidationContext) -> pd.Series:
+        """Determine which remote rows still need strict null-key validation.
+
+        Remote rows with an existing public_id already exist in the target and may
+        carry nulls in non-identity columns used only for lookup enrichment.
+        """
+        if context.remote_df is None or self.remote_entity is None:
+            return pd.Series(True, index=context.remote_df.index if context.remote_df is not None else pd.RangeIndex(0))
+
+        if not self.remote_entity.public_id or self.remote_entity.public_id not in context.remote_df.columns:
+            return pd.Series(True, index=context.remote_df.index)
+
+        null_public_ids: pd.Series = _get_series(context.remote_df, self.remote_entity.public_id).isnull()
         return null_public_ids
 
 
@@ -320,11 +345,13 @@ class ForeignKeyConstraintValidator:
         *,
         local_entity: TableConfig,
         fk: ForeignKeyConfig,
+        remote_entity: TableConfig | None = None,
         runtime_options: ForeignKeyRuntimeOptions | None = None,
         raise_on_violation: bool = True,
     ) -> None:
         self.entity: TableConfig = local_entity
         self.fk: ForeignKeyConfig = fk
+        self.remote_entity: TableConfig | None = remote_entity
         self.constraints: ForeignKeyConstraints = fk.constraints
         self.runtime_options: ForeignKeyRuntimeOptions = runtime_options or ForeignKeyRuntimeOptions.from_constraints(self.constraints)
         self.merge_indicator_col: str | None = None
@@ -341,7 +368,12 @@ class ForeignKeyConstraintValidator:
         context = ValidationContext(local_df=local_df, remote_df=remote_df)
         for validator_cls in Validators.get_validators_for_stage("pre-merge"):
             validator: ConstraintValidator = validator_cls(
-                self.entity, self.fk, self.constraints, self.runtime_options, raise_on_violation=self.raise_on_violation
+                self.entity,
+                self.fk,
+                self.constraints,
+                self.remote_entity,
+                self.runtime_options,
+                raise_on_violation=self.raise_on_violation,
             )
             if validator.is_applicable():
                 validator.validate(context)
@@ -371,7 +403,12 @@ class ForeignKeyConstraintValidator:
         context = ValidationContext(local_df=local_df, remote_df=remote_df, linked_df=linked_df)
         for validator_cls in Validators.get_validators_for_stage("post-merge"):
             validator: ConstraintValidator = validator_cls(
-                self.entity, self.fk, self.constraints, self.runtime_options, raise_on_violation=self.raise_on_violation
+                self.entity,
+                self.fk,
+                self.constraints,
+                self.remote_entity,
+                self.runtime_options,
+                raise_on_violation=self.raise_on_violation,
             )
             if validator.is_applicable():
                 validator.validate(context)
@@ -380,7 +417,7 @@ class ForeignKeyConstraintValidator:
             local_df=local_df, remote_df=remote_df, linked_df=linked_df, merge_indicator_col=merge_indicator_col
         )
         for validator_cls in Validators.get_validators_for_stage("post-merge-match"):
-            validator: ConstraintValidator = validator_cls(self.entity, self.fk, self.constraints, self.runtime_options)
+            validator: ConstraintValidator = validator_cls(self.entity, self.fk, self.constraints, self.remote_entity, self.runtime_options)
             if validator.is_applicable():
                 if merge_indicator_col and merge_indicator_col in linked_df.columns:
                     validator.validate(match_context)
