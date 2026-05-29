@@ -56,10 +56,10 @@ class TestSpecificationIssue:
         assert "(field: columns)" in result
         assert "(column: site_id)" in result
 
-    def test_repr_equals_str(self):
-        """Test that __repr__ equals __str__."""
+    def test_repr_equals_csv_str(self):
+        """Test that __repr__ equals CSV string representation."""
         issue = SpecificationIssue(severity="error", message="Test", entity="test")
-        assert repr(issue) == str(issue)
+        assert repr(issue) == 'error;test;None;None;None;Test'
 
     def test_kwargs_storage(self):
         """Test that additional kwargs are stored."""
