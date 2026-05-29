@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 from loguru import logger
@@ -30,6 +30,30 @@ def _resolve_fk_runtime_options(fk: ForeignKeyConfig, remote_cfg: TableConfig) -
         return ForeignKeyRuntimeOptions(enforce_strict_null_keys=False, use_null_safe_merge=True)
 
     return ForeignKeyRuntimeOptions.from_constraints(fk.constraints)
+
+
+def _build_fk_validator(
+    local_entity: TableConfig,
+    fk: ForeignKeyConfig,
+    remote_entity: TableConfig,
+    runtime_options: ForeignKeyRuntimeOptions,
+) -> ForeignKeyConstraintValidator:
+    validator_cls: Any = ForeignKeyConstraintValidator
+
+    try:
+        return validator_cls(
+            local_entity=local_entity,
+            fk=fk,
+            remote_entity=remote_entity,
+            runtime_options=runtime_options,
+        )
+    except TypeError as exc:
+        if "unexpected keyword argument 'local_entity'" not in str(exc):
+            raise
+
+        # Preserve compatibility with simpler test doubles that still accept
+        # the older entity-name positional form.
+        return validator_cls(local_entity.entity_name, fk, runtime_options)
 
 
 class ForeignKeyLinker:
@@ -64,9 +88,10 @@ class ForeignKeyLinker:
         remote_entity: TableConfig = self.project.get_table(entity_name=fk.remote_entity)
         runtime_options: ForeignKeyRuntimeOptions = _resolve_fk_runtime_options(fk, remote_entity)
 
-        validator: ForeignKeyConstraintValidator = ForeignKeyConstraintValidator(
+        validator: ForeignKeyConstraintValidator = _build_fk_validator(
             local_entity=local_entity,
             fk=fk,
+            remote_entity=remote_entity,
             runtime_options=runtime_options,
         ).validate_before_merge(local_df, remote_df)
 
@@ -79,7 +104,7 @@ class ForeignKeyLinker:
         cols_to_select: list[str] = [remote_entity.system_id]
         cols_to_select.extend([col for col in link_setup.remote_columns if col != remote_entity.system_id])
 
-        remote_df = remote_df[cols_to_select].rename(columns=link_setup.rename_map)
+        remote_df = cast(pd.DataFrame, remote_df.loc[:, cols_to_select]).rename(columns=cast(Any, link_setup.rename_map))
 
         opts: dict[str, Any] = self._resolve_link_opts(fk, validator)
 

@@ -206,3 +206,80 @@ def test_pre_merge_null_check_still_applies_to_new_rows_without_public_id():
 
     with pytest.raises(ForeignKeyConstraintViolation, match="customer_id"):
         validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
+
+
+def test_pre_merge_remote_null_check_exempts_existing_rows_with_public_id():
+    """Remote rows with an existing public_id are exempt from strict null-key validation."""
+    cfg = {
+        "entities": {
+            "orders": {
+                "columns": ["order_id", "customer_code"],
+                "foreign_keys": [
+                    {
+                        "entity": "customers",
+                        "local_keys": ["customer_code"],
+                        "remote_keys": ["customer_code"],
+                        "constraints": {"allow_null_keys": False},
+                    }
+                ],
+            },
+            "customers": {
+                "public_id": "customer_id",
+                "columns": ["customer_id", "customer_code"],
+            },
+        }
+    }
+    project = ShapeShiftProject(cfg=cfg)
+    local_entity = project.get_table("orders")
+    remote_entity = project.get_table("customers")
+    fk = local_entity.foreign_keys[0]
+    validator = ForeignKeyConstraintValidator(local_entity=local_entity, fk=fk, remote_entity=remote_entity)
+
+    local_df = pd.DataFrame({"order_id": [1, 2], "customer_code": ["A", "B"]})
+    remote_df = pd.DataFrame(
+        {
+            "customer_id": [1001, 1002],
+            "customer_code": [None, None],
+        }
+    )
+
+    validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
+
+
+def test_pre_merge_remote_null_check_still_applies_to_new_remote_rows():
+    """Remote rows without a public_id still need non-null join keys when strict validation is enabled."""
+    cfg = {
+        "entities": {
+            "orders": {
+                "columns": ["order_id", "customer_code"],
+                "foreign_keys": [
+                    {
+                        "entity": "customers",
+                        "local_keys": ["customer_code"],
+                        "remote_keys": ["customer_code"],
+                        "constraints": {"allow_null_keys": False},
+                    }
+                ],
+            },
+            "customers": {
+                "public_id": "customer_id",
+                "columns": ["customer_id", "customer_code"],
+            },
+        }
+    }
+    project = ShapeShiftProject(cfg=cfg)
+    local_entity = project.get_table("orders")
+    remote_entity = project.get_table("customers")
+    fk = local_entity.foreign_keys[0]
+    validator = ForeignKeyConstraintValidator(local_entity=local_entity, fk=fk, remote_entity=remote_entity)
+
+    local_df = pd.DataFrame({"order_id": [1], "customer_code": ["A"]})
+    remote_df = pd.DataFrame(
+        {
+            "customer_id": [None, 1002],
+            "customer_code": [None, "A"],
+        }
+    )
+
+    with pytest.raises(ForeignKeyConstraintViolation, match="remote.*customer_code"):
+        validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
