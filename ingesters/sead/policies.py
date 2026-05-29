@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pandas as pd
@@ -68,6 +68,10 @@ class PolicyBase:
         self.logs[table] = message or self.get_id()
 
 
+def _get_series(df: pd.DataFrame, column: str) -> pd.Series:
+    return cast(pd.Series, df[column])
+
+
 @UpdatePolicies.register(key="add_primary_key_column_if_missing")
 class AddPrimaryKeyColumnIfMissingPolicy(PolicyBase):
     """Adds a primary key column to the DataFrame if it is missing"""
@@ -100,13 +104,17 @@ class UpdateMissingForeignKeyPolicy(PolicyBase):
                 if fk_name not in data.columns:
                     data[fk_name] = fk_value
                     self.log(table_name, f"Added missing column '{fk_name}' to '{table_name}' using value '{fk_value}'")
-                elif data[fk_name].isnull().all():
+                    continue
+
+                fk_series = _get_series(data, fk_name)
+                if fk_series.isnull().all():
                     data[fk_name] = fk_value
                     self.log(table_name, f"Added default value '{fk_value}' to '{fk_name}' in '{table_name}'")
 
-                elif data[fk_name].isnull().any():
-                    n_count: int = data[fk_name].isnull().sum()
-                    data.loc[data[fk_name].isnull(), fk_name] = fk_value
+                elif fk_series.isnull().any():
+                    null_mask = fk_series.isnull()
+                    n_count: int = int(null_mask.sum())
+                    data.loc[null_mask, fk_name] = fk_value
                     self.log(
                         table_name,
                         f"Updated {n_count} missing values '{table_name}.{fk_name}' to '{fk_value}'",
@@ -258,9 +266,10 @@ class IfForeignKeyValueIsMissingAddIdentityMappingToForeignKeyTable(PolicyBase):
         """Fix data types of the column in the data table."""
         sead_column_dtypes: dict[str, Dtype] = self.schema.sead_column_dtypes
         for column_name in data_table.columns:
-            if data_table[column_name].isnull().all():
+            column_series = _get_series(data_table, column_name)
+            if column_series.isnull().all():
                 if sead_column_dtypes.get(column_name, None):
-                    data_table[column_name] = data_table[column_name].astype(sead_column_dtypes[column_name])  # type: ignore
+                    data_table[column_name] = column_series.astype(sead_column_dtypes[column_name])  # type: ignore
         return data_table
 
     def update(self) -> None:
@@ -312,7 +321,7 @@ class DropIgnoredColumns(PolicyBase):
     This rule currently only applies "date_updated" and "*_uuid" columns.
     """
 
-    def filter_columns(self, patterns: list[str], columns: pd.Index[str]) -> list[str]:
+    def filter_columns(self, patterns: list[str], columns: pd.Index) -> list[str]:
         """Filter out columns that are ignored."""
         return [c for c in columns if any(fnmatch(c, x) for x in patterns)]
 
@@ -353,7 +362,8 @@ class IfLookupWithNoNewDataThenKeepOnlySystemIdPublicId(PolicyBase):
             if table.pk_name not in data_table.columns:
                 continue
 
-            if data_table[table.pk_name].isnull().any():
+            pk_series = _get_series(data_table, table.pk_name)
+            if pk_series.isnull().any():
                 continue
 
             columns_to_drop: list[str] = [c for c in data_table.columns if c not in ["system_id", table.pk_name]]
