@@ -490,5 +490,5 @@ Issue 6 should count as complete when all of the following are true:
 - [docs/TARGET_MODEL_GUIDE.md](../../TARGET_MODEL_GUIDE.md)
 - [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py)
 - [docs/proposals/done/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md](./SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md)
-- [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md](../CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_CR.md)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md](../CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md)
 - [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md](../CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md)

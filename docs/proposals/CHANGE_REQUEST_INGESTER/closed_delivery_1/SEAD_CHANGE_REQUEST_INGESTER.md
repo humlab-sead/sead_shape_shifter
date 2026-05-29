@@ -14,7 +14,7 @@ The recommendation was to deliver this in two stages. Delivery 1 is now closed o
 
 This keeps the first delivery small enough to implement and validate while still removing the Clearinghouse staging layer and the Transport System from the main ingestion path.
 
-Post-Delivery-1 hardening is now tracked separately in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md).
+Post-Delivery-1 hardening is now tracked separately in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
 
 Candidate next-delivery capabilities are tracked in [../NEXT_DELIVERY_CANDIDATES.md](../NEXT_DELIVERY_CANDIDATES.md), and frontend workflow integration is tracked separately in [../FRONTEND_UX_INTEGRATION_CR.md](../FRONTEND_UX_INTEGRATION_CR.md).
 
@@ -227,11 +227,11 @@ At minimum:
 - metadata linking submission, project, timestamp, Binding Set UUID, and non-revertible Delivery 1 status
 - a CR name associated in SIMS
 
-If the Change Control System requires a revert or verify file to accept a change, Delivery 1 may generate compatibility placeholders only under a strict non-revertible contract. Any placeholder revert script must fail loudly with an explicit message that rollback is not implemented for the change package. Delivery metadata must mark the package as non-revertible. Workflow acceptance of that placeholder artifact shape is now treated as post-Delivery-1 hardening in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md). Functional rollback is deferred beyond this closed baseline.
+If the Change Control System requires a revert or verify file to accept a change, Delivery 1 may generate compatibility placeholders only under a strict non-revertible contract. Any placeholder revert script must fail loudly with an explicit message that rollback is not implemented for the change package. Delivery metadata must mark the package as non-revertible. Workflow acceptance of that placeholder artifact shape is now treated as post-Delivery-1 hardening in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md). Functional rollback is deferred beyond this closed baseline.
 
 The current Delivery 1 artifact shape follows that compatibility rule. It emits `deploy.sql`, `revert.sql`, `verify.sql`, and `metadata.json`. The revert and verify files are explicit fail-loud placeholders, and the metadata marks the package as non-revertible and verification-placeholder based.
 
-Further work on alternative deploy formats, templating, and target-model review is now tracked in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md) rather than inside this proposal.
+Further work on alternative deploy formats, templating, and target-model review is now tracked in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md) rather than inside this proposal.
 
 If Binding Set confirmation cannot be completed during the run, Delivery 1 should emit no change package. Instead it should return diagnostics and a pending confirmation report that identifies the blocked rows, the outstanding confirmation step, and the exact operator action needed to rerun successfully.
 
@@ -341,7 +341,7 @@ Later-delivery validation work is now tracked as candidate scope in [../NEXT_DEL
 
 Delivery 1 is closed on the implemented MVP baseline.
 
-Remaining operator-facing artifact hardening, alternative deploy formats, and metadata-review work now live in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md).
+Remaining operator-facing artifact hardening, alternative deploy formats, and metadata-review work now live in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
 
 - [x] A new ingester is registered and can be selected without affecting the current `sead` ingester
 - [x] All rows selected for output have an explicit Delivery 1 identity state before SQL generation starts
@@ -362,13 +362,13 @@ Remaining operator-facing artifact hardening, alternative deploy formats, and me
 - [x] The generated CR name is associated with the Binding Set in SIMS
 - [x] Any required Delivery 1 revert placeholder fails explicitly and the change metadata marks the package as non-revertible
 - [x] The pilot includes at least one mixed submission containing existing references, new provider-owned entities, classifiers, and bridge rows
-- [x] Delivery 1 closes on the documented inline-`INSERT` artifact baseline; operator-facing artifact hardening and SEAD workflow acceptance move to [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md)
+- [x] Delivery 1 closes on the documented inline-`INSERT` artifact baseline; operator-facing artifact hardening and SEAD workflow acceptance move to [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md)
 
 Closure note as of 2026-05-26:
 
 - The authority-service `ResolutionOutcome.target_id` contract is now implemented, and Shape Shifter consumes it when present.
 - Delivery 1 is now treated as closed on the current MVP baseline described in this proposal.
-- Post-Delivery-1 work on operator-facing artifact hardening, alternative deploy formats, and metadata-source review is tracked in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md).
+- Post-Delivery-1 work on operator-facing artifact hardening, alternative deploy formats, and metadata-source review is tracked in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
 
 - Candidate next-delivery capabilities are tracked separately in [../NEXT_DELIVERY_CANDIDATES.md](../NEXT_DELIVERY_CANDIDATES.md).
 
@@ -386,7 +386,7 @@ Delivery 1 should generate a Sqitch-style change package with these artifacts:
 
 Delivery 1 metadata must also mark the package as non-revertible so operators are not given false confidence by file presence alone.
 
-This keeps Delivery 1 compatible with the existing change-request naming convention already used by SIMS, where associated change requests are recorded as `deploy/...` paths, while still deferring functional rollback beyond this closed baseline. Real SEAD workflow acceptance of the fail-loud placeholder artifact shape is now tracked as post-Delivery-1 hardening in [../DELIVERY_1_FOLLOWUP_CR.md](../DELIVERY_1_FOLLOWUP_CR.md).
+This keeps Delivery 1 compatible with the existing change-request naming convention already used by SIMS, where associated change requests are recorded as `deploy/...` paths, while still deferring functional rollback beyond this closed baseline. Real SEAD workflow acceptance of the fail-loud placeholder artifact shape is now tracked as post-Delivery-1 hardening in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
 
 ### 2. Foreign key execution strategy
 
