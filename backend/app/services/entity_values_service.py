@@ -139,8 +139,10 @@ class EntityValuesService:
         column_types: dict[str, str] | None = None,
     ) -> pd.DataFrame:
         """Build a dataframe with stable dtypes for fixed-entity sidecar storage."""
+        column_index = pd.Index(columns)
+
         if not column_types:
-            return pd.DataFrame(values, columns=columns)
+            return pd.DataFrame(values, columns=pd.Index(columns))
 
         normalized_column_types = normalize_fixed_entity_column_types("<external_values>", columns, column_types)
         series_map: dict[str, pd.Series] = {}
@@ -160,7 +162,7 @@ class EntityValuesService:
             else:
                 series_map[column] = pd.Series(column_values, name=column)
 
-        return pd.DataFrame(series_map, columns=columns)
+        return pd.DataFrame(series_map, columns=column_index)
 
     def _write_values_file(
         self,
