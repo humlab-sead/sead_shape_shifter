@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import pandas as pd
 from loguru import logger
 
@@ -23,14 +25,14 @@ def add_system_id(target: pd.DataFrame, id_name: str = "system_id") -> pd.DataFr
 
     if id_name in target.columns:
         # Preserve existing values, fill nulls with sequential values
-        existing_values: pd.Series = target[id_name]
+        existing_values = _get_series(target, id_name)
 
         # Convert to nullable Int64 to handle NaN/None properly
         if not pd.api.types.is_integer_dtype(existing_values):
-            existing_values = pd.to_numeric(existing_values, errors="coerce")
+            existing_values = cast(pd.Series, pd.to_numeric(existing_values, errors="coerce"))
 
         # Find max existing value (excluding nulls)
-        valid_values: pd.Series = existing_values.dropna()
+        valid_values = cast(pd.Series, existing_values.dropna())
         max_value: int = int(valid_values.max()) if len(valid_values) > 0 else 0
 
         # Fill nulls with sequential values starting from max + 1
@@ -49,7 +51,7 @@ def add_system_id(target: pd.DataFrame, id_name: str = "system_id") -> pd.DataFr
 
     # Put id_name as the first column
     cols: list[str] = [id_name] + [col for col in target.columns if col != id_name]
-    target = target[cols]
+    target = _select_columns(target, cols)
 
     return target
 
@@ -83,9 +85,10 @@ def merge_with_null_safety(
         2. Real key values equal to the generated sentinel strings may collide
            with null replacement values and produce false matches.
     """
-    left_on: list[str] = list(opts.get("left_on") or [])
-    right_on: list[str] = list(opts.get("right_on") or [])
-    how: str = opts.get("how", "inner")
+    merge_kwargs: dict[str, Any] = dict(opts)
+    left_on: list[str] = list(merge_kwargs.get("left_on") or [])
+    right_on: list[str] = list(merge_kwargs.get("right_on") or [])
+    how: str = merge_kwargs.get("how", "inner")
     if use_null_safe_merge is None:
         use_null_safe_merge = allow_null_keys
 
@@ -96,21 +99,21 @@ def merge_with_null_safety(
         local_df, remote_df = _coerce_compatible_merge_key_dtypes(local_df, remote_df, left_on, right_on)
 
     if how == "cross" or not use_null_safe_merge or not left_on or not right_on:
-        return pd.merge(local_df, remote_df, **opts)
+        return pd.merge(local_df, remote_df, **merge_kwargs)
 
     if len(left_on) != len(right_on):
         raise ValueError(f"Mismatched merge key counts: left_on={left_on}, right_on={right_on}")
 
     if not _has_nulls_in_columns(local_df, left_on) and not _has_nulls_in_columns(remote_df, right_on):
-        return pd.merge(local_df, remote_df, **opts)
+        return pd.merge(local_df, remote_df, **merge_kwargs)
 
     merge_local_df, temp_left_on = _create_null_safe_merges(local_df, left_on, _NULL_SENTINEL_PREFIX, "left")
     merge_remote_df, temp_right_on = _create_null_safe_merges(remote_df, right_on, _NULL_SENTINEL_PREFIX, "right")
-    merge_opts = opts | {"left_on": temp_left_on, "right_on": temp_right_on}
+    merge_opts: dict[str, Any] = merge_kwargs | {"left_on": temp_left_on, "right_on": temp_right_on}
 
     merged_df: pd.DataFrame = pd.merge(merge_local_df, merge_remote_df, **merge_opts)
 
-    temp_columns = [col for col in temp_left_on + temp_right_on if col in merged_df.columns]
+    temp_columns: list[str] = [col for col in temp_left_on + temp_right_on if col in merged_df.columns]
     if temp_columns:
         merged_df = merged_df.drop(columns=temp_columns)
 
@@ -143,8 +146,8 @@ def _coerce_compatible_merge_key_dtypes(
         if left_key not in local_df.columns or right_key not in remote_df.columns:
             continue
 
-        left_col: pd.Series = local_df[left_key]
-        right_col: pd.Series = remote_df[right_key]
+        left_col = _get_series(local_df, left_key)
+        right_col = _get_series(remote_df, right_key)
         left_numeric: bool = pd.api.types.is_numeric_dtype(left_col)
         right_numeric: bool = pd.api.types.is_numeric_dtype(right_col)
 
@@ -152,7 +155,7 @@ def _coerce_compatible_merge_key_dtypes(
             continue  # both numeric or both non-numeric — nothing to do
 
         if left_numeric and not right_numeric:
-            coerced: pd.Series = pd.to_numeric(right_col, errors="coerce")
+            coerced = cast(pd.Series, pd.to_numeric(right_col, errors="coerce"))
             if coerced.isna().sum() == right_col.isna().sum():
                 if not remote_modified:
                     remote_df = remote_df.copy()
@@ -160,7 +163,7 @@ def _coerce_compatible_merge_key_dtypes(
                 logger.debug(f"Coerced merge key '{right_key}' from object to numeric for join compatibility")
                 remote_df[right_key] = coerced
         else:
-            coerced: pd.Series = pd.to_numeric(left_col, errors="coerce")
+            coerced = cast(pd.Series, pd.to_numeric(left_col, errors="coerce"))
             if coerced.isna().sum() == left_col.isna().sum():
                 if not local_modified:
                     local_df = local_df.copy()
@@ -184,7 +187,7 @@ def _create_null_safe_merges(
     for index, key in enumerate(columns):
         merge_column: str = f"__nullsafe_merge_{side}_{index}__"
         sentinel: str = f"{sentinel_prefix}_{side}_{index}"
-        merge_df[merge_column] = _build_null_safe_merge_key(merge_df[key], sentinel)
+        merge_df[merge_column] = _build_null_safe_merge_key(_get_series(merge_df, key), sentinel)
         merge_columns.append(merge_column)
 
     return merge_df, merge_columns
@@ -196,3 +199,11 @@ def _has_nulls_in_columns(df: pd.DataFrame, columns: list[str]) -> bool:
 
 def _build_null_safe_merge_key(series: pd.Series, sentinel: str) -> pd.Series:
     return series.astype("object").where(series.notna(), sentinel)
+
+
+def _get_series(df: pd.DataFrame, column: str) -> pd.Series:
+    return cast(pd.Series, df[column])
+
+
+def _select_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    return cast(pd.DataFrame, df[columns])
