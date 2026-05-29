@@ -9,14 +9,14 @@ from ingesters.sead_change_request.contracts import (
     IdentityAssignment,
     IdentityResolutionResult,
     IdentityWorkPlan,
-    ProjectedTable,
-    TargetProjectionResult,
     PendingConfirmationReport,
     PlannedRowAction,
     PlannedTable,
+    ProjectedTable,
     ResolvedIdentityTable,
     SourceTableBundle,
     SubmissionContext,
+    TargetProjectionResult,
 )
 from ingesters.sead_change_request.identity_resolution import resolve_planned_tables
 from ingesters.sead_change_request.identity_work import build_identity_work_plan

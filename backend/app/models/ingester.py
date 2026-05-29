@@ -41,8 +41,12 @@ class ValidateRequest(BaseModel):
 
     source: str = Field(..., description="Path to source file or data to validate")
     config: dict[str, Any] = Field(default_factory=dict, description="Optional configuration parameters for validation")
-    submission_context: dict[str, Any] | None = Field(default=None, description="Optional submission context for ingesters that need operator metadata")
-    deploy_strategy: str | None = Field(default=None, description="Optional deploy artifact strategy for ingesters that support multiple outputs")
+    submission_context: dict[str, Any] | None = Field(
+        default=None, description="Optional submission context for ingesters that need operator metadata"
+    )
+    deploy_strategy: str | None = Field(
+        default=None, description="Optional deploy artifact strategy for ingesters that support multiple outputs"
+    )
 
 
 class ValidateResponse(BaseModel):
@@ -100,8 +104,12 @@ class IngestRequest(BaseModel):
     output_folder: str = Field(default="output", description="Folder for output files")
     do_register: bool = Field(default=False, description="Register submission in database")
     explode: bool = Field(default=False, description="Explode submission into public tables")
-    submission_context: dict[str, Any] | None = Field(default=None, description="Optional submission context for ingesters that need operator metadata")
-    deploy_strategy: str | None = Field(default=None, description="Optional deploy artifact strategy for ingesters that support multiple outputs")
+    submission_context: dict[str, Any] | None = Field(
+        default=None, description="Optional submission context for ingesters that need operator metadata"
+    )
+    deploy_strategy: str | None = Field(
+        default=None, description="Optional deploy artifact strategy for ingesters that support multiple outputs"
+    )
 
 
 class IngestResponse(BaseModel):

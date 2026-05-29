@@ -132,13 +132,15 @@ def test_sead_superset_spec_loads_and_validates() -> None:
         "rdb_system",
         "rdb_code",
         "rdb",
-    }.issubset(
-        target_model.entities
-    )
+    }.issubset(target_model.entities)
     assert {"value_qualifier", "value_qualifier_symbol"}.issubset(target_model.entities)
-    assert {"sample_group_coordinate", "sample_group_dimension", "sample_group_note", "sample_group_reference", "sample_group_sampling_context"}.issubset(
-        target_model.entities
-    )
+    assert {
+        "sample_group_coordinate",
+        "sample_group_dimension",
+        "sample_group_note",
+        "sample_group_reference",
+        "sample_group_sampling_context",
+    }.issubset(target_model.entities)
     assert analysis_value.target_table == "tbl_analysis_values"
     assert analysis_value.aggregate_parent == "analysis_entity"
     assert analysis_value.columns["value_class_id"].nullable is False

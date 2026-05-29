@@ -8,7 +8,6 @@ from unittest.mock import MagicMock
 
 from src.model import ShapeShiftProject
 
-
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_project.py"
 
 

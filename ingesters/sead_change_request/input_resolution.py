@@ -309,8 +309,7 @@ def _resolve_entity_identity_assignments(
         raise IdentityAssignmentError(f"Identity assignments for '{entity_name}' must be a row-to-assignment mapping")
 
     return {
-        row_index: _resolve_identity_assignment(entity_name, row_index, assignment)
-        for row_index, assignment in entity_assignments.items()
+        row_index: _resolve_identity_assignment(entity_name, row_index, assignment) for row_index, assignment in entity_assignments.items()
     }
 
 

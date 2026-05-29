@@ -4,9 +4,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from backend.app.models.validation import ValidationCategory, ValidationPriority
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project, ProjectMetadata
+from backend.app.models.validation import ValidationCategory, ValidationPriority
 from backend.app.services import validation_service as validation_service_module
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from src.validators.data_validators import ValidationIssue

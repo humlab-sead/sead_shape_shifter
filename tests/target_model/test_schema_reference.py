@@ -19,11 +19,10 @@ def test_generated_reference_lists_expected_yaml_paths():
 def test_generated_reference_lists_allowed_enum_values():
     rendered = generate_target_model_schema_reference()
 
-    assert r'| role | enum[string] \\| null | No | null | "fact", "lookup", "classifier", "bridge", null |'.replace('\\\\|', '\\|') in rendered
     assert (
-        r'| identity_tracking | enum[string] \| null | No | null | "tracked", "reconciled", "derived", "child", null |'
-        in rendered
+        r'| role | enum[string] \\| null | No | null | "fact", "lookup", "classifier", "bridge", null |'.replace("\\\\|", "\\|") in rendered
     )
+    assert r'| identity_tracking | enum[string] \| null | No | null | "tracked", "reconciled", "derived", "child", null |' in rendered
 
 
 def test_committed_reference_is_in_sync():

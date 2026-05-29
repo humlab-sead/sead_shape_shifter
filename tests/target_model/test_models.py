@@ -1,5 +1,4 @@
 import pytest
-
 from pydantic import ValidationError
 
 from src.target_model.models import TargetModel
