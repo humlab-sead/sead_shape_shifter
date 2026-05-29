@@ -60,6 +60,10 @@ black:
 pylint:
 	@uv run pylint src tests backend ingesters
 
+.PHONY: pyright
+pyright:
+	@uv run pyright --threads 2 src backend ingesters
+
 .PHONY: ruff
 ruff:
 	@uv run ruff check --fix --output-format concise src tests backend ingesters
