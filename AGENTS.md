@@ -73,5 +73,6 @@ All FK relationships use local `system_id` values — never external IDs.
 - SIMS client: `backend/app/clients/sims_client.py` (env var: `SHAPE_SHIFTER_SIMS_SERVICE_URL`).
 - Docs: `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`.
 - Scoped instructions (VS Code Copilot): `.github/instructions/` — auto-injected by `applyTo` patterns.
+- Planning instructions: use `.github/instructions/phase-plan.instructions.md` for phased implementation plans and `.github/instructions/task-plan.instructions.md` for phase task plans.
 - Prompt templates: `.github/prompts/` — invoke via `/` in Copilot Chat.
 - UCanAccess setup: `scripts/install-uncanccess.sh` (requires Java JRE).
