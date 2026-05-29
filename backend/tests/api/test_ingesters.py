@@ -1,9 +1,10 @@
 """Integration tests for ingester API endpoints."""
 
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from backend.app.main import app
-from backend.app.models.ingester import IngestResponse, ValidateResponse
+from backend.app.models.ingester import IngestRequest, IngestResponse, ValidateRequest, ValidateResponse
 from backend.app.services.ingester_runtime import (
     SeadChangeRequestReconciliationAdapter,
     SeadChangeRequestSimsAdapter,
@@ -94,9 +95,9 @@ class TestIngestersEndpoints:
 
     def test_validate_passes_submission_context_and_deploy_strategy_to_service(self, monkeypatch):
         """Validate route should preserve change-request payload fields when calling the service."""
-        captured: dict[str, object] = {}
+        captured: dict[str, str | ValidateRequest] = {}
 
-        async def fake_validate(key: str, request):
+        async def fake_validate(key: str, request: ValidateRequest) -> ValidateResponse:
             captured["key"] = key
             captured["request"] = request
             return ValidateResponse(
@@ -131,7 +132,10 @@ class TestIngestersEndpoints:
         assert response.status_code == 200
         assert captured["key"] == "sead_change_request"
 
-        request = captured["request"]
+        request: ValidateRequest | str = captured["request"]
+
+        assert isinstance(request, ValidateRequest)
+
         assert request.submission_context is not None
         assert request.submission_context["project_name"] == "pilot_bugs"
         assert request.submission_context["identifier"] == "PILOT_BUGS"
@@ -197,9 +201,9 @@ class TestIngestersEndpoints:
 
     def test_ingest_passes_submission_context_and_deploy_strategy_to_service(self, monkeypatch):
         """Ingest route should preserve change-request payload fields when calling the service."""
-        captured: dict[str, object] = {}
+        captured: dict[str, str | IngestRequest] = {}
 
-        async def fake_ingest(key: str, request):
+        async def fake_ingest(key: str, request: IngestRequest) -> IngestResponse:
             captured["key"] = key
             captured["request"] = request
             return IngestResponse(
@@ -215,7 +219,7 @@ class TestIngestersEndpoints:
 
         monkeypatch.setattr(IngesterService, "ingest", staticmethod(fake_ingest))
 
-        response = client.post(
+        response: Response = client.post(
             "/api/v1/ingesters/sead_change_request/ingest",
             json={
                 "source": "/tmp/input.xlsx",
@@ -242,7 +246,9 @@ class TestIngestersEndpoints:
         assert response.status_code == 200
         assert captured["key"] == "sead_change_request"
 
-        request = captured["request"]
+        request: IngestRequest | str= captured["request"]
+        assert isinstance(request, IngestRequest)
+
         assert request.submission_name == "bugs_delivery_1"
         assert request.data_types == "bugs"
         assert request.submission_context is not None
