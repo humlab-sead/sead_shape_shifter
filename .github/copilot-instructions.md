@@ -9,6 +9,8 @@ This file should stay small and always-on. Put task-specific guidance in `.githu
 - Treat `docs/features/` as future backlog, not authoritative implementation guidance, unless the user asks about roadmap or planned features.
 - Start with `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/USER_GUIDE.md`, `docs/REQUIREMENTS.md`, `docs/TESTING.md`, `docs/OPERATIONS.md`, and `.github/instructions/shapeshifter-configuration.instructions.md`.
 - For proposal work, follow `.github/instructions/proposal-writing-guide.instructions.md` and use `docs/templates/PROPOSAL_TEMPLATE.md` unless asked otherwise.
+- For phased implementation sequencing, follow `.github/instructions/phase-plan.instructions.md`.
+- For phase-level work breakdowns and checklists, follow `.github/instructions/task-plan.instructions.md`.
 
 ## Documentation vocabulary
 
@@ -116,3 +118,5 @@ Use the targeted files under `.github/instructions/` for detailed guidance inste
 - `diagrams.instructions.md`: Mermaid diagram style and conventions
 - `operations.instructions.md`: rules for writing and maintaining `docs/OPERATIONS.md`
 - `user-guide.instructions.md`: rules for writing and maintaining `docs/USER_GUIDE.md`
+- `phase-plan.instructions.md`: rules for writing phased implementation and delivery-sequencing plans
+- `task-plan.instructions.md`: rules for writing task plans for individual implementation phases
