@@ -693,7 +693,9 @@ def test_public_id_validator_is_silent_when_spec_declares_no_public_id() -> None
 
     issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert not any((issue.code or "").startswith("MISSING_PUBLIC_ID") or (issue.code or "").startswith("UNEXPECTED_PUBLIC_ID") for issue in issues)
+    assert not any(
+        (issue.code or "").startswith("MISSING_PUBLIC_ID") or (issue.code or "").startswith("UNEXPECTED_PUBLIC_ID") for issue in issues
+    )
 
 
 def test_disabled_rules_skip_named_conformance_validator() -> None:
