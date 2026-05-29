@@ -80,9 +80,7 @@ class TestCheckProjectedCollisions:
                 )
             }
         )
-        projection_result = TargetProjectionResult(
-            tables={"sample_taxon": ProjectedTable(entity_name="sample_taxon", frame=frame.copy())}
-        )
+        projection_result = TargetProjectionResult(tables={"sample_taxon": ProjectedTable(entity_name="sample_taxon", frame=frame.copy())})
 
         result = await check_projected_collisions(
             projection_result,
@@ -110,9 +108,7 @@ class TestCheckProjectedCollisions:
                 )
             }
         )
-        projection_result = TargetProjectionResult(
-            tables={"sample_taxon": ProjectedTable(entity_name="sample_taxon", frame=frame.copy())}
-        )
+        projection_result = TargetProjectionResult(tables={"sample_taxon": ProjectedTable(entity_name="sample_taxon", frame=frame.copy())})
 
         result = await check_projected_collisions(
             projection_result,

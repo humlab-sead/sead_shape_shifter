@@ -43,7 +43,7 @@ def generate_target_model_schema_reference() -> str:
         "## What This Covers",
         "",
         "This reference lists the YAML sections and keys accepted by the strict Pydantic target-model schema.",
-        "Unknown keys in these sections are rejected because each model uses `extra=\"forbid\"`.",
+        'Unknown keys in these sections are rejected because each model uses `extra="forbid"`.',
         "",
         "## YAML Paths",
         "",

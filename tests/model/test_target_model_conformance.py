@@ -4,7 +4,13 @@ from pathlib import Path
 import yaml
 
 from src.model import ShapeShiftProject, TableConfig
-from src.target_model.conformance import CONFORMANCE_VALIDATORS, ConformanceIssue, EntityConformanceValidator, GlobalConformanceValidator, TargetModelConformanceValidator
+from src.target_model.conformance import (
+    CONFORMANCE_VALIDATORS,
+    ConformanceIssue,
+    EntityConformanceValidator,
+    GlobalConformanceValidator,
+    TargetModelConformanceValidator,
+)
 from src.target_model.models import TargetModel
 
 TEST_DATA_DIR: Path = Path(__file__).resolve().parent.parent / "test_data"
@@ -922,7 +928,9 @@ def test_no_orphan_facts_is_silent_when_constraint_is_not_declared() -> None:
             "analysis_entity": {"role": "fact", "required": True},
         }
     )
-    project: ShapeShiftProject = _minimal_project({"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}})
+    project: ShapeShiftProject = _minimal_project(
+        {"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}}
+    )
 
     codes: list[str] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
@@ -941,7 +949,9 @@ def test_no_orphan_facts_emits_issue_for_fact_without_required_lookup_path() -> 
             },
         }
     )
-    project: ShapeShiftProject = _minimal_project({"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}})
+    project: ShapeShiftProject = _minimal_project(
+        {"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}}
+    )
 
     issues = TargetModelConformanceValidator().validate(target_model, project)
 
@@ -961,7 +971,9 @@ def test_no_orphan_facts_uses_error_severity_when_constraint_is_strict() -> None
             },
         }
     )
-    project: ShapeShiftProject = _minimal_project({"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}})
+    project: ShapeShiftProject = _minimal_project(
+        {"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}}
+    )
 
     issues = TargetModelConformanceValidator().validate(target_model, project)
 

@@ -23,8 +23,8 @@ import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 from jinja2.environment import Template
 
-from src.target_model.schema_reference import generate_target_model_schema_reference
 from src.target_model.models import EntitySpec, TargetModel
+from src.target_model.schema_reference import generate_target_model_schema_reference
 from src.utility import Registry
 
 if TYPE_CHECKING:

@@ -82,9 +82,7 @@ class TestTargetModelValidatorHappyPaths:
                 "sample": {
                     "public_id": "sample_id",
                     "columns": ["sample_name"],
-                    "foreign_keys": [
-                        {"entity": "sample_group", "local_keys": ["sample_group_id"], "remote_keys": ["sample_group_id"]}
-                    ],
+                    "foreign_keys": [{"entity": "sample_group", "local_keys": ["sample_group_id"], "remote_keys": ["sample_group_id"]}],
                 },
             }
         )

@@ -24,7 +24,9 @@ class ConformanceIssue(CoreIssue):
 
 class ConformanceValidator(ABC):
 
-    def get_default_severity(self, target_model: TargetModel, project: ShapeShiftProject) -> SeverityLevel:  # pylint: disable=unused-argument
+    def get_default_severity(
+        self, target_model: TargetModel, project: ShapeShiftProject
+    ) -> SeverityLevel:  # pylint: disable=unused-argument
         """Return the default severity for issues emitted by this validator."""
         return "error"
 
@@ -199,7 +201,9 @@ class ForeignKeyConformanceValidator(EntityConformanceValidator):
 
                 # Direct FK target (no bridge)
                 if not foreign_key.via:
-                    if foreign_key.entity not in project_targets and not has_target_facing_foreign_key_path(entity_name, foreign_key.entity, project):
+                    if foreign_key.entity not in project_targets and not has_target_facing_foreign_key_path(
+                        entity_name, foreign_key.entity, project
+                    ):
                         issues.append(
                             ConformanceIssue(
                                 code="MISSING_REQUIRED_FOREIGN_KEY_TARGET",
@@ -253,7 +257,9 @@ class NoOrphanFactsConformanceValidator(GlobalConformanceValidator):
 
     PARENT_ROLES: frozenset[str] = frozenset({"lookup", "classifier"})
 
-    def get_default_severity(self, target_model: TargetModel, project: ShapeShiftProject) -> SeverityLevel:  # pylint: disable=unused-argument
+    def get_default_severity(
+        self, target_model: TargetModel, project: ShapeShiftProject
+    ) -> SeverityLevel:  # pylint: disable=unused-argument
         constraint = self.get_constraint(target_model)
         if constraint and constraint.required in {True, "strict"}:
             return "error"
@@ -269,9 +275,7 @@ class NoOrphanFactsConformanceValidator(GlobalConformanceValidator):
             return []
 
         parent_entities = {
-            entity_name
-            for entity_name, entity_spec in target_model.entities.items()
-            if entity_spec.role in self.PARENT_ROLES
+            entity_name for entity_name, entity_spec in target_model.entities.items() if entity_spec.role in self.PARENT_ROLES
         }
         if not parent_entities:
             return []
@@ -482,7 +486,9 @@ class SourceTypeAppropriatenessConformanceValidator(EntityConformanceValidator):
 
     ALLOWED_TYPES: frozenset[str] = frozenset({"fixed", "sql"})
 
-    def get_default_severity(self, target_model: TargetModel, project: ShapeShiftProject) -> SeverityLevel:  # pylint: disable=unused-argument
+    def get_default_severity(
+        self, target_model: TargetModel, project: ShapeShiftProject
+    ) -> SeverityLevel:  # pylint: disable=unused-argument
         return "warning"
 
     def validate_entity(self, entity_name: str, entity_spec: EntitySpec, table_cfg: TableConfig) -> list[ConformanceIssue]:
@@ -552,8 +558,7 @@ class TargetModelConformanceValidator(ConformanceValidator):
                 code="UNKNOWN_DISABLED_CONFORMANCE_RULE",
                 field="options.validation.disabled_rules",
                 message=(
-                    f"Project disables unknown conformance rule '{rule_key}'. "
-                    "Remove it or use a registered conformance validator key."
+                    f"Project disables unknown conformance rule '{rule_key}'. " "Remove it or use a registered conformance validator key."
                 ),
             )
             for rule_key in unknown_rule_keys

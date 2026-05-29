@@ -85,9 +85,7 @@ class TargetModelSpecValidator:
                     issues.append(
                         SpecValidationIssue(
                             code="ENUM_MISSING_ALLOWED_VALUES",
-                            message=(
-                                f"Entity '{entity_name}' column '{column_name}' uses type 'enum' but does not declare allowed_values"
-                            ),
+                            message=(f"Entity '{entity_name}' column '{column_name}' uses type 'enum' but does not declare allowed_values"),
                             entity=entity_name,
                             field=column_name,
                         )
@@ -177,9 +175,7 @@ class TargetModelSpecValidator:
             issues.append(
                 SpecValidationIssue(
                     code="MISSING_AGGREGATE_PARENT_FOREIGN_KEY",
-                    message=(
-                        f"Entity '{entity_name}' uses aggregate_parent '{aggregate_parent}' but does not declare a foreign key to it"
-                    ),
+                    message=(f"Entity '{entity_name}' uses aggregate_parent '{aggregate_parent}' but does not declare a foreign key to it"),
                     entity=entity_name,
                 )
             )

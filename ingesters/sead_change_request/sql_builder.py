@@ -1,9 +1,9 @@
 """Deploy SQL generation for the SEAD change request ingester."""
 
-from decimal import Decimal, InvalidOperation
 import gzip
 import re
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 from io import StringIO
 from numbers import Integral, Real
@@ -453,10 +453,7 @@ def _validate_bundle_table_name(table_name: str) -> str:
     if SAFE_BUNDLE_TABLE_NAME_PATTERN.fullmatch(table_name):
         return table_name
 
-    raise ValueError(
-        "Unsafe table name "
-        f"'{table_name}' for copy_csv deploy artifact; expected only letters, digits, and underscores"
-    )
+    raise ValueError("Unsafe table name " f"'{table_name}' for copy_csv deploy artifact; expected only letters, digits, and underscores")
 
 
 def _artifact_directory_name(submission_context: SubmissionContext) -> str:

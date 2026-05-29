@@ -16,7 +16,9 @@ INSERTABLE_ROW_STATES: set[ChangeRowState] = {
 }
 
 
-def build_change_request_package(projection_result: TargetProjectionResult, identity_result: IdentityResolutionResult) -> ChangeRequestPackage:
+def build_change_request_package(
+    projection_result: TargetProjectionResult, identity_result: IdentityResolutionResult
+) -> ChangeRequestPackage:
     """Build the in-memory change package from projected tables."""
     tables: dict[str, ChangeRequestTable] = {}
     infos: list[str] = []
