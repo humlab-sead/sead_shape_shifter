@@ -3,7 +3,7 @@
 ## Phase Summary
 
 - Phase: Raise policy detail to implementation-ready fidelity
-- Status: Not started
+- Status: In progress
 - Goal: make the BugsCEP policies detailed enough to serve as a build contract for either a Python runtime that implements the policies directly or a Shape Shifter flow plus a BugCEP-specific automatic reconciliation step
 - Focus: close the remaining gaps between current policy YAML and actual importer behavior so the policies describe runtime inputs, decision rules, side effects, reconciliation semantics, and output expectations precisely enough to drive implementation work instead of only parity checks
 
@@ -45,8 +45,8 @@ Fill the remaining behavior gaps that still live mainly in Java code, comments, 
 
 - [x] Review the current covered importers and list the remaining behavior that is still under-specified for implementation, such as derived values, reconciliation branches, postprocess grouping rules, supporting-output creation rules, and update side effects.
 - [ ] Prioritize gaps that block both end-game options first, especially behaviors that affect row identity, matching, range merging, dataset or analysis-entity creation, and update versus insert rules.
-- [ ] Extend the relevant policy files and fixture conventions only as far as needed to express those behaviors concretely.
-- [ ] Mark any behavior that cannot or should not move into policy as explicit adapter logic for the Python path or the Shape Shifter reconciliation step.
+- [x] Extend the relevant policy files and fixture conventions only as far as needed to express those behaviors concretely.
+- [x] Mark any behavior that cannot or should not move into policy as explicit adapter logic for the Python path or the Shape Shifter reconciliation step.
 
 **Completion Criteria**
 
@@ -60,9 +60,9 @@ Turn the current parity corpus into a more implementation-ready reference set.
 
 **Tasks**
 
-- [ ] Identify a small representative set of importer families whose fixtures can act as golden reference cases for future implementation work.
-- [ ] Ensure those fixtures describe not only branch selection but also the concrete result shape expected from execution: row actions, emitted issues, retained rows, supporting outputs, and postprocess outputs.
-- [ ] Add any missing fixture metadata or expected-output structure needed for a future Python runtime or Shape Shifter adapter to consume the policies as a contract.
+- [x] Identify a small representative set of importer families whose fixtures can act as golden reference cases for future implementation work.
+- [x] Ensure those fixtures describe not only branch selection but also the concrete result shape expected from execution: row actions, emitted issues, retained rows, supporting outputs, and postprocess outputs.
+- [x] Add any missing fixture metadata or expected-output structure needed for a future Python runtime or Shape Shifter adapter to consume the policies as a contract.
 - [ ] Keep the result shapes aligned with the current shared contracts such as `resolver_result`, `reconciliation_result`, `postprocess_result`, `postprocess_results`, `graph_result`, `graph_issue`, and `output_result` unless a stronger implementation-facing shape is clearly needed.
 
 **Completion Criteria**
@@ -77,10 +77,10 @@ Keep both downstream implementation options viable while making the differences 
 
 **Tasks**
 
-- [ ] For the Python-runtime option, identify which policy features can map directly to runtime components and which ones still require orchestration or persistence code outside the policies.
-- [ ] For the Shape Shifter option, identify which policy features map naturally into existing Shape Shifter stages and which ones require a BugCEP-specific automatic reconciliation step before, within, or after the standard flow.
-- [ ] Record the first hard divergence point between the two options so the team can defer that decision while still improving the shared policy contract.
-- [ ] Add a decision checkpoint that states what evidence is needed before choosing one implementation path over the other.
+- [x] For the Python-runtime option, identify which policy features can map directly to runtime components and which ones still require orchestration or persistence code outside the policies.
+- [x] For the Shape Shifter option, identify which policy features map naturally into existing Shape Shifter stages and which ones require a BugCEP-specific automatic reconciliation step before, within, or after the standard flow.
+- [x] Record the first hard divergence point between the two options so the team can defer that decision while still improving the shared policy contract.
+- [x] Add a decision checkpoint that states what evidence is needed before choosing one implementation path over the other.
 
 **Completion Criteria**
 
@@ -94,8 +94,8 @@ Ship policy-readiness work only after focused validation passes and the docs des
 
 **Tasks**
 
-- [ ] Run focused validation for the touched policy, fixture, harness, and Java parity areas.
-- [ ] Run `make validate-policy-format` in `sead_bugs_import` after the narrow checks pass.
+- [x] Run focused validation for the touched policy, fixture, harness, and Java parity areas.
+- [x] Run `make validate-policy-format` in `sead_bugs_import` after the narrow checks pass.
 - [ ] Update `docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md` if the coverage statement, non-goals, or recommendation changes under the new end-game.
 - [ ] Keep this task plan aligned with the current remaining work instead of repeating completed slice history.
 
@@ -108,10 +108,10 @@ Focused validation passes first, the broad validation target stays green, and th
 | Area | Status | Notes |
 |---|---|---|
 | Define execution-ready policy criteria | Done | Checklist and adapter-boundary rules are now captured in the companion fidelity proposal. |
-| Close policy semantics gaps | In progress | Initial inventory exists; next step is to rank and close the highest-value shared gaps. |
-| Prepare implementation-oriented fixtures and outputs | Not started | Golden reference cases should support future implementation work, not only parity. |
-| Add option-specific mapping notes and decision checkpoint | Not started | Keep both end-game options open until the first hard divergence point is clearer. |
-| Validate and sync companion docs | Not started | Validation path stays the same even though the phase goal changes. |
+| Close policy semantics gaps | In progress | First concrete divergence areas are now recorded in the datesperiod, datescalendar, sitelocations, and siteotherproxies policies; the first taxa graph slice now exposes explicit supporting_action labels in `species`. |
+| Prepare implementation-oriented fixtures and outputs | In progress | Geochronology graph fixtures carry supporting_action, the site/contact list families carry persisted_action, and `species` now starts the same execution-facing contract for the taxa graph family. |
+| Add option-specific mapping notes and decision checkpoint | Done | The option mapping notes now keep both paths open and define the first divergence checkpoint. |
+| Validate and sync companion docs | In progress | Focused validation and `make validate-policy-format` are green for this slice; remaining work is to keep the companion proposal set aligned as more families are upgraded. |
 
 ## Definition Of Done
 
@@ -119,7 +119,7 @@ Focused validation passes first, the broad validation target stays green, and th
 - [ ] The next phase improves policy detail toward implementation readiness, not only broader test-harness execution.
 - [ ] Representative policies and fixtures can act as a concrete build contract for either downstream option up to the documented divergence point.
 - [ ] Policy-managed behavior and adapter-only behavior are explicitly separated.
-- [ ] Focused validation passes for the touched areas.
+- [x] Focused validation passes for the touched areas.
 - [ ] `make validate-policy-format` passes after the phase lands.
 - [ ] `docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md` and this task plan both describe the same end-game and remaining work.
 
@@ -137,8 +137,12 @@ Focused validation passes first, the broad validation target stays green, and th
 | Task plan document | Forward-looking remaining-work plan for implementation-ready policy fidelity | Done | `docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_TASK_PLAN.md` |
 | Execution-readiness checklist | Shared criteria for when a policy is detailed enough to drive either implementation path | Done | `docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md` |
 | Policy gap inventory | Ranked list of remaining under-specified behaviors that block implementation | Done | `docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_GAP_INVENTORY.md` |
-| Golden reference fixture set | Representative policy-plus-fixture cases suitable for implementation and regression work | Not started | TBD |
-| Option mapping notes | Notes that map policy capabilities to the Python path and the Shape Shifter plus BugCEP reconciliation path | Not started | TBD |
+| Geochronology golden reference set | First named golden execution-reference family and the rules for using it as a shared contract | Done | `docs/proposals/BUGSCEP_POLICY_GOLDEN_REFERENCE_GEOCHRONOLOGY.md` |
+| Site and contact persisted-action contracts | Execution-facing contract for append, keep, delete, replace, and prerequisite-stop behavior | Done | `docs/proposals/BUGSCEP_POLICY_PERSISTED_ACTION_CONTRACTS_SITE_CONTACTS.md` |
+| Golden reference fixture set | Representative policy-plus-fixture cases suitable for implementation and regression work | In progress | `docs/proposals/BUGSCEP_POLICY_GOLDEN_REFERENCE_GEOCHRONOLOGY.md` |
+| Taxa graph contract baseline | First non-geochronology graph family slice with explicit supporting action labels in executable fixtures | Done | `docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_GAP_INVENTORY.md` |
+| Option mapping notes | Notes that map policy capabilities to the Python path and the Shape Shifter plus BugCEP reconciliation path | Done | `docs/proposals/BUGSCEP_POLICY_OPTION_MAPPING_NOTES.md` |
+| Divergence evidence baseline | First concrete known-divergence areas recorded in policy and fixture form for the shared contract | Done | `docs/proposals/BUGSCEP_POLICY_OPTION_MAPPING_NOTES.md` |
 | Proposal sync | Coverage and recommendation updates in the fidelity proposal if the end-game wording changes | Done | `docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md` |
 
 ## Scope
