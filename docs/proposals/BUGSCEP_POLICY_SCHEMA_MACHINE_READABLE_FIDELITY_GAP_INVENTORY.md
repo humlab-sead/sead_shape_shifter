@@ -165,10 +165,12 @@ Current status:
 
 - The simpler reconciliation-only families `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution` now expose explicit `persisted_action` labels for their insert and update write paths across 10 executable fixture slices.
 - Four validated action-contract batches now add explicit no-write action labels for `country`, `period`, `lab`, `bibliography`, `mcrnames`, `mcrsummary`, `rdbcode`, `rdbsystem`, `rdb`, `site`, `sitereferences`, `taxanotes`, `taxaseasonality`, `ecocodegroup`, `ecocode_bugs`, `ecocode_koch`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, and the executable existing-error slices in `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution`.
-- `datasetcontacts` supporting-contact fixtures now expose explicit `supporting_action` labels for generated and reused contact rows, and `sample` supporting-dimension fixtures now expose create, update, keep, and delete supporting actions.
+- The latest ordered-reconciliation write-action batch now adds explicit `persisted_action` labels on successful update or create paths for `period`, `country`, and `taxanotes`.
+- `datasetcontacts` supporting-contact fixtures now expose explicit `supporting_action` labels for generated and reused contact rows plus explicit `row_changed` expectations, and `sample` supporting-dimension fixtures now expose create, update, keep, and delete supporting actions.
 - `sitelocations` and `siteotherproxies` now expose explicit `row_changed` expectations across all 10 executable list-output scenarios, so the contract records both row actions and whether the updater path reports a changed row.
+- `datasetcontacts` now also exposes explicit `row_changed` expectations across all four executable list-output scenarios, so both the parser path and the updater path carry the same change-state signal.
 - `datesperiod` dataset and analysis-entity supporting-output fixtures plus `sample` supporting-dimension fixtures now also expose explicit `row_changed` expectations, and `datesradio` plus `datescalendar` supporting-output fixtures now expose the same change-state signal for relative ages, datasets, and analysis entities.
-- The remaining gap for that class of importer is the rest of the ordered reconciliation corpus that still relies on parity-only `result_kind` values rather than explicit stop or no-write action labels, plus any remaining list-output or graph families that still omit explicit change-state expectations.
+- The remaining gap for that class of importer is the rest of the ordered reconciliation corpus that still relies on parity-only `result_kind` values on successful write paths or on explicit stop and no-write labels, plus any remaining graph families that still omit explicit change-state expectations.
 
 ### 4. Fossil Analysis-Entity Family
 
@@ -179,6 +181,7 @@ This policy is the clearest current reference for configuration forks, supportin
 Current status:
 
 - `fossil` now exposes explicit `supporting_action` labels for supporting-output and related-output graph success paths, including clone-driven dataset creation, dataset reuse, analysis-entity creation, and analysis-entity reuse.
+- The four executable fossil supporting-output scenarios now also carry explicit `row_changed` expectations, so the contract records change state for dataset clone or reuse and for analysis-entity creation or reuse.
 - The three fossil graph-issue scenarios now carry explicit `row_changed` expectations alongside the graph issue payload, so the contract records both the error and whether the Java path still reports a changed row.
 - The remaining fossil gap is to decide whether the clone-versus-create distinction needs its own stable action label or whether `supporting_action: create` plus `updated_dataset_id` is the long-term contract.
 
