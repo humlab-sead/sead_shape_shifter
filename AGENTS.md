@@ -65,6 +65,8 @@ All FK relationships use local `system_id` values — never external IDs.
 - **Data loader**: `@DataLoaders.register(key=...)` in `src/loaders/`, `ClassVar` schema on the class. See `.github/prompts/add-loader.prompt.md`.
 - **Specification**: subclass `ProjectSpecification`, implement `is_satisfied_by()`, add to `CompositeProjectSpecification.__init__()`.
 - **Ingester**: directory under `ingesters/<name>/`, implement `Ingester` protocol, `@Ingesters.register(key="<name>")`. See `ingesters/AGENTS.md`.
+- **Phase plan**: when asked to create or update a phased implementation plan, delivery sequencing document, or migration phase plan, use `.github/instructions/phase-plan.instructions.md`.
+- **Task plan**: when asked to create or update a task plan for one development phase, use `.github/instructions/task-plan.instructions.md`.
 
 ## Key References
 
@@ -73,6 +75,6 @@ All FK relationships use local `system_id` values — never external IDs.
 - SIMS client: `backend/app/clients/sims_client.py` (env var: `SHAPE_SHIFTER_SIMS_SERVICE_URL`).
 - Docs: `docs/DESIGN.md`, `docs/CONFIGURATION_GUIDE.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, `docs/TESTING.md`.
 - Scoped instructions (VS Code Copilot): `.github/instructions/` — auto-injected by `applyTo` patterns.
-- Planning instructions: use `.github/instructions/phase-plan.instructions.md` for phased implementation plans and `.github/instructions/task-plan.instructions.md` for phase task plans.
+- Planning instructions: use `.github/instructions/phase-plan.instructions.md` when the user asks for phased implementation sequencing, and use `.github/instructions/task-plan.instructions.md` when the user asks for work breakdown, checklists, or definition-of-done planning for one phase.
 - Prompt templates: `.github/prompts/` — invoke via `/` in Copilot Chat.
 - UCanAccess setup: `scripts/install-uncanccess.sh` (requires Java JRE).

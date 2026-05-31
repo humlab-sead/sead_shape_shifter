@@ -2,17 +2,17 @@
 
 ## Status
 
-- Proposed change request
-- Scope: generate and track reconciliation policy files for every importer in the `sead_bugs_import` Java application using `doc/reconciliation_policies/create-policy.instructions.md` as the default authoring path
-- Goal: produce a complete policy inventory that captures importer business rules in YAML and creates a reviewable migration baseline for later code generation and Shape Shifter comparison
+- Implemented inventory phase
+- Scope: maintain the full reconciliation policy inventory for every importer in the `sead_bugs_import` Java application using `doc/reconciliation_policies/create-policy.instructions.md` as the default authoring path
+- Goal: keep a complete, reviewable policy baseline for fidelity work, later code generation, and Shape Shifter comparison
 
 ## Summary
 
-This proposal recommends a structured pass over all importer classes in the Java BugsCEP application to extract their business rules into reconciliation policy YAML files.
+This proposal started the structured pass over all importer classes in the Java BugsCEP application and that inventory phase is now complete.
 
-The work should use `sead_bugs_import/doc/reconciliation_policies/create-policy.instructions.md` as the default authoring workflow, validate each generated policy with the policy-format check, and track completion importer by importer in one shared checklist.
+The work uses `sead_bugs_import/doc/reconciliation_policies/create-policy.instructions.md` as the default authoring workflow, validates policy changes with the policy-format check, and tracks importer-by-importer coverage in one shared checklist.
 
-This is the right time to do it because the instruction file, schema, examples, and validator now exist and are aligned well enough to support repeatable policy authoring.
+The checklist in this document is now the completed inventory baseline. The active follow-up work is no longer broad policy generation. It is machine-readable fidelity work on the richer policy features captured in [BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md](BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md).
 
 ## Problem
 
@@ -43,22 +43,20 @@ This proposal does not attempt to:
 - generate Python importer code in this phase
 - replace the Java importer directly
 - prove full runtime parity between policy files and Java behavior
-- redesign the policy schema again before policy generation starts
+- turn every completed policy into a fully executable policy model in one pass
 - resolve every complex importer edge case before simpler importers are captured
 
 ## Current Behavior
 
-The current policy authoring path now exists in `sead_bugs_import/doc/reconciliation_policies/create-policy.instructions.md` and is backed by a policy schema plus a validator command: `make validate-policy-format` in `sead_bugs_import`.
+The current policy authoring path exists in `sead_bugs_import/doc/reconciliation_policies/create-policy.instructions.md` and is backed by a policy schema plus a validator command: `make validate-policy-format` in `sead_bugs_import`.
 
-Three policy files already exist and validate:
+The importer inventory phase is complete. Every importer class in `sead_bugs_import/src/main/java/se/sead/bugsimport/` now appears in the checklist below, with a mapped policy artifact or an explicit single-table review outcome where appropriate.
 
-- `bibliography.policy.yml`
-- `site.policy.yml`
-- `lab.policy.yml`
+The policy set now includes both simple single-table domains and richer policies that use runnable `related_outputs`, `resolvers`, `postprocess`, shared `emit` outcomes, fixture-backed scenarios, and narrow Java-versus-policy comparisons.
 
 The Java application currently exposes 35 importer classes under `sead_bugs_import/src/main/java/se/sead/bugsimport/`.
 
-Not all importers fit the standard authoring path equally well. Some use custom parsing, internal location side effects, or complex sub-domain behavior that may need an instruction extension or a companion policy shape.
+Not all importers fit the standard authoring path equally well. That is now reflected in the inventory: some policies remain intentionally single-table, while others carry richer supporting-row, child-row, or grouped postprocess behavior.
 
 ## Proposed Design
 
@@ -127,6 +125,8 @@ Validation expectations:
 - The completed policies pass `make validate-policy-format`.
 - The checklist shows current progress without requiring a separate inventory document.
 
+These criteria are now met for the inventory phase.
+
 ## Recommended Delivery Order
 
 ### Tier 1: Already Completed
@@ -137,6 +137,7 @@ Validation expectations:
 
 ### Tier 2: Leaf Importers With Standard Path
 
+- [x] `CountryImporter` -> `country.policy.yml`
 - [x] `PeriodImporter` -> `period.policy.yml`
 - [x] `RdbSystemImporter` -> `rdbsystem.policy.yml`
 - [x] `EcocodeGroupImporter` -> `ecocodegroup.policy.yml`
@@ -171,25 +172,40 @@ Tier 3 note: `sitelocations.policy.yml` and `siteotherproxies.policy.yml` now us
 - [x] `SampleGroupImporter` -> `samplegroup.policy.yml`
 - [x] `SampleImporter` -> `sample.policy.yml`
 - [x] `FossilImporter` -> `fossil.policy.yml`
+- [x] `DatasetContactImporter` -> `datasetcontacts.policy.yml`
 - [x] `DatesCalendarImporter` -> `datescalendar.policy.yml`
 - [x] `DatesPeriodImporter` -> `datesperiod.policy.yml`
 - [x] `GeochronologyImporter` -> `datesradio.policy.yml`
 - [x] `TaxaMeasuredAttributesImporter` -> `attributes.policy.yml`
 
-Tier 4 note: `sample.policy.yml`, `species.policy.yml`, and `fossil.policy.yml` use the new `related_outputs` schema to document persisted child or supporting rows outside the main `target.table`.
+Tier 4 status:
 
-### Tier 5: Importers That Need Instruction Extension Or Custom Policy Pattern
+- Runnable `related_outputs`: `sample.policy.yml`, `species.policy.yml`, `fossil.policy.yml`, `datasetcontacts.policy.yml`, `datescalendar.policy.yml`, and `datesperiod.policy.yml`
+- Reviewed and intentionally single-table: `samplegroup.policy.yml` and `attributes.policy.yml`
+- Runnable `related_outputs` with insert-only child graph: `datesradio.policy.yml`
 
-- [ ] `CountryImporter` -> special handling required; current inventory treats locations as an internal side effect rather than a standard importer domain
-- [ ] `DatasetContactImporter` -> special handling required; current implementation reads and parses site contact strings rather than following the normal `BugsTable` pattern
+Tier 4 review result: all Tier 4 importers have now been checked against the current runnable-completeness goal. The remaining difference inside this tier is not coverage, but importer shape: some policies now model runnable child/supporting rows, while `samplegroup.policy.yml` and `attributes.policy.yml` remain single-table by design because their extra dependencies are resolved lookups only.
 
-## Open Questions
+## Next Phase Direction
 
-- Should `CountryImporter` be modeled as a standard policy, or kept as an internal support domain with a smaller custom format?
-- Should `related_outputs` stay as a descriptive side-effect section, or should a later phase give it per-table child mappings for code generation?
+The machine-runnable completeness phase is now underway.
+
+The schema and validator now support runnable `related_outputs`, and the current converted examples cover several distinct patterns:
+
+- generated child rows under one parent row in `sample.policy.yml`
+- cached or repository-matched supporting rows in `species.policy.yml`, `fossil.policy.yml`, and `datasetcontacts.policy.yml`
+- cascaded supporting rows under shared relative-date updaters in `datescalendar.policy.yml` and `datesperiod.policy.yml`
+- insert-only supporting rows in `datesradio.policy.yml`
+- single-table reviewed cases with lookup-only dependencies in `samplegroup.policy.yml` and `attributes.policy.yml`
+
+The next follow-up work should keep extending coverage importer by importer while explicitly marking the cases that stay single-table, so the tracker distinguishes real missing runnable child behavior from importers that only resolve lookup dependencies.
+
+The proposed schema-extension path for that follow-up work is captured in [BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md](BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md).
 
 ## Final Recommendation
 
-Start a full importer-by-importer reconciliation policy pass now.
+Treat this proposal as the completed importer-inventory baseline.
 
-Use `create-policy.instructions.md` as the default workflow, validate every completed policy with `make validate-policy-format`, and use the checklist in this proposal as the authoritative progress tracker for policy coverage across the Java importer.
+Keep using `create-policy.instructions.md` as the default workflow, validate policy changes with `make validate-policy-format`, and use the checklist in this proposal when fidelity work changes how an importer is represented.
+
+For active follow-up work, use [BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md](BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md). That document now captures the current schema-extension and fixture-comparison path beyond the completed inventory phase.
