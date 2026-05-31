@@ -5,7 +5,7 @@
 - In progress
 - Scope: extend the BugsCEP reconciliation policies so importer behavior can be represented as implementation-ready policy data instead of helper names, comments, or Java-only control flow
 - Goal: make the policy files detailed enough to act as a build contract for either a Python runtime that implements the policies directly or a Shape Shifter flow plus a BugCEP-specific automatic reconciliation step
-- Implemented so far: direct related-output references, structured resolvers, grouped postprocess merge stages, shared `emit` blocks, initial `known_divergences` support, fixture-backed scenario validation, shared result-object comparisons against current Java behavior, execution-facing `supporting_action` and `persisted_action` labels in the first upgraded reference families, explicit write-action labels in simple reconciliation-only families, and narrow policy-side execution for resolver, postprocess, ordered-reconciliation, supporting-output, related-output graph, and reconciliation-result slices
+- Implemented so far: direct related-output references, structured resolvers, grouped postprocess merge stages, shared `emit` blocks, initial `known_divergences` support, fixture-backed scenario validation, shared result-object comparisons against current Java behavior, execution-facing `supporting_action` and `persisted_action` labels in the first upgraded reference families, explicit write-action labels in simple reconciliation-only families, the first explicit no-write action labels for reconciliation error and guard paths, and narrow policy-side execution for resolver, postprocess, ordered-reconciliation, supporting-output, related-output graph, and reconciliation-result slices
 
 ## Summary
 
