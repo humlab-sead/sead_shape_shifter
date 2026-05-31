@@ -5,15 +5,17 @@
 - Proposed change request
 - Decision state: candidate, not accepted
 - Scope: define how `sead_change_request` should handle updates to already-existing target rows
-- Goal: decide whether and how the ingester should generate update-oriented change packages beyond the Delivery 1 insert-only baseline
+- Goal: decide whether and how the ingester should generate update-oriented change packages beyond the current insert-only baseline
 
 ## Summary
 
-Delivery 1 deliberately stops at forward inserts.
+The current accepted baseline deliberately stops at forward inserts.
 
 That closes the direct path for new rows and new associations, but it leaves an important operational gap: projects that need to correct or extend an already-existing target row still have no defined path inside `sead_change_request`.
 
-This proposal defines the next decision surface for that gap. It is intentionally focused on update handling for existing rows rather than bundling rollback, change detection, and every other later-delivery concern into one omnibus follow-up.
+This proposal defines the next decision surface for that gap. It is intentionally focused on update handling for existing rows rather than bundling rollback, change detection, and every other later-stage concern into one omnibus follow-up.
+
+It should be read after [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md), because that document defines which provider-visible update scenarios should be allowed, restricted, or blocked before this CR narrows the SQL-oriented handling for accepted cases.
 
 ## Problem
 
@@ -35,11 +37,13 @@ This proposal covers:
 - the output contract for update-oriented change packages when updates are accepted
 - the interaction between update handling, idempotency, and operator review
 
+It treats existing-row update handling as one downstream scenario inside the broader provider-change problem described in [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md).
+
 ## Non-Goals
 
 - implementing rollback in the same change request
 - solving every kind of semantic duplicate detection
-- redesigning Delivery 1 insert handling
+- redesigning the current insert-only handling
 - designing the full frontend workflow in this document
 - changing SCCS internals
 
@@ -53,7 +57,7 @@ That means:
 - the ingester may still emit new bridge or association rows that reference the existing entity
 - any change to the existing row's mutable attributes is outside the current contract
 
-This is correct for the closed Delivery 1 baseline, but it is insufficient for a fuller operational replacement of the legacy SEAD path.
+This is correct for the current accepted baseline, but it is insufficient for a fuller operational replacement of the legacy SEAD path.
 
 ## Proposed Design
 
