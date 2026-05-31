@@ -147,6 +147,7 @@ Current status:
 - `species` now carries explicit `supporting_action` labels in both supporting-output and related-output graph fixtures.
 - The `species` related-output graph now also includes mixed create-and-reuse, family-reuse-only, missing-author, and no-data-shortcut scenarios so graph expectations are no longer limited to all-create and all-reuse trees.
 - All six executable `species` related-output graph scenarios now carry explicit `row_changed` expectations, so the contract records whether the graph creates a new species row or reuses an existing one.
+- The `species` supporting-output fixtures now also carry explicit `row_changed` expectations for family, genus, author, and species creation or reuse, including the no-data shortcut and the missing-author branch.
 - `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution` now carry explicit no-write action labels in the existing-error reconciliation paths that are currently executable in fixtures.
 - The remaining family work is to extend the same execution-facing contract to adjacent species policies whose reuse or graph behavior still relies on parity-only result kinds.
 
