@@ -146,6 +146,7 @@ Current status:
 
 - `species` now carries explicit `supporting_action` labels in both supporting-output and related-output graph fixtures.
 - The `species` related-output graph now also includes mixed create-and-reuse, family-reuse-only, missing-author, and no-data-shortcut scenarios so graph expectations are no longer limited to all-create and all-reuse trees.
+- All six executable `species` related-output graph scenarios now carry explicit `row_changed` expectations, so the contract records whether the graph creates a new species row or reuses an existing one.
 - `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution` now carry explicit no-write action labels in the existing-error reconciliation paths that are currently executable in fixtures.
 - The remaining family work is to extend the same execution-facing contract to adjacent species policies whose reuse or graph behavior still relies on parity-only result kinds.
 
@@ -164,7 +165,8 @@ Current status:
 - The simpler reconciliation-only families `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution` now expose explicit `persisted_action` labels for their insert and update write paths across 10 executable fixture slices.
 - Four validated action-contract batches now add explicit no-write action labels for `country`, `period`, `lab`, `bibliography`, `mcrnames`, `mcrsummary`, `rdbcode`, `rdbsystem`, `rdb`, `site`, `sitereferences`, `taxanotes`, `taxaseasonality`, `ecocodegroup`, `ecocode_bugs`, `ecocode_koch`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, and the executable existing-error slices in `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution`.
 - `datasetcontacts` supporting-contact fixtures now expose explicit `supporting_action` labels for generated and reused contact rows, and `sample` supporting-dimension fixtures now expose create, update, keep, and delete supporting actions.
-- The remaining gap for that class of importer is the rest of the ordered reconciliation corpus that still relies on parity-only `result_kind` values rather than explicit stop or no-write action labels.
+- `sitelocations` and `siteotherproxies` now expose explicit `row_changed` expectations across all 10 executable list-output scenarios, so the contract records both row actions and whether the updater path reports a changed row.
+- The remaining gap for that class of importer is the rest of the ordered reconciliation corpus that still relies on parity-only `result_kind` values rather than explicit stop or no-write action labels, plus any remaining list-output or graph families that still omit explicit change-state expectations.
 
 ### 4. Fossil Analysis-Entity Family
 
