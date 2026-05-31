@@ -26,10 +26,10 @@ Set the minimum policy detail needed before either downstream path can be implem
 
 **Tasks**
 
-- [ ] Define the shared requirements that both end-game options need from the policies: source contract, identity rules, reconciliation steps, postprocess behavior, output graph rules, emitted issues, and validation expectations.
-- [ ] Separate those shared requirements from the option-specific parts: a pure Python execution runtime versus Shape Shifter plus a BugCEP-specific automatic reconciliation step.
-- [ ] Add an explicit readiness checklist to the companion proposal or phase notes so the team can judge when a policy is detailed enough for implementation.
-- [ ] Record what remains intentionally outside policy scope and must stay in runtime glue code or adapters.
+- [x] Define the shared requirements that both end-game options need from the policies: source contract, identity rules, reconciliation steps, postprocess behavior, output graph rules, emitted issues, and validation expectations.
+- [x] Separate those shared requirements from the option-specific parts: a pure Python execution runtime versus Shape Shifter plus a BugCEP-specific automatic reconciliation step.
+- [x] Add an explicit readiness checklist to the companion proposal or phase notes so the team can judge when a policy is detailed enough for implementation.
+- [x] Record what remains intentionally outside policy scope and must stay in runtime glue code or adapters.
 
 **Completion Criteria**
 
@@ -43,7 +43,7 @@ Fill the remaining behavior gaps that still live mainly in Java code, comments, 
 
 **Tasks**
 
-- [ ] Review the current covered importers and list the remaining behavior that is still under-specified for implementation, such as derived values, reconciliation branches, postprocess grouping rules, supporting-output creation rules, and update side effects.
+- [x] Review the current covered importers and list the remaining behavior that is still under-specified for implementation, such as derived values, reconciliation branches, postprocess grouping rules, supporting-output creation rules, and update side effects.
 - [ ] Prioritize gaps that block both end-game options first, especially behaviors that affect row identity, matching, range merging, dataset or analysis-entity creation, and update versus insert rules.
 - [ ] Extend the relevant policy files and fixture conventions only as far as needed to express those behaviors concretely.
 - [ ] Mark any behavior that cannot or should not move into policy as explicit adapter logic for the Python path or the Shape Shifter reconciliation step.
@@ -107,8 +107,8 @@ Focused validation passes first, the broad validation target stays green, and th
 
 | Area | Status | Notes |
 |---|---|---|
-| Define execution-ready policy criteria | Not started | New end-game requires a shared readiness target before more slice work. |
-| Close policy semantics gaps | Not started | Prioritize behaviors that block both the Python and Shape Shifter paths. |
+| Define execution-ready policy criteria | Done | Checklist and adapter-boundary rules are now captured in the companion fidelity proposal. |
+| Close policy semantics gaps | In progress | Initial inventory exists; next step is to rank and close the highest-value shared gaps. |
 | Prepare implementation-oriented fixtures and outputs | Not started | Golden reference cases should support future implementation work, not only parity. |
 | Add option-specific mapping notes and decision checkpoint | Not started | Keep both end-game options open until the first hard divergence point is clearer. |
 | Validate and sync companion docs | Not started | Validation path stays the same even though the phase goal changes. |
@@ -135,11 +135,11 @@ Focused validation passes first, the broad validation target stays green, and th
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
 | Task plan document | Forward-looking remaining-work plan for implementation-ready policy fidelity | Done | `docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_TASK_PLAN.md` |
-| Execution-readiness checklist | Shared criteria for when a policy is detailed enough to drive either implementation path | Not started | TBD |
-| Policy gap inventory | Ranked list of remaining under-specified behaviors that block implementation | Not started | TBD |
+| Execution-readiness checklist | Shared criteria for when a policy is detailed enough to drive either implementation path | Done | `docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md` |
+| Policy gap inventory | Ranked list of remaining under-specified behaviors that block implementation | Done | `docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_GAP_INVENTORY.md` |
 | Golden reference fixture set | Representative policy-plus-fixture cases suitable for implementation and regression work | Not started | TBD |
 | Option mapping notes | Notes that map policy capabilities to the Python path and the Shape Shifter plus BugCEP reconciliation path | Not started | TBD |
-| Proposal sync | Coverage and recommendation updates in the fidelity proposal if the end-game wording changes | Not started | `docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md` |
+| Proposal sync | Coverage and recommendation updates in the fidelity proposal if the end-game wording changes | Done | `docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md` |
 
 ## Scope
 

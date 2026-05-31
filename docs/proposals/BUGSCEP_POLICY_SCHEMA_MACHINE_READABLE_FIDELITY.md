@@ -3,21 +3,21 @@
 ## Status
 
 - In progress
-- Scope: extend the BugsCEP reconciliation policy schema so more importer behavior can be represented as executable policy data instead of helper names and comments
-- Goal: make the policy files a closer machine-readable model of Java runtime behavior, starting with the patterns already exposed by `datescalendar.policy.yml`, `datesperiod.policy.yml`, and `datesradio.policy.yml`
+- Scope: extend the BugsCEP reconciliation policies so importer behavior can be represented as implementation-ready policy data instead of helper names, comments, or Java-only control flow
+- Goal: make the policy files detailed enough to act as a build contract for either a Python runtime that implements the policies directly or a Shape Shifter flow plus a BugCEP-specific automatic reconciliation step
 - Implemented so far: direct related-output references, structured resolvers, grouped postprocess merge stages, shared `emit` blocks, initial `known_divergences` support, fixture-backed scenario validation, shared result-object comparisons against current Java behavior, and narrow policy-side execution for resolver, postprocess, ordered-reconciliation, supporting-output, and related-output graph slices
 
 ## Summary
 
-This proposal recommends continuing the current incremental schema-extension pass after the importer inventory work.
+This proposal recommends continuing the current incremental schema-extension pass after the importer inventory work, but with a different end-state.
 
 The current policy format is strong at source mapping, ordered reconciliation, and several child-table patterns. It is weaker at structured helper behavior, parent-child identity flow, batch merge logic, and emitted runtime outcomes.
 
-The first pass of those schema additions is now in place. The next step is to keep extending validation and execution coverage with the same narrow, shared-result approach instead of adding more helper labels and prose comments.
+The first pass of those schema additions is now in place. The next step is not just to widen harness coverage. It is to raise policy detail until the policies can serve as a build contract for downstream implementation work. That shared contract should support both candidate end-games until they reach a real divergence point: a Python runtime that executes the policies directly, or Shape Shifter plus a BugCEP-specific automatic reconciliation step.
 
 ## Problem
 
-The current policies describe a lot of the Java importer structure, but some important business logic is still not machine-readable enough to execute or validate directly.
+The current policies describe a lot of the Java importer structure, but they are still not detailed enough to drive implementation with confidence.
 
 Current gaps:
 
@@ -26,8 +26,10 @@ Current gaps:
 - batch behavior such as the calendar-date range merge is still mostly described in prose even though it changes the persisted result
 - row outcomes such as flagged rows, ignored items, and structured error reasons are not first-class policy data
 - there is no standard way to record that a policy intentionally matches the current Java runtime even when the Java behavior is surprising or flawed
+- the current fixture corpus proves parity for many narrow slices, but it is not yet organized as a golden execution reference for future implementation work
+- the boundary between policy-managed behavior and adapter-only logic is still too implicit for both downstream implementation options
 
-That means the policies are useful for review and code generation scaffolding, but not yet a full executable model of the Java importers.
+That means the policies are useful for review, schema evolution, and parity checks, but they are not yet a reliable build contract for either downstream path.
 
 ## Scope
 
@@ -39,6 +41,8 @@ This proposal covers:
 - schema changes for machine-readable emitted issues and flags
 - a lightweight way to record known policy-versus-Java divergences
 - a validation approach that uses representative policies as the first proving ground
+- a shared execution-readiness target that supports both downstream implementation options up to their first hard divergence point
+- explicit classification of policy-managed behavior versus adapter-only runtime logic
 
 ## Non-Goals
 
@@ -49,6 +53,8 @@ This proposal does not attempt to:
 - build a full general-purpose workflow language
 - remove helper functions entirely
 - prove full parity across all importers before the schema additions are implemented
+- choose between the Python runtime and the Shape Shifter plus BugCEP reconciliation path before the shared policy contract is mature enough to support both
+- implement either downstream runtime in this proposal
 
 ## Current Behavior
 
@@ -60,7 +66,55 @@ The current schema already supports:
 
 That has been enough to capture several useful patterns, including generated child rows, cached supporting rows, cascade-created supporting rows, and insert-only child graphs.
 
-The current limit is not breadth of coverage. The limit is that the most conditional behavior is still compressed into helpers and comments.
+The current limit is no longer simple feature breadth. The limit is that the most conditional behavior is still compressed into helpers, comments, fixture conventions, and Java-only side effects rather than being expressed clearly enough to guide implementation.
+
+## Execution-Readiness Checklist
+
+Use this checklist to decide whether a BugsCEP policy is detailed enough to support downstream implementation work.
+
+### Shared Requirements For Both Downstream Paths
+
+A policy is execution-ready only when it defines all of the following clearly enough to drive implementation and validation:
+
+- source contract: required inputs, optional inputs, normalization rules, and assumptions about missing or placeholder values
+- identity rules: business keys, trace lookups, repository lookups, child or supporting-row references, and any parent-child identity flow
+- reconciliation behavior: ordered matching steps, guard returns, create-versus-update rules, reuse rules, and explicit no-op or ignored-item outcomes
+- postprocess behavior: grouping keys, partition rules, retained rows, emitted rows, merge updates, conflict behavior, and ordering expectations where order affects results
+- output behavior: created or reused supporting outputs, related-output graph expectations, list-result behavior, delete or replace behavior, and row-level side effects that matter to persisted state
+- emitted outcomes: structured issues, warnings, ignored-item reasons, known divergences, and any result object fields needed for fixture comparison
+- validation reference: at least one fixture-backed execution example that shows the concrete expected result shape for the policy behavior being relied on
+
+### Adapter-Only Versus Policy-Managed Behavior
+
+Keep behavior in policy when it changes matching, row identity, emitted outcomes, persisted values, retained rows, or output graph structure.
+
+Keep behavior outside policy only when it is implementation glue that does not change the policy decision itself, such as:
+
+- persistence orchestration details
+- runtime-specific caching or batching mechanics
+- Shape Shifter stage wiring that preserves the same declared policy behavior
+- Python runtime plumbing that evaluates the same declared policy behavior
+
+If a behavior stays outside policy, document it explicitly as adapter-only logic instead of leaving it implied by current Java code.
+
+### Option-Specific Readiness Notes
+
+The same policy contract should support both downstream options until a real divergence is proven.
+
+- Python runtime path: policies should describe enough behavior that a runtime can evaluate reconciliation, postprocess, emitted outcomes, and output expectations without relying on hidden Java helpers.
+- Shape Shifter path: policies should describe enough behavior that standard Shape Shifter stages plus a BugCEP-specific automatic reconciliation step can preserve the same matching rules, side effects, and output expectations.
+
+The first hard divergence point should be recorded only when one option needs behavior that cannot be represented clearly in the shared policy contract without weakening the other option.
+
+### Minimum Evidence Before Promoting A Policy
+
+Before treating a policy as implementation-ready, confirm all of the following:
+
+- the policy passes schema and fixture validation
+- the representative fixtures cover the concrete result shape that downstream code must honor
+- policy-managed behavior and adapter-only behavior are separated explicitly
+- known Java quirks that remain intentional are recorded as known divergences instead of being hidden in comments or fixture setup
+- the policy can be explained as a direct contract for one representative importer slice without referring back to Java-only helper behavior
 
 ## Proposed Design
 
@@ -232,14 +286,17 @@ This would likely overshoot the actual need. The current schema already handles 
 - A postprocess model can become too abstract if it is not kept tightly scoped to the already observed merge patterns.
 - Resolver definitions will overlap somewhat with existing helper descriptions during migration.
 - If divergences are recorded too casually, they can become a way to avoid hard decisions.
+- If the policies are optimized only for current harness execution, they can still fall short of what a Python runtime or a Shape Shifter adapter layer actually needs.
+- If the two downstream options are allowed to diverge too early, the policy contract can split before the shared parts are finished.
 
 ## Testing And Validation
 
-Validation now happens in three layers, and the remaining work should keep using the same structure.
+Validation should now serve two purposes at once: prove fidelity against current Java behavior and prove that the policies are specific enough to support downstream implementation work.
 
 1. Schema validation: extend `_schema.yml` and `PolicyFormatValidationTest` so the new sections are checked structurally.
-2. Example conversion: update a small set of existing policies to the new schema, starting with `datescalendar.policy.yml` and `datesradio.policy.yml`.
-3. Behavioral fixtures: add small machine-readable fixtures for representative cases and compare the policy result with the current Java result.
+2. Representative policy conversion: update existing policies so key behaviors are described in policy instead of helper comments or Java-only assumptions.
+3. Behavioral fixtures: keep adding machine-readable fixtures for representative cases and compare the policy result with the current Java result.
+4. Execution-readiness review: confirm that representative policies describe inputs, decisions, side effects, emitted issues, output graphs, and adapter boundaries clearly enough to support both downstream implementation options.
 
 The first fixture set now covers:
 
@@ -373,6 +430,8 @@ Current limit:
 - The schema can record machine-readable known divergences where exact Java parity is intentionally deferred or preserved.
 - Representative policies use the new constructs and still pass format validation.
 - Shared result-object comparisons exist across Java and policy execution for the first resolver, reconciliation, postprocess, supporting-output, and related-output graph slices.
+- Representative policies and fixtures are detailed enough to act as a concrete execution contract for either downstream implementation path up to the documented divergence point.
+- Policy-managed behavior and adapter-only behavior are separated explicitly enough to support implementation planning.
 - Fixture validation checks stay on the existing `make validate-policy-format` path.
 
 ## Completed Groundwork
@@ -386,13 +445,16 @@ Current limit:
 
 ## Recommended Delivery Order
 
-1. Expand from the current hand-picked executable checks to broader fixture-driven Java comparisons.
-2. Expand policy-side execution beyond the current hand-built importer slices toward broader fixture-driven policy result comparison. `site`, `sitereferences`, `period`, `rdbsystem`, `mcrnames`, `taxaseasonality`, `mcrsummary`, `birmbeetledata`, `species`, `speciessynonyms`, the ecocode definition slices, the ecocode slices, and the text-based tuple-lookup slices now show that the same shared result-object contract can cover prerequisite guards, trace-only reconciliation, ordered search chains, composite-key reuse, fixed supporting-output trees, full fixed related-output graphs, repository tuple reuse, and narrow return-as-is branches without widening the schema.
-3. Continue expanding from full related-output graphs into smaller single-supporting-output controllers and updaters where that gives better branch isolation. The latest `datescalendar`, `datesradio`, `datesperiod`, `fossil`, `species`, and `datasetcontacts` follow-up slices now prove that the same shared harness can cover isolated child-output behavior, grouped postprocess singletons, grouped postprocess multi-output partitions, and updater error branches without reopening the broader graph path.
-4. Expand from the current result-object comparisons to fuller fixture-driven policy result comparison without turning the schema into a general workflow DSL.
+1. Define a shared execution-readiness checklist for BugsCEP policies so both downstream implementation paths are working toward the same contract.
+2. Prioritize and close the remaining policy-semantics gaps that block both end-game options first, especially identity, reconciliation, postprocess, update side effects, and output-graph rules.
+3. Promote a representative subset of policies and fixtures into golden execution-reference cases that can support future implementation and regression work, not only parity checks.
+4. Extend harnesses and fixtures only where needed to prove those implementation-facing policy details, without turning the schema into a general workflow DSL.
+5. Record the first hard divergence point between the Python path and the Shape Shifter plus BugCEP reconciliation path before committing to one runtime design.
 
 ## Final Recommendation
 
 Extend the current schema incrementally instead of replacing it.
 
-The schema additions that this proposal argued for are now proving out in the repository, so the recommendation should stay narrow: keep the current model, extend it only where current importer behavior still disappears into helpers or comments, and keep validating it through shared result-object comparisons between Java and policy execution. The `datescalendar`, `datesradio`, `datesperiod`, `country`, `site`, `sitereferences`, `ecocodegroup`, `ecocode_bugs`, `ecocode_koch`, `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, `period`, `rdbsystem`, `mcrnames`, `taxaseasonality`, `mcrsummary`, `birmbeetledata`, `species`, `lab`, `bibliography`, `sample`, `datasetcontacts`, `siteotherproxies`, `sitelocations`, `rdb`, `rdbcode`, `speciesdistribution`, `taxanotes`, and `fossil` slices already show that this approach can cover resolvers, ordered reconciliation, grouped merge logic, supporting-output controllers, one-to-many main-output list reconciliation, prerequisite guards, trace-only reuse, ordered search chains, composite-key reuse, fixed supporting-output trees, tuple-based repository reuse, narrow return-as-is branches, trace-hit error returns, and related-output graphs without replacing the whole schema. The next step should be to improve how much policy behavior can execute through shared harnesses without introducing a general workflow DSL, not to chase another uncovered importer slice in this CR.
+The schema additions that this proposal argued for are now proving out in the repository, so the recommendation should stay narrow but shift its target: keep the current model, extend it only where importer behavior still disappears into helpers, comments, fixture conventions, or Java-only side effects, and use shared result-object comparisons as evidence that the policies are detailed enough to guide implementation. The `datescalendar`, `datesradio`, `datesperiod`, `country`, `site`, `sitereferences`, `ecocodegroup`, `ecocode_bugs`, `ecocode_koch`, `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, `period`, `rdbsystem`, `mcrnames`, `taxaseasonality`, `mcrsummary`, `birmbeetledata`, `species`, `lab`, `bibliography`, `sample`, `datasetcontacts`, `siteotherproxies`, `sitelocations`, `rdb`, `rdbcode`, `speciesdistribution`, `taxanotes`, and `fossil` slices already show that this approach can cover resolvers, ordered reconciliation, grouped merge logic, supporting-output controllers, one-to-many main-output list reconciliation, prerequisite guards, trace-only reuse, ordered search chains, composite-key reuse, fixed supporting-output trees, tuple-based repository reuse, narrow return-as-is branches, trace-hit error returns, and related-output graphs without replacing the whole schema.
+
+The next step should be to raise policy detail until representative policies can act as a concrete build contract for either downstream option up to a documented divergence point: a Python runtime that implements the policies directly, or Shape Shifter plus a BugCEP-specific automatic reconciliation step. Harness breadth still matters, but it is now a means to prove policy readiness, not the end-state by itself.
