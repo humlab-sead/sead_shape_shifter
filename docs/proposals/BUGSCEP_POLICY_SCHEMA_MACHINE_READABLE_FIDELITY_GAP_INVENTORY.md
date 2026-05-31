@@ -157,6 +157,11 @@ Current status:
 
 This group is the best current reference for ordered reconciliation plus persisted list-result side effects.
 
+Current status:
+
+- The simpler reconciliation-only families `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution` now expose explicit `persisted_action` labels for their insert and update write paths across 10 executable fixture slices.
+- The remaining gap for that class of importer is error and guard behavior that still relies on parity-only `result_kind` values rather than explicit stop or no-write action labels.
+
 ### 4. Fossil Analysis-Entity Family
 
 - `fossil`
@@ -180,4 +185,4 @@ If any of these mechanics changes matching, row identity, emitted issues, persis
 1. Promote the geochronology family to the first golden execution-reference set and confirm that the policies describe end-to-end execution without reading Java helper code.
 2. Convert the site and contact update family from parity-oriented result checks into clearer persisted-action contracts.
 3. Extend the taxa graph family beyond `species`, starting with the next graph policies that still rely on parity-only result kinds or implicit reuse rules.
-4. Record any concrete taxa-family known divergences or adapter-only boundaries encountered during those slices instead of leaving them in fixture setup or test assumptions.
+4. Extend explicit reconciliation write-action labels into the remaining error and guard paths, then record any concrete divergences or adapter-only boundaries encountered during those slices instead of leaving them in fixture setup or test assumptions.
