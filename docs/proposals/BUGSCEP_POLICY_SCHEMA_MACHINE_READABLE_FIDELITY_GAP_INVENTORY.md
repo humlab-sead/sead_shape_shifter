@@ -145,8 +145,8 @@ This group is the best current reference for related-output graphs, optional sup
 Current status:
 
 - `species` now carries explicit `supporting_action` labels in both supporting-output and related-output graph fixtures.
-- `speciesassociation` now also carries an explicit no-write action label for its existing-error reconciliation path.
-- The remaining family work is to extend the same execution-facing contract to the adjacent species graph policies that still rely on parity-only result kinds.
+- `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution` now carry explicit no-write action labels in the existing-error reconciliation paths that are currently executable in fixtures.
+- The remaining family work is to extend the same execution-facing contract to adjacent species policies whose reuse or graph behavior still relies on parity-only result kinds.
 
 ### 3. Site And Contact Update Family
 
@@ -161,8 +161,8 @@ This group is the best current reference for ordered reconciliation plus persist
 Current status:
 
 - The simpler reconciliation-only families `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution` now expose explicit `persisted_action` labels for their insert and update write paths across 10 executable fixture slices.
-- A first error-and-guard batch now adds explicit no-write action labels for `period`, `lab`, `bibliography`, `rdbcode`, `rdbsystem`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, and the `speciesassociation` existing-error slice.
-- The remaining gap for that class of importer is broader error and guard coverage in families such as `site`, `sitereferences`, `rdb`, and `taxaseasonality` that still rely on parity-only `result_kind` values rather than explicit stop or no-write action labels.
+- Two validated error-and-guard batches now add explicit no-write action labels for `period`, `lab`, `bibliography`, `rdbcode`, `rdbsystem`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, `site`, `sitereferences`, `rdb`, `taxaseasonality`, and the executable existing-error slices in `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution`.
+- The remaining gap for that class of importer is the rest of the ordered reconciliation corpus that still relies on parity-only `result_kind` values rather than explicit stop or no-write action labels.
 
 ### 4. Fossil Analysis-Entity Family
 
@@ -185,6 +185,6 @@ If any of these mechanics changes matching, row identity, emitted issues, persis
 ## Next Recommended Slices
 
 1. Promote the geochronology family to the first golden execution-reference set and confirm that the policies describe end-to-end execution without reading Java helper code.
-2. Convert the site and contact update family from parity-oriented result checks into clearer persisted-action contracts.
+2. Convert the remaining site and contact update behavior from parity-oriented result checks into richer persisted-action contracts where list updates or deletes still matter.
 3. Extend the taxa graph family beyond `species`, starting with the next graph policies that still rely on parity-only result kinds or implicit reuse rules.
 4. Extend explicit reconciliation action labels into the remaining error and guard paths, then record any concrete divergences or adapter-only boundaries encountered during those slices instead of leaving them in fixture setup or test assumptions.
