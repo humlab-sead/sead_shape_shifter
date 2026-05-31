@@ -142,6 +142,11 @@ This group already covers resolvers, grouped postprocess behavior, supporting ou
 
 This group is the best current reference for related-output graphs, optional supporting outputs, and repository reuse within a multi-node output structure.
 
+Current status:
+
+- `species` now carries explicit `supporting_action` labels in both supporting-output and related-output graph fixtures.
+- The remaining family work is to extend the same execution-facing contract to the adjacent species graph policies that still rely on parity-only result kinds.
+
 ### 3. Site And Contact Update Family
 
 - `site`
@@ -174,5 +179,5 @@ If any of these mechanics changes matching, row identity, emitted issues, persis
 
 1. Promote the geochronology family to the first golden execution-reference set and confirm that the policies describe end-to-end execution without reading Java helper code.
 2. Convert the site and contact update family from parity-oriented result checks into clearer persisted-action contracts.
-3. Review the taxa graph family for any remaining helper-derived identity or reuse behavior that is still implicit.
-4. Record the first concrete known divergences and adapter-only boundaries encountered during those slices instead of leaving them in fixture setup or test assumptions.
+3. Extend the taxa graph family beyond `species`, starting with the next graph policies that still rely on parity-only result kinds or implicit reuse rules.
+4. Record any concrete taxa-family known divergences or adapter-only boundaries encountered during those slices instead of leaving them in fixture setup or test assumptions.
