@@ -172,6 +172,12 @@ Current status:
 
 This policy is the clearest current reference for configuration forks, supporting-output reuse, graph issues, and analysis-entity reuse failure paths.
 
+Current status:
+
+- `fossil` now exposes explicit `supporting_action` labels for supporting-output and related-output graph success paths, including clone-driven dataset creation, dataset reuse, analysis-entity creation, and analysis-entity reuse.
+- The three fossil graph-issue scenarios now carry explicit `row_changed` expectations alongside the graph issue payload, so the contract records both the error and whether the Java path still reports a changed row.
+- The remaining fossil gap is to decide whether the clone-versus-create distinction needs its own stable action label or whether `supporting_action: create` plus `updated_dataset_id` is the long-term contract.
+
 ## Provisional Adapter-Only Boundaries
 
 Treat the following as adapter-only unless a concrete implementation slice proves they need to move into policy:
@@ -188,5 +194,5 @@ If any of these mechanics changes matching, row identity, emitted issues, persis
 
 1. Promote the geochronology family to the first golden execution-reference set and confirm that the policies describe end-to-end execution without reading Java helper code.
 2. Convert the remaining site and contact update behavior from parity-oriented result checks into richer execution contracts where list updates, deletes, graph reuse, and graph issues all carry explicit action semantics.
-3. Extend the taxa graph family beyond the current `species` richer baseline, starting with the next graph policies that still rely on parity-only result kinds, graph-issue-only checks, or implicit reuse rules.
+3. Extend the next graph policies that still rely on parity-only result kinds, graph-issue-only checks, or implicit reuse rules, now that both `species` and `fossil` provide richer graph baselines.
 4. Extend explicit reconciliation action labels into the remaining error, guard, and keep-existing paths, then record any concrete divergences or adapter-only boundaries encountered during those slices instead of leaving them in fixture setup or test assumptions.
