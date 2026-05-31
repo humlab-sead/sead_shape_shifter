@@ -1,5 +1,5 @@
 ---
-description: "Use when creating or updating phase plans, phased implementation plans, delivery sequencing documents, or multi-phase execution plans. Covers structure, section priority, cross-phase rules, and validation strategy."
+description: "Use when creating or updating phased implementation plans, delivery sequencing documents, migration phase plans, or other multi-phase execution plans. Covers structure, section priority, phase ordering, cross-phase rules, and validation strategy."
 ---
 
 # Copilot Instructions: Phase Plans

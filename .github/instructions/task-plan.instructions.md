@@ -1,5 +1,5 @@
 ---
-description: "Use when creating or updating task plans for a development phase, phase work breakdowns, implementation checklists, or phase-level execution trackers. Covers work breakdown, progress tracking, definition of done, and validation planning."
+description: "Use when creating or updating task plans for a development phase, phase work breakdowns, implementation checklists, or phase-level execution trackers. Covers work breakdown, progress tracking, definition of done, deliverables, and validation planning."
 ---
 
 # Copilot Instructions: Phase Task Plans
