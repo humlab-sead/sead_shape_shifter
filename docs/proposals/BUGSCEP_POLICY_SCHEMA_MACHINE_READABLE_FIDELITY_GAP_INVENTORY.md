@@ -145,7 +145,7 @@ This group is the best current reference for related-output graphs, optional sup
 Current status:
 
 - `species` now carries explicit `supporting_action` labels in both supporting-output and related-output graph fixtures.
-- The `species` related-output graph now also includes a mixed create-and-reuse scenario so graph expectations are no longer limited to all-create and all-reuse trees.
+- The `species` related-output graph now also includes mixed create-and-reuse, family-reuse-only, missing-author, and no-data-shortcut scenarios so graph expectations are no longer limited to all-create and all-reuse trees.
 - `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution` now carry explicit no-write action labels in the existing-error reconciliation paths that are currently executable in fixtures.
 - The remaining family work is to extend the same execution-facing contract to adjacent species policies whose reuse or graph behavior still relies on parity-only result kinds.
 
@@ -162,7 +162,8 @@ This group is the best current reference for ordered reconciliation plus persist
 Current status:
 
 - The simpler reconciliation-only families `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution` now expose explicit `persisted_action` labels for their insert and update write paths across 10 executable fixture slices.
-- Three validated error-and-guard batches now add explicit no-write action labels for `country`, `period`, `lab`, `bibliography`, `mcrnames`, `rdbcode`, `rdbsystem`, `rdb`, `site`, `sitereferences`, `taxanotes`, `taxaseasonality`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, and the executable existing-error slices in `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution`.
+- Four validated action-contract batches now add explicit no-write action labels for `country`, `period`, `lab`, `bibliography`, `mcrnames`, `mcrsummary`, `rdbcode`, `rdbsystem`, `rdb`, `site`, `sitereferences`, `taxanotes`, `taxaseasonality`, `ecocodegroup`, `ecocode_bugs`, `ecocode_koch`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, and the executable existing-error slices in `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution`.
+- `datasetcontacts` supporting-contact fixtures now expose explicit `supporting_action` labels for generated and reused contact rows, and `sample` supporting-dimension fixtures now expose create, update, keep, and delete supporting actions.
 - The remaining gap for that class of importer is the rest of the ordered reconciliation corpus that still relies on parity-only `result_kind` values rather than explicit stop or no-write action labels.
 
 ### 4. Fossil Analysis-Entity Family
@@ -186,6 +187,6 @@ If any of these mechanics changes matching, row identity, emitted issues, persis
 ## Next Recommended Slices
 
 1. Promote the geochronology family to the first golden execution-reference set and confirm that the policies describe end-to-end execution without reading Java helper code.
-2. Convert the remaining site and contact update behavior from parity-oriented result checks into richer persisted-action contracts where list updates or deletes still matter.
-3. Extend the taxa graph family beyond the current `species` mixed create-and-reuse baseline, starting with the next graph policies that still rely on parity-only result kinds or implicit reuse rules.
-4. Extend explicit reconciliation action labels into the remaining error and guard paths, then record any concrete divergences or adapter-only boundaries encountered during those slices instead of leaving them in fixture setup or test assumptions.
+2. Convert the remaining site and contact update behavior from parity-oriented result checks into richer execution contracts where list updates, deletes, graph reuse, and graph issues all carry explicit action semantics.
+3. Extend the taxa graph family beyond the current `species` richer baseline, starting with the next graph policies that still rely on parity-only result kinds, graph-issue-only checks, or implicit reuse rules.
+4. Extend explicit reconciliation action labels into the remaining error, guard, and keep-existing paths, then record any concrete divergences or adapter-only boundaries encountered during those slices instead of leaving them in fixture setup or test assumptions.
