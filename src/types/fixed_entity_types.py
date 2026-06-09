@@ -483,7 +483,7 @@ class FixedEntityTypeCoercer:
             FixedEntityShapeValidationError: If rows don't match column count
             FixedEntityTypeValidationError: If non-empty values are invalid types
         """
-        duplicate_columns = find_duplicate_fixed_entity_columns(columns)
+        duplicate_columns: list[str] = find_duplicate_fixed_entity_columns(columns)
         if duplicate_columns:
             duplicates = ", ".join(duplicate_columns)
             raise FixedEntityShapeValidationError(f"Entity '{entity_name}' declares duplicate columns: {duplicates}")
