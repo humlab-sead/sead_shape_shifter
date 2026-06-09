@@ -1,30 +1,44 @@
+/*
+  This module provides utilities for handling clipboard operations in a fixed values grid component.
+  It includes functions for coercing grid values based on column types, parsing clipboard text into a table format,
+  building grid row data from parsed clipboard content, and applying a clipboard matrix to existing grid data while validating values.
+*/
+
 export type FixedGridColumnTypeName = 'int' | 'string' | 'float' | 'bool' | 'date'
 export type GridColumnType = 'number' | 'float' | 'string' | 'preserve'
+
 export interface GridValidationIssue {
   rowIndex: number
   columnName: string
   message: string
 }
+
 export interface CoercedGridValue {
   value: any
   error: string | null
 }
+
 export interface ApplyClipboardMatrixResult {
   rows: any[][]
   issues: GridValidationIssue[]
   errors: string[]
 }
+
 export interface CoerceGridRowsResult {
   rows: any[][]
   issues: GridValidationIssue[]
   errors: string[]
 }
+
 const ALL_FIXED_GRID_COLUMN_TYPES: FixedGridColumnTypeName[] = ['int', 'string', 'float', 'bool', 'date']
 
 function isFixedGridColumnTypeName(value: string): value is FixedGridColumnTypeName {
   return ALL_FIXED_GRID_COLUMN_TYPES.includes(value as FixedGridColumnTypeName)
 }
-export function normalizeGridColumnTypes(columnTypes?: Record<string, unknown> | null): Record<string, FixedGridColumnTypeName> {
+
+export function normalizeGridColumnTypes(
+  columnTypes?: Record<string, unknown> | null
+): Record<string, FixedGridColumnTypeName> {
   if (!columnTypes) {
     return {}
   }
@@ -35,6 +49,7 @@ export function normalizeGridColumnTypes(columnTypes?: Record<string, unknown> |
       .filter((entry): entry is [string, FixedGridColumnTypeName] => isFixedGridColumnTypeName(entry[1]))
   )
 }
+
 function getIntegerValidationMessage(columnName: string, explicitType: FixedGridColumnTypeName | undefined): string {
   if (explicitType === 'int' && !columnName.endsWith('_id')) {
     return 'Expected integer value'
@@ -42,9 +57,11 @@ function getIntegerValidationMessage(columnName: string, explicitType: FixedGrid
 
   return 'Expected integer ID'
 }
+
 function getFloatValidationMessage(): string {
   return 'Expected float value'
 }
+
 export function formatValidationIssue(issue: GridValidationIssue): string {
   return `Row ${issue.rowIndex + 1}, column ${issue.columnName}: ${issue.message}`
 }
@@ -59,13 +76,16 @@ export function summarizeValidationIssues(issues: GridValidationIssue[]): string
   }
 
   return Array.from(issuesByColumn.entries()).map(([columnName, columnIssues]) => {
-    const rowNumbers = Array.from(new Set(columnIssues.map((issue) => issue.rowIndex + 1))).sort((left, right) => left - right)
+    const rowNumbers = Array.from(new Set(columnIssues.map((issue) => issue.rowIndex + 1))).sort(
+      (left, right) => left - right
+    )
     const valueLabel = columnIssues.length === 1 ? 'value' : 'values'
     const rowLabel = rowNumbers.length === 1 ? 'row' : 'rows'
 
     return `Column ${columnName}: ${columnIssues.length} invalid ${valueLabel} (${rowLabel} ${rowNumbers.join(', ')})`
   })
 }
+
 export function inferColumnType(columnName: string, columnTypes?: Record<string, unknown> | null): GridColumnType {
   const normalizedColumnTypes = normalizeGridColumnTypes(columnTypes)
   const explicitType = normalizedColumnTypes[columnName]
@@ -92,6 +112,7 @@ export function inferColumnType(columnName: string, columnTypes?: Record<string,
 
   return 'string'
 }
+
 export function parseStrictInteger(value: unknown): number | null {
   if (value === null || value === undefined) {
     return null
@@ -108,6 +129,7 @@ export function parseStrictInteger(value: unknown): number | null {
 
   return Number(text)
 }
+
 export function parseStrictFloat(value: unknown): number | null {
   if (value === null || value === undefined) {
     return null
@@ -125,11 +147,12 @@ export function parseStrictFloat(value: unknown): number | null {
   const parsed = Number(text)
   return Number.isFinite(parsed) ? parsed : null
 }
+
 export function coerceGridValue(
   columnName: string,
   value: unknown,
   fallbackValue: any = null,
-  columnTypes?: Record<string, unknown> | null,
+  columnTypes?: Record<string, unknown> | null
 ): CoercedGridValue {
   const normalizedColumnTypes = normalizeGridColumnTypes(columnTypes)
   const explicitType = normalizedColumnTypes[columnName]
@@ -195,6 +218,7 @@ export function coerceGridValue(
     error: null,
   }
 }
+
 export function parseClipboardTable(text: string): string[][] {
   const rows = text
     .replace(/\r\n/g, '\n')
@@ -208,6 +232,7 @@ export function parseClipboardTable(text: string): string[][] {
 
   return rows
 }
+
 export function buildGridRowData(rows: any[][], systemIdColumnIndex: number): Array<Record<string, any>> {
   return rows.map((row, rowIndex) => {
     const stableSystemId = systemIdColumnIndex >= 0 ? row[systemIdColumnIndex] : undefined
@@ -222,28 +247,32 @@ export function buildGridRowData(rows: any[][], systemIdColumnIndex: number): Ar
     return rowObj
   })
 }
+
 export function coerceGridRows(
   columns: string[],
   rows: any[][],
-  columnTypes?: Record<string, unknown> | null,
+  columnTypes?: Record<string, unknown> | null
 ): CoerceGridRowsResult {
   const issues: GridValidationIssue[] = []
-  const coercedRows = rows.map((row, rowIndex) => row.map((value, columnIndex) => {
-    const columnName = columns[columnIndex]
-    if (!columnName) {
-      return value
-    }
+  const coercedRows = rows.map((row, rowIndex) =>
+    row.map((value, columnIndex) => {
+      const columnName = columns[columnIndex]
+      if (!columnName) {
+        return value
+      }
 
-    const result = coerceGridValue(columnName, value, value, columnTypes)
-    if (result.error) {
-      issues.push({ rowIndex, columnName, message: result.error })
-    }
+      const result = coerceGridValue(columnName, value, value, columnTypes)
+      if (result.error) {
+        issues.push({ rowIndex, columnName, message: result.error })
+      }
 
-    return result.value
-  }))
+      return result.value
+    })
+  )
 
   return { rows: coercedRows, issues, errors: issues.map(formatValidationIssue) }
 }
+
 interface ApplyClipboardMatrixOptions {
   rows: any[][]
   columns: string[]
@@ -253,6 +282,7 @@ interface ApplyClipboardMatrixOptions {
   matrix: string[][]
   createEmptyRow: () => any[]
 }
+
 export function applyClipboardMatrix({
   rows,
   columns,
@@ -294,7 +324,12 @@ export function applyClipboardMatrix({
         continue
       }
 
-      const { value, error } = coerceGridValue(columnName, sourceRow[columnOffset] ?? '', targetRow[targetColIndex], columnTypes)
+      const { value, error } = coerceGridValue(
+        columnName,
+        sourceRow[columnOffset] ?? '',
+        targetRow[targetColIndex],
+        columnTypes
+      )
 
       if (error) {
         issues.push({ rowIndex: targetRowIndex, columnName, message: error })
