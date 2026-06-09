@@ -7,19 +7,10 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from backend.app.models.project import Project
-from backend.app.services.entity_generator_service import (
-    EntityGeneratorService,
-    get_entity_generator_service,
-)
-from backend.app.services.entity_values_service import (
-    EntityValuesService,
-    get_entity_values_service,
-)
+from backend.app.services.entity_generator_service import EntityGeneratorService, get_entity_generator_service
+from backend.app.services.entity_values_service import EntityValuesService, get_entity_values_service
 from backend.app.services.project.entity_operations import compute_entity_etag
-from backend.app.services.project_service import (
-    ProjectService,
-    get_project_service,
-)
+from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.fixed_schema import FixedSchema, derive_fixed_schema
 
