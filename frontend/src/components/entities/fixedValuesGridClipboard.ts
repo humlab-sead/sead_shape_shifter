@@ -76,13 +76,17 @@ export function summarizeValidationIssues(issues: GridValidationIssue[]): string
   }
 
   return Array.from(issuesByColumn.entries()).map(([columnName, columnIssues]) => {
+  const maxRowsToPrint = 10;
     const rowNumbers = Array.from(new Set(columnIssues.map((issue) => issue.rowIndex + 1))).sort(
       (left, right) => left - right
     )
     const valueLabel = columnIssues.length === 1 ? 'value' : 'values'
     const rowLabel = rowNumbers.length === 1 ? 'row' : 'rows'
 
-    return `Column ${columnName}: ${columnIssues.length} invalid ${valueLabel} (${rowLabel} ${rowNumbers.join(', ')})`
+    const printedRows = rowNumbers.slice(0, maxRowsToPrint).join(', ');
+    const truncationSuffix = rowNumbers.length > maxRowsToPrint ? ', ...' : '';
+
+    return `Column ${columnName}: ${columnIssues.length} invalid ${valueLabel} (${rowLabel} ${printedRows}${truncationSuffix})`
   })
 }
 
