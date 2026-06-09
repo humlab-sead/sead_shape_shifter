@@ -51,13 +51,13 @@ export default defineConfig({
     host: true, // Listen on all addresses for remote access
     proxy: {
       '/api': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:8013',
+        target: process.env.VITE_API_BASE_URL || 'http://127.0.0.1:8013',
         changeOrigin: true,
         secure: false, // Allow self-signed certificates in dev
         ws: true, // WebSocket support
       },
       '/docs': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:8013',
+        target: process.env.VITE_API_BASE_URL || 'http://127.0.0.1:8013',
         changeOrigin: true,
         secure: false,
       },
