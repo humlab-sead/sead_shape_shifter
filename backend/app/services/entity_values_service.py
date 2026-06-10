@@ -14,7 +14,13 @@ from backend.app.utils.fixed_schema import derive_fixed_schema
 from src.types.fixed_entity_types import normalize_fixed_entity_column_types, resolve_fixed_entity_column_type
 
 
-class EntityValuesResponse:
+def _normalized_isnan_values(df: pd.DataFrame) -> list[list[object]]:
+    """Convert pandas extension dtypes / nullable values to Python objects
+    Replace pd.NA, np.nan, pd.NaT with None for JSON serialization and consistent API behavior."""
+    return df.astype(object).where(pd.notna(df), None).values.tolist()
+
+
+class EntityValuesData:
     """Response containing entity values data."""
 
     def __init__(
@@ -125,7 +131,7 @@ class EntityValuesService:
 
         # Convert DataFrame to list[list] format
         columns: list[str] = df.columns.tolist()
-        values: list[list[Any]] = df.values.tolist()
+        values: list[list[Any]] = _normalized_isnan_values(df)
 
         # Generate etag
         etag: str = self._generate_etag(file_path)
@@ -149,7 +155,7 @@ class EntityValuesService:
 
         for idx, column in enumerate(columns):
             column_values = [row[idx] for row in values]
-            target_type = resolve_fixed_entity_column_type(column, normalized_column_types)
+            target_type: str = resolve_fixed_entity_column_type(column, normalized_column_types)
 
             if target_type == "int":
                 series_map[column] = pd.Series(pd.array(column_values, dtype="Int64"), name=column)
@@ -235,7 +241,7 @@ class EntityValuesService:
                 f"Fixed entity '{entity_name}' must update values using authoritative columns {expected_columns}; " f"received {columns}"
             )
 
-    def get_values(self, project_name: str, entity_name: str) -> EntityValuesResponse:
+    def get_values(self, project_name: str, entity_name: str) -> EntityValuesData:
         """
         Get external values for entity with @load: directive.
 
@@ -266,7 +272,7 @@ class EntityValuesService:
         # Read file
         columns, values, format_type, etag = self._read_values_file(file_path)
 
-        return EntityValuesResponse(columns=columns, values=values, format=format_type, row_count=len(values), etag=etag)
+        return EntityValuesData(columns=columns, values=values, format=format_type, row_count=len(values), etag=etag)
 
     def update_values(
         self,
@@ -277,7 +283,7 @@ class EntityValuesService:
         format_type: str | None = None,
         if_match: str | None = None,
         column_types: dict[str, str] | None = None,
-    ) -> EntityValuesResponse:
+    ) -> EntityValuesData:
         """
         Update external values for entity with @load: directive.
 
@@ -323,7 +329,7 @@ class EntityValuesService:
         # Generate new etag after write
         new_etag: str = self._generate_etag(file_path)
 
-        return EntityValuesResponse(columns=columns, values=values, format=actual_format, row_count=len(values), etag=new_etag)
+        return EntityValuesData(columns=columns, values=values, format=actual_format, row_count=len(values), etag=new_etag)
 
 
 def get_entity_values_service() -> EntityValuesService:
