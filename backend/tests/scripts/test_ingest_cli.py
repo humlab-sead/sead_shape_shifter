@@ -137,7 +137,7 @@ class TestIngestCLI:
 
         with patch.object(ingest_cli_module.IngesterService, "ingest", new=async_mock):
             result = self.runner.invoke(
-            ingest_cli_module.cli,
+                ingest_cli_module.cli,
                 [
                     "ingest",
                     "sead",
@@ -160,14 +160,19 @@ class TestIngestCLI:
         test_file.write_text("test data")
 
         mock_response = IngestResponse(
-            success=False, records_processed=0, message="Ingestion failed: error", submission_id=None, output_path="", error_details="Detailed error info"
+            success=False,
+            records_processed=0,
+            message="Ingestion failed: error",
+            submission_id=None,
+            output_path="",
+            error_details="Detailed error info",
         )
 
         async_mock = AsyncMock(return_value=mock_response)
 
         with patch.object(ingest_cli_module.IngesterService, "ingest", new=async_mock):
             result = self.runner.invoke(
-            ingest_cli_module.cli,
+                ingest_cli_module.cli,
                 [
                     "ingest",
                     "sead",
@@ -201,7 +206,7 @@ class TestIngestCLI:
 
         with patch.object(ingest_cli_module.IngesterService, "ingest", new=async_mock) as mock_ingest:
             result = self.runner.invoke(
-            ingest_cli_module.cli,
+                ingest_cli_module.cli,
                 [
                     "ingest",
                     "sead",
@@ -274,7 +279,7 @@ class TestIngestCLI:
 
         with patch.object(ingest_cli_module.IngesterService, "ingest", new=async_mock) as mock_ingest:
             result = self.runner.invoke(
-            ingest_cli_module.cli,
+                ingest_cli_module.cli,
                 [
                     "ingest",
                     "sead",

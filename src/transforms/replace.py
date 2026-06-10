@@ -386,9 +386,7 @@ class ContainsRule(ReplacementRule):
 
         norm: pd.Series = _normalize_for_match(series, ops=ctx.normalize_ops)
         needle: str = _normalize_scalar(from_value, ops=ctx.normalize_ops)
-        contains_mask: pd.Series = (
-            norm.astype("string").fillna(pd.NA).str.contains(needle, case=case_sensitive, regex=False, na=False)
-        )
+        contains_mask: pd.Series = norm.astype("string").fillna(pd.NA).str.contains(needle, case=case_sensitive, regex=False, na=False)
 
         mask = contains_mask
         if ctx.negate:

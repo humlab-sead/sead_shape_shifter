@@ -246,7 +246,7 @@ class TestIngestersEndpoints:
         assert response.status_code == 200
         assert captured["key"] == "sead_change_request"
 
-        request: IngestRequest | str= captured["request"]
+        request: IngestRequest | str = captured["request"]
         assert isinstance(request, IngestRequest)
 
         assert request.submission_name == "bugs_delivery_1"
