@@ -2,13 +2,15 @@
 
 from typing import Any
 
+import pandas as pd
+
 from fastapi import APIRouter, Header, HTTPException, Query, status
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from backend.app.models.project import Project
 from backend.app.services.entity_generator_service import EntityGeneratorService, get_entity_generator_service
-from backend.app.services.entity_values_service import EntityValuesService, get_entity_values_service
+from backend.app.services.entity_values_service import EntityValuesData, EntityValuesService, get_entity_values_service
 from backend.app.services.project.entity_operations import compute_entity_etag
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
@@ -112,6 +114,12 @@ class EntityValuesResponse(BaseModel):
     format: str = Field(..., description="Storage format (parquet/csv)")
     row_count: int = Field(..., description="Number of rows")
     etag: str = Field(..., description="Entity tag for optimistic locking (based on file mtime+size)")
+
+    @field_validator("values", mode="before")
+    @classmethod
+    def normalize_missing_values(cls, values):
+        """This is a safety net. Normalize missing values in the 2D list to None."""
+        return [[None if pd.isna(cell) else cell for cell in row] for row in values]
 
 
 class EntityValuesUpdateRequest(BaseModel):
@@ -302,7 +310,7 @@ async def get_entity_values(
 
     values_service: EntityValuesService = get_entity_values_service()
     try:
-        result = values_service.get_values(project_name, entity_name)
+        result: EntityValuesData = values_service.get_values(project_name, entity_name)
     except ValueError as e:
         # Entity doesn't have @load: directive - return 422 Unprocessable Entity
         raise HTTPException(status_code=422, detail=str(e)) from e
@@ -315,7 +323,7 @@ async def get_entity_values(
 
     logger.info(f"Retrieved {result.row_count} rows for entity '{entity_name}' from '{project_name}' (format: {response_format})")
     return EntityValuesResponse(
-        columns=result.columns,
+        columns=list(result.columns),
         values=result.values,
         format=response_format,
         row_count=result.row_count,
