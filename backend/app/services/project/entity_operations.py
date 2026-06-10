@@ -30,7 +30,7 @@ def compute_entity_etag(entity_dict: dict[str, Any]) -> str:
     Returns:
         16-character lowercase hex string.
     """
-    canonical = json.dumps(entity_dict, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    canonical: str = json.dumps(entity_dict, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
 
 
