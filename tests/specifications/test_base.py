@@ -59,7 +59,7 @@ class TestSpecificationIssue:
     def test_repr_equals_csv_str(self):
         """Test that __repr__ equals CSV string representation."""
         issue = SpecificationIssue(severity="error", message="Test", entity="test")
-        assert repr(issue) == 'error;test;None;None;None;Test'
+        assert repr(issue) == "error;test;None;None;None;Test"
 
     def test_kwargs_storage(self):
         """Test that additional kwargs are stored."""
