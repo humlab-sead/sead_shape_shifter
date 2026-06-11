@@ -43,6 +43,20 @@ export const useEntityStore = defineStore('entity', () => {
     selectedEntity.value = refreshedEntity ?? null
   }
 
+  function syncCachedEntity(entity: EntityResponse) {
+    const index = entities.value.findIndex((cachedEntity: EntityResponse) => cachedEntity.name === entity.name)
+
+    if (index === -1) {
+      entities.value.push(entity)
+    } else {
+      entities.value[index] = entity
+    }
+
+    if (selectedEntity.value?.name === entity.name) {
+      selectedEntity.value = entity
+    }
+  }
+
   // Getters
   const entitiesByType = computed(() => {
     const grouped: Record<string, EntityResponse[]> = {}
@@ -256,6 +270,7 @@ export const useEntityStore = defineStore('entity', () => {
     rootEntities,
     childrenOf,
     hasForeignKeys,
+    syncCachedEntity,
     // Actions
     fetchEntities,
     selectEntity,

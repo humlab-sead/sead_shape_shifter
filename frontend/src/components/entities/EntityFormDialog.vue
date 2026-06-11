@@ -3145,6 +3145,7 @@ function handleMaterialized() {
     api.entities
       .get(props.projectName, props.entity.name)
       .then(async (freshEntity) => {
+        entityStore.syncCachedEntity(freshEntity)
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
         await loadExternalValuesIfNeeded(freshEntity)
@@ -3176,11 +3177,13 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
     api.entities
       .get(props.projectName, props.entity.name)
       .then(async (freshEntity) => {
+        entityStore.syncCachedEntity(freshEntity)
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
         await loadExternalValuesIfNeeded(freshEntity)
         yamlContent.value = formDataToYaml()
         await refreshFormValidity()
+        captureInitialSnapshot()
       })
       .catch((err) => {
         console.error('Failed to reload after unmaterialization:', err)

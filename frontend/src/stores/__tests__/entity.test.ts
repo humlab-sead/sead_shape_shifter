@@ -189,6 +189,30 @@ describe('useEntityStore', () => {
     })
   })
 
+  describe('syncCachedEntity', () => {
+    it('should replace a cached entity and keep selectedEntity in sync', () => {
+      const store = useEntityStore()
+      store.entities = [makeEntity('test-entity', { type: 'sql' }, { etag: 'stale-etag' })]
+      store.selectedEntity = makeEntity('test-entity', { type: 'sql' }, { etag: 'stale-etag' })
+
+      const refreshedEntity = makeEntity('test-entity', { type: 'fixed' }, { etag: 'fresh-etag' })
+
+      store.syncCachedEntity(refreshedEntity)
+
+      expect(store.entities).toEqual([refreshedEntity])
+      expect(store.selectedEntity).toEqual(refreshedEntity)
+    })
+
+    it('should cache a missing entity', () => {
+      const store = useEntityStore()
+      const refreshedEntity = makeEntity('new-entity', { type: 'sql' }, { etag: 'fresh-etag' })
+
+      store.syncCachedEntity(refreshedEntity)
+
+      expect(store.entities).toEqual([refreshedEntity])
+    })
+  })
+
   describe('selectEntity', () => {
     it('should select an entity successfully', async () => {
       const store = useEntityStore()
