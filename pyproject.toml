@@ -202,5 +202,7 @@ fail_under = 85
 
 [dependency-groups]
 dev = [
+    "graphifyy[all]>=0.8.36",
+    "pre-commit>=4.6.0",
     "pyinstrument>=5.1.2",
 ]
