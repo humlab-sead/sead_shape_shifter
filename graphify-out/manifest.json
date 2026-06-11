@@ -465,7 +465,7 @@
     "semantic_hash": "b2dcff0681c032f1b430c5ea0af47f9f"
   },
   "backend/app/services/project_service.py": {
-    "mtime": 1781093560.6933658,
+    "mtime": 1781180050.2382016,
     "ast_hash": "9d7f95427f7c89fe40d4cbd18ab88317",
     "semantic_hash": "9d7f95427f7c89fe40d4cbd18ab88317"
   },
@@ -880,7 +880,7 @@
     "semantic_hash": "83373559cea0b5b3e1d005b84dc3b68a"
   },
   "frontend/src/components/entities/EntityFormDialog.vue": {
-    "mtime": 1781096436.4411862,
+    "mtime": 1781180050.2382016,
     "ast_hash": "1acf3df6cd6b80b2c4fcee95c956cb39",
     "semantic_hash": "1acf3df6cd6b80b2c4fcee95c956cb39"
   },
@@ -1245,7 +1245,7 @@
     "semantic_hash": "f9287981d4902924e621b4cf3c72fc1b"
   },
   "frontend/src/stores/entity.ts": {
-    "mtime": 1781096436.4171848,
+    "mtime": 1781180050.2382016,
     "ast_hash": "f319e4d3002bd5445779015ad05b44fa",
     "semantic_hash": "f319e4d3002bd5445779015ad05b44fa"
   },
@@ -1960,8 +1960,8 @@
     "semantic_hash": "9d4f4d5df21e1e6d98556a8ceedeae65"
   },
   ".pre-commit-config.yaml": {
-    "mtime": 1781178419.6649513,
-    "ast_hash": "de5d4c69397327503a1926bb35da02a2",
+    "mtime": 1781179852.834915,
+    "ast_hash": "037b4a25f1740c26dd00c18f1c145366",
     "semantic_hash": ""
   },
   "frontend/index.html": {
