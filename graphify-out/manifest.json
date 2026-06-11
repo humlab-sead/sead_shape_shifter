@@ -465,7 +465,7 @@
     "semantic_hash": "b2dcff0681c032f1b430c5ea0af47f9f"
   },
   "backend/app/services/project_service.py": {
-    "mtime": 1781180152.2040312,
+    "mtime": 1781180206.207119,
     "ast_hash": "9d7f95427f7c89fe40d4cbd18ab88317",
     "semantic_hash": "9d7f95427f7c89fe40d4cbd18ab88317"
   },
@@ -880,7 +880,7 @@
     "semantic_hash": "83373559cea0b5b3e1d005b84dc3b68a"
   },
   "frontend/src/components/entities/EntityFormDialog.vue": {
-    "mtime": 1781180152.2040312,
+    "mtime": 1781180206.207119,
     "ast_hash": "1acf3df6cd6b80b2c4fcee95c956cb39",
     "semantic_hash": "1acf3df6cd6b80b2c4fcee95c956cb39"
   },
@@ -1245,7 +1245,7 @@
     "semantic_hash": "f9287981d4902924e621b4cf3c72fc1b"
   },
   "frontend/src/stores/entity.ts": {
-    "mtime": 1781180152.2040312,
+    "mtime": 1781180206.207119,
     "ast_hash": "f319e4d3002bd5445779015ad05b44fa",
     "semantic_hash": "f319e4d3002bd5445779015ad05b44fa"
   },
