@@ -25,6 +25,7 @@ const mockState = vi.hoisted(() => ({
   getValues: vi.fn(),
   updateValues: vi.fn(),
   introspectQueryColumns: vi.fn(async () => []),
+  syncCachedEntity: vi.fn(),
 }))
 
 vi.mock('@/composables', async () => {
@@ -74,6 +75,7 @@ vi.mock('@/stores', () => ({
   }),
   useEntityStore: () => ({
     overlayInitialTab: 'form',
+    syncCachedEntity: mockState.syncCachedEntity,
   }),
 }))
 
@@ -285,6 +287,7 @@ describe('EntityFormDialog', () => {
     mockState.getEntity.mockReset()
     mockState.getValues.mockReset()
     mockState.updateValues.mockReset()
+    mockState.syncCachedEntity.mockReset()
   })
 
   it('shows the branches tab when type changes to merged, enables it in create mode, and hides append', async () => {
@@ -406,5 +409,65 @@ describe('EntityFormDialog', () => {
         },
       }),
     })
+  })
+
+  it('syncs the entity store cache after materialization reload', async () => {
+    const freshEntity = createEntity('abundance_source', {
+      type: 'fixed',
+      public_id: 'abundance_id',
+      columns: ['sample_name', 'abundance_value'],
+      keys: ['sample_name'],
+      values: [[1, 2]],
+      materialized: { enabled: true },
+    })
+    freshEntity.etag = 'fresh-materialized-etag'
+    mockState.getEntity.mockResolvedValue(freshEntity)
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: sourceEntities[0],
+    })
+
+    await flushPromises()
+
+    wrapper.findComponent('[data-testid="materialize-dialog"]').vm.$emit('materialized')
+    await flushPromises()
+
+    expect(mockState.getEntity).toHaveBeenCalledWith('arbodat', 'abundance_source')
+    expect(mockState.syncCachedEntity).toHaveBeenCalledWith(freshEntity)
+  })
+
+  it('syncs the entity store cache after unmaterialization reload', async () => {
+    const materializedEntity = createEntity('abundance_source', {
+      type: 'fixed',
+      public_id: 'abundance_id',
+      columns: ['sample_name', 'abundance_value'],
+      keys: ['sample_name'],
+      values: [[1, 2]],
+      materialized: { enabled: true },
+    })
+
+    const freshEntity = createEntity('abundance_source', {
+      type: 'sql',
+      public_id: 'abundance_id',
+      columns: ['sample_name', 'abundance_value'],
+      keys: ['sample_name'],
+      query: 'select * from abundance',
+    })
+    freshEntity.etag = 'fresh-unmaterialized-etag'
+    mockState.getEntity.mockResolvedValue(freshEntity)
+
+    const wrapper = mountEntityFormDialog({
+      mode: 'edit',
+      entity: materializedEntity,
+    })
+
+    await flushPromises()
+
+    wrapper.findComponent('[data-testid="unmaterialize-dialog"]').vm.$emit('unmaterialized', ['abundance_source'])
+    await flushPromises()
+
+    expect(mockState.getEntity).toHaveBeenCalledWith('arbodat', 'abundance_source')
+    expect(mockState.syncCachedEntity).toHaveBeenCalledWith(freshEntity)
   })
 })
