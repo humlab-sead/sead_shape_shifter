@@ -225,6 +225,25 @@ reconcile:
 	@PYTHONPATH=.:backend uv run python scripts/auto_reconcile.py $(ARGS)
 
 ################################################################################
+# Graphify recipes
+################################################################################
+
+create-graphify:
+	@graphify extract . --project
+	@graphify cluster-only $(HOME)/source/sead_shape_shifter
+	@graphify export callflow-html
+
+update-graphify:
+	@graphify update $(HOME)/source/sead_shape_shifter
+
+install-graphify:
+	@uv add --dev graphifyy[all]
+	@graphify hook install
+	@graphify vscode install
+	@graphify codex install
+	@echo "✓ Graphify installed and pre-commit hook set up"
+
+################################################################################
 # Project Editor UI
 ################################################################################
 
