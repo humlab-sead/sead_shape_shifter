@@ -78,3 +78,19 @@ All FK relationships use local `system_id` values — never external IDs.
 - Planning instructions: use `.github/instructions/phase-plan.instructions.md` when the user asks for phased implementation sequencing, and use `.github/instructions/task-plan.instructions.md` when the user asks for work breakdown, checklists, or definition-of-done planning for one phase.
 - Prompt templates: `.github/prompts/` — invoke via `/` in Copilot Chat.
 - UCanAccess setup: `scripts/install-uncanccess.sh` (requires Java JRE).
+
+## graphify
+
+This project has a knowledge graph at `graphify-out/` with community structure, god nodes, and cross-file relationships.
+
+Graphify quick start:
+- When the user types `/graphify`, invoke the `graphify` skill before doing anything else.
+- question -> `graphify query "<question>"`
+- relationship -> `graphify path "<A>" "<B>"`
+- concept -> `graphify explain "<concept>"`
+- For codebase questions, use `graphify query "<question>"` first when `graphify-out/graph.json` exists.
+- Use `graphify path "<A>" "<B>"` for relationship questions and `graphify explain "<concept>"` for focused concepts.
+- If `graphify-out/wiki/index.md` exists, use it for broad navigation before raw source browsing.
+- Read `graphify-out/GRAPH_REPORT.md` only when query/path/explain do not give enough context.
+- After modifying code, run `graphify update .` to keep the graph current.
+- Dirty `graphify-out/` files are expected after hooks or incremental updates; do not treat them as a reason to skip graphify.
