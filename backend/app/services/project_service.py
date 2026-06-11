@@ -88,7 +88,7 @@ class ProjectService:
         )
 
         # Initialize entity operations component
-        self.entities = EntityOperations(
+        self.entity_operations = EntityOperations(
             project_lock_getter=self._get_lock,
             load_project_callback=self.load_project,
             save_project_callback=self.save_project,
@@ -618,7 +618,7 @@ class ProjectService:
         Raises:
             ResourceConflictError: If entity already exists
         """
-        return self.entities.add_entity(project, entity_name, entity)
+        return self.entity_operations.add_entity(project, entity_name, entity)
 
     def update_entity(self, project: Project, entity_name: str, entity: Entity) -> Project:
         """
@@ -635,7 +635,7 @@ class ProjectService:
         Raises:
             ResourceNotFoundError: If entity not found
         """
-        return self.entities.update_entity(project, entity_name, entity)
+        return self.entity_operations.update_entity(project, entity_name, entity)
 
     def delete_entity(self, project: Project, entity_name: str) -> Project:
         """
@@ -651,7 +651,7 @@ class ProjectService:
         Raises:
             ResourceNotFoundError: If entity not found
         """
-        return self.entities.delete_entity(project, entity_name)
+        return self.entity_operations.delete_entity(project, entity_name)
 
     def get_entity(self, project: Project, entity_name: str) -> dict[str, Any]:
         """
@@ -667,7 +667,7 @@ class ProjectService:
         Raises:
             ResourceNotFoundError: If entity not found
         """
-        return self.entities.get_entity(project, entity_name)
+        return self.entity_operations.get_entity(project, entity_name)
 
     # Convenience wrapper methods for entity operations by project name
 
@@ -686,7 +686,7 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceConflictError: If entity already exists
         """
-        return self.entities.add_entity_by_name(project_name, entity_name, entity_data)
+        return self.entity_operations.add_entity_by_name(project_name, entity_name, entity_data)
 
     def update_entity_by_name(
         self,
@@ -714,7 +714,7 @@ class ProjectService:
             ResourceNotFoundError: If entity not found
             EntityConflictError: If *expected_etag* is given and does not match
         """
-        return self.entities.update_entity_by_name(project_name, entity_name, entity_data, expected_etag=expected_etag)
+        return self.entity_operations.update_entity_by_name(project_name, entity_name, entity_data, expected_etag=expected_etag)
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:
         """
@@ -730,7 +730,7 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
         """
-        return self.entities.delete_entity_by_name(project_name, entity_name)
+        return self.entity_operations.delete_entity_by_name(project_name, entity_name)
 
     def get_entity_by_name(self, project_name: str, entity_name: str) -> dict[str, Any]:
         """
@@ -747,11 +747,11 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
         """
-        return self.entities.get_entity_by_name(project_name, entity_name)
+        return self.entity_operations.get_entity_by_name(project_name, entity_name)
 
     def get_entity_etag_by_name(self, project_name: str, entity_name: str) -> str:
         """Return the current ETag for an entity."""
-        return self.entities.get_entity_etag_by_name(project_name, entity_name)
+        return self.entity_operations.get_entity_etag_by_name(project_name, entity_name)
 
     def activate_project(self, name: str) -> Project:
         """
