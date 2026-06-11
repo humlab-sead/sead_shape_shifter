@@ -69,7 +69,7 @@ ruff:
 	@uv run ruff check --fix --output-format concise src tests backend ingesters
 
 .PHONY: tidy
-tidy:
+tidy: update-graphify
 	@uv run isort src tests backend ingesters
 	@uv run black src tests backend ingesters
 
@@ -234,7 +234,13 @@ create-graphify:
 	@graphify export callflow-html
 
 update-graphify:
-	@graphify update $(HOME)/source/sead_shape_shifter
+	@uv run graphify update $(HOME)/source/sead_shape_shifter
+	@git add graphify-out
+	@if git diff --cached --quiet -- graphify-out; then \
+		echo "No changes in graphify-out"; \
+	else \
+		git commit -m "chore: update graphify graph"; \
+	fi
 
 install-graphify:
 	@uv add --dev graphifyy[all]
