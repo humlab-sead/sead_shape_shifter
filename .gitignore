@@ -130,6 +130,7 @@ data
 output
 
 node_modules
+# graphify-out
 graphify-out/*-*-*
 graphify-out/cost.json 
 graphify-out/manifest.json 
