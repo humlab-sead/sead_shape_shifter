@@ -169,3 +169,86 @@ We can't duplicate "where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_002
       where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');
   - FIXME: FD checks fails for Abodat ["Blake"]
 
+
+
+# FIXME: Verify that graphify wiki is automatically updated by hook!
+
+# Copilot Tips
+
+## Reduce Costs
+
+1. Keep sessions short and focused (you can limit #request in settings.json)
+1. Minimize referenced context size (open files, selected code, codebase scans)
+1. Disable agent-tools you are not using (enable per session even)
+1. Use cheap models for simple tasks
+1. Auto only selects cheap models!
+1. Use code completion!!!
+
+
+## Increase Code Quality
+
+1. Add carefully curated instructions files (*.instructions.md, AGENTS.md etc)
+1. Make instructions discoverable (from README.md, master agent file)
+1. Create a change request (proposal)
+1. Create phase plan
+1. Create iteration plan per phase
+1. Keep documententation up-to-date (no stale documents)
+1. Add a knowledge graph that agent can use (e.g. `graphify` or `serena`)
+1. Use plan mode before youe use agent for larger tasks!!!
+
+
+##  Copilot CLI
+
+/ide    # connects to vscode (auto when workspaces matches)
+
+
+https://spark-note.com/en/blog/serena-vs-graphify-search-comparison/
+
+https://medium.com/manomano-tech/project-aegis-benchmarking-ai-agents-and-why-serena-is-our-new-must-have-311673db35dd
+
+
+
+We need to review and consolidate how reconciliation data is persisted in Shape Shifter (i.e. links).
+
+Currently, reconciled data is stored in three places:
+
+1. In `<project-name>-reconciliation.yml` via the reconciliation workflow. The reconciliation result is stored as a YAML catalog file in the project directory:
+<PROJECTS_DIR>/<project_name>/<project_name>-reconciliation.yml EntityMappingManager builds this, and the reconciliation API uses settings.PROJECTS_DIR as the base directory. [backend/app/services/reconciliation/mapping_manager.py (line 42)](/home/roger/source/sead_shape_shifter/backend/app/services/reconciliation/mapping_manager.py#L42)[backend/app/api/v1/endpoints/reconciliation.py (line 28)](/home/roger/source/sead_shape_shifter/backend/app/api/v1/endpoints/reconciliation.py#L28).
+
+What gets written there is the updated EntityResolutionCatalog: auto-reconciled matches, manual mappings, and any threshold updates. auto_reconcile_entity() mutates the catalog in memory and then saves it through save_catalog(). cite[backend/app/services/reconciliation/service.py (line 351)](/home/roger/source/sead_shape_shifter/backend/app/services/reconciliation/service.py#L351)[backend/app/services/reconciliation/mapping_manager.py (line 74)](/home/roger/source/sead_shape_shifter/backend/app/services/reconciliation/mapping_manager.py#L74)
+
+
+2. In `shapeshifter.yml` file's option.mapping section.
+LinkToRemoteService is the final “rewrite IDs” step in normalization.
+It is created in [src/normalizer.py (line 448)](/home/roger/source/sead_shape_shifter/src/normalizer.py#L448) and called from [src/workflow.py (line 64)](/home/roger/source/sead_shape_shifter/src/workflow.py#L64) right before tables are stored.
+For each entity, it looks up a config block with local_key, remote_key, and mapping, then adds a new column named by remote_key and fills it by mapping values from local_key. See [src/mapping.py (line 7)](/home/roger/source/sead_shape_shifter/src/mapping.py#L7).
+Where its input data lives:
+LinkToRemoteService reads project.mappings, which the project model exposes from options.mappings. See [src/model.py (line 1500)](/home/roger/source/sead_shape_shifter/src/model.py#L1500).
+That means the mapping data is stored in the project’s main YAML file, shapeshifter.yml, under options.mappings, not in the reconciliation catalog.
+
+
+So there is no separate “reconciliation result” file beyond that YAML catalog. The API returns an AutoReconcileResult for the request, but the durable on-disk state is the project’s reconciliation YAML. cite[backend/app/services/reconciliation/service.py (line 240)](/home/roger/source/sead_shape_shifter/backend/app/services/reconciliation/service.py#L240)[backend/app/api/v1/endpoints/reconciliation.py (line 105)](/home/roger/source/sead_shape_shifter/backend/app/api/v1/endpoints/reconciliation.py#L105)
+
+
+ the materialize/unmaterialize feature.
+
+One reason for materializing an entity is to have the ability to assign public
+identities to records, i.e. specifying the SEAD identity for rows that already exist in the database.
+
+The limitation with the current implementation is that if we for some reason need to umaterialize
+the entity  the manually assigned identities are lost, and need to be added again.
+
+I would like the system to save those links so that thet user don't have to redo the reconciliation.
+
+The saved link must be from `business id` to `public id`, since `system id`
+can change during a dematerialization/materialization round trip.
+
+I can see some possible alternatives for storing the links:
+1. In a seperate sidecar section in the entity config that survives the dematerialization/materialization round trip. 
+Example:
+```
+entities:
+  site:
+    business_key
+2. In a seperate sidecar file next to the materialized file.
+3. 
