@@ -3150,7 +3150,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "endpoints_reconciliation_get_reconciliation_service",
-      "community": 16,
+      "community": 22,
       "norm_label": "get_reconciliation_service()"
     },
     {
@@ -3270,7 +3270,7 @@
       "source_location": "L243",
       "_origin": "ast",
       "id": "endpoints_reconciliation_stream_operation_progress",
-      "community": 102,
+      "community": 33,
       "norm_label": "stream_operation_progress()"
     },
     {
@@ -3280,7 +3280,7 @@
       "source_location": "L243",
       "_origin": "ast",
       "id": "streamingresponse",
-      "community": 16,
+      "community": 33,
       "norm_label": "streamingresponse"
     },
     {
@@ -3320,7 +3320,7 @@
       "source_location": "L369",
       "_origin": "ast",
       "id": "endpoints_reconciliation_suggest_entities",
-      "community": 102,
+      "community": 33,
       "norm_label": "suggest_entities()"
     },
     {
@@ -3330,7 +3330,7 @@
       "source_location": "L369",
       "_origin": "ast",
       "id": "backend_app_api_v1_endpoints_reconciliation_py_reconciliationcandidate",
-      "community": 16,
+      "community": 22,
       "norm_label": "reconciliationcandidate"
     },
     {
@@ -3470,7 +3470,7 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "endpoints_reconciliation_rationale_29",
-      "community": 16,
+      "community": 22,
       "norm_label": "dependency to get reconciliation service instance."
     },
     {
@@ -3560,7 +3560,7 @@
       "source_location": "L244",
       "_origin": "ast",
       "id": "endpoints_reconciliation_rationale_244",
-      "community": 102,
+      "community": 33,
       "norm_label": "stream real-time progress updates via server-sent events (sse).      args:"
     },
     {
@@ -3590,7 +3590,7 @@
       "source_location": "L376",
       "_origin": "ast",
       "id": "endpoints_reconciliation_rationale_376",
-      "community": 102,
+      "community": 33,
       "norm_label": "get entity suggestions for autocomplete.      args:         project_name: projec"
     },
     {
@@ -4930,7 +4930,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "clients_init",
-      "community": 16,
+      "community": 22,
       "norm_label": "__init__.py"
     },
     {
@@ -4940,7 +4940,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "clients_init_rationale_1",
-      "community": 16,
+      "community": 22,
       "norm_label": "client package initialization."
     },
     {
@@ -4950,7 +4950,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "clients_reconciliation_client",
-      "community": 16,
+      "community": 22,
       "norm_label": "reconciliation_client.py"
     },
     {
@@ -4960,7 +4960,7 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "clients_reconciliation_client_reconciliationquery",
-      "community": 53,
+      "community": 22,
       "norm_label": "reconciliationquery"
     },
     {
@@ -4970,7 +4970,7 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "clients_reconciliation_client_reconciliationquery_init",
-      "community": 16,
+      "community": 22,
       "norm_label": ".__init__()"
     },
     {
@@ -4980,7 +4980,7 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "backend_app_clients_reconciliation_client_py_any",
-      "community": 16,
+      "community": 22,
       "norm_label": "any"
     },
     {
@@ -4990,7 +4990,7 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "clients_reconciliation_client_reconciliationquery_to_dict",
-      "community": 16,
+      "community": 22,
       "norm_label": ".to_dict()"
     },
     {
@@ -5000,7 +5000,7 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "clients_reconciliation_client_reconciliationclient",
-      "community": 16,
+      "community": 22,
       "norm_label": "reconciliationclient"
     },
     {
@@ -5010,7 +5010,7 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "clients_reconciliation_client_reconciliationclient_init",
-      "community": 16,
+      "community": 22,
       "norm_label": ".__init__()"
     },
     {
@@ -5020,7 +5020,7 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "clients_reconciliation_client_reconciliationclient_get_client",
-      "community": 16,
+      "community": 22,
       "norm_label": "._get_client()"
     },
     {
@@ -5030,7 +5030,7 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "backend_app_clients_reconciliation_client_py_asyncclient",
-      "community": 16,
+      "community": 22,
       "norm_label": "asyncclient"
     },
     {
@@ -5040,7 +5040,7 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "clients_reconciliation_client_reconciliationclient_close",
-      "community": 16,
+      "community": 22,
       "norm_label": ".close()"
     },
     {
@@ -5050,7 +5050,7 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "clients_reconciliation_client_reconciliationclient_reconcile_batch",
-      "community": 16,
+      "community": 22,
       "norm_label": ".reconcile_batch()"
     },
     {
@@ -5060,7 +5060,7 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "backend_app_clients_reconciliation_client_py_reconciliationcandidate",
-      "community": 16,
+      "community": 22,
       "norm_label": "reconciliationcandidate"
     },
     {
@@ -5070,7 +5070,7 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "clients_reconciliation_client_reconciliationclient_check_health",
-      "community": 16,
+      "community": 22,
       "norm_label": ".check_health()"
     },
     {
@@ -5080,7 +5080,7 @@
       "source_location": "L183",
       "_origin": "ast",
       "id": "clients_reconciliation_client_reconciliationclient_suggest_entities",
-      "community": 16,
+      "community": 22,
       "norm_label": ".suggest_entities()"
     },
     {
@@ -5090,7 +5090,7 @@
       "source_location": "L220",
       "_origin": "ast",
       "id": "clients_reconciliation_client_reconciliationclient_get_entity_preview",
-      "community": 16,
+      "community": 22,
       "norm_label": ".get_entity_preview()"
     },
     {
@@ -5100,7 +5100,7 @@
       "source_location": "L238",
       "_origin": "ast",
       "id": "clients_reconciliation_client_reconciliationclient_get_service_manifest",
-      "community": 16,
+      "community": 22,
       "norm_label": ".get_service_manifest()"
     },
     {
@@ -5110,7 +5110,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "clients_reconciliation_client_rationale_1",
-      "community": 16,
+      "community": 22,
       "norm_label": "http client for openrefine reconciliation service api."
     },
     {
@@ -5120,7 +5120,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "clients_reconciliation_client_rationale_13",
-      "community": 53,
+      "community": 33,
       "norm_label": "query for reconciliation service."
     },
     {
@@ -5130,7 +5130,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "clients_reconciliation_client_rationale_28",
-      "community": 16,
+      "community": 22,
       "norm_label": "convert to openrefine query format."
     },
     {
@@ -5140,7 +5140,7 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "clients_reconciliation_client_rationale_36",
-      "community": 16,
+      "community": 22,
       "norm_label": "client for sead openrefine reconciliation service."
     },
     {
@@ -5150,7 +5150,7 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "clients_reconciliation_client_rationale_39",
-      "community": 16,
+      "community": 22,
       "norm_label": "initialize reconciliation client.          args:             base_url: base url"
     },
     {
@@ -5160,7 +5160,7 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "clients_reconciliation_client_rationale_51",
-      "community": 16,
+      "community": 22,
       "norm_label": "get or create http client."
     },
     {
@@ -5170,7 +5170,7 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "clients_reconciliation_client_rationale_65",
-      "community": 16,
+      "community": 22,
       "norm_label": "batch reconcile multiple queries.          args:             queries: dict of qu"
     },
     {
@@ -5180,7 +5180,7 @@
       "source_location": "L147",
       "_origin": "ast",
       "id": "clients_reconciliation_client_rationale_147",
-      "community": 16,
+      "community": 22,
       "norm_label": "check if reconciliation service is available.          returns:             dict"
     },
     {
@@ -5190,7 +5190,7 @@
       "source_location": "L184",
       "_origin": "ast",
       "id": "clients_reconciliation_client_rationale_184",
-      "community": 16,
+      "community": 22,
       "norm_label": "get entity suggestions for autocomplete.          args:             prefix: text"
     },
     {
@@ -5200,7 +5200,7 @@
       "source_location": "L221",
       "_origin": "ast",
       "id": "clients_reconciliation_client_rationale_221",
-      "community": 16,
+      "community": 22,
       "norm_label": "get html preview for entity.          args:             entity_id: entity uri"
     },
     {
@@ -5210,7 +5210,7 @@
       "source_location": "L239",
       "_origin": "ast",
       "id": "clients_reconciliation_client_rationale_239",
-      "community": 16,
+      "community": 22,
       "norm_label": "get reconciliation service metadata.          returns:             service manif"
     },
     {
@@ -8450,7 +8450,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mappers_data_source_mapper",
-      "community": 30,
+      "community": 54,
       "norm_label": "data_source_mapper.py"
     },
     {
@@ -8460,7 +8460,7 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "mappers_data_source_mapper_datasourcemapper",
-      "community": 30,
+      "community": 54,
       "norm_label": "datasourcemapper"
     },
     {
@@ -8470,7 +8470,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "mappers_data_source_mapper_datasourcemapper_to_core_config",
-      "community": 30,
+      "community": 54,
       "norm_label": ".to_core_config()"
     },
     {
@@ -8480,7 +8480,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "backend_app_mappers_data_source_mapper_py_datasourceconfig",
-      "community": 30,
+      "community": 54,
       "norm_label": "datasourceconfig"
     },
     {
@@ -8490,7 +8490,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "mappers_data_source_mapper_rationale_1",
-      "community": 30,
+      "community": 54,
       "norm_label": "data source configuration mapper between api and core models."
     },
     {
@@ -8500,7 +8500,7 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "mappers_data_source_mapper_rationale_11",
-      "community": 30,
+      "community": 54,
       "norm_label": "maps data source configurations between api and core models.      uses driver sc"
     },
     {
@@ -8510,7 +8510,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "mappers_data_source_mapper_rationale_19",
-      "community": 30,
+      "community": 54,
       "norm_label": "map api datasourceconfig to shape shifter core datasourceconfig.          uses t"
     },
     {
@@ -11870,7 +11870,7 @@
       "source_location": "L113",
       "_origin": "ast",
       "id": "models_reconciliation_reconciliationcandidate",
-      "community": 68,
+      "community": 22,
       "norm_label": "reconciliationcandidate"
     },
     {
@@ -11990,7 +11990,7 @@
       "source_location": "L114",
       "_origin": "ast",
       "id": "models_reconciliation_rationale_114",
-      "community": 68,
+      "community": 22,
       "norm_label": "candidate entity returned by reconciliation service."
     },
     {
@@ -12200,7 +12200,7 @@
       "source_location": "L86",
       "_origin": "ast",
       "id": "models_sims_resolverequest",
-      "community": 53,
+      "community": 7,
       "norm_label": "resolverequest"
     },
     {
@@ -12340,7 +12340,7 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "models_sims_rationale_87",
-      "community": 53,
+      "community": 7,
       "norm_label": "request body for post /identity/resolve."
     },
     {
@@ -13900,7 +13900,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "services_data_source_service",
-      "community": 30,
+      "community": 54,
       "norm_label": "data_source_service.py"
     },
     {
@@ -14050,7 +14050,7 @@
       "source_location": "L246",
       "_origin": "ast",
       "id": "services_data_source_service_datasourceservice_test_connection",
-      "community": 30,
+      "community": 54,
       "norm_label": ".test_connection()"
     },
     {
@@ -14060,7 +14060,7 @@
       "source_location": "L246",
       "_origin": "ast",
       "id": "backend_app_services_data_source_service_py_datasourcetestresult",
-      "community": 30,
+      "community": 54,
       "norm_label": "datasourcetestresult"
     },
     {
@@ -14080,7 +14080,7 @@
       "source_location": "L269",
       "_origin": "ast",
       "id": "backend_app_services_data_source_service_py_datasourcestatus",
-      "community": 3,
+      "community": 54,
       "norm_label": "datasourcestatus"
     },
     {
@@ -14090,7 +14090,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "services_data_source_service_rationale_1",
-      "community": 30,
+      "community": 54,
       "norm_label": "data source service for managing database connections and file sources."
     },
     {
@@ -14210,7 +14210,7 @@
       "source_location": "L247",
       "_origin": "ast",
       "id": "services_data_source_service_rationale_247",
-      "community": 30,
+      "community": 54,
       "norm_label": "test a data source connection.          args:             config: data source to"
     },
     {
@@ -19810,7 +19810,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "community": 68,
+      "community": 86,
       "norm_label": "mapping_manager.py"
     },
     {
@@ -19820,7 +19820,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "reconciliation_mapping_manager_entitymappingmanager",
-      "community": 22,
+      "community": 86,
       "norm_label": "entitymappingmanager"
     },
     {
@@ -19970,7 +19970,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager_rationale_1",
-      "community": 68,
+      "community": 86,
       "norm_label": "entity mapping registry management."
     },
     {
@@ -19980,7 +19980,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "reconciliation_mapping_manager_rationale_20",
-      "community": 22,
+      "community": 86,
       "norm_label": "manager for entity resolution catalog and specification crud operations.      ha"
     },
     {
@@ -20420,7 +20420,7 @@
       "source_location": "L117",
       "_origin": "ast",
       "id": "reconciliation_service_reconciliationservice_catalog_manager",
-      "community": 22,
+      "community": 86,
       "norm_label": ".catalog_manager()"
     },
     {
@@ -20600,7 +20600,7 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "reconciliation_service_rationale_118",
-      "community": 22,
+      "community": 86,
       "norm_label": "get entity mapping manager (lazy-loaded)."
     },
     {
@@ -45158,7 +45158,7 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "loaders_sql_loaders_coreschema",
-      "community": 381,
+      "community": 30,
       "norm_label": "coreschema"
     },
     {
@@ -45178,7 +45178,7 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "loaders_sql_loaders_tablemetadata_from_dataframe",
-      "community": 14,
+      "community": 30,
       "norm_label": ".from_dataframe()"
     },
     {
@@ -45578,7 +45578,7 @@
       "source_location": "L543",
       "_origin": "ast",
       "id": "loaders_sql_loaders_postgressqlloader_get_tables",
-      "community": 14,
+      "community": 30,
       "norm_label": ".get_tables()"
     },
     {
@@ -45878,7 +45878,7 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "loaders_sql_loaders_rationale_67",
-      "community": 14,
+      "community": 30,
       "norm_label": "convert tablemetadata to dataframe row."
     },
     {
@@ -46088,7 +46088,7 @@
       "source_location": "L544",
       "_origin": "ast",
       "id": "loaders_sql_loaders_rationale_544",
-      "community": 14,
+      "community": 30,
       "norm_label": "get tables from postgresql database."
     },
     {
@@ -48118,7 +48118,7 @@
       "source_location": "L1588",
       "_origin": "ast",
       "id": "src_model_shapeshiftproject_reorder_columns",
-      "community": 32,
+      "community": 4,
       "norm_label": ".reorder_columns()"
     },
     {
@@ -49338,7 +49338,7 @@
       "source_location": "L1589",
       "_origin": "ast",
       "id": "src_model_rationale_1589",
-      "community": 32,
+      "community": 4,
       "norm_label": "reorder columns in the dataframe to have system_id, public_id, fk columns, extra"
     },
     {
@@ -50548,7 +50548,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "reconciliation_mapping_model",
-      "community": 71,
+      "community": 13,
       "norm_label": "mapping_model.py"
     },
     {
@@ -50558,7 +50558,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "reconciliation_mapping_model_encode_local_key",
-      "community": 71,
+      "community": 13,
       "norm_label": "encode_local_key()"
     },
     {
@@ -50568,7 +50568,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_reconciliation_mapping_model_py_any",
-      "community": 71,
+      "community": 13,
       "norm_label": "any"
     },
     {
@@ -50578,7 +50578,7 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "reconciliation_mapping_model_decode_local_key",
-      "community": 71,
+      "community": 13,
       "norm_label": "decode_local_key()"
     },
     {
@@ -50588,7 +50588,7 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "reconciliation_mapping_model_encode_single",
-      "community": 71,
+      "community": 13,
       "norm_label": "_encode_single()"
     },
     {
@@ -50598,7 +50598,7 @@
       "source_location": "L81",
       "_origin": "ast",
       "id": "reconciliation_mapping_model_decode_single",
-      "community": 71,
+      "community": 13,
       "norm_label": "_decode_single()"
     },
     {
@@ -50608,7 +50608,7 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "reconciliation_mapping_model_split_compound",
-      "community": 71,
+      "community": 13,
       "norm_label": "_split_compound()"
     },
     {
@@ -50718,7 +50718,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "reconciliation_mapping_model_rationale_1",
-      "community": 71,
+      "community": 13,
       "norm_label": "pydantic v2 models for the mapping sidecar schema (`<project>-mapping.yml`).  de"
     },
     {
@@ -50728,7 +50728,7 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "reconciliation_mapping_model_rationale_25",
-      "community": 71,
+      "community": 13,
       "norm_label": "encode one or more local-key column values into a stable string key.      single"
     },
     {
@@ -50738,7 +50738,7 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "reconciliation_mapping_model_rationale_51",
-      "community": 71,
+      "community": 13,
       "norm_label": "decode a string key back into individual component values.      reverses the enc"
     },
     {
@@ -50748,7 +50748,7 @@
       "source_location": "L72",
       "_origin": "ast",
       "id": "reconciliation_mapping_model_rationale_72",
-      "community": 71,
+      "community": 13,
       "norm_label": "encode a single value, escaping embedded pipes and normalising null."
     },
     {
@@ -50758,7 +50758,7 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "reconciliation_mapping_model_rationale_82",
-      "community": 71,
+      "community": 13,
       "norm_label": "decode a single value: ``<null>`` back to empty string, unescape."
     },
     {
@@ -50768,7 +50768,7 @@
       "source_location": "L99",
       "_origin": "ast",
       "id": "reconciliation_mapping_model_rationale_99",
-      "community": 71,
+      "community": 13,
       "norm_label": "split an encoded compound key on unescaped ``|`` characters."
     },
     {
@@ -50935,7 +50935,7 @@
       "label": "_normalise_local_key()",
       "file_type": "code",
       "source_file": "src/reconciliation/mapping_validator.py",
-      "source_location": "L98",
+      "source_location": "L105",
       "_origin": "ast",
       "id": "reconciliation_mapping_validator_normalise_local_key",
       "community": 587,
@@ -50985,9 +50985,9 @@
       "label": "Return *local_key* as a list of column-name strings.",
       "file_type": "rationale",
       "source_file": "src/reconciliation/mapping_validator.py",
-      "source_location": "L99",
+      "source_location": "L106",
       "_origin": "ast",
-      "id": "reconciliation_mapping_validator_rationale_99",
+      "id": "reconciliation_mapping_validator_rationale_106",
       "community": 587,
       "norm_label": "return *local_key* as a list of column-name strings."
     },
@@ -51398,7 +51398,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "reconciliation_source_strategy",
-      "community": 22,
+      "community": 38,
       "norm_label": "source_strategy.py"
     },
     {
@@ -51458,7 +51458,7 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "reconciliation_source_strategy_reconciliationsourcestrategy_determine_strategy",
-      "community": 22,
+      "community": 71,
       "norm_label": ".determine_strategy()"
     },
     {
@@ -51468,7 +51468,7 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "src_reconciliation_source_strategy_py_resolutionsource",
-      "community": 22,
+      "community": 71,
       "norm_label": "resolutionsource"
     },
     {
@@ -51478,7 +51478,7 @@
       "source_location": "L91",
       "_origin": "ast",
       "id": "reconciliation_source_strategy_reconciliationsourcestrategy_get_source_entity_name",
-      "community": 22,
+      "community": 71,
       "norm_label": ".get_source_entity_name()"
     },
     {
@@ -51488,7 +51488,7 @@
       "source_location": "L91",
       "_origin": "ast",
       "id": "src_reconciliation_source_strategy_py_entityresolutionset",
-      "community": 22,
+      "community": 71,
       "norm_label": "entityresolutionset"
     },
     {
@@ -51498,7 +51498,7 @@
       "source_location": "L111",
       "_origin": "ast",
       "id": "reconciliation_source_strategy_reconciliationsourcestrategy_get_resolution_source",
-      "community": 22,
+      "community": 71,
       "norm_label": ".get_resolution_source()"
     },
     {
@@ -51508,7 +51508,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "reconciliation_source_strategy_rationale_1",
-      "community": 22,
+      "community": 38,
       "norm_label": "domain logic for reconciliation source resolution.  this module contains busines"
     },
     {
@@ -51568,7 +51568,7 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "reconciliation_source_strategy_rationale_62",
-      "community": 22,
+      "community": 71,
       "norm_label": "determine which source strategy to use (pure business logic).          business"
     },
     {
@@ -51578,7 +51578,7 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "reconciliation_source_strategy_rationale_92",
-      "community": 22,
+      "community": 71,
       "norm_label": "get the entity name to use for data (business logic).          args:"
     },
     {
@@ -51588,7 +51588,7 @@
       "source_location": "L112",
       "_origin": "ast",
       "id": "reconciliation_source_strategy_rationale_112",
-      "community": 22,
+      "community": 71,
       "norm_label": "extract resolution source if present.          args:             entity_mapping:"
     },
     {
@@ -53118,7 +53118,7 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "specifications_entity_dataentityfieldsspecification_is_satisfied_by",
-      "community": 26,
+      "community": 16,
       "norm_label": ".is_satisfied_by()"
     },
     {
@@ -53188,7 +53188,7 @@
       "source_location": "L230",
       "_origin": "ast",
       "id": "specifications_entity_sqlentityfieldsspecification_is_satisfied_by",
-      "community": 26,
+      "community": 16,
       "norm_label": ".is_satisfied_by()"
     },
     {
@@ -53288,7 +53288,7 @@
       "source_location": "L538",
       "_origin": "ast",
       "id": "specifications_entity_entityfieldsspecification_get_specification",
-      "community": 9,
+      "community": 16,
       "norm_label": ".get_specification()"
     },
     {
@@ -53298,7 +53298,7 @@
       "source_location": "L548",
       "_origin": "ast",
       "id": "specifications_entity_entityfieldsspecification_is_satisfied_by",
-      "community": 9,
+      "community": 16,
       "norm_label": ".is_satisfied_by()"
     },
     {
@@ -53708,7 +53708,7 @@
       "source_location": "L1469",
       "_origin": "ast",
       "id": "specifications_entity_entityspecification_is_satisfied_by",
-      "community": 26,
+      "community": 16,
       "norm_label": ".is_satisfied_by()"
     },
     {
@@ -53778,7 +53778,7 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "specifications_entity_rationale_71",
-      "community": 26,
+      "community": 16,
       "norm_label": "check that fields are for the data entity."
     },
     {
@@ -53818,7 +53818,7 @@
       "source_location": "L231",
       "_origin": "ast",
       "id": "specifications_entity_rationale_231",
-      "community": 26,
+      "community": 16,
       "norm_label": "check that fields are for the sql entity."
     },
     {
@@ -53898,7 +53898,7 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "specifications_entity_rationale_539",
-      "community": 9,
+      "community": 16,
       "norm_label": "get the appropriate specification based on entity type."
     },
     {
@@ -53908,7 +53908,7 @@
       "source_location": "L549",
       "_origin": "ast",
       "id": "specifications_entity_rationale_549",
-      "community": 9,
+      "community": 16,
       "norm_label": "check that entity's fields are valid (based on entity type)."
     },
     {
@@ -54218,7 +54218,7 @@
       "source_location": "L1470",
       "_origin": "ast",
       "id": "specifications_entity_rationale_1470",
-      "community": 26,
+      "community": 16,
       "norm_label": "check that entities are properly configured."
     },
     {
@@ -55118,7 +55118,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "specifications_materialize_canmaterializespecification_is_satisfied_by",
-      "community": 32,
+      "community": 65,
       "norm_label": ".is_satisfied_by()"
     },
     {
@@ -55128,7 +55128,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_specifications_materialize_py_tableconfig",
-      "community": 32,
+      "community": 65,
       "norm_label": "tableconfig"
     },
     {
@@ -55138,7 +55138,7 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "specifications_materialize_rationale_14",
-      "community": 32,
+      "community": 65,
       "norm_label": "check if entity can be materialized.          returns:             true if entit"
     },
     {
@@ -59408,7 +59408,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "transforms_extra_columns",
-      "community": 28,
+      "community": 90,
       "norm_label": "extra_columns.py"
     },
     {
@@ -59418,7 +59418,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "transforms_extra_columns_to_str",
-      "community": 28,
+      "community": 90,
       "norm_label": "to_str()"
     },
     {
@@ -59608,7 +59608,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "transforms_extra_columns_rationale_1",
-      "community": 28,
+      "community": 90,
       "norm_label": "extra columns evaluation with support for constants, column copies, interpolated"
     },
     {
@@ -59618,7 +59618,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "transforms_extra_columns_rationale_20",
-      "community": 28,
+      "community": 90,
       "norm_label": "convert value to string, handling numbers and nulls."
     },
     {
@@ -228912,9 +228912,9 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "src/reconciliation/mapping_validator.py",
-      "source_location": "L99",
+      "source_location": "L106",
       "weight": 1.0,
-      "source": "reconciliation_mapping_validator_rationale_99",
+      "source": "reconciliation_mapping_validator_rationale_106",
       "target": "reconciliation_mapping_validator_normalise_local_key",
       "confidence_score": 1.0
     },
@@ -258703,5 +258703,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "5f252ca9e56013b6e548a90c426023b36c903c80"
+  "built_at_commit": "9089781604a595e5d6b15f51fe53d0b6f6a309a8"
 }

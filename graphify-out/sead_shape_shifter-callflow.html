@@ -60,7 +60,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
 <div class="container">
 
 <h1>sead_shape_shifter — Complete Call Flow &amp; Architecture Documentation</h1>
-<p class="subtitle">Generated from graphify knowledge graph: 6300 nodes, 18945 edges, 220 communities. Commit: 5f252ca</p>
+<p class="subtitle">Generated from graphify knowledge graph: 6300 nodes, 18945 edges, 221 communities. Commit: 9089781</p>
 
 <div class="nav">
     <a href="#overview">Architecture Overview</a>
@@ -77,7 +77,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
     <a href="#entity-specifications-registry">Entity Specifications Registry</a>
     <a href="#community-447">Community 447</a>
     <a href="#vue-app-shell-commands">Vue App Shell &amp; Commands</a>
-    <a href="#dsl-evaluation">DSL Evaluation</a>
+    <a href="#validation-messages-validators">Validation Messages &amp; Validators</a>
     <a href="#other">Other</a>
 </div>
 
@@ -88,48 +88,48 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
 
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    EXTRACT_PIPELINE_5F350230("Extraction Pipeline<br/><small>335 nodes</small>")
+    EXTRACT_PIPELINE_5F350230("Extraction Pipeline<br/><small>261 nodes</small>")
     class EXTRACT_PIPELINE_5F350230 module;
-    BUILD_GRAPH_321CBB04("Graph Build<br/><small>1036 nodes</small>")
+    BUILD_GRAPH_321CBB04("Graph Build<br/><small>1019 nodes</small>")
     class BUILD_GRAPH_321CBB04 module;
-    ANALYSIS_CLUSTERING_C79796DA("Analysis &amp; Clustering<br/><small>403 nodes</small>")
+    ANALYSIS_CLUSTERING_C79796DA("Analysis &amp; Clustering<br/><small>411 nodes</small>")
     class ANALYSIS_CLUSTERING_C79796DA module;
-    OUTPUTS_DOCS_ED82387C("Outputs &amp; Docs<br/><small>103 nodes</small>")
+    OUTPUTS_DOCS_ED82387C("Outputs &amp; Docs<br/><small>106 nodes</small>")
     class OUTPUTS_DOCS_ED82387C module;
     CLI_SKILLS_9964CBB8("CLI &amp; Skill Installers<br/><small>91 nodes</small>")
     class CLI_SKILLS_9964CBB8 module;
-    INGEST_CACHE_UPDATE_FF457338("Ingestion &amp; Updates<br/><small>327 nodes</small>")
+    INGEST_CACHE_UPDATE_FF457338("Ingestion &amp; Updates<br/><small>422 nodes</small>")
     class INGEST_CACHE_UPDATE_FF457338 module;
-    SERVE_API_35EC8E86("Serving API<br/><small>2383 nodes</small>")
+    SERVE_API_35EC8E86("Serving API<br/><small>2352 nodes</small>")
     class SERVE_API_35EC8E86 module;
-    SECURITY_GLOBAL_5B9C6A04("Security &amp; Global Graph<br/><small>397 nodes</small>")
+    SECURITY_GLOBAL_5B9C6A04("Security &amp; Global Graph<br/><small>412 nodes</small>")
     class SECURITY_GLOBAL_5B9C6A04 module;
     TESTS_FIXTURES_B84B1DCC("Tests &amp; Fixtures<br/><small>170 nodes</small>")
     class TESTS_FIXTURES_B84B1DCC module;
     SESSION_STATE_MANAGEMENT_4D89B16C("Session State Management<br/><small>137 nodes</small>")
     class SESSION_STATE_MANAGEMENT_4D89B16C module;
-    ENTITY_SPECIFICATIONS_REGISTRY_9E8FFB5C("Entity Specifications Registry<br/><small>71 nodes</small>")
+    ENTITY_SPECIFICATIONS_REGISTRY_9E8FFB5C("Entity Specifications Registry<br/><small>67 nodes</small>")
     class ENTITY_SPECIFICATIONS_REGISTRY_9E8FFB5C module;
     COMMUNITY_447_5296E10F("Community 447<br/><small>66 nodes</small>")
     class COMMUNITY_447_5296E10F module;
     VUE_APP_SHELL_COMMANDS_82FA2469("Vue App Shell &amp; Commands<br/><small>64 nodes</small>")
     class VUE_APP_SHELL_COMMANDS_82FA2469 module;
-    DSL_EVALUATION_ABBD6598("DSL Evaluation<br/><small>51 nodes</small>")
-    class DSL_EVALUATION_ABBD6598 module;
-    OTHER_D0941E68("Other<br/><small>666 nodes</small>")
+    VALIDATION_MESSAGES_VALIDATORS_AC4F9151("Validation Messages &amp; Validators<br/><small>49 nodes</small>")
+    class VALIDATION_MESSAGES_VALIDATORS_AC4F9151 module;
+    OTHER_D0941E68("Other<br/><small>673 nodes</small>")
     class OTHER_D0941E68 module;
-    SERVE_API_35EC8E86 -->|imports x161| BUILD_GRAPH_321CBB04
-    BUILD_GRAPH_321CBB04 -->|inherits x108| SERVE_API_35EC8E86
-    TESTS_FIXTURES_B84B1DCC -->|inherits x77| SERVE_API_35EC8E86
-    SERVE_API_35EC8E86 -->|imports x72| OTHER_D0941E68
-    INGEST_CACHE_UPDATE_FF457338 -->|method x67| SERVE_API_35EC8E86
-    SERVE_API_35EC8E86 -->|method x63| SECURITY_GLOBAL_5B9C6A04
-    SERVE_API_35EC8E86 -->|imports x55| INGEST_CACHE_UPDATE_FF457338
-    SERVE_API_35EC8E86 -->|imports x41| ANALYSIS_CLUSTERING_C79796DA
-    BUILD_GRAPH_321CBB04 -->|imports x41| OTHER_D0941E68
-    INGEST_CACHE_UPDATE_FF457338 -->|imports x40| OTHER_D0941E68
-    EXTRACT_PIPELINE_5F350230 -->|imports x39| SERVE_API_35EC8E86
-    BUILD_GRAPH_321CBB04 -->|method x37| ANALYSIS_CLUSTERING_C79796DA
+    SERVE_API_35EC8E86 -->|imports x149| BUILD_GRAPH_321CBB04
+    INGEST_CACHE_UPDATE_FF457338 -->|imports x107| SERVE_API_35EC8E86
+    BUILD_GRAPH_321CBB04 -->|inherits x102| SERVE_API_35EC8E86
+    TESTS_FIXTURES_B84B1DCC -->|inherits x76| SERVE_API_35EC8E86
+    SERVE_API_35EC8E86 -->|method x71| SECURITY_GLOBAL_5B9C6A04
+    SERVE_API_35EC8E86 -->|imports x69| INGEST_CACHE_UPDATE_FF457338
+    SERVE_API_35EC8E86 -->|imports x67| OTHER_D0941E68
+    BUILD_GRAPH_321CBB04 -->|imports x47| OTHER_D0941E68
+    SERVE_API_35EC8E86 -->|imports x42| ANALYSIS_CLUSTERING_C79796DA
+    ENTITY_SPECIFICATIONS_REGISTRY_9E8FFB5C -->|method x37| OTHER_D0941E68
+    BUILD_GRAPH_321CBB04 -->|method x36| ANALYSIS_CLUSTERING_C79796DA
+    ANALYSIS_CLUSTERING_C79796DA -->|method x36| BUILD_GRAPH_321CBB04
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
     classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
@@ -146,19 +146,19 @@ flowchart LR
     <h4>Architecture Layers</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>Layer</th><th>Nodes</th><th>Communities</th></tr>
-      <tr><td>Extraction Pipeline</td><td>335</td><td><code>119, 22, 34, 462, 50, 64, 18, 79</code></td></tr><tr><td>Graph Build</td><td>1036</td><td><code>60, 30, 270, 53, 21, 58, 44, 587, 35, 27, 23, 40, 11, 26, 63, 115, 55, 112, 91, 6, 41, 17, 687, 138, 603</code></td></tr><tr><td>Analysis &amp; Clustering</td><td>403</td><td><code>14, 139, 381, 13, 247, 131, 244, 24, 830, 145, 181, 218, 219</code></td></tr><tr><td>Outputs &amp; Docs</td><td>103</td><td><code>52, 65, 153</code></td></tr><tr><td>CLI &amp; Skill Installers</td><td>91</td><td><code>141</code></td></tr><tr><td>Ingestion &amp; Updates</td><td>327</td><td><code>8, 36, 42, 38, 78, 80</code></td></tr><tr><td>Serving API</td><td>2383</td><td><code>1, 10, 0, 51, 46, 83, 56, 32, 5, 2, 3, 12, 31, 109, 66, 108, 33, 7, 86, 37, 251, 29, 61, 62, 102, 16, 89, 94, 88, 106, 67, 111, 70, 75, 57, 81, 68, 126, 166, 167, 172</code></td></tr><tr><td>Security &amp; Global Graph</td><td>397</td><td><code>4, 20, 59, 48, 151, 156, 54, 47, 74, 82</code></td></tr><tr><td>Tests &amp; Fixtures</td><td>170</td><td><code>19, 15, 697, 176, 217</code></td></tr><tr><td>Session State Management</td><td>137</td><td><code>104</code></td></tr><tr><td>Entity Specifications Registry</td><td>71</td><td><code>28</code></td></tr><tr><td>Community 447</td><td>66</td><td><code>447</code></td></tr><tr><td>Vue App Shell &amp; Commands</td><td>64</td><td><code>72</code></td></tr><tr><td>DSL Evaluation</td><td>51</td><td><code>9</code></td></tr><tr><td>Other</td><td>666</td><td><code>43, 319, 69, 73, 125, 84, 45, 25, 95, 99, 103, 107, 49, 114, 39, 76, 100, 85, 122, 71, 120, 723, 128, 77, 132, 113, 118, 140, 121, 143, 133, 147, 148, 152, 836, 87, 135, 158, 159, 160, 161, 164, 165, 146, 162, 168, 169, 170, 171, 173, 174, 175, 177, 178, 180, 182, 186, 163, 179, 183, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 205, 206, 208, 209, 210, 211, 212, 213, 214, 216, 220, 221, 222, 223, 224, 225, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236</code></td></tr>
+      <tr><td>Extraction Pipeline</td><td>261</td><td><code>119, 34, 462, 50, 64, 18, 79</code></td></tr><tr><td>Graph Build</td><td>1019</td><td><code>60, 270, 30, 21, 58, 44, 587, 35, 53, 27, 23, 40, 11, 63, 115, 55, 112, 26, 91, 6, 41, 17, 687, 138, 603</code></td></tr><tr><td>Analysis &amp; Clustering</td><td>411</td><td><code>14, 13, 139, 381, 247, 131, 244, 24, 830, 145, 181, 218, 219</code></td></tr><tr><td>Outputs &amp; Docs</td><td>106</td><td><code>52, 65, 153</code></td></tr><tr><td>CLI &amp; Skill Installers</td><td>91</td><td><code>141</code></td></tr><tr><td>Ingestion &amp; Updates</td><td>422</td><td><code>8, 22, 36, 42, 38, 78, 80</code></td></tr><tr><td>Serving API</td><td>2352</td><td><code>1, 10, 0, 51, 46, 83, 56, 5, 32, 2, 3, 12, 31, 109, 66, 33, 86, 108, 7, 37, 251, 29, 61, 62, 89, 94, 102, 88, 106, 67, 111, 70, 75, 57, 81, 126, 68, 166, 167, 172</code></td></tr><tr><td>Security &amp; Global Graph</td><td>412</td><td><code>4, 20, 59, 48, 54, 151, 156, 47, 74, 82</code></td></tr><tr><td>Tests &amp; Fixtures</td><td>170</td><td><code>19, 15, 697, 176, 217</code></td></tr><tr><td>Session State Management</td><td>137</td><td><code>104</code></td></tr><tr><td>Entity Specifications Registry</td><td>67</td><td><code>28</code></td></tr><tr><td>Community 447</td><td>66</td><td><code>447</code></td></tr><tr><td>Vue App Shell &amp; Commands</td><td>64</td><td><code>72</code></td></tr><tr><td>Validation Messages &amp; Validators</td><td>49</td><td><code>43</code></td></tr><tr><td>Other</td><td>673</td><td><code>9, 319, 69, 73, 125, 84, 45, 25, 95, 99, 103, 107, 49, 114, 39, 76, 100, 85, 122, 120, 723, 16, 128, 77, 132, 71, 113, 118, 140, 121, 143, 133, 147, 148, 152, 836, 87, 90, 135, 158, 159, 160, 161, 164, 165, 146, 162, 168, 169, 170, 171, 173, 174, 175, 177, 178, 180, 182, 186, 163, 179, 183, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 205, 206, 208, 209, 210, 211, 212, 213, 214, 216, 220, 221, 222, 223, 224, 225, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236</code></td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Core Flow</h4>
-    <div class="arrow-chain">Vue App Shell &amp; Commands -&gt; Other -&gt; Extraction Pipeline -&gt; Serving API -&gt; Graph Build -&gt; Analysis &amp; Clustering -&gt; Security &amp; Global Graph</div>
+    <div class="arrow-chain">Vue App Shell &amp; Commands -&gt; Other -&gt; Extraction Pipeline -&gt; Graph Build -&gt; Serving API -&gt; Security &amp; Global Graph -&gt; Analysis &amp; Clustering</div>
   </div>
 </div>
 <div class="grid">
   <div class="card">
     <h4>Graph Report Highlights</h4>
     <ul>
-      <li>6300 nodes · 18945 edges · 220 communities (199 shown, 21 thin omitted)</li>
+      <li>6300 nodes · 18945 edges · 221 communities (200 shown, 21 thin omitted)</li>
       <li>Extraction: 66% EXTRACTED · 34% INFERRED · 0% AMBIGUOUS · INFERRED: 6403 edges (avg confidence: 0.5)</li>
       <li>Token cost: 0 input · 0 output</li>
       <li>1. `TableConfig` - 361 edges</li>
@@ -170,12 +170,12 @@ flowchart LR
 <hr>
 <!-- ====== 2. Extraction Pipeline ====== -->
 <h2 id="extract-pipeline">2. Extraction Pipeline</h2>
-<p>Extraction Pipeline groups implementation around transforms, backend, app, reconciliation, mostly in src/transforms/dsl.py, src/normalizer.py, services/reconciliation/service.py. This section covers 335 nodes and 782 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Extraction Pipeline groups implementation around transforms, dslpy, normalizerpy, extra, mostly in src/transforms/dsl.py, src/normalizer.py, src/transforms/extra_columns.py. This section covers 261 nodes and 587 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Extraction Pipeline (335 nodes, 782 edges)
+    %% Section: Extraction Pipeline (261 nodes, 587 edges)
     subgraph extract_pipeline_app_services_dependency_service_0a7548c8["app/services/dependency_service.py"]
         services_dependency_service_sourcenodeextractorr_2948782c("get()<br/><small>app/services/dependency_service.py</small>")
         services_dependency_service_basefilesourcenodeex_0ab7ba50("_get_filename_from_options()<br/><small>app/services/dependency_service.py</small>")
@@ -193,9 +193,11 @@ flowchart LR
         transforms_dsl_dslevaluationerror_eb932a14("DSLEvaluationError<br/><small>src/transforms/dsl.py</small>")
         transforms_dsl_pandasstringbackend_ensure_series_1ef54850("_ensure_series()<br/><small>src/transforms/dsl.py</small>")
     end
+    subgraph extract_pipeline_app_utils_excel_utils_py_d1326ee6["app/utils/excel_utils.py"]
+        utils_excel_utils_get_excel_metadata_f4f01370("get_excel_metadata()<br/><small>app/utils/excel_utils.py</small>")
+        utils_excel_utils_parse_cell_range_max_column_2e1af5e7("range max column()<br/><small>app/utils/excel_utils.py</small>")
+    end
     utils_sql_extract_tables_88ae015b("extract_tables()<br/><small>app/utils/sql.py</small>")
-    reconciliation_mapping_manager_entitymappingmana_7f5f10d7("EntityMappingManager<br/><small>services/reconciliation/mapping_manager.py</small>")
-    reconciliation_service_reconciliationservice_cat_52e50470("catalog_manager()<br/><small>services/reconciliation/service.py</small>")
     src_extract_subsetservice_c5f11e2a("SubsetService<br/><small>src/extract.py</small>")
     src_normalizer_shapeshifter_f1eff97f("ShapeShifter<br/><small>src/normalizer.py</small>")
     services_dependency_service_sourcenodeextractorr_2948782c -->|calls| services_dependency_service_basefilesourcenodeex_0ab7ba50
@@ -216,9 +218,9 @@ flowchart LR
     services_dependency_service_basefilesourcenodeex_0ab7ba50 -->|calls| services_dependency_service_excelfilesourcenodee_328918be
     services_dependency_service_materializedfixedsou_62a362ca -->|calls| services_dependency_service_sqlsourcenodeextract_d8ac503d
     services_dependency_service_sqlsourcenodeextract_d8ac503d -->|calls| utils_sql_extract_tables_88ae015b
-    reconciliation_mapping_manager_entitymappingmana_7f5f10d7 -->|calls| reconciliation_service_reconciliationservice_cat_52e50470
+    utils_excel_utils_get_excel_metadata_f4f01370 -->|calls| utils_excel_utils_parse_cell_range_max_column_2e1af5e7
     transforms_dsl_pandasstringbackend_c689d484 -->|method| transforms_dsl_pandasstringbackend_ensure_series_1ef54850
-    %% Omitted for readability: 317 nodes, 0 edges
+    %% Omitted for readability: 243 nodes, 0 edges
     class services_dependency_service_sourcenodeextractorr_2948782c function;
     class services_dependency_service_basefilesourcenodeex_0ab7ba50 function;
     class services_dependency_service_csvfilesourcenodeext_14d6db4f function;
@@ -232,9 +234,9 @@ flowchart LR
     class transforms_dsl_parser_50e7d6cf klass;
     class transforms_dsl_dslevaluationerror_eb932a14 klass;
     class transforms_dsl_pandasstringbackend_ensure_series_1ef54850 function;
+    class utils_excel_utils_get_excel_metadata_f4f01370 function;
+    class utils_excel_utils_parse_cell_range_max_column_2e1af5e7 function;
     class utils_sql_extract_tables_88ae015b function;
-    class reconciliation_mapping_manager_entitymappingmana_7f5f10d7 klass;
-    class reconciliation_service_reconciliationservice_cat_52e50470 function;
     class src_extract_subsetservice_c5f11e2a klass;
     class src_normalizer_shapeshifter_f1eff97f klass;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
@@ -507,29 +509,29 @@ flowchart LR
       <tr><th>File</th><th>Coverage</th></tr>
       <tr><td><code>src/transforms/dsl.py</code></td><td>73 nodes</td></tr>
 <tr><td><code>src/normalizer.py</code></td><td>57 nodes</td></tr>
-<tr><td><code>services/reconciliation/service.py</code></td><td>32 nodes</td></tr>
 <tr><td><code>src/transforms/extra_columns.py</code></td><td>27 nodes</td></tr>
 <tr><td><code>app/services/dependency_service.py</code></td><td>26 nodes</td></tr>
-<tr><td><code>services/reconciliation/resolvers.py</code></td><td>19 nodes</td></tr>
 <tr><td><code>src/extract.py</code></td><td>19 nodes</td></tr>
-<tr><td><code>src/reconciliation/source_strategy.py</code></td><td>14 nodes</td></tr>
+<tr><td><code>src/process_state.py</code></td><td>12 nodes</td></tr>
+<tr><td><code>src/transforms/drop.py</code></td><td>11 nodes</td></tr>
+<tr><td><code>src/mapping.py</code></td><td>9 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: calls x159, references x157, explains x140, method x102. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: calls x148, references x132, explains x110, method x80. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
 <!-- ====== 3. Graph Build ====== -->
 <h2 id="build-graph">3. Graph Build</h2>
-<p>Graph Build groups implementation around backend, app, services, servicepy, mostly in src/model.py, ingesters/sead/specification.py, src/transforms/replace.py. This section covers 1036 nodes and 2218 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Graph Build groups implementation around backend, app, services, servicepy, mostly in src/model.py, ingesters/sead/specification.py, src/transforms/replace.py. This section covers 1019 nodes and 2166 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Graph Build (1036 nodes, 2218 edges)
+    %% Section: Graph Build (1019 nodes, 2166 edges)
     subgraph build_graph_v1_endpoints_schema_py_71bde388["v1/endpoints/schema.py"]
         endpoints_schema_get_table_schema_e753b3c6("get_table_schema()<br/><small>v1/endpoints/schema.py</small>")
         endpoints_schema_get_table_schema_with_config_1f9d5cc6("schema with config()<br/><small>v1/endpoints/schema.py</small>")
@@ -549,9 +551,11 @@ flowchart LR
         services_type_mapping_service_492b6084("type_mapping_service.py")
         services_type_mapping_service_typemappingservice_7bb3787f("TypeMappingService<br/><small>app/services/type_mapping_service.py</small>")
     end
-    clients_reconciliation_client_reconciliationquer_6b8b1c93("ReconciliationQuery<br/><small>app/clients/reconciliation_client.py</small>")
+    subgraph build_graph_backend_app_exceptions_py_8cf79583["backend/app/exceptions.py"]
+        app_exceptions_domainexception_init_644fb332("__init__()<br/><small>backend/app/exceptions.py</small>")
+        app_exceptions_circulardependencyerror_3cba7df7("CircularDependencyError<br/><small>backend/app/exceptions.py</small>")
+    end
     models_filter_schema_filterfieldmetadataresponse_619ae408("FilterFieldMetadataResponse<br/><small>app/models/filter_schema.py</small>")
-    services_ingester_runtime_seadchangerequestrecon_e6399179("reconcile_entity()<br/><small>app/services/ingester_runtime.py</small>")
     services_yaml_service_yamlservice_cc9d8ef0("YamlService<br/><small>app/services/yaml_service.py</small>")
     sead_metadata_seadschema_b5e0ad6c("SeadSchema<br/><small>ingesters/sead/metadata.py</small>")
     transforms_replace_replacementrules_get_c3022f86("get()<br/><small>src/transforms/replace.py</small>")
@@ -563,10 +567,10 @@ flowchart LR
     endpoints_schema_get_type_mappings_80831513 -->|calls| services_type_mapping_service_typemappingservice_7bb3787f
     endpoints_schema_import_entity_from_table_46e40b71 -->|calls| models_entity_import_entityimportrequest_2c8ab7e1
     endpoints_schema_import_entity_from_table_46e40b71 -->|calls| models_entity_import_entityimportresult_b4900bc8
-    clients_reconciliation_client_reconciliationquer_6b8b1c93 -->|calls| services_ingester_runtime_seadchangerequestrecon_e6399179
+    app_exceptions_domainexception_init_644fb332 -->|method| app_exceptions_circulardependencyerror_3cba7df7
     sead_specification_specificationbase_4e0a6cc5 -->|method| sead_specification_specificationbase_error_96a1b532
     sead_specification_specificationbase_4e0a6cc5 -->|method| sead_specification_specificationbase_has_errors_54b82305
-    %% Omitted for readability: 1018 nodes, 0 edges
+    %% Omitted for readability: 1001 nodes, 0 edges
     class endpoints_schema_get_table_schema_e753b3c6 function;
     class endpoints_schema_get_table_schema_with_config_1f9d5cc6 function;
     class endpoints_schema_get_type_mappings_80831513 function;
@@ -578,9 +582,9 @@ flowchart LR
     class models_entity_import_entityimportresult_b4900bc8 klass;
     class services_type_mapping_service_492b6084 module;
     class services_type_mapping_service_typemappingservice_7bb3787f klass;
-    class clients_reconciliation_client_reconciliationquer_6b8b1c93 klass;
+    class app_exceptions_domainexception_init_644fb332 function;
+    class app_exceptions_circulardependencyerror_3cba7df7 klass;
     class models_filter_schema_filterfieldmetadataresponse_619ae408 klass;
-    class services_ingester_runtime_seadchangerequestrecon_e6399179 function;
     class services_yaml_service_yamlservice_cc9d8ef0 klass;
     class sead_metadata_seadschema_b5e0ad6c klass;
     class transforms_replace_replacementrules_get_c3022f86 function;
@@ -865,19 +869,19 @@ flowchart LR
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: calls x406, explains x369, references x323, method x296. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: calls x400, explains x361, references x321, method x293. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
 <!-- ====== 4. Analysis & Clustering ====== -->
 <h2 id="analysis-clustering">4. Analysis &amp; Clustering</h2>
-<p>Analysis &amp; Clustering groups implementation around loaders, sql, backend, app, mostly in src/loaders/sql_loaders.py, src/reconciliation/mapping_manager.py, app/services/task_list_sidecar_manager.py. This section covers 403 nodes and 843 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Analysis &amp; Clustering groups implementation around loaders, sql, backend, app, mostly in src/loaders/sql_loaders.py, src/reconciliation/mapping_manager.py, src/reconciliation/mapping_model.py. This section covers 411 nodes and 847 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Analysis &amp; Clustering (403 nodes, 843 edges)
+    %% Section: Analysis &amp; Clustering (411 nodes, 847 edges)
     subgraph analysis_clustering_app_services_query_service_p_30bbb3b9["app/services/query_service.py"]
         services_query_service_queryservice_3fe9341e("QueryService<br/><small>app/services/query_service.py</small>")
         services_query_service_is_internal_data_source_039ec923("is_internal_data_source()<br/><small>app/services/query_service.py</small>")
@@ -918,7 +922,7 @@ flowchart LR
     services_query_service_queryservice_validate_que_4714aa90 -->|calls| services_query_service_queryservice_execute_quer_59ed69ee
     services_query_service_queryservice_validate_que_4714aa90 -->|calls| services_query_service_queryservice_introspect_q_34b00669
     services_query_service_queryservice_validate_que_4714aa90 -->|calls| utils_sql_get_statement_type_182f4b7e
-    %% Omitted for readability: 385 nodes, 0 edges
+    %% Omitted for readability: 393 nodes, 0 edges
     class services_query_service_queryservice_3fe9341e klass;
     class services_query_service_is_internal_data_source_039ec923 function;
     class services_query_service_queryservice_execute_quer_59ed69ee function;
@@ -968,14 +972,6 @@ flowchart LR
 </tr>
 <tr>
   <td>2</td>
-  <td><code>.from_dataframe()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>get_tables()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
-  <td>.from_dataframe() node in src/loaders/sql_loaders.py.</td>
-</tr>
-<tr>
-  <td>3</td>
   <td><code>DataFrame</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -983,7 +979,7 @@ flowchart LR
   <td>DataFrame node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>4</td>
+  <td>3</td>
   <td><code>ColumnMetadata</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -991,7 +987,7 @@ flowchart LR
   <td>ColumnMetadata node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>5</td>
+  <td>4</td>
   <td><code>TableSchema</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -999,7 +995,7 @@ flowchart LR
   <td>TableSchema node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>6</td>
+  <td>5</td>
   <td><code>.__init__()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1007,7 +1003,7 @@ flowchart LR
   <td>.__init__() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>7</td>
+  <td>6</td>
   <td><code>.db_uri()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1015,7 +1011,7 @@ flowchart LR
   <td>.db_uri() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>8</td>
+  <td>7</td>
   <td><code>.create_db_uri()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>db_uri()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1023,7 +1019,7 @@ flowchart LR
   <td>.create_db_uri() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>9</td>
+  <td>8</td>
   <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -1031,7 +1027,7 @@ flowchart LR
   <td>Any node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>10</td>
+  <td>9</td>
   <td><code>.normalize_query_metadata()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1039,7 +1035,7 @@ flowchart LR
   <td>.normalize_query_metadata() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>11</td>
+  <td>10</td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -1047,7 +1043,7 @@ flowchart LR
   <td>Reads, resolves, or persists project configuration.</td>
 </tr>
 <tr>
-  <td>12</td>
+  <td>11</td>
   <td><code>._validate_columns()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1055,7 +1051,7 @@ flowchart LR
   <td>._validate_columns() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>13</td>
+  <td>12</td>
   <td><code>.load()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>_validate_columns()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>normalize_query_metadata()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1063,7 +1059,7 @@ flowchart LR
   <td>.load() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>14</td>
+  <td>13</td>
   <td><code>.qualify_name()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1071,7 +1067,7 @@ flowchart LR
   <td>.qualify_name() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>15</td>
+  <td>14</td>
   <td><code>.quote_name()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>qualify_name()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1079,7 +1075,7 @@ flowchart LR
   <td>.quote_name() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>16</td>
+  <td>15</td>
   <td><code>.load_table()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>qualify_name()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>quote_name()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1087,7 +1083,7 @@ flowchart LR
   <td>.load_table() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>17</td>
+  <td>16</td>
   <td><code>.read_sql()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>load()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>load_table()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1095,7 +1091,7 @@ flowchart LR
   <td>.read_sql() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>18</td>
+  <td>17</td>
   <td><code>.inject_limit()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1103,7 +1099,7 @@ flowchart LR
   <td>.inject_limit() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>19</td>
+  <td>18</td>
   <td><code>.get_table_schema()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>ColumnMetadata</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>read_sql()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1111,7 +1107,7 @@ flowchart LR
   <td>.get_table_schema() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>20</td>
+  <td>19</td>
   <td><code>.get_test_query()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>quote_name()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1119,7 +1115,7 @@ flowchart LR
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
-  <td>21</td>
+  <td>20</td>
   <td><code>.execute_scalar_sql()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1127,7 +1123,7 @@ flowchart LR
   <td>.execute_scalar_sql() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>22</td>
+  <td>21</td>
   <td><code>.get_table_row_count()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>execute_scalar_sql()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>get_table_schema()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>quote_name()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br>+1 more</td>
@@ -1135,7 +1131,7 @@ flowchart LR
   <td>.get_table_row_count() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>23</td>
+  <td>22</td>
   <td><code>.test_connection()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>get_test_query()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>load()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>SqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br>+1 more</td>
@@ -1143,7 +1139,7 @@ flowchart LR
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
-  <td>24</td>
+  <td>23</td>
   <td><code>SqliteLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td><code>create_db_uri()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>execute_scalar_sql()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>get_table_schema()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1151,7 +1147,7 @@ flowchart LR
   <td>SqliteLoader node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>25</td>
+  <td>24</td>
   <td><code>.get_table_schema()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>ColumnMetadata</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>get_table_row_count()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>SqliteLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1159,7 +1155,7 @@ flowchart LR
   <td>.get_table_schema() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>26</td>
+  <td>25</td>
   <td><code>.get_tables()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>SqliteLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1167,7 +1163,7 @@ flowchart LR
   <td>.get_tables() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>27</td>
+  <td>26</td>
   <td><code>.execute_scalar_sql()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>SqliteLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1175,15 +1171,15 @@ flowchart LR
   <td>.execute_scalar_sql() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>28</td>
+  <td>27</td>
   <td><code>PostgresSqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td><code>create_db_uri()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>execute_scalar_sql()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>get_table_schema()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br>+1 more</td>
-  <td><code>create_db_uri()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>DataSourceConfig</code><br><small style="color:var(--muted)">src/model.py</small><br><code>db_opts()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br>+4 more</td>
+  <td><code>create_db_uri()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br><code>DataSourceConfig</code><br><small style="color:var(--muted)">src/model.py</small><br><code>db_opts()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br>+3 more</td>
   <td>PostgresSqlLoader node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>29</td>
+  <td>28</td>
   <td><code>.db_opts()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>PostgresSqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
@@ -1191,12 +1187,20 @@ flowchart LR
   <td>.db_opts() node in src/loaders/sql_loaders.py.</td>
 </tr>
 <tr>
-  <td>30</td>
+  <td>29</td>
   <td><code>.create_db_uri()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>PostgresSqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
   <td>No direct outbound edge</td>
   <td>.create_db_uri() node in src/loaders/sql_loaders.py.</td>
+</tr>
+<tr>
+  <td>30</td>
+  <td><code>.read_sql()</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>PostgresSqlLoader</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>.read_sql() node in src/loaders/sql_loaders.py.</td>
 </tr>
 </table>
 
@@ -1205,31 +1209,31 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>src/loaders/sql_loaders.py</code></td><td>106 nodes</td></tr>
+      <tr><td><code>src/loaders/sql_loaders.py</code></td><td>101 nodes</td></tr>
 <tr><td><code>src/reconciliation/mapping_manager.py</code></td><td>31 nodes</td></tr>
 <tr><td><code>app/services/task_list_sidecar_manager.py</code></td><td>29 nodes</td></tr>
+<tr><td><code>src/reconciliation/mapping_model.py</code></td><td>29 nodes</td></tr>
 <tr><td><code>loaders/duckdb_loader/duckdb_workspace.py</code></td><td>24 nodes</td></tr>
 <tr><td><code>v1/endpoints/query.py</code></td><td>20 nodes</td></tr>
 <tr><td><code>loaders/duckdb_loader/duckdb_loader.py</code></td><td>20 nodes</td></tr>
-<tr><td><code>src/reconciliation/mapping_model.py</code></td><td>16 nodes</td></tr>
 <tr><td><code>app/services/query_service.py</code></td><td>15 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: calls x157, explains x151, references x137, method x128. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: calls x158, explains x155, references x138, method x127. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
 <!-- ====== 5. Outputs & Docs ====== -->
 <h2 id="outputs-docs">5. Outputs &amp; Docs</h2>
-<p>Outputs &amp; Docs groups implementation around model, target, documentationpy, specifications, mostly in src/target_model/documentation.py, src/specifications/foreign_key.py, src/specifications/base.py. This section covers 103 nodes and 206 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Outputs &amp; Docs groups implementation around model, target, documentationpy, specifications, mostly in src/target_model/documentation.py, src/specifications/foreign_key.py, src/specifications/base.py. This section covers 106 nodes and 209 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Outputs &amp; Docs (103 nodes, 206 edges)
+    %% Section: Outputs &amp; Docs (106 nodes, 209 edges)
     subgraph outputs_docs_src_specifications_foreign_key_py_bf3b5edd["src/specifications/foreign_key.py"]
         specifications_foreign_key_foreignkeyconfigspeci_ad8b788f("ForeignKeyConfigSpecification<br/><small>src/specifications/foreign_key.py</small>")
         specifications_foreign_key_foreignkeydataspecifi_21325718("ForeignKeyDataSpecification<br/><small>src/specifications/foreign_key.py</small>")
@@ -1279,7 +1283,7 @@ flowchart LR
     specifications_foreign_key_foreignkeydataspecifi_5949a548 -->|calls| specifications_foreign_key_foreignkeydataspecifi_98d3c289
     target_model_documentation_excelgenerator_genera_b14eb5ed -->|method| target_model_documentation_simsdocumentgenerator_48da406d
     target_model_documentation_excelgenerator_genera_b14eb5ed -->|method| target_model_documentation_textdocumentgenerator_aac7cf75
-    %% Omitted for readability: 85 nodes, 0 edges
+    %% Omitted for readability: 88 nodes, 0 edges
     class specifications_foreign_key_foreignkeyconfigspeci_ad8b788f test;
     class specifications_foreign_key_foreignkeydataspecifi_21325718 test;
     class specifications_foreign_key_foreignkeyconfigspeci_ae14daff test;
@@ -1570,15 +1574,15 @@ flowchart LR
 <tr><td><code>src/specifications/foreign_key.py</code></td><td>22 nodes</td></tr>
 <tr><td><code>src/specifications/base.py</code></td><td>8 nodes</td></tr>
 <tr><td><code>src/specifications/fd.py</code></td><td>6 nodes</td></tr>
+<tr><td><code>src/specifications/materialize.py</code></td><td>3 nodes</td></tr>
 <tr><td><code>frontend/favicon.ico</code></td><td>1 nodes</td></tr>
 <tr><td><code>frontend/favicon.svg</code></td><td>1 nodes</td></tr>
 <tr><td><code>frontend/index.html</code></td><td>1 nodes</td></tr>
-<tr><td><code>frontend/src/main.ts</code></td><td>1 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: explains x45, references x44, method x41, calls x31. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: explains x46, references x45, method x41, calls x31. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -1931,77 +1935,77 @@ flowchart LR
 
 <!-- ====== 7. Ingestion & Updates ====== -->
 <h2 id="ingest-cache-update">7. Ingestion &amp; Updates</h2>
-<p>Ingestion &amp; Updates groups implementation around backend, app, data, validation, mostly in ingesters/sead/policies.py, app/validators/data_validation_orchestrator.py, src/reconciliation/model.py. This section covers 327 nodes and 871 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Ingestion &amp; Updates groups implementation around backend, app, reconciliation, data, mostly in ingesters/sead/policies.py, app/validators/data_validation_orchestrator.py, src/reconciliation/model.py. This section covers 422 nodes and 1168 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Ingestion &amp; Updates (327 nodes, 871 edges)
+    %% Section: Ingestion &amp; Updates (422 nodes, 1168 edges)
+    subgraph ingest_cache_update_app_clients_reconciliation_c_bc46d278["app/clients/reconciliation_client.py"]
+        clients_reconciliation_client_7694e8e4("reconciliation_client.py")
+        clients_reconciliation_client_reconciliationclie_24ed3a24("ReconciliationClient<br/><small>app/clients/reconciliation_client.py</small>")
+        clients_reconciliation_client_reconciliationclie_527d33a2("check_health()<br/><small>app/clients/reconciliation_client.py</small>")
+        clients_reconciliation_client_reconciliationclie_770941de("close()<br/><small>app/clients/reconciliation_client.py</small>")
+        clients_reconciliation_client_reconciliationclie_e51e709c("_get_client()<br/><small>app/clients/reconciliation_client.py</small>")
+        clients_reconciliation_client_reconciliationclie_5111f1dd("get_entity_preview()<br/><small>app/clients/reconciliation_client.py</small>")
+        clients_reconciliation_client_reconciliationclie_e2953654("get_service_manifest()<br/><small>app/clients/reconciliation_client.py</small>")
+        clients_reconciliation_client_reconciliationclie_604f2263("reconcile_batch()<br/><small>app/clients/reconciliation_client.py</small>")
+        clients_reconciliation_client_reconciliationclie_8c0c83fb("suggest_entities()<br/><small>app/clients/reconciliation_client.py</small>")
+        clients_reconciliation_client_reconciliationquer_21f39896("__init__()<br/><small>app/clients/reconciliation_client.py</small>")
+        clients_reconciliation_client_reconciliationquer_6b8b1c93("ReconciliationQuery<br/><small>app/clients/reconciliation_client.py</small>")
+        clients_reconciliation_client_reconciliationquer_76308f60("to_dict()<br/><small>app/clients/reconciliation_client.py</small>")
+    end
     subgraph ingest_cache_update_app_core_operation_manager_p_7646d8bb["app/core/operation_manager.py"]
         core_operation_manager_53dda2ce("operation_manager.py")
         core_operation_manager_operationmanager_a125825e("OperationManager<br/><small>app/core/operation_manager.py</small>")
-        core_operation_manager_operationmanager_cancel_o_ca2f24e6("cancel_operation()<br/><small>app/core/operation_manager.py</small>")
-        core_operation_manager_operationmanager_cleanup_3a55f640("cleanup_operation()<br/><small>app/core/operation_manager.py</small>")
-        core_operation_manager_operationmanager_complete_2d7800c8("complete_operation()<br/><small>app/core/operation_manager.py</small>")
-        core_operation_manager_operationmanager_create_o_8c019240("create_operation()<br/><small>app/core/operation_manager.py</small>")
-        core_operation_manager_operationmanager_fail_ope_3fa05c79("fail_operation()<br/><small>app/core/operation_manager.py</small>")
-        core_operation_manager_operationmanager_get_prog_89c1d2ef("get_progress()<br/><small>app/core/operation_manager.py</small>")
-        core_operation_manager_operationmanager_init_240ff548("__init__()<br/><small>app/core/operation_manager.py</small>")
-        core_operation_manager_operationmanager_is_cance_095493fc("is_cancelled()<br/><small>app/core/operation_manager.py</small>")
-        core_operation_manager_operationmanager_list_ope_6499d185("list_operations()<br/><small>app/core/operation_manager.py</small>")
-        core_operation_manager_operationmanager_new_01ae7f4c("__new__()<br/><small>app/core/operation_manager.py</small>")
-        core_operation_manager_operationmanager_update_p_e45ac905("update_progress()<br/><small>app/core/operation_manager.py</small>")
     end
-    subgraph ingest_cache_update_ingesters_sead_policies_py_3d4d42b7["ingesters/sead/policies.py"]
-        sead_policies_policybase_update_e316cfaa("update()<br/><small>ingesters/sead/policies.py</small>")
-        sead_policies_policybase_get_id_06eacdd3("get_id()<br/><small>ingesters/sead/policies.py</small>")
-        policybase_fe90279a("PolicyBase<br/><small>ingesters/sead/policies.py</small>")
-    end
-    services_schema_service_db96cced("schema_service.py")
+    sead_policies_policybase_update_e316cfaa("update()<br/><small>ingesters/sead/policies.py</small>")
+    reconciliation_service_reconciliationservice_e5ecfb66("ReconciliationService<br/><small>services/reconciliation/service.py</small>")
     src_table_store_tablestore_ce678d81("TableStore<br/><small>src/table_store.py</small>")
-    core_operation_manager_53dda2ce -->|method| core_operation_manager_operationmanager_cancel_o_ca2f24e6
-    core_operation_manager_53dda2ce -->|method| core_operation_manager_operationmanager_cleanup_3a55f640
-    core_operation_manager_53dda2ce -->|method| core_operation_manager_operationmanager_complete_2d7800c8
-    core_operation_manager_53dda2ce -->|method| core_operation_manager_operationmanager_create_o_8c019240
-    core_operation_manager_53dda2ce -->|method| core_operation_manager_operationmanager_fail_ope_3fa05c79
-    core_operation_manager_53dda2ce -->|method| core_operation_manager_operationmanager_get_prog_89c1d2ef
-    core_operation_manager_53dda2ce -->|method| core_operation_manager_operationmanager_init_240ff548
-    core_operation_manager_53dda2ce -->|method| core_operation_manager_operationmanager_is_cance_095493fc
-    core_operation_manager_53dda2ce -->|method| core_operation_manager_operationmanager_list_ope_6499d185
-    core_operation_manager_53dda2ce -->|method| core_operation_manager_operationmanager_new_01ae7f4c
-    core_operation_manager_53dda2ce -->|method| core_operation_manager_operationmanager_update_p_e45ac905
-    core_operation_manager_operationmanager_a125825e -->|method| core_operation_manager_operationmanager_cancel_o_ca2f24e6
-    core_operation_manager_operationmanager_a125825e -->|method| core_operation_manager_operationmanager_cleanup_3a55f640
-    core_operation_manager_operationmanager_a125825e -->|method| core_operation_manager_operationmanager_complete_2d7800c8
-    core_operation_manager_operationmanager_a125825e -->|method| core_operation_manager_operationmanager_create_o_8c019240
-    core_operation_manager_operationmanager_a125825e -->|method| core_operation_manager_operationmanager_fail_ope_3fa05c79
-    core_operation_manager_operationmanager_a125825e -->|method| core_operation_manager_operationmanager_get_prog_89c1d2ef
-    core_operation_manager_operationmanager_a125825e -->|method| core_operation_manager_operationmanager_init_240ff548
-    core_operation_manager_operationmanager_a125825e -->|method| core_operation_manager_operationmanager_is_cance_095493fc
-    core_operation_manager_operationmanager_a125825e -->|method| core_operation_manager_operationmanager_list_ope_6499d185
-    core_operation_manager_operationmanager_a125825e -->|method| core_operation_manager_operationmanager_new_01ae7f4c
-    core_operation_manager_operationmanager_a125825e -->|method| core_operation_manager_operationmanager_update_p_e45ac905
-    core_operation_manager_operationmanager_update_p_e45ac905 -->|calls| core_operation_manager_operationmanager_cancel_o_ca2f24e6
-    core_operation_manager_operationmanager_update_p_e45ac905 -->|calls| core_operation_manager_operationmanager_complete_2d7800c8
-    %% Omitted for readability: 309 nodes, 4 edges
+    endpoints_reconciliation_get_reconciliation_serv_204b0c5c("get_reconciliation_service()<br/><small>v1/endpoints/reconciliation.py</small>")
+    endpoints_reconciliation_get_reconciliation_serv_204b0c5c -->|calls| clients_reconciliation_client_7694e8e4
+    endpoints_reconciliation_get_reconciliation_serv_204b0c5c -->|calls| clients_reconciliation_client_reconciliationclie_24ed3a24
+    endpoints_reconciliation_get_reconciliation_serv_204b0c5c -->|calls| reconciliation_service_reconciliationservice_e5ecfb66
+    clients_reconciliation_client_7694e8e4 -->|method| clients_reconciliation_client_reconciliationclie_527d33a2
+    clients_reconciliation_client_7694e8e4 -->|method| clients_reconciliation_client_reconciliationclie_770941de
+    clients_reconciliation_client_7694e8e4 -->|method| clients_reconciliation_client_reconciliationclie_e51e709c
+    clients_reconciliation_client_7694e8e4 -->|method| clients_reconciliation_client_reconciliationclie_5111f1dd
+    clients_reconciliation_client_7694e8e4 -->|method| clients_reconciliation_client_reconciliationclie_e2953654
+    clients_reconciliation_client_7694e8e4 -->|method| clients_reconciliation_client_reconciliationclie_604f2263
+    clients_reconciliation_client_7694e8e4 -->|method| clients_reconciliation_client_reconciliationclie_8c0c83fb
+    clients_reconciliation_client_7694e8e4 -->|method| clients_reconciliation_client_reconciliationquer_21f39896
+    clients_reconciliation_client_reconciliationquer_6b8b1c93 -->|method| clients_reconciliation_client_reconciliationquer_21f39896
+    clients_reconciliation_client_reconciliationquer_6b8b1c93 -->|method| clients_reconciliation_client_reconciliationquer_76308f60
+    clients_reconciliation_client_reconciliationquer_76308f60 -->|calls| clients_reconciliation_client_reconciliationclie_604f2263
+    clients_reconciliation_client_reconciliationclie_24ed3a24 -->|method| clients_reconciliation_client_reconciliationclie_527d33a2
+    clients_reconciliation_client_reconciliationclie_24ed3a24 -->|method| clients_reconciliation_client_reconciliationclie_770941de
+    clients_reconciliation_client_reconciliationclie_24ed3a24 -->|method| clients_reconciliation_client_reconciliationclie_e51e709c
+    clients_reconciliation_client_reconciliationclie_24ed3a24 -->|method| clients_reconciliation_client_reconciliationclie_5111f1dd
+    clients_reconciliation_client_reconciliationclie_24ed3a24 -->|method| clients_reconciliation_client_reconciliationclie_e2953654
+    clients_reconciliation_client_reconciliationclie_24ed3a24 -->|method| clients_reconciliation_client_reconciliationclie_604f2263
+    clients_reconciliation_client_reconciliationclie_24ed3a24 -->|method| clients_reconciliation_client_reconciliationclie_8c0c83fb
+    clients_reconciliation_client_reconciliationclie_e51e709c -->|calls| clients_reconciliation_client_reconciliationclie_527d33a2
+    clients_reconciliation_client_reconciliationclie_e51e709c -->|calls| clients_reconciliation_client_reconciliationclie_5111f1dd
+    clients_reconciliation_client_reconciliationclie_e51e709c -->|calls| clients_reconciliation_client_reconciliationclie_e2953654
+    %% Omitted for readability: 404 nodes, 2 edges
+    class clients_reconciliation_client_7694e8e4 entry;
+    class clients_reconciliation_client_reconciliationclie_24ed3a24 entry;
+    class clients_reconciliation_client_reconciliationclie_527d33a2 function;
+    class clients_reconciliation_client_reconciliationclie_770941de function;
+    class clients_reconciliation_client_reconciliationclie_e51e709c entry;
+    class clients_reconciliation_client_reconciliationclie_5111f1dd function;
+    class clients_reconciliation_client_reconciliationclie_e2953654 function;
+    class clients_reconciliation_client_reconciliationclie_604f2263 function;
+    class clients_reconciliation_client_reconciliationclie_8c0c83fb function;
+    class clients_reconciliation_client_reconciliationquer_21f39896 function;
+    class clients_reconciliation_client_reconciliationquer_6b8b1c93 klass;
+    class clients_reconciliation_client_reconciliationquer_76308f60 function;
     class core_operation_manager_53dda2ce module;
     class core_operation_manager_operationmanager_a125825e klass;
-    class core_operation_manager_operationmanager_cancel_o_ca2f24e6 function;
-    class core_operation_manager_operationmanager_cleanup_3a55f640 function;
-    class core_operation_manager_operationmanager_complete_2d7800c8 function;
-    class core_operation_manager_operationmanager_create_o_8c019240 function;
-    class core_operation_manager_operationmanager_fail_ope_3fa05c79 function;
-    class core_operation_manager_operationmanager_get_prog_89c1d2ef function;
-    class core_operation_manager_operationmanager_init_240ff548 function;
-    class core_operation_manager_operationmanager_is_cance_095493fc function;
-    class core_operation_manager_operationmanager_list_ope_6499d185 function;
-    class core_operation_manager_operationmanager_new_01ae7f4c function;
-    class core_operation_manager_operationmanager_update_p_e45ac905 function;
     class sead_policies_policybase_update_e316cfaa function;
-    class sead_policies_policybase_get_id_06eacdd3 function;
-    class policybase_fe90279a klass;
-    class services_schema_service_db96cced module;
+    class reconciliation_service_reconciliationservice_e5ecfb66 klass;
     class src_table_store_tablestore_ce678d81 ui;
+    class endpoints_reconciliation_get_reconciliation_serv_204b0c5c function;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
     classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
@@ -2028,7 +2032,7 @@ flowchart LR
   <td><code>project_mapper.py</code><br><small style="color:var(--muted)">app/mappers/project_mapper.py</small></td>
   <td><span class="tag tag-class">Module</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">app/validators/data_validation_orchestrator.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/validation_service.py</small><br><code>CacheCheckResult</code><br><small style="color:var(--muted)">app/utils/caches.py</small><br>+27 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">app/validators/data_validation_orchestrator.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/validation_service.py</small><br><code>Any</code><br><small style="color:var(--muted)">services/reconciliation/service.py</small><br>+38 more</td>
   <td>Module file in app/mappers/project_mapper.py.</td>
 </tr>
 <tr>
@@ -2036,7 +2040,7 @@ flowchart LR
   <td><code>ProjectMapper</code><br><small style="color:var(--muted)">app/mappers/project_mapper.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">app/validators/data_validation_orchestrator.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/validation_service.py</small><br><code>CacheCheckResult</code><br><small style="color:var(--muted)">app/utils/caches.py</small><br>+29 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">app/validators/data_validation_orchestrator.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/validation_service.py</small><br><code>Any</code><br><small style="color:var(--muted)">services/reconciliation/service.py</small><br>+41 more</td>
   <td>ProjectMapper node in app/mappers/project_mapper.py.</td>
 </tr>
 <tr>
@@ -2273,28 +2277,28 @@ flowchart LR
       <tr><td><code>ingesters/sead/policies.py</code></td><td>56 nodes</td></tr>
 <tr><td><code>app/validators/data_validation_orchestrator.py</code></td><td>41 nodes</td></tr>
 <tr><td><code>src/reconciliation/model.py</code></td><td>40 nodes</td></tr>
-<tr><td><code>app/core/operation_manager.py</code></td><td>29 nodes</td></tr>
+<tr><td><code>app/core/operation_manager.py</code></td><td>31 nodes</td></tr>
+<tr><td><code>services/reconciliation/service.py</code></td><td>30 nodes</td></tr>
+<tr><td><code>app/clients/reconciliation_client.py</code></td><td>26 nodes</td></tr>
 <tr><td><code>src/table_store.py</code></td><td>26 nodes</td></tr>
 <tr><td><code>src/target_model/data_validators.py</code></td><td>22 nodes</td></tr>
-<tr><td><code>app/utils/caches.py</code></td><td>21 nodes</td></tr>
-<tr><td><code>app/services/validation_service.py</code></td><td>18 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: explains x140, method x123, references x101, calls x90. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: explains x180, method x159, references x131, calls x108. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
 <!-- ====== 8. Serving API ====== -->
 <h2 id="serve-api">8. Serving API</h2>
-<p>Serving API groups implementation around app, backend, services, api, mostly in app/services/project_service.py, v1/endpoints/projects.py, src/target_model/conformance.py. This section covers 2383 nodes and 7256 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Serving API groups implementation around app, backend, services, api, mostly in app/services/project_service.py, v1/endpoints/projects.py, src/target_model/conformance.py. This section covers 2352 nodes and 7186 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Serving API (2383 nodes, 7256 edges)
+    %% Section: Serving API (2352 nodes, 7186 edges)
     subgraph serve_api_v1_endpoints_data_sources_py_2327750f["v1/endpoints/data_sources.py"]
         endpoints_data_sources_list_drivers_ea9dc9bb("list_drivers()<br/><small>v1/endpoints/data_sources.py</small>")
         endpoints_data_sources_list_data_source_files_69180e6d("list_data_source_files()<br/><small>v1/endpoints/data_sources.py</small>")
@@ -2333,7 +2337,7 @@ flowchart LR
     v1_api_8d15bdbc -->|imports| endpoints_projects_2a91ff30
     endpoints_projects_2a91ff30 -->|imports| services_project_service_get_project_service_60642fee
     endpoints_projects_2a91ff30 -->|imports| services_project_service_projectservice_848654d0
-    %% Omitted for readability: 2365 nodes, 0 edges
+    %% Omitted for readability: 2334 nodes, 0 edges
     class endpoints_data_sources_list_drivers_ea9dc9bb function;
     class endpoints_data_sources_list_data_source_files_69180e6d function;
     class endpoints_data_sources_get_excel_metadata_8f9383f6 function;
@@ -2378,7 +2382,7 @@ flowchart LR
   <td><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/core/state_manager.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>Any</code><br><small style="color:var(--muted)">services/project/project_operations.py</small><br><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/services/execute_service.py</small><br>+26 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">services/project/project_operations.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+26 more</td>
   <td>ApplicationStateManager node in app/core/state_manager.py.</td>
 </tr>
 <tr>
@@ -2394,7 +2398,7 @@ flowchart LR
   <td><code>ConfigurationError</code><br><small style="color:var(--muted)">backend/app/exceptions.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>Any</code><br><small style="color:var(--muted)">services/project/project_operations.py</small><br><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+18 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">services/project/project_operations.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+18 more</td>
   <td>Reads, resolves, or persists project configuration.</td>
 </tr>
 <tr>
@@ -2410,7 +2414,7 @@ flowchart LR
   <td><code>ResourceConflictError</code><br><small style="color:var(--muted)">backend/app/exceptions.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>add_entity()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>add_entity_by_name()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+35 more</td>
+  <td><code>add_entity()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>add_entity_by_name()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>Any</code><br><small style="color:var(--muted)">services/project/project_operations.py</small><br>+35 more</td>
   <td>ResourceConflictError node in backend/app/exceptions.py.</td>
 </tr>
 <tr>
@@ -2474,7 +2478,7 @@ flowchart LR
   <td><code>Entity</code><br><small style="color:var(--muted)">app/models/entity.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>Any</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+17 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+17 more</td>
   <td>Entity node in app/models/entity.py.</td>
 </tr>
 <tr>
@@ -2578,7 +2582,7 @@ flowchart LR
   <td><code>EntityOperations</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td><code>__init__.py</code><br><small style="color:var(--muted)">services/project/__init__.py</small><br><code>Entity</code><br><small style="color:var(--muted)">app/models/entity.py</small><br><code>EntityConflictError</code><br><small style="color:var(--muted)">backend/app/exceptions.py</small><br>+3 more</td>
-  <td><code>__init__()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>__init__()</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>_prepare_entity_for_persistence()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br>+23 more</td>
+  <td><code>__init__()</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>__init__()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>_prepare_entity_for_persistence()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br>+23 more</td>
   <td>EntityOperations node in services/project/entity_operations.py.</td>
 </tr>
 <tr>
@@ -2624,28 +2628,29 @@ flowchart LR
 <tr><td><code>v1/endpoints/projects.py</code></td><td>86 nodes</td></tr>
 <tr><td><code>src/target_model/conformance.py</code></td><td>84 nodes</td></tr>
 <tr><td><code>ingesters/sead_change_request/sql_builder.py</code></td><td>71 nodes</td></tr>
-<tr><td><code>src/model.py</code></td><td>67 nodes</td></tr>
+<tr><td><code>src/model.py</code></td><td>65 nodes</td></tr>
 <tr><td><code>app/services/auto_fix_service.py</code></td><td>63 nodes</td></tr>
-<tr><td><code>v1/endpoints/reconciliation.py</code></td><td>55 nodes</td></tr>
+<tr><td><code>v1/endpoints/reconciliation.py</code></td><td>52 nodes</td></tr>
 <tr><td><code>app/services/task_service.py</code></td><td>52 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: explains x914, references x835, contains x671, calls x644. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: explains x901, references x823, contains x668, calls x636. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
 <!-- ====== 9. Security & Global Graph ====== -->
 <h2 id="security-global">9. Security &amp; Global Graph</h2>
-<p>Security &amp; Global Graph groups implementation around modelpy, configuration, backend, app, mostly in src/model.py, ingesters/sead/utility.py, src/configuration/provider.py. This section covers 397 nodes and 628 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Security &amp; Global Graph groups implementation around modelpy, configuration, data, backend, mostly in src/model.py, ingesters/sead/utility.py, src/configuration/provider.py. This section covers 412 nodes and 658 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Security &amp; Global Graph (397 nodes, 628 edges)
+    %% Section: Security &amp; Global Graph (412 nodes, 658 edges)
     subgraph security_global_app_services_data_source_service_ca088eb5["app/services/data_source_service.py"]
+        services_data_source_service_datasourceservice_t_ef0c93e4("test_connection()<br/><small>app/services/data_source_service.py</small>")
         services_data_source_service_datasourceservice_r_8cfeb057("_resolve_data_source_path()<br/><small>app/services/data_source_service.py</small>")
         services_data_source_service_datasourceservice_c_d8f29e6e("create_data_source()<br/><small>app/services/data_source_service.py</small>")
         services_data_source_service_datasourceservice_d_8502d965("delete_data_source()<br/><small>app/services/data_source_service.py</small>")
@@ -2654,21 +2659,24 @@ flowchart LR
         services_data_source_service_datasourceservice_l_240a9ac2("_list_data_source_files()<br/><small>app/services/data_source_service.py</small>")
         services_data_source_service_datasourceservice_l_be960d5f("list_data_sources()<br/><small>app/services/data_source_service.py</small>")
         services_data_source_service_datasourceservice_r_df77a691("_read_data_source_file()<br/><small>app/services/data_source_service.py</small>")
-        services_data_source_service_datasourceservice_w_02914fa6("_write_data_source_file()<br/><small>app/services/data_source_service.py</small>")
-        services_data_source_service_datasourceservice_g_1c2deb0b("get_status()<br/><small>app/services/data_source_service.py</small>")
     end
-    subgraph security_global_services_project_file_manager_py_03af2c6a["services/project/file_manager.py"]
-        project_file_manager_f2ac1d9d("file_manager.py")
-        project_file_manager_filemanager_get_excel_metad_37a3d980("get_excel_metadata()<br/><small>services/project/file_manager.py</small>")
-        project_file_manager_filemanager_get_project_upl_043df730("_get_project_upload_dir()<br/><small>services/project/file_manager.py</small>")
+    subgraph security_global_app_mappers_data_source_mapper_p_31705d5d["app/mappers/data_source_mapper.py"]
+        mappers_data_source_mapper_4876bacd("data_source_mapper.py")
+        mappers_data_source_mapper_datasourcemapper_to_c_a1a1dc35("to_core_config()<br/><small>app/mappers/data_source_mapper.py</small>")
+        mappers_data_source_mapper_datasourcemapper_c0b46609("DataSourceMapper<br/><small>app/mappers/data_source_mapper.py</small>")
     end
     subgraph security_global_src_dispatch_py_36471fa8["src/dispatch.py"]
         src_dispatch_openpyxlexceldispatcher_3eb63f1f("OpenpyxlExcelDispatcher<br/><small>src/dispatch.py</small>")
         src_dispatch_idispatcher_dispatch_7f773365("dispatch()<br/><small>src/dispatch.py</small>")
     end
+    project_file_manager_f2ac1d9d("file_manager.py")
     configuration_config_config_3f7b7525("Config<br/><small>src/configuration/config.py</small>")
     configuration_provider_configstore_9eca0b0d("ConfigStore<br/><small>src/configuration/provider.py</small>")
     src_model_tableconfig_76325215("TableConfig<br/><small>src/model.py</small>")
+    mappers_data_source_mapper_4876bacd -->|method| mappers_data_source_mapper_datasourcemapper_to_c_a1a1dc35
+    mappers_data_source_mapper_4876bacd -->|calls| services_data_source_service_datasourceservice_t_ef0c93e4
+    mappers_data_source_mapper_datasourcemapper_c0b46609 -->|method| mappers_data_source_mapper_datasourcemapper_to_c_a1a1dc35
+    mappers_data_source_mapper_datasourcemapper_c0b46609 -->|calls| services_data_source_service_datasourceservice_t_ef0c93e4
     services_data_source_service_datasourceservice_r_8cfeb057 -->|calls| services_data_source_service_datasourceservice_c_d8f29e6e
     services_data_source_service_datasourceservice_r_8cfeb057 -->|calls| services_data_source_service_datasourceservice_d_8502d965
     services_data_source_service_datasourceservice_r_8cfeb057 -->|calls| services_data_source_service_datasourceservice_l_ada7fc94
@@ -2676,14 +2684,9 @@ flowchart LR
     services_data_source_service_datasourceservice_l_240a9ac2 -->|calls| services_data_source_service_datasourceservice_l_be960d5f
     services_data_source_service_datasourceservice_r_df77a691 -->|calls| services_data_source_service_datasourceservice_l_be960d5f
     services_data_source_service_datasourceservice_r_df77a691 -->|calls| services_data_source_service_datasourceservice_l_ada7fc94
-    services_data_source_service_datasourceservice_w_02914fa6 -->|calls| services_data_source_service_datasourceservice_c_d8f29e6e
-    services_data_source_service_datasourceservice_w_02914fa6 -->|calls| services_data_source_service_datasourceservice_u_9e0c81a7
-    services_data_source_service_datasourceservice_l_ada7fc94 -->|calls| services_data_source_service_datasourceservice_g_1c2deb0b
-    project_file_manager_f2ac1d9d -->|method| project_file_manager_filemanager_get_excel_metad_37a3d980
-    project_file_manager_f2ac1d9d -->|method| project_file_manager_filemanager_get_project_upl_043df730
-    project_file_manager_filemanager_get_project_upl_043df730 -->|calls| project_file_manager_filemanager_get_excel_metad_37a3d980
     src_dispatch_idispatcher_dispatch_7f773365 -->|method| src_dispatch_openpyxlexceldispatcher_3eb63f1f
-    %% Omitted for readability: 379 nodes, 0 edges
+    %% Omitted for readability: 394 nodes, 0 edges
+    class services_data_source_service_datasourceservice_t_ef0c93e4 function;
     class services_data_source_service_datasourceservice_r_8cfeb057 function;
     class services_data_source_service_datasourceservice_c_d8f29e6e function;
     class services_data_source_service_datasourceservice_d_8502d965 function;
@@ -2692,13 +2695,12 @@ flowchart LR
     class services_data_source_service_datasourceservice_l_240a9ac2 function;
     class services_data_source_service_datasourceservice_l_be960d5f function;
     class services_data_source_service_datasourceservice_r_df77a691 function;
-    class services_data_source_service_datasourceservice_w_02914fa6 function;
-    class services_data_source_service_datasourceservice_g_1c2deb0b function;
-    class project_file_manager_f2ac1d9d module;
-    class project_file_manager_filemanager_get_excel_metad_37a3d980 function;
-    class project_file_manager_filemanager_get_project_upl_043df730 function;
+    class mappers_data_source_mapper_4876bacd module;
+    class mappers_data_source_mapper_datasourcemapper_to_c_a1a1dc35 function;
+    class mappers_data_source_mapper_datasourcemapper_c0b46609 klass;
     class src_dispatch_openpyxlexceldispatcher_3eb63f1f klass;
     class src_dispatch_idispatcher_dispatch_7f773365 function;
+    class project_file_manager_f2ac1d9d module;
     class configuration_config_config_3f7b7525 klass;
     class configuration_provider_configstore_9eca0b0d ui;
     class src_model_tableconfig_76325215 klass;
@@ -2970,19 +2972,19 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>src/model.py</code></td><td>114 nodes</td></tr>
+      <tr><td><code>src/model.py</code></td><td>116 nodes</td></tr>
 <tr><td><code>ingesters/sead/utility.py</code></td><td>55 nodes</td></tr>
 <tr><td><code>src/configuration/provider.py</code></td><td>47 nodes</td></tr>
 <tr><td><code>src/configuration/config.py</code></td><td>44 nodes</td></tr>
 <tr><td><code>src/dispatch.py</code></td><td>37 nodes</td></tr>
+<tr><td><code>app/services/data_source_service.py</code></td><td>31 nodes</td></tr>
 <tr><td><code>services/project/file_manager.py</code></td><td>26 nodes</td></tr>
-<tr><td><code>app/services/data_source_service.py</code></td><td>25 nodes</td></tr>
 <tr><td><code>app/core/config.py</code></td><td>13 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: explains x148, references x141, method x141, calls x119. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: explains x155, references x147, method x143, calls x121. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -3094,7 +3096,7 @@ flowchart LR
   <td><code>LoaderType</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/fixed_loader.py</small><br>+21 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br>+21 more</td>
   <td>LoaderType node in src/loaders/base_loader.py.</td>
 </tr>
 <tr>
@@ -3102,7 +3104,7 @@ flowchart LR
   <td><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td><code>ColumnMetadata</code><br><small style="color:var(--muted)">app/models/data_source.py</small><br><code>data_source.py</code><br><small style="color:var(--muted)">app/models/data_source.py</small><br><code>ForeignKeyMetadata</code><br><small style="color:var(--muted)">app/models/data_source.py</small></td>
-  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>connection_time_seconds()</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small><br>+23 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>connection_time_seconds()</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small><br>+23 more</td>
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
@@ -3302,7 +3304,7 @@ flowchart LR
   <td><code>FieldMetadata</code><br><small style="color:var(--muted)">src/loaders/driver_metadata.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br>+17 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br>+17 more</td>
   <td>FieldMetadata node in src/loaders/driver_metadata.py.</td>
 </tr>
 <tr>
@@ -3310,7 +3312,7 @@ flowchart LR
   <td><code>DriverSchema</code><br><small style="color:var(--muted)">src/loaders/driver_metadata.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small><br><code>base_loader.py</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small><br>+4 more</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br>+17 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br>+17 more</td>
   <td>DriverSchema node in src/loaders/driver_metadata.py.</td>
 </tr>
 </table>
@@ -3686,19 +3688,19 @@ flowchart LR
 
 <!-- ====== 12. Entity Specifications Registry ====== -->
 <h2 id="entity-specifications-registry">12. Entity Specifications Registry</h2>
-<p>Entity Specifications Registry groups implementation around entitypy, specifications, entity, validates, mostly in src/specifications/entity.py, src/transforms/extra_columns.py, src/types/fixed_entity_types.py. This section covers 71 nodes and 196 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Entity Specifications Registry groups implementation around entitypy, specifications, entity, validates, mostly in src/specifications/entity.py, src/types/fixed_entity_types.py, src/transforms/extra_columns.py. This section covers 67 nodes and 191 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Entity Specifications Registry (71 nodes, 196 edges)
+    %% Section: Entity Specifications Registry (67 nodes, 191 edges)
     subgraph entity_specifications_registry_src_specification_8e0ecbbc["src/specifications/entity.py"]
         specifications_entity_af95b298("entity.py")
         specifications_entity_dependsonresolvedspecifica_160c9561("DependsOnResolvedSpecification<br/><small>src/specifications/entity.py</small>")
         specifications_entity_foreignkeycolumnsspecifica_2b5ac807("ForeignKeyColumnsSpecification<br/><small>src/specifications/entity.py</small>")
+        specifications_entity_nonfixedidentitycolumnsspe_82896cca("NonFixedIdentityColumnsSpecification<br/><small>src/specifications/entity.py</small>")
         specifications_entity_sqlcolumnconfigurationspec_548f8702("SqlColumnConfigurationSpecification<br/><small>src/specifications/entity.py</small>")
         specifications_entity_sqlcolumnconfigurationspec_145e87b2("is_satisfied_by()<br/><small>src/specifications/entity.py</small>")
-        specifications_entity_nonfixedidentitycolumnsspe_82896cca("NonFixedIdentityColumnsSpecification<br/><small>src/specifications/entity.py</small>")
         specifications_entity_nonfixedidentitycolumnsspe_810d9982("is_satisfied_by()<br/><small>src/specifications/entity.py</small>")
         specifications_entity_dependsonresolvedspecifica_b6ed68ba("is_satisfied_by()<br/><small>src/specifications/entity.py</small>")
         specifications_entity_foreignkeycolumnsspecifica_8afcbb33("is_satisfied_by()<br/><small>src/specifications/entity.py</small>")
@@ -3731,13 +3733,13 @@ flowchart LR
     specifications_entity_af95b298 -->|imports| types_fixed_entity_types_fixedentitycolumntypede_d90b1f88
     specifications_entity_af95b298 -->|imports| types_fixed_entity_types_fixedentitytypeconventi_90a87972
     specifications_entity_af95b298 -->|imports| types_fixed_entity_types_fixedentitytypeconventi_f2769ba9
-    %% Omitted for readability: 53 nodes, 0 edges
+    %% Omitted for readability: 49 nodes, 0 edges
     class specifications_entity_af95b298 test;
     class specifications_entity_dependsonresolvedspecifica_160c9561 test;
     class specifications_entity_foreignkeycolumnsspecifica_2b5ac807 test;
+    class specifications_entity_nonfixedidentitycolumnsspe_82896cca test;
     class specifications_entity_sqlcolumnconfigurationspec_548f8702 test;
     class specifications_entity_sqlcolumnconfigurationspec_145e87b2 test;
-    class specifications_entity_nonfixedidentitycolumnsspe_82896cca test;
     class specifications_entity_nonfixedidentitycolumnsspe_810d9982 test;
     class specifications_entity_dependsonresolvedspecifica_b6ed68ba test;
     class specifications_entity_foreignkeycolumnsspecifica_8afcbb33 test;
@@ -4019,14 +4021,14 @@ flowchart LR
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
       <tr><td><code>src/specifications/entity.py</code></td><td>52 nodes</td></tr>
-<tr><td><code>src/transforms/extra_columns.py</code></td><td>10 nodes</td></tr>
 <tr><td><code>src/types/fixed_entity_types.py</code></td><td>8 nodes</td></tr>
+<tr><td><code>src/transforms/extra_columns.py</code></td><td>6 nodes</td></tr>
 <tr><td><code>src/transforms/dsl.py</code></td><td>1 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: explains x35, contains x24, method x8, imports x6. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: explains x33, contains x22, method x8, imports x5. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -4728,413 +4730,77 @@ flowchart LR
 </div>
 <hr>
 
-<!-- ====== 15. DSL Evaluation ====== -->
-<h2 id="dsl-evaluation">15. DSL Evaluation</h2>
-<p>DSL Evaluation groups implementation around specifications, entitypy, satisfied, check, mostly in src/specifications/entity.py. This section covers 51 nodes and 74 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<!-- ====== 15. Validation Messages & Validators ====== -->
+<h2 id="validation-messages-validators">15. Validation Messages &amp; Validators</h2>
+<p>Validation Messages &amp; Validators groups implementation around data, validators, validatorspy, validate, mostly in src/validators/data_validators.py, src/validation_messages.py, src/validators/__init__.py. This section covers 49 nodes and 92 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: DSL Evaluation (51 nodes, 74 edges)
-    specifications_entity_unnestspecification_is_sat_6f378974("is_satisfied_by()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_entityreferencesexistspeci_12f92215("EntityReferencesExistSpecification<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_extracolumnsexpressionspec_939f3b55("ExtraColumnsExpressionSpecification<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_entityreferencesexistspeci_b38b75e2("is_satisfied_by()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_filterspecification_99315080("FilterSpecification<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_entityfieldsspecification_6abfda38("get_specification()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_entityfieldsspecification_015ed39f("is_satisfied_by()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_appendspecification_get_al_437cbf50("_get_alignable_columns()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_entityreferencesexistspeci_a90931be("is_satisfied_by_dependencies()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_entityreferencesexistspeci_b1441f3e("is_satisfied_by_foreign_keys()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_entityreferencesexistspeci_f44230c7("is_satisfied_by_source()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_extracolumnsexpressionspec_5b3e9aab("_validate_formula_expression()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_extracolumnsexpressionspec_34f88000("_validate_interpolated_expression()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_filterspecification_get_fi_e8dbca73("_get_filter_stage_columns()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_filterspecification_valida_3e059ade("_validate_exists_in_filter()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_foreignkeyspecification_sa_87d360af("same_number_of_join_keys()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_foreignkeyspecification_is_63d571b5("is_satisfied_by()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_extracolumnsexpressionspec_4b501ca5("__init__()<br/><small>src/specifications/entity.py</small>")
-    specifications_entity_entityfieldsspecification_6abfda38 -->|calls| specifications_entity_entityfieldsspecification_015ed39f
-    specifications_entity_entityfieldsspecification_6abfda38 -->|calls| specifications_entity_unnestspecification_is_sat_6f378974
-    specifications_entity_unnestspecification_is_sat_6f378974 -->|method| specifications_entity_entityreferencesexistspeci_12f92215
-    specifications_entity_unnestspecification_is_sat_6f378974 -->|method| specifications_entity_extracolumnsexpressionspec_939f3b55
-    specifications_entity_unnestspecification_is_sat_6f378974 -->|method| specifications_entity_filterspecification_99315080
-    specifications_entity_unnestspecification_is_sat_6f378974 -->|calls| specifications_entity_appendspecification_get_al_437cbf50
-    specifications_entity_unnestspecification_is_sat_6f378974 -->|calls| specifications_entity_entityreferencesexistspeci_a90931be
-    specifications_entity_unnestspecification_is_sat_6f378974 -->|calls| specifications_entity_entityreferencesexistspeci_b1441f3e
-    specifications_entity_unnestspecification_is_sat_6f378974 -->|calls| specifications_entity_entityreferencesexistspeci_f44230c7
-    specifications_entity_unnestspecification_is_sat_6f378974 -->|calls| specifications_entity_extracolumnsexpressionspec_5b3e9aab
-    specifications_entity_unnestspecification_is_sat_6f378974 -->|calls| specifications_entity_extracolumnsexpressionspec_34f88000
-    specifications_entity_unnestspecification_is_sat_6f378974 -->|calls| specifications_entity_filterspecification_get_fi_e8dbca73
-    specifications_entity_unnestspecification_is_sat_6f378974 -->|calls| specifications_entity_filterspecification_valida_3e059ade
-    specifications_entity_unnestspecification_is_sat_6f378974 -->|calls| specifications_entity_foreignkeyspecification_sa_87d360af
-    specifications_entity_foreignkeyspecification_is_63d571b5 -->|calls| specifications_entity_foreignkeyspecification_sa_87d360af
-    specifications_entity_extracolumnsexpressionspec_939f3b55 -->|method| specifications_entity_extracolumnsexpressionspec_4b501ca5
-    specifications_entity_extracolumnsexpressionspec_939f3b55 -->|method| specifications_entity_extracolumnsexpressionspec_5b3e9aab
-    specifications_entity_extracolumnsexpressionspec_939f3b55 -->|method| specifications_entity_extracolumnsexpressionspec_34f88000
-    specifications_entity_entityreferencesexistspeci_12f92215 -->|method| specifications_entity_entityreferencesexistspeci_b38b75e2
-    specifications_entity_entityreferencesexistspeci_12f92215 -->|method| specifications_entity_entityreferencesexistspeci_a90931be
-    specifications_entity_entityreferencesexistspeci_12f92215 -->|method| specifications_entity_entityreferencesexistspeci_b1441f3e
-    specifications_entity_entityreferencesexistspeci_12f92215 -->|method| specifications_entity_entityreferencesexistspeci_f44230c7
-    specifications_entity_entityreferencesexistspeci_b38b75e2 -->|calls| specifications_entity_entityreferencesexistspeci_a90931be
-    specifications_entity_entityreferencesexistspeci_b38b75e2 -->|calls| specifications_entity_entityreferencesexistspeci_b1441f3e
-    %% Omitted for readability: 33 nodes, 4 edges
-    class specifications_entity_unnestspecification_is_sat_6f378974 test;
-    class specifications_entity_entityreferencesexistspeci_12f92215 test;
-    class specifications_entity_extracolumnsexpressionspec_939f3b55 test;
-    class specifications_entity_entityreferencesexistspeci_b38b75e2 test;
-    class specifications_entity_filterspecification_99315080 test;
-    class specifications_entity_entityfieldsspecification_6abfda38 test;
-    class specifications_entity_entityfieldsspecification_015ed39f test;
-    class specifications_entity_appendspecification_get_al_437cbf50 test;
-    class specifications_entity_entityreferencesexistspeci_a90931be test;
-    class specifications_entity_entityreferencesexistspeci_b1441f3e test;
-    class specifications_entity_entityreferencesexistspeci_f44230c7 test;
-    class specifications_entity_extracolumnsexpressionspec_5b3e9aab test;
-    class specifications_entity_extracolumnsexpressionspec_34f88000 test;
-    class specifications_entity_filterspecification_get_fi_e8dbca73 test;
-    class specifications_entity_filterspecification_valida_3e059ade test;
-    class specifications_entity_foreignkeyspecification_sa_87d360af test;
-    class specifications_entity_foreignkeyspecification_is_63d571b5 test;
-    class specifications_entity_extracolumnsexpressionspec_4b501ca5 test;
-    classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
-    classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
-    classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
-    classDef klass fill:#064e3b,stroke:#34d399,color:#d1fae5,stroke-width:1px;
-    classDef ui fill:#831843,stroke:#f472b6,color:#fce7f3,stroke-width:1px;
-    classDef module fill:#172554,stroke:#60a5fa,color:#dbeafe,stroke-width:1px;
-    classDef test fill:#3f3f46,stroke:#a1a1aa,color:#f4f4f5,stroke-width:1px;
-    classDef concept fill:#292524,stroke:#a8a29e,color:#fafaf9,stroke-dasharray:4 3;
-    classDef function fill:#0f172a,stroke:#38bdf8,color:#e0f2fe,stroke-width:1px;
-</div>
-
-<h3>Call Details</h3>
-<table class="call-table">
-<tr>
-  <th style="width:5%">#</th>
-  <th style="width:28%">Node</th>
-  <th style="width:10%">Type</th>
-  <th style="width:17%">Caller</th>
-  <th style="width:20%">Callees</th>
-  <th style="width:20%">Description</th>
-</tr>
-<tr>
-  <td>1</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>2</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Any node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>3</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>4</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>5</td>
-  <td><code>.get_specification()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>.get_specification() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>6</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>get_specification()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>7</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>get_specification()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><code>_get_alignable_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_get_filter_stage_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_validate_exists_in_filter()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br>+9 more</td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>8</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>9</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>same_number_of_join_keys()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>10</td>
-  <td><code>.same_number_of_join_keys()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.same_number_of_join_keys() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>11</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>12</td>
-  <td><code>ExtraColumnsExpressionSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><code>__init__()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_validate_formula_expression()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_validate_interpolated_expression()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br>+1 more</td>
-  <td>ExtraColumnsExpressionSpecification node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>13</td>
-  <td><code>.__init__()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>ExtraColumnsExpressionSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.__init__() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>14</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>ExtraColumnsExpressionSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><code>_validate_formula_expression()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_validate_interpolated_expression()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>15</td>
-  <td><code>._validate_formula_expression()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>ExtraColumnsExpressionSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>._validate_formula_expression() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>16</td>
-  <td><code>._validate_interpolated_expression()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>ExtraColumnsExpressionSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>._validate_interpolated_expression() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>17</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>18</td>
-  <td><code>._get_alignable_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>._get_alignable_columns() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>19</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>_get_alignable_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>20</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>21</td>
-  <td><code>EntityReferencesExistSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by_dependencies()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by_foreign_keys()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br>+1 more</td>
-  <td>EntityReferencesExistSpecification node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>22</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>EntityReferencesExistSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><code>is_satisfied_by_dependencies()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by_foreign_keys()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by_source()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>23</td>
-  <td><code>.is_satisfied_by_source()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>EntityReferencesExistSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by_source() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>24</td>
-  <td><code>.is_satisfied_by_dependencies()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>EntityReferencesExistSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by_dependencies() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>25</td>
-  <td><code>.is_satisfied_by_foreign_keys()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>EntityReferencesExistSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by_foreign_keys() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>26</td>
-  <td><code>FilterSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><code>_get_filter_stage_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_validate_exists_in_filter()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>FilterSpecification node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>27</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>FilterSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><code>_get_filter_stage_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_validate_exists_in_filter()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>28</td>
-  <td><code>._validate_exists_in_filter()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>FilterSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><code>_get_filter_stage_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td>._validate_exists_in_filter() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>29</td>
-  <td><code>._get_filter_stage_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td><code>_validate_exists_in_filter()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>FilterSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br>+1 more</td>
-  <td>No direct outbound edge</td>
-  <td>._get_filter_stage_columns() node in src/specifications/entity.py.</td>
-</tr>
-<tr>
-  <td>30</td>
-  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
-  <td><span class="tag tag-func">Test</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
-</tr>
-</table>
-
-<div class="grid">
-  <div class="card">
-    <h4>Key Files</h4>
-    <table style="width:100%;font-size:0.85rem;">
-      <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>src/specifications/entity.py</code></td><td>51 nodes</td></tr>
-    </table>
-  </div>
-  <div class="card">
-    <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: explains x33, calls x21, method x14, references x6. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
-  </div>
-</div>
-<hr>
-
-<!-- ====== 16. Other ====== -->
-<h2 id="other">16. Other</h2>
-<p>Other groups implementation around frontend, components, sead, ingesters, mostly in src/transforms/dsl.py, src/validators/data_validators.py, ingesters/sead/submission.py. This section covers 666 nodes and 848 internal edges; the diagram shows only representative relationships to stay readable.</p>
-
-<div class="mermaid">
-%%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
-flowchart LR
-    %% Section: Other (666 nodes, 848 edges)
-    subgraph other_app_models_entity_py_6361ab1b["app/models/entity.py"]
-        models_entity_branchconfig_c29bfe29("BranchConfig<br/><small>app/models/entity.py</small>")
-        models_entity_branchconfig_validate_name_794a4086("validate_name()<br/><small>app/models/entity.py</small>")
-        models_entity_entity_validate_name_b59f3151("validate_name()<br/><small>app/models/entity.py</small>")
+    %% Section: Validation Messages &amp; Validators (49 nodes, 92 edges)
+    subgraph validation_messages_validators_src_validators_da_8352ae3d["src/validators/data_validators.py"]
+        validators_data_validators_columnexistsvalidator_7d4f822d("validate()<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_validationissue_d940091b("ValidationIssue<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_columnexistsvalidator_7b644f63("ColumnExistsValidator<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_unresolvedextracolumn_505f2a56("validate()<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_validationissue_post_958968fb("__post_init__()<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_validationissue_to_cs_6783eca4("to_csv()<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_datatypecompatibility_ba599b7a("DataTypeCompatibilityValidator<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_duplicatekeysvalidato_34e7ec3b("DuplicateKeysValidator<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_foreignkeydatavalidat_859cacec("ForeignKeyDataValidator<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_foreignkeyintegrityva_8c78ab91("ForeignKeyIntegrityValidator<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_naturalkeyuniquenessv_073b80b4("NaturalKeyUniquenessValidator<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_nonemptyresultvalidat_3d0d2bff("NonEmptyResultValidator<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_unresolvedextracolumn_8e3189a1("UnresolvedExtraColumnsValidator<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_naturalkeyuniquenessv_284bc116("validate()<br/><small>src/validators/data_validators.py</small>")
+        validators_data_validators_nonemptyresultvalidat_f5d7ded0("validate()<br/><small>src/validators/data_validators.py</small>")
     end
-    subgraph other_app_models_project_py_872124f7["app/models/project.py"]
-        models_project_project_is_resolved_3c14e5eb("is_resolved()<br/><small>app/models/project.py</small>")
-        models_project_project_unresolved_directives_b318ef67("unresolved_directives()<br/><small>app/models/project.py</small>")
+    subgraph validation_messages_validators_src_validation_me_6d2c348c["src/validation_messages.py"]
+        src_validation_messages_format_validation_messag_17e6e83c("message with context()<br/><small>src/validation_messages.py</small>")
+        src_validation_messages_b789d6e1("validation_messages.py")
     end
-    subgraph other_components_entities_EntityFormDialog_vue_e17dd4bb["components/entities/EntityFormDialog.vue"]
-        entities_entityformdialog_handleclose_f4e86f29("handleClose()<br/><small>components/entities/EntityFormDialog.vue</small>")
-        entities_entityformdialog_handlecancel_a476f7ba("handleCancel()<br/><small>components/entities/EntityFormDialog.vue</small>")
-    end
-    subgraph other_ingesters_sead_repository_py_ec5913f5["ingesters/sead/repository.py"]
-        sead_repository_submissionrepository_56efe45a("SubmissionRepository<br/><small>ingesters/sead/repository.py</small>")
-        sead_repository_nullconnection_3df9d105("NullConnection<br/><small>ingesters/sead/repository.py</small>")
-    end
-    subgraph other_src_components_SessionManager_vue_e44d9707["src/components/SessionManager.vue"]
-        components_sessionmanager_handlesave_4496d539("handleSave()<br/><small>src/components/SessionManager.vue</small>")
-        components_sessionmanager_handleclose_8af5e1e2("handleClose()<br/><small>src/components/SessionManager.vue</small>")
-    end
-    validators_target_model_validator_targetmodelval_2e587788("validate()<br/><small>app/validators/target_model_validator.py</small>")
-    entities_foreignkeyeditor_ea99e4dd("ForeignKeyEditor.vue")
-    entities_entityformmaterialization_buildfixedval_15515a4e("buildFixedValuesColumns()<br/><small>components/entities/entityFormMaterialization.ts</small>")
-    sead_submission_submission_50f2f866("Submission<br/><small>ingesters/sead/submission.py</small>")
-    stores_validation_ff799c0e("validation.ts")
-    target_model_spec_validator_targetmodelspecvalid_bbeca3ed("TargetModelSpecValidator<br/><small>src/target_model/spec_validator.py</small>")
     validators_init_4f209873("__init__.py")
-    models_entity_branchconfig_c29bfe29 -->|method| models_entity_branchconfig_validate_name_794a4086
-    models_entity_branchconfig_c29bfe29 -->|method| models_entity_entity_validate_name_b59f3151
-    models_project_project_is_resolved_3c14e5eb -->|calls| models_project_project_unresolved_directives_b318ef67
-    validators_target_model_validator_targetmodelval_2e587788 -->|calls| target_model_spec_validator_targetmodelspecvalid_bbeca3ed
-    components_sessionmanager_handlesave_4496d539 -->|calls| components_sessionmanager_handleclose_8af5e1e2
-    entities_entityformdialog_handleclose_f4e86f29 -->|calls| entities_entityformdialog_handlecancel_a476f7ba
-    %% Omitted for readability: 648 nodes, 0 edges
-    class models_entity_branchconfig_c29bfe29 klass;
-    class models_entity_branchconfig_validate_name_794a4086 function;
-    class models_entity_entity_validate_name_b59f3151 function;
-    class models_project_project_is_resolved_3c14e5eb function;
-    class models_project_project_unresolved_directives_b318ef67 function;
-    class entities_entityformdialog_handleclose_f4e86f29 ui;
-    class entities_entityformdialog_handlecancel_a476f7ba ui;
-    class sead_repository_submissionrepository_56efe45a klass;
-    class sead_repository_nullconnection_3df9d105 klass;
-    class components_sessionmanager_handlesave_4496d539 ui;
-    class components_sessionmanager_handleclose_8af5e1e2 ui;
-    class validators_target_model_validator_targetmodelval_2e587788 function;
-    class entities_foreignkeyeditor_ea99e4dd ui;
-    class entities_entityformmaterialization_buildfixedval_15515a4e function;
-    class sead_submission_submission_50f2f866 klass;
-    class stores_validation_ff799c0e module;
-    class target_model_spec_validator_targetmodelspecvalid_bbeca3ed test;
+    src_validation_messages_format_validation_messag_17e6e83c -->|calls| validators_data_validators_columnexistsvalidator_7d4f822d
+    src_validation_messages_format_validation_messag_17e6e83c -->|calls| validators_data_validators_unresolvedextracolumn_505f2a56
+    validators_data_validators_validationissue_d940091b -->|method| validators_data_validators_validationissue_post_958968fb
+    validators_data_validators_validationissue_d940091b -->|method| validators_data_validators_validationissue_to_cs_6783eca4
+    validators_data_validators_columnexistsvalidator_7b644f63 -->|method| validators_data_validators_columnexistsvalidator_7d4f822d
+    validators_data_validators_columnexistsvalidator_7d4f822d -->|method| validators_data_validators_datatypecompatibility_ba599b7a
+    validators_data_validators_columnexistsvalidator_7d4f822d -->|method| validators_data_validators_duplicatekeysvalidato_34e7ec3b
+    validators_data_validators_columnexistsvalidator_7d4f822d -->|method| validators_data_validators_foreignkeydatavalidat_859cacec
+    validators_data_validators_columnexistsvalidator_7d4f822d -->|method| validators_data_validators_foreignkeyintegrityva_8c78ab91
+    validators_data_validators_columnexistsvalidator_7d4f822d -->|method| validators_data_validators_naturalkeyuniquenessv_073b80b4
+    validators_data_validators_columnexistsvalidator_7d4f822d -->|method| validators_data_validators_nonemptyresultvalidat_3d0d2bff
+    validators_data_validators_columnexistsvalidator_7d4f822d -->|method| validators_data_validators_unresolvedextracolumn_8e3189a1
+    validators_data_validators_naturalkeyuniquenessv_073b80b4 -->|method| validators_data_validators_naturalkeyuniquenessv_284bc116
+    validators_data_validators_nonemptyresultvalidat_3d0d2bff -->|method| validators_data_validators_nonemptyresultvalidat_f5d7ded0
+    validators_data_validators_unresolvedextracolumn_8e3189a1 -->|method| validators_data_validators_unresolvedextracolumn_505f2a56
+    validators_init_4f209873 -->|imports| validators_data_validators_columnexistsvalidator_7b644f63
+    validators_init_4f209873 -->|imports| validators_data_validators_datatypecompatibility_ba599b7a
+    validators_init_4f209873 -->|imports| validators_data_validators_duplicatekeysvalidato_34e7ec3b
+    validators_init_4f209873 -->|imports| validators_data_validators_foreignkeydatavalidat_859cacec
+    validators_init_4f209873 -->|imports| validators_data_validators_foreignkeyintegrityva_8c78ab91
+    validators_init_4f209873 -->|imports| validators_data_validators_naturalkeyuniquenessv_073b80b4
+    validators_init_4f209873 -->|imports| validators_data_validators_nonemptyresultvalidat_3d0d2bff
+    validators_init_4f209873 -->|imports| validators_data_validators_validationissue_d940091b
+    %% Omitted for readability: 31 nodes, 0 edges
+    class validators_data_validators_columnexistsvalidator_7d4f822d function;
+    class validators_data_validators_validationissue_d940091b klass;
+    class validators_data_validators_columnexistsvalidator_7b644f63 klass;
+    class validators_data_validators_unresolvedextracolumn_505f2a56 function;
+    class validators_data_validators_validationissue_post_958968fb function;
+    class validators_data_validators_validationissue_to_cs_6783eca4 function;
+    class validators_data_validators_datatypecompatibility_ba599b7a klass;
+    class validators_data_validators_duplicatekeysvalidato_34e7ec3b klass;
+    class validators_data_validators_foreignkeydatavalidat_859cacec klass;
+    class validators_data_validators_foreignkeyintegrityva_8c78ab91 klass;
+    class validators_data_validators_naturalkeyuniquenessv_073b80b4 klass;
+    class validators_data_validators_nonemptyresultvalidat_3d0d2bff klass;
+    class validators_data_validators_unresolvedextracolumn_8e3189a1 klass;
+    class validators_data_validators_naturalkeyuniquenessv_284bc116 function;
+    class validators_data_validators_nonemptyresultvalidat_f5d7ded0 function;
+    class src_validation_messages_format_validation_messag_17e6e83c function;
+    class src_validation_messages_b789d6e1 module;
     class validators_init_4f209873 module;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
@@ -5404,8 +5070,349 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>src/transforms/dsl.py</code></td><td>48 nodes</td></tr>
-<tr><td><code>src/validators/data_validators.py</code></td><td>42 nodes</td></tr>
+      <tr><td><code>src/validators/data_validators.py</code></td><td>42 nodes</td></tr>
+<tr><td><code>src/validation_messages.py</code></td><td>5 nodes</td></tr>
+<tr><td><code>src/validators/__init__.py</code></td><td>2 nodes</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h4>Design Notes</h4>
+    <p>This section comes from graphify community clustering. Relationship summary: explains x30, references x21, method x17, contains x10. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+  </div>
+</div>
+<hr>
+
+<!-- ====== 16. Other ====== -->
+<h2 id="other">16. Other</h2>
+<p>Other groups implementation around frontend, components, sead, ingesters, mostly in src/specifications/entity.py, src/transforms/dsl.py, ingesters/sead/submission.py. This section covers 673 nodes and 832 internal edges; the diagram shows only representative relationships to stay readable.</p>
+
+<div class="mermaid">
+%%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
+flowchart LR
+    %% Section: Other (673 nodes, 832 edges)
+    subgraph other_app_models_entity_py_6361ab1b["app/models/entity.py"]
+        models_entity_branchconfig_c29bfe29("BranchConfig<br/><small>app/models/entity.py</small>")
+        models_entity_branchconfig_validate_name_794a4086("validate_name()<br/><small>app/models/entity.py</small>")
+        models_entity_entity_validate_name_b59f3151("validate_name()<br/><small>app/models/entity.py</small>")
+    end
+    subgraph other_app_models_project_py_872124f7["app/models/project.py"]
+        models_project_project_is_resolved_3c14e5eb("is_resolved()<br/><small>app/models/project.py</small>")
+        models_project_project_unresolved_directives_b318ef67("unresolved_directives()<br/><small>app/models/project.py</small>")
+    end
+    subgraph other_components_entities_EntityFormDialog_vue_e17dd4bb["components/entities/EntityFormDialog.vue"]
+        entities_entityformdialog_handleclose_f4e86f29("handleClose()<br/><small>components/entities/EntityFormDialog.vue</small>")
+        entities_entityformdialog_handlecancel_a476f7ba("handleCancel()<br/><small>components/entities/EntityFormDialog.vue</small>")
+    end
+    subgraph other_ingesters_sead_repository_py_ec5913f5["ingesters/sead/repository.py"]
+        sead_repository_submissionrepository_56efe45a("SubmissionRepository<br/><small>ingesters/sead/repository.py</small>")
+        sead_repository_nullconnection_3df9d105("NullConnection<br/><small>ingesters/sead/repository.py</small>")
+    end
+    subgraph other_src_components_SessionManager_vue_e44d9707["src/components/SessionManager.vue"]
+        components_sessionmanager_handlesave_4496d539("handleSave()<br/><small>src/components/SessionManager.vue</small>")
+        components_sessionmanager_handleclose_8af5e1e2("handleClose()<br/><small>src/components/SessionManager.vue</small>")
+    end
+    validators_target_model_validator_targetmodelval_2e587788("validate()<br/><small>app/validators/target_model_validator.py</small>")
+    entities_foreignkeyeditor_ea99e4dd("ForeignKeyEditor.vue")
+    entities_entityformmaterialization_buildfixedval_15515a4e("buildFixedValuesColumns()<br/><small>components/entities/entityFormMaterialization.ts</small>")
+    sead_submission_submission_50f2f866("Submission<br/><small>ingesters/sead/submission.py</small>")
+    specifications_entity_unnestspecification_is_sat_6f378974("is_satisfied_by()<br/><small>src/specifications/entity.py</small>")
+    stores_validation_ff799c0e("validation.ts")
+    target_model_spec_validator_targetmodelspecvalid_bbeca3ed("TargetModelSpecValidator<br/><small>src/target_model/spec_validator.py</small>")
+    models_entity_branchconfig_c29bfe29 -->|method| models_entity_branchconfig_validate_name_794a4086
+    models_entity_branchconfig_c29bfe29 -->|method| models_entity_entity_validate_name_b59f3151
+    models_project_project_is_resolved_3c14e5eb -->|calls| models_project_project_unresolved_directives_b318ef67
+    validators_target_model_validator_targetmodelval_2e587788 -->|calls| target_model_spec_validator_targetmodelspecvalid_bbeca3ed
+    components_sessionmanager_handlesave_4496d539 -->|calls| components_sessionmanager_handleclose_8af5e1e2
+    entities_entityformdialog_handleclose_f4e86f29 -->|calls| entities_entityformdialog_handlecancel_a476f7ba
+    %% Omitted for readability: 655 nodes, 0 edges
+    class models_entity_branchconfig_c29bfe29 klass;
+    class models_entity_branchconfig_validate_name_794a4086 function;
+    class models_entity_entity_validate_name_b59f3151 function;
+    class models_project_project_is_resolved_3c14e5eb function;
+    class models_project_project_unresolved_directives_b318ef67 function;
+    class entities_entityformdialog_handleclose_f4e86f29 ui;
+    class entities_entityformdialog_handlecancel_a476f7ba ui;
+    class sead_repository_submissionrepository_56efe45a klass;
+    class sead_repository_nullconnection_3df9d105 klass;
+    class components_sessionmanager_handlesave_4496d539 ui;
+    class components_sessionmanager_handleclose_8af5e1e2 ui;
+    class validators_target_model_validator_targetmodelval_2e587788 function;
+    class entities_foreignkeyeditor_ea99e4dd ui;
+    class entities_entityformmaterialization_buildfixedval_15515a4e function;
+    class sead_submission_submission_50f2f866 klass;
+    class specifications_entity_unnestspecification_is_sat_6f378974 test;
+    class stores_validation_ff799c0e module;
+    class target_model_spec_validator_targetmodelspecvalid_bbeca3ed test;
+    classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
+    classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
+    classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
+    classDef klass fill:#064e3b,stroke:#34d399,color:#d1fae5,stroke-width:1px;
+    classDef ui fill:#831843,stroke:#f472b6,color:#fce7f3,stroke-width:1px;
+    classDef module fill:#172554,stroke:#60a5fa,color:#dbeafe,stroke-width:1px;
+    classDef test fill:#3f3f46,stroke:#a1a1aa,color:#f4f4f5,stroke-width:1px;
+    classDef concept fill:#292524,stroke:#a8a29e,color:#fafaf9,stroke-dasharray:4 3;
+    classDef function fill:#0f172a,stroke:#38bdf8,color:#e0f2fe,stroke-width:1px;
+</div>
+
+<h3>Call Details</h3>
+<table class="call-table">
+<tr>
+  <th style="width:5%">#</th>
+  <th style="width:28%">Node</th>
+  <th style="width:10%">Type</th>
+  <th style="width:17%">Caller</th>
+  <th style="width:20%">Callees</th>
+  <th style="width:20%">Description</th>
+</tr>
+<tr>
+  <td>1</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>2</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Any node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>3</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>4</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>5</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>get_specification()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><code>_get_alignable_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_get_filter_stage_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_validate_exists_in_filter()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br>+9 more</td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>6</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>7</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>same_number_of_join_keys()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>8</td>
+  <td><code>.same_number_of_join_keys()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>.same_number_of_join_keys() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>9</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>10</td>
+  <td><code>ExtraColumnsExpressionSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><code>__init__()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_validate_formula_expression()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_validate_interpolated_expression()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br>+1 more</td>
+  <td>ExtraColumnsExpressionSpecification node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>11</td>
+  <td><code>.__init__()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>ExtraColumnsExpressionSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>.__init__() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>12</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>ExtraColumnsExpressionSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><code>_validate_formula_expression()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_validate_interpolated_expression()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>13</td>
+  <td><code>._validate_formula_expression()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>ExtraColumnsExpressionSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>._validate_formula_expression() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>14</td>
+  <td><code>._validate_interpolated_expression()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>ExtraColumnsExpressionSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>._validate_interpolated_expression() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>15</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>16</td>
+  <td><code>._get_alignable_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>._get_alignable_columns() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>17</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>_get_alignable_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>18</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>19</td>
+  <td><code>EntityReferencesExistSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by_dependencies()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by_foreign_keys()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br>+1 more</td>
+  <td>EntityReferencesExistSpecification node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>20</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>EntityReferencesExistSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><code>is_satisfied_by_dependencies()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by_foreign_keys()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by_source()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>21</td>
+  <td><code>.is_satisfied_by_source()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>EntityReferencesExistSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by_source() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>22</td>
+  <td><code>.is_satisfied_by_dependencies()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>EntityReferencesExistSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by_dependencies() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>23</td>
+  <td><code>.is_satisfied_by_foreign_keys()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>EntityReferencesExistSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by_foreign_keys() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>24</td>
+  <td><code>FilterSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><code>_get_filter_stage_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_validate_exists_in_filter()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>FilterSpecification node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>25</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>FilterSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><code>_get_filter_stage_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>_validate_exists_in_filter()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>26</td>
+  <td><code>._validate_exists_in_filter()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>FilterSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><code>_get_filter_stage_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td>._validate_exists_in_filter() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>27</td>
+  <td><code>._get_filter_stage_columns()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td><code>_validate_exists_in_filter()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>FilterSpecification</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br><code>is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small><br>+1 more</td>
+  <td>No direct outbound edge</td>
+  <td>._get_filter_stage_columns() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>28</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>29</td>
+  <td><code>.is_satisfied_by()</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Test</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.is_satisfied_by() node in src/specifications/entity.py.</td>
+</tr>
+<tr>
+  <td>30</td>
+  <td><code>Check that fields are for the entity.</code><br><small style="color:var(--muted)">src/specifications/entity.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Design note for Check that fields are for the entity..</td>
+</tr>
+</table>
+
+<div class="grid">
+  <div class="card">
+    <h4>Key Files</h4>
+    <table style="width:100%;font-size:0.85rem;">
+      <tr><th>File</th><th>Coverage</th></tr>
+      <tr><td><code>src/specifications/entity.py</code></td><td>57 nodes</td></tr>
+<tr><td><code>src/transforms/dsl.py</code></td><td>48 nodes</td></tr>
 <tr><td><code>ingesters/sead/submission.py</code></td><td>29 nodes</td></tr>
 <tr><td><code>components/entities/fixedValuesGridClipboard.ts</code></td><td>23 nodes</td></tr>
 <tr><td><code>ingesters/sead/repository.py</code></td><td>22 nodes</td></tr>
@@ -5416,7 +5423,7 @@ flowchart LR
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x300, calls x127, explains x117, references x108. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x286, calls x146, explains x124, references x95. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -5430,7 +5437,7 @@ flowchart LR
       <tr><td>Nodes</td><td>6300</td></tr>
       <tr><td>Edges</td><td>18945</td></tr>
       <tr><td>Hyperedges</td><td>0</td></tr>
-      <tr><td>Communities</td><td>220</td></tr>
+      <tr><td>Communities</td><td>221</td></tr>
       <tr><td>Documented Sections</td><td>15</td></tr>
     </table>
   </div>
@@ -5446,7 +5453,7 @@ flowchart LR
 
 <div style="text-align:center; padding:40px 0; color: var(--muted); font-size:0.9rem;">
   <p>sead_shape_shifter — Architecture Documentation</p>
-  <p>Generated: 2026-06-15 11:13 UTC · graphify callflow-html</p>
+  <p>Generated: 2026-06-15 12:09 UTC · graphify callflow-html</p>
 </div>
 
 </div><!-- .container -->
