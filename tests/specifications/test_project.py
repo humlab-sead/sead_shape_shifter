@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.specifications.base import SpecificationIssue
+from src.specifications.base import ProjectSpecification, SpecificationIssue
 from src.specifications.project import (
     CircularDependencySpecification,
     CompositeProjectSpecification,
@@ -301,10 +301,10 @@ class TestCompositeProjectSpecification:
         """Test get_default_specifications returns proper list."""
         spec = CompositeProjectSpecification(valid_project_cfg)
 
-        specs = spec.get_default_specifications()
+        specs: list[ProjectSpecification] = spec.get_default_specifications()
 
         assert isinstance(specs, list)
-        assert len(specs) == 3
+        assert len(specs) == 4
 
     def test_custom_specifications(self, valid_project_cfg):
         """Test using custom specifications."""
