@@ -24,7 +24,6 @@ from src.utility import load_shape_file
 def resolve_config(project: ShapeShiftProject | str, env_file: str | None = None) -> ShapeShiftProject:
     """Resolve the project configuration from a file or object."""
     if isinstance(project, str):
-
         if not Path(project).exists():
             raise FileNotFoundError(f"Project file not found: {project}")
 
@@ -67,7 +66,6 @@ async def workflow(
 
     # Note: add_system_id_columns, add_public_id_columns, and move_keys_to_front
     # are now called within normalize() to ensure materialized entities get identity columns
-    shapeshifter.map_to_remote(project.mappings)
     shapeshifter.store(target=target, mode=target_type)
     shapeshifter.log_shapes(target=target)
 
