@@ -164,7 +164,7 @@ class MappingSidecarSpecification(ProjectSpecification):
         super().__init__(project_cfg)
         self._mapping_catalog: MappingCatalog | None = mapping_catalog
 
-    def is_satisfied_by(self, *, entity_name: str = "", **kwargs) -> bool:
+    def is_satisfied_by(self, **kwargs) -> bool:
         """Validate sidecar entity mappings against project entity configs."""
         self.clear()
 
