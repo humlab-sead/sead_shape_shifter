@@ -43,7 +43,7 @@ def encode_local_key(local_key: Union[str, list[str]], values: Any) -> str:
         return _encode_single(values)
 
     # Multi-column compound key – pair values with column positions.
-    parts = [_encode_single(v) for v in values]
+    parts: list[str] = [_encode_single(v) for v in values]
     return _COMPOUND_SEPARATOR.join(parts)
 
 
@@ -64,7 +64,7 @@ def decode_local_key(local_key: Union[str, list[str]], encoded: str) -> list[str
         return [_decode_single(encoded)]
 
     # Split on unescaped pipes only.
-    parts = _split_compound(encoded)
+    parts: list[str] = _split_compound(encoded)
     return [_decode_single(p) for p in parts]
 
 
@@ -189,7 +189,7 @@ class MappingCatalog(BaseModel):
 
     def get_link(self, entity_name: str, local_key_value: str) -> Optional[Link]:
         """Return the link for *entity_name* / *local_key_value*, or ``None``."""
-        entity = self.entities.get(entity_name)
+        entity: EntityMapping | None = self.entities.get(entity_name)
         if entity is None:
             return None
         return entity.links.get(local_key_value)
@@ -209,14 +209,14 @@ class MappingCatalog(BaseModel):
 
     def committed_links_by_entity(self, entity_name: str) -> dict[str, Link]:
         """Return only links with a non-null ``committed_at`` for *entity_name*."""
-        entity = self.entities.get(entity_name)
+        entity: EntityMapping | None = self.entities.get(entity_name)
         if entity is None:
             return {}
         return {k: v for k, v in entity.links.items() if v.committed_at is not None}
 
     def draft_links_by_entity(self, entity_name: str) -> dict[str, Link]:
         """Return only links whose ``committed_at`` is null for *entity_name*."""
-        entity = self.entities.get(entity_name)
+        entity: EntityMapping | None = self.entities.get(entity_name)
         if entity is None:
             return {}
         return {k: v for k, v in entity.links.items() if v.committed_at is None}
