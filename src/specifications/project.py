@@ -1,11 +1,19 @@
-from typing import Any
+from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
+from loguru import logger
+
+from src.model import TableConfig
 from src.utility import dotget
 
 from .base import ProjectSpecification
 from .entity import EntitySpecification
 
-# pylint: disable=line-too-long, unused-argument
+if TYPE_CHECKING:
+    from src.reconciliation.mapping_model import MappingCatalog
+
+# pylint: disable=line-too-long, unused-argument, import-outside-toplevel
 
 
 class CircularDependencySpecification(ProjectSpecification):
@@ -37,8 +45,8 @@ class CircularDependencySpecification(ProjectSpecification):
                         return True
                 elif neighbor in rec_stack:
                     # Found cycle
-                    cycle_start = path.index(neighbor)
-                    cycle_path = " -> ".join(path[cycle_start:] + [neighbor])
+                    cycle_start: int = path.index(neighbor)
+                    cycle_path: str = " -> ".join(path[cycle_start:] + [neighbor])
                     self.add_error(f"Circular dependency detected: {cycle_path}", entity="configuration")
                     return True
 
@@ -71,16 +79,16 @@ class DataSourceExistsSpecification(ProjectSpecification):
         """Check if all referenced data sources exist."""
         self.clear()
 
-        entities_config = self.project_cfg.get("entities", {})
-        options = self.project_cfg.get("options", {})
-        data_sources = options.get("data_sources", {})
+        entities_config: dict[str, dict] = self.project_cfg.get("entities", {})
+        options: dict[str, dict] = self.project_cfg.get("options", {})
+        data_sources: dict[str, dict] = options.get("data_sources", {})
 
         if not entities_config:
             return True
 
         for entity_name, entity_data in entities_config.items():
             # Check entity data_source
-            data_source = entity_data.get("data_source")
+            data_source: str | None = entity_data.get("data_source")
             if data_source and isinstance(data_source, str):
                 if data_source != "@internal" and data_source not in data_sources:
                     self.add_error(
@@ -90,12 +98,12 @@ class DataSourceExistsSpecification(ProjectSpecification):
                     )
 
             # Check append configurations
-            append_configs = entity_data.get("append", []) or []
+            append_configs: list[dict] = entity_data.get("append", []) or []
             if append_configs and not isinstance(append_configs, list):
                 append_configs = [append_configs]
 
             for idx, append_cfg in enumerate(append_configs):
-                append_data_source = append_cfg.get("data_source")
+                append_data_source: str | None = append_cfg.get("data_source")
                 if append_data_source and isinstance(append_data_source, str):
                     if append_data_source != "@internal" and append_data_source not in data_sources:
                         self.add_error(
@@ -141,6 +149,54 @@ class IsProjectSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+class MappingSidecarSpecification(ProjectSpecification):
+    """Validates that the mapping sidecar is consistent with entity configuration.
+
+    Runs ``validate_entity_mapping`` and ``validate_local_key`` for every
+    entity that appears in both the sidecar catalog and the project config.
+
+    When no *mapping_catalog* is provided the specification is a no-op,
+    allowing it to be registered in the default pipeline before a catalog
+    is available.
+    """
+
+    def __init__(self, project_cfg: dict[str, Any], mapping_catalog: MappingCatalog | None = None) -> None:
+        super().__init__(project_cfg)
+        self._mapping_catalog: MappingCatalog | None = mapping_catalog
+
+    def is_satisfied_by(self, *, entity_name: str = "", **kwargs) -> bool:
+        """Validate sidecar entity mappings against project entity configs."""
+        self.clear()
+
+        if self._mapping_catalog is None:
+            return True  # No catalog to validate — not an error.
+
+        from src.reconciliation.mapping_validator import (  # deferred to avoid import-time coupling
+            SidecarValidationError,
+            validate_entity_mapping,
+            validate_local_key,
+        )
+
+        for entity_name, entity_mapping in self._mapping_catalog.entities.items():
+            if not self.entity_exists(entity_name):
+                logger.debug(f"Sidecar entity '{entity_name}' not found in project config; skipping validation.")
+                continue
+
+            entity_config: TableConfig = self.get_entity(entity_name)
+
+            try:
+                validate_entity_mapping(entity_mapping, entity_config)
+            except SidecarValidationError as exc:
+                self.add_error(str(exc), entity=entity_name, field="public_id")
+
+            try:
+                validate_local_key(entity_mapping, entity_config)
+            except SidecarValidationError as exc:
+                self.add_error(str(exc), entity=entity_name, field="local_key")
+
+        return not self.has_errors()
+
+
 class CompositeProjectSpecification(ProjectSpecification):
     """Composite specification that runs multiple project-level validation specifications.
 
@@ -163,6 +219,7 @@ class CompositeProjectSpecification(ProjectSpecification):
             EntitiesSpecification(self.project_cfg),
             CircularDependencySpecification(self.project_cfg),
             DataSourceExistsSpecification(self.project_cfg),
+            MappingSidecarSpecification(self.project_cfg),
         ]
 
     def is_satisfied_by(self, **kwargs) -> bool:

@@ -10,6 +10,7 @@ from .project import (
     CompositeProjectSpecification,
     DataSourceExistsSpecification,
     EntitiesSpecification,
+    MappingSidecarSpecification,
 )
 
 FIELD_VALIDATORS.scan(__name__, Path(__file__).parent)
