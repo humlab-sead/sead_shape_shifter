@@ -1,5 +1,6 @@
 """Unit tests for arbodat normalizer classes."""
 
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
@@ -10,6 +11,7 @@ import pytest
 from src.loaders.base_loader import DataLoader
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ProcessState, ShapeShifter
+from src.reconciliation.mapping_model import EntityMapping, Link, LinkSource, MappingCatalog, Metadata, encode_local_key
 from src.table_store import TableStore
 
 # pylint: disable=redefined-outer-name
@@ -872,28 +874,194 @@ class TestShapeShifter:
             # Should be called for all entities including survey
             assert mock_unnest.call_count == 3
 
-    def test_map_to_remote_links_only_configured_entities(self, survey_and_site_config: ShapeShiftProject):
-        """map_to_remote should link only entities present in link config."""
-        table_store = {
-            "survey": pd.DataFrame({"id": [1]}),
-            "site": pd.DataFrame({"site_id": [10]}),
-            "other": pd.DataFrame({"x": [1]}),
-        }
-        normalizer = ShapeShifter(project=survey_and_site_config, default_entity="survey", table_store=TableStore(table_store))
+    @pytest.mark.asyncio
+    async def test_normalize_applies_sidecar_public_id_links(self, tmp_path: Path):
+        """Normalization should populate public_id from committed sidecar links."""
+        project_dir = tmp_path / "demo-project"
+        project_dir.mkdir()
+        project_file = project_dir / "shapeshifter.yml"
+        project_file.write_text("entities: {}\n", encoding="utf-8")
 
-        mocked_service = Mock()
-        mocked_service.link_to_remote = Mock(return_value=pd.DataFrame({"site_id": [10], "remote_id": [99]}))
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "sample": {
+                        "type": "entity",
+                        "source": "survey",
+                        "public_id": "sample_id",
+                        "keys": ["sample_code"],
+                        "columns": ["sample_code", "sample_name"],
+                    }
+                }
+            },
+            filename=str(project_file),
+        )
+        sidecar = MappingCatalog(
+            metadata=Metadata(project="demo-project", created_at=datetime(2026, 1, 1, tzinfo=timezone.utc)),
+            entities={
+                "sample": EntityMapping(
+                    local_key="sample_code",
+                    public_id="sample_id",
+                    links={
+                        "S1": Link(
+                            target_id=101,
+                            source=LinkSource.MANUAL,
+                            created_by="tester",
+                            created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                            committed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                        )
+                    },
+                )
+            },
+        )
+        normalizer = ShapeShifter(
+            project=project,
+            default_entity="survey",
+            table_store=TableStore({"survey": pd.DataFrame({"sample_code": ["S1", "S2"], "sample_name": ["A", "B"]})}),
+        )
 
-        with patch("src.normalizer.LinkToRemoteService", return_value=mocked_service) as mock_service:
-            normalizer.map_to_remote({"site": {"remote": "cfg"}})
+        with patch.object(normalizer.mapping_manager, "load", return_value=sidecar) as mock_load:
+            await normalizer.normalize()
 
-        mock_service.assert_called_once()
-        assert mocked_service.link_to_remote.call_count == 1
-        called_entity, passed_df = mocked_service.link_to_remote.call_args.args
-        assert called_entity == "site"
-        assert "site_id" in passed_df.columns
-        assert "remote_id" in normalizer.table_store["site"].columns
-        pd.testing.assert_frame_equal(normalizer.table_store["other"], table_store["other"])
+        mock_load.assert_called_once_with(str(project_file))
+        assert normalizer.table_store["sample"]["sample_id"].iloc[0] == 101
+        assert pd.isna(normalizer.table_store["sample"]["sample_id"].iloc[1])
+
+    @pytest.mark.asyncio
+    async def test_normalize_without_sidecar_keeps_existing_public_id_behavior(self, tmp_path: Path):
+        """Normalization without a sidecar should still add an empty public_id column."""
+        project_dir = tmp_path / "demo-project"
+        project_dir.mkdir()
+        project_file = project_dir / "shapeshifter.yml"
+        project_file.write_text("entities: {}\n", encoding="utf-8")
+
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "sample": {
+                        "type": "entity",
+                        "source": "survey",
+                        "public_id": "sample_id",
+                        "keys": ["sample_code"],
+                        "columns": ["sample_code"],
+                    }
+                }
+            },
+            filename=str(project_file),
+        )
+        normalizer = ShapeShifter(
+            project=project,
+            default_entity="survey",
+            table_store=TableStore({"survey": pd.DataFrame({"sample_code": ["S1", "S2"]})}),
+        )
+
+        await normalizer.normalize()
+
+        assert "sample_id" in normalizer.table_store["sample"].columns
+        assert normalizer.table_store["sample"]["sample_id"].isna().all()
+
+    @pytest.mark.asyncio
+    async def test_normalize_prefers_manual_over_reconciliation_links(self, tmp_path: Path):
+        """Manual committed links should win over reconciliation links for the same key."""
+        project_dir = tmp_path / "demo-project"
+        project_dir.mkdir()
+        project_file = project_dir / "shapeshifter.yml"
+        project_file.write_text("entities: {}\n", encoding="utf-8")
+
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "sample": {
+                        "type": "entity",
+                        "source": "survey",
+                        "public_id": "sample_id",
+                        "keys": ["sample_code", "site_code"],
+                        "columns": ["site_code", "sample_code"],
+                    }
+                }
+            },
+            filename=str(project_file),
+        )
+        encoded_key = encode_local_key(["site_code", "sample_code"], ["SEAD", "S1"])
+        sidecar = MappingCatalog(
+            metadata=Metadata(project="demo-project", created_at=datetime(2026, 1, 1, tzinfo=timezone.utc)),
+            entities={
+                "sample": EntityMapping(
+                    local_key=["site_code", "sample_code"],
+                    public_id="sample_id",
+                    links={
+                        encoded_key: Link(
+                            target_id=101,
+                            source=LinkSource.MANUAL,
+                            created_by="tester",
+                            created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                            committed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                        )
+                    },
+                )
+            },
+        )
+        normalizer = ShapeShifter(
+            project=project,
+            default_entity="survey",
+            table_store=TableStore({"survey": pd.DataFrame({"site_code": ["SEAD"], "sample_code": ["S1"]})}),
+        )
+
+        with patch.object(normalizer.mapping_manager, "load", return_value=sidecar):
+            await normalizer.normalize()
+
+        assert normalizer.table_store["sample"]["sample_id"].tolist() == [101]
+
+    @pytest.mark.asyncio
+    async def test_normalize_skips_draft_sidecar_links(self, tmp_path: Path):
+        """Draft sidecar links must not be applied during normalization."""
+        project_dir = tmp_path / "demo-project"
+        project_dir.mkdir()
+        project_file = project_dir / "shapeshifter.yml"
+        project_file.write_text("entities: {}\n", encoding="utf-8")
+
+        project = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "sample": {
+                        "type": "entity",
+                        "source": "survey",
+                        "public_id": "sample_id",
+                        "keys": ["sample_code"],
+                        "columns": ["sample_code"],
+                    }
+                }
+            },
+            filename=str(project_file),
+        )
+        sidecar = MappingCatalog(
+            metadata=Metadata(project="demo-project", created_at=datetime(2026, 1, 1, tzinfo=timezone.utc)),
+            entities={
+                "sample": EntityMapping(
+                    local_key="sample_code",
+                    public_id="sample_id",
+                    links={
+                        "S1": Link(
+                            target_id=101,
+                            source=LinkSource.MANUAL,
+                            created_by="tester",
+                            created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                            committed_at=None,
+                        )
+                    },
+                )
+            },
+        )
+        normalizer = ShapeShifter(
+            project=project,
+            default_entity="survey",
+            table_store=TableStore({"survey": pd.DataFrame({"sample_code": ["S1"]})}),
+        )
+
+        with patch.object(normalizer.mapping_manager, "load", return_value=sidecar):
+            await normalizer.normalize()
+
+        assert normalizer.table_store["sample"]["sample_id"].tolist() == [None]
 
     def test_log_shapes_writes_tsv(self, tmp_path: Path, survey_only_config: ShapeShiftProject):
         """log_shapes should write table shapes TSV next to target."""
