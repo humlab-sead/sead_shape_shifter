@@ -12,6 +12,8 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field
 
+# pylint: disable=no-member, comparison-with-itself
+
 # ---------------------------------------------------------------------------
 # Compound-key encoding helpers
 # ---------------------------------------------------------------------------
