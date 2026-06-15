@@ -10,7 +10,7 @@ from click.testing import CliRunner
 from backend.app.core.config import Settings
 from backend.app.models.ingester import IngesterMetadataResponse, IngestResponse, ValidateResponse
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, import-outside-toplevel
 
 
 @pytest.fixture
