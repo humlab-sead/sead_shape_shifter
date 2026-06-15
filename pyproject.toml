@@ -135,7 +135,6 @@ max-args = 10
 # Import sorting (handled by Ruff)
 [tool.isort]
 line_length = 142
-# multi_line_output = 3
 profile = "black"
 
 # --------------------
