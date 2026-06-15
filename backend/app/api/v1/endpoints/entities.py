@@ -10,12 +10,19 @@ from pydantic import BaseModel, Field, field_validator
 from backend.app.models.project import Project
 from backend.app.services.entity_generator_service import EntityGeneratorService, get_entity_generator_service
 from backend.app.services.entity_values_service import EntityValuesData, EntityValuesService, get_entity_values_service
+from backend.app.services.materialization_service import MaterializationService
 from backend.app.services.project.entity_operations import compute_entity_etag
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.fixed_schema import FixedSchema, derive_fixed_schema
 
 router = APIRouter()
+
+
+def get_materialization_service() -> MaterializationService:
+    """Create a materialization service bound to the current project service."""
+    return MaterializationService(get_project_service())
+
 
 # pylint: disable=no-member, redefined-builtin
 
@@ -378,6 +385,17 @@ async def update_entity_values(
         raise HTTPException(status_code=422, detail=str(e)) from e
 
     logger.info(f"Updated {result.row_count} rows for entity '{entity_name}' in '{project_name}'")
+
+    sync_result = get_materialization_service().sync_materialized_entity_mappings(
+        project_name=project_name,
+        entity_name=entity_name,
+        columns=request.columns,
+        values=request.values,
+        require_materialized=False,
+    )
+    if not sync_result.success:
+        raise HTTPException(status_code=500, detail=sync_result.errors[0] if sync_result.errors else "Mapping sync failed")
+
     return EntityValuesResponse(
         columns=result.columns,
         values=result.values,

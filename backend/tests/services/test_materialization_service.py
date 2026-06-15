@@ -1,5 +1,6 @@
 """Tests for materialization service."""
 
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, Mock, patch
 
 import pandas as pd
@@ -16,6 +17,7 @@ from backend.app.services.project.entity_persistence_strategies import EntityPer
 from backend.app.services.project_service import ProjectService
 from src.model import MaterializationConfig, ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
+from src.reconciliation.mapping_model import EntityMapping, EntityType, Link, LinkSource, MappingCatalog, Metadata
 from src.specifications.materialize import CanMaterializeSpecification
 from src.types.fixed_entity_types import FixedEntityTypeConvention
 
@@ -695,3 +697,81 @@ class TestStoreProject:
             materialization_service._store_project(mock_api_project)
 
         assert "Failed to save project configuration" in str(exc_info.value)
+
+
+class TestSyncMaterializedEntityMappings:
+    """Tests for syncing saved materialized rows into the mapping sidecar."""
+
+    def test_sync_materialized_entity_mappings_replaces_manual_links_and_preserves_reconciliation_links(
+        self,
+        materialization_service,
+        mock_project_service,
+        mock_api_project,
+        mock_core_project,
+        mock_table_config,
+    ):
+        """Saved materialized rows should fully replace manual links for the entity."""
+        now = datetime.now(timezone.utc)
+        mock_table_config.is_materialized = True
+        mock_api_project.filename = "/tmp/test-project/shapeshifter.yml"
+        mock_api_project.entities = {
+            "location": {
+                "type": "fixed",
+                "public_id": "location_id",
+                "keys": ["location_name"],
+                "columns": ["system_id", "location_id", "location_name"],
+                "values": "@load:materialized/location.parquet",
+                "materialized": {
+                    "enabled": True,
+                    "source_state": {"type": "csv", "public_id": "location_id", "keys": ["location_name"]},
+                    "materialized_at": "2026-06-15T00:00:00Z",
+                },
+            }
+        }
+        mock_project_service.load_project.return_value = mock_api_project
+
+        catalog = MappingCatalog(
+            metadata=Metadata(project="test-project", created_at=now, updated_at=now),
+            entities={
+                "location": EntityMapping(
+                    local_key="location_name",
+                    public_id="location_id",
+                    entity_type=EntityType.PRIMARY,
+                    links={
+                        "Legacy": Link(
+                            target_id=999,
+                            source=LinkSource.RECONCILIATION,
+                            created_by="system",
+                            committed_at=now,
+                        ),
+                        "OldManual": Link(
+                            target_id=1,
+                            source=LinkSource.MANUAL,
+                            created_by="user",
+                            committed_at=now,
+                        ),
+                    },
+                )
+            },
+        )
+
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
+            with patch("backend.app.services.materialization_service.MappingManager.load", return_value=catalog):
+                with patch("backend.app.services.materialization_service.MappingManager.save") as mock_save:
+                    result = materialization_service.sync_materialized_entity_mappings(
+                        "test-project",
+                        "location",
+                        columns=["system_id", "location_id", "location_name"],
+                        values=[[1, 101, "Norway"], [2, None, "Sweden"], [3, 303, "Denmark"]],
+                        created_by="corr-123",
+                    )
+
+        assert result.success is True
+        assert result.manual_links_replaced == 2
+        assert set(catalog.entities["location"].links) == {"Legacy", "Norway", "Denmark"}
+        assert catalog.entities["location"].links["Legacy"].source == LinkSource.RECONCILIATION
+        assert catalog.entities["location"].links["Norway"].source == LinkSource.MANUAL
+        assert catalog.entities["location"].links["Norway"].target_id == 101
+        assert catalog.entities["location"].links["Norway"].created_by == "corr-123"
+        assert catalog.entities["location"].links["Denmark"].target_id == 303
+        mock_save.assert_called_once()
