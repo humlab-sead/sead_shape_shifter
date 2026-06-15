@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from backend.app.core.config import settings
 from backend.app.main import app
 from backend.app.services import project_service, validation_service, yaml_service
+from src.normalizer import ShapeShifter
 
 client = TestClient(app)
 
@@ -34,6 +35,32 @@ def _write_project(tmp_path: Path) -> None:
     }
     with open(project_dir / "shapeshifter.yml", "w", encoding="utf-8") as handle:
         yaml.dump(project_data, handle)
+
+
+def _write_project_with_blank_public_ids(tmp_path: Path) -> Path:
+    project_dir = tmp_path / "test_project"
+    project_dir.mkdir(exist_ok=True)
+    project_path = project_dir / "shapeshifter.yml"
+    project_data = {
+        "metadata": {
+            "type": "shapeshifter-project",
+            "name": "test_project",
+            "description": "A test project",
+            "version": "1.0.0",
+        },
+        "entities": {
+            "sample": {
+                "type": "fixed",
+                "public_id": "sample_id",
+                "keys": ["sample_code"],
+                "columns": ["system_id", "sample_id", "sample_code"],
+                "values": [[1, None, "A"], [2, None, "B"]],
+            }
+        },
+    }
+    with open(project_path, "w", encoding="utf-8") as handle:
+        yaml.dump(project_data, handle)
+    return project_path
 
 
 def _write_reconciliation_catalog(tmp_path: Path) -> None:
@@ -65,6 +92,39 @@ def _write_reconciliation_catalog(tmp_path: Path) -> None:
                             "target_id": None,
                             "will_not_match": True,
                             "notes": "No SEAD match",
+                        },
+                    ],
+                }
+            }
+        },
+    }
+    with open(tmp_path / "test_project" / "test_project-reconciliation.yml", "w", encoding="utf-8") as handle:
+        yaml.dump(catalog, handle, sort_keys=False)
+
+
+def _write_sample_reconciliation_catalog(tmp_path: Path) -> None:
+    catalog = {
+        "version": "2.0",
+        "service_url": "http://localhost:8000",
+        "entities": {
+            "sample": {
+                "sample_code": {
+                    "source": None,
+                    "property_mappings": {},
+                    "remote": {"service_type": "sample", "columns": []},
+                    "auto_accept_threshold": 0.95,
+                    "review_threshold": 0.7,
+                    "mapping": [
+                        {
+                            "source_value": "A",
+                            "target_id": 101,
+                            "confidence": 0.98,
+                            "notes": "Matched by reconciliation",
+                        },
+                        {
+                            "source_value": "B",
+                            "target_id": 202,
+                            "confidence": 0.88,
                         },
                     ],
                 }
@@ -170,3 +230,30 @@ class TestReconciliationExportApi:
         assert links["A"]["source"] == "manual"
         assert links["B"]["target_id"] == 202
         assert links["B"]["source"] == "reconciliation"
+
+    def test_export_to_mapping_returns_404_when_reconciliation_catalog_is_missing(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        _write_project(tmp_path)
+
+        response = client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "No reconciliation registry for entity 'site' target 'site_code'"
+
+    def test_exported_links_are_applied_during_normalization(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        project_path = _write_project_with_blank_public_ids(tmp_path)
+        _write_sample_reconciliation_catalog(tmp_path)
+
+        response = client.post("/api/v1/projects/test_project/reconciliation/sample/sample_code/export-to-mapping")
+
+        assert response.status_code == 200
+
+        normalizer = ShapeShifter(project=str(project_path))
+
+        import asyncio
+
+        asyncio.run(normalizer.normalize())
+
+        sample_table = normalizer.table_store["sample"]
+        assert sample_table["sample_id"].tolist() == [101, 202]
