@@ -69,7 +69,7 @@ ruff:
 	@uv run ruff check --fix --output-format concise src tests backend ingesters
 
 .PHONY: tidy
-tidy: update-graphify
+tidy:
 	@uv run isort src tests backend ingesters
 	@uv run black src tests backend ingesters
 
