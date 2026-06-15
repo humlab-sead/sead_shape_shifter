@@ -27,6 +27,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.core.config import settings
+from backend.app.exceptions import ConfigurationError
 from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityConfigMapperFactory, EntityMapperContext
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models import (
@@ -36,7 +37,10 @@ from backend.app.models import (
 )
 from backend.app.utils import convert_ruamel_types
 from src.configuration.config import Config
-from src.model import ShapeShiftProject
+from src.model import ShapeShiftProject, TableConfig
+from src.reconciliation.mapping_manager import MappingManager
+from src.reconciliation.mapping_model import MappingCatalog
+from src.reconciliation.mapping_validator import SidecarValidationError, validate_entity_mapping, validate_local_key
 from src.types.fixed_entity_types import (
     FixedEntityColumnTypeDeclarationError,
     FixedEntityNormalizationWarning,
@@ -52,6 +56,27 @@ from src.types.fixed_entity_types import (
 
 class ProjectMapper:
     """Bidirectional mapper between core and API project models."""
+
+    @staticmethod
+    def _validate_mapping_sidecar(project: ShapeShiftProject, project_path: str | None) -> None:
+        """Validate mapping sidecar entries against resolved entity configuration."""
+        if not project_path:
+            return
+
+        catalog: MappingCatalog = MappingManager().load(project_path)
+
+        for entity_name, entity_mapping in catalog.entities.items():
+            if not project.has_table(entity_name):
+                logger.debug(f"Sidecar entity '{entity_name}' not found in project config; skipping validation.")
+                continue
+
+            entity_config: TableConfig = project.get_table(entity_name)
+
+            try:
+                validate_entity_mapping(entity_mapping, entity_config)
+                validate_local_key(entity_mapping, entity_config)
+            except SidecarValidationError as exc:
+                raise ConfigurationError(message=str(exc), specification="MappingSidecarSpecification") from exc
 
     @staticmethod
     def _collect_load_warnings(cfg_dict: dict[str, Any], project_name: str, filename: str | None = None) -> list[str]:
@@ -265,6 +290,8 @@ class ProjectMapper:
                 env_prefix=settings.env_prefix,
                 env_filename=settings.env_file,
             )
+
+        ProjectMapper._validate_mapping_sidecar(project, api_config.filename)
 
         return project
 
