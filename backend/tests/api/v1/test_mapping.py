@@ -93,6 +93,18 @@ class TestMappingApi:
         assert body["public_id"] == "site_id"
         assert body["links"] == {}
 
+    def test_get_entity_mapping_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        _write_project(tmp_path)
+
+        response = client.get("/api/v1/projects/test_project/mapping/missing")
+
+        assert response.status_code == 404
+        body = response.json()["detail"]
+        assert body["message"] == "Entity 'missing' not found"
+        assert body["context"]["resource_type"] == "entity"
+        assert body["context"]["resource_id"] == "missing"
+
     def test_get_single_mapping_link_returns_saved_link(self, tmp_path: Path, monkeypatch) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
@@ -106,6 +118,19 @@ class TestMappingApi:
         assert body["local_key_value"] == "A"
         assert body["link"]["target_id"] == 10
         assert body["link"]["source"] == "manual"
+
+    def test_get_single_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        _write_project(tmp_path)
+        _write_mapping_sidecar(tmp_path)
+
+        response = client.get("/api/v1/projects/test_project/mapping/missing/A")
+
+        assert response.status_code == 404
+        body = response.json()["detail"]
+        assert body["message"] == "Entity 'missing' not found"
+        assert body["context"]["resource_type"] == "entity"
+        assert body["context"]["resource_id"] == "missing"
 
     def test_put_mapping_link_creates_or_updates_manual_link(self, tmp_path: Path, monkeypatch) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -128,6 +153,21 @@ class TestMappingApi:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"]["B"]["target_id"] == 20
 
+    def test_put_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        _write_project(tmp_path)
+
+        response = client.put(
+            "/api/v1/projects/test_project/mapping/missing/B",
+            json={"target_id": 20, "confidence": 0.99, "notes": "Manual override"},
+        )
+
+        assert response.status_code == 404
+        body = response.json()["detail"]
+        assert body["message"] == "Entity 'missing' not found"
+        assert body["context"]["resource_type"] == "entity"
+        assert body["context"]["resource_id"] == "missing"
+
     def test_delete_mapping_link_removes_saved_link(self, tmp_path: Path, monkeypatch) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
@@ -141,3 +181,15 @@ class TestMappingApi:
         with open(tmp_path / "test_project" / "test_project-mapping.yml", "r", encoding="utf-8") as handle:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"] == {}
+
+    def test_delete_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        _write_project(tmp_path)
+
+        response = client.delete("/api/v1/projects/test_project/mapping/missing/A")
+
+        assert response.status_code == 404
+        body = response.json()["detail"]
+        assert body["message"] == "Entity 'missing' not found"
+        assert body["context"]["resource_type"] == "entity"
+        assert body["context"]["resource_id"] == "missing"

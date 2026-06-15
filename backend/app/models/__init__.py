@@ -61,6 +61,7 @@ from backend.app.models.reconciliation import (
     EntityResolutionCatalog,
     EntityResolutionListItem,
     EntityResolutionSet,
+    ExportToMappingResult,
     ReconciliationCandidate,
     ReconciliationRemote,
     ReconciliationSource,
