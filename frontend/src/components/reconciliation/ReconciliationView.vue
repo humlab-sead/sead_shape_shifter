@@ -122,6 +122,20 @@
                 >
                   Run Auto-Reconcile
                 </v-btn>
+
+                <v-btn
+                  v-if="selectedEntity && selectedTarget && entitySpec"
+                  data-testid="export-to-mapping-button"
+                  variant="tonal"
+                  color="secondary"
+                  prepend-icon="mdi-export"
+                  :loading="exportingToMapping"
+                  :disabled="exportingToMapping"
+                  class="ml-2"
+                  @click="handleExportToMapping"
+                >
+                  Export to Mapping
+                </v-btn>
               </div>
 
               <!-- Reconciliation Grid -->
@@ -191,6 +205,7 @@ const resultColor = ref('success')
 const serviceStatus = ref<{ status: string; service_name?: string; error?: string } | null>(null)
 const serviceManifest = ref<any>(null)
 const availableEntityTypes = ref<number>(0)
+const exportingToMapping = ref(false)
 
 // YAML Editor state
 const yamlContent = ref('')
@@ -285,6 +300,29 @@ async function handleSaveChanges() {
     resultMessage.value = `Failed to save changes: ${e.message}`
     resultColor.value = 'error'
     showResultSnackbar.value = true
+  }
+}
+
+async function handleExportToMapping() {
+  if (!selectedEntity.value || !selectedTarget.value) return
+
+  exportingToMapping.value = true
+  try {
+    const result = await reconciliationStore.exportToMapping(
+      props.projectName,
+      selectedEntity.value,
+      selectedTarget.value
+    )
+
+    resultMessage.value = `Exported ${result.exported} links to mapping. Skipped ${result.skipped_manual} existing manual links.`
+    resultColor.value = 'success'
+    showResultSnackbar.value = true
+  } catch (e: any) {
+    resultMessage.value = `Failed to export to mapping: ${e.message}`
+    resultColor.value = 'error'
+    showResultSnackbar.value = true
+  } finally {
+    exportingToMapping.value = false
   }
 }
 
