@@ -174,9 +174,7 @@ class ShapeShifter:
         data: pd.DataFrame = (
             pd.concat(sanitized_dfs, ignore_index=True).reindex(columns=concat_columns)
             if non_empty_dfs
-            else pd.DataFrame(columns=table_cfg.keys_columns_and_fks)
-            if len(dfs) == 0
-            else dfs[0]
+            else pd.DataFrame(columns=table_cfg.keys_columns_and_fks) if len(dfs) == 0 else dfs[0]
         )
 
         return data
