@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ed600f88`
+- Built from commit: `5f252ca9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -223,7 +223,7 @@ Nodes (78): EntityTypeInfo, get_data_source_service(), Get DataSourceService ins
 
 ### Community 4 - "Table Config & FK Links"
 Cohesion: 0.02
-Nodes (54): ProjectService, ShapeShiftProject, Initialize resolver with core project.          Args:             project_name:, Any, DataFrame, Self, Get all key columns including system_id and public_id., Compute a hash of the metadata for change detection. (+46 more)
+Nodes (53): ProjectService, ShapeShiftProject, Initialize resolver with core project.          Args:             project_name:, Any, DataFrame, Self, Get all key columns including system_id and public_id., Compute a hash of the metadata for change detection. (+45 more)
 
 ### Community 5 - "Project Validation & Fixes"
 Cohesion: 0.05
@@ -314,8 +314,8 @@ Cohesion: 0.07
 Nodes (29): FixedEntityColumnTypeName, Check that fields are for the fixed entity., Check that entities are properly configured., Check that fields are for the SQL entity., Check that fields are for the data entity., Validate that fixed-entity values match declared or inferred backend types., Any, CoercionIssue (+21 more)
 
 ### Community 27 - "@value Directive Parsing"
-Cohesion: 0.06
-Nodes (36): R, main(), Normalize data from various data sources into structured tables.     Write them, filter_once_per_message(), find_parent_with(), get_connection_uri(), import_sub_modules(), load_resource_yaml() (+28 more)
+Cohesion: 0.05
+Nodes (37): main(), Normalize data from various data sources into structured tables.     Write them, dotset(), env2dict(), filter_once_per_message(), find_parent_with(), get_connection_uri(), import_sub_modules() (+29 more)
 
 ### Community 28 - "Entity Specifications Registry"
 Cohesion: 0.08
@@ -335,7 +335,7 @@ Nodes (68): datetime, Any, IdentityAssignment, IngesterConfig, Path, SourceTable
 
 ### Community 32 - "Entity Materialization Service"
 Cohesion: 0.05
-Nodes (69): MaterializationResult, MaterializeRequest, UnmaterializationResult, UnmaterializeRequest, MaterializationResult, UnmaterializationResult, Any, DataFrame (+61 more)
+Nodes (72): MaterializationResult, MaterializeRequest, UnmaterializationResult, UnmaterializeRequest, MaterializationResult, UnmaterializationResult, Any, DataFrame (+64 more)
 
 ### Community 33 - "Entity Config Mapping"
 Cohesion: 0.08
@@ -399,7 +399,7 @@ Nodes (10): Any, Path, FileLocation, Shared helpers for resolving managed file p
 
 ### Community 48 - "Configuration Resolver"
 Cohesion: 0.09
-Nodes (29): ConfigLike, BaseResolver, Config, is_config_path(), is_path_to_existing_file(), LoadResolver, Save configuration to the YAML file.          This method preserves the raw YAML, Create a deep copy of the configuration. (+21 more)
+Nodes (28): ConfigLike, BaseResolver, Config, is_config_path(), is_path_to_existing_file(), LoadResolver, Save configuration to the YAML file.          This method preserves the raw YAML, Create a deep copy of the configuration. (+20 more)
 
 ### Community 49 - "Core Issue Types"
 Cohesion: 0.21
@@ -466,8 +466,8 @@ Cohesion: 0.12
 Nodes (18): Re-evaluate deferred extra_columns for an entity after FK linking or unnesting., Any, DataFrame, Series, extract_column_references(), Extract all column references from an expression AST.      Args:         expr: E, Identify extra_columns that could not be evaluated and their missing dependencie, Detect if value is an escaped equals literal (starts with '==').          String (+10 more)
 
 ### Community 65 - "Functional Dependencies & Subset"
-Cohesion: 0.09
-Nodes (22): DataFrameGroupBy, Base specification for project validation., Check if there are any errors., Check if there are any warnings., Generate a human-readable validation report., Specification, Check functional dependency: for each unique combination of determinant_columns,, ForeignKeyConfigSpecification (+14 more)
+Cohesion: 0.10
+Nodes (20): DataFrameGroupBy, Base specification for project validation., Check if there are any errors., Check if there are any warnings., Generate a human-readable validation report., Specification, Check functional dependency: for each unique combination of determinant_columns,, ForeignKeyConfigSpecification (+12 more)
 
 ### Community 66 - "Domain Exception Hierarchy"
 Cohesion: 0.08
@@ -736,7 +736,7 @@ Nodes (23): FunctionalDependencySpecification, Specification for checking functi
 
 ### Community 587 - "Community 587"
 Cohesion: 0.09
-Nodes (38): MappingCatalog, Root container for the mapping sidecar file.      Holds entity-level mappings an, _normalise_local_key(), Return *local_key* as a list of column-name strings., Raised when a sidecar ``EntityMapping`` fails validation against its entity conf, Validate that *entity_mapping.public_id* matches *entity_config.public_id*., Validate that *entity_mapping.local_key* is a valid business key.      Checks pe, SidecarValidationError (+30 more)
+Nodes (38): MappingCatalog, Root container for the mapping sidecar file.      Holds entity-level mappings an, _normalise_local_key(), Raised when a sidecar ``EntityMapping`` fails validation against its entity conf, Validate that *entity_mapping.public_id* matches *entity_config.public_id*., Validate that *entity_mapping.local_key* is a valid business key.      Checks pe, Return *local_key* as a list of column-name strings., SidecarValidationError (+30 more)
 
 ### Community 603 - "Community 603"
 Cohesion: 0.18

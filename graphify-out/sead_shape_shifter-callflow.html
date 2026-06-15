@@ -60,7 +60,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
 <div class="container">
 
 <h1>sead_shape_shifter — Complete Call Flow &amp; Architecture Documentation</h1>
-<p class="subtitle">Generated from graphify knowledge graph: 6300 nodes, 18945 edges, 220 communities. Commit: ed600f8</p>
+<p class="subtitle">Generated from graphify knowledge graph: 6300 nodes, 18945 edges, 220 communities. Commit: 5f252ca</p>
 
 <div class="nav">
     <a href="#overview">Architecture Overview</a>
@@ -90,19 +90,19 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
 flowchart LR
     EXTRACT_PIPELINE_5F350230("Extraction Pipeline<br/><small>335 nodes</small>")
     class EXTRACT_PIPELINE_5F350230 module;
-    BUILD_GRAPH_321CBB04("Graph Build<br/><small>1034 nodes</small>")
+    BUILD_GRAPH_321CBB04("Graph Build<br/><small>1036 nodes</small>")
     class BUILD_GRAPH_321CBB04 module;
     ANALYSIS_CLUSTERING_C79796DA("Analysis &amp; Clustering<br/><small>403 nodes</small>")
     class ANALYSIS_CLUSTERING_C79796DA module;
-    OUTPUTS_DOCS_ED82387C("Outputs &amp; Docs<br/><small>106 nodes</small>")
+    OUTPUTS_DOCS_ED82387C("Outputs &amp; Docs<br/><small>103 nodes</small>")
     class OUTPUTS_DOCS_ED82387C module;
     CLI_SKILLS_9964CBB8("CLI &amp; Skill Installers<br/><small>91 nodes</small>")
     class CLI_SKILLS_9964CBB8 module;
     INGEST_CACHE_UPDATE_FF457338("Ingestion &amp; Updates<br/><small>327 nodes</small>")
     class INGEST_CACHE_UPDATE_FF457338 module;
-    SERVE_API_35EC8E86("Serving API<br/><small>2378 nodes</small>")
+    SERVE_API_35EC8E86("Serving API<br/><small>2383 nodes</small>")
     class SERVE_API_35EC8E86 module;
-    SECURITY_GLOBAL_5B9C6A04("Security &amp; Global Graph<br/><small>401 nodes</small>")
+    SECURITY_GLOBAL_5B9C6A04("Security &amp; Global Graph<br/><small>397 nodes</small>")
     class SECURITY_GLOBAL_5B9C6A04 module;
     TESTS_FIXTURES_B84B1DCC("Tests &amp; Fixtures<br/><small>170 nodes</small>")
     class TESTS_FIXTURES_B84B1DCC module;
@@ -118,7 +118,7 @@ flowchart LR
     class DSL_EVALUATION_ABBD6598 module;
     OTHER_D0941E68("Other<br/><small>666 nodes</small>")
     class OTHER_D0941E68 module;
-    SERVE_API_35EC8E86 -->|imports x163| BUILD_GRAPH_321CBB04
+    SERVE_API_35EC8E86 -->|imports x161| BUILD_GRAPH_321CBB04
     BUILD_GRAPH_321CBB04 -->|inherits x108| SERVE_API_35EC8E86
     TESTS_FIXTURES_B84B1DCC -->|inherits x77| SERVE_API_35EC8E86
     SERVE_API_35EC8E86 -->|imports x72| OTHER_D0941E68
@@ -146,7 +146,7 @@ flowchart LR
     <h4>Architecture Layers</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>Layer</th><th>Nodes</th><th>Communities</th></tr>
-      <tr><td>Extraction Pipeline</td><td>335</td><td><code>119, 22, 34, 462, 50, 64, 18, 79</code></td></tr><tr><td>Graph Build</td><td>1034</td><td><code>60, 30, 270, 53, 21, 58, 44, 587, 35, 23, 40, 27, 11, 26, 63, 115, 55, 112, 91, 6, 41, 17, 687, 138, 603</code></td></tr><tr><td>Analysis &amp; Clustering</td><td>403</td><td><code>14, 139, 381, 13, 247, 131, 244, 24, 830, 145, 181, 218, 219</code></td></tr><tr><td>Outputs &amp; Docs</td><td>106</td><td><code>52, 65, 153</code></td></tr><tr><td>CLI &amp; Skill Installers</td><td>91</td><td><code>141</code></td></tr><tr><td>Ingestion &amp; Updates</td><td>327</td><td><code>8, 36, 42, 38, 78, 80</code></td></tr><tr><td>Serving API</td><td>2378</td><td><code>1, 10, 0, 51, 46, 83, 56, 5, 32, 2, 3, 12, 31, 109, 66, 108, 33, 7, 86, 37, 251, 29, 61, 62, 102, 16, 89, 94, 88, 106, 67, 111, 70, 75, 57, 81, 68, 126, 166, 167, 172</code></td></tr><tr><td>Security &amp; Global Graph</td><td>401</td><td><code>4, 20, 48, 59, 151, 156, 54, 47, 74, 82</code></td></tr><tr><td>Tests &amp; Fixtures</td><td>170</td><td><code>19, 15, 697, 176, 217</code></td></tr><tr><td>Session State Management</td><td>137</td><td><code>104</code></td></tr><tr><td>Entity Specifications Registry</td><td>71</td><td><code>28</code></td></tr><tr><td>Community 447</td><td>66</td><td><code>447</code></td></tr><tr><td>Vue App Shell &amp; Commands</td><td>64</td><td><code>72</code></td></tr><tr><td>DSL Evaluation</td><td>51</td><td><code>9</code></td></tr><tr><td>Other</td><td>666</td><td><code>43, 319, 69, 73, 125, 84, 45, 25, 95, 99, 103, 107, 49, 114, 39, 76, 100, 85, 122, 71, 120, 723, 128, 77, 132, 113, 118, 140, 121, 143, 133, 147, 148, 152, 836, 87, 135, 158, 159, 160, 161, 164, 165, 146, 162, 168, 169, 170, 171, 173, 174, 175, 177, 178, 180, 182, 186, 163, 179, 183, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 205, 206, 208, 209, 210, 211, 212, 213, 214, 216, 220, 221, 222, 223, 224, 225, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236</code></td></tr>
+      <tr><td>Extraction Pipeline</td><td>335</td><td><code>119, 22, 34, 462, 50, 64, 18, 79</code></td></tr><tr><td>Graph Build</td><td>1036</td><td><code>60, 30, 270, 53, 21, 58, 44, 587, 35, 27, 23, 40, 11, 26, 63, 115, 55, 112, 91, 6, 41, 17, 687, 138, 603</code></td></tr><tr><td>Analysis &amp; Clustering</td><td>403</td><td><code>14, 139, 381, 13, 247, 131, 244, 24, 830, 145, 181, 218, 219</code></td></tr><tr><td>Outputs &amp; Docs</td><td>103</td><td><code>52, 65, 153</code></td></tr><tr><td>CLI &amp; Skill Installers</td><td>91</td><td><code>141</code></td></tr><tr><td>Ingestion &amp; Updates</td><td>327</td><td><code>8, 36, 42, 38, 78, 80</code></td></tr><tr><td>Serving API</td><td>2383</td><td><code>1, 10, 0, 51, 46, 83, 56, 32, 5, 2, 3, 12, 31, 109, 66, 108, 33, 7, 86, 37, 251, 29, 61, 62, 102, 16, 89, 94, 88, 106, 67, 111, 70, 75, 57, 81, 68, 126, 166, 167, 172</code></td></tr><tr><td>Security &amp; Global Graph</td><td>397</td><td><code>4, 20, 59, 48, 151, 156, 54, 47, 74, 82</code></td></tr><tr><td>Tests &amp; Fixtures</td><td>170</td><td><code>19, 15, 697, 176, 217</code></td></tr><tr><td>Session State Management</td><td>137</td><td><code>104</code></td></tr><tr><td>Entity Specifications Registry</td><td>71</td><td><code>28</code></td></tr><tr><td>Community 447</td><td>66</td><td><code>447</code></td></tr><tr><td>Vue App Shell &amp; Commands</td><td>64</td><td><code>72</code></td></tr><tr><td>DSL Evaluation</td><td>51</td><td><code>9</code></td></tr><tr><td>Other</td><td>666</td><td><code>43, 319, 69, 73, 125, 84, 45, 25, 95, 99, 103, 107, 49, 114, 39, 76, 100, 85, 122, 71, 120, 723, 128, 77, 132, 113, 118, 140, 121, 143, 133, 147, 148, 152, 836, 87, 135, 158, 159, 160, 161, 164, 165, 146, 162, 168, 169, 170, 171, 173, 174, 175, 177, 178, 180, 182, 186, 163, 179, 183, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 205, 206, 208, 209, 210, 211, 212, 213, 214, 216, 220, 221, 222, 223, 224, 225, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236</code></td></tr>
     </table>
   </div>
   <div class="card">
@@ -524,12 +524,12 @@ flowchart LR
 
 <!-- ====== 3. Graph Build ====== -->
 <h2 id="build-graph">3. Graph Build</h2>
-<p>Graph Build groups implementation around backend, app, services, servicepy, mostly in src/model.py, ingesters/sead/specification.py, src/transforms/replace.py. This section covers 1034 nodes and 2214 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Graph Build groups implementation around backend, app, services, servicepy, mostly in src/model.py, ingesters/sead/specification.py, src/transforms/replace.py. This section covers 1036 nodes and 2218 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Graph Build (1034 nodes, 2214 edges)
+    %% Section: Graph Build (1036 nodes, 2218 edges)
     subgraph build_graph_v1_endpoints_schema_py_71bde388["v1/endpoints/schema.py"]
         endpoints_schema_get_table_schema_e753b3c6("get_table_schema()<br/><small>v1/endpoints/schema.py</small>")
         endpoints_schema_get_table_schema_with_config_1f9d5cc6("schema with config()<br/><small>v1/endpoints/schema.py</small>")
@@ -566,7 +566,7 @@ flowchart LR
     clients_reconciliation_client_reconciliationquer_6b8b1c93 -->|calls| services_ingester_runtime_seadchangerequestrecon_e6399179
     sead_specification_specificationbase_4e0a6cc5 -->|method| sead_specification_specificationbase_error_96a1b532
     sead_specification_specificationbase_4e0a6cc5 -->|method| sead_specification_specificationbase_has_errors_54b82305
-    %% Omitted for readability: 1016 nodes, 0 edges
+    %% Omitted for readability: 1018 nodes, 0 edges
     class endpoints_schema_get_table_schema_e753b3c6 function;
     class endpoints_schema_get_table_schema_with_config_1f9d5cc6 function;
     class endpoints_schema_get_type_mappings_80831513 function;
@@ -859,13 +859,13 @@ flowchart LR
 <tr><td><code>app/services/yaml_service.py</code></td><td>50 nodes</td></tr>
 <tr><td><code>app/services/ingester_runtime.py</code></td><td>45 nodes</td></tr>
 <tr><td><code>ingesters/sead/metadata.py</code></td><td>45 nodes</td></tr>
-<tr><td><code>src/utility.py</code></td><td>44 nodes</td></tr>
+<tr><td><code>src/utility.py</code></td><td>45 nodes</td></tr>
 <tr><td><code>backend/app/exceptions.py</code></td><td>43 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: calls x404, explains x368, references x323, method x296. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: calls x406, explains x369, references x323, method x296. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -1224,12 +1224,12 @@ flowchart LR
 
 <!-- ====== 5. Outputs & Docs ====== -->
 <h2 id="outputs-docs">5. Outputs &amp; Docs</h2>
-<p>Outputs &amp; Docs groups implementation around model, target, documentationpy, specifications, mostly in src/target_model/documentation.py, src/specifications/foreign_key.py, src/specifications/base.py. This section covers 106 nodes and 209 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Outputs &amp; Docs groups implementation around model, target, documentationpy, specifications, mostly in src/target_model/documentation.py, src/specifications/foreign_key.py, src/specifications/base.py. This section covers 103 nodes and 206 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Outputs &amp; Docs (106 nodes, 209 edges)
+    %% Section: Outputs &amp; Docs (103 nodes, 206 edges)
     subgraph outputs_docs_src_specifications_foreign_key_py_bf3b5edd["src/specifications/foreign_key.py"]
         specifications_foreign_key_foreignkeyconfigspeci_ad8b788f("ForeignKeyConfigSpecification<br/><small>src/specifications/foreign_key.py</small>")
         specifications_foreign_key_foreignkeydataspecifi_21325718("ForeignKeyDataSpecification<br/><small>src/specifications/foreign_key.py</small>")
@@ -1279,7 +1279,7 @@ flowchart LR
     specifications_foreign_key_foreignkeydataspecifi_5949a548 -->|calls| specifications_foreign_key_foreignkeydataspecifi_98d3c289
     target_model_documentation_excelgenerator_genera_b14eb5ed -->|method| target_model_documentation_simsdocumentgenerator_48da406d
     target_model_documentation_excelgenerator_genera_b14eb5ed -->|method| target_model_documentation_textdocumentgenerator_aac7cf75
-    %% Omitted for readability: 88 nodes, 0 edges
+    %% Omitted for readability: 85 nodes, 0 edges
     class specifications_foreign_key_foreignkeyconfigspeci_ad8b788f test;
     class specifications_foreign_key_foreignkeydataspecifi_21325718 test;
     class specifications_foreign_key_foreignkeyconfigspeci_ae14daff test;
@@ -1570,15 +1570,15 @@ flowchart LR
 <tr><td><code>src/specifications/foreign_key.py</code></td><td>22 nodes</td></tr>
 <tr><td><code>src/specifications/base.py</code></td><td>8 nodes</td></tr>
 <tr><td><code>src/specifications/fd.py</code></td><td>6 nodes</td></tr>
-<tr><td><code>src/specifications/materialize.py</code></td><td>3 nodes</td></tr>
 <tr><td><code>frontend/favicon.ico</code></td><td>1 nodes</td></tr>
 <tr><td><code>frontend/favicon.svg</code></td><td>1 nodes</td></tr>
 <tr><td><code>frontend/index.html</code></td><td>1 nodes</td></tr>
+<tr><td><code>frontend/src/main.ts</code></td><td>1 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: explains x46, references x45, method x41, calls x31. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: explains x45, references x44, method x41, calls x31. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -2028,7 +2028,7 @@ flowchart LR
   <td><code>project_mapper.py</code><br><small style="color:var(--muted)">app/mappers/project_mapper.py</small></td>
   <td><span class="tag tag-class">Module</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">app/services/validation_service.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/validators/data_validation_orchestrator.py</small><br><code>CacheCheckResult</code><br><small style="color:var(--muted)">app/utils/caches.py</small><br>+27 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">app/validators/data_validation_orchestrator.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/validation_service.py</small><br><code>CacheCheckResult</code><br><small style="color:var(--muted)">app/utils/caches.py</small><br>+27 more</td>
   <td>Module file in app/mappers/project_mapper.py.</td>
 </tr>
 <tr>
@@ -2036,7 +2036,7 @@ flowchart LR
   <td><code>ProjectMapper</code><br><small style="color:var(--muted)">app/mappers/project_mapper.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">app/services/validation_service.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/validators/data_validation_orchestrator.py</small><br><code>CacheCheckResult</code><br><small style="color:var(--muted)">app/utils/caches.py</small><br>+29 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">app/validators/data_validation_orchestrator.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/validation_service.py</small><br><code>CacheCheckResult</code><br><small style="color:var(--muted)">app/utils/caches.py</small><br>+29 more</td>
   <td>ProjectMapper node in app/mappers/project_mapper.py.</td>
 </tr>
 <tr>
@@ -2289,12 +2289,12 @@ flowchart LR
 
 <!-- ====== 8. Serving API ====== -->
 <h2 id="serve-api">8. Serving API</h2>
-<p>Serving API groups implementation around app, backend, services, api, mostly in app/services/project_service.py, v1/endpoints/projects.py, src/target_model/conformance.py. This section covers 2378 nodes and 7249 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Serving API groups implementation around app, backend, services, api, mostly in app/services/project_service.py, v1/endpoints/projects.py, src/target_model/conformance.py. This section covers 2383 nodes and 7256 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Serving API (2378 nodes, 7249 edges)
+    %% Section: Serving API (2383 nodes, 7256 edges)
     subgraph serve_api_v1_endpoints_data_sources_py_2327750f["v1/endpoints/data_sources.py"]
         endpoints_data_sources_list_drivers_ea9dc9bb("list_drivers()<br/><small>v1/endpoints/data_sources.py</small>")
         endpoints_data_sources_list_data_source_files_69180e6d("list_data_source_files()<br/><small>v1/endpoints/data_sources.py</small>")
@@ -2333,7 +2333,7 @@ flowchart LR
     v1_api_8d15bdbc -->|imports| endpoints_projects_2a91ff30
     endpoints_projects_2a91ff30 -->|imports| services_project_service_get_project_service_60642fee
     endpoints_projects_2a91ff30 -->|imports| services_project_service_projectservice_848654d0
-    %% Omitted for readability: 2360 nodes, 0 edges
+    %% Omitted for readability: 2365 nodes, 0 edges
     class endpoints_data_sources_list_drivers_ea9dc9bb function;
     class endpoints_data_sources_list_data_source_files_69180e6d function;
     class endpoints_data_sources_get_excel_metadata_8f9383f6 function;
@@ -2378,7 +2378,7 @@ flowchart LR
   <td><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/core/state_manager.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">services/project/project_operations.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+26 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>Any</code><br><small style="color:var(--muted)">services/project/project_operations.py</small><br><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/services/execute_service.py</small><br>+26 more</td>
   <td>ApplicationStateManager node in app/core/state_manager.py.</td>
 </tr>
 <tr>
@@ -2394,7 +2394,7 @@ flowchart LR
   <td><code>ConfigurationError</code><br><small style="color:var(--muted)">backend/app/exceptions.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">services/project/project_operations.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+18 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>Any</code><br><small style="color:var(--muted)">services/project/project_operations.py</small><br><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+18 more</td>
   <td>Reads, resolves, or persists project configuration.</td>
 </tr>
 <tr>
@@ -2410,7 +2410,7 @@ flowchart LR
   <td><code>ResourceConflictError</code><br><small style="color:var(--muted)">backend/app/exceptions.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>add_entity()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>add_entity_by_name()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>Any</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br>+35 more</td>
+  <td><code>add_entity()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>add_entity_by_name()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+35 more</td>
   <td>ResourceConflictError node in backend/app/exceptions.py.</td>
 </tr>
 <tr>
@@ -2474,7 +2474,7 @@ flowchart LR
   <td><code>Entity</code><br><small style="color:var(--muted)">app/models/entity.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+17 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>Any</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>ApplicationStateManager</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br>+17 more</td>
   <td>Entity node in app/models/entity.py.</td>
 </tr>
 <tr>
@@ -2554,7 +2554,7 @@ flowchart LR
   <td><code>entity_operations.py</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small></td>
   <td><span class="tag tag-class">Module</span></td>
   <td><code>Entity</code><br><small style="color:var(--muted)">app/models/entity.py</small><br><code>EntityConflictError</code><br><small style="color:var(--muted)">backend/app/exceptions.py</small><br><code>get_correlation_id()</code><br><small style="color:var(--muted)">app/middleware/correlation.py</small><br>+3 more</td>
-  <td><code>__init__()</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>__init__()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>_prepare_entity_for_persistence()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br>+15 more</td>
+  <td><code>__init__()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br><code>__init__()</code><br><small style="color:var(--muted)">app/services/project_service.py</small><br><code>_prepare_entity_for_persistence()</code><br><small style="color:var(--muted)">services/project/entity_operations.py</small><br>+15 more</td>
   <td>Module file in services/project/entity_operations.py.</td>
 </tr>
 <tr>
@@ -2624,7 +2624,7 @@ flowchart LR
 <tr><td><code>v1/endpoints/projects.py</code></td><td>86 nodes</td></tr>
 <tr><td><code>src/target_model/conformance.py</code></td><td>84 nodes</td></tr>
 <tr><td><code>ingesters/sead_change_request/sql_builder.py</code></td><td>71 nodes</td></tr>
-<tr><td><code>src/model.py</code></td><td>65 nodes</td></tr>
+<tr><td><code>src/model.py</code></td><td>67 nodes</td></tr>
 <tr><td><code>app/services/auto_fix_service.py</code></td><td>63 nodes</td></tr>
 <tr><td><code>v1/endpoints/reconciliation.py</code></td><td>55 nodes</td></tr>
 <tr><td><code>app/services/task_service.py</code></td><td>52 nodes</td></tr>
@@ -2632,19 +2632,19 @@ flowchart LR
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: explains x912, references x834, contains x671, calls x643. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: explains x914, references x835, contains x671, calls x644. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
 <!-- ====== 9. Security & Global Graph ====== -->
 <h2 id="security-global">9. Security &amp; Global Graph</h2>
-<p>Security &amp; Global Graph groups implementation around modelpy, configuration, backend, app, mostly in src/model.py, ingesters/sead/utility.py, src/configuration/provider.py. This section covers 401 nodes and 635 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Security &amp; Global Graph groups implementation around modelpy, configuration, backend, app, mostly in src/model.py, ingesters/sead/utility.py, src/configuration/provider.py. This section covers 397 nodes and 628 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Security &amp; Global Graph (401 nodes, 635 edges)
+    %% Section: Security &amp; Global Graph (397 nodes, 628 edges)
     subgraph security_global_app_services_data_source_service_ca088eb5["app/services/data_source_service.py"]
         services_data_source_service_datasourceservice_r_8cfeb057("_resolve_data_source_path()<br/><small>app/services/data_source_service.py</small>")
         services_data_source_service_datasourceservice_c_d8f29e6e("create_data_source()<br/><small>app/services/data_source_service.py</small>")
@@ -2683,7 +2683,7 @@ flowchart LR
     project_file_manager_f2ac1d9d -->|method| project_file_manager_filemanager_get_project_upl_043df730
     project_file_manager_filemanager_get_project_upl_043df730 -->|calls| project_file_manager_filemanager_get_excel_metad_37a3d980
     src_dispatch_idispatcher_dispatch_7f773365 -->|method| src_dispatch_openpyxlexceldispatcher_3eb63f1f
-    %% Omitted for readability: 383 nodes, 0 edges
+    %% Omitted for readability: 379 nodes, 0 edges
     class services_data_source_service_datasourceservice_r_8cfeb057 function;
     class services_data_source_service_datasourceservice_c_d8f29e6e function;
     class services_data_source_service_datasourceservice_d_8502d965 function;
@@ -2970,10 +2970,10 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>src/model.py</code></td><td>116 nodes</td></tr>
+      <tr><td><code>src/model.py</code></td><td>114 nodes</td></tr>
 <tr><td><code>ingesters/sead/utility.py</code></td><td>55 nodes</td></tr>
 <tr><td><code>src/configuration/provider.py</code></td><td>47 nodes</td></tr>
-<tr><td><code>src/configuration/config.py</code></td><td>45 nodes</td></tr>
+<tr><td><code>src/configuration/config.py</code></td><td>44 nodes</td></tr>
 <tr><td><code>src/dispatch.py</code></td><td>37 nodes</td></tr>
 <tr><td><code>services/project/file_manager.py</code></td><td>26 nodes</td></tr>
 <tr><td><code>app/services/data_source_service.py</code></td><td>25 nodes</td></tr>
@@ -2982,7 +2982,7 @@ flowchart LR
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: explains x150, references x143, method x142, calls x121. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: explains x148, references x141, method x141, calls x119. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -3094,7 +3094,7 @@ flowchart LR
   <td><code>LoaderType</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br>+21 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/fixed_loader.py</small><br>+21 more</td>
   <td>LoaderType node in src/loaders/base_loader.py.</td>
 </tr>
 <tr>
@@ -3102,7 +3102,7 @@ flowchart LR
   <td><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td><code>ColumnMetadata</code><br><small style="color:var(--muted)">app/models/data_source.py</small><br><code>data_source.py</code><br><small style="color:var(--muted)">app/models/data_source.py</small><br><code>ForeignKeyMetadata</code><br><small style="color:var(--muted)">app/models/data_source.py</small></td>
-  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>connection_time_seconds()</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small><br>+23 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>connection_time_seconds()</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small><br>+23 more</td>
   <td>Verifies imports, entry points, or version behavior.</td>
 </tr>
 <tr>
@@ -3302,7 +3302,7 @@ flowchart LR
   <td><code>FieldMetadata</code><br><small style="color:var(--muted)">src/loaders/driver_metadata.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br>+17 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br>+17 more</td>
   <td>FieldMetadata node in src/loaders/driver_metadata.py.</td>
 </tr>
 <tr>
@@ -3310,7 +3310,7 @@ flowchart LR
   <td><code>DriverSchema</code><br><small style="color:var(--muted)">src/loaders/driver_metadata.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small><br><code>base_loader.py</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small><br>+4 more</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br>+17 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">src/loaders/file_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>ConnectTestResult</code><br><small style="color:var(--muted)">src/loaders/sql_loaders.py</small><br>+17 more</td>
   <td>DriverSchema node in src/loaders/driver_metadata.py.</td>
 </tr>
 </table>
@@ -5446,7 +5446,7 @@ flowchart LR
 
 <div style="text-align:center; padding:40px 0; color: var(--muted); font-size:0.9rem;">
   <p>sead_shape_shifter — Architecture Documentation</p>
-  <p>Generated: 2026-06-15 11:10 UTC · graphify callflow-html</p>
+  <p>Generated: 2026-06-15 11:13 UTC · graphify callflow-html</p>
 </div>
 
 </div><!-- .container -->

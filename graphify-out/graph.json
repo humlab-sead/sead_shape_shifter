@@ -41278,7 +41278,7 @@
       "source_location": "L110",
       "_origin": "ast",
       "id": "configuration_config_config_update",
-      "community": 48,
+      "community": 27,
       "norm_label": ".update()"
     },
     {
@@ -48118,7 +48118,7 @@
       "source_location": "L1588",
       "_origin": "ast",
       "id": "src_model_shapeshiftproject_reorder_columns",
-      "community": 4,
+      "community": 32,
       "norm_label": ".reorder_columns()"
     },
     {
@@ -49338,7 +49338,7 @@
       "source_location": "L1589",
       "_origin": "ast",
       "id": "src_model_rationale_1589",
-      "community": 4,
+      "community": 32,
       "norm_label": "reorder columns in the dataframe to have system_id, public_id, fk columns, extra"
     },
     {
@@ -50935,7 +50935,7 @@
       "label": "_normalise_local_key()",
       "file_type": "code",
       "source_file": "src/reconciliation/mapping_validator.py",
-      "source_location": "L99",
+      "source_location": "L98",
       "_origin": "ast",
       "id": "reconciliation_mapping_validator_normalise_local_key",
       "community": 587,
@@ -50985,9 +50985,9 @@
       "label": "Return *local_key* as a list of column-name strings.",
       "file_type": "rationale",
       "source_file": "src/reconciliation/mapping_validator.py",
-      "source_location": "L100",
+      "source_location": "L99",
       "_origin": "ast",
-      "id": "reconciliation_mapping_validator_rationale_100",
+      "id": "reconciliation_mapping_validator_rationale_99",
       "community": 587,
       "norm_label": "return *local_key* as a list of column-name strings."
     },
@@ -55118,7 +55118,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "specifications_materialize_canmaterializespecification_is_satisfied_by",
-      "community": 65,
+      "community": 32,
       "norm_label": ".is_satisfied_by()"
     },
     {
@@ -55128,7 +55128,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_specifications_materialize_py_tableconfig",
-      "community": 65,
+      "community": 32,
       "norm_label": "tableconfig"
     },
     {
@@ -55138,7 +55138,7 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "specifications_materialize_rationale_14",
-      "community": 65,
+      "community": 32,
       "norm_label": "check if entity can be materialized.          returns:             true if entit"
     },
     {
@@ -61948,7 +61948,7 @@
       "source_location": "L362",
       "_origin": "ast",
       "id": "src_utility_dotset",
-      "community": 48,
+      "community": 27,
       "norm_label": "dotset()"
     },
     {
@@ -61958,7 +61958,7 @@
       "source_location": "L376",
       "_origin": "ast",
       "id": "src_utility_env2dict",
-      "community": 48,
+      "community": 27,
       "norm_label": "env2dict()"
     },
     {
@@ -61998,7 +61998,7 @@
       "source_location": "L505",
       "_origin": "ast",
       "id": "src_utility_replace_env_vars",
-      "community": 27,
+      "community": 48,
       "norm_label": "replace_env_vars()"
     },
     {
@@ -62008,7 +62008,7 @@
       "source_location": "L505",
       "_origin": "ast",
       "id": "r",
-      "community": 27,
+      "community": 48,
       "norm_label": "r"
     },
     {
@@ -62278,7 +62278,7 @@
       "source_location": "L363",
       "_origin": "ast",
       "id": "src_utility_rationale_363",
-      "community": 48,
+      "community": 27,
       "norm_label": "sets element in dict using dot notation x.y.z or x:y:z"
     },
     {
@@ -62288,7 +62288,7 @@
       "source_location": "L377",
       "_origin": "ast",
       "id": "src_utility_rationale_377",
-      "community": 48,
+      "community": 27,
       "norm_label": "loads environment variables starting with prefix into nested dict.      expected"
     },
     {
@@ -62308,7 +62308,7 @@
       "source_location": "L511",
       "_origin": "ast",
       "id": "src_utility_rationale_511",
-      "community": 27,
+      "community": 48,
       "norm_label": "recursively replaces environment variables in data.      replaces all occurrence"
     },
     {
@@ -90174,9 +90174,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L133",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_entitytype",
-      "target": "str",
-      "confidence_score": 1.0
+      "target": "str"
     },
     {
       "relation": "inherits",
@@ -90184,9 +90184,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L125",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_linksource",
-      "target": "str",
-      "confidence_score": 1.0
+      "target": "str"
     },
     {
       "relation": "inherits",
@@ -90351,9 +90351,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "enum",
-      "confidence_score": 1.0
+      "target": "enum"
     },
     {
       "relation": "inherits",
@@ -90361,9 +90361,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L133",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_entitytype",
-      "target": "enum",
-      "confidence_score": 1.0
+      "target": "enum"
     },
     {
       "relation": "inherits",
@@ -90371,9 +90371,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L125",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_linksource",
-      "target": "enum",
-      "confidence_score": 1.0
+      "target": "enum"
     },
     {
       "relation": "imports_from",
@@ -106892,9 +106892,9 @@
       "source_file": "backend/app/services/reconciliation/mapping_manager.py",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "mappers_reconciliation_mapper_reconciliationmapper",
-      "confidence_score": 1.0
+      "target": "mappers_reconciliation_mapper_reconciliationmapper"
     },
     {
       "relation": "uses",
@@ -115182,9 +115182,9 @@
       "source_file": "backend/app/services/reconciliation/mapping_manager.py",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "models_project_project",
-      "confidence_score": 1.0
+      "target": "models_project_project"
     },
     {
       "relation": "uses",
@@ -116585,9 +116585,9 @@
       "source_file": "backend/app/services/reconciliation/mapping_manager.py",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "models_reconciliation",
-      "confidence_score": 1.0
+      "target": "models_reconciliation"
     },
     {
       "relation": "contains",
@@ -137945,9 +137945,9 @@
       "source_file": "backend/app/services/reconciliation/mapping_manager.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "services_project_service_projectservice",
-      "confidence_score": 1.0
+      "target": "services_project_service_projectservice"
     },
     {
       "relation": "uses",
@@ -140903,9 +140903,9 @@
       "source_file": "backend/app/services/reconciliation/mapping_manager.py",
       "source_location": "L19",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "reconciliation_mapping_manager_entitymappingmanager",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_entitymappingmanager"
     },
     {
       "relation": "imports_from",
@@ -140914,9 +140914,9 @@
       "source_file": "backend/app/services/reconciliation/mapping_manager.py",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "reconciliation_model",
-      "confidence_score": 1.0
+      "target": "reconciliation_model"
     },
     {
       "relation": "imports",
@@ -140925,9 +140925,9 @@
       "source_file": "backend/app/services/reconciliation/mapping_manager.py",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "utils_exceptions_badrequesterror",
-      "confidence_score": 1.0
+      "target": "utils_exceptions_badrequesterror"
     },
     {
       "relation": "imports",
@@ -140936,9 +140936,9 @@
       "source_file": "backend/app/services/reconciliation/mapping_manager.py",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "utils_exceptions_notfounderror",
-      "confidence_score": 1.0
+      "target": "utils_exceptions_notfounderror"
     },
     {
       "relation": "rationale_for",
@@ -140946,9 +140946,9 @@
       "source_file": "backend/app/services/reconciliation/mapping_manager.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager_rationale_1",
-      "target": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "confidence_score": 1.0
+      "target": "backend_app_services_reconciliation_mapping_manager_py_reconciliation_mapping_manager"
     },
     {
       "relation": "uses",
@@ -194649,9 +194649,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "datetime",
-      "confidence_score": 1.0
+      "target": "datetime"
     },
     {
       "relation": "imports_from",
@@ -194671,9 +194671,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "datetime",
-      "confidence_score": 1.0
+      "target": "datetime"
     },
     {
       "relation": "imports_from",
@@ -204370,9 +204370,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator",
-      "target": "src_exceptions",
-      "confidence_score": 1.0
+      "target": "src_exceptions"
     },
     {
       "relation": "imports_from",
@@ -204422,9 +204422,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator",
-      "target": "src_exceptions_shapeshiftercoreerror",
-      "confidence_score": 1.0
+      "target": "src_exceptions_shapeshiftercoreerror"
     },
     {
       "relation": "inherits",
@@ -204432,9 +204432,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "target": "src_exceptions_shapeshiftercoreerror",
-      "confidence_score": 1.0
+      "target": "src_exceptions_shapeshiftercoreerror"
     },
     {
       "relation": "inherits",
@@ -215873,9 +215873,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L19",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator",
-      "target": "src_model",
-      "confidence_score": 1.0
+      "target": "src_model"
     },
     {
       "relation": "imports_from",
@@ -215939,9 +215939,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project",
-      "target": "src_model",
-      "confidence_score": 1.0
+      "target": "src_model"
     },
     {
       "relation": "contains",
@@ -218379,9 +218379,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L19",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator",
-      "target": "src_model_tableconfig",
-      "confidence_score": 1.0
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "uses",
@@ -218389,9 +218389,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L19",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "target": "src_model_tableconfig",
-      "confidence_score": 0.5
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "uses",
@@ -218986,9 +218986,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project",
-      "target": "src_model_tableconfig",
-      "confidence_score": 1.0
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "uses",
@@ -218996,9 +218996,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L7",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_circulardependencyspecification",
-      "target": "src_model_tableconfig",
-      "confidence_score": 0.5
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "uses",
@@ -219006,9 +219006,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L7",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_compositeprojectspecification",
-      "target": "src_model_tableconfig",
-      "confidence_score": 0.5
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "uses",
@@ -219016,9 +219016,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L7",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_datasourceexistsspecification",
-      "target": "src_model_tableconfig",
-      "confidence_score": 0.5
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "uses",
@@ -219026,9 +219026,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L7",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_entitiesspecification",
-      "target": "src_model_tableconfig",
-      "confidence_score": 0.5
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "uses",
@@ -219036,9 +219036,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L7",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_isprojectspecification",
-      "target": "src_model_tableconfig",
-      "confidence_score": 0.5
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "uses",
@@ -219046,9 +219046,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L7",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_mappingsidecarspecification",
-      "target": "src_model_tableconfig",
-      "confidence_score": 0.5
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "rationale_for",
@@ -219861,9 +219861,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L19",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_validator_py_entitymapping",
-      "target": "src_model_tableconfig",
-      "confidence_score": 0.5
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "uses",
@@ -219871,9 +219871,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L19",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_validator_py_tableconfig",
-      "target": "src_model_tableconfig",
-      "confidence_score": 0.5
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "uses",
@@ -220011,9 +220011,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L7",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_specifications_project_py_any",
-      "target": "src_model_tableconfig",
-      "confidence_score": 0.5
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "uses",
@@ -220021,9 +220021,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L7",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_specifications_project_py_mappingcatalog",
-      "target": "src_model_tableconfig",
-      "confidence_score": 0.5
+      "target": "src_model_tableconfig"
     },
     {
       "relation": "uses",
@@ -227234,9 +227234,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "reconciliation_mapping_manager_mappingmanager",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager"
     },
     {
       "relation": "imports",
@@ -227245,9 +227245,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "reconciliation_mapping_model_entitymapping",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_entitymapping"
     },
     {
       "relation": "imports",
@@ -227256,9 +227256,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "reconciliation_mapping_model_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_link"
     },
     {
       "relation": "imports",
@@ -227267,9 +227267,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "reconciliation_mapping_model_linksource",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_linksource"
     },
     {
       "relation": "imports",
@@ -227278,9 +227278,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "imports",
@@ -227289,9 +227289,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "target": "reconciliation_mapping_model_metadata",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_metadata"
     },
     {
       "relation": "rationale_for",
@@ -227299,9 +227299,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_reconciliation_mapping_manager_py_reconciliation_mapping_manager_rationale_1",
-      "target": "src_reconciliation_mapping_manager_py_reconciliation_mapping_manager",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_reconciliation_mapping_manager"
     },
     {
       "relation": "method",
@@ -227309,9 +227309,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L70",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_manager_mappingmanager_cache_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_cache_key"
     },
     {
       "relation": "method",
@@ -227319,9 +227319,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L175",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_manager_mappingmanager_clear_cache",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_clear_cache"
     },
     {
       "relation": "method",
@@ -227329,9 +227329,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L208",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_manager_mappingmanager_delete_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_delete_link"
     },
     {
       "relation": "method",
@@ -227339,9 +227339,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L185",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_manager_mappingmanager_get_entity",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_get_entity"
     },
     {
       "relation": "method",
@@ -227349,9 +227349,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L194",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_manager_mappingmanager_get_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_get_link"
     },
     {
       "relation": "method",
@@ -227359,9 +227359,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L42",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_manager_mappingmanager_init",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_init"
     },
     {
       "relation": "method",
@@ -227369,9 +227369,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L166",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_manager_mappingmanager_invalidate",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_invalidate"
     },
     {
       "relation": "method",
@@ -227379,9 +227379,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L78",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_manager_mappingmanager_load",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_load"
     },
     {
       "relation": "method",
@@ -227389,9 +227389,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L226",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_manager_mappingmanager_replace_entity_manual_links",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_replace_entity_manual_links"
     },
     {
       "relation": "method",
@@ -227399,9 +227399,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L115",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_manager_mappingmanager_save",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_save"
     },
     {
       "relation": "method",
@@ -227409,9 +227409,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L199",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_manager_mappingmanager_set_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_set_link"
     },
     {
       "relation": "method",
@@ -227419,9 +227419,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L50",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_manager_mappingmanager_sidecar_path",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_sidecar_path"
     },
     {
       "relation": "uses",
@@ -227429,9 +227429,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_model_entitymapping",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_entitymapping"
     },
     {
       "relation": "uses",
@@ -227439,9 +227439,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_model_link",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_link"
     },
     {
       "relation": "uses",
@@ -227449,9 +227449,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_model_linksource",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_linksource"
     },
     {
       "relation": "uses",
@@ -227459,9 +227459,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -227469,9 +227469,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "reconciliation_mapping_manager_mappingmanager",
-      "target": "reconciliation_mapping_model_metadata",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_metadata"
     },
     {
       "relation": "rationale_for",
@@ -227479,9 +227479,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_rationale_27",
-      "target": "reconciliation_mapping_manager_mappingmanager",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager"
     },
     {
       "relation": "calls",
@@ -227490,9 +227490,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L72",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_cache_key",
-      "target": "reconciliation_mapping_manager_mappingmanager_sidecar_path",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_sidecar_path"
     },
     {
       "relation": "calls",
@@ -227501,9 +227501,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L97",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_load",
-      "target": "reconciliation_mapping_manager_mappingmanager_sidecar_path",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_sidecar_path"
     },
     {
       "relation": "calls",
@@ -227512,9 +227512,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L126",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_save",
-      "target": "reconciliation_mapping_manager_mappingmanager_sidecar_path",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_sidecar_path"
     },
     {
       "relation": "references",
@@ -227523,9 +227523,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L50",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_sidecar_path",
-      "target": "src_reconciliation_mapping_manager_py_path",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_path"
     },
     {
       "relation": "rationale_for",
@@ -227533,9 +227533,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L51",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_rationale_51",
-      "target": "reconciliation_mapping_manager_mappingmanager_sidecar_path",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_sidecar_path"
     },
     {
       "relation": "references",
@@ -227544,9 +227544,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L70",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_cache_key",
-      "target": "src_reconciliation_mapping_manager_py_path",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_path"
     },
     {
       "relation": "references",
@@ -227555,9 +227555,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L166",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_invalidate",
-      "target": "src_reconciliation_mapping_manager_py_path",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_path"
     },
     {
       "relation": "references",
@@ -227566,9 +227566,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L78",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_load",
-      "target": "src_reconciliation_mapping_manager_py_path",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_path"
     },
     {
       "relation": "references",
@@ -227577,9 +227577,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L115",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_save",
-      "target": "src_reconciliation_mapping_manager_py_path",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_path"
     },
     {
       "relation": "uses",
@@ -227587,9 +227587,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_path",
-      "target": "reconciliation_mapping_model_entitymapping",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_entitymapping"
     },
     {
       "relation": "uses",
@@ -227597,9 +227597,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_path",
-      "target": "reconciliation_mapping_model_link",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_link"
     },
     {
       "relation": "uses",
@@ -227607,9 +227607,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_path",
-      "target": "reconciliation_mapping_model_linksource",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_linksource"
     },
     {
       "relation": "uses",
@@ -227617,9 +227617,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_path",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -227627,9 +227627,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_path",
-      "target": "reconciliation_mapping_model_metadata",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_metadata"
     },
     {
       "relation": "calls",
@@ -227638,9 +227638,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L171",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_invalidate",
-      "target": "reconciliation_mapping_manager_mappingmanager_cache_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_cache_key"
     },
     {
       "relation": "calls",
@@ -227649,9 +227649,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L91",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_load",
-      "target": "reconciliation_mapping_manager_mappingmanager_cache_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_cache_key"
     },
     {
       "relation": "calls",
@@ -227660,9 +227660,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L127",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_save",
-      "target": "reconciliation_mapping_manager_mappingmanager_cache_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_cache_key"
     },
     {
       "relation": "rationale_for",
@@ -227670,9 +227670,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L71",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_rationale_71",
-      "target": "reconciliation_mapping_manager_mappingmanager_cache_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_cache_key"
     },
     {
       "relation": "references",
@@ -227681,9 +227681,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L78",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_load",
-      "target": "src_reconciliation_mapping_manager_py_mappingcatalog",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_mappingcatalog"
     },
     {
       "relation": "rationale_for",
@@ -227691,9 +227691,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L79",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_rationale_79",
-      "target": "reconciliation_mapping_manager_mappingmanager_load",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_load"
     },
     {
       "relation": "references",
@@ -227702,9 +227702,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L208",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_delete_link",
-      "target": "src_reconciliation_mapping_manager_py_mappingcatalog",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_mappingcatalog"
     },
     {
       "relation": "references",
@@ -227713,9 +227713,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L185",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_get_entity",
-      "target": "src_reconciliation_mapping_manager_py_mappingcatalog",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_mappingcatalog"
     },
     {
       "relation": "references",
@@ -227724,9 +227724,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L194",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_get_link",
-      "target": "src_reconciliation_mapping_manager_py_mappingcatalog",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_mappingcatalog"
     },
     {
       "relation": "references",
@@ -227735,9 +227735,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L226",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_replace_entity_manual_links",
-      "target": "src_reconciliation_mapping_manager_py_mappingcatalog",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_mappingcatalog"
     },
     {
       "relation": "references",
@@ -227746,9 +227746,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L115",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_save",
-      "target": "src_reconciliation_mapping_manager_py_mappingcatalog",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_mappingcatalog"
     },
     {
       "relation": "references",
@@ -227757,9 +227757,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L199",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_set_link",
-      "target": "src_reconciliation_mapping_manager_py_mappingcatalog",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -227767,9 +227767,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_mappingcatalog",
-      "target": "reconciliation_mapping_model_entitymapping",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_entitymapping"
     },
     {
       "relation": "uses",
@@ -227777,9 +227777,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_mappingcatalog",
-      "target": "reconciliation_mapping_model_link",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_link"
     },
     {
       "relation": "uses",
@@ -227787,9 +227787,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_mappingcatalog",
-      "target": "reconciliation_mapping_model_linksource",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_linksource"
     },
     {
       "relation": "uses",
@@ -227797,9 +227797,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_mappingcatalog",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -227807,9 +227807,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_mappingcatalog",
-      "target": "reconciliation_mapping_model_metadata",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_metadata"
     },
     {
       "relation": "rationale_for",
@@ -227817,9 +227817,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L116",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_rationale_116",
-      "target": "reconciliation_mapping_manager_mappingmanager_save",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_save"
     },
     {
       "relation": "rationale_for",
@@ -227827,9 +227827,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L167",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_rationale_167",
-      "target": "reconciliation_mapping_manager_mappingmanager_invalidate",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_invalidate"
     },
     {
       "relation": "rationale_for",
@@ -227837,9 +227837,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L176",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_rationale_176",
-      "target": "reconciliation_mapping_manager_mappingmanager_clear_cache",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_clear_cache"
     },
     {
       "relation": "references",
@@ -227848,9 +227848,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L185",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_get_entity",
-      "target": "src_reconciliation_mapping_manager_py_entitymapping",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_manager_py_entitymapping"
     },
     {
       "relation": "rationale_for",
@@ -227858,9 +227858,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L186",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_rationale_186",
-      "target": "reconciliation_mapping_manager_mappingmanager_get_entity",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_get_entity"
     },
     {
       "relation": "uses",
@@ -227868,9 +227868,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_entitymapping",
-      "target": "reconciliation_mapping_model_entitymapping",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_entitymapping"
     },
     {
       "relation": "uses",
@@ -227878,9 +227878,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_entitymapping",
-      "target": "reconciliation_mapping_model_link",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_link"
     },
     {
       "relation": "uses",
@@ -227888,9 +227888,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_entitymapping",
-      "target": "reconciliation_mapping_model_linksource",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_linksource"
     },
     {
       "relation": "uses",
@@ -227898,9 +227898,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_entitymapping",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -227908,9 +227908,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_manager_py_entitymapping",
-      "target": "reconciliation_mapping_model_metadata",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_metadata"
     },
     {
       "relation": "references",
@@ -227919,9 +227919,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L194",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_get_link",
-      "target": "link",
-      "confidence_score": 1.0
+      "target": "link"
     },
     {
       "relation": "rationale_for",
@@ -227929,9 +227929,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L195",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_rationale_195",
-      "target": "reconciliation_mapping_manager_mappingmanager_get_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_get_link"
     },
     {
       "relation": "uses",
@@ -227939,9 +227939,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "link",
-      "target": "reconciliation_mapping_model_entitymapping",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_entitymapping"
     },
     {
       "relation": "uses",
@@ -227949,9 +227949,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "link",
-      "target": "reconciliation_mapping_model_link",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_link"
     },
     {
       "relation": "uses",
@@ -227959,9 +227959,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "link",
-      "target": "reconciliation_mapping_model_linksource",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_linksource"
     },
     {
       "relation": "uses",
@@ -227969,9 +227969,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "link",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -227979,9 +227979,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L20",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "link",
-      "target": "reconciliation_mapping_model_metadata",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_metadata"
     },
     {
       "relation": "references",
@@ -227990,9 +227990,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L226",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_replace_entity_manual_links",
-      "target": "link",
-      "confidence_score": 1.0
+      "target": "link"
     },
     {
       "relation": "references",
@@ -228001,9 +228001,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L199",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_mappingmanager_set_link",
-      "target": "link",
-      "confidence_score": 1.0
+      "target": "link"
     },
     {
       "relation": "rationale_for",
@@ -228011,9 +228011,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L200",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_rationale_200",
-      "target": "reconciliation_mapping_manager_mappingmanager_set_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_set_link"
     },
     {
       "relation": "rationale_for",
@@ -228021,9 +228021,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L209",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_rationale_209",
-      "target": "reconciliation_mapping_manager_mappingmanager_delete_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_delete_link"
     },
     {
       "relation": "rationale_for",
@@ -228031,9 +228031,9 @@
       "source_file": "src/reconciliation/mapping_manager.py",
       "source_location": "L227",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_manager_rationale_227",
-      "target": "reconciliation_mapping_manager_mappingmanager_replace_entity_manual_links",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_manager_mappingmanager_replace_entity_manual_links"
     },
     {
       "relation": "contains",
@@ -228041,9 +228041,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L50",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "reconciliation_mapping_model_decode_local_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_decode_local_key"
     },
     {
       "relation": "contains",
@@ -228051,9 +228051,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L81",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "reconciliation_mapping_model_decode_single",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_decode_single"
     },
     {
       "relation": "contains",
@@ -228061,9 +228061,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "reconciliation_mapping_model_encode_local_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_encode_local_key"
     },
     {
       "relation": "contains",
@@ -228071,9 +228071,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L71",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "reconciliation_mapping_model_encode_single",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_encode_single"
     },
     {
       "relation": "contains",
@@ -228081,9 +228081,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L159",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "reconciliation_mapping_model_entitymapping",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_entitymapping"
     },
     {
       "relation": "contains",
@@ -228091,9 +228091,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L133",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "reconciliation_mapping_model_entitytype",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_entitytype"
     },
     {
       "relation": "contains",
@@ -228101,9 +228101,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L146",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "reconciliation_mapping_model_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_link"
     },
     {
       "relation": "contains",
@@ -228111,9 +228111,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L125",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "reconciliation_mapping_model_linksource",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_linksource"
     },
     {
       "relation": "contains",
@@ -228121,9 +228121,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L177",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "contains",
@@ -228131,9 +228131,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L169",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "reconciliation_mapping_model_metadata",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_metadata"
     },
     {
       "relation": "contains",
@@ -228141,9 +228141,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L98",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model",
-      "target": "reconciliation_mapping_model_split_compound",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_split_compound"
     },
     {
       "relation": "rationale_for",
@@ -228151,9 +228151,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_1",
-      "target": "reconciliation_mapping_model",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model"
     },
     {
       "relation": "calls",
@@ -228162,9 +228162,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L43",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_encode_local_key",
-      "target": "reconciliation_mapping_model_encode_single",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_encode_single"
     },
     {
       "relation": "references",
@@ -228173,9 +228173,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_encode_local_key",
-      "target": "src_reconciliation_mapping_model_py_any",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_model_py_any"
     },
     {
       "relation": "rationale_for",
@@ -228183,9 +228183,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_25",
-      "target": "reconciliation_mapping_model_encode_local_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_encode_local_key"
     },
     {
       "relation": "references",
@@ -228194,9 +228194,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L71",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_encode_single",
-      "target": "src_reconciliation_mapping_model_py_any",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_model_py_any"
     },
     {
       "relation": "calls",
@@ -228205,9 +228205,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L64",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_decode_local_key",
-      "target": "reconciliation_mapping_model_decode_single",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_decode_single"
     },
     {
       "relation": "calls",
@@ -228216,9 +228216,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L67",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_decode_local_key",
-      "target": "reconciliation_mapping_model_split_compound",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_split_compound"
     },
     {
       "relation": "rationale_for",
@@ -228226,9 +228226,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L51",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_51",
-      "target": "reconciliation_mapping_model_decode_local_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_decode_local_key"
     },
     {
       "relation": "rationale_for",
@@ -228236,9 +228236,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L72",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_72",
-      "target": "reconciliation_mapping_model_encode_single",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_encode_single"
     },
     {
       "relation": "rationale_for",
@@ -228246,9 +228246,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L82",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_82",
-      "target": "reconciliation_mapping_model_decode_single",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_decode_single"
     },
     {
       "relation": "rationale_for",
@@ -228256,9 +228256,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L99",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_99",
-      "target": "reconciliation_mapping_model_split_compound",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_split_compound"
     },
     {
       "relation": "rationale_for",
@@ -228266,9 +228266,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L126",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_126",
-      "target": "reconciliation_mapping_model_linksource",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_linksource"
     },
     {
       "relation": "rationale_for",
@@ -228276,9 +228276,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L134",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_134",
-      "target": "reconciliation_mapping_model_entitytype",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_entitytype"
     },
     {
       "relation": "inherits",
@@ -228286,9 +228286,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L146",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_link",
-      "target": "src_target_model_schema_reference_py_basemodel",
-      "confidence_score": 1.0
+      "target": "src_target_model_schema_reference_py_basemodel"
     },
     {
       "relation": "references",
@@ -228297,9 +228297,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L210",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_mappingcatalog_committed_links_by_entity",
-      "target": "reconciliation_mapping_model_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_link"
     },
     {
       "relation": "references",
@@ -228308,9 +228308,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L217",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_mappingcatalog_draft_links_by_entity",
-      "target": "reconciliation_mapping_model_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_link"
     },
     {
       "relation": "references",
@@ -228319,9 +228319,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L190",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_mappingcatalog_get_link",
-      "target": "reconciliation_mapping_model_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_link"
     },
     {
       "relation": "references",
@@ -228330,9 +228330,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L197",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_mappingcatalog_set_link",
-      "target": "reconciliation_mapping_model_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_link"
     },
     {
       "relation": "rationale_for",
@@ -228340,9 +228340,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L147",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_147",
-      "target": "reconciliation_mapping_model_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_link"
     },
     {
       "relation": "inherits",
@@ -228350,9 +228350,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L159",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_entitymapping",
-      "target": "src_target_model_schema_reference_py_basemodel",
-      "confidence_score": 1.0
+      "target": "src_target_model_schema_reference_py_basemodel"
     },
     {
       "relation": "rationale_for",
@@ -228360,9 +228360,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L160",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_160",
-      "target": "reconciliation_mapping_model_entitymapping",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_entitymapping"
     },
     {
       "relation": "imports",
@@ -228371,9 +228371,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator",
-      "target": "reconciliation_mapping_model_entitymapping",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_entitymapping"
     },
     {
       "relation": "uses",
@@ -228381,9 +228381,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L16",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "target": "reconciliation_mapping_model_entitymapping",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_entitymapping"
     },
     {
       "relation": "uses",
@@ -228391,9 +228391,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L16",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_validator_py_entitymapping",
-      "target": "reconciliation_mapping_model_entitymapping",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_entitymapping"
     },
     {
       "relation": "uses",
@@ -228401,9 +228401,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L16",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_reconciliation_mapping_validator_py_tableconfig",
-      "target": "reconciliation_mapping_model_entitymapping",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_entitymapping"
     },
     {
       "relation": "inherits",
@@ -228411,9 +228411,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L169",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_metadata",
-      "target": "src_target_model_schema_reference_py_basemodel",
-      "confidence_score": 1.0
+      "target": "src_target_model_schema_reference_py_basemodel"
     },
     {
       "relation": "rationale_for",
@@ -228421,9 +228421,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L170",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_170",
-      "target": "reconciliation_mapping_model_metadata",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_metadata"
     },
     {
       "relation": "method",
@@ -228431,9 +228431,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L210",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_mappingcatalog",
-      "target": "reconciliation_mapping_model_mappingcatalog_committed_links_by_entity",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_mappingcatalog_committed_links_by_entity"
     },
     {
       "relation": "method",
@@ -228441,9 +228441,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L217",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_mappingcatalog",
-      "target": "reconciliation_mapping_model_mappingcatalog_draft_links_by_entity",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_mappingcatalog_draft_links_by_entity"
     },
     {
       "relation": "method",
@@ -228451,9 +228451,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L190",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_mappingcatalog",
-      "target": "reconciliation_mapping_model_mappingcatalog_get_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_mappingcatalog_get_link"
     },
     {
       "relation": "method",
@@ -228461,9 +228461,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L197",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_mappingcatalog",
-      "target": "reconciliation_mapping_model_mappingcatalog_set_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_mappingcatalog_set_link"
     },
     {
       "relation": "inherits",
@@ -228471,9 +228471,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L177",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_mappingcatalog",
-      "target": "src_target_model_schema_reference_py_basemodel",
-      "confidence_score": 1.0
+      "target": "src_target_model_schema_reference_py_basemodel"
     },
     {
       "relation": "rationale_for",
@@ -228481,9 +228481,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L178",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_178",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "imports",
@@ -228492,9 +228492,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -228502,9 +228502,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L14",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_circulardependencyspecification",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -228512,9 +228512,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L14",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_compositeprojectspecification",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -228522,9 +228522,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L14",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_datasourceexistsspecification",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -228532,9 +228532,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L14",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_entitiesspecification",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -228542,9 +228542,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L14",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_isprojectspecification",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -228552,9 +228552,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L14",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_mappingsidecarspecification",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -228562,9 +228562,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L14",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_specifications_project_py_any",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "uses",
@@ -228572,9 +228572,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L14",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_specifications_project_py_mappingcatalog",
-      "target": "reconciliation_mapping_model_mappingcatalog",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_model_mappingcatalog"
     },
     {
       "relation": "rationale_for",
@@ -228582,9 +228582,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L191",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_191",
-      "target": "reconciliation_mapping_model_mappingcatalog_get_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_mappingcatalog_get_link"
     },
     {
       "relation": "rationale_for",
@@ -228592,9 +228592,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L198",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_198",
-      "target": "reconciliation_mapping_model_mappingcatalog_set_link",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_mappingcatalog_set_link"
     },
     {
       "relation": "rationale_for",
@@ -228602,9 +228602,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L211",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_211",
-      "target": "reconciliation_mapping_model_mappingcatalog_committed_links_by_entity",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_mappingcatalog_committed_links_by_entity"
     },
     {
       "relation": "rationale_for",
@@ -228612,9 +228612,9 @@
       "source_file": "src/reconciliation/mapping_model.py",
       "source_location": "L218",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_model_rationale_218",
-      "target": "reconciliation_mapping_model_mappingcatalog_draft_links_by_entity",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_model_mappingcatalog_draft_links_by_entity"
     },
     {
       "relation": "contains",
@@ -228622,9 +228622,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L99",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator",
-      "target": "reconciliation_mapping_validator_normalise_local_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_normalise_local_key"
     },
     {
       "relation": "contains",
@@ -228632,9 +228632,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "contains",
@@ -228642,9 +228642,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator",
-      "target": "reconciliation_mapping_validator_validate_entity_mapping",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_validate_entity_mapping"
     },
     {
       "relation": "contains",
@@ -228652,9 +228652,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L53",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator",
-      "target": "reconciliation_mapping_validator_validate_local_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_validate_local_key"
     },
     {
       "relation": "rationale_for",
@@ -228662,9 +228662,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator_rationale_1",
-      "target": "reconciliation_mapping_validator",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator"
     },
     {
       "relation": "rationale_for",
@@ -228672,9 +228672,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator_rationale_28",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "calls",
@@ -228683,9 +228683,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L46",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator_validate_entity_mapping",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "calls",
@@ -228694,9 +228694,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L74",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator_validate_local_key",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "imports",
@@ -228705,9 +228705,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L174",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "uses",
@@ -228715,9 +228715,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L174",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_circulardependencyspecification",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "uses",
@@ -228725,9 +228725,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L174",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_compositeprojectspecification",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "uses",
@@ -228735,9 +228735,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L174",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_datasourceexistsspecification",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "uses",
@@ -228745,9 +228745,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L174",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_entitiesspecification",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "uses",
@@ -228755,9 +228755,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L174",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_isprojectspecification",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "uses",
@@ -228765,9 +228765,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L174",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_mappingsidecarspecification",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "uses",
@@ -228775,9 +228775,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L174",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_specifications_project_py_any",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "uses",
@@ -228785,9 +228785,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L174",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_specifications_project_py_mappingcatalog",
-      "target": "reconciliation_mapping_validator_sidecarvalidationerror",
-      "confidence_score": 0.5
+      "target": "reconciliation_mapping_validator_sidecarvalidationerror"
     },
     {
       "relation": "rationale_for",
@@ -228795,9 +228795,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L37",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator_rationale_37",
-      "target": "reconciliation_mapping_validator_validate_entity_mapping",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_validate_entity_mapping"
     },
     {
       "relation": "references",
@@ -228806,9 +228806,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator_validate_entity_mapping",
-      "target": "src_reconciliation_mapping_validator_py_entitymapping",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_validator_py_entitymapping"
     },
     {
       "relation": "references",
@@ -228817,9 +228817,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator_validate_entity_mapping",
-      "target": "src_reconciliation_mapping_validator_py_tableconfig",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_validator_py_tableconfig"
     },
     {
       "relation": "imports",
@@ -228828,9 +228828,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L174",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project",
-      "target": "reconciliation_mapping_validator_validate_entity_mapping",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_validate_entity_mapping"
     },
     {
       "relation": "calls",
@@ -228850,9 +228850,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L53",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator_validate_local_key",
-      "target": "src_reconciliation_mapping_validator_py_entitymapping",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_validator_py_entitymapping"
     },
     {
       "relation": "references",
@@ -228861,9 +228861,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L53",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator_validate_local_key",
-      "target": "src_reconciliation_mapping_validator_py_tableconfig",
-      "confidence_score": 1.0
+      "target": "src_reconciliation_mapping_validator_py_tableconfig"
     },
     {
       "relation": "rationale_for",
@@ -228871,9 +228871,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L54",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator_rationale_54",
-      "target": "reconciliation_mapping_validator_validate_local_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_validate_local_key"
     },
     {
       "relation": "calls",
@@ -228882,9 +228882,9 @@
       "source_file": "src/reconciliation/mapping_validator.py",
       "source_location": "L68",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "reconciliation_mapping_validator_validate_local_key",
-      "target": "reconciliation_mapping_validator_normalise_local_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_normalise_local_key"
     },
     {
       "relation": "imports",
@@ -228893,9 +228893,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L174",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project",
-      "target": "reconciliation_mapping_validator_validate_local_key",
-      "confidence_score": 1.0
+      "target": "reconciliation_mapping_validator_validate_local_key"
     },
     {
       "relation": "calls",
@@ -228912,9 +228912,9 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "src/reconciliation/mapping_validator.py",
-      "source_location": "L100",
+      "source_location": "L99",
       "weight": 1.0,
-      "source": "reconciliation_mapping_validator_rationale_100",
+      "source": "reconciliation_mapping_validator_rationale_99",
       "target": "reconciliation_mapping_validator_normalise_local_key",
       "confidence_score": 1.0
     },
@@ -230062,9 +230062,9 @@
       "source_file": "src/specifications/__init__.py",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_init",
-      "target": "specifications_project_mappingsidecarspecification",
-      "confidence_score": 1.0
+      "target": "specifications_project_mappingsidecarspecification"
     },
     {
       "relation": "contains",
@@ -231230,9 +231230,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L10",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_mappingsidecarspecification",
-      "target": "specifications_base_projectspecification",
-      "confidence_score": 0.5
+      "target": "specifications_base_projectspecification"
     },
     {
       "relation": "uses",
@@ -231270,9 +231270,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L10",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_specifications_project_py_mappingcatalog",
-      "target": "specifications_base_projectspecification",
-      "confidence_score": 0.5
+      "target": "specifications_base_projectspecification"
     },
     {
       "relation": "calls",
@@ -237646,9 +237646,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L11",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "specifications_project_mappingsidecarspecification",
-      "target": "specifications_entity_entityspecification",
-      "confidence_score": 0.5
+      "target": "specifications_entity_entityspecification"
     },
     {
       "relation": "uses",
@@ -237666,9 +237666,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L11",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "src_specifications_project_py_mappingcatalog",
-      "target": "specifications_entity_entityspecification",
-      "confidence_score": 0.5
+      "target": "specifications_entity_entityspecification"
     },
     {
       "relation": "calls",
@@ -239676,9 +239676,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L152",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project",
-      "target": "specifications_project_mappingsidecarspecification",
-      "confidence_score": 1.0
+      "target": "specifications_project_mappingsidecarspecification"
     },
     {
       "relation": "imports_from",
@@ -239749,9 +239749,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_20",
-      "target": "specifications_project_circulardependencyspecification",
-      "confidence_score": 1.0
+      "target": "specifications_project_circulardependencyspecification"
     },
     {
       "relation": "calls",
@@ -239770,9 +239770,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_23",
-      "target": "specifications_project_circulardependencyspecification_is_satisfied_by",
-      "confidence_score": 1.0
+      "target": "specifications_project_circulardependencyspecification_is_satisfied_by"
     },
     {
       "relation": "calls",
@@ -239822,9 +239822,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L76",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_76",
-      "target": "specifications_project_datasourceexistsspecification",
-      "confidence_score": 1.0
+      "target": "specifications_project_datasourceexistsspecification"
     },
     {
       "relation": "rationale_for",
@@ -239832,9 +239832,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L79",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_79",
-      "target": "specifications_project_datasourceexistsspecification_is_satisfied_by",
-      "confidence_score": 1.0
+      "target": "specifications_project_datasourceexistsspecification_is_satisfied_by"
     },
     {
       "relation": "calls",
@@ -239873,9 +239873,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L119",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_119",
-      "target": "specifications_project_entitiesspecification",
-      "confidence_score": 1.0
+      "target": "specifications_project_entitiesspecification"
     },
     {
       "relation": "method",
@@ -239938,9 +239938,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L163",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_mappingsidecarspecification_init",
-      "target": "src_specifications_project_py_any",
-      "confidence_score": 1.0
+      "target": "src_specifications_project_py_any"
     },
     {
       "relation": "method",
@@ -239980,9 +239980,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L126",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_126",
-      "target": "specifications_project_entitiesspecification_is_satisfied_by",
-      "confidence_score": 1.0
+      "target": "specifications_project_entitiesspecification_is_satisfied_by"
     },
     {
       "relation": "calls",
@@ -240011,9 +240011,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L135",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_135",
-      "target": "specifications_project_isprojectspecification",
-      "confidence_score": 1.0
+      "target": "specifications_project_isprojectspecification"
     },
     {
       "relation": "calls",
@@ -240032,9 +240032,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L138",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_138",
-      "target": "specifications_project_isprojectspecification_is_satisfied_by",
-      "confidence_score": 1.0
+      "target": "specifications_project_isprojectspecification_is_satisfied_by"
     },
     {
       "relation": "calls",
@@ -240043,9 +240043,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L222",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_compositeprojectspecification_get_default_specifications",
-      "target": "specifications_project_mappingsidecarspecification",
-      "confidence_score": 1.0
+      "target": "specifications_project_mappingsidecarspecification"
     },
     {
       "relation": "method",
@@ -240053,9 +240053,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L163",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_mappingsidecarspecification",
-      "target": "specifications_project_mappingsidecarspecification_init",
-      "confidence_score": 1.0
+      "target": "specifications_project_mappingsidecarspecification_init"
     },
     {
       "relation": "method",
@@ -240063,9 +240063,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L167",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_mappingsidecarspecification",
-      "target": "specifications_project_mappingsidecarspecification_is_satisfied_by",
-      "confidence_score": 1.0
+      "target": "specifications_project_mappingsidecarspecification_is_satisfied_by"
     },
     {
       "relation": "rationale_for",
@@ -240073,9 +240073,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L153",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_153",
-      "target": "specifications_project_mappingsidecarspecification",
-      "confidence_score": 1.0
+      "target": "specifications_project_mappingsidecarspecification"
     },
     {
       "relation": "calls",
@@ -240084,9 +240084,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L164",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_mappingsidecarspecification_init",
-      "target": "specifications_project_compositeprojectspecification_init",
-      "confidence_score": 1.0
+      "target": "specifications_project_compositeprojectspecification_init"
     },
     {
       "relation": "references",
@@ -240095,9 +240095,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L163",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_mappingsidecarspecification_init",
-      "target": "src_specifications_project_py_mappingcatalog",
-      "confidence_score": 1.0
+      "target": "src_specifications_project_py_mappingcatalog"
     },
     {
       "relation": "rationale_for",
@@ -240105,9 +240105,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L168",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_168",
-      "target": "specifications_project_mappingsidecarspecification_is_satisfied_by",
-      "confidence_score": 1.0
+      "target": "specifications_project_mappingsidecarspecification_is_satisfied_by"
     },
     {
       "relation": "method",
@@ -240145,9 +240145,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L201",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_201",
-      "target": "specifications_project_compositeprojectspecification",
-      "confidence_score": 1.0
+      "target": "specifications_project_compositeprojectspecification"
     },
     {
       "relation": "imports",
@@ -240188,9 +240188,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L211",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_211",
-      "target": "specifications_project_compositeprojectspecification_get_default_specifications",
-      "confidence_score": 1.0
+      "target": "specifications_project_compositeprojectspecification_get_default_specifications"
     },
     {
       "relation": "rationale_for",
@@ -240198,9 +240198,9 @@
       "source_file": "src/specifications/project.py",
       "source_location": "L226",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "specifications_project_rationale_226",
-      "target": "specifications_project_compositeprojectspecification_is_satisfied_by",
-      "confidence_score": 1.0
+      "target": "specifications_project_compositeprojectspecification_is_satisfied_by"
     },
     {
       "relation": "uses",
@@ -258703,5 +258703,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "ed600f886ef9d2e3a2d40ac419c5462257997ef6"
+  "built_at_commit": "5f252ca9e56013b6e548a90c426023b36c903c80"
 }
