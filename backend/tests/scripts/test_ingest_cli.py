@@ -1,34 +1,47 @@
 """Tests for the ingest CLI tool."""
 
 import importlib
+from types import ModuleType
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from click.testing import CliRunner
 
-from backend.app.core.config import get_settings
-from backend.app.models.ingester import (
-    IngesterMetadataResponse,
-    IngestResponse,
-    ValidateResponse,
-)
+from backend.app.core.config import Settings
+from backend.app.models.ingester import IngesterMetadataResponse, IngestResponse, ValidateResponse
 
 
 @pytest.fixture
-def ingest_cli_module(settings):
-    """Reload the CLI module under test settings for each test.
+def mock_settings(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("SHAPE_SHIFTER_PROJECT_NAME", "Shape Shifter Configuration Editor")
+    monkeypatch.setenv("SHAPE_SHIFTER_VERSION", "0.1.0")
+    monkeypatch.setenv("SHAPE_SHIFTER_ENVIRONMENT", "development")
+    monkeypatch.setenv("SHAPE_SHIFTER_API_V1_PREFIX", "/api/v1")
 
-    The CLI discovers ingesters at import time, so reloading it here avoids
-    collection-time module state leaking across tests.
-    """
-    get_settings.cache_clear()
+    monkeypatch.setenv("SHAPE_SHIFTER_PROJECTS_DIR", "tests/test_data/projects")
+    monkeypatch.setenv("SHAPE_SHIFTER_GLOBAL_DATA_DIR", "tests/test_data/projects/shared/shared-data")
+    monkeypatch.setenv("SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR", "tests/test_data/projects/shared/data-sources")
 
+    settings = Settings()
+
+    def _get_settings() -> Settings:
+        return settings
+
+    monkeypatch.setattr("backend.app.core.config.get_settings", _get_settings)
+
+    return settings
+
+
+@pytest.fixture
+def ingest_cli_module(mock_settings: Settings, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     import backend.app.scripts.ingest as ingest_module
 
-    module = importlib.reload(ingest_module)
-    yield module
+    module: ModuleType = importlib.reload(ingest_module)
 
-    get_settings.cache_clear()
+    if hasattr(module, "get_settings"):
+        monkeypatch.setattr(module, "get_settings", lambda: mock_settings)
+
+    return module
 
 
 class TestIngestCLI:
