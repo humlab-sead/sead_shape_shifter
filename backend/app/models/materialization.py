@@ -44,3 +44,12 @@ class CanMaterializeResponse(BaseModel):
 
     can_materialize: bool
     errors: list[str] = []
+
+
+class MaterializedMappingSyncResult(BaseModel):
+    """Result of syncing manual mapping links from saved materialized rows."""
+
+    success: bool
+    entity_name: str | None = None
+    manual_links_replaced: int = 0
+    errors: list[str] = []

@@ -2,6 +2,7 @@
 
 import pandas as pd
 import pytest
+import yaml
 from fastapi.testclient import TestClient
 
 from backend.app.core.config import settings
@@ -453,6 +454,164 @@ class TestEntityValues:
         df = pd.read_parquet(parquet_file)
         assert df.columns.tolist() == ["system_id", "id", "name"]
         assert len(df) == 3
+
+    def test_update_entity_values_syncs_manual_mapping_sidecar_for_materialized_entity(self, tmp_path, monkeypatch, reset_services):
+        """Saving a materialized entity should replace manual sidecar links from the saved rows."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        project_folder = tmp_path / "test_project"
+        project_folder.mkdir()
+        materialized_folder = project_folder / "materialized"
+        materialized_folder.mkdir()
+
+        entity_data = {
+            "type": "fixed",
+            "columns": ["system_id", "site_id", "name"],
+            "values": "@load:materialized/test_entity.parquet",
+            "public_id": "site_id",
+            "keys": ["name"],
+            "materialized": {
+                "enabled": True,
+                "source_state": {"type": "csv", "public_id": "site_id", "keys": ["name"]},
+                "materialized_at": "2026-06-15T00:00:00Z",
+            },
+        }
+        client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        sidecar_path = project_folder / "test_project-mapping.yml"
+        sidecar_path.write_text(
+            yaml.safe_dump(
+                {
+                    "version": "2.0",
+                    "metadata": {
+                        "project": "test_project",
+                        "created_at": "2026-06-15T00:00:00Z",
+                        "updated_at": "2026-06-15T00:00:00Z",
+                    },
+                    "entities": {
+                        "test_entity": {
+                            "local_key": "name",
+                            "public_id": "site_id",
+                            "entity_type": "primary",
+                            "links": {
+                                "Legacy": {
+                                    "target_id": 999,
+                                    "source": "reconciliation",
+                                    "created_at": "2026-06-15T00:00:00Z",
+                                    "committed_at": "2026-06-15T00:00:00Z",
+                                    "created_by": "system",
+                                }
+                            },
+                        }
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        update_data = {
+            "columns": ["system_id", "site_id", "name"],
+            "values": [[1, 10, "A"], [2, None, "B"], [3, 30, "C"]],
+        }
+        response = client.put("/api/v1/projects/test_project/entities/test_entity/values", json=update_data)
+        assert response.status_code == 200
+
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        links = sidecar["entities"]["test_entity"]["links"]
+        assert set(links) == {"Legacy", "A", "C"}
+        assert links["Legacy"]["source"] == "reconciliation"
+        assert links["A"]["source"] == "manual"
+        assert links["A"]["target_id"] == 10
+        assert links["C"]["target_id"] == 30
+
+    def test_patch_from_materialized_replaces_manual_mapping_links(self, tmp_path, monkeypatch, reset_services):
+        """PATCH from-materialized should replace manual links from the current saved materialized rows."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        project_folder = tmp_path / "test_project"
+        project_folder.mkdir()
+        materialized_folder = project_folder / "materialized"
+        materialized_folder.mkdir()
+
+        pd.DataFrame(
+            {
+                "system_id": [1, 2, 3],
+                "site_id": [10, None, 30],
+                "name": ["A", "B", "C"],
+            }
+        ).to_parquet(materialized_folder / "test_entity.parquet", index=False)
+
+        entity_data = {
+            "type": "fixed",
+            "columns": ["system_id", "site_id", "name"],
+            "values": "@load:materialized/test_entity.parquet",
+            "public_id": "site_id",
+            "keys": ["name"],
+            "materialized": {
+                "enabled": True,
+                "source_state": {"type": "csv", "public_id": "site_id", "keys": ["name"]},
+                "materialized_at": "2026-06-15T00:00:00Z",
+            },
+        }
+        client.post(
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"test_entity": entity_data}},
+        )
+
+        sidecar_path = project_folder / "test_project-mapping.yml"
+        sidecar_path.write_text(
+            yaml.safe_dump(
+                {
+                    "version": "2.0",
+                    "metadata": {
+                        "project": "test_project",
+                        "created_at": "2026-06-15T00:00:00Z",
+                        "updated_at": "2026-06-15T00:00:00Z",
+                    },
+                    "entities": {
+                        "test_entity": {
+                            "local_key": "name",
+                            "public_id": "site_id",
+                            "entity_type": "primary",
+                            "links": {
+                                "Legacy": {
+                                    "target_id": 999,
+                                    "source": "import",
+                                    "created_at": "2026-06-15T00:00:00Z",
+                                    "committed_at": "2026-06-15T00:00:00Z",
+                                    "created_by": "system",
+                                },
+                                "OldManual": {
+                                    "target_id": 5,
+                                    "source": "manual",
+                                    "created_at": "2026-06-15T00:00:00Z",
+                                    "committed_at": "2026-06-15T00:00:00Z",
+                                    "created_by": "user",
+                                },
+                            },
+                        }
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        response = client.patch("/api/v1/projects/test_project/mapping/from-materialized/test_entity")
+        assert response.status_code == 200
+        assert response.json()["manual_links_replaced"] == 2
+
+        sidecar = yaml.safe_load(sidecar_path.read_text(encoding="utf-8"))
+        links = sidecar["entities"]["test_entity"]["links"]
+        assert set(links) == {"Legacy", "A", "C"}
+        assert links["Legacy"]["source"] == "import"
+        assert links["A"]["source"] == "manual"
+        assert links["A"]["target_id"] == 10
+        assert links["C"]["target_id"] == 30
 
     def test_update_entity_values_no_load_directive(self, tmp_path, monkeypatch, reset_services):
         """Test error when trying to update entity without @load: directive."""
