@@ -14,4 +14,5 @@ repos:
     rev: 7.0.0
     hooks:
       - id: isort
+        args: ["--profile", "black", "--line-length", "142"]
         language_version: python3.13
