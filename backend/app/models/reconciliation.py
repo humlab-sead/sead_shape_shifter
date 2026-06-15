@@ -142,3 +142,12 @@ class AutoReconcileResult(BaseModel):
     unmatched: int = Field(..., description="Count with no good matches")
     total: int = Field(..., description="Total entities processed")
     candidates: dict[str, list[ReconciliationCandidate]] = Field(default_factory=dict, description="Source key -> candidates mapping")
+
+
+class ExportToMappingResult(BaseModel):
+    """Result of exporting reconciliation links into the mapping sidecar."""
+
+    exported: int = Field(..., description="Count of reconciliation links written to the mapping sidecar.")
+    skipped_manual: int = Field(..., description="Count of reconciliation links skipped because a manual mapping already exists.")
+    entity: str = Field(..., description="Entity name whose links were exported.")
+    field: str = Field(..., description="Reconciliation field used as the source key during export.")
