@@ -381,7 +381,7 @@ flowchart TB
     end
     
     subgraph "Results"
-        R1[Saved Mappings<br/>in Project Config]
+        R1[Saved Mappings<br/>in Mapping Sidecar]
         R2[Reusable for<br/>Future Data]
         R3[Documented<br/>Decisions]
     end
