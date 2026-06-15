@@ -7,6 +7,7 @@ import type {
   EntityResolutionListItem,
   EntityResolutionCatalogCreateRequest,
   EntityResolutionCatalogUpdateRequest,
+  ExportToMappingResult,
 } from '@/types/reconciliation'
 import { apiRequest } from './client'
 
@@ -118,6 +119,20 @@ export const reconciliationServiceApi = {
     return apiRequest<{ status: string; service_name?: string; error?: string }>({
       method: 'GET',
       url: '/reconciliation/health',
+    })
+  },
+
+  /**
+   * Export reconciliation links for one entity field into the mapping sidecar
+   */
+  exportToMapping: async (
+    projectName: string,
+    entityName: string,
+    targetField: string
+  ): Promise<ExportToMappingResult> => {
+    return apiRequest<ExportToMappingResult>({
+      method: 'POST',
+      url: `/projects/${projectName}/reconciliation/${entityName}/${targetField}/export-to-mapping`,
     })
   },
 }
