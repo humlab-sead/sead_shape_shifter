@@ -358,11 +358,11 @@
 
 #### Area 3: Tests
 
-- [ ] Test export endpoint happy path: links are written to sidecar with correct provenance.
-- [ ] Test that existing `source="manual"` links are not overwritten by export.
-- [ ] Test export for an entity with no reconciliation catalog: endpoint returns an appropriate error or empty result.
-- [ ] Test that after export, normalization applies the exported links correctly.
-- [ ] Test UI: "Export to Mapping" button is present; confirmation message is shown after success.
+- [x] Test export endpoint happy path: links are written to sidecar with correct provenance.
+- [x] Test that existing `source="manual"` links are not overwritten by export.
+- [x] Test export for an entity with no reconciliation catalog: endpoint returns an appropriate error or empty result.
+- [x] Test that after export, normalization applies the exported links correctly.
+- [x] Test UI: "Export to Mapping" button is present; confirmation message is shown after success.
 
 **Completion condition**: All tests pass; no overwrite of manual links in any scenario.
 
@@ -380,13 +380,13 @@
 
 ### Definition of Done
 
-- [ ] `POST /projects/{project}/reconciliation/{entity}/{field}/export-to-mapping` endpoint is implemented, registered, and returns correct response body.
-- [ ] Manual links in sidecar are never overwritten by export.
-- [ ] Exported links have `source="reconciliation"` and a non-null `committed_at`.
-- [ ] "Export to Mapping" button is present and functional in the reconciliation UI.
-- [ ] After export, normalization applies the exported links during the next run.
-- [ ] All tests pass.
-- [ ] `make lint` and `make tidy` pass.
+- [x] `POST /projects/{project}/reconciliation/{entity}/{field}/export-to-mapping` endpoint is implemented, registered, and returns correct response body.
+- [x] Manual links in sidecar are never overwritten by export.
+- [x] Exported links have `source="reconciliation"` and a non-null `committed_at`.
+- [x] "Export to Mapping" button is present and functional in the reconciliation UI.
+- [x] After export, normalization applies the exported links during the next run.
+- [x] All tests pass.
+- [x] `make lint` and `make tidy` pass.
 
 ---
 
