@@ -12,19 +12,19 @@ Shape Shifter uses a **three-tier identity system** where reconciliation fits in
 
 1. **`system_id`** (Local): Auto-incrementing sequential IDs (1, 2, 3...) used for all FK relationships
 2. **`keys`** (Business): Source data identifiers used for matching during reconciliation
-3. **`public_id`** (Global): Target SEAD column name; holds reconciled SEAD IDs from `mappings.yml`
+3. **`public_id`** (Global): Target SEAD column name; holds reconciled SEAD IDs from the mapping sidecar (`<project>-mapping.yml`)
 
 **Reconciliation Workflow:**
 ```
-Source Data          Reconciliation Service       mappings.yml          Final Export
-─────────────        ─────────────────────        ─────────────         ────────────
-location_name   →    Match to SEAD entities  →    local → remote   →   location_id
-"Norway"             confidence: 0.98             "Norway": 162         162 (SEAD)
-"Sweden"             confidence: 1.00             "Sweden": 205         205 (SEAD)
+Source Data          Reconciliation Service       Mapping Sidecar        Final Export
+─────────────        ─────────────────────        ───────────────        ────────────
+location_name   →    Match to SEAD entities  →    local → remote    →   location_id
+"Norway"             confidence: 0.98             "Norway": 162          162 (SEAD)
+"Sweden"             confidence: 1.00             "Sweden": 205          205 (SEAD)
 
 ```
 
-**Key Principle:** Reconciliation creates mappings (`business_key → SEAD_ID`) stored in `mappings.yml`. During processing, `map_to_remote()` applies these mappings to populate the `public_id` column with SEAD IDs. FK relationships always use local `system_id` values.
+**Key Principle:** Reconciliation creates mappings (`business_key → SEAD_ID`) stored in the mapping sidecar (`<project>-mapping.yml`). During processing, these mappings are applied to populate the `public_id` column with SEAD IDs. FK relationships always use local `system_id` values.
 
 ## Prerequisites
 
