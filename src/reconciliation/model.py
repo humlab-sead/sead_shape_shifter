@@ -1,7 +1,7 @@
 """Domain models for reconciliation system.
 
 These models represent the business domain and are independent of API/persistence concerns.
-They mirror the Pydantic DTO models but use dataclasses for flexibility and框架 independence.
+They mirror the Pydantic DTO models but use dataclasses for flexibility and independence.
 """
 
 from dataclasses import dataclass, field
