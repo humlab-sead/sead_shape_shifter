@@ -10,6 +10,8 @@ from click.testing import CliRunner
 from backend.app.core.config import Settings
 from backend.app.models.ingester import IngesterMetadataResponse, IngestResponse, ValidateResponse
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def mock_settings(monkeypatch: pytest.MonkeyPatch):
