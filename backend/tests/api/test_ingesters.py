@@ -16,6 +16,8 @@ from backend.app.services.ingester_runtime import (
 )
 from backend.app.services.ingester_service import IngesterService
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture(autouse=True)
 def reset_ingester_registry_state() -> Iterator[None]:
@@ -278,7 +280,7 @@ class TestIngestersEndpoints:
 class TestIngesterServiceIntegration:
     """Integration tests for IngesterService."""
 
-    def test_service_list_ingesters(self, client: TestClient):
+    def test_service_list_ingesters(self):
         """Test that service can list ingesters."""
 
         ingesters = IngesterService.list_ingesters()
