@@ -11,8 +11,8 @@ from backend.app.main import app
 from backend.app.services import project_service, validation_service, yaml_service
 
 
-@pytest.fixture
-def client():
+@pytest.fixture(name="client")
+def client_fixture():
     with TestClient(app) as client:
         yield client
 
