@@ -1,13 +1,18 @@
 """Tests for the what's-new manifest endpoint."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
 
-client = TestClient(app)
+
+@pytest.fixture
+def client():
+    with TestClient(app) as client:
+        yield client
 
 
-def test_whats_new_manifest_returns_archive() -> None:
+def test_whats_new_manifest_returns_archive(client) -> None:
     """The what's-new manifest should expose the generated release note archive."""
     response = client.get("/api/v1/whats-new")
     assert response.status_code == 200
@@ -22,7 +27,7 @@ def test_whats_new_manifest_returns_archive() -> None:
     assert latest["date"]
 
 
-def test_whats_new_manifest_is_sorted_descending() -> None:
+def test_whats_new_manifest_is_sorted_descending(client) -> None:
     """Manifest items should be sorted by semantic version descending."""
     response = client.get("/api/v1/whats-new")
     assert response.status_code == 200
@@ -31,7 +36,7 @@ def test_whats_new_manifest_is_sorted_descending() -> None:
     assert versions == sorted(versions, key=lambda v: list(map(int, v.split("."))), reverse=True)
 
 
-def test_whats_new_content_returns_markdown() -> None:
+def test_whats_new_content_returns_markdown(client) -> None:
     """The frontend should be able to fetch markdown content through the API."""
     data = client.get("/api/v1/whats-new").json()
 

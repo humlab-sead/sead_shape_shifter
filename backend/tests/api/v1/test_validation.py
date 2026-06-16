@@ -7,7 +7,12 @@ from backend.app.core.config import settings
 from backend.app.main import app
 from backend.app.services import dependency_service, project_service, validation_service, yaml_service
 
-client = TestClient(app)
+
+@pytest.fixture
+def client():
+    with TestClient(app) as client:
+        yield client
+
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -38,7 +43,7 @@ def sample_entity_data():
 class TestEntityValidation:
     """Tests for entity validation endpoint."""
 
-    def test_validate_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
+    def test_validate_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data, client):
         """Test validating specific entity."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -57,7 +62,7 @@ class TestEntityValidation:
         assert "errors" in data
         assert "warnings" in data
 
-    def test_validate_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
+    def test_validate_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data, client):
         """Test validating non-existent entity."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -76,7 +81,7 @@ class TestEntityValidation:
         assert "is_valid" in data
         assert "errors" in data
 
-    def test_validate_entity_nonexistent_config(self, tmp_path, monkeypatch, reset_services):
+    def test_validate_entity_nonexistent_config(self, tmp_path, monkeypatch, reset_services, client):
         """Test validating entity in non-existent configuration."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -89,7 +94,7 @@ class TestEntityValidation:
 class TestDependencies:
     """Tests for dependency analysis endpoints."""
 
-    def test_get_dependencies_simple(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
+    def test_get_dependencies_simple(self, tmp_path, monkeypatch, reset_services, sample_entity_data, client):
         """Test getting dependency graph with simple dependencies."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -138,7 +143,7 @@ class TestDependencies:
         assert data["nodes"] == expected_graph["nodes"]
         assert data["edges"] == expected_graph["edges"]
 
-    def test_get_dependencies_no_deps(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
+    def test_get_dependencies_no_deps(self, tmp_path, monkeypatch, reset_services, sample_entity_data, client):
         """Test getting dependency graph with no dependencies."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -155,7 +160,7 @@ class TestDependencies:
         assert len(data["edges"]) == 0
         assert data["has_cycles"] is False
 
-    def test_get_dependencies_with_cycles(self, tmp_path, monkeypatch, reset_services):
+    def test_get_dependencies_with_cycles(self, tmp_path, monkeypatch, reset_services, client):
         """Test getting dependency graph with circular dependencies."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -174,7 +179,7 @@ class TestDependencies:
         assert data["has_cycles"] is True
         assert len(data["cycles"]) > 0
 
-    def test_get_dependencies_nonexistent_config(self, tmp_path, monkeypatch, reset_services):
+    def test_get_dependencies_nonexistent_config(self, tmp_path, monkeypatch, reset_services, client):
         """Test getting dependencies for non-existent configuration."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -187,7 +192,7 @@ class TestDependencies:
 class TestCircularDependencyCheck:
     """Tests for circular dependency check endpoint."""
 
-    def test_check_no_cycles(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
+    def test_check_no_cycles(self, tmp_path, monkeypatch, reset_services, sample_entity_data, client):
         """Test checking for circular dependencies when none exist."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -207,7 +212,7 @@ class TestCircularDependencyCheck:
         assert data["cycle_count"] == 0
         assert len(data["cycles"]) == 0
 
-    def test_check_with_cycles(self, tmp_path, monkeypatch, reset_services):
+    def test_check_with_cycles(self, tmp_path, monkeypatch, reset_services, client):
         """Test checking for circular dependencies when they exist."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -227,7 +232,7 @@ class TestCircularDependencyCheck:
         assert data["cycle_count"] > 0
         assert len(data["cycles"]) > 0
 
-    def test_check_dependencies_nonexistent_config(self, tmp_path, monkeypatch, reset_services):
+    def test_check_dependencies_nonexistent_config(self, tmp_path, monkeypatch, reset_services, client):
         """Test checking dependencies for non-existent configuration."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
