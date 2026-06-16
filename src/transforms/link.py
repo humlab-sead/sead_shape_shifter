@@ -53,7 +53,7 @@ def _build_fk_validator(
 
         # Preserve compatibility with simpler test doubles that still accept
         # the older entity-name positional form.
-        return validator_cls(local_entity=local_entity.entity_name, fk=fk, runtime_options=runtime_options)
+        return validator_cls(local_entity.entity_name, fk, runtime_options=runtime_options)
 
 
 class ForeignKeyLinker:
