@@ -12,7 +12,12 @@ from backend.app.core.state_manager import get_app_state
 from backend.app.main import app
 from backend.app.services import dependency_service, documentation_service, project_service, validation_service, yaml_service
 
-client = TestClient(app)
+
+@pytest.fixture
+def client():
+    with TestClient(app) as client:
+        yield client
+
 
 # pylint: disable=redefined-outer-name, unused-argument, protected-access
 
@@ -48,7 +53,7 @@ def reset_services_and_state():
         app_state._project_dirty.clear()
 
 
-def test_update_raw_yaml_forces_reload(tmp_path, monkeypatch, reset_services_and_state):
+def test_update_raw_yaml_forces_reload(tmp_path, monkeypatch, reset_services_and_state, client):
     """PUT /raw-yaml must invalidate cache so subsequent reads see new entities."""
 
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -126,7 +131,7 @@ entities:
     assert {n["name"] for n in graph["nodes"]} == {"datasheet", "sample", "site", "location", "site_location"}
 
 
-def test_download_schema_reference_target_model_docs(tmp_path, monkeypatch, reset_services_and_state):
+def test_download_schema_reference_target_model_docs(tmp_path, monkeypatch, reset_services_and_state, client):
     """GET /target-model-docs with schema-reference returns Markdown and download headers."""
 
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)

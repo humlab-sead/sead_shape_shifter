@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 import yaml
 from fastapi.testclient import TestClient
 
@@ -10,7 +11,11 @@ from backend.app.main import app
 from backend.app.services import project_service, validation_service, yaml_service
 from src.normalizer import ShapeShifter
 
-client = TestClient(app)
+
+@pytest.fixture
+def client():
+    with TestClient(app) as client:
+        yield client
 
 
 def _write_project(tmp_path: Path) -> None:
@@ -179,7 +184,7 @@ class TestReconciliationExportApi:
     def teardown_method(self) -> None:
         _reset_singletons()
 
-    def test_export_to_mapping_writes_reconciliation_links(self, tmp_path: Path, monkeypatch) -> None:
+    def test_export_to_mapping_writes_reconciliation_links(self, tmp_path: Path, monkeypatch, client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
         _write_reconciliation_catalog(tmp_path)
@@ -206,7 +211,7 @@ class TestReconciliationExportApi:
         assert links["B"]["target_id"] == 202
         assert "C" not in links
 
-    def test_export_to_mapping_skips_existing_manual_links(self, tmp_path: Path, monkeypatch) -> None:
+    def test_export_to_mapping_skips_existing_manual_links(self, tmp_path: Path, monkeypatch, client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
         _write_reconciliation_catalog(tmp_path)
@@ -231,7 +236,7 @@ class TestReconciliationExportApi:
         assert links["B"]["target_id"] == 202
         assert links["B"]["source"] == "reconciliation"
 
-    def test_export_to_mapping_returns_404_when_reconciliation_catalog_is_missing(self, tmp_path: Path, monkeypatch) -> None:
+    def test_export_to_mapping_returns_404_when_reconciliation_catalog_is_missing(self, tmp_path: Path, monkeypatch, client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
 
@@ -240,7 +245,7 @@ class TestReconciliationExportApi:
         assert response.status_code == 404
         assert response.json()["detail"] == "No reconciliation registry for entity 'site' target 'site_code'"
 
-    def test_exported_links_are_applied_during_normalization(self, tmp_path: Path, monkeypatch) -> None:
+    def test_exported_links_are_applied_during_normalization(self, tmp_path: Path, monkeypatch, client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         project_path = _write_project_with_blank_public_ids(tmp_path)
         _write_sample_reconciliation_catalog(tmp_path)

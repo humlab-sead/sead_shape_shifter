@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 import yaml
 from fastapi.testclient import TestClient
 
@@ -9,7 +10,11 @@ from backend.app.core.config import settings
 from backend.app.main import app
 from backend.app.services import project_service, validation_service, yaml_service
 
-client = TestClient(app)
+
+@pytest.fixture
+def client():
+    with TestClient(app) as client:
+        yield client
 
 
 def _write_project(tmp_path: Path) -> None:
@@ -80,7 +85,7 @@ class TestMappingApi:
     def teardown_method(self) -> None:
         _reset_singletons()
 
-    def test_get_entity_mapping_returns_default_metadata_when_sidecar_missing(self, tmp_path: Path, monkeypatch) -> None:
+    def test_get_entity_mapping_returns_default_metadata_when_sidecar_missing(self, tmp_path: Path, monkeypatch, client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
 
@@ -93,7 +98,7 @@ class TestMappingApi:
         assert body["public_id"] == "site_id"
         assert body["links"] == {}
 
-    def test_get_entity_mapping_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch) -> None:
+    def test_get_entity_mapping_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
 
@@ -105,7 +110,7 @@ class TestMappingApi:
         assert body["context"]["resource_type"] == "entity"
         assert body["context"]["resource_id"] == "missing"
 
-    def test_get_single_mapping_link_returns_saved_link(self, tmp_path: Path, monkeypatch) -> None:
+    def test_get_single_mapping_link_returns_saved_link(self, tmp_path: Path, monkeypatch, client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
         _write_mapping_sidecar(tmp_path)
@@ -119,7 +124,7 @@ class TestMappingApi:
         assert body["link"]["target_id"] == 10
         assert body["link"]["source"] == "manual"
 
-    def test_get_single_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch) -> None:
+    def test_get_single_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
         _write_mapping_sidecar(tmp_path)
@@ -132,7 +137,7 @@ class TestMappingApi:
         assert body["context"]["resource_type"] == "entity"
         assert body["context"]["resource_id"] == "missing"
 
-    def test_put_mapping_link_creates_or_updates_manual_link(self, tmp_path: Path, monkeypatch) -> None:
+    def test_put_mapping_link_creates_or_updates_manual_link(self, tmp_path: Path, monkeypatch, client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
 
@@ -153,7 +158,7 @@ class TestMappingApi:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"]["B"]["target_id"] == 20
 
-    def test_put_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch) -> None:
+    def test_put_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
 
@@ -168,7 +173,7 @@ class TestMappingApi:
         assert body["context"]["resource_type"] == "entity"
         assert body["context"]["resource_id"] == "missing"
 
-    def test_delete_mapping_link_removes_saved_link(self, tmp_path: Path, monkeypatch) -> None:
+    def test_delete_mapping_link_removes_saved_link(self, tmp_path: Path, monkeypatch, client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
         _write_mapping_sidecar(tmp_path)
@@ -182,7 +187,7 @@ class TestMappingApi:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"] == {}
 
-    def test_delete_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch) -> None:
+    def test_delete_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
         _write_project(tmp_path)
 
