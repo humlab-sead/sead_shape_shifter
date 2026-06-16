@@ -14,7 +14,10 @@ from unittest.mock import Mock, MagicMock
 from backend.app.main import app
 from backend.app.services.{service} import {ServiceClass}
 
-client = TestClient(app)
+@pytest.fixture
+def client():
+    with TestClient(app) as client:
+        yield client
 ```
 
 ### Service Tests
@@ -50,16 +53,16 @@ class Test{ServiceClass}:
 ```python
 class Test{ComponentName}Endpoints:
 
-    def test_get_success(self):
+    def test_get_success(self, client):
         response = client.get("/api/v1/{resource}")
         assert response.status_code == 200
         assert "expected_field" in response.json()
 
-    def test_get_not_found(self):
+    def test_get_not_found(self, client):
         response = client.get("/api/v1/{resource}/nonexistent")
         assert response.status_code == 404
 
-    def test_post_validation_error(self):
+    def test_post_validation_error(self, client):
         response = client.post("/api/v1/{resource}", json={"missing": "required"})
         assert response.status_code == 422
 ```
