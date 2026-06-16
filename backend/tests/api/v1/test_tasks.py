@@ -12,8 +12,8 @@ from backend.app.services import project_service, task_service, validation_servi
 
 
 # pylint: disable=redefined-outer-name, unused-argument
-@pytest.fixture
-def client():
+@pytest.fixture(name="client")
+def client_fixture():
     with TestClient(app) as client:
         yield client
 

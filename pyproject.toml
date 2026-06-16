@@ -163,7 +163,7 @@ warn_return_any = false
 # pytest
 # --------------------
 [tool.pytest.ini_options]
-addopts = "-q -ra -n 2 --strict-markers"
+addopts = "-q -rfEx -n 2 --strict-markers"
 testpaths = ["tests", "backend/tests", "ingesters/sead/tests"]
 python_classes = "Test*"
 python_functions = "test_*"
