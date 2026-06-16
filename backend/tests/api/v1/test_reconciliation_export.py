@@ -1,5 +1,6 @@
 """Tests for exporting reconciliation links into the mapping sidecar."""
 
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -12,8 +13,8 @@ from backend.app.services import project_service, validation_service, yaml_servi
 from src.normalizer import ShapeShifter
 
 
-@pytest.fixture
-def client():
+@pytest.fixture(name="client")
+def client_fixture():
     with TestClient(app) as client:
         yield client
 
@@ -255,8 +256,6 @@ class TestReconciliationExportApi:
         assert response.status_code == 200
 
         normalizer = ShapeShifter(project=str(project_path))
-
-        import asyncio
 
         asyncio.run(normalizer.normalize())
 

@@ -7,6 +7,7 @@ from click.testing import CliRunner
 from backend.app.models.ingester import IngesterMetadataResponse, IngestResponse, ValidateResponse
 
 
+# pylint: disable=import-outside-toplevel
 class TestIngestCLI:
     """Test the ingest CLI commands."""
 
