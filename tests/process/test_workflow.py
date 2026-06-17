@@ -2,6 +2,7 @@ import asyncio
 import os
 import shutil
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
 
 import jpype
 import pytest
@@ -21,7 +22,6 @@ def initialize_jvm():
 
 
 def test_access_database_csv_workflow():
-
     config_file: str = "./tests/test_data/projects/arbodat/shapeshifter.yml"
     config: ShapeShiftProject = ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file=".env")
 
@@ -76,3 +76,34 @@ def remove_path(output_path):
             shutil.rmtree(output_path)
         else:
             os.remove(output_path)
+
+
+@pytest.mark.asyncio
+async def test_workflow_does_not_use_legacy_project_mappings(tmp_path: Path):
+    project = ShapeShiftProject(
+        cfg={
+            "entities": {"sample": {"type": "entity", "source": "survey", "columns": ["sample_code"]}},
+            "options": {"mappings": {"sample": {"local_key": "sample_code"}}},
+        },
+        filename=str(tmp_path / "shapeshifter.yml"),
+    )
+    fake_shapeshifter = Mock()
+    fake_shapeshifter.normalize = AsyncMock()
+    fake_shapeshifter.drop_foreign_key_columns = Mock()
+    fake_shapeshifter.translate = Mock()
+    fake_shapeshifter.map_to_remote = Mock()
+    fake_shapeshifter.store = Mock()
+    fake_shapeshifter.log_shapes = Mock()
+
+    with patch("src.workflow.ShapeShifter", return_value=fake_shapeshifter):
+        await workflow(
+            project=project,
+            target=str(tmp_path / "out"),
+            translate=False,
+            target_type="csv",
+            drop_foreign_keys=False,
+        )
+
+    fake_shapeshifter.normalize.assert_awaited_once()
+    fake_shapeshifter.map_to_remote.assert_not_called()
+    fake_shapeshifter.store.assert_called_once()

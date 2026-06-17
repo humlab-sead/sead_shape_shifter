@@ -1,36 +1,13 @@
 """Tests for the ingest CLI tool."""
 
-import importlib
 from unittest.mock import AsyncMock, patch
 
-import pytest
 from click.testing import CliRunner
 
-from backend.app.core.config import get_settings
-from backend.app.models.ingester import (
-    IngesterMetadataResponse,
-    IngestResponse,
-    ValidateResponse,
-)
+from backend.app.models.ingester import IngesterMetadataResponse, IngestResponse, ValidateResponse
 
 
-@pytest.fixture
-def ingest_cli_module(settings):
-    """Reload the CLI module under test settings for each test.
-
-    The CLI discovers ingesters at import time, so reloading it here avoids
-    collection-time module state leaking across tests.
-    """
-    get_settings.cache_clear()
-
-    import backend.app.scripts.ingest as ingest_module
-
-    module = importlib.reload(ingest_module)
-    yield module
-
-    get_settings.cache_clear()
-
-
+# pylint: disable=import-outside-toplevel
 class TestIngestCLI:
     """Test the ingest CLI commands."""
 
@@ -38,8 +15,10 @@ class TestIngestCLI:
         """Set up test fixtures."""
         self.runner = CliRunner()  # pylint: disable=attribute-defined-outside-init
 
-    def test_list_ingesters(self, ingest_cli_module):
+    def test_list_ingesters(self):
         """Test listing available ingesters."""
+        import backend.app.scripts.ingest as ingest_module
+
         mock_ingesters = [
             IngesterMetadataResponse(
                 key="sead",
@@ -50,24 +29,28 @@ class TestIngestCLI:
             )
         ]
 
-        with patch.object(ingest_cli_module.IngesterService, "list_ingesters", return_value=mock_ingesters):
-            result = self.runner.invoke(ingest_cli_module.cli, ["list-ingesters"])
+        with patch.object(ingest_module.IngesterService, "list_ingesters", return_value=mock_ingesters):
+            result = self.runner.invoke(ingest_module.cli, ["list-ingesters"])
 
         assert result.exit_code == 0
         assert "SEAD Clearinghouse" in result.output
         assert "sead" in result.output
         assert "1.0.0" in result.output
 
-    def test_list_ingesters_empty(self, ingest_cli_module):
+    def test_list_ingesters_empty(self):
         """Test listing when no ingesters are available."""
-        with patch.object(ingest_cli_module.IngesterService, "list_ingesters", return_value=[]):
-            result = self.runner.invoke(ingest_cli_module.cli, ["list-ingesters"])
+        import backend.app.scripts.ingest as ingest_module
+
+        with patch.object(ingest_module.IngesterService, "list_ingesters", return_value=[]):
+            result = self.runner.invoke(ingest_module.cli, ["list-ingesters"])
 
         assert result.exit_code == 0
         assert "No ingesters available" in result.output
 
-    def test_validate_success(self, tmp_path, ingest_cli_module):
+    def test_validate_success(self, tmp_path):
         """Test successful validation."""
+        import backend.app.scripts.ingest as ingest_module
+
         test_file = tmp_path / "test.xlsx"
         test_file.write_text("test data")
 
@@ -75,15 +58,17 @@ class TestIngestCLI:
 
         async_mock = AsyncMock(return_value=mock_response)
 
-        with patch.object(ingest_cli_module.IngesterService, "validate", new=async_mock):
-            result = self.runner.invoke(ingest_cli_module.cli, ["validate", "sead", str(test_file)])
+        with patch.object(ingest_module.IngesterService, "validate", new=async_mock):
+            result = self.runner.invoke(ingest_module.cli, ["validate", "sead", str(test_file)])
 
         assert result.exit_code == 0
         assert "VALIDATION PASSED" in result.output
         assert "Warning 1" in result.output
 
-    def test_validate_failure(self, tmp_path, ingest_cli_module):
+    def test_validate_failure(self, tmp_path):
         """Test failed validation."""
+        import backend.app.scripts.ingest as ingest_module
+
         test_file = tmp_path / "test.xlsx"
         test_file.write_text("test data")
 
@@ -91,16 +76,18 @@ class TestIngestCLI:
 
         async_mock = AsyncMock(return_value=mock_response)
 
-        with patch.object(ingest_cli_module.IngesterService, "validate", new=async_mock):
-            result = self.runner.invoke(ingest_cli_module.cli, ["validate", "sead", str(test_file)])
+        with patch.object(ingest_module.IngesterService, "validate", new=async_mock):
+            result = self.runner.invoke(ingest_module.cli, ["validate", "sead", str(test_file)])
 
         assert result.exit_code == 1
         assert "VALIDATION FAILED" in result.output
         assert "Error 1" in result.output
         assert "Error 2" in result.output
 
-    def test_validate_with_config(self, tmp_path, ingest_cli_module):
+    def test_validate_with_config(self, tmp_path):
         """Test validation with config file."""
+        import backend.app.scripts.ingest as ingest_module
+
         test_file = tmp_path / "test.xlsx"
         test_file.write_text("test data")
 
@@ -111,16 +98,18 @@ class TestIngestCLI:
 
         async_mock = AsyncMock(return_value=mock_response)
 
-        with patch.object(ingest_cli_module.IngesterService, "validate", new=async_mock) as mock_validate:
-            result = self.runner.invoke(ingest_cli_module.cli, ["validate", "sead", str(test_file), "--config", str(config_file)])
+        with patch.object(ingest_module.IngesterService, "validate", new=async_mock) as mock_validate:
+            result = self.runner.invoke(ingest_module.cli, ["validate", "sead", str(test_file), "--config", str(config_file)])
 
         assert result.exit_code == 0
         # Verify config was passed
         call_args = mock_validate.call_args
         assert call_args[0][1].config["ignore_columns"] == ["col1"]
 
-    def test_ingest_success(self, tmp_path, ingest_cli_module):
+    def test_ingest_success(self, tmp_path):
         """Test successful ingestion."""
+        import backend.app.scripts.ingest as ingest_module
+
         test_file = tmp_path / "test.xlsx"
         test_file.write_text("test data")
 
@@ -135,9 +124,9 @@ class TestIngestCLI:
 
         async_mock = AsyncMock(return_value=mock_response)
 
-        with patch.object(ingest_cli_module.IngesterService, "ingest", new=async_mock):
+        with patch.object(ingest_module.IngesterService, "ingest", new=async_mock):
             result = self.runner.invoke(
-                ingest_cli_module.cli,
+                ingest_module.cli,
                 [
                     "ingest",
                     "sead",
@@ -154,8 +143,10 @@ class TestIngestCLI:
         assert "100" in result.output
         assert "42" in result.output
 
-    def test_ingest_failure(self, tmp_path, ingest_cli_module):
+    def test_ingest_failure(self, tmp_path):
         """Test failed ingestion."""
+        import backend.app.scripts.ingest as ingest_module
+
         test_file = tmp_path / "test.xlsx"
         test_file.write_text("test data")
 
@@ -170,9 +161,9 @@ class TestIngestCLI:
 
         async_mock = AsyncMock(return_value=mock_response)
 
-        with patch.object(ingest_cli_module.IngesterService, "ingest", new=async_mock):
+        with patch.object(ingest_module.IngesterService, "ingest", new=async_mock):
             result = self.runner.invoke(
-                ingest_cli_module.cli,
+                ingest_module.cli,
                 [
                     "ingest",
                     "sead",
@@ -188,8 +179,10 @@ class TestIngestCLI:
         assert "INGESTION FAILED" in result.output
         assert "error" in result.output
 
-    def test_ingest_with_database_options(self, tmp_path, ingest_cli_module):
+    def test_ingest_with_database_options(self, tmp_path):
         """Test ingestion with database options."""
+        import backend.app.scripts.ingest as ingest_module
+
         test_file = tmp_path / "test.xlsx"
         test_file.write_text("test data")
 
@@ -204,9 +197,9 @@ class TestIngestCLI:
 
         async_mock = AsyncMock(return_value=mock_response)
 
-        with patch.object(ingest_cli_module.IngesterService, "ingest", new=async_mock) as mock_ingest:
+        with patch.object(ingest_module.IngesterService, "ingest", new=async_mock) as mock_ingest:
             result = self.runner.invoke(
-                ingest_cli_module.cli,
+                ingest_module.cli,
                 [
                     "ingest",
                     "sead",
@@ -240,26 +233,32 @@ class TestIngestCLI:
         assert request.do_register is True
         assert request.explode is True
 
-    def test_ingest_missing_required_options(self, tmp_path, ingest_cli_module):
+    def test_ingest_missing_required_options(self, tmp_path):
         """Test ingestion fails without required options."""
+        import backend.app.scripts.ingest as ingest_module
+
         test_file = tmp_path / "test.xlsx"
         test_file.write_text("test data")
 
         # Missing --submission-name
-        result = self.runner.invoke(ingest_cli_module.cli, ["ingest", "sead", str(test_file), "--data-types", "test"])
+        result = self.runner.invoke(ingest_module.cli, ["ingest", "sead", str(test_file), "--data-types", "test"])
         assert result.exit_code != 0
 
         # Missing --data-types
-        result = self.runner.invoke(ingest_cli_module.cli, ["ingest", "sead", str(test_file), "--submission-name", "test"])
+        result = self.runner.invoke(ingest_module.cli, ["ingest", "sead", str(test_file), "--submission-name", "test"])
         assert result.exit_code != 0
 
-    def test_validate_nonexistent_file(self, ingest_cli_module):
+    def test_validate_nonexistent_file(self):
         """Test validation with nonexistent file."""
-        result = self.runner.invoke(ingest_cli_module.cli, ["validate", "sead", "/nonexistent/file.xlsx"])
+        import backend.app.scripts.ingest as ingest_module
+
+        result = self.runner.invoke(ingest_module.cli, ["validate", "sead", "/nonexistent/file.xlsx"])
         assert result.exit_code != 0
 
-    def test_ingest_with_config_file(self, tmp_path, ingest_cli_module):
+    def test_ingest_with_config_file(self, tmp_path):
         """Test ingestion with config file."""
+        import backend.app.scripts.ingest as ingest_module
+
         test_file = tmp_path / "test.xlsx"
         test_file.write_text("test data")
 
@@ -277,9 +276,9 @@ class TestIngestCLI:
 
         async_mock = AsyncMock(return_value=mock_response)
 
-        with patch.object(ingest_cli_module.IngesterService, "ingest", new=async_mock) as mock_ingest:
+        with patch.object(ingest_module.IngesterService, "ingest", new=async_mock) as mock_ingest:
             result = self.runner.invoke(
-                ingest_cli_module.cli,
+                ingest_module.cli,
                 [
                     "ingest",
                     "sead",

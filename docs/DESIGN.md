@@ -208,6 +208,55 @@ Frontend: Project saved
 
 **Output**: execution results are written to `OUTPUT_DIR`. These are ephemeral; no retention policy is applied automatically.
 
+**Mapping sidecar**: entity ID mappings (business-key → target-ID links) are stored in a separate `<project>-mapping.yml` sidecar file alongside `shapeshifter.yml`. This keeps large mapping datasets out of the main project YAML and supports provenance tracking per link. The sidecar is loaded on project open, cached in memory, and invalidated on save.
+
+### Mapping Sidecar Design
+
+The mapping sidecar consolidates all ID mapping persistence into a single file with explicit provenance and commit semantics. It replaces the legacy `options.mappings` section in `shapeshifter.yml` (which is ignored for new projects).
+
+**File structure** (`<project>-mapping.yml`):
+
+```yaml
+version: "2.0"
+metadata:
+  created_at: "2026-06-14T10:00:00Z"
+  updated_at: "2026-06-14T12:00:00Z"
+  project: "my_project"
+entities:
+  taxon:
+    local_key: "PCODE"          # Business key column(s)
+    public_id: "taxon_id"       # Must match entity public_id in shapeshifter.yml
+    entity_type: "primary"
+    links:
+      "PLANT001":
+        target_id: 101
+        source: "manual"        # "manual" | "reconciliation" | "import"
+        confidence: 1.0
+        committed_at: "2026-06-14T10:00:00Z"
+        created_by: "user@example.com"
+```
+
+**Precedence during normalization** (first match wins):
+
+1. Manual overrides (`source: "manual"`, committed) — highest priority
+2. Reconciliation exports (`source: "reconciliation"`, committed)
+3. Imported links (`source: "import"`, committed)
+4. Draft links (`committed_at: null`) — skipped
+
+**Write paths**:
+- **Reconciliation export**: user accepts auto-matched links → copied from reconciliation catalog to sidecar with `source: "reconciliation"`
+- **Materialized entity save**: rows with non-null `public_id` are extracted and written as `source: "manual"` links, replacing previous manual links for that entity
+- **Direct API**: `PUT /projects/{project}/mapping/{entity}/{key}` for manual link creation
+- **CSV import/export**: bulk operations via `POST .../mapping/import` and `GET .../mapping/export`
+
+**Validation at load time**:
+- Each entity mapping's `public_id` must match the entity's `public_id` in `shapeshifter.yml`
+- `local_key` must be a business key, not `system_id` or `public_id`
+
+**Python models**: `src/reconciliation/mapping_model.py` (Pydantic v2: `MappingCatalog`, `EntityMapping`, `Link`, `LinkSource`)
+
+**Related proposal**: `docs/proposals/done/RECONCILIATION_PERSISTENCE_CONSOLIDATION.md`
+
 ---
 
 ## Cross-Cutting Concerns

@@ -1,13 +1,18 @@
 """Tests for health check endpoint."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
 
-client = TestClient(app)
+
+@pytest.fixture(name="client")
+def client_fixture():
+    with TestClient(app) as client:
+        yield client
 
 
-def test_health_check():
+def test_health_check(client):
     """Test health check endpoint returns 200 OK."""
     response = client.get("/api/v1/health")
     assert response.status_code == 200
@@ -20,7 +25,7 @@ def test_health_check():
     assert "projects_dir" in data
 
 
-def test_root_endpoint():
+def test_root_endpoint(client):
     """Test root endpoint returns API information or frontend."""
     response = client.get("/")
     assert response.status_code == 200

@@ -1,8 +1,12 @@
 """Integration tests for ingester API endpoints."""
 
+from collections.abc import Iterator
+
+import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 
+from backend.app.ingesters.registry import Ingesters
 from backend.app.main import app
 from backend.app.models.ingester import IngestRequest, IngestResponse, ValidateRequest, ValidateResponse
 from backend.app.services.ingester_runtime import (
@@ -12,13 +16,29 @@ from backend.app.services.ingester_runtime import (
 )
 from backend.app.services.ingester_service import IngesterService
 
-client = TestClient(app)
+# pylint: disable=redefined-outer-name
+
+
+@pytest.fixture(autouse=True)
+def reset_ingester_registry_state() -> Iterator[None]:
+    """Force ingester discovery to run for each test in this module."""
+    original_initialized = Ingesters._initialized
+    Ingesters._initialized = False
+    yield
+    Ingesters._initialized = original_initialized
+
+
+@pytest.fixture
+def client() -> Iterator[TestClient]:
+    """Create a fresh TestClient so app startup runs inside the test."""
+    with TestClient(app) as test_client:
+        yield test_client
 
 
 class TestIngestersEndpoints:
     """Test ingester API endpoints."""
 
-    def test_list_ingesters(self):
+    def test_list_ingesters(self, client: TestClient):
         """Test GET /api/v1/ingesters endpoint."""
         response = client.get("/api/v1/ingesters")
         assert response.status_code == 200
@@ -34,7 +54,7 @@ class TestIngestersEndpoints:
         assert sead_ingester["version"] == "1.0.0"
         assert "xlsx" in sead_ingester["supported_formats"]
 
-    def test_list_ingesters_structure(self):
+    def test_list_ingesters_structure(self, client: TestClient):
         """Test that list_ingesters returns properly structured metadata."""
         response = client.get("/api/v1/ingesters")
         assert response.status_code == 200
@@ -48,7 +68,7 @@ class TestIngestersEndpoints:
             assert "supported_formats" in ingester
             assert isinstance(ingester["supported_formats"], list)
 
-    def test_validate_missing_ingester(self):
+    def test_validate_missing_ingester(self, client: TestClient):
         """Test validation with non-existent ingester."""
         response = client.post(
             "/api/v1/ingesters/nonexistent/validate",
@@ -60,7 +80,7 @@ class TestIngestersEndpoints:
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-    def test_validate_invalid_request(self):
+    def test_validate_invalid_request(self, client: TestClient):
         """Test validation with invalid request body."""
         response = client.post(
             "/api/v1/ingesters/sead/validate",
@@ -68,7 +88,7 @@ class TestIngestersEndpoints:
         )
         assert response.status_code == 422  # Pydantic validation error
 
-    def test_validate_success_structure(self):
+    def test_validate_success_structure(self, client: TestClient):
         """Test validation response structure (mock successful case)."""
         # This test validates the response structure
         # Actual validation would require a real file and database
@@ -93,7 +113,7 @@ class TestIngestersEndpoints:
             assert isinstance(data["warnings"], list)
             assert isinstance(data["infos"], list)
 
-    def test_validate_passes_submission_context_and_deploy_strategy_to_service(self, monkeypatch):
+    def test_validate_passes_submission_context_and_deploy_strategy_to_service(self, client: TestClient, monkeypatch):
         """Validate route should preserve change-request payload fields when calling the service."""
         captured: dict[str, str | ValidateRequest] = {}
 
@@ -141,7 +161,7 @@ class TestIngestersEndpoints:
         assert request.submission_context["identifier"] == "PILOT_BUGS"
         assert request.deploy_strategy == "copy_csv"
 
-    def test_ingest_missing_ingester(self):
+    def test_ingest_missing_ingester(self, client: TestClient):
         """Test ingestion with non-existent ingester."""
         response = client.post(
             "/api/v1/ingesters/nonexistent/ingest",
@@ -155,7 +175,7 @@ class TestIngestersEndpoints:
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-    def test_ingest_invalid_request(self):
+    def test_ingest_invalid_request(self, client: TestClient):
         """Test ingestion with invalid request body."""
         response = client.post(
             "/api/v1/ingesters/sead/ingest",
@@ -166,7 +186,7 @@ class TestIngestersEndpoints:
         )
         assert response.status_code == 422  # Pydantic validation error
 
-    def test_ingest_response_structure(self):
+    def test_ingest_response_structure(self, client: TestClient):
         """Test ingestion response structure."""
         response = client.post(
             "/api/v1/ingesters/sead/ingest",
@@ -199,7 +219,7 @@ class TestIngestersEndpoints:
         assert "pending_confirmation_report" in data
         assert data["success"] is False
 
-    def test_ingest_passes_submission_context_and_deploy_strategy_to_service(self, monkeypatch):
+    def test_ingest_passes_submission_context_and_deploy_strategy_to_service(self, client: TestClient, monkeypatch):
         """Ingest route should preserve change-request payload fields when calling the service."""
         captured: dict[str, str | IngestRequest] = {}
 

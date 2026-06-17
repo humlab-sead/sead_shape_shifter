@@ -47,7 +47,7 @@ options:           # Global options (optional)
   translations:    # Column name translations
   data_sources:    # named data sources associated to this project
   fixed_entity_types:  # Project-level fixed-entity type conventions (optional)
-  mappings:        # Remote entity mappings (optional)
+  mappings:        # (Legacy) Remote entity mappings — use <project>-mapping.yml sidecar instead
 ```
 
 ---
@@ -164,7 +164,7 @@ This architecture separates concerns between:
 - **Business logic**: `keys` for entity identification in source data
 - **Global scope**: `public_id` for target system integration and FK relationships
 
-**Critical Principle**: All relationships in ShapeShifter use local `system_id` values. FK columns always contain parent's `system_id` (sequential integers), never external IDs. External IDs (e.g., SEAD IDs) are applied as a decoration step via `mappings.yml` → `map_to_remote()`.
+**Critical Principle**: All relationships in ShapeShifter use local `system_id` values. FK columns always contain parent's `system_id` (sequential integers), never external IDs. External IDs (e.g., SEAD IDs) are applied as a decoration step via the mapping sidecar (`<project>-mapping.yml`).
 
 #### `system_id` (Auto-Managed)
 - **Type**: `string` (always "system_id")
@@ -190,7 +190,7 @@ This architecture separates concerns between:
 - **Required**: **Yes** (error if missing for fixed entities, warning for others)
 - **Description**: Serves dual purpose in the identity system:
   1. **Column Name**: Specifies the target system's PK column name (e.g., "location_id" in SEAD schema)
-  2. **Column Values**: Holds mapped external IDs from `mappings.yml` (local business key → SEAD ID)
+  2. **Column Values**: Holds mapped external IDs from the mapping sidecar (local business key → SEAD ID)
   
   Additionally, `public_id` determines FK column names in child entities to avoid `system_id` collision.
 - **Import Rule**: Unlike `system_id`, `public_id` may be source-backed when the source actually provides that identifier. If the source does not provide it, the column is still part of the target schema and may be added or populated later in the pipeline.
@@ -200,7 +200,7 @@ This architecture separates concerns between:
   Parent (location):
     system_id: [1, 2, 3]           ← Local sequential
     location_name: ["Norway", ...]  ← Business key
-    location_id: [162, 205, ...]    ← SEAD IDs from mappings.yml
+    location_id: [162, 205, ...]    ← SEAD IDs from mapping sidecar
                  ↑ public_id column
   
   Child (site) after FK link:
@@ -358,7 +358,7 @@ entities:
 **Critical Architectural Principle**: 
 - **All relationships use local `system_id` values** - FK columns contain parent's `system_id` (1, 2, 3...), never external IDs
 - **FK column naming**: Child FK column = parent's `public_id` (avoids `system_id` collision)
-- **SEAD ID mapping**: Applied separately via `mappings.yml` → `map_to_remote()` (decoration step)
+- **SEAD ID mapping**: Applied separately via the mapping sidecar (`<project>-mapping.yml`) as a decoration step
 - **Local domain integrity**: All processing happens with sequential integer references
 
 ---
@@ -2476,7 +2476,7 @@ options:
     sead: "@include: sead-options.yml"
     arbodat_lookup: "@include: arbodat-lookup-options.yml"
 
-mappings: "@include: mappings.yml"
+# Mapping sidecar is auto-loaded from <project>-mapping.yml; no @include needed
 ```
 
 ### `@load:` Load Syntax
@@ -3799,7 +3799,7 @@ entities: dict[string, EntityConfig]
 options:
   translations: TranslationConfig
   data_sources: dict[string, DataSourceConfig]
-mappings: dict[string, any]
+  mappings: dict[string, any]  # Legacy; use <project>-mapping.yml sidecar
 
 # EntityConfig
 EntityConfig:

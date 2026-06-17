@@ -13,11 +13,13 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models import AutoReconcileResult, Project, ReconciliationCandidate
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import ProjectService, ShapeShiftService
+from backend.app.services.mapping_service import MappingService
 from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
 from backend.app.services.reconciliation.resolvers import ReconciliationSourceResolver
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.model import ShapeShiftProject
 from src.reconciliation import model as core
+from src.reconciliation.mapping_model import EntityMapping, Link, LinkSource
 from src.reconciliation.source_strategy import ReconciliationSourceStrategy, SourceStrategyType
 
 
@@ -210,6 +212,53 @@ class ReconciliationService:
         if match:
             return int(match.group(1))
         raise BadRequestError(f"Cannot extract numeric ID from URI: {uri}")
+
+    def export_to_mapping(self, project_name: str, entity_name: str, target_field: str) -> tuple[int, int]:
+        """Copy accepted reconciliation links into the mapping sidecar for one entity."""
+        reconciliation_catalog: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
+        resolution_set: core.EntityResolutionSet | None = reconciliation_catalog.get(entity_name, target_field)
+        if resolution_set is None:
+            raise NotFoundError(f"No reconciliation registry for entity '{entity_name}' target '{target_field}'")
+
+        mapping_service: MappingService = MappingService(self.project_service)
+        api_project, table, mapping_catalog = mapping_service._load_project_table_and_catalog(project_name, entity_name)
+        entity_mapping: EntityMapping | None = mapping_service.manager.get_entity(mapping_catalog, entity_name)
+
+        exported = 0
+        skipped_manual = 0
+        committed_at: datetime = datetime.now(timezone.utc)
+
+        for resolved_pair in resolution_set.links:
+            if resolved_pair.target_id is None or resolved_pair.will_not_match:
+                continue
+
+            local_key_value: str = "" if resolved_pair.source_value is None else str(resolved_pair.source_value)
+            existing_link: Link | None = mapping_service.manager.get_link(mapping_catalog, entity_name, local_key_value)
+            if existing_link is not None and existing_link.source == LinkSource.MANUAL:
+                skipped_manual += 1
+                continue
+
+            if entity_mapping is None:
+                entity_mapping = mapping_service._build_default_entity_mapping(table)
+                mapping_catalog.entities[entity_name] = entity_mapping
+
+            mapping_service.manager.set_link(
+                mapping_catalog,
+                entity_name,
+                local_key_value,
+                Link(
+                    target_id=resolved_pair.target_id,
+                    source=LinkSource.RECONCILIATION,
+                    confidence=resolved_pair.confidence,
+                    committed_at=committed_at,
+                    notes=resolved_pair.notes,
+                    created_by="reconciliation-service",
+                ),
+            )
+            exported += 1
+
+        mapping_service.manager.save(mapping_catalog, mapping_service._project_path(api_project, project_name))
+        return exported, skipped_manual
 
     async def auto_reconcile_entity(
         self,

@@ -10,9 +10,12 @@ from backend.app.main import app
 from backend.app.models.validation import ValidationResult
 from backend.app.services import project_service, task_service, validation_service, yaml_service
 
-client = TestClient(app)
 
 # pylint: disable=redefined-outer-name, unused-argument
+@pytest.fixture(name="client")
+def client_fixture():
+    with TestClient(app) as client:
+        yield client
 
 
 @pytest.fixture
@@ -72,7 +75,7 @@ def sample_project_data():
 class TestGetTaskStatus:
     """Tests for GET /projects/{name}/tasks endpoint."""
 
-    def test_get_task_status_returns_all_entities(self, tmp_path, monkeypatch, reset_services, sample_project_data):
+    def test_get_task_status_returns_all_entities(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
         """Test that get_task_status returns status for all entities."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -89,7 +92,7 @@ class TestGetTaskStatus:
         assert "location" in data["entities"]
         assert "site" in data["entities"]
 
-    def test_get_task_status_includes_completion_stats(self, tmp_path, monkeypatch, reset_services, sample_project_data):
+    def test_get_task_status_includes_completion_stats(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
         """Test that completion statistics are included."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -110,7 +113,7 @@ class TestGetTaskStatus:
         assert "required_done" in stats
         assert "required_todo" in stats
 
-    def test_get_task_status_entity_has_required_fields(self, tmp_path, monkeypatch, reset_services, sample_project_data):
+    def test_get_task_status_entity_has_required_fields(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
         """Test that entity status has all required fields."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -131,7 +134,7 @@ class TestGetTaskStatus:
         assert "blocked_by" in location_status
         assert "issues" in location_status
 
-    def test_get_task_status_nonexistent_project(self, tmp_path, monkeypatch, reset_services):
+    def test_get_task_status_nonexistent_project(self, tmp_path, monkeypatch, reset_services, client):
         """Test getting task status for non-existent project."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -142,7 +145,7 @@ class TestGetTaskStatus:
 class TestMarkComplete:
     """Tests for POST /projects/{name}/tasks/{entity}/complete endpoint."""
 
-    def test_mark_complete_success(self, tmp_path, monkeypatch, reset_services, sample_project_data):
+    def test_mark_complete_success(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
         """Test successfully marking entity as complete."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -172,7 +175,7 @@ class TestMarkComplete:
             # The API response model may rename 'status' to 'new_status'
             assert data.get("new_status") == "done" or data.get("status") == "done"
 
-    def test_mark_complete_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_project_data):
+    def test_mark_complete_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
         """Test marking non-existent entity as complete."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -183,7 +186,7 @@ class TestMarkComplete:
         response = client.post("/api/v1/projects/test_project/tasks/nonexistent/complete")
         assert response.status_code == 400
 
-    def test_mark_complete_updates_task_list(self, tmp_path, monkeypatch, reset_services, sample_project_data):
+    def test_mark_complete_updates_task_list(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
         """Test that marking complete updates the task list in project file."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -213,7 +216,7 @@ class TestMarkComplete:
         assert project_data["task_list"] is not None, "task_list should not be None"
         assert "location" in project_data["task_list"].get("done", [])
 
-    def test_mark_ignored_success(self, tmp_path, monkeypatch, reset_services, sample_project_data):
+    def test_mark_ignored_success(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
         """Test successfully marking entity as ignored."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -229,7 +232,7 @@ class TestMarkComplete:
         assert data["entity_name"] == "location"
         assert data["new_status"] == "ignored"
 
-    def test_mark_ignored_updates_task_list(self, tmp_path, monkeypatch, reset_services, sample_project_data):
+    def test_mark_ignored_updates_task_list(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
         """Test that marking ignored updates the task list."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -248,7 +251,7 @@ class TestMarkComplete:
         if "task_list" in project_data:
             assert "location" in project_data["task_list"].get("ignored", [])
 
-    def test_mark_ignored_nonexistent_project(self, tmp_path, monkeypatch, reset_services):
+    def test_mark_ignored_nonexistent_project(self, tmp_path, monkeypatch, reset_services, client):
         """Test marking entity as ignored in non-existent project."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -259,7 +262,7 @@ class TestMarkComplete:
 class TestResetStatus:
     """Tests for DELETE /projects/{name}/tasks/{entity} endpoint."""
 
-    def test_reset_status_success(self, tmp_path, monkeypatch, reset_services, sample_project_data):
+    def test_reset_status_success(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
         """Test successfully resetting entity status."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -278,7 +281,7 @@ class TestResetStatus:
         assert data["entity_name"] == "location"
         assert data["new_status"] == "todo"
 
-    def test_reset_status_removes_from_ignored_list(self, tmp_path, monkeypatch, reset_services, sample_project_data):
+    def test_reset_status_removes_from_ignored_list(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
         """Test that reset removes entity from ignored list."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -299,7 +302,7 @@ class TestResetStatus:
         if "task_list" in project_data:
             assert "location" not in project_data["task_list"].get("ignored", [])
 
-    def test_reset_status_nonexistent_project(self, tmp_path, monkeypatch, reset_services):
+    def test_reset_status_nonexistent_project(self, tmp_path, monkeypatch, reset_services, client):
         """Test resetting status in non-existent project."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -310,7 +313,7 @@ class TestResetStatus:
 class TestTaskStatusFlow:
     """Tests for complete task status workflow."""
 
-    def test_full_workflow_todo_to_ignored_to_reset(self, tmp_path, monkeypatch, reset_services, sample_project_data):
+    def test_full_workflow_todo_to_ignored_to_reset(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
         """Test complete workflow: todo -> ignored -> reset."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -334,7 +337,7 @@ class TestTaskStatusFlow:
         status_data = status_response.json()
         assert status_data["entities"]["location"]["status"] == "todo"
 
-    def test_completion_stats_update_correctly(self, tmp_path, monkeypatch, reset_services, sample_project_data):
+    def test_completion_stats_update_correctly(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
         """Test that completion statistics update as entities change status."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 

@@ -208,47 +208,17 @@ https://medium.com/manomano-tech/project-aegis-benchmarking-ai-agents-and-why-se
 
 
 
-We need to review and consolidate how reconciliation data is persisted in Shape Shifter (i.e. links).
 
-Currently, reconciled data is stored in three places:
+# rtk installed
+λ brew install rtk
+λ rtk init -g --copilot
+[rtk] /!\ No hook installed — run `rtk init -g` for automatic token savings
+[ok] Added Copilot user-level instructions to /home/roger/.copilot/copilot-instructions.md
 
-1. In `<project-name>-reconciliation.yml` via the reconciliation workflow. The reconciliation result is stored as a YAML catalog file in the project directory:
-<PROJECTS_DIR>/<project_name>/<project_name>-reconciliation.yml EntityMappingManager builds this, and the reconciliation API uses settings.PROJECTS_DIR as the base directory. [backend/app/services/reconciliation/mapping_manager.py (line 42)](/home/roger/source/sead_shape_shifter/backend/app/services/reconciliation/mapping_manager.py#L42)[backend/app/api/v1/endpoints/reconciliation.py (line 28)](/home/roger/source/sead_shape_shifter/backend/app/api/v1/endpoints/reconciliation.py#L28).
+GitHub Copilot global integration installed (user-scoped).
 
-What gets written there is the updated EntityResolutionCatalog: auto-reconciled matches, manual mappings, and any threshold updates. auto_reconcile_entity() mutates the catalog in memory and then saves it through save_catalog(). cite[backend/app/services/reconciliation/service.py (line 351)](/home/roger/source/sead_shape_shifter/backend/app/services/reconciliation/service.py#L351)[backend/app/services/reconciliation/mapping_manager.py (line 74)](/home/roger/source/sead_shape_shifter/backend/app/services/reconciliation/mapping_manager.py#L74)
+  Hook config:    /home/roger/.copilot/hooks/rtk-rewrite.json
+  Instructions:   /home/roger/.copilot/copilot-instructions.md
 
-
-2. In `shapeshifter.yml` file's option.mapping section.
-LinkToRemoteService is the final “rewrite IDs” step in normalization.
-It is created in [src/normalizer.py (line 448)](/home/roger/source/sead_shape_shifter/src/normalizer.py#L448) and called from [src/workflow.py (line 64)](/home/roger/source/sead_shape_shifter/src/workflow.py#L64) right before tables are stored.
-For each entity, it looks up a config block with local_key, remote_key, and mapping, then adds a new column named by remote_key and fills it by mapping values from local_key. See [src/mapping.py (line 7)](/home/roger/source/sead_shape_shifter/src/mapping.py#L7).
-Where its input data lives:
-LinkToRemoteService reads project.mappings, which the project model exposes from options.mappings. See [src/model.py (line 1500)](/home/roger/source/sead_shape_shifter/src/model.py#L1500).
-That means the mapping data is stored in the project’s main YAML file, shapeshifter.yml, under options.mappings, not in the reconciliation catalog.
-
-
-So there is no separate “reconciliation result” file beyond that YAML catalog. The API returns an AutoReconcileResult for the request, but the durable on-disk state is the project’s reconciliation YAML. cite[backend/app/services/reconciliation/service.py (line 240)](/home/roger/source/sead_shape_shifter/backend/app/services/reconciliation/service.py#L240)[backend/app/api/v1/endpoints/reconciliation.py (line 105)](/home/roger/source/sead_shape_shifter/backend/app/api/v1/endpoints/reconciliation.py#L105)
-
-
- the materialize/unmaterialize feature.
-
-One reason for materializing an entity is to have the ability to assign public
-identities to records, i.e. specifying the SEAD identity for rows that already exist in the database.
-
-The limitation with the current implementation is that if we for some reason need to umaterialize
-the entity  the manually assigned identities are lost, and need to be added again.
-
-I would like the system to save those links so that thet user don't have to redo the reconciliation.
-
-The saved link must be from `business id` to `public id`, since `system id`
-can change during a dematerialization/materialization round trip.
-
-I can see some possible alternatives for storing the links:
-1. In a seperate sidecar section in the entity config that survives the dematerialization/materialization round trip. 
-Example:
-```
-entities:
-  site:
-    business_key
-2. In a seperate sidecar file next to the materialized file.
-3. 
+  Applies to all Copilot CLI sessions on this machine.
+  Restart your Copilot CLI session to activate.
