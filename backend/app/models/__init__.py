@@ -40,6 +40,13 @@ from backend.app.models.join_test import (
     JoinTestResult,
     UnmatchedRow,
 )
+from backend.app.models.mapping import (
+    MappingDeleteResponse,
+    MappingEntityResponse,
+    MappingLinkRecordResponse,
+    MappingLinkResponse,
+    MappingLinkUpsertRequest,
+)
 from backend.app.models.project import (
     Project,
     ProjectMetadata,
@@ -54,6 +61,7 @@ from backend.app.models.reconciliation import (
     EntityResolutionCatalog,
     EntityResolutionListItem,
     EntityResolutionSet,
+    ExportToMappingResult,
     ReconciliationCandidate,
     ReconciliationRemote,
     ReconciliationSource,

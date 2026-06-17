@@ -68,3 +68,23 @@ Use the focused files under `.github/instructions/` for detailed guidance:
 ## graphify
 
 For repo architecture or relationship questions, follow the graphify quick start in `AGENTS.md`.
+
+<!-- rtk-instructions v2 -->
+**rtk** is a CLI proxy that filters and compresses command outputs, saving 60-90% tokens.
+
+Use `rtk` for shell commands unless raw output, shell built-ins, or interactive commands require otherwise.
+
+Examples:
+```bash
+rtk uv run pytest
+rtk make test
+rtk pylint src/
+rtk git status
+rtk git log -10
+rtk cat docs/proposals/RECONCILIATION_FUTURE_IMPROVEMENTS.md
+```
+
+If `rtk` fails, retry without it.
+
+Meta: `rtk gain`, `rtk gain --history`, `rtk discover`, `rtk proxy <cmd>`
+<!-- /rtk-instructions -->

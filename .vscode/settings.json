@@ -127,6 +127,7 @@
     "python.analysis.userFileIndexingLimit": 500,
     "python.testing.autoTestDiscoverOnSaveEnabled": false,
     "python.testing.pytestArgs": [
+        "-qq",
         "tests",
         "backend/tests",
         "ingesters/sead/tests"

@@ -9,7 +9,11 @@ from backend.app.services import project_service, validation_service, yaml_servi
 
 # pylint: disable=redefined-outer-name, unused-argument
 
-client = TestClient(app)
+
+@pytest.fixture
+def client():
+    with TestClient(app) as client:
+        yield client
 
 
 @pytest.fixture
@@ -45,7 +49,7 @@ def reset_services():
 class TestConfigurationsList:
     """Tests for listing configurations."""
 
-    def test_list_configurations_empty(self, tmp_path, monkeypatch, reset_services):
+    def test_list_configurations_empty(self, tmp_path, monkeypatch, reset_services, client):
         """Test listing when no configurations exist."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -54,7 +58,7 @@ class TestConfigurationsList:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_list_configurations(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+    def test_list_configurations(self, tmp_path, monkeypatch, reset_services, sample_config_data, client):
         """Test listing configurations."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -75,7 +79,7 @@ class TestConfigurationsList:
 class TestConfigurationsGet:
     """Tests for getting configuration."""
 
-    def test_get_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+    def test_get_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data, client):
         """Test getting existing configuration."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -90,7 +94,7 @@ class TestConfigurationsGet:
         assert data["metadata"]["name"] == "test_project"
         assert "sample" in data["entities"]
 
-    def test_get_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services):
+    def test_get_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services, client):
         """Test getting non-existent configuration returns 404."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -102,7 +106,7 @@ class TestConfigurationsGet:
 class TestConfigurationsCreate:
     """Tests for creating configurations."""
 
-    def test_create_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+    def test_create_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data, client):
         """Test creating new configuration."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -114,7 +118,7 @@ class TestConfigurationsCreate:
         assert data["metadata"]["name"] == "new_config"
         assert data["metadata"]["entity_count"] == 1
 
-    def test_create_duplicate_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+    def test_create_duplicate_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data, client):
         """Test creating duplicate configuration returns 409 Conflict."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -130,7 +134,7 @@ class TestConfigurationsCreate:
 class TestConfigurationsUpdate:
     """Tests for updating configurations."""
 
-    def test_update_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+    def test_update_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data, client):
         """Test updating existing configuration (options only, not entities)."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -151,7 +155,7 @@ class TestConfigurationsUpdate:
         assert data["options"]["some_option"] == "value"
         assert data["options"]["another_option"] == 123
 
-    def test_update_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services):
+    def test_update_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services, client):
         """Test updating non-existent configuration returns 404."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -162,7 +166,7 @@ class TestConfigurationsUpdate:
         )
         assert response.status_code == 404
 
-    def test_update_metadata(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+    def test_update_metadata(self, tmp_path, monkeypatch, reset_services, sample_config_data, client):
         """Test updating configuration metadata."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -186,7 +190,7 @@ class TestConfigurationsUpdate:
         # Verify entities are preserved
         assert "sample" in data["entities"]
 
-    def test_update_metadata_rename(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+    def test_update_metadata_rename(self, tmp_path, monkeypatch, reset_services, sample_config_data, client):
         """Test that renaming via metadata update is ignored (filename is source of truth)."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -211,7 +215,7 @@ class TestConfigurationsUpdate:
         get_new = client.get("/api/v1/projects/new_name")
         assert get_new.status_code == 404
 
-    def test_update_metadata_rename_conflict(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+    def test_update_metadata_rename_conflict(self, tmp_path, monkeypatch, reset_services, sample_config_data, client):
         """Test that attempting to rename via metadata doesn't cause conflicts (ignored)."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -234,7 +238,7 @@ class TestConfigurationsUpdate:
 class TestConfigurationsDelete:
     """Tests for deleting configurations."""
 
-    def test_delete_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+    def test_delete_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data, client):
         """Test deleting configuration."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -250,7 +254,7 @@ class TestConfigurationsDelete:
         get_response = client.get("/api/v1/projects/test_project")
         assert get_response.status_code == 404
 
-    def test_delete_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services):
+    def test_delete_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services, client):
         """Test deleting non-existent configuration returns 404."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -262,7 +266,7 @@ class TestConfigurationsDelete:
 class TestConfigurationsValidate:
     """Tests for configuration validation."""
 
-    def test_validate_valid_configuration(self, tmp_path, monkeypatch, reset_services):
+    def test_validate_valid_configuration(self, tmp_path, monkeypatch, reset_services, client):
         """Test validating valid configuration."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -284,7 +288,7 @@ class TestConfigurationsValidate:
         assert data["is_valid"] is True
         assert data["error_count"] == 0
 
-    def test_validate_invalid_configuration(self, tmp_path, monkeypatch, reset_services):
+    def test_validate_invalid_configuration(self, tmp_path, monkeypatch, reset_services, client):
         """Test validating invalid configuration."""
 
         # Use unique name to avoid collision with valid test
@@ -302,7 +306,7 @@ class TestConfigurationsValidate:
         assert data["is_valid"] is False
         assert data["error_count"] > 0
 
-    def test_validate_configuration_resolves_include_relative_to_project(self, tmp_path, monkeypatch, reset_services):
+    def test_validate_configuration_resolves_include_relative_to_project(self, tmp_path, monkeypatch, reset_services, client):
         """Test @include resolves relative to the project YAML file path."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -334,7 +338,7 @@ class TestConfigurationsValidate:
         # Ensure validation did not fail due to missing include file.
         assert not any("configuration file not found" in e["message"].lower() for e in data.get("errors", []))
 
-    def test_validate_configuration_missing_include_returns_error_result(self, tmp_path, monkeypatch, reset_services):
+    def test_validate_configuration_missing_include_returns_error_result(self, tmp_path, monkeypatch, reset_services, client):
         """Test missing @include file returns ValidationResult (not HTTP 500)."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -365,7 +369,7 @@ class TestConfigurationsValidate:
 class TestConfigurationsBackups:
     """Tests for backup operations."""
 
-    def test_list_backups(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+    def test_list_backups(self, tmp_path, monkeypatch, reset_services, sample_config_data, client):
         """Test listing backups."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -384,7 +388,7 @@ class TestConfigurationsBackups:
         assert len(backups) >= 1
         assert "shapeshifter" in backups[0]["file_name"]
 
-    def test_restore_backup(self, reset_services, tmp_path, monkeypatch, sample_config_data):
+    def test_restore_backup(self, reset_services, tmp_path, monkeypatch, sample_config_data, client):
         """Test restoring from backup."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)

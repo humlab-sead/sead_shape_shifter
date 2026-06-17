@@ -69,7 +69,7 @@ ruff:
 	@uv run ruff check --fix --output-format concise src tests backend ingesters
 
 .PHONY: tidy
-tidy: update-graphify
+tidy:
 	@uv run isort src tests backend ingesters
 	@uv run black src tests backend ingesters
 
@@ -225,8 +225,20 @@ reconcile:
 	@PYTHONPATH=.:backend uv run python scripts/auto_reconcile.py $(ARGS)
 
 ################################################################################
-# Graphify recipes
+# AI Coding Assistants recipes
+# Candidates: rtk, graphify, serena, snip, headroom
 ################################################################################
+
+rtk-install:
+	@echo "Installing RTK and setting up global configurations..."
+	@if ! command -v rtk &> /dev/null; then \
+		echo "RTK not found, installing..."; \
+		brew install rtk; \
+	else \
+		brew upgrade rtk &> /dev/null; \
+	fi
+	@rtk init -g --copilot
+	@rtk init -g --codex
 
 create-graphify:
 	@graphify extract . --project
@@ -234,12 +246,12 @@ create-graphify:
 	@graphify export callflow-html
 
 update-graphify:
-	@uv run graphify update $(HOME)/source/sead_shape_shifter
+	@uv run graphify update $(HOME)/source/sead_shape_shifter  --force
 	@git add graphify-out
 	@if git diff --cached --quiet -- graphify-out; then \
 		echo "No changes in graphify-out"; \
 	else \
-		git commit -m "chore: update graphify graph"; \
+		git commit -m "chore: updated graphify graph"; \
 	fi
 
 install-graphify:

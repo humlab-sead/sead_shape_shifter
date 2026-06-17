@@ -15,10 +15,11 @@ from src.extract import SubsetService
 from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders, LoaderType
 from src.loaders.duckdb_loader import DuckDbWorkspace
-from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
 from src.path_resolution import resolve_managed_file_path
 from src.process_state import ProcessState
+from src.reconciliation.mapping_manager import MappingManager
+from src.reconciliation.mapping_model import Link, LinkSource, MappingCatalog, encode_local_key
 from src.table_store import TableStore
 from src.transforms.branch import process_merged_branch
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
@@ -93,7 +94,6 @@ class LoaderInstanceSet:
 
 
 class ShapeShifter:
-
     def __init__(
         self,
         project: ShapeShiftProject | str,
@@ -101,7 +101,6 @@ class ShapeShifter:
         table_store: TableStore | None = None,
         target_entities: set[str] | None = None,
     ) -> None:
-
         if not project or not isinstance(project, (ShapeShiftProject, str)):
             raise ValueError("A valid configuration must be provided")
 
@@ -118,6 +117,8 @@ class ShapeShifter:
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
         self.extra_col_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
         self.unresolved_extra_columns: dict[str, dict[str, dict[str, Any]]] = {}
+        self.mapping_manager: MappingManager = MappingManager()
+        self.mapping_catalog: MappingCatalog | None = None
 
         self.loaders: LoaderInstanceSet = LoaderInstanceSet(
             table_store=self.table_store, duckdb_workspace=self.duckdb_workspace, project=self.project
@@ -140,7 +141,6 @@ class ShapeShifter:
         raise ValueError(f"Unable to resolve source for entity '{table_cfg.entity_name}'")
 
     async def get_subset(self, subset_service: SubsetService, entity: str, table_cfg: TableConfig) -> pd.DataFrame:
-
         dfs: list[pd.DataFrame] = []
 
         for sub_table_cfg in table_cfg.get_sub_table_configs():
@@ -182,6 +182,7 @@ class ShapeShifter:
     async def normalize(self) -> Self:
         """Extract all configured entities and store them."""
         subset_service: SubsetService = SubsetService()
+        self.mapping_catalog = self.mapping_manager.load(self.project.filename)
 
         while self.state.unprocessed_entities:
             entity: str | None = self.state.get_next_entity_to_process()
@@ -274,6 +275,7 @@ class ShapeShifter:
 
         # Add public_id column immediately so downstream merged entities see a complete source table
         self.table_store[entity] = table_cfg.add_public_id_column(self.table_store[entity])
+        self._apply_mapping_sidecar_links(entity, table_cfg)
 
         self.retry_linking()
 
@@ -446,15 +448,61 @@ class ShapeShifter:
         return self
 
     def map_to_remote(self, link_cfgs: dict[str, dict[str, Any]]) -> Self:
-        """Map local PK values to remote identities using mapping configuration."""
-        if not link_cfgs:
-            return self
-        service = LinkToRemoteService(remote_link_cfgs=link_cfgs)
-        for entity_name in self.table_store.keys():
-            if entity_name not in link_cfgs:
-                continue
-            self.table_store[entity_name] = service.link_to_remote(entity_name, self.table_store[entity_name])
+        """Deprecated no-op kept for compatibility with older callers."""
+        if link_cfgs:
+            logger.warning("options.mappings is deprecated and ignored during normalization; use <project>-mapping.yml instead")
         return self
+
+    def _apply_mapping_sidecar_links(self, entity_name: str, table_cfg: TableConfig) -> None:
+        """Apply committed sidecar links to the entity's public_id column.
+
+        Sidecar links are loaded once per normalization run and applied after the
+        entity's public_id column exists. Only committed links are applied.
+        When multiple links exist for a key over time, precedence is determined by
+        source order: manual, reconciliation, import.
+        """
+        if not self.mapping_catalog or not table_cfg.public_id:
+            return
+
+        entity_mapping = self.mapping_catalog.entities.get(entity_name)
+        if entity_mapping is None:
+            return
+
+        data = self.table_store[entity_name]
+        local_key = entity_mapping.local_key
+        key_columns = [local_key] if isinstance(local_key, str) else local_key
+
+        if any(column not in data.columns for column in key_columns):
+            logger.warning(
+                f"{entity_name}[mapping]: Skipping sidecar link application because local_key columns are missing: {key_columns}"
+            )
+            return
+
+        committed_links: dict[str, Link] = self.mapping_catalog.committed_links_by_entity(entity_name)
+        if not committed_links:
+            return
+
+        source_priority: dict[LinkSource, int] = {
+            LinkSource.MANUAL: 0,
+            LinkSource.RECONCILIATION: 1,
+            LinkSource.IMPORT: 2,
+        }
+        prioritized_links: dict[str, Link] = {}
+        for encoded_key, link in committed_links.items():
+            current = prioritized_links.get(encoded_key)
+            if current is None or source_priority[link.source] < source_priority[current.source]:
+                prioritized_links[encoded_key] = link
+
+        def resolve_target_id(row: pd.Series) -> Any:
+            values = row[local_key] if isinstance(local_key, str) else [row[column] for column in key_columns]
+            encoded_key = encode_local_key(local_key, values)
+            link = prioritized_links.get(encoded_key)
+            if link is None or link.committed_at is None:
+                return row[table_cfg.public_id]
+            return link.target_id
+
+        self.table_store[entity_name] = data.copy()
+        self.table_store[entity_name][table_cfg.public_id] = data.apply(resolve_target_id, axis=1)
 
     def log_shapes(self, target: str) -> Self:
         """Log the shape of each table as a TSV in same folder as target."""

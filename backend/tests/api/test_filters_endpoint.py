@@ -1,13 +1,18 @@
 """Tests for filter API endpoints."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
 
-client = TestClient(app)
+
+@pytest.fixture(name="client")
+def client_fixture():
+    with TestClient(app) as client:
+        yield client
 
 
-def test_list_filter_types_returns_all_registered_filters():
+def test_list_filter_types_returns_all_registered_filters(client):
     """GET /filters/types should return all registered filter schemas."""
     response = client.get("/api/v1/filters/types")
 
@@ -51,7 +56,7 @@ def test_list_filter_types_returns_all_registered_filters():
     assert entity_field["options_source"] == "entities"
 
 
-def test_filter_schemas_include_all_field_metadata():
+def test_filter_schemas_include_all_field_metadata(client):
     """Filter schemas should include complete field metadata."""
     response = client.get("/api/v1/filters/types")
     data = response.json()
@@ -67,7 +72,7 @@ def test_filter_schemas_include_all_field_metadata():
     assert other_column_field["placeholder"] == "column_name"
 
 
-def test_filter_types_endpoint_is_accessible():
+def test_filter_types_endpoint_is_accessible(client):
     """Endpoint should be accessible without authentication."""
     response = client.get("/api/v1/filters/types")
 
@@ -75,7 +80,7 @@ def test_filter_types_endpoint_is_accessible():
     assert response.headers["content-type"] == "application/json"
 
 
-def test_filter_schema_response_structure():
+def test_filter_schema_response_structure(client):
     """Response should match FilterSchemaResponse model."""
     response = client.get("/api/v1/filters/types")
     data = response.json()

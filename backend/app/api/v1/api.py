@@ -13,6 +13,7 @@ from backend.app.api.v1.endpoints import (
     help_docs,
     ingesters,
     logs,
+    mapping,
     materialization,
     preview,
     projects,
@@ -44,6 +45,7 @@ api_router.include_router(query.router, tags=["query"])
 api_router.include_router(suggestions.router, tags=["suggestions"])
 api_router.include_router(preview.router, tags=["preview"])
 api_router.include_router(reconciliation.router, tags=["reconciliation"])
+api_router.include_router(mapping.router, tags=["mapping"])
 api_router.include_router(execute.router, tags=["execute"])
 api_router.include_router(materialization.router, tags=["materialization"])
 api_router.include_router(ingesters.router, prefix="/ingesters", tags=["ingesters"])

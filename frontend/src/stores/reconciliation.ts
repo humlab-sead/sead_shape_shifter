@@ -8,6 +8,7 @@ import type {
   EntityResolutionCatalog,
   ReconciliationCandidate,
   AutoReconcileResult,
+  ExportToMappingResult,
   ReconciliationPreviewRow,
   EntityResolutionListItem,
   EntityResolutionCatalogCreateRequest,
@@ -271,6 +272,24 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
+  async function exportToMapping(
+    projectName: string,
+    entityName: string,
+    targetField: string
+  ): Promise<ExportToMappingResult> {
+    loading.value = true
+    error.value = null
+    try {
+      return await reconciliationServiceApi.exportToMapping(projectName, entityName, targetField)
+    } catch (e: any) {
+      error.value = e.response?.data?.detail || 'Failed to export reconciliation links to mapping'
+      console.error('Failed to export reconciliation links to mapping:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
   function $reset() {
     reconciliationConfig.value = null
     previewData.value = {}
@@ -435,6 +454,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loadPreviewData,
     checkServiceHealth,
     getServiceManifest,
+    exportToMapping,
     clearError,
     $reset,
     

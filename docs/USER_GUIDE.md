@@ -668,7 +668,7 @@ Categories include:
 
 ---
 
-# 8. Reconciliation
+# 8. Reconciliation and Mapping
 
 ## What Is Reconciliation?
 
@@ -683,16 +683,60 @@ Examples:
 
 ---
 
+## How Mappings Are Stored
+
+Reconciled ID links and manual overrides are persisted in a **mapping sidecar file** (`<project>-mapping.yml`) stored alongside `shapeshifter.yml`. This file is the single source of truth for all entity ID mappings.
+
+Legacy `options.mappings` in `shapeshifter.yml` is no longer used for new projects.
+
+The mapping sidecar stores per-entity links with full provenance:
+
+- **source**: who or what created the link (`manual`, `reconciliation`, `import`)
+- **committed_at**: when the link was finalized (null = draft, not yet applied)
+- **confidence**: match confidence (0.0–1.0)
+- **created_by / reviewed_by**: audit trail
+
+## Mapping Precedence
+
+During normalization, mappings are applied in this order (first match wins):
+
+1. **Manual overrides** (`source: "manual"`, committed) — highest priority
+2. **Reconciliation exports** (`source: "reconciliation"`, committed)
+3. **Imported links** (`source: "import"`, committed)
+4. **Draft links** (`committed_at: null`) — skipped, not applied
+
 ## Reconciliation Workflow
 
-1. Configure reconciliation specs
+1. Configure reconciliation specs in the **Reconciliation** tab
 2. Select entity and field
 3. Run auto-reconcile
-4. Review matches
-5. Approve or adjust mappings
-6. Save reconciliation results
+4. Review matches in the review grid
+5. Accept or adjust mappings
+6. **Export** accepted links to the mapping sidecar
+7. Links in the sidecar are applied during normalization
 
----
+## Materialized Entity Edits
+
+When editing a materialized entity and assigning `public_id` values:
+
+- Saving the materialized entity automatically syncs manual links to the mapping sidecar
+- Manual links replace any previous manual links for that entity
+- These manual links take highest precedence during normalization
+
+## Mapping Sidecar Management
+
+The sidecar file supports full CRUD via API endpoints:
+
+| Action | Endpoint |
+|---|---|
+| List links for entity | `GET /projects/{project}/mapping/{entity}` |
+| Get single link | `GET /projects/{project}/mapping/{entity}/{key}` |
+| Create/update link | `PUT /projects/{project}/mapping/{entity}/{key}` |
+| Sync from materialized entity | `PATCH /projects/{project}/mapping/from-materialized/{entity}` |
+| Commit draft links | `POST /projects/{project}/mapping/commit` |
+| Delete link | `DELETE /projects/{project}/mapping/{entity}/{key}` |
+| Export to CSV | `GET /projects/{project}/mapping/export?format=csv` |
+| Import from CSV | `POST /projects/{project}/mapping/import` |
 
 ## Reconcile Tab Areas
 
