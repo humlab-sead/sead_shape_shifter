@@ -4,7 +4,7 @@ from pathlib import Path
 
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
-from src.configuration.interface import ConfigLike
+from src.configuration.config import ConfigLike
 from src.configuration.provider import ConfigStore
 
 # pylint: disable=redefined-outer-name, unused-argument, import-outside-toplevel, invalid-name

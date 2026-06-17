@@ -8,7 +8,7 @@ from datetime import datetime
 from inspect import isclass
 from os.path import join, normpath
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, Type, runtime_checkable
 
 import pandas as pd
 import yaml
@@ -17,10 +17,23 @@ from loguru import logger
 
 from src.utility import dget, dotexists, dotset, env2dict, replace_env_vars
 
-from .interface import ConfigLike
 from .utility import replace_references
 
 # pylint: disable=too-many-arguments
+
+
+# pylint: disable=unused-argument
+
+
+@runtime_checkable
+class ConfigLike(Protocol):
+    filename: str | None
+    data: dict[str, Any]
+
+    def get(self, *keys: str, default: Any | Type[Any] = None, mandatory: bool = False) -> Any: ...
+    def exists(self, *keys: str) -> bool: ...
+    def update(self, data: tuple[str, Any] | dict[str, Any] | list[tuple[str, Any]]) -> None: ...
+    def save(self, updates: dict[str, Any] | None = None) -> None: ...
 
 
 def yaml_str_join(loader: yaml.Loader, node: yaml.SequenceNode) -> str:

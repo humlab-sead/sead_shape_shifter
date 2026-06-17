@@ -7,8 +7,7 @@ from loguru import logger
 
 from src.utility import recursive_filter_dict, recursive_update
 
-from .config import Config, ConfigFactory
-from .interface import ConfigLike
+from .config import Config, ConfigFactory, ConfigLike
 
 # pylint: disable=global-statement
 

@@ -7,8 +7,8 @@ import pandas as pd
 import xxhash
 from loguru import logger
 
-from src.configuration import ConfigFactory, ConfigLike
-from src.configuration.config import Config, is_config_path
+from src.configuration import ConfigFactory
+from src.configuration.config import Config, ConfigLike, is_config_path
 from src.types.fixed_entity_types import FixedEntityTypeConvention, normalize_fixed_entity_type_conventions
 from src.utility import dotget, unique
 
