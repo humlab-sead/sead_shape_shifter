@@ -12,7 +12,7 @@ from backend.app.ingesters.protocol import (
     IngestionResult,
     ValidationResult,
 )
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.models.ingester import (
     IngesterMetadataResponse,
     IngestRequest,
@@ -33,7 +33,7 @@ class IngesterService:
         Returns:
             List of ingester metadata responses
         """
-        metadata_list: list[IngesterMetadata] = Ingesters.get_metadata_list()
+        metadata_list: list[IngesterMetadata] = get_ingester_registry().get_metadata_list()
         return [
             IngesterMetadataResponse(
                 key=metadata.key,
@@ -60,7 +60,7 @@ class IngesterService:
             ValueError: If ingester not found or validation fails critically
         """
         # Get ingester class
-        ingester_cls = Ingesters.get(key)
+        ingester_cls: None | type[Ingester] = get_ingester_registry().get(key)
         if ingester_cls is None:
             raise ValueError(f"Ingester '{key}' not found")
 
@@ -110,7 +110,7 @@ class IngesterService:
             ValueError: If ingester not found or ingestion fails
         """
         # Get ingester class
-        ingester_cls = Ingesters.get(key)
+        ingester_cls: None | type[Ingester] = get_ingester_registry().get(key)
         if ingester_cls is None:
             raise ValueError(f"Ingester '{key}' not found")
 
@@ -130,7 +130,7 @@ class IngesterService:
         if request.deploy_strategy is not None:
             config_dict["deploy_strategy"] = request.deploy_strategy
 
-        config = IngesterService._create_config(config_dict, key=key)
+        config: IngesterConfig = IngesterService._create_config(config_dict, key=key)
 
         # Instantiate and ingest
         try:

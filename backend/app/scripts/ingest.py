@@ -37,14 +37,19 @@ import click
 from loguru import logger
 
 from backend.app.core.config import Settings
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
 from backend.app.models.ingester import IngestRequest, ValidateRequest
 from backend.app.services.ingester_service import IngesterService
 
 # Discover ingesters on module load (before CLI commands run)
-settings = Settings()
-if not Ingesters._initialized:
-    Ingesters.discover(search_paths=settings.INGESTER_PATHS, enabled_only=settings.ENABLED_INGESTERS)
+
+
+def discover_ingesters() -> IngesterRegistry:
+    settings = Settings()
+    ingester_registry: IngesterRegistry = get_ingester_registry()
+    if not ingester_registry._initialized:
+        ingester_registry.discover(search_paths=settings.INGESTER_PATHS, enabled_only=settings.ENABLED_INGESTERS)
+    return ingester_registry
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -78,6 +83,7 @@ def cli(ctx: click.Context, verbose: bool) -> None:
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
     setup_logging(verbose)
+    discover_ingesters()
 
 
 @cli.command()
