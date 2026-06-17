@@ -6,8 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.configuration.config import Config
-from src.configuration.interface import ConfigLike
+from src.configuration.config import Config, ConfigLike
 from src.configuration.provider import (
     ConfigProvider,
     ConfigStore,

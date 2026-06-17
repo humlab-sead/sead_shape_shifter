@@ -1,7 +1,6 @@
 # type: ignore
 
-from .config import Config, ConfigFactory
-from .interface import ConfigLike
+from .config import Config, ConfigFactory, ConfigLike
 from .provider import (
     ConfigProvider,
     ConfigStore,

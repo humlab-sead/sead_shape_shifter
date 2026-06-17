@@ -3,7 +3,7 @@ import inspect
 from dataclasses import dataclass, field, fields, is_dataclass
 from typing import Any, Callable, Generic, Type, TypeVar
 
-from .interface import ConfigLike
+from .config import ConfigLike
 from .provider import ConfigProvider, get_config_provider
 
 T = TypeVar("T")
