@@ -1,7 +1,7 @@
 # type: ignore
 
 from .config import Config, ConfigFactory
-from .interface import ConfigFactoryLike, ConfigLike
+from .interface import ConfigLike
 from .provider import (
     ConfigProvider,
     ConfigStore,
@@ -12,7 +12,6 @@ from .provider import (
     set_config_provider,
 )
 from .resolve import ConfigValue, inject_config
-from .setup import get_connection, setup_config_store
 
 __all__ = [
     # config
@@ -20,7 +19,6 @@ __all__ = [
     "ConfigFactory",
     # interface
     "ConfigLike",
-    "ConfigFactoryLike",
     # provider
     "ConfigProvider",
     "ConfigStore",
@@ -32,7 +30,4 @@ __all__ = [
     # resolve
     "ConfigValue",
     "inject_config",
-    # setup
-    "get_connection",
-    "setup_config_store",
 ]
