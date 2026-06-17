@@ -29,7 +29,11 @@ class TestIngestCLI:
             )
         ]
 
-        with patch.object(ingest_module.IngesterService, "list_ingesters", return_value=mock_ingesters):
+        with (
+            patch.object(ingest_module.IngesterService, "list_ingesters", return_value=mock_ingesters),
+            patch.object(ingest_module, "discover_ingesters", return_value=None),
+            patch("backend.app.ingesters.registry.get_ingester_registry") as mock_registry,
+        ):
             result = self.runner.invoke(ingest_module.cli, ["list-ingesters"])
 
         assert result.exit_code == 0

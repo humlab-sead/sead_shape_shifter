@@ -11,7 +11,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.ingesters.protocol import IngesterConfig, IngesterMetadata, IngestionResult, ValidationResult
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import get_ingester_registry
 from ingesters.sead_change_request.artifact_writer import write_artifact_bundle
 from ingesters.sead_change_request.collision_checks import CollisionCheckResult, check_projected_collisions
 from ingesters.sead_change_request.contracts import ChangeRequestPackage, DeployArtifact
@@ -29,7 +29,7 @@ from ingesters.sead_change_request.result_builders import (
 from ingesters.sead_change_request.sql_builder import build_deploy_artifact
 
 
-@Ingesters.register(key="sead_change_request")
+@get_ingester_registry().register(key="sead_change_request")
 class SeadChangeRequestIngester:
     """Scaffold ingester for SEAD change request generation."""
 

@@ -17,11 +17,11 @@ from src.utility import Registry
 class IngesterRegistry(Registry[type[Ingester]]):
     """Registry for data ingesters.
 
-    Ingesters register themselves using the @Ingesters.register() decorator.
+    Ingesters register themselves using the @get_ingester_registry().register() decorator.
     The registry can also dynamically discover ingesters from configured paths.
 
     Example:
-        @Ingesters.register(key="sead")
+        @get_ingester_registry().register(key="sead")
         class SeadIngester:
             @classmethod
             def get_metadata(cls) -> IngesterMetadata:
@@ -55,7 +55,7 @@ class IngesterRegistry(Registry[type[Ingester]]):
         """Discover and load ingesters from configured paths.
 
         This method scans directories for ingester implementations and dynamically
-        imports them. Ingesters register themselves via the @Ingesters.register()
+        imports them. Ingesters register themselves via the @get_ingester_registry().register()
         decorator during import.
 
         Args:
@@ -63,7 +63,7 @@ class IngesterRegistry(Registry[type[Ingester]]):
             enabled_only: List of ingester names to load (None = load all discovered)
 
         Example:
-            Ingesters.discover(search_paths=["ingesters"], enabled_only=["sead"])
+            get_ingester_registry().discover(search_paths=["ingesters"], enabled_only=["sead"])
         """
         if self._initialized:
             logger.debug("Ingester discovery already completed, skipping")
@@ -145,7 +145,7 @@ class IngesterRegistry(Registry[type[Ingester]]):
         if name not in self.items:
             raise ValueError(
                 f"Ingester module '{module_path}' loaded but class not registered. "
-                f"Ensure class is decorated with @Ingesters.register(key='{name}')"
+                f"Ensure class is decorated with @get_ingester_registry().register(key='{name}')"
             )
 
         logger.info(f"Successfully loaded ingester: {name}")
@@ -160,4 +160,9 @@ class IngesterRegistry(Registry[type[Ingester]]):
 
 
 # Global registry instance
-Ingesters = IngesterRegistry()  # pylint: disable=invalid-name
+__Ingesters = IngesterRegistry()  # pylint: disable=invalid-name
+
+
+def get_ingester_registry() -> IngesterRegistry:
+    """Get the global ingester registry instance."""
+    return __Ingesters

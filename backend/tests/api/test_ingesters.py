@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.main import app
 from backend.app.models.ingester import IngestRequest, IngestResponse, ValidateRequest, ValidateResponse
 from backend.app.services.ingester_runtime import (
@@ -22,10 +22,10 @@ from backend.app.services.ingester_service import IngesterService
 @pytest.fixture(autouse=True)
 def reset_ingester_registry_state() -> Iterator[None]:
     """Force ingester discovery to run for each test in this module."""
-    original_initialized = Ingesters._initialized
-    Ingesters._initialized = False
+    original_initialized = get_ingester_registry()._initialized
+    get_ingester_registry()._initialized = False
     yield
-    Ingesters._initialized = original_initialized
+    get_ingester_registry()._initialized = original_initialized
 
 
 @pytest.fixture

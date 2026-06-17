@@ -3,14 +3,15 @@
 import pytest
 
 from backend.app.ingesters import IngesterConfig
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
 
 
 @pytest.fixture(scope="session", autouse=True)
 def discover_ingesters():
     """Discover ingesters before running tests (session-scoped, runs once)."""
-    if not Ingesters._initialized:
-        Ingesters.discover(search_paths=["ingesters"])
+    registry: IngesterRegistry = get_ingester_registry()
+    if not registry._initialized:
+        registry.discover(search_paths=["ingesters"])
     yield
 
 
@@ -36,6 +37,7 @@ def ingester_config_with_extras() -> IngesterConfig:
         port=5432,
         dbname="test_db",
         user="test_user",
+        password="test_password",
         submission_name="test_submission",
         data_types="test",
         extra={
