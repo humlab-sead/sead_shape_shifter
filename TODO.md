@@ -240,6 +240,9 @@ trust_level = "trusted"
 
 openai_base_url = "http://localhost:8787/v1"
 
+## Add PATH for non-interactive shells (needed for vscode Codex extension, remote SSH)
+PATH OVERRIDE=/home/roger/source/sead_shape_shifter/.venv/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/roger/.dotnet/tools:/home/roger/.local/bin:/home/roger/bin/go/bin:/home/roger/.npm/lib/bin:/home/roger/bin:/usr/local/bin:/usr/bin:/bin
+
 
 # TODO:
 - Silence test run from test explorer
