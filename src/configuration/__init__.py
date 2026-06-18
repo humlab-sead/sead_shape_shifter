@@ -1,6 +1,6 @@
 # type: ignore
 
-from .config import Config, ConfigFactory, ConfigLike
+from .config import Config, ConfigLike, find_unresolved_directives, is_config_path, load_config, resolve_references
 from .provider import (
     ConfigProvider,
     ConfigStore,
@@ -15,7 +15,10 @@ from .resolve import ConfigValue, inject_config
 __all__ = [
     # config
     "Config",
-    "ConfigFactory",
+    "load_config",
+    "resolve_references",
+    "find_unresolved_directives",
+    "is_config_path",
     # interface
     "ConfigLike",
     # provider
