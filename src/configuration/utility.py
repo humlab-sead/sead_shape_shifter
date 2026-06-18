@@ -1,3 +1,5 @@
+import contextlib
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -6,6 +8,24 @@ from loguru import logger
 from src.utility import dotexists, dotget
 
 REF_TAG = "@value:"
+
+
+def is_config_path(source: Any, raise_if_missing: bool = True) -> bool:
+    """Test if the source is a valid path to a configuration file."""
+    if not isinstance(source, str):
+        return False
+    if not source.endswith(".yaml") and not source.endswith(".yml"):
+        return False
+    if raise_if_missing and not Path(source).exists():
+        raise FileNotFoundError(f"Configuration file not found: {source}")
+    return True
+
+
+def is_path_to_existing_file(path: Any) -> bool:
+    """Test if the path is a valid path to an existing file."""
+    with contextlib.suppress(FileNotFoundError, TypeError):
+        return isinstance(path, str) and Path(path).is_file()
+    return False
 
 
 def _parse_list_expression(expr: str, full_data: dict[str, Any]) -> list[Any] | str:

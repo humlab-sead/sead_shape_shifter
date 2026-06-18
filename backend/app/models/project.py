@@ -7,7 +7,7 @@ from typing import Any, Literal, Type
 from pydantic import BaseModel, Field, field_serializer
 from pydantic.json_schema import GenerateJsonSchema
 
-from src.configuration.config import find_unresolved_directives
+from src.configuration import find_unresolved_directives
 
 
 class ExcelMetadataResponse(BaseModel):

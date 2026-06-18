@@ -36,7 +36,7 @@ from backend.app.models import (
     ProjectMetadata,
 )
 from backend.app.utils import convert_ruamel_types
-from src.configuration.config import find_unresolved_directives
+from src.configuration import find_unresolved_directives
 from src.model import ShapeShiftProject, TableConfig
 from src.reconciliation.mapping_manager import MappingManager
 from src.reconciliation.mapping_model import MappingCatalog
