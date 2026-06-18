@@ -7,7 +7,7 @@ from loguru import logger
 
 from src.utility import recursive_filter_dict, recursive_update
 
-from .config import Config, ConfigFactory, ConfigLike
+from .config import Config, ConfigLike, load_config
 
 # pylint: disable=global-statement
 
@@ -84,7 +84,7 @@ class ConfigStore:
             if not filename.exists():
                 raise FileNotFoundError(f"Config file not found: {filename}")
 
-            cfg: ConfigLike = ConfigFactory().load(source=str(filename), context=config_name)
+            cfg: ConfigLike = load_config(source=str(filename), context=config_name)
             self.store[config_name] = cfg
             logger.info(f"Loaded config '{config_name}' from {filename}")
 
@@ -148,7 +148,7 @@ class ConfigStore:
         if isinstance(source, (Config, ConfigLike)):
             self.set_config(context="context", cfg=source)
         else:
-            cfg: ConfigLike = ConfigFactory().load(
+            cfg: ConfigLike = load_config(
                 source=source or self.store.get(context),
                 context=context,
                 env_filename=env_filename,

@@ -19,10 +19,7 @@ from src.utility import dget, dotexists, dotset, env2dict, replace_env_vars
 
 from .utility import replace_references
 
-# pylint: disable=too-many-arguments
-
-
-# pylint: disable=unused-argument
+# pylint: disable=too-many-arguments, unused-argument
 
 
 @runtime_checkable
@@ -185,7 +182,7 @@ class Config(ConfigLike):
 
     def resolve(self) -> Config:
         """Resolve configuration directives in self.data."""
-        self.data: dict[str, Any] = self.resolve_references(
+        self.data: dict[str, Any] = resolve_references(
             self.data,
             context=self.context,
             env_filename=self.env_filename,
@@ -195,129 +192,125 @@ class Config(ConfigLike):
         )
         return self
 
-    @staticmethod
-    def resolve_references(
-        data: dict[str, Any],
-        *,
-        context: str | None = None,
-        env_filename: str | None = None,
-        env_prefix: str | None = None,
-        source_path: str | None = None,
-        inplace: bool = False,
-        strict: bool = False,
-        try_without_prefix: bool = True,
-    ) -> dict[str, Any]:
-        """Resolve configuration directives in the provided data dictionary.
 
-        Note: This method does NOT mutate the input data parameter.
-        It creates a deep copy to ensure the original remains unchanged.
+def resolve_references(
+    data: dict[str, Any],
+    *,
+    context: str | None = None,
+    env_filename: str | None = None,
+    env_prefix: str | None = None,
+    source_path: str | None = None,
+    inplace: bool = False,
+    strict: bool = False,
+    try_without_prefix: bool = True,
+) -> dict[str, Any]:
+    """Resolve configuration directives in the provided data dictionary.
 
-        Environment variables are expected to already be loaded in os.environ.
-        The env_filename parameter is kept for backward compatibility but not used.
-        """
-        if not inplace:
-            data = copy.deepcopy(data)
+    Note: This method does NOT mutate the input data parameter.
+    It creates a deep copy to ensure the original remains unchanged.
 
-        for resolver_cls in [SubConfigResolver, LoadResolver]:
-            data = resolver_cls(
-                context=context,
-                env_filename=env_filename,
-                env_prefix=env_prefix,
-                source_path=source_path,
-            ).resolve(data)
+    Environment variables are expected to already be loaded in os.environ.
+    The env_filename parameter is kept for backward compatibility but not used.
+    """
+    if not inplace:
+        data = copy.deepcopy(data)
 
-        # Update data based on environment variables with a name that starts with `env_prefix`
-        if env_prefix:
-            data = env2dict(env_prefix, data)
-
-        # Do a recursive replace of values with pattern "${ENV_NAME}" with value of environment
-        data = replace_env_vars(data, env_prefix=env_prefix, try_without_prefix=try_without_prefix)  # type: ignore
-        data = replace_references(data)  # type: ignore
-
-        if strict:
-            unresolved: list[str] = Config.find_unresolved_directives(data)
-            if unresolved:
-                paths: str = ", ".join(unresolved[:5])
-                extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
-                raise ValueError(f"Unresolved configuration directives at: {paths}{extra}")
-
-        return data
-
-    @staticmethod
-    def find_unresolved_directives(data: Any, path: str | None = None) -> list[str]:
-        """Recursively find unresolved directive strings like @value:, @include:, @load:."""
-        tags: list[str] = ["@value:", "@include", "@load"]
-        hits: list[str] = []
-
-        if isinstance(data, dict):
-            for k, v in data.items():
-                next_path = f"{path}.{k}" if path else str(k)
-                hits.extend(Config.find_unresolved_directives(v, next_path))
-        elif isinstance(data, list):
-            for idx, v in enumerate(data):
-                next_path = f"{path}[{idx}]" if path else f"[{idx}]"
-                hits.extend(Config.find_unresolved_directives(v, next_path))
-        elif isinstance(data, str):
-            if any(tag in data for tag in tags):
-                hits.append(f"{path or '<root>'}: {data}")
-
-        return hits
-
-
-class ConfigFactory:
-    """Factory for creating Config instances."""
-
-    def load(
-        self,
-        *,
-        source: str | dict[str, Any] | ConfigLike | None = None,
-        context: str | None = None,
-        env_filename: str | None = None,
-        env_prefix: str | None = None,
-        skip_resolve: bool = False,
-    ) -> Config | ConfigLike:
-
-        load_dotenv(dotenv_path=env_filename)
-
-        if isinstance(source, (Config, ConfigLike)):
-            return source
-
-        filename: str | None = source if isinstance(source, str) and is_config_path(source, raise_if_missing=False) else None
-
-        if source is None:
-            source = {}
-
-        data: dict[str, Any] = (
-            (
-                yaml.load(
-                    Path(source).read_text(encoding="utf-8"),
-                    Loader=SafeLoaderIgnoreUnknown,
-                )
-                if is_config_path(source, raise_if_missing=True)
-                else yaml.load(io.StringIO(source), Loader=SafeLoaderIgnoreUnknown)
-            )
-            if isinstance(source, str)
-            else source
-        ) or {}
-
-        assert isinstance(data, dict)
-
-        if not skip_resolve:
-            data = Config.resolve_references(
-                data,
-                context=context,
-                env_filename=env_filename,
-                env_prefix=env_prefix,
-                source_path=filename,
-            )
-
-        return Config(
-            data=data,
-            context=context or "default",
-            filename=filename,
+    for resolver_cls in [SubConfigResolver, LoadResolver]:
+        data = resolver_cls(
+            context=context,
             env_filename=env_filename,
             env_prefix=env_prefix,
+            source_path=source_path,
+        ).resolve(data)
+
+    # Update data based on environment variables with a name that starts with `env_prefix`
+    if env_prefix:
+        data = env2dict(env_prefix, data)
+
+    # Do a recursive replace of values with pattern "${ENV_NAME}" with value of environment
+    data = replace_env_vars(data, env_prefix=env_prefix, try_without_prefix=try_without_prefix)  # type: ignore
+    data = replace_references(data)  # type: ignore
+
+    if strict:
+        unresolved: list[str] = find_unresolved_directives(data)
+        if unresolved:
+            paths: str = ", ".join(unresolved[:5])
+            extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
+            raise ValueError(f"Unresolved configuration directives at: {paths}{extra}")
+
+    return data
+
+
+def find_unresolved_directives(data: Any, path: str | None = None) -> list[str]:
+    """Recursively find unresolved directive strings like @value:, @include:, @load:."""
+    tags: list[str] = ["@value:", "@include", "@load"]
+    hits: list[str] = []
+
+    if isinstance(data, dict):
+        for k, v in data.items():
+            next_path = f"{path}.{k}" if path else str(k)
+            hits.extend(find_unresolved_directives(v, next_path))
+    elif isinstance(data, list):
+        for idx, v in enumerate(data):
+            next_path = f"{path}[{idx}]" if path else f"[{idx}]"
+            hits.extend(find_unresolved_directives(v, next_path))
+    elif isinstance(data, str):
+        if any(tag in data for tag in tags):
+            hits.append(f"{path or '<root>'}: {data}")
+
+    return hits
+
+
+def load_config(
+    *,
+    source: str | dict[str, Any] | ConfigLike | None = None,
+    context: str | None = None,
+    env_filename: str | None = None,
+    env_prefix: str | None = None,
+    skip_resolve: bool = False,
+) -> Config | ConfigLike:
+
+    load_dotenv(dotenv_path=env_filename)
+
+    if isinstance(source, (Config, ConfigLike)):
+        return source
+
+    filename: str | None = source if isinstance(source, str) and is_config_path(source, raise_if_missing=False) else None
+
+    if source is None:
+        source = {}
+
+    data: dict[str, Any] = (
+        (
+            yaml.load(
+                Path(source).read_text(encoding="utf-8"),
+                Loader=SafeLoaderIgnoreUnknown,
+            )
+            if is_config_path(source, raise_if_missing=True)
+            else yaml.load(io.StringIO(source), Loader=SafeLoaderIgnoreUnknown)
         )
+        if isinstance(source, str)
+        else source
+    ) or {}
+
+    assert isinstance(data, dict)
+
+    if not skip_resolve:
+        data = resolve_references(
+            data,
+            context=context,
+            env_filename=env_filename,
+            env_prefix=env_prefix,
+            source_path=filename,
+        )
+
+    return Config(
+        data=data,
+        context=context or "default",
+        filename=filename,
+        env_filename=env_filename,
+        env_prefix=env_prefix,
+    )
 
 
 class BaseResolver:
@@ -387,10 +380,11 @@ class BaseResolver:
             env_prefix=self.env_prefix,  # type: ignore
             try_without_prefix=True,
         )
-        if path != resolved_path:
-            # If the path was changed by env var replacement = treat it as an absolute path
-            # (env vars are typically used for absolute paths), otherwise resolve relative to base_path
-            resolved_path = str(Path(resolved_path).absolute())
+
+        path_obj = Path(resolved_path)
+        if path != resolved_path and not path_obj.is_absolute() and self.env_filename:
+            env_base_path = Path(self.env_filename).resolve().parent
+            resolved_path = str(env_base_path / resolved_path)
 
         # Step 2: Handle absolute vs relative paths
         path_obj = Path(resolved_path)
@@ -446,9 +440,9 @@ class SubConfigResolver(BaseResolver):
         # Resolve environment variables and paths
         filename: str = self._resolve_path(directive_argument, base_path=base_path, raise_if_missing=False)
 
-        loaded_data: dict[str, Any] = (
-            ConfigFactory().load(source=filename, context=self.context, env_filename=self.env_filename, env_prefix=self.env_prefix).data
-        )
+        loaded_data: dict[str, Any] = load_config(
+            source=filename, context=self.context, env_filename=self.env_filename, env_prefix=self.env_prefix
+        ).data
         return self._resolve(loaded_data, Path(filename).parent)
 
 
