@@ -11,7 +11,7 @@ from backend.app.models.project import Project
 from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
-from src.configuration.config import Config
+from src.configuration.config import resolve_references
 from src.model import ShapeShiftProject
 from src.specifications import CompositeProjectSpecification, SpecificationIssue
 from src.validation_messages import format_validation_message_with_context
@@ -135,7 +135,7 @@ class ValidationService:
         try:
             settings = get_settings()
 
-            project_cfg = Config.resolve_references(
+            project_cfg = resolve_references(
                 project_cfg,
                 source_path=source_path,
                 env_prefix=settings.env_prefix,
