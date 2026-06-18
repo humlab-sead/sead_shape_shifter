@@ -1,6 +1,6 @@
 """Tests for the ingest CLI tool."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from click.testing import CliRunner
 
@@ -19,6 +19,19 @@ class TestIngestCLI:
         """Test listing available ingesters."""
         import backend.app.scripts.ingest as ingest_module
 
+        mock_module = Mock(
+            list_ingesters=Mock(
+                return_value=[
+                    IngesterMetadataResponse(
+                        key="sead",
+                        name="SEAD Clearinghouse",
+                        description="Ingest SEAD data",
+                        version="1.0.0",
+                        supported_formats=["xlsx"],
+                    )
+                ]
+            ),
+        )
         mock_ingesters = [
             IngesterMetadataResponse(
                 key="sead",
@@ -29,10 +42,7 @@ class TestIngestCLI:
             )
         ]
 
-        with (
-            patch.object(ingest_module.IngesterService, "list_ingesters", return_value=mock_ingesters),
-            patch.object(ingest_module, "discover_ingesters", return_value=None),
-        ):
+        with patch.object(ingest_module.IngesterService, "list_ingesters", return_value=mock_ingesters):
             result = self.runner.invoke(ingest_module.cli, ["list-ingesters"])
 
         assert result.exit_code == 0
