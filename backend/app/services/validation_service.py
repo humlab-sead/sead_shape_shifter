@@ -11,7 +11,7 @@ from backend.app.models.project import Project
 from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
-from src.configuration.config import resolve_references
+from src.configuration import resolve_references
 from src.model import ShapeShiftProject
 from src.specifications import CompositeProjectSpecification, SpecificationIssue
 from src.validation_messages import format_validation_message_with_context
