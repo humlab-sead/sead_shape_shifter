@@ -39,7 +39,7 @@ from loguru import logger
 from backend.app.core.config import Settings
 from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
 from backend.app.models.ingester import IngestRequest, ValidateRequest
-from backend.app.services.ingester_service import IngesterService
+from backend.app.services.ingester_service import IngesterService, get_ingester_service
 
 # Discover ingesters on module load (before CLI commands run)
 
@@ -91,7 +91,7 @@ def list_ingesters() -> None:
     """List all available data ingesters."""
     logger.info("Fetching available ingesters...")
 
-    ingesters = IngesterService.list_ingesters()
+    ingesters = get_ingester_service().list_ingesters()
 
     if not ingesters:
         logger.warning("No ingesters available")
@@ -138,7 +138,7 @@ def validate(ctx: click.Context, ingester_key: str, source: str, config_file: st
 
     # Run validation
     async def run_validation():
-        return await IngesterService.validate(ingester_key, request)
+        return await get_ingester_service().validate(ingester_key, request)
 
     try:
         result = asyncio.run(run_validation())
@@ -244,7 +244,7 @@ def ingest(
 
     # Run ingestion
     async def run_ingestion():
-        return await IngesterService.ingest(ingester_key, request)
+        return await get_ingester_service().ingest(ingester_key, request)
 
     try:
         result = asyncio.run(run_ingestion())
