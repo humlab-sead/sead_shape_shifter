@@ -28,16 +28,18 @@ def load_validate_project_module() -> ModuleType:
 class TestLoadProject:
     """Tests for load_project()."""
 
-    def test_load_project_delegates_to_shapeshift_project_from_file(self):
+    def test_load_project_delegates_to_shapeshift_project_from_file(self, monkeypatch):
         """load_project should pass through the file, env file, and env prefix."""
         validate_project = load_validate_project_module()
         expected_project = MagicMock(spec=ShapeShiftProject)
-        validate_project.ShapeShiftProject.from_file = MagicMock(return_value=expected_project)
+        from_file = MagicMock(return_value=expected_project)
+
+        monkeypatch.setattr(validate_project.ShapeShiftProject, "from_file", from_file)
 
         result = validate_project.load_project("/tmp/project.yml", "/tmp/.env")
 
         assert result is expected_project
-        validate_project.ShapeShiftProject.from_file.assert_called_once_with(
+        from_file.assert_called_once_with(
             filename="/tmp/project.yml",
             env_file="/tmp/.env",
             env_prefix="SHAPE_SHIFTER",

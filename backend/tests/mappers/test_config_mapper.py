@@ -1,6 +1,7 @@
 """Tests for ProjectMapper."""
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -720,13 +721,16 @@ class TestProjectMapperIntegration:
 
     def test_arbodat_project_entity_details(self):
         """Test detailed entity conversion for complex arbodat entities."""
-        project_path: Path = Path(__file__).parent.parent / "test_data" / "projects" / "arbodat" / "shapeshifter.yml"
-        original_shape_config = ShapeShiftProject.from_file(str(project_path))
-        original_cfg_dict = original_shape_config.cfg
+        project_path: Path = Path("tests/test_data/projects/arbodat/shapeshifter.yml")
+
+        assert project_path.exists(), f"Test project file not found: {project_path}"
+
+        original_shape_config: ShapeShiftProject = ShapeShiftProject.from_file(str(project_path))
+        original_cfg_dict: dict[str, dict[str, Any]] = original_shape_config.cfg
 
         # Convert to API and back
         api_project: Project = ProjectMapper.to_api_config(original_cfg_dict, "arbodat")
-        restored_cfg_dict = ProjectMapper.to_core_dict(api_project)
+        restored_cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_project)
 
         # Test specific complex entities
 
