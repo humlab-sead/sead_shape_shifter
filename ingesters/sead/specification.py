@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
-from src.configuration.resolve import ConfigValue
+from src.configuration import ConfigValue
 
 from .metadata import Column, SeadSchema, Table
 from .submission import Submission
