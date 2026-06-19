@@ -1,24 +1,21 @@
 from __future__ import annotations
 
-import contextlib
 import copy
 import io
-from abc import abstractmethod
 from datetime import datetime
 from inspect import isclass
 from os.path import join, normpath
 from pathlib import Path
 from typing import Any, Protocol, Type, runtime_checkable
 
-import pandas as pd
 import yaml
 from dotenv import load_dotenv
 from loguru import logger
 
-from src.utility import dget, dotexists, dotset, env2dict, replace_env_vars
+from src.utility import dget, dotexists, dotset
 
-from .resolve import find_unresolved_directives, resolve_references
-from .utility import is_config_path, is_path_to_existing_file, replace_references
+from .resolve import resolve_references
+from .utility import is_config_path
 
 # pylint: disable=too-many-arguments, unused-argument
 
