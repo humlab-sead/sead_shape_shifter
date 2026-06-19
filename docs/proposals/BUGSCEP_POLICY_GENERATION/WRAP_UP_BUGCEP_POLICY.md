@@ -113,7 +113,7 @@ Updated the policy authoring guide in:
 
 Updated the Shape Shifter fidelity proposal in:
 
-- `sead_shape_shifter/docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md`
+- `sead_shape_shifter/docs/proposals/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md`
 
 ## Verified State At Wrap-Up
 
@@ -135,7 +135,7 @@ This file is no longer the primary resume document.
 
 If resuming today, start with these files open instead:
 
-1. `sead_shape_shifter/docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md`
+1. `sead_shape_shifter/docs/proposals/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md`
 2. `sead_bugs_import/doc/reconciliation_policies/create-policy.instructions.md`
 3. one importer or controller outside the current covered set that has a richer search path, supporting-row updater, or grouped postprocess branch
 
@@ -220,7 +220,7 @@ At wrap-up time, notable session-relevant modified files included:
 - `sead_bugs_import/src/test/java/se/sead/reconciliation/RelatedOutputPolicyHarnessTest.java`
 - `sead_bugs_import/src/test/java/se/sead/bugsimport/datescalendar/converters/RelativeAgeManagerFixtureExecutionTest.java`
 - `sead_bugs_import/src/test/java/se/sead/bugsimport/datescalendar/converters/RelativeDateUpdaterForCalendarFixtureExecutionTest.java`
-- `sead_shape_shifter/docs/proposals/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md`
+- `sead_shape_shifter/docs/proposals/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md`
 
 ## Short Resume Prompt
 
@@ -235,3 +235,62 @@ Resume the BugsCEP policy fidelity work from BUGSCEP_POLICY_SCHEMA_MACHINE_READA
 The session ends at a clean checkpoint.
 
 `datescalendar` is no longer only a postprocess example. It gained the first working supporting-output and related-output graph slices, and later work extended the same approach to several other importer families. The full `make validate-policy-format` target is green in the recorded checkpoint, and the current safe continuation is to extend one more importer or updater path with the same narrow fixture-plus-parity pattern rather than reopening broad analysis.
+
+## Fidelity Work Changelog
+
+This section collects the detailed batch-by-batch completion history from the fidelity proposal and task plan. Use it as the source of truth for what has been implemented. The active proposal and task plan keep only concise status summaries.
+
+### Schema And Harness Features
+
+- Direct related-output references with `before_parent` / `after_parent` phases
+- Structured resolvers with ordered steps, trace lookups, database queries, and emitted outcomes
+- Grouped postprocess merge stages with partition rules and conflict handling
+- Shared `emit` blocks for structured issues, warnings, and flags
+- Initial `known_divergences` support for recording policy-versus-Java differences
+- Fixture-backed scenario validation with shared result-object comparisons against current Java behavior
+- Harness result shapes: `postprocess_merge`, `postprocess_conflict`, `resolver_path`, `reconciliation_path`, `supporting_output_result`, `related_output_graph`, `postprocess_result`, `resolver_result`, `reconciliation_result`, `graph_result`, `graph_issue`, `row_changed`
+
+### Execution-Facing Action Labels — Reconciliation Write Paths
+
+- **First batch:** five simpler reconciliation families with explicit `persisted_action` write-action labels for insert and update paths
+- **Second batch:** explicit write-action labels on successful update or create paths for `period`, `country`, and `taxanotes`
+
+### Execution-Facing Action Labels — No-Write And Error Paths
+
+- **First error-and-guard batch:** `period`, `lab`, `bibliography`, `rdbcode`, `rdbsystem`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, and `speciesassociation`
+- **Second no-write batch:** `site`, `sitereferences`, `rdb`, `taxaseasonality`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution`
+- **Third no-write batch:** `country`, `mcrnames`, and `taxanotes`
+- **Trace-hit batch:** explicit no-write trace-hit coverage for `country`, `mcrnames`, `ecocodegroup`, `ecocode_bugs`, and `ecocode_koch`; keep-existing and keep-existing-error semantics for `mcrsummary`
+- **Species-text family batch:** explicit no-write action labels for the executable existing-error reconciliation paths in `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution`
+
+### Supporting-Output Action Labels
+
+- **Sample supporting dimensions:** explicit `supporting_action` labels for create, update, keep, and delete supporting actions
+- **Datasetcontacts supporting contacts:** explicit `supporting_action` labels for generated and reused contact rows
+- **Fossil dataset-analysis-entity family:** explicit `supporting_action` labels across all 10 scenarios with supporting actions on successful graph branches (clone-driven dataset creation, dataset reuse, analysis-entity creation, analysis-entity reuse) and explicit `row_changed` expectations on graph issues
+
+### Related-Output Graph Action Labels
+
+- **Species graph:** explicit `supporting_action` labels in both supporting-output and related-output graph fixtures; mixed create-and-reuse, family-reuse-only, missing-author, and no-data-shortcut scenarios so graph expectations cover more than all-create and all-reuse trees
+
+### Row Changed Expectations — List Outputs
+
+- **Sitelocations and siteotherproxies:** explicit `row_changed` expectations across all 10 executable list-output scenarios, recording both row actions and whether the updater path reports a changed row
+- **Datasetcontacts:** explicit `row_changed` expectations across all four executable list-output scenarios, so both the parser path and the updater path carry the same change-state signal
+
+### Row Changed Expectations — Related-Output Graphs
+
+- **Species related-output graphs:** explicit `row_changed` expectations across all six executable scenarios, recording whether the graph creates a new species row or reuses an existing one (including mixed create-and-reuse, family-reuse-only, missing-author, and no-data-shortcut branches)
+
+### Row Changed Expectations — Supporting Outputs
+
+- **Datesperiod and sample:** explicit `row_changed` expectations across the 10 executable supporting-output scenarios for dataset, analysis-entity, and supporting-dimension create, update, keep, and delete paths
+- **Datesradio and datescalendar:** explicit `row_changed` expectations across the 10 executable supporting-output scenarios for relative-age, dataset, and analysis-entity create, update, keep, and reuse paths
+- **Species supporting outputs:** explicit `row_changed` expectations for family, genus, author, and species creation or reuse, including the no-data shortcut and the missing-author branch
+- **Datasetcontacts supporting contacts:** explicit `row_changed` expectations for contact creation and reuse
+- **Fossil supporting outputs:** explicit `row_changed` expectations for dataset clone or reuse and for analysis-entity creation or reuse
+
+### Concrete Divergence Areas (From Executable Fixtures)
+
+- **`created_supporting_rows_mark_updated`:** seen in `datesperiod` and `datescalendar`; fixtures expose explicit `supporting_action` values (`create`, `update`, `keep`, `reuse`) while preserving current Java `updated: true` behavior as parity evidence
+- **`replacement_expressed_as_row_actions`:** seen in `sitelocations` and `siteotherproxies`; fixtures expose explicit `persisted_action` values (`append_new`, `keep_existing`, `mark_for_deletion`, `stop_before_list_update`) while preserving the Java row-by-row replacement shape
