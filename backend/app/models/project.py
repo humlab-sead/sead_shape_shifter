@@ -7,7 +7,7 @@ from typing import Any, Literal, Type
 from pydantic import BaseModel, Field, field_serializer
 from pydantic.json_schema import GenerateJsonSchema
 
-from src.configuration.config import Config
+from src.configuration import find_unresolved_directives
 
 
 class ExcelMetadataResponse(BaseModel):
@@ -151,7 +151,7 @@ class Project(BaseModel):
 
     def unresolved_directives(self) -> list[str]:
         """Check if the project has any unresolved references."""
-        return Config.find_unresolved_directives(self.entities) + Config.find_unresolved_directives(self.options)
+        return find_unresolved_directives(self.entities) + find_unresolved_directives(self.options)
 
     @property
     def data_sources(self) -> dict[str, Any]:

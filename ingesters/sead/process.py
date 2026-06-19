@@ -4,7 +4,7 @@ from os.path import basename, join, splitext
 
 from loguru import logger
 
-from src.configuration.resolve import ConfigValue
+from src.configuration import ConfigValue
 
 from . import utility
 from .dispatchers import Dispatchers, IDispatcher

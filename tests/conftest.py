@@ -7,7 +7,7 @@ import psycopg
 import pytest
 from loguru import logger
 
-from src.configuration import Config, ConfigFactory, MockConfigProvider
+from src.configuration import Config, MockConfigProvider, load_config
 
 # pylint: disable=unused-argument
 
@@ -92,8 +92,7 @@ def test_config() -> Config:
         mock_conn.cursor.return_value = mock_cursor
         return mock_conn
 
-    factory: ConfigFactory = ConfigFactory()
-    config: Config = factory.load(source="./tests/config/config.yml", context="default", env_filename="./tests/.env")  # type: ignore
+    config: Config = load_config(source="./tests/config/config.yml", context="default", env_filename="./tests/.env")  # type: ignore
     config.update(
         {
             "runtime": {

@@ -7,8 +7,7 @@ import pandas as pd
 import xxhash
 from loguru import logger
 
-from src.configuration import ConfigFactory, ConfigLike
-from src.configuration.config import Config, is_config_path
+from src.configuration.config import ConfigLike, find_unresolved_directives, is_config_path, load_config, resolve_references
 from src.types.fixed_entity_types import FixedEntityTypeConvention, normalize_fixed_entity_type_conventions
 from src.utility import dotget, unique
 
@@ -1545,7 +1544,7 @@ class ShapeShiftProject:
     def resolve(self, strict: bool = False, **context) -> "ShapeShiftProject":
         """Resolve and return a new ShapeShiftProject instance."""
         return ShapeShiftProject(
-            cfg=Config.resolve_references(
+            cfg=resolve_references(
                 self.cfg,
                 env_filename=dotget(context, "env_filename, env_file"),
                 env_prefix=dotget(context, "env_prefix"),
@@ -1558,11 +1557,11 @@ class ShapeShiftProject:
 
     def is_resolved(self) -> bool:
         """Check if the configuration has any unresolved references."""
-        return not Config.find_unresolved_directives(self.cfg)
+        return not find_unresolved_directives(self.cfg)
 
     def unresolved_directives(self) -> list[str]:
         """Check if the configuration has any unresolved references."""
-        return Config.find_unresolved_directives(self.cfg)
+        return find_unresolved_directives(self.cfg)
 
     @cached_property
     def table_names(self) -> list[str]:
@@ -1630,7 +1629,7 @@ class ShapeShiftProject:
     def from_file(filename: str, env_file: str = ".env", env_prefix: str = "SHAPE_SHIFTER") -> "ShapeShiftProject":
         """Load ShapeShiftProject from a YAML project file."""
 
-        cfg: ConfigLike = ConfigFactory().load(
+        cfg: ConfigLike = load_config(
             source=filename,
             context="shape_shifter",
             env_filename=env_file,

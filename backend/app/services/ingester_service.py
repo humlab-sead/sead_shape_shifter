@@ -12,7 +12,7 @@ from backend.app.ingesters.protocol import (
     IngestionResult,
     ValidationResult,
 )
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.models.ingester import (
     IngesterMetadataResponse,
     IngestRequest,
@@ -26,14 +26,13 @@ from backend.app.services.ingester_runtime import inject_ingester_database_depen
 class IngesterService:
     """Service for managing data ingesters."""
 
-    @staticmethod
-    def list_ingesters() -> list[IngesterMetadataResponse]:
+    def list_ingesters(self) -> list[IngesterMetadataResponse]:
         """List all registered ingesters with their metadata.
 
         Returns:
             List of ingester metadata responses
         """
-        metadata_list: list[IngesterMetadata] = Ingesters.get_metadata_list()
+        metadata_list: list[IngesterMetadata] = get_ingester_registry().get_metadata_list()
         return [
             IngesterMetadataResponse(
                 key=metadata.key,
@@ -45,8 +44,7 @@ class IngesterService:
             for metadata in metadata_list
         ]
 
-    @staticmethod
-    async def validate(key: str, request: ValidateRequest) -> ValidateResponse:
+    async def validate(self, key: str, request: ValidateRequest) -> ValidateResponse:
         """Validate data using specified ingester.
 
         Args:
@@ -60,7 +58,7 @@ class IngesterService:
             ValueError: If ingester not found or validation fails critically
         """
         # Get ingester class
-        ingester_cls = Ingesters.get(key)
+        ingester_cls: None | type[Ingester] = get_ingester_registry().get(key)
         if ingester_cls is None:
             raise ValueError(f"Ingester '{key}' not found")
 
@@ -71,7 +69,7 @@ class IngesterService:
         if request.deploy_strategy is not None:
             config_dict["deploy_strategy"] = request.deploy_strategy
 
-        config = IngesterService._create_config(config_dict, key=key)
+        config: IngesterConfig = self._create_config(config_dict, key=key)
 
         # Instantiate and validate
         try:
@@ -95,8 +93,7 @@ class IngesterService:
                 pending_confirmation_report=None,
             )
 
-    @staticmethod
-    async def ingest(key: str, request: IngestRequest) -> IngestResponse:
+    async def ingest(self, key: str, request: IngestRequest) -> IngestResponse:
         """Ingest data using specified ingester.
 
         Args:
@@ -110,7 +107,7 @@ class IngesterService:
             ValueError: If ingester not found or ingestion fails
         """
         # Get ingester class
-        ingester_cls = Ingesters.get(key)
+        ingester_cls: None | type[Ingester] = get_ingester_registry().get(key)
         if ingester_cls is None:
             raise ValueError(f"Ingester '{key}' not found")
 
@@ -130,7 +127,7 @@ class IngesterService:
         if request.deploy_strategy is not None:
             config_dict["deploy_strategy"] = request.deploy_strategy
 
-        config = IngesterService._create_config(config_dict, key=key)
+        config: IngesterConfig = self._create_config(config_dict, key=key)
 
         # Instantiate and ingest
         try:
@@ -160,8 +157,7 @@ class IngesterService:
                 pending_confirmation_report=None,
             )
 
-    @staticmethod
-    def _create_config(config_dict: dict[str, Any], key: str | None = None) -> IngesterConfig:
+    def _create_config(self, config_dict: dict[str, Any], key: str | None = None) -> IngesterConfig:
         """Create IngesterConfig from dict, extracting standard fields.
 
         Args:
@@ -188,3 +184,17 @@ class IngesterService:
             data_types=config_dict.get("data_types", ""),
             extra=extra,
         )
+
+
+default_ingester_service: IngesterService | None = None
+
+
+def get_ingester_service() -> IngesterService:
+    """Factory function to get an instance of IngesterService.
+
+    Returns:
+        IngesterService instance
+    """
+    global default_ingester_service
+    default_ingester_service = default_ingester_service or IngesterService()
+    return default_ingester_service

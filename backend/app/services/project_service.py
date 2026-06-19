@@ -191,6 +191,14 @@ class ProjectService:
             # cause lost-update race conditions.
             copy: Project = cached_project.model_copy(deep=True)
             entity_count: int = len(copy.entities or {})
+
+            # Merge sidecar task_list so cached projects reflect the latest task state
+            # written independently by mark_complete / mark_ignored / reset_status.
+            project_file: Path = self.projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
+            sidecar_task_list = self.sidecar_manager.load_task_list(project_file)
+            if sidecar_task_list:
+                copy.task_list = sidecar_task_list
+
             logger.info(
                 "[{}] load_project: '{}' from CACHE (deep copy) entities={}",
                 corr,

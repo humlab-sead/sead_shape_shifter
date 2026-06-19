@@ -36,7 +36,7 @@ from backend.app.models import (
     ProjectMetadata,
 )
 from backend.app.utils import convert_ruamel_types
-from src.configuration.config import Config
+from src.configuration import find_unresolved_directives
 from src.model import ShapeShiftProject, TableConfig
 from src.reconciliation.mapping_manager import MappingManager
 from src.reconciliation.mapping_model import MappingCatalog
@@ -248,7 +248,7 @@ class ProjectMapper:
                 output_names,
             )
 
-        unresolved: list[str] = Config.find_unresolved_directives(cfg_dict)
+        unresolved: list[str] = find_unresolved_directives(cfg_dict)
         if unresolved:
             extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
             logger.debug(f"@value references in config (will be resolved on load): {', '.join(unresolved[:5])}{extra}")
