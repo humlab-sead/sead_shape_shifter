@@ -1,5 +1,7 @@
 # Working Inventory: BugsCEP Policy Implementation Gaps
 
+> **Consolidated:** This inventory has been merged into the [Gap Inventory section of the task plan](BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_TASK_PLAN.md#gap-inventory). Keep using that section as the source of truth for prioritizing the next implementation slice. This file is retained for historical reference.
+
 ## Summary
 
 This inventory identifies the highest-value gaps between the current BugsCEP policy corpus and an implementation-ready policy contract.

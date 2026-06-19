@@ -203,6 +203,12 @@ To move a policy from one tier to the next:
 - **C → B:** add supporting-output or postprocess behavior where the importer creates child or supporting rows; add `known_divergences` section
 - **B → A:** convert remaining helper calls to structured resolvers; add `known_divergences` where Java behavior is surprising; confirm the policy is readable without Java code
 
+### Gap Inventory
+
+For the detailed gap inventory with priority gaps, closure progress, golden reference families, adapter-only boundaries, and next recommended slices, see the [Gap Inventory section in the task plan](BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_TASK_PLAN.md#gap-inventory).
+
+The execution-readiness assessment above shows which policies meet which criteria. The gap inventory in the task plan shows what work closes those gaps and which importer families are the best candidates for each gap.
+
 ## Execution-Readiness Checklist
 
 Use this checklist to decide whether a BugsCEP policy is detailed enough to support downstream implementation work.

@@ -103,6 +103,86 @@ Ship policy-readiness work only after focused validation passes and the docs des
 
 Focused validation passes first, the broad validation target stays green, and the proposal plus task plan reflect the same implementation-oriented end-game.
 
+## Gap Inventory
+
+This section consolidates the remaining gaps between current policy YAML and implementation-ready contracts. Use it alongside the execution-readiness assessment in the fidelity proposal to prioritize the next slice.
+
+### Priority Gaps
+
+| # | Gap | Why it matters | Policies to close it | Status |
+|---|-----|----------------|----------------------|--------|
+| 1 | End-to-end identity and supporting-output flow | Both implementation paths need a complete contract for how parent rows, supporting rows, and related outputs share identity and reuse state | `datescalendar`, `datesperiod`, `datesradio`, `fossil`, `species` | Partial — Tier A policies have full coverage; Tier B policies need resolver conversion |
+| 2 | Persisted side effects and output result semantics | Implementation needs to know not only which branch fired, but what row actions and side effects must happen | `datasetcontacts`, `sitelocations`, `siteotherproxies`, `sample` | Partial — explicit action labels and `row_changed` expectations added for list outputs and supporting outputs |
+| 3 | Helper-derived decision rules hidden in Java behavior | Policies cannot serve as a build contract while important lookup or derivation behavior still depends on Java-only helpers | `lab`, `datesradio`, `datesperiod`, `species` | Partial — `lab`, `datesperiod`, `datesradio` have structured resolvers; `species` still uses helper calls |
+| 4 | Postprocess and graph behavior as full execution contracts | Downstream implementation needs clearer expectations around retained rows, emitted rows, graph issues, and ordering-sensitive outputs | `datescalendar`, `datesperiod`, `datesradio`, `fossil`, `species` | Partial — Tier A policies have full coverage; `species` graph needs known-divergence documentation |
+| 5 | Known divergences and intentional adapter boundaries | Both paths need explicit documentation of what the policy owns, what the adapter owns, and where Java behavior is preserved only for parity | `datescalendar`, `fossil`, `rdb`, `rdbcode`, `site` | Partial — 5 policies have `known_divergences`; 30 policies lack this section |
+
+### Gap Closure Progress
+
+Each gap tracks which criteria it helps close for the execution-readiness checklist (C1–C6).
+
+**Gap 1: Identity and supporting-output flow**
+
+- Closes: C4 (policy-managed vs adapter-only), C6 (readable without Java helpers)
+- Done: Tier A policies (`datescalendar`, `datesperiod`, `datesradio`, `fossil`) have complete identity flow with explicit `supporting_action` and `row_changed`
+- Remaining: Tier B policies (`species`, `sample`, `datasetcontacts`) still use helper calls for some identity resolution; need conversion to structured resolvers or explicit adapter-only documentation
+
+**Gap 2: Persisted side effects and output result semantics**
+
+- Closes: C2 (concrete result shapes), C3 (explicit action labels)
+- Done: `sitelocations`, `siteotherproxies`, `datasetcontacts`, `sample`, `species`, `fossil` have explicit `persisted_action`, `supporting_action`, and `row_changed` labels
+- Remaining: Tier C and D policies have basic reconciliation fixtures but lack explicit action labels on write paths; need `persisted_action` labels for insert, update, keep, and error paths
+
+**Gap 3: Helper-derived decision rules**
+
+- Closes: C4 (policy-managed vs adapter-only), C6 (readable without Java helpers)
+- Done: `lab` (country resolver), `datesperiod` (method/uncertainty resolver), `datesradio` (method/uncertainty resolver) have structured resolvers replacing helper calls
+- Remaining: Tier B and C policies still use helper calls for lookups (e.g., `species` for order resolution, `sample` for sample group resolution, `ecocodegroup` for system ID resolution); need conversion to structured resolvers
+
+**Gap 4: Postprocess and graph behavior**
+
+- Closes: C2 (concrete result shapes), C5 (known divergences)
+- Done: `datescalendar` has postprocess merge with conflict handling; `datesperiod`, `datesradio`, `fossil`, `species` have related-output graph fixtures with explicit `row_changed`
+- Remaining: `species` graph needs `known_divergences` documentation; Tier C and D policies have no postprocess or graph behavior to exercise
+
+**Gap 5: Known divergences and adapter boundaries**
+
+- Closes: C5 (known divergences recorded)
+- Done: 5 policies (`datescalendar`, `datesperiod`, `datesradio`, `sitelocations`, `siteotherproxies`) have `known_divergences` sections
+- Remaining: 30 policies lack `known_divergences` sections; need documentation of surprising Java behavior or explicit statement that no divergences exist
+
+### Golden Reference Families
+
+The four families below cover the widest set of shared policy needs and should be the first to reach full execution-readiness.
+
+| Family | Policies | Coverage | Current Tier |
+|--------|----------|----------|--------------|
+| Geochronology | `datescalendar`, `datesperiod`, `datesradio` | Resolvers, postprocess, supporting outputs, related-output graphs, emitted issues, retained rows, known divergences | A (all execution-ready) |
+| Taxa Graph | `species`, `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms` | Related-output graphs, optional supporting outputs, repository reuse, multi-node output structure | B (species), D (rest) |
+| Site And Contact | `site`, `sitereferences`, `datasetcontacts`, `sitelocations`, `siteotherproxies` | Ordered reconciliation, persisted list-result side effects, explicit action labels, known divergences | B (sitelocations, siteotherproxies, datasetcontacts), C (site, sitereferences) |
+| Fossil Analysis-Entity | `fossil` | Configuration forks, supporting-output reuse, graph issues, analysis-entity reuse failure paths | A (execution-ready) |
+
+### Adapter-Only Boundaries
+
+Treat the following as adapter-only unless a concrete implementation slice proves they need to move into policy:
+
+- persistence orchestration details that do not change reconciliation or emitted outcomes
+- runtime-specific cache implementation details
+- batching mechanics that preserve the same declared postprocess and output behavior
+- Shape Shifter stage wiring that preserves the same declared decisions and outputs
+- Python runtime plumbing that evaluates the same declared decisions and outputs
+
+If any of these mechanics changes matching, row identity, emitted issues, persisted values, retained rows, or output graph structure, it should move back into policy scope.
+
+### Next Recommended Slices
+
+Based on the gap inventory and execution-readiness tiers:
+
+1. **Promote Tier B to Tier A** — convert remaining helper calls in `species`, `sample`, `datasetcontacts`, `sitelocations`, and `siteotherproxies` to structured resolvers; add `known_divergences` sections where Java behavior is surprising
+2. **Promote Tier C to Tier B** — add supporting-output or postprocess behavior where the importer creates child or supporting rows; add `known_divergences` sections
+3. **Promote Tier D to Tier C** — add explicit `persisted_action` labels to reconciliation fixtures for write and error paths
+4. **Convert Feature 1** — convert one geochronology or fossil policy to use `phase: before_parent` for a supporting output, proving the expression language resolves `related.<name>.<field>` correctly
+
 ## Progress Tracker
 
 | Area | Status | Notes |
@@ -136,7 +216,7 @@ Focused validation passes first, the broad validation target stays green, and th
 |---|---|---|---|
 | Task plan document | Forward-looking remaining-work plan for implementation-ready policy fidelity | Done | `docs/proposals/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_TASK_PLAN.md` |
 | Execution-readiness checklist | Shared criteria for when a policy is detailed enough to drive either implementation path | Done | `docs/proposals/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY.md` |
-| Policy gap inventory | Ranked list of remaining under-specified behaviors that block implementation | Done | `docs/proposals/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_GAP_INVENTORY.md` |
+| Policy gap inventory | Ranked list of remaining under-specified behaviors that block implementation | Consolidated | Merged into [Gap Inventory section](#gap-inventory) in this task plan (see also `BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_GAP_INVENTORY.md` for historical reference) |
 | Geochronology golden reference set | First named golden execution-reference family and the rules for using it as a shared contract | Done | `docs/proposals/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_GOLDEN_REFERENCE_GEOCHRONOLOGY.md` |
 | Site and contact persisted-action contracts | Execution-facing contract for append, keep, delete, replace, prerequisite-stop behavior, and explicit list-output change-state expectations | Done | `docs/proposals/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_PERSISTED_ACTION_CONTRACTS_SITE_CONTACTS.md` |
 | Golden reference fixture set | Representative policy-plus-fixture cases suitable for implementation and regression work | In progress | `docs/proposals/BUGSCEP_POLICY_GENERATION/BUGSCEP_POLICY_GOLDEN_REFERENCE_GEOCHRONOLOGY.md` |
