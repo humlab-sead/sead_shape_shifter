@@ -1,0 +1,36 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Bellman ollama proxy: up",
+      "type": "shell",
+      "command": "systemctl --user start bellman-ollama-tunnel.service",
+      "problemMatcher": []
+    },
+    {
+      "label": "Bellman ollama proxy: down",
+      "type": "shell",
+      "command": "systemctl --user stop bellman-ollama-tunnel.service",
+      "problemMatcher": []
+    },
+    {
+      "label": "Bellman ollama proxy: status",
+      "type": "shell",
+      "command": "systemctl --user --no-pager status bellman-ollama-tunnel.service",
+      "problemMatcher": []
+    },
+    {
+      "label": "Bellman ollama proxy: logs",
+      "type": "shell",
+      "command": "journalctl --user -u bellman-ollama-tunnel.service -f",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Bellman ollama proxy: test",
+      "type": "shell",
+      "command": "curl -sS http://127.0.0.1:8081/v1/models",
+      "problemMatcher": []
+    }
+  ]
+}

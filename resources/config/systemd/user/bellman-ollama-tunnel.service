@@ -1,0 +1,11 @@
+[Unit]
+Description=SSH tunnel to Ollama on bellman.humlab.umu.se via berra.humlab.umu.se
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/ssh -N bellman-ollama-proxy
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
