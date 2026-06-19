@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.configuration.config import Config, ConfigLike, is_config_path, is_path_to_existing_file, load_config
+from src.configuration import Config, ConfigLike, is_config_path, is_path_to_existing_file, load_config
 
 
 def test_is_config_path_validation(tmp_path) -> None:

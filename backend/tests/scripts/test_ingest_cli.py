@@ -10,8 +10,8 @@ from backend.app.models.ingester import IngestRequest, IngestResponse, ValidateR
 from backend.app.scripts import ingest as ingest_cli
 
 
-@pytest.fixture
-def cli_runner():
+@pytest.fixture(name="cli_runner")
+def _cli_runner() -> CliRunner:
     """Provides a Click runner for invoking CLI commands."""
     return CliRunner()
 
@@ -53,7 +53,7 @@ def test_discover_ingesters_runs_registry_discovery_when_needed(monkeypatch):
         INGESTER_PATHS = ["ingesters"]
         ENABLED_INGESTERS = ["sead"]
 
-    monkeypatch.setattr(ingest_cli, "Settings", lambda: FakeSettings())
+    monkeypatch.setattr(ingest_cli, "Settings", FakeSettings)
     monkeypatch.setattr(ingest_cli, "get_ingester_registry", lambda: registry)
 
     discovered_registry = ingest_cli.discover_ingesters()
