@@ -69,6 +69,140 @@ That has been enough to capture several useful patterns, including generated chi
 
 The current limit is no longer simple feature breadth. The limit is that the most conditional behavior is still compressed into helpers, comments, fixture conventions, and Java-only side effects rather than being expressed clearly enough to guide implementation.
 
+## Schema Feature Status
+
+The five schema features proposed in this section have different levels of implementation. The status below reflects what is defined in `_schema.yml` and actively used in policy files.
+
+| # | Feature | Schema (`_schema.yml`) | Policy Usage | Status |
+|---|---------|------------------------|--------------|--------|
+| 1 | Direct related-output references (`phase: before_parent\|after_parent` and `related.<name>.<field>` expressions) | Defined in schema as `phase` on `related_outputs` entries and `related.<output_name>.<field>` in the expression language | No policy file uses `phase: before_parent` or `after_parent` on related outputs; no policy uses `related.<name>.<field>` expressions in mappings | **Planned** — schema is ready but no importer has been converted to use the feature yet |
+| 2 | Structured resolvers (ordered lookup steps with trace, database, and emit actions) | Defined in schema with full `resolvers` section including `steps`, `action`, `emit`, and `return` | Used in 3 policies: `lab`, `datesperiod`, `datesradio` | **Implemented** — schema and policy usage are active; resolvers replace opaque helper calls for dating-lab, method, and uncertainty resolution |
+| 3 | Postprocess merge stages (grouped row merge after provisional mapping) | Defined in schema with `postprocess` section including `group_by`, `partition_by`, `pair_rules`, `retain_row`, `actions`, and `on_conflict` | Used in 1 policy: `datescalendar` | **Implemented** — schema and policy usage are active; covers calendar-date range merging with singleton retention |
+| 4 | Shared `emit` blocks (structured issues, warnings, flags) | Defined in schema as a reusable `emit` shape with `severity`, `code`, `message`, and `set_flagged` | Used in 3 policies: `lab` (3 emit blocks), `datesperiod` (1 emit block), `datesradio` (1 emit block) | **Implemented** — schema and policy usage are active; used in resolver steps for fallback and error outcomes |
+| 5 | Known divergences (policy-versus-Java differences) | Defined in schema with `known_divergences` section including `area`, `status`, `description`, and `policy_choice` | Used in 5 policies: `datescalendar`, `datesperiod`, `datesradio`, `sitelocations`, `siteotherproxies` | **Implemented** — schema and policy usage are active; records intentional parity decisions and suspected Java bugs |
+
+### Feature 1: Direct Related-Output References (Planned)
+
+This feature is the only one not yet exercised in policy files. The schema supports it, but no importer has been converted to use `phase: before_parent` or `related.<name>.<field>` expressions.
+
+The current workaround is to use helper calls or separate reconciliation steps to resolve child or supporting-row identity, then reference that identity through a transform. The feature would remove that duplication.
+
+**Recommended next step:** convert one of the geochronology or fossil policies to use `phase: before_parent` for a supporting output that must exist before the parent row mapping. This would also serve as the first proof that the expression language resolves `related.<name>.<field>` correctly during harness execution.
+
+## Execution-Readiness Assessment
+
+This section classifies every policy against the execution-readiness checklist. Use it to see the gap between current state and the implementation-ready target.
+
+### Criteria Summary
+
+A policy is **execution-ready** when it satisfies all of the following:
+
+| # | Criterion | What it means |
+|---|-----------|---------------|
+| C1 | Schema and fixture validation passes | Policy passes `make validate-policy-format` and has a matching `.fixture.yml` |
+| C2 | Concrete result shapes in fixtures | Fixtures describe row actions, emitted issues, retained rows, supporting outputs, and postprocess outputs — not only which branch fired |
+| C3 | Explicit action labels | Fixtures use `supporting_action`, `persisted_action`, or `row_changed` where a runtime must distinguish create, reuse, keep, update, append, or stop-before-update |
+| C4 | Policy-managed vs adapter-only separated | Helper calls are either replaced by structured resolvers or explicitly documented as adapter-only |
+| C5 | Known divergences recorded | Surprising or ambiguous Java behavior is captured in `known_divergences` rather than hidden in comments |
+| C6 | Readable without Java helpers | The policy and fixtures explain the full execution path from source row to persisted result without referring back to Java code |
+
+### Tier A — Execution-Ready (All Criteria Met)
+
+Policies that satisfy C1–C6 and can serve as a build contract for downstream implementation work.
+
+| Policy | C1 | C2 | C3 | C4 | C5 | C6 | Notes |
+|--------|----|----|----|----|----|----|-------|
+| `datescalendar` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Postprocess merge, supporting outputs, related-output graph, known divergences, rich fixtures with `postprocess_merge`, `supporting_output_result`, `related_output_graph`, explicit `row_changed` |
+| `datesperiod` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolvers, supporting outputs, related-output graph, known divergences, fixtures with `resolver_path`, `supporting_output_result`, `related_output_graph`, explicit `row_changed` |
+| `datesradio` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolvers, supporting outputs, related-output graph, known divergences, fixtures with `resolver_path`, `supporting_output_result`, `related_output_graph`, explicit `row_changed` |
+| `fossil` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Related-output graph with dataset and analysis-entity, known divergences, fixtures with `supporting_output_result`, `related_output_graph`, explicit `supporting_action` and `row_changed` for clone-driven create, reuse, and graph-issue paths |
+
+**Total: 4 policies**
+
+These four form the geochronology golden reference set plus the fossil analysis-entity family. They are the only policies currently detailed enough to drive implementation without reading Java helper code.
+
+### Tier B — Near-Ready (C1–C3 Met, C4–C6 Partial)
+
+Policies with solid reconciliation and fixture coverage, explicit action labels, and rich related-output or output behavior, but still rely on helper calls for some lookups or lack known-divergence documentation.
+
+| Policy | C1 | C2 | C3 | C4 | C5 | C6 | Gap |
+|--------|----|----|----|----|----|----|-----|
+| `species` | ✅ | ✅ | ✅ | ⚠️ | ❌ | ⚠️ | Related-output graph with family, genus, author, species; explicit `supporting_action` and `row_changed`; still uses helper calls for order resolution and species lookup; no `known_divergences` |
+| `sample` | ✅ | ✅ | ✅ | ⚠️ | ❌ | ⚠️ | Child sample-dimensions output with create/update/keep/delete; explicit `supporting_action` and `row_changed`; still uses helper calls for sample group and type resolution; no `known_divergences` |
+| `datasetcontacts` | ✅ | ✅ | ✅ | ⚠️ | ❌ | ⚠️ | One-to-many output with list reconciliation; explicit `persisted_action` and `row_changed`; still uses helper calls for dataset resolution; no `known_divergences` |
+| `sitelocations` | ✅ | ✅ | ✅ | ⚠️ | ✅ | ⚠️ | One-to-many output with full list-reconciliation (keep, append, delete, replace); explicit `persisted_action` and `row_changed`; has `known_divergences`; still uses helper calls for site and location expansion |
+| `siteotherproxies` | ✅ | ✅ | ✅ | ⚠️ | ✅ | ⚠️ | One-to-many output with list-reconciliation from proxy flags; explicit `persisted_action` and `row_changed`; has `known_divergences`; still uses helper calls for site resolution |
+
+**Total: 5 policies**
+
+These policies have the richest fixture coverage outside Tier A. The remaining gaps are helper-to-resolver conversion (C4) and known-divergence documentation (C5). Closing those gaps would promote them to Tier A.
+
+### Tier C — Reconciliation-Ready (C1–C2 Met, C3 Partial, C4–C6 Partial)
+
+Policies with ordered reconciliation, fixture-backed parity, and explicit `persisted_action` labels on write and error paths, but no supporting-output or postprocess behavior, and still rely on helper calls for lookups.
+
+| Policy | C1 | C2 | C3 | C4 | C5 | C6 | Gap |
+|--------|----|----|----|----|----|----|-----|
+| `lab` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Structured resolvers for country; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `site` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation with external-edit guard; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `sitereferences` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `bibliography` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `period` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation with write-action labels; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `country` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation with write-action labels; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `rdb` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `rdbcode` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `rdbsystem` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `mcrnames` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `mcrsummary` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation with keep-existing semantics; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `taxanotes` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation with write-action labels; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `taxaseasonality` | ✅ | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; reconciliation fixtures with `persisted_action`; no supporting outputs; no `known_divergences` |
+| `samplegroup` | ✅ | ✅ | ❌ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; basic reconciliation fixtures; no explicit action labels; no supporting outputs; no `known_divergences` |
+| `attributes` | ✅ | ✅ | ❌ | ⚠️ | ❌ | ⚠️ | Search chain with three steps; basic reconciliation fixtures; no explicit action labels; no supporting outputs; no `known_divergences` |
+
+**Total: 15 policies**
+
+These policies have solid reconciliation coverage and pass validation. The gaps are: (a) no supporting-output or postprocess behavior to exercise, (b) helper calls not yet converted to structured resolvers, and (c) no `known_divergences` section. They are parity-ready but not yet implementation-ready.
+
+### Tier D — Parity-Only (C1 Met, C2–C6 Partial or Missing)
+
+Simple leaf policies with basic reconciliation and minimal fixture coverage. No supporting outputs, no resolvers, no explicit action labels, and no known divergences.
+
+| Policy | C1 | C2 | C3 | C4 | C5 | C6 | Gap |
+|--------|----|----|----|----|----|----|-----|
+| `ecocodegroup` | ✅ | ⚠️ | ❌ | ⚠️ | ❌ | ⚠️ | Trace-first reconciliation; basic reconciliation fixtures; no explicit action labels; helper for system ID resolution |
+| `ecocode_bugs` | ✅ | ⚠️ | ❌ | ⚠️ | ❌ | ⚠️ | Trace-first reconciliation; basic reconciliation fixtures; no explicit action labels; helper for system ID resolution |
+| `ecocode_koch` | ✅ | ⚠️ | ❌ | ⚠️ | ❌ | ⚠️ | Trace-first reconciliation; basic reconciliation fixtures; no explicit action labels; helper for system ID resolution |
+| `ecocodedefinition_bugs` | ✅ | ⚠️ | ❌ | ⚠️ | ❌ | ⚠️ | Trace-first reconciliation; basic reconciliation fixtures; no explicit action labels |
+| `ecocodedefinition_koch` | ✅ | ⚠️ | ❌ | ⚠️ | ❌ | ⚠️ | Trace-first reconciliation; basic reconciliation fixtures; no explicit action labels |
+| `birmbeetledata` | ✅ | ⚠️ | ❌ | ⚠️ | ❌ | ⚠️ | Trace-first reconciliation; basic reconciliation fixtures; no explicit action labels |
+| `speciesassociation` | ✅ | ⚠️ | ❌ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; basic reconciliation fixtures; no explicit action labels |
+| `speciesbiology` | ✅ | ⚠️ | ❌ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; basic reconciliation fixtures; no explicit action labels |
+| `specieskeys` | ✅ | ⚠️ | ❌ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; basic reconciliation fixtures; no explicit action labels |
+| `speciessynonyms` | ✅ | ⚠️ | ❌ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; basic reconciliation fixtures; no explicit action labels |
+| `speciesdistribution` | ✅ | ⚠️ | ❌ | ⚠️ | ❌ | ⚠️ | Ordered reconciliation; basic reconciliation fixtures; no explicit action labels |
+
+**Total: 11 policies**
+
+These policies pass schema validation and have basic reconciliation fixtures. They are useful for parity checks but are not detailed enough to drive implementation. The gaps are: no explicit action labels, no supporting-output behavior, helper calls not converted to resolvers, and no `known_divergences`.
+
+### Summary
+
+| Tier | Count | Criteria | Ready for implementation? |
+|------|-------|----------|---------------------------|
+| A — Execution-Ready | 4 | C1–C6 all met | **Yes** — can serve as build contract |
+| B — Near-Ready | 5 | C1–C3 met, C4–C6 partial | **Almost** — needs resolver conversion and known-divergence docs |
+| C — Reconciliation-Ready | 15 | C1–C2 met, C3–C6 partial | **No** — solid reconciliation but missing action labels, resolvers, and divergences |
+| D — Parity-Only | 11 | C1 met, C2–C6 partial | **No** — basic parity only, not implementation-ready |
+| **Total** | **35** | | **4 of 35 (11%) are execution-ready** |
+
+### Promotion Path
+
+To move a policy from one tier to the next:
+
+- **D → C:** add explicit `persisted_action` labels to reconciliation fixtures for write and error paths
+- **C → B:** add supporting-output or postprocess behavior where the importer creates child or supporting rows; add `known_divergences` section
+- **B → A:** convert remaining helper calls to structured resolvers; add `known_divergences` where Java behavior is surprising; confirm the policy is readable without Java code
+
 ## Execution-Readiness Checklist
 
 Use this checklist to decide whether a BugsCEP policy is detailed enough to support downstream implementation work.
