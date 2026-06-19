@@ -301,3 +301,10 @@ This section collects the detailed batch-by-batch completion history from the fi
 - **Schema feature status table:** added to the fidelity proposal showing which of the 5 proposed schema features are implemented in `_schema.yml`, which are partially implemented, and which are still planned
 - **Execution-readiness assessment:** added concrete classification of all 35 policies into four tiers (A: execution-ready, B: near-ready, C: reconciliation-ready, D: parity-only) with criteria matrix and promotion path
 - **Gap inventory consolidation:** merged the standalone gap inventory (`BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_GAP_INVENTORY.md`) into the task plan as a dedicated Gap Inventory section, with cross-references from both the fidelity proposal and the original gap inventory file
+
+### Feature 1 Conversion (2026-06-20)
+
+- **Fossil policy uses `phase: before_parent` and `related.<name>.<field>` expressions:** the dataset and analysis_entity related outputs now declare `phase: before_parent`, the analysis_entity `dataset_id` mapping uses `related.dataset.dataset_id` instead of a `generated` field, and the parent abundance row's `analysis_entity_id` mapping uses `related.analysis_entity.analysis_entity_id` instead of the `resolve_fossil_analysis_entity_id` helper call. This is the first policy to exercise Feature 1 (direct related-output references) end-to-end.
+- **Helper marked as superseded:** `resolve_fossil_analysis_entity_id` is retained in the helpers section for historical reference but marked as superseded with `used_by: []` and a description explaining the replacement.
+- **Two new fixture scenarios:** `analysis_entity_references_dataset_via_related_expression` (happy path) and `analysis_entity_dataset_id_null_when_dataset_missing` (null propagation) exercise the `related.<name>.<field>` expression through the `related_output_graph` intent.
+- **Schema feature status updated:** Feature 1 changed from "Planned" to "Implemented" in the fidelity proposal's schema feature status table.

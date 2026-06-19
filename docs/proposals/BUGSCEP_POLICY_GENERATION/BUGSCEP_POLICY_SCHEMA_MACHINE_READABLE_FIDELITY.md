@@ -75,19 +75,23 @@ The five schema features proposed in this section have different levels of imple
 
 | # | Feature | Schema (`_schema.yml`) | Policy Usage | Status |
 |---|---------|------------------------|--------------|--------|
-| 1 | Direct related-output references (`phase: before_parent\|after_parent` and `related.<name>.<field>` expressions) | Defined in schema as `phase` on `related_outputs` entries and `related.<output_name>.<field>` in the expression language | No policy file uses `phase: before_parent` or `after_parent` on related outputs; no policy uses `related.<name>.<field>` expressions in mappings | **Planned** — schema is ready but no importer has been converted to use the feature yet |
+| 1 | Direct related-output references (`phase: before_parent\|after_parent` and `related.<name>.<field>` expressions) | Defined in schema as `phase` on `related_outputs` entries and `related.<output_name>.<field>` in the expression language | Used in 1 policy: `fossil` (dataset and analysis_entity use `phase: before_parent`; analysis_entity references `related.dataset.dataset_id`; parent references `related.analysis_entity.analysis_entity_id`) | **Implemented** — schema and policy usage are active; fossil policy was converted 2026-06-20 as the first proof that the expression language resolves `related.<name>.<field>` correctly |
 | 2 | Structured resolvers (ordered lookup steps with trace, database, and emit actions) | Defined in schema with full `resolvers` section including `steps`, `action`, `emit`, and `return` | Used in 3 policies: `lab`, `datesperiod`, `datesradio` | **Implemented** — schema and policy usage are active; resolvers replace opaque helper calls for dating-lab, method, and uncertainty resolution |
 | 3 | Postprocess merge stages (grouped row merge after provisional mapping) | Defined in schema with `postprocess` section including `group_by`, `partition_by`, `pair_rules`, `retain_row`, `actions`, and `on_conflict` | Used in 1 policy: `datescalendar` | **Implemented** — schema and policy usage are active; covers calendar-date range merging with singleton retention |
 | 4 | Shared `emit` blocks (structured issues, warnings, flags) | Defined in schema as a reusable `emit` shape with `severity`, `code`, `message`, and `set_flagged` | Used in 3 policies: `lab` (3 emit blocks), `datesperiod` (1 emit block), `datesradio` (1 emit block) | **Implemented** — schema and policy usage are active; used in resolver steps for fallback and error outcomes |
 | 5 | Known divergences (policy-versus-Java differences) | Defined in schema with `known_divergences` section including `area`, `status`, `description`, and `policy_choice` | Used in 5 policies: `datescalendar`, `datesperiod`, `datesradio`, `sitelocations`, `siteotherproxies` | **Implemented** — schema and policy usage are active; records intentional parity decisions and suspected Java bugs |
 
-### Feature 1: Direct Related-Output References (Planned)
+### Feature 1: Direct Related-Output References (Implemented)
 
-This feature is the only one not yet exercised in policy files. The schema supports it, but no importer has been converted to use `phase: before_parent` or `related.<name>.<field>` expressions.
+This feature is now exercised in the `fossil` policy (converted 2026-06-20).
 
-The current workaround is to use helper calls or separate reconciliation steps to resolve child or supporting-row identity, then reference that identity through a transform. The feature would remove that duplication.
+The fossil policy's `dataset` and `analysis_entity` related outputs use `phase: before_parent`, and the parent abundance row references `analysis_entity_id` via `related.analysis_entity.analysis_entity_id` instead of the `resolve_fossil_analysis_entity_id` helper call. The `analysis_entity` mapping for `dataset_id` uses `related.dataset.dataset_id` instead of a `generated` field.
 
-**Recommended next step:** convert one of the geochronology or fossil policies to use `phase: before_parent` for a supporting output that must exist before the parent row mapping. This would also serve as the first proof that the expression language resolves `related.<name>.<field>` correctly during harness execution.
+The fixture file includes two new `related_output_expression` scenarios:
+- `analysis_entity_references_dataset_via_related_expression` — validates the happy path where dataset resolves, analysis_entity references it, and the parent references the analysis entity
+- `analysis_entity_dataset_id_null_when_dataset_missing` — validates null propagation when the dataset cannot be resolved
+
+**Recommended next step:** convert one of the geochronology policies (`datesperiod` or `datesradio`) to use the same pattern, or convert the remaining Tier B policies (`species`, `sample`, `datasetcontacts`) that still use helper calls for child identity resolution.
 
 ## Execution-Readiness Assessment
 

@@ -124,7 +124,7 @@ Each gap tracks which criteria it helps close for the execution-readiness checkl
 **Gap 1: Identity and supporting-output flow**
 
 - Closes: C4 (policy-managed vs adapter-only), C6 (readable without Java helpers)
-- Done: Tier A policies (`datescalendar`, `datesperiod`, `datesradio`, `fossil`) have complete identity flow with explicit `supporting_action` and `row_changed`
+- Done: Tier A policies (`datescalendar`, `datesperiod`, `datesradio`, `fossil`) have complete identity flow with explicit `supporting_action` and `row_changed`. The fossil policy now uses `phase: before_parent` on its dataset and analysis_entity related outputs, and references child identity through `related.<name>.<field>` expressions instead of helper calls (Feature 1 conversion, 2026-06-20).
 - Remaining: Tier B policies (`species`, `sample`, `datasetcontacts`) still use helper calls for some identity resolution; need conversion to structured resolvers or explicit adapter-only documentation
 
 **Gap 2: Persisted side effects and output result semantics**
