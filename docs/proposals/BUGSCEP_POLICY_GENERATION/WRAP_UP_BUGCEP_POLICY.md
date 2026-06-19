@@ -294,3 +294,9 @@ This section collects the detailed batch-by-batch completion history from the fi
 
 - **`created_supporting_rows_mark_updated`:** seen in `datesperiod` and `datescalendar`; fixtures expose explicit `supporting_action` values (`create`, `update`, `keep`, `reuse`) while preserving current Java `updated: true` behavior as parity evidence
 - **`replacement_expressed_as_row_actions`:** seen in `sitelocations` and `siteotherproxies`; fixtures expose explicit `persisted_action` values (`append_new`, `keep_existing`, `mark_for_deletion`, `stop_before_list_update`) while preserving the Java row-by-row replacement shape
+
+### Documentation Improvements (Post-Fidelity Work)
+
+- **Consolidated status history:** moved batch-by-batch completion notes from the fidelity proposal's status line and the task plan's progress tracker into this changelog section
+- **Schema feature status table:** added to the fidelity proposal showing which of the 5 proposed schema features are implemented in `_schema.yml`, which are partially implemented, and which are still planned
+- **Execution-readiness assessment:** added concrete classification of all 35 policies into four tiers (A: execution-ready, B: near-ready, C: reconciliation-ready, D: parity-only) with criteria matrix and promotion path
