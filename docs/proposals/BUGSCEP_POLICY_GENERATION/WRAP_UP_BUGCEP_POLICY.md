@@ -300,3 +300,4 @@ This section collects the detailed batch-by-batch completion history from the fi
 - **Consolidated status history:** moved batch-by-batch completion notes from the fidelity proposal's status line and the task plan's progress tracker into this changelog section
 - **Schema feature status table:** added to the fidelity proposal showing which of the 5 proposed schema features are implemented in `_schema.yml`, which are partially implemented, and which are still planned
 - **Execution-readiness assessment:** added concrete classification of all 35 policies into four tiers (A: execution-ready, B: near-ready, C: reconciliation-ready, D: parity-only) with criteria matrix and promotion path
+- **Gap inventory consolidation:** merged the standalone gap inventory (`BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_GAP_INVENTORY.md`) into the task plan as a dedicated Gap Inventory section, with cross-references from both the fidelity proposal and the original gap inventory file
