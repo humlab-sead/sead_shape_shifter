@@ -1,7 +1,7 @@
 import pytest
 
 from backend.app.core.config import get_settings
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import get_ingester_registry
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -10,8 +10,8 @@ def discover_ingesters():
 
     This ensures that ingesters are available for both unit and integration tests.
     """
-    if not Ingesters._initialized:
-        Ingesters.discover(search_paths=["ingesters"])
+    if not get_ingester_registry()._initialized:
+        get_ingester_registry().discover(search_paths=["ingesters"])
     yield
 
 

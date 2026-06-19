@@ -7,8 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.configuration.config import Config, ConfigFactory, is_config_path, is_path_to_existing_file
-from src.configuration.interface import ConfigLike
+from src.configuration.config import Config, ConfigLike, is_config_path, is_path_to_existing_file, load_config
 
 
 def test_is_config_path_validation(tmp_path) -> None:
@@ -88,7 +87,7 @@ def test_config_resolve_applies_env(monkeypatch) -> None:
 
 
 def test_configfactory_resolves_include_and_load(tmp_path: Path, monkeypatch) -> None:
-    """ConfigFactory resolves @include and @load directives using base path."""
+    """load_config resolves @include and @load directives using base path."""
     sub_file: Path = tmp_path / "sub.yml"
     sub_file.write_text("child:\n  key: sub\n", encoding="utf-8")
 
@@ -102,7 +101,7 @@ def test_configfactory_resolves_include_and_load(tmp_path: Path, monkeypatch) ->
     )
 
     monkeypatch.setenv("API_URL", "https://example.test")
-    cfg: Config | ConfigLike = ConfigFactory().load(source=str(main_file), context="test_ctx")
+    cfg: Config | ConfigLike = load_config(source=str(main_file), context="test_ctx")
 
     assert cfg.data["nested"]["child"]["key"] == "sub"
     assert cfg.data["values"] == [{"name": "alice", "age": "30"}, {"name": "bob", "age": "40"}]
@@ -110,13 +109,13 @@ def test_configfactory_resolves_include_and_load(tmp_path: Path, monkeypatch) ->
 
 
 def test_configfactory_applies_env_prefix(tmp_path: Path, monkeypatch) -> None:
-    """ConfigFactory should inject env-prefixed values into loaded data."""
+    """load_config should inject env-prefixed values into loaded data."""
     monkeypatch.setenv("MYAPP_SECTION_KEY", "from_env")
 
     cfg_file = tmp_path / "config.yml"
     cfg_file.write_text("section:\n  placeholder: 1\n", encoding="utf-8")
 
-    cfg: Config = ConfigFactory().load(source=str(cfg_file), env_prefix="MYAPP")  # type: ignore[assignment]
+    cfg: Config = load_config(source=str(cfg_file), env_prefix="MYAPP")  # type: ignore[assignment]
 
     assert cfg.data["section"]["key"] == "from_env"
     assert cfg.env_prefix == "MYAPP"

@@ -1,45 +1,55 @@
 """Unit tests for ingester protocol and registry."""
 
-from backend.app.ingesters import IngesterConfig, IngesterMetadata, Ingesters
-from backend.app.ingesters.protocol import IngestionResult, ValidationResult
+import pytest
+
+from backend.app.ingesters import IngesterConfig, IngesterMetadata, get_ingester_registry
+from backend.app.ingesters.protocol import Ingester, IngestionResult, ValidationResult
+from backend.app.ingesters.registry import IngesterRegistry
 from ingesters.sead import SeadIngester
 from ingesters.sead_change_request import SeadChangeRequestIngester
+
+
+@pytest.fixture(name="registry")
+def get_ingesters() -> IngesterRegistry:
+    """Ensure ingester registry is initialized for tests."""
+    registry: IngesterRegistry = get_ingester_registry()
+    return registry
 
 
 class TestIngesterRegistry:
     """Tests for the IngesterRegistry."""
 
-    def test_registry_imports_successfully(self):
+    def test_registry_imports_successfully(self, registry: IngesterRegistry):
         """Test that the registry can be imported."""
-        assert Ingesters is not None
-        assert hasattr(Ingesters, "items")
-        assert hasattr(Ingesters, "get_metadata_list")
+        assert registry is not None
+        assert hasattr(registry, "items")
+        assert hasattr(registry, "get_metadata_list")
 
-    def test_sead_ingester_registered(self):
+    def test_sead_ingester_registered(self, registry: IngesterRegistry):
         """Test that SeadIngester is automatically registered."""
-        assert "sead" in Ingesters.items
-        assert Ingesters.items["sead"] == SeadIngester
+        assert "sead" in registry.items
+        assert registry.items["sead"] == SeadIngester
 
-    def test_get_metadata_list(self):
+    def test_get_metadata_list(self, registry: IngesterRegistry):
         """Test getting list of all ingester metadata."""
-        metadata_list = Ingesters.get_metadata_list()
+        metadata_list: list[IngesterMetadata] = registry.get_metadata_list()
         assert len(metadata_list) >= 1
         assert any(m.key == "sead" for m in metadata_list)
 
-    def test_get_ingester_by_key(self):
+    def test_get_ingester_by_key(self, registry: IngesterRegistry):
         """Test getting an ingester class by key."""
-        ingester_cls = Ingesters.get("sead")
+        ingester_cls: None | type[Ingester] = registry.get("sead")
         assert ingester_cls is not None
         assert ingester_cls == SeadIngester
 
-    def test_sead_change_request_ingester_registered(self):
+    def test_sead_change_request_ingester_registered(self, registry: IngesterRegistry):
         """Test that SeadChangeRequestIngester is automatically registered."""
-        assert "sead_change_request" in Ingesters.items
-        assert Ingesters.items["sead_change_request"] == SeadChangeRequestIngester
+        assert "sead_change_request" in registry.items
+        assert registry.items["sead_change_request"] == SeadChangeRequestIngester
 
-    def test_get_sead_change_request_ingester_by_key(self):
+    def test_get_sead_change_request_ingester_by_key(self, registry: IngesterRegistry):
         """Test getting the new scaffold ingester by key."""
-        ingester_cls = Ingesters.get("sead_change_request")
+        ingester_cls: None | type[Ingester] = registry.get("sead_change_request")
         assert ingester_cls is not None
         assert ingester_cls == SeadChangeRequestIngester
 

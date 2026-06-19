@@ -9,7 +9,7 @@ from backend.app.models.ingester import (
     ValidateRequest,
     ValidateResponse,
 )
-from backend.app.services.ingester_service import IngesterService
+from backend.app.services.ingester_service import IngesterService, get_ingester_service
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ async def list_ingesters() -> list[IngesterMetadataResponse]:
     Returns:
         List of ingester metadata including key, name, description, version, and supported formats
     """
-    return IngesterService.list_ingesters()
+    return get_ingester_service().list_ingesters()
 
 
 @router.post("/{key}/validate", response_model=ValidateResponse)
@@ -39,7 +39,7 @@ async def validate_data(key: str, request: ValidateRequest) -> ValidateResponse:
         HTTPException: 404 if ingester not found, 500 if validation fails critically
     """
     try:
-        result = await IngesterService.validate(key, request)
+        result = await get_ingester_service().validate(key, request)
         return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
@@ -62,7 +62,7 @@ async def ingest_data(key: str, request: IngestRequest) -> IngestResponse:
         HTTPException: 404 if ingester not found, 500 if ingestion fails
     """
     try:
-        return await IngesterService.ingest(key, request)
+        return await get_ingester_service().ingest(key, request)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except Exception as e:

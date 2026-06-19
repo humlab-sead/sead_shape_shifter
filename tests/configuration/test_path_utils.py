@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src.configuration.config import SubConfigResolver
+from src.configuration.resolve import SubConfigResolver
 
 
 # Use SubConfigResolver as a concrete implementation to test BaseResolver._resolve_path

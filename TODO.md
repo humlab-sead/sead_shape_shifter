@@ -222,3 +222,27 @@ GitHub Copilot global integration installed (user-scoped).
 
   Applies to all Copilot CLI sessions on this machine.
   Restart your Copilot CLI session to activate.
+
+.codex/config.toml
+[shell_environment_policy]
+inherit = "all"
+
+[shell_environment_policy.set]
+PATH = "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/roger/.local/bin:/home/roger/.pyenv/shims:/home/roger/.pyenv/bin:/home/roger/source/sead_shape_shifter/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+
+[projects."/home/roger/source/sead_shape_shifter"]
+trust_level = "trusted"
+
+[projects."/home/roger/source/sead_query_api"]
+trust_level = "trusted"
+
+
+
+openai_base_url = "http://localhost:8787/v1"
+
+## Add PATH for non-interactive shells (needed for vscode Codex extension, remote SSH)
+PATH OVERRIDE=/home/roger/source/sead_shape_shifter/.venv/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/roger/.dotnet/tools:/home/roger/.local/bin:/home/roger/bin/go/bin:/home/roger/.npm/lib/bin:/home/roger/bin:/usr/local/bin:/usr/bin:/bin
+
+
+# TODO:
+- Silence test run from test explorer

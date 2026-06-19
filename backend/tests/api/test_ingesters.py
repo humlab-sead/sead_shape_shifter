@@ -1,12 +1,14 @@
 """Integration tests for ingester API endpoints."""
 
 from collections.abc import Iterator
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.protocol import IngesterConfig
+from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.main import app
 from backend.app.models.ingester import IngestRequest, IngestResponse, ValidateRequest, ValidateResponse
 from backend.app.services.ingester_runtime import (
@@ -14,7 +16,7 @@ from backend.app.services.ingester_runtime import (
     SeadChangeRequestSimsAdapter,
     SeadChangeRequestTargetCollisionChecker,
 )
-from backend.app.services.ingester_service import IngesterService
+from backend.app.services.ingester_service import IngesterService, get_ingester_service
 
 # pylint: disable=redefined-outer-name
 
@@ -22,10 +24,10 @@ from backend.app.services.ingester_service import IngesterService
 @pytest.fixture(autouse=True)
 def reset_ingester_registry_state() -> Iterator[None]:
     """Force ingester discovery to run for each test in this module."""
-    original_initialized = Ingesters._initialized
-    Ingesters._initialized = False
+    original_initialized = get_ingester_registry()._initialized
+    get_ingester_registry()._initialized = False
     yield
-    Ingesters._initialized = original_initialized
+    get_ingester_registry()._initialized = original_initialized
 
 
 @pytest.fixture
@@ -113,7 +115,7 @@ class TestIngestersEndpoints:
             assert isinstance(data["warnings"], list)
             assert isinstance(data["infos"], list)
 
-    def test_validate_passes_submission_context_and_deploy_strategy_to_service(self, client: TestClient, monkeypatch):
+    def test_validate_passes_submission_context_and_deploy_strategy_to_service(self, client: TestClient):
         """Validate route should preserve change-request payload fields when calling the service."""
         captured: dict[str, str | ValidateRequest] = {}
 
@@ -128,26 +130,28 @@ class TestIngestersEndpoints:
                 pending_confirmation_report=None,
             )
 
-        monkeypatch.setattr(IngesterService, "validate", staticmethod(fake_validate))
+        with patch("backend.app.api.v1.endpoints.ingesters.get_ingester_service") as mock_ingester_service:
+            mock_service_instance = mock_ingester_service.return_value
+            mock_service_instance.validate = fake_validate
 
-        response = client.post(
-            "/api/v1/ingesters/sead_change_request/validate",
-            json={
-                "source": "/tmp/input.xlsx",
-                "config": {"ignore_columns": ["date_updated"]},
-                "submission_context": {
-                    "submission_name": "bugs_delivery_1",
-                    "project_name": "pilot_bugs",
-                    "timestamp": "2026-06-01T09:15",
-                    "datatype": "bugs",
-                    "identifier": "PILOT_BUGS",
-                    "description": "Pilot bugs change package",
-                    "issue_number": "455",
-                    "author": "SEAD Operator",
+            response = client.post(
+                "/api/v1/ingesters/sead_change_request/validate",
+                json={
+                    "source": "/tmp/input.xlsx",
+                    "config": {"ignore_columns": ["date_updated"]},
+                    "submission_context": {
+                        "submission_name": "bugs_delivery_1",
+                        "project_name": "pilot_bugs",
+                        "timestamp": "2026-06-01T09:15",
+                        "datatype": "bugs",
+                        "identifier": "PILOT_BUGS",
+                        "description": "Pilot bugs change package",
+                        "issue_number": "455",
+                        "author": "SEAD Operator",
+                    },
+                    "deploy_strategy": "copy_csv",
                 },
-                "deploy_strategy": "copy_csv",
-            },
-        )
+            )
 
         assert response.status_code == 200
         assert captured["key"] == "sead_change_request"
@@ -219,7 +223,7 @@ class TestIngestersEndpoints:
         assert "pending_confirmation_report" in data
         assert data["success"] is False
 
-    def test_ingest_passes_submission_context_and_deploy_strategy_to_service(self, client: TestClient, monkeypatch):
+    def test_ingest_passes_submission_context_and_deploy_strategy_to_service(self, client: TestClient):
         """Ingest route should preserve change-request payload fields when calling the service."""
         captured: dict[str, str | IngestRequest] = {}
 
@@ -237,31 +241,33 @@ class TestIngestersEndpoints:
                 pending_confirmation_report=None,
             )
 
-        monkeypatch.setattr(IngesterService, "ingest", staticmethod(fake_ingest))
+        with patch("backend.app.api.v1.endpoints.ingesters.get_ingester_service") as mock_ingester_service:
+            mock_service_instance = mock_ingester_service.return_value
+            mock_service_instance.ingest = fake_ingest
 
-        response: Response = client.post(
-            "/api/v1/ingesters/sead_change_request/ingest",
-            json={
-                "source": "/tmp/input.xlsx",
-                "config": {"ignore_columns": ["date_updated"]},
-                "submission_name": "bugs_delivery_1",
-                "data_types": "bugs",
-                "output_folder": "output",
-                "do_register": False,
-                "explode": False,
-                "submission_context": {
+            response: Response = client.post(
+                "/api/v1/ingesters/sead_change_request/ingest",
+                json={
+                    "source": "/tmp/input.xlsx",
+                    "config": {"ignore_columns": ["date_updated"]},
                     "submission_name": "bugs_delivery_1",
-                    "project_name": "pilot_bugs",
-                    "timestamp": "2026-06-01T09:15",
-                    "datatype": "bugs",
-                    "identifier": "PILOT_BUGS",
-                    "description": "Pilot bugs change package",
-                    "issue_number": "455",
-                    "author": "SEAD Operator",
+                    "data_types": "bugs",
+                    "output_folder": "output",
+                    "do_register": False,
+                    "explode": False,
+                    "submission_context": {
+                        "submission_name": "bugs_delivery_1",
+                        "project_name": "pilot_bugs",
+                        "timestamp": "2026-06-01T09:15",
+                        "datatype": "bugs",
+                        "identifier": "PILOT_BUGS",
+                        "description": "Pilot bugs change package",
+                        "issue_number": "455",
+                        "author": "SEAD Operator",
+                    },
+                    "deploy_strategy": "copy_csv",
                 },
-                "deploy_strategy": "copy_csv",
-            },
-        )
+            )
 
         assert response.status_code == 200
         assert captured["key"] == "sead_change_request"
@@ -283,7 +289,7 @@ class TestIngesterServiceIntegration:
     def test_service_list_ingesters(self):
         """Test that service can list ingesters."""
 
-        ingesters = IngesterService.list_ingesters()
+        ingesters = get_ingester_service().list_ingesters()
         assert len(ingesters) >= 1
         assert any(i.key == "sead" for i in ingesters)
 
@@ -298,7 +304,7 @@ class TestIngesterServiceIntegration:
             "custom_param": "value",
         }
 
-        config = IngesterService._create_config(config_dict)
+        config: IngesterConfig = get_ingester_service()._create_config(config_dict)
         assert config.host == "localhost"
         assert config.port == 5432
         assert config.dbname == "test_db"
@@ -313,7 +319,7 @@ class TestIngesterServiceIntegration:
 
     def test_service_create_config_injects_sead_change_request_runtime_clients(self):
         """SEAD change request runtime clients should be injected at the backend service boundary."""
-        config = IngesterService._create_config({"custom_param": "value"}, key="sead_change_request")
+        config: IngesterConfig = get_ingester_service()._create_config({"custom_param": "value"}, key="sead_change_request")
 
         assert config.extra is not None
         assert isinstance(config.extra["sims_client"], SeadChangeRequestSimsAdapter)
@@ -324,7 +330,7 @@ class TestIngesterServiceIntegration:
         explicit_sims_client = object()
         explicit_reconciliation_client = object()
 
-        config = IngesterService._create_config(
+        config: IngesterConfig = get_ingester_service()._create_config(
             {
                 "sims_client": explicit_sims_client,
                 "reconciliation_client": explicit_reconciliation_client,
@@ -338,7 +344,7 @@ class TestIngesterServiceIntegration:
 
     def test_service_create_config_injects_collision_checker_when_database_config_present(self):
         """SEAD change request config should inject a DB-backed collision checker when DB config is available."""
-        config = IngesterService._create_config(
+        config: IngesterConfig = get_ingester_service()._create_config(
             {
                 "database": {"host": "localhost", "port": 5432, "dbname": "test_db", "user": "test_user"},
             },
@@ -350,7 +356,7 @@ class TestIngesterServiceIntegration:
 
     def test_service_create_config_preserves_submission_context_and_deploy_strategy(self):
         """SEAD change request config should pass submission context and deploy strategy through to ingester extras."""
-        config = IngesterService._create_config(
+        config: IngesterConfig = get_ingester_service()._create_config(
             {
                 "submission_name": "bugs_delivery_1",
                 "data_types": "bugs",
