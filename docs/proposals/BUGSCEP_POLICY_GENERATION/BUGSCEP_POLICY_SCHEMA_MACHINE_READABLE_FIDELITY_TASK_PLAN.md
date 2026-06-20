@@ -111,11 +111,11 @@ This section consolidates the remaining gaps between current policy YAML and imp
 
 | # | Gap | Why it matters | Policies to close it | Status |
 |---|-----|----------------|----------------------|--------|
-| 1 | End-to-end identity and supporting-output flow | Both implementation paths need a complete contract for how parent rows, supporting rows, and related outputs share identity and reuse state | `datescalendar`, `datesperiod`, `datesradio`, `fossil`, `species` | Partial — Tier A policies have full coverage; Tier B policies need resolver conversion |
+| 1 | End-to-end identity and supporting-output flow | Both implementation paths need a complete contract for how parent rows, supporting rows, and related outputs share identity and reuse state | `datescalendar`, `datesperiod`, `datesradio`, `fossil`, `species`, `bibliography`, `country`, `rdbcode`, `mcrnames`, `mcrsummary`, `attributes` | Partial — Tier A policies have full coverage; 6 Tier C policies converted 2026-06-20 |
 | 2 | Persisted side effects and output result semantics | Implementation needs to know not only which branch fired, but what row actions and side effects must happen | `datasetcontacts`, `sitelocations`, `siteotherproxies`, `sample` | Partial — explicit action labels and `row_changed` expectations added for list outputs and supporting outputs |
-| 3 | Helper-derived decision rules hidden in Java behavior | Policies cannot serve as a build contract while important lookup or derivation behavior still depends on Java-only helpers | `lab`, `datesradio`, `datesperiod`, `species`, `datasetcontacts` | Partial — `lab`, `datesperiod`, `datesradio`, `species`, `datasetcontacts` have structured resolvers |
+| 3 | Helper-derived decision rules hidden in Java behavior | Policies cannot serve as a build contract while important lookup or derivation behavior still depends on Java-only helpers | `lab`, `datesradio`, `datesperiod`, `species`, `datasetcontacts`, `sitelocations`, `siteotherproxies`, `country`, `rdbcode`, `mcrnames`, `mcrsummary`, `attributes` | Partial — 14 policies have structured resolvers including `country`, `rdbcode`, `mcrnames`, `mcrsummary`, `attributes` (converted 2026-06-20) |
 | 4 | Postprocess and graph behavior as full execution contracts | Downstream implementation needs clearer expectations around retained rows, emitted rows, graph issues, and ordering-sensitive outputs | `datescalendar`, `datesperiod`, `datesradio`, `fossil`, `species` | Partial — Tier A policies have full coverage; `species` graph needs known-divergence documentation |
-| 5 | Known divergences and intentional adapter boundaries | Both paths need explicit documentation of what the policy owns, what the adapter owns, and where Java behavior is preserved only for parity | `datescalendar`, `fossil`, `rdb`, `rdbcode`, `site` | Partial — 7 policies have `known_divergences`; 28 policies lack this section |
+| 5 | Known divergences and intentional adapter boundaries | Both paths need explicit documentation of what the policy owns, what the adapter owns, and where Java behavior is preserved only for parity | `datescalendar`, `fossil`, `rdb`, `rdbcode`, `site`, `bibliography`, `country`, `mcrnames`, `mcrsummary`, `attributes` | Partial — 16 policies have `known_divergences`; 19 policies lack this section |
 
 ### Gap Closure Progress
 
@@ -124,8 +124,8 @@ Each gap tracks which criteria it helps close for the execution-readiness checkl
 **Gap 1: Identity and supporting-output flow**
 
 - Closes: C4 (policy-managed vs adapter-only), C6 (readable without Java helpers)
-- Done: Tier A policies (`datescalendar`, `datesperiod`, `datesradio`, `fossil`, `species`, `datasetcontacts`) have complete identity flow with explicit `supporting_action` and `row_changed`. The fossil policy uses `phase: before_parent` on its dataset and analysis_entity related outputs, and references child identity through `related.<name>.<field>` expressions instead of helper calls (Feature 1 conversion, 2026-06-20). The species policy was converted 2026-06-20: all 4 related outputs use `phase: before_parent`, `taxa_genus.family_id` uses `related.taxa_family.family_id`, `taxa_species` uses `related.taxa_genus.genus_id` and `related.taxa_author.author_id`, and parent `taxon_id` uses `related.taxa_species.taxon_id`. The `resolve_bugs_taxonomic_order_system_id` helper was converted to a structured resolver, and `known_divergences` were added for the no-data species shortcut and cascade dependency null propagation. The datasetcontacts policy was converted 2026-06-20: the `resolve_dataset_id_from_countsheet_code` helper was converted to a structured resolver with trace lookup → database query fallback, and `known_divergences` were added for dataset reuse from fossil import and contact string parsing adapter.
-- Remaining: Tier B policies (`sitelocations`, `siteotherproxies`) still use helper calls for some identity resolution; need conversion to structured resolvers or explicit adapter-only documentation
+- Done: Tier A policies (`datescalendar`, `datesperiod`, `datesradio`, `fossil`, `species`, `datasetcontacts`, `sample`, `sitelocations`, `siteotherproxies`, `bibliography`, `country`, `rdbcode`, `mcrnames`, `mcrsummary`, `attributes`) have complete identity flow with explicit `supporting_action`, `persisted_action`, and `row_changed`. The fossil policy uses `phase: before_parent` on its dataset and analysis_entity related outputs, and references child identity through `related.<name>.<field>` expressions instead of helper calls (Feature 1 conversion, 2026-06-20). The species policy was converted 2026-06-20: all 4 related outputs use `phase: before_parent`, `taxa_genus.family_id` uses `related.taxa_family.family_id`, `taxa_species` uses `related.taxa_genus.genus_id` and `related.taxa_author.author_id`, and parent `taxon_id` uses `related.taxa_species.taxon_id`. The `resolve_bugs_taxonomic_order_system_id` helper was converted to a structured resolver, and `known_divergences` were added for the no-data species shortcut and cascade dependency null propagation. The datasetcontacts policy was converted 2026-06-20: the `resolve_dataset_id_from_countsheet_code` helper was converted to a structured resolver with trace lookup → database query fallback, and `known_divergences` were added for dataset reuse from fossil import and contact string parsing adapter. The sample policy was converted 2026-06-20: three structured resolvers (sample group from countsheet trace, default alternative reference type, default sample type). The sitelocations and siteotherproxies policies were converted 2026-06-20: `resolve_site_id` helper converted to structured resolver with trace lookup and deleted-site guard. Six additional Tier C policies were converted 2026-06-20: `bibliography` (no helpers, known_divergences only), `country` (country type ID resolver), `rdbcode` (RDB system ID resolver), `mcrnames` (taxon ID resolver), `mcrsummary` (taxon ID resolver), `attributes` (taxon ID resolver).
+- Remaining: Tier C and D policies still use helper calls for identity resolution; need conversion to structured resolvers or explicit adapter-only documentation
 
 **Gap 2: Persisted side effects and output result semantics**
 
@@ -136,8 +136,8 @@ Each gap tracks which criteria it helps close for the execution-readiness checkl
 **Gap 3: Helper-derived decision rules**
 
 - Closes: C4 (policy-managed vs adapter-only), C6 (readable without Java helpers)
-- Done: `lab` (country resolver), `datesperiod` (method/uncertainty resolver), `datesradio` (method/uncertainty resolver), `species` (taxonomic-order-system resolver), `datasetcontacts` (dataset ID from countsheet code resolver), `sample` (sample group from countsheet trace resolver, default alternative reference type resolver, default sample type resolver) have structured resolvers replacing helper calls
-- Remaining: Tier B and C policies still use helper calls for lookups (e.g., `sample` for sample group resolution, `ecocodegroup` for system ID resolution); need conversion to structured resolvers
+- Done: `lab` (country resolver), `datesperiod` (method/uncertainty resolver), `datesradio` (method/uncertainty resolver), `species` (taxonomic-order-system resolver), `datasetcontacts` (dataset ID from countsheet code resolver), `sample` (sample group from countsheet trace resolver, default alternative reference type resolver, default sample type resolver), `sitelocations` (site ID from trace resolver with deleted-site guard), `siteotherproxies` (site ID from trace resolver with deleted-site guard), `country` (country type ID resolver), `rdbcode` (RDB system ID resolver), `mcrnames` (taxon ID resolver), `mcrsummary` (taxon ID resolver), `attributes` (taxon ID resolver) have structured resolvers replacing helper calls
+- Remaining: Tier C and D policies still use helper calls for lookups (e.g., `ecocodegroup` for system ID resolution); need conversion to structured resolvers
 
 **Gap 4: Postprocess and graph behavior**
 
@@ -148,8 +148,8 @@ Each gap tracks which criteria it helps close for the execution-readiness checkl
 **Gap 5: Known divergences and adapter boundaries**
 
 - Closes: C5 (known divergences recorded)
-- Done: 8 policies (`datescalendar`, `datesperiod`, `datesradio`, `sitelocations`, `siteotherproxies`, `species`, `datasetcontacts`, `sample`) have `known_divergences` sections
-- Remaining: 27 policies lack `known_divergences` sections; need documentation of surprising Java behavior or explicit statement that no divergences exist
+- Done: 16 policies (`datescalendar`, `datesperiod`, `datesradio`, `sitelocations`, `siteotherproxies`, `species`, `datasetcontacts`, `sample`, `bibliography`, `country`, `rdbcode`, `mcrnames`, `mcrsummary`, `attributes`) have `known_divergences` sections
+- Remaining: 25 policies lack `known_divergences` sections; need documentation of surprising Java behavior or explicit statement that no divergences exist
 
 ### Golden Reference Families
 
@@ -159,7 +159,8 @@ The four families below cover the widest set of shared policy needs and should b
 |--------|----------|----------|--------------|
 | Geochronology | `datescalendar`, `datesperiod`, `datesradio` | Resolvers, postprocess, supporting outputs, related-output graphs, emitted issues, retained rows, known divergences | A (all execution-ready) |
 | Taxa Graph | `species`, `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms` | Related-output graphs, optional supporting outputs, repository reuse, multi-node output structure, known divergences, structured resolvers | A (species), D (rest) |
-| Site And Contact | `site`, `sitereferences`, `datasetcontacts`, `sitelocations`, `siteotherproxies`, `sample` | Ordered reconciliation, persisted list-result side effects, explicit action labels, known divergences, structured resolvers, child supporting outputs | A (datasetcontacts, sample), B (sitelocations, siteotherproxies), C (site, sitereferences) |
+| Site And Contact | `site`, `sitereferences`, `datasetcontacts`, `sitelocations`, `siteotherproxies`, `sample` | Ordered reconciliation, persisted list-result side effects, explicit action labels, known divergences, structured resolvers, child supporting outputs | A (datasetcontacts, sample, sitelocations, siteotherproxies), C (site, sitereferences) |
+| Simple Leaf Importers | `bibliography`, `country`, `rdbcode`, `mcrnames`, `mcrsummary`, `attributes` | Ordered reconciliation, structured resolvers for trace lookups, known divergences, reconciliation fixtures | A (all execution-ready, converted 2026-06-20) |
 | Fossil Analysis-Entity | `fossil` | Configuration forks, supporting-output reuse, graph issues, analysis-entity reuse failure paths | A (execution-ready) |
 
 ### Adapter-Only Boundaries
@@ -178,10 +179,9 @@ If any of these mechanics changes matching, row identity, emitted issues, persis
 
 Based on the gap inventory and execution-readiness tiers:
 
-1. **Promote remaining Tier B to Tier A** — convert helper calls in `sample` and `datasetcontacts` to structured resolvers; add `known_divergences` sections where Java behavior is surprising. `species` is now Tier A (converted 2026-06-20).
-2. **Promote Tier C to Tier B** — add supporting-output or postprocess behavior where the importer creates child or supporting rows; add `known_divergences` sections
-3. **Promote Tier D to Tier C** — add explicit `persisted_action` labels to reconciliation fixtures for write and error paths
-4. **Extend Feature 1** — convert one geochronology policy (`datesperiod` or `datesradio`) to use `phase: before_parent` for a supporting output, further proving the expression language resolves `related.<name>.<field>` correctly
+1. **Promote remaining Tier C to Tier A** — convert helper calls in `lab`, `site`, `sitereferences`, `period`, `rdb`, `rdbsystem`, `taxanotes`, `taxaseasonality`, and `samplegroup` to structured resolvers; add `known_divergences` sections where Java behavior is surprising. Six simple Tier C policies were converted 2026-06-20: `bibliography`, `country`, `rdbcode`, `mcrnames`, `mcrsummary`, `attributes`.
+2. **Promote Tier D to Tier C** — add explicit `persisted_action` labels to reconciliation fixtures for write and error paths
+3. **Extend Feature 1** — convert one geochronology policy (`datesperiod` or `datesradio`) to use `phase: before_parent` for a supporting output, further proving the expression language resolves `related.<name>.<field>` correctly
 
 ## Progress Tracker
 

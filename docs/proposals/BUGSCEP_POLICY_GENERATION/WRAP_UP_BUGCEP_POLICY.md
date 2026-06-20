@@ -199,6 +199,42 @@ When resuming, use this execution pattern again:
 
 This pattern worked well throughout the session and kept failures local.
 
+---
+
+## Fidelity Work Changelog
+
+### 2026-06-20: Tier C → Tier A conversions (bibliography, country, rdbcode, mcrnames, mcrsummary, attributes)
+
+Converted 6 Tier C policies to Tier A execution-ready status:
+
+| Policy | Helpers | Resolver Type | Known Divergences |
+|--------|---------|---------------|-------------------|
+| `bibliography` | 0 | N/A (leaf importer) | `notes_field_not_mapped`, `full_reference_derivation_adapter` |
+| `country` | 1 | `resolve_country_type_id` (fixed DB query) | `update_detection_is_no_op`, `country_type_is_fixed_lookup` |
+| `rdbcode` | 1 | `resolve_rdb_system_id` (trace lookup) | `duplicate_value_returns_error_carrier`, `rdb_system_resolution_is_trace_based` |
+| `mcrnames` | 1 | `resolve_taxon_id` (trace lookup) | `species_resolution_is_trace_based`, `tempcode_field_ignored` |
+| `mcrsummary` | 1 | `resolve_taxon_id` (trace lookup) | `species_resolution_is_trace_based`, `update_detection_is_no_op` |
+| `attributes` | 1 | `resolve_taxon_id` (trace lookup) | `species_resolution_is_trace_based`, `missing_value_collapse_adapter` |
+
+**Pattern**: All 1-helper policies follow the same conversion pattern:
+1. Convert helper to structured resolver (trace_lookup or database_query step)
+2. Mark old helper as superseded with `used_by: []`
+3. Add `known_divergences` section (at least 2 entries per policy)
+4. Update `meta.notes` with conversion date and summary
+5. Validate with `make validate-policy-format`
+
+**Schema feature status updates**:
+- Feature 2 (Structured resolvers): 8 → 14 policies
+- Feature 5 (Known divergences): 10 → 16 policies
+
+**Tier status**:
+- Tier A: 9 → 15 policies (43% of 35)
+- Tier B: 0 policies (unchanged)
+- Tier C: 15 → 9 policies
+- Tier D: 11 policies (unchanged)
+
+**Validation**: `make validate-policy-format` — 355 tests, 0 failures, 0 errors
+
 ## Worktree Notes
 
 Both repositories already have many unrelated modified and untracked files.
@@ -336,3 +372,13 @@ This section collects the detailed batch-by-batch completion history from the fi
 - **Five new fixture scenarios:** `sample_group_resolved_via_trace_lookup` (success path), `sample_group_resolver_returns_error_for_empty_countsheet_code` (empty code guard), `sample_group_resolver_returns_error_when_no_trace_exists` (trace miss error), `default_alternative_reference_type_resolved_from_database` (fixed lookup), and `default_sample_type_resolved_from_database` (fixed lookup) exercise the resolvers through the `resolver_path` intent.
 - **Schema feature status updated:** Feature 2 (structured resolvers) now used in 6 policies (`lab`, `datesperiod`, `datesradio`, `species`, `datasetcontacts`, `sample`). Feature 5 (known divergences) now used in 8 policies.
 - **Sample promoted to Tier A:** Sample policy is now execution-ready with three structured resolvers, known divergences, child sample-dimensions output, and resolver path coverage. Tier A now has 7 policies total; Tier B has 2 remaining (`sitelocations`, `siteotherproxies`).
+
+### Feature 2 Conversion — Sitelocations And Siteotherproxies Policies (2026-06-20)
+
+- **Sitelocations policy uses structured resolver for site ID:** the `resolve_site_id` helper was converted to a structured resolver with a single `trace_lookup` step that returns the traced site entity or empty entity. The resolver uses `SiteFromCodeDisallowDeletedSite` which extends `SiteFromTrace` and disallows deleted sites by returning `NO_TRACE` when the latest trace type is `DELETE`.
+- **Siteotherproxies policy uses structured resolver for site ID:** same `resolve_site_id` resolver pattern as sitelocations — single `trace_lookup` step with `SiteFromCodeDisallowDeletedSite` trace lookup and deleted-site guard.
+- **Helpers marked as superseded:** Both policies retain `resolve_site_id` in the helpers section for historical reference but marked as superseded with `used_by: []` and descriptions explaining the replacement by the structured resolver.
+- **Known divergences added:** Both policies already had `known_divergences` for `replacement_expressed_as_row_actions`. Sitelocations added `location_expansion_adapter` (country/region expansion into location candidates is adapter-only). Siteotherproxies added `proxy_flag_expansion_adapter` (boolean proxy flags expanded into SEAD record types is adapter-only).
+- **Six new fixture scenarios:** Three per policy — `site_resolved_via_trace_lookup` (success path), `site_resolver_returns_empty_when_no_trace_exists` (trace miss), and `site_resolver_returns_empty_when_site_deleted` (deleted site guard) exercise the resolver through the `resolver_path` intent.
+- **Schema feature status updated:** Feature 2 (structured resolvers) now used in 8 policies (`lab`, `datesperiod`, `datesradio`, `species`, `datasetcontacts`, `sample`, `sitelocations`, `siteotherproxies`). Feature 5 (known divergences) now used in 10 policies.
+- **Sitelocations and siteotherproxies promoted to Tier A:** Both policies are now execution-ready with structured resolvers, known divergences, one-to-many output with list reconciliation, and resolver path coverage. Tier A now has 9 policies total; Tier B has 0 remaining. All Tier B policies have been promoted to Tier A.
