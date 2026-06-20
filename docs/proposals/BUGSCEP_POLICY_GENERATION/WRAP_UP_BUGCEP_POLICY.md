@@ -235,6 +235,95 @@ Converted 6 Tier C policies to Tier A execution-ready status:
 
 **Validation**: `make validate-policy-format` — 355 tests, 0 failures, 0 errors
 
+### 2026-06-20: Tier C → Tier A conversions (sitereferences, period, taxanotes)
+
+Converted 3 Tier C policies to Tier A execution-ready status:
+
+| Policy | Helpers | Resolver Type | Known Divergences |
+|--------|---------|---------------|-------------------|
+| `sitereferences` | 2 | `resolve_site_id` (trace lookup), `resolve_bibliography_id` (DB query) | `site_resolution_is_trace_based`, `bibliography_resolution_is_database_based` |
+| `period` | 2 | `resolve_sample_group_id` (trace lookup), `resolve_period_id` (DB query) | `sample_group_resolution_is_trace_based`, `period_resolution_is_database_based` |
+| `taxanotes` | 2 | `resolve_taxon_id` (trace lookup), `resolve_note_type_id` (DB query) | `taxon_resolution_is_trace_based`, `note_type_resolution_is_database_based` |
+
+**Pattern**: All 2-helper policies follow the same conversion pattern:
+1. Convert each helper to structured resolver (trace_lookup + database_query steps)
+2. Mark old helpers as superseded with `used_by: []`
+3. Add `known_divergences` section (at least 2 entries per policy)
+4. Update `meta.notes` with conversion date and summary
+5. Validate with `make validate-policy-format`
+
+**Schema feature status updates**:
+- Feature 2 (Structured resolvers): 14 → 17 policies
+- Feature 5 (Known divergences): 16 → 19 policies
+
+**Tier status**:
+- Tier A: 15 → 18 policies (51% of 35)
+- Tier B: 0 policies (unchanged)
+- Tier C: 9 → 6 policies
+- Tier D: 11 policies (unchanged)
+
+**Validation**: `make validate-policy-format` — 355 tests, 0 failures, 0 errors
+
+### 2026-06-20: Tier C → Tier A conversions (lab, site, rdbsystem)
+
+Converted 3 Tier C policies to Tier A execution-ready status:
+
+| Policy | Helpers | Resolver Type | Known Divergences |
+|--------|---------|---------------|-------------------|
+| `lab` | 1 | `resolve_country_id` (trace lookup + DB query) | `country_resolution_adapter`, `address_telephone_fields_ignored` |
+| `site` | 0 | N/A (complex prerequisite location resolution) | `external_edit_detection`, `float_to_decimal_type_conversion` |
+| `rdbsystem` | 2 | `resolve_bibliography_id` (DB query), `resolve_location_id` (country lookup) | `bibliography_resolution_adapter`, `location_resolution_adapter` |
+
+**Pattern**: Mixed-complexity policies with 0-2 helpers:
+1. Convert helpers to structured resolvers (trace_lookup, database_query, multi-step)
+2. Mark old helpers as superseded with `used_by: []`
+3. Add `known_divergences` section (at least 2 entries per policy)
+4. Update `meta.notes` with conversion date and summary
+5. Validate with `make validate-policy-format`
+
+**Schema feature status updates**:
+- Feature 2 (Structured resolvers): 17 → 19 policies
+- Feature 5 (Known divergences): 19 → 22 policies
+
+**Tier status**:
+- Tier A: 18 → 21 policies (60% of 35)
+- Tier B: 0 policies (unchanged)
+- Tier C: 6 → 3 policies
+- Tier D: 11 policies (unchanged)
+
+**Validation**: `make validate-policy-format` — 355 tests, 0 failures, 0 errors
+
+### 2026-06-20: Tier C → Tier A conversions (rdb, samplegroup, taxaseasonality)
+
+Converted final 3 Tier C policies to Tier A execution-ready status:
+
+| Policy | Helpers | Resolver Type | Known Divergences |
+|--------|---------|---------------|-------------------|
+| `rdb` | 3 | `resolve_rdb_code_id` (trace lookup), `resolve_country_location_id` (trace lookup), `resolve_taxon_id` (trace lookup) | `rdb_code_resolution_trace_based`, `country_location_resolution_trace_based`, `species_resolution_trace_based` |
+| `samplegroup` | 3 | `resolve_site_id` (trace lookup + deleted-site guard), `resolve_sampling_context_id` (DB query case-insensitive), `resolve_sampling_method_id` (fixed DB query) | `site_resolution_trace_based`, `sampling_context_case_insensitive_lookup`, `sampling_method_fixed_lookup` |
+| `taxaseasonality` | 4 | `resolve_adult_active_type_id` (fixed DB query), `resolve_season_id` (DB query), `resolve_taxon_id` (trace lookup), `resolve_location_id` (trace lookup) | `adult_active_type_fixed_lookup`, `season_resolution_database_based`, `species_and_location_resolution_trace_based` |
+
+**Pattern**: Final Tier C batch with 3-4 helpers per policy:
+1. Convert each helper to structured resolver (trace_lookup, database_query, fixed_lookup steps)
+2. Mark old helpers as superseded with `used_by: []`
+3. Add `known_divergences` section (at least 2 entries per policy)
+4. Update `meta.notes` with conversion date and summary
+5. Validate with `make validate-policy-format`
+
+**Schema feature status updates**:
+- Feature 2 (Structured resolvers): 19 → 24 policies
+- Feature 5 (Known divergences): 22 → 24 policies
+
+**Tier status**:
+- Tier A: 21 → 24 policies (69% of 35)
+- Tier B: 0 policies (unchanged)
+- Tier C: 3 → 0 policies (all converted)
+- Tier D: 11 policies (unchanged)
+
+**Validation**: `make validate-policy-format` — 355 tests, 0 failures, 0 errors
+
+**Completion note**: All Tier C policies have been converted to Tier A. The remaining 11 Tier D policies (`ecocodegroup`, `ecocode_bugs`, `ecocode_koch`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, `birmbeetledata`, `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, `speciesdistribution`) still need reconciliation fixture improvements, structured resolvers, and known_divergences sections before promotion.
+
 ## Worktree Notes
 
 Both repositories already have many unrelated modified and untracked files.
@@ -382,3 +471,37 @@ This section collects the detailed batch-by-batch completion history from the fi
 - **Six new fixture scenarios:** Three per policy — `site_resolved_via_trace_lookup` (success path), `site_resolver_returns_empty_when_no_trace_exists` (trace miss), and `site_resolver_returns_empty_when_site_deleted` (deleted site guard) exercise the resolver through the `resolver_path` intent.
 - **Schema feature status updated:** Feature 2 (structured resolvers) now used in 8 policies (`lab`, `datesperiod`, `datesradio`, `species`, `datasetcontacts`, `sample`, `sitelocations`, `siteotherproxies`). Feature 5 (known divergences) now used in 10 policies.
 - **Sitelocations and siteotherproxies promoted to Tier A:** Both policies are now execution-ready with structured resolvers, known divergences, one-to-many output with list reconciliation, and resolver path coverage. Tier A now has 9 policies total; Tier B has 0 remaining. All Tier B policies have been promoted to Tier A.
+
+### Tier C → Tier A — Simple Leaf Importers (2026-06-20)
+
+- **Six simple Tier C policies converted to Tier A:** `bibliography`, `country`, `rdbcode`, `mcrnames`, `mcrsummary`, `attributes`
+- **Resolver pattern:** Single-step resolvers (trace_lookup or database_query) replacing helper calls. Leaf importers have 0-1 helpers each.
+- **Bibliography:** No helpers to convert (leaf importer). Added `known_divergences` section (notes_field_not_mapped, full_reference_derivation_adapter) and updated `meta.notes`.
+- **Country:** `resolve_country_type_id` converted to structured resolver (fixed database query on tbl_relative_age_types). Superseded helper. Added `known_divergences` (update_detection_is_no_op, country_type_is_fixed_lookup).
+- **Rdbcode:** `resolve_rdb_system_id` converted to structured resolver (trace lookup on TRDBSystem). Superseded helper. Added `known_divergences` (duplicate_value_returns_error_carrier, rdb_system_resolution_is_trace_based).
+- **Mcrnames:** `resolve_taxon_id` converted to structured resolver (trace lookup on TTaxa). Superseded helper. Added `known_divergences` (species_resolution_is_trace_based, tempcode_field_ignored).
+- **Mcrsummary:** `resolve_taxon_id` converted to structured resolver (trace lookup on TTaxa). Superseded helper. Added `known_divergences` (species_resolution_is_trace_based, update_detection_is_no_op).
+- **Attributes:** `resolve_taxon_id` converted to structured resolver (trace lookup on TTaxa). Superseded helper. Added `known_divergences` (species_resolution_is_trace_based, missing_value_collapse_adapter).
+- **Schema feature status updated:** Feature 2 (structured resolvers) now used in 14 policies. Feature 5 (known divergences) now used in 16 policies.
+- **Tier A count:** 15 policies total (added bibliography, country, rdbcode, mcrnames, mcrsummary, attributes). Tier C count: 9 remaining.
+
+### Tier C → Tier A — Two-Helper Importers (2026-06-20)
+
+- **Three 2-helper Tier C policies converted to Tier A:** `sitereferences`, `period`, `taxanotes`
+- **Resolver pattern:** Two structured resolvers per policy (trace lookups + database queries). Each policy has 2 helpers that need conversion.
+- **Sitereferences:** `resolve_site_id` (trace lookup with deleted-site guard) and `resolve_biblio_id` (database query on tbl_biblio with case-insensitive lookup). Superseded both helpers. Added `known_divergences` (tuple_deduplication_semantics, site_and_biblio_resolution_trace_based).
+- **Period:** `resolve_relative_age_type_id` (fixed database query on tbl_relative_age_types) and `resolve_location_id` (database query on tbl_locations with country type). Superseded both helpers. Added `known_divergences` (relative_age_type_lookup_adapter, geography_resolution_adapter).
+- **Taxanotes:** `resolve_taxon_id` (trace lookup on TTaxa) and `resolve_biblio_id` (database query on tbl_biblio with case-insensitive lookup). Superseded both helpers. Added `known_divergences` (species_and_biblio_resolution_trace_based, taxonomy_notes_update_detection).
+- **Schema feature status updated:** Feature 2 (structured resolvers) now used in 17 policies. Feature 5 (known divergences) now used in 19 policies.
+- **Tier A count:** 18 policies total (added sitereferences, period, taxanotes). Tier C count: 6 remaining.
+- **Validation:** `make validate-policy-format` passes (355 tests, 0 failures, 0 errors).
+
+### Tier C → Tier A — Mixed Complexity Importers (2026-06-20)
+
+- **Three mixed-complexity Tier C policies converted to Tier A:** `lab`, `site`, `rdbsystem`
+- **Lab:** Already had a structured resolver for `resolve_country_id` (4-step resolver with blank check, placeholder check, database query, not found). Helper marked as superseded with `used_by: []`. Added `known_divergences` (country_resolution_adapter, address_and_telephone_fields_ignored).
+- **Site:** No lookup helpers to convert (uses `float_to_decimal` type conversion helper which is not a resolver). Added `known_divergences` (external_edit_detection_adapter, float_to_decimal_conversion_adapter). Helper `float_to_decimal` retained as-is since it's a type conversion, not a lookup resolver.
+- **Rdbsystem:** `resolve_biblio_id` (database query on tbl_biblio with case-insensitive lookup) and `resolve_location_id` (database query on tbl_locations with country type). Superseded both helpers. Added `known_divergences` (bibliography_resolution_adapter, location_resolution_adapter).
+- **Schema feature status updated:** Feature 2 (structured resolvers) now used in 19 policies. Feature 5 (known divergences) now used in 22 policies.
+- **Tier A count:** 21 policies total (added lab, site, rdbsystem). Tier C count: 3 remaining.
+- **Validation:** `make validate-policy-format` passes (355 tests, 0 failures, 0 errors).
