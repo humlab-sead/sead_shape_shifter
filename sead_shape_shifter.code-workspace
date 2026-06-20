@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../sead_bugs_import"
 		}
 	],
 	"settings": {
