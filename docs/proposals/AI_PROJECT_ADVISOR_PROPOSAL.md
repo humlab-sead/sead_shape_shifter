@@ -1,8 +1,8 @@
 # AI Project Advisor Proposal
 
-**Date:** March 15, 026  
+**Date:** March 15, 2026  
 **Status:** Feature proposal  
-**Scope:** Project-scoped advisory chat for Shape Shifter with explicit SEAD target-system knowledge
+**Scope:** Project-level advisory chat for Shape Shifter, with a clear understanding of SEAD as the downstream system
 
 ---
 
@@ -10,177 +10,190 @@
 
 This proposal describes an **AI Project Advisor** for Shape Shifter.
 
-The feature is not a generic chatbot. It is a grounded advisory workflow that helps users understand project YAML, diagnose validation and dependency problems, reason about modeling choices, and receive safe, explainable suggestions before any configuration is changed.
+The advisor is not meant to be a generic chatbot. It should help users understand a Shape Shifter project, explain validation and
+dependency problems, review modeling choices, and suggest next steps before any project configuration is changed.
 
-The key requirement is that the advisor must know **both**:
+The advisor needs two kinds of input:
 
-1. the current Shape Shifter project state, and
-2. the relevant target-system concepts for SEAD, especially identity, reconciliation, tracked entities, shared metadata, and the boundaries to external SEAD-side services such as SIMS and the SEAD Authoritative Service.
+1. The current Shape Shifter project state.
+2. The SEAD concepts that affect project design, especially identity, reconciliation, tracked entities, shared metadata, SIMS, and
+   the SEAD Authoritative Service.
 
-This proposal recommends a phased implementation that starts as a **read-only grounded advisor** and only later grows into **proposal generation** and then carefully controlled **change application**.
+The safest rollout is phased:
+
+1. Start with a read-only advisor that explains existing project issues.
+2. Add structured proposal generation after the explanation workflow is reliable.
+3. Add approval-based change application only after proposals can be validated and reviewed.
 
 ---
 
 ## Problem Statement
 
-Users working on non-trivial projects must currently bridge several knowledge layers manually:
+Users working on larger projects currently need to connect several pieces of information manually:
 
-1. Shape Shifter YAML semantics,
-2. current validation and dependency state,
-3. source-data characteristics,
-4. reconciliation expectations,
-5. SEAD target-system expectations,
-6. evolving SIMS identity concepts,
-7. external service behavior already used by Shape Shifter, especially the SEAD Authoritative Service used for reconciliation.
+1. Shape Shifter YAML rules.
+2. Current validation and dependency results.
+3. The structure and quality of the source data.
+4. Reconciliation requirements.
+5. SEAD target-system requirements.
+6. SIMS identity rules.
+7. External service behavior already used by Shape Shifter, especially the SEAD Authoritative Service used for reconciliation.
 
-That fragmentation creates predictable failure modes:
+This creates common problems:
 
-1. users may make locally valid YAML changes that are conceptually wrong for SEAD,
-2. users may confuse tracked entities with shared metadata or owned child structures,
-3. users may not understand when a foreign key relationship is modeling ownership versus association,
-4. users may not understand when a modeling choice creates downstream identity or reconciliation problems,
-5. the editor can report errors, but it does not yet explain them in domain terms.
+1. A YAML change can be valid for Shape Shifter but still be a poor fit for SEAD.
+2. Users may mix up tracked entities, shared metadata, and child values.
+3. Users may not know whether a foreign key represents ownership or association.
+4. A modeling choice may create identity or reconciliation problems later.
+5. The editor can report errors, but it does not always explain them in domain terms.
 
-The advisor should reduce that gap.
+The advisor should help close that gap.
 
 Shape Shifter already has much of the structured context an advisor would need:
 
-1. project YAML loading and saving,
-2. API/Core conversion with directive resolution,
-3. structural validation,
-4. data validation,
-5. dependency graph analysis,
-6. preview and materialization services,
-7. reconciliation workflows,
-8. suggestion and auto-fix patterns,
-9. project-scoped session handling.
+1. Project YAML loading and saving.
+2. API-to-Core conversion, including directive resolution.
+3. Structural validation.
+4. Data validation.
+5. Dependency graph analysis.
+6. Preview and materialization services.
+7. Reconciliation workflows.
+8. Suggestion and auto-fix patterns.
+9. Project-level session handling.
 
-What is missing is a feature that can turn those signals into a user-facing conversation such as:
+What is missing is a feature that turns those results into useful answers, such as:
 
 1. "Why is this entity failing validation?"
 2. "Should this be a fixed entity or a sourced entity?"
-3. "How should I model this relationship so it will ingest cleanly into SEAD?"
-4. "Is this a tracked entity, shared metadata, or a value-like child structure?"
+3. "How should I model this relationship so it can be ingested into SEAD cleanly?"
+4. "Is this a tracked entity, shared metadata, or a child value?"
 5. "What would SIMS expect for identity allocation here?"
 
 ---
 
-## Product Principle: Grounded SEAD-aware Advisor
+## Product Principle: Grounded SEAD-Aware Advisor
 
-The advisor must be a **grounded project advisor**, not a free-form general-purpose assistant.
+The advisor must be a **grounded project advisor**, not a free-form assistant.
 
-Grounding comes from three distinct knowledge planes:
+"Grounded" means the advisor answers from known project data and curated rules. It should not invent project state, YAML fields, or
+SEAD policy.
+
+The advisor needs three kinds of input.
 
 ### 1. Project Context
 
-Derived from the active project and current editor/runtime state:
+This comes from the active project and current editor or runtime state:
 
-1. raw YAML,
-2. resolved Core project,
-3. selected entity YAML,
-4. structural validation results,
-5. data validation results,
-6. dependency graph and cycle information,
-7. preview/materialization signals,
-8. task and note context when relevant.
+1. Raw YAML.
+2. Resolved Core project.
+3. Selected entity YAML.
+4. Structural validation results.
+5. Data validation results.
+6. Dependency graph and cycle details.
+7. Preview and materialization summaries.
+8. Task and note context when relevant.
 
 ### 2. Shape Shifter Domain Knowledge
 
-Curated knowledge from active Shape Shifter documentation and rules:
+This is curated knowledge from active Shape Shifter documentation and rules:
 
-1. YAML configuration semantics,
-2. three-tier identity conventions,
-3. dependency and foreign-key modeling patterns,
-4. directive behavior,
-5. validation rules,
-6. reconciliation workflow expectations.
+1. YAML configuration rules.
+2. Three-tier identity conventions.
+3. Dependency and foreign-key modeling patterns.
+4. Directive behavior.
+5. Validation rules.
+6. Reconciliation workflow expectations.
 
 ### 3. SEAD Target-System Knowledge
 
-Curated, versioned knowledge about downstream SEAD concepts and the wider SEAD service ecosystem:
+This is curated, versioned knowledge about SEAD and the related services around it:
 
-1. tracked entities versus shared metadata,
-2. identity terminology,
-3. ownership versus association,
-4. reconciliation expectations,
-5. provider identity versus canonical SEAD identity,
-6. SIMS responsibilities versus Shape Shifter responsibilities,
-7. SEAD Authoritative Service responsibilities versus Shape Shifter responsibilities,
-8. interactions between reconciliation, authority lookup, and identity allocation.
+1. Tracked entities versus shared metadata.
+2. Identity terminology and responsibilities.
+3. Ownership versus association.
+4. Reconciliation expectations.
+5. Provider identity versus official SEAD identity.
+6. SIMS responsibilities versus Shape Shifter responsibilities.
+7. SEAD Authoritative Service responsibilities versus Shape Shifter responsibilities.
+8. How reconciliation, authority lookup, and identity allocation fit together.
 
-This third plane is essential. The advisor should not only answer "how do I write YAML for this" but also "is this a sound representation for SEAD".
+This third input is essential. The advisor should answer not only "how do I write this YAML?" but also "is this a good SEAD model?"
 
 ---
 
 ## SEAD/SIMS Knowledge Requirements
 
-The advisor should treat the following as first-class concepts when generating advice.
+The advisor should treat the following topics as core rules when it gives advice.
 
 ### Stable Identity Is Layered Above SEAD Relational IDs
 
-The SEAD identity docs define a separation between:
+The SEAD identity docs describe several kinds of identity:
 
-1. SEAD internal relational identity,
-2. stable SEAD UUID identity,
-3. provider keys,
-4. business keys,
-5. authority keys.
+1. SEAD internal relational identity.
+2. Stable SEAD UUID identity.
+3. Provider keys.
+4. Business keys.
+5. Authority keys.
 
-The advisor must avoid advice that assumes SEAD integer keys are suitable public identities.
+The advisor must not suggest that SEAD integer keys are suitable as public identities.
 
 ### SIMS Owns Identity Allocation, Not Shape Shifter
 
-The SEAD identity docs define a boundary where:
+The SEAD identity docs draw this line:
 
-1. SIMS owns identity allocation and long-term identity mapping,
+1. SIMS owns identity allocation and long-term identity mapping.
 2. Shape Shifter owns normalization, reconciliation inputs, and client-side API behavior.
 
-The advisor must therefore avoid implying that Shape Shifter should itself become the canonical identity authority.
+The advisor must not imply that Shape Shifter should become the long-term identity authority.
 
-### The SEAD Authoritative Service Already Influences Modeling Through Reconciliation
+### The SEAD Authoritative Service Already Affects Modeling
 
 Shape Shifter already calls a SEAD-facing reconciliation service during reconciliation workflows.
 
-The advisor must understand that target-system advice is not limited to export-time ingestion. It is already influenced by an external SEAD service during project design and reconciliation.
+This means target-system advice is not only about final export. External SEAD service behavior already affects project design and
+reconciliation.
 
-The advisor should be able to reason about:
+The advisor should be able to explain:
 
-1. what fields and entity types are reconciled against the authoritative service,
-2. when a modeling choice improves or weakens reconciliation quality,
-3. how reconciliation evidence differs from identity allocation,
-4. where authority lookup ends and SIMS-style identity allocation begins.
+1. Which fields and entity types are reconciled against the authoritative service.
+2. When a modeling choice improves or weakens reconciliation quality.
+3. How reconciliation data differs from identity allocation.
+4. Where authority lookup ends and SIMS-style identity allocation begins.
 
-### Ownership And Association Must Be Distinguished
+### Ownership and Association Must Be Kept Separate
 
-The SEAD identity design and assessment docs emphasize that not all entity relationships are strict parent-child ownership chains.
+The SEAD identity design and assessment docs explain that not every relationship is a strict parent-child ownership relationship.
 
-That matters directly for modeling advice:
+This matters for modeling advice:
 
-1. some relationships imply ownership and aggregate state,
-2. some relationships are associations between independently meaningful entities,
-3. some objects are shared metadata requiring reconciliation rather than naïve duplication.
+1. Some relationships mean ownership and aggregate state.
+2. Some relationships connect independently meaningful entities.
+3. Some objects are shared metadata and should be reconciled instead of duplicated.
 
-### Tracked Entities And Shared Metadata Must Not Be Collapsed
+### Tracked Entities and Shared Metadata Must Not Be Collapsed
 
-The identity docs highlight a distinction between:
+The identity docs distinguish between:
 
-1. tracked entities with stable identity,
-2. shared metadata and classifiers,
-3. value objects or owned child structures without independent identity.
+1. Tracked entities with stable identity.
+2. Shared metadata and classifiers.
+3. Child values that do not have independent identity.
 
-The advisor should be able to explain that distinction in practical Shape Shifter terms.
+The advisor should explain this distinction in practical Shape Shifter terms.
 
 ---
 
 ## V1 Use Cases
 
-The MVP should answer only three classes of questions:
+The MVP should answer only three kinds of questions:
 
-1. **"Explain this validation error."** — Take a validation message and explain what it means, why it occurred, and what the user can do to fix it.
-2. **"Explain this entity and its risks."** — Take a selected entity and summarize its configuration, dependencies, and potential modeling concerns.
-3. **"Review project risks before execution."** — Summarize project-level risks, dependency issues, and validation state before the user runs a project.
+1. **Explain this validation error.** Take a validation message and explain what it means, why it happened, and how the user can fix it.
+2. **Explain this entity and its risks.** Take a selected entity and summarize its configuration, dependencies, and possible
+   modeling problems.
+3. **Review project risks before execution.** Summarize project-level risks, dependency issues, and validation state before the user
+   runs a project.
 
-These three use cases are narrow enough to test thoroughly and broad enough to demonstrate value. Open-ended modeling advice should wait until the knowledge pack and evaluation suite are in place.
+These use cases are narrow enough to test well and broad enough to be useful. Open-ended modeling advice should wait until the
+knowledge pack and evaluation suite are in place.
 
 Typical V1 prompts:
 
@@ -190,24 +203,24 @@ Typical V1 prompts:
 
 ---
 
-## Explicit Non-goals
+## Explicit Non-Goals
 
 V1 should not:
 
-1. auto-edit YAML without user approval,
-2. invent undocumented SEAD policy,
-3. act as the identity authority,
-4. make destructive changes,
-5. silently persist chat-derived project changes,
-6. provide broad open-ended modeling advice beyond the three MVP use cases.
+1. Edit YAML automatically without user approval.
+2. Invent undocumented SEAD policy.
+3. Act as the identity authority.
+4. Make destructive changes.
+5. Save chat-derived project changes silently.
+6. Provide broad open-ended modeling advice beyond the three MVP use cases.
 
 Future phases may add:
 
-1. structured proposal generation (YAML patches with explanation),
-2. data-to-configuration assistance (source-file exploration and draft YAML),
-3. approval-based apply workflow.
+1. Structured proposal generation, such as YAML patches with explanations.
+2. Data-to-configuration help, such as source-file exploration and draft YAML.
+3. An approval-based apply workflow.
 
-These are out of scope for the initial delivery.
+These are out of scope for the first delivery.
 
 ---
 
@@ -217,22 +230,24 @@ These are out of scope for the initial delivery.
 
 Add a new backend feature area:
 
-1. `backend/app/models/advisor.py` — Request/response Pydantic models.
-2. `backend/app/services/advisor_service.py` — Orchestration: receive question, assemble context, call provider, parse response, return structured result.
-3. `backend/app/services/advisor_context_service.py` — Deterministic context assembly: load project state, extract validation results, build dependency summary, assemble knowledge pack rules, generate citation IDs.
-4. `backend/app/services/llm/` — Provider abstractions (local Ollama, hosted providers).
+1. `backend/app/models/advisor.py` — Request and response Pydantic models.
+2. `backend/app/services/advisor_service.py` — Receives the question, assembles context, calls the provider, parses the response,
+   and returns a structured result.
+3. `backend/app/services/advisor_context_service.py` — Builds deterministic context from project state, validation results,
+   dependency summaries, knowledge-pack rules, and citation IDs.
+4. `backend/app/services/llm/` — Provider interfaces and implementations, such as local Ollama and hosted providers.
 5. `backend/app/api/v1/endpoints/advisor.py` — Route handler for advisor requests.
 
 The service should follow existing backend layering:
 
-1. API models for request/response,
-2. service layer for orchestration,
-3. mappers for boundary conversion where needed,
-4. no business logic in API DTOs.
+1. API models define request and response shapes.
+2. Services handle orchestration.
+3. Mappers handle API-to-Core conversion where needed.
+4. API DTOs do not contain business logic.
 
-### Deterministic vs Model Responsibility
+### Deterministic Code vs Model Responsibility
 
-The safety boundary between deterministic system logic and the LLM must be explicit.
+The split between normal application code and the LLM must be explicit.
 
 **Deterministic code should handle:**
 
@@ -243,15 +258,15 @@ The safety boundary between deterministic system logic and the LLM must be expli
 - secret redaction
 - context assembly
 - citation object generation
-- patch validation (when proposals are added)
+- patch validation when proposal mode is added
 
 **The model should handle:**
 
-- explanation in plain language
-- prioritization of issues
+- plain-language explanations
+- issue prioritization
 - user-facing reasoning summaries
 - suggested next actions
-- draft proposals (future phases)
+- draft proposals in future phases
 
 **The model should not be trusted to:**
 
@@ -260,78 +275,79 @@ The safety boundary between deterministic system logic and the LLM must be expli
 - apply changes directly
 - infer secrets
 - override validation results
-- reference citation IDs not provided in the assembled context
+- reference citation IDs that were not provided in the assembled context
 
 ### Frontend
 
-Add a project-scoped UI surface in the project detail page, preferably:
+Add project-level UI in the project detail page. Two reasonable options are:
 
-1. a new `Advisor` tab, or
-2. a right-side advisor drawer tied to the active project.
+1. A new `Advisor` tab.
+2. A right-side advisor drawer tied to the active project.
 
 The frontend should reuse current patterns:
 
-1. Pinia store or composable for advisor session state,
-2. existing project/session context,
+1. Pinia store or composable for advisor session state.
+2. Existing project and session context.
 3. API client module in `frontend/src/api/`.
 
 ### Provider Abstraction
 
-Do not hardwire one vendor into feature logic.
+Do not hardwire one LLM vendor into the feature logic.
 
-Use a provider abstraction supporting at least:
+Use a provider abstraction that supports at least:
 
-1. local model option such as Ollama,
-2. hosted provider option,
-3. pluggable configuration through backend settings.
+1. A local model option, such as Ollama.
+2. A hosted provider option.
+3. Configuration through backend settings.
 
-This is justified because the repo already contains test-side references to OpenAI, Anthropic, and Ollama configuration.
+This is a sensible choice because the repo already has test-side references to OpenAI, Anthropic, and Ollama configuration.
 
 ### Context Redaction and Privacy
 
-The advisor must not send secrets or resolved credentials to a hosted provider. This is a first-class design concern, not an afterthought.
+The advisor must not send secrets or resolved credentials to a hosted provider. This is a core design requirement.
 
 **Redaction rules:**
 
-1. Redact environment-resolved values (e.g., `${ENV_VAR}` expansions that contain credentials).
+1. Redact environment-resolved values, such as `${ENV_VAR}` expansions that contain credentials.
 2. Exclude datasource connection strings, passwords, and tokens from context assembly.
 3. Prefer structured summaries over raw YAML when the YAML contains sensitive directives.
 4. Support a local-provider-only mode for environments where data must not leave the host.
-5. Log all context sent to external providers for audit purposes.
+5. Log the context sent to external providers for audit purposes, with secrets already removed.
 
 **Context whitelist:**
 
-The context assembler should build input from an explicit whitelist of safe fields rather than sending the full project object. This whitelist includes:
+The context assembler should use an explicit whitelist of safe fields instead of sending the full project object. This whitelist includes:
 
 - project name and metadata
-- entity names and structural configuration (directives preserved as raw strings, not resolved)
+- entity names and structural configuration, with directives preserved as raw strings
 - validation messages and error codes
 - dependency graph edges
-- knowledge pack rule IDs and text
+- knowledge-pack rule IDs and text
 - citation IDs
 
 ---
 
 ## Knowledge Pack Specification
 
-The knowledge pack is the most important design element in this proposal. Without curated target-system knowledge, the advisor may be superficially helpful about YAML while giving poor advice about the SEAD domain.
+The knowledge pack is the most important design element in this proposal. Without curated SEAD knowledge, the advisor may explain YAML
+well while still giving poor SEAD modeling advice.
 
 ### Rule Schema
 
-Each knowledge-pack rule is a structured document with the following fields:
+Each knowledge-pack rule is a structured document with these fields:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | Stable identifier, e.g. `sead.identity.sims-owns-allocation` |
-| `title` | string | Human-readable name |
-| `status` | enum | `stable`, `provisional`, `deprecated` |
-| `confidence` | enum | `high`, `medium`, `low` |
-| `source` | list[string] | Source documents this rule is derived from |
-| `rule` | string | The rule text — what the advisor should enforce or reference |
-| `caveats` | list[string] | Known limitations, unresolved areas, or conditions |
-| `applies_to` | list[string] | Scopes the rule applies to: `reconciliation`, `export`, `public_id`, `identity modeling`, `foreign keys`, etc. |
-| `examples` | list[object] | Optional examples showing correct and incorrect patterns |
-| `last_reviewed` | date | Last date the rule was reviewed for accuracy |
+| Field           | Type         | Description                                                                                     |
+|-----------------|--------------|-------------------------------------------------------------------------------------------------|
+| `id`            | string       | Stable identifier, e.g. `sead.identity.sims-owns-allocation`                                    |
+| `title`         | string       | Human-readable name                                                                             |
+| `status`        | enum         | `stable`, `provisional`, `deprecated`                                                           |
+| `confidence`    | enum         | `high`, `medium`, `low`                                                                         |
+| `source`        | list[string] | Source documents this rule comes from                                                           |
+| `rule`          | string       | The rule text the advisor should enforce or reference                                           |
+| `caveats`       | list[string] | Known limitations, unresolved questions, or conditions                                          |
+| `applies_to`    | list[string] | Scopes such as `reconciliation`, `export`, `public_id`, `identity modeling`, and `foreign keys` |
+| `examples`      | list[object] | Optional examples showing correct and incorrect patterns                                        |
+| `last_reviewed` | date         | Last date the rule was reviewed for accuracy                                                    |
 
 ### Example Rule
 
@@ -344,7 +360,7 @@ source:
   - sead_identity_system/docs/SYSTEMS_DESIGN.md
 rule: >
   Shape Shifter may prepare reconciliation inputs and consume identity mappings,
-  but it must not behave as the canonical allocator of long-term SEAD identities.
+  but it must not act as the official allocator of long-term SEAD identities.
 caveats:
   - Shape Shifter may still create temporary client-side identifiers during preview or staging.
 applies_to:
@@ -358,10 +374,10 @@ applies_to:
 
 **Shape Shifter sources:**
 
-1. Configuration guide
-2. AI validation guide
-3. Architecture and developer guides
-4. Generated `projectSchema.json` and `entitySchema.json` as structural references
+1. Configuration guide.
+2. AI validation guide.
+3. Architecture and developer guides.
+4. Generated `projectSchema.json` and `entitySchema.json` as structural references.
 
 **SEAD and SIMS sources:**
 
@@ -372,68 +388,71 @@ applies_to:
 
 **Reconciliation sources:**
 
-1. Reconciliation workflow documentation
-2. Reconciliation setup guide
-3. Reconciliation client and service implementation
-4. Entity types and service metadata exposed through the existing reconciliation flow
+1. Reconciliation workflow documentation.
+2. Reconciliation setup guide.
+3. Reconciliation client and service implementation.
+4. Entity types and service metadata exposed through the existing reconciliation flow.
 
 ### Curation Rule
 
-The advisor should not treat every lower-level design note as settled truth. The SEAD assessment explicitly identifies unresolved modeling issues, especially around:
+The advisor should not treat every low-level design note as final truth. The SEAD assessment identifies unresolved modeling questions,
+especially around:
 
-1. aggregate assumptions,
-2. association versus ownership,
-3. canonical identity versus provider identity.
+1. Aggregate assumptions.
+2. Association versus ownership.
+3. Official SEAD identity versus provider identity.
 
-That uncertainty should be captured in the knowledge pack as `confidence` and `caveats` metadata.
+Capture that uncertainty in each rule with `confidence` and `caveats`.
 
 ### Versioning
 
 The knowledge pack should be versioned so that:
 
-1. advisor responses can cite which pack version they used,
-2. rules can be updated when SEAD design documents change,
-3. stale rules can be flagged for review.
+1. Advisor responses can show which pack version they used.
+2. Rules can be updated when SEAD design documents change.
+3. Stale rules can be flagged for review.
 
 ---
 
 ## Context Assembly and Redaction
 
-The advisor should not receive the whole project by default. Instead, the context assembler builds a structured packet with bounded sections.
+The advisor should not receive the whole project by default. Instead, the context assembler should build a structured packet with
+limited sections.
 
 ### Base Context
 
-Included for every question:
+Include this for every question:
 
-1. project name,
-2. active tab or selected entity if available,
-3. summary of validation state,
-4. dependency summary,
-5. concise project metadata,
-6. structural schema metadata from the generated project and entity JSON schemas.
+1. Project name.
+2. Active tab or selected entity, if available.
+3. Summary of validation state.
+4. Dependency summary.
+5. Concise project metadata.
+6. Structural schema metadata from the generated project and entity JSON schemas.
 
 ### Entity Context
 
-Included when the question is entity-focused:
+Include this when the question is about a specific entity:
 
-1. selected entity YAML,
-2. resolved entity configuration,
-3. relevant validation messages,
-4. neighboring dependencies,
-5. preview summary if available.
+1. Selected entity YAML.
+2. Resolved entity configuration.
+3. Relevant validation messages.
+4. Neighboring dependencies.
+5. Preview summary, if available.
 
 ### Knowledge Pack Rules
 
-Included as curated guidance rather than raw full-document dumps. Only rules relevant to the current question scope are included, selected by `applies_to` tags and the active entity types.
+Include curated rules instead of raw document dumps. Select only the rules that match the current question, using `applies_to`
+tags and the active entity types.
 
 ### Why a Knowledge Pack Is Better Than Dumping Docs
 
-Raw doc injection will eventually become noisy and contradictory. The knowledge pack approach:
+Raw document injection will become noisy and may include conflicting notes. A knowledge pack is better because it:
 
-1. extracts stable rules from the SEAD docs,
-2. cites the source documents used to derive those rules,
-3. can be updated intentionally when SEAD design changes,
-4. keeps the prompt compact and auditable.
+1. Extracts stable rules from the SEAD docs.
+2. Cites the source documents used to create those rules.
+3. Can be updated intentionally when SEAD design changes.
+4. Keeps the prompt compact and easier to audit.
 
 ---
 
@@ -443,33 +462,33 @@ Raw doc injection will eventually become noisy and contradictory. The knowledge 
 
 The advisor response should be structured:
 
-1. answer — direct response to the user's question,
-2. reasoning summary — why the advisor reached this conclusion,
-3. citations — structured references to evidence used,
-4. suggested next actions — concrete follow-up steps,
-5. optional proposed YAML changes — in future phases.
+1. `answer` — direct response to the user's question.
+2. `reasoning_summary` — why the advisor reached this conclusion.
+3. `citations` — structured references to project data, validation messages, or rules.
+4. `suggested_next_actions` — concrete follow-up steps.
+5. `proposed_yaml_changes` — optional, and only for future phases.
 
 ### Citation Technical Model
 
-Citations are not free text. They are structured references generated by the deterministic context assembler and returned by the model using only the IDs it was given.
+Citations are not free text. The deterministic context assembler creates citation IDs, and the model may only use the IDs it was given.
 
 **Citation ID format:**
 
-```
+```text
 <category>.<scope>.<identifier>
 ```
 
 **Categories:**
 
-| Category | Example |
-|----------|---------|
-| `project.entity` | `project.entity.site.keys` |
-| `validation.message` | `validation.message.E1023` |
-| `dependency.edge` | `dependency.edge.site.sample_group` |
-| `sead.rule` | `sead.identity.tracked-entity` |
-| `sims.rule` | `sims.boundary.allocation` |
+| Category              | Example                                                |
+|-----------------------|--------------------------------------------------------|
+| `project.entity`      | `project.entity.site.keys`                             |
+| `validation.message`  | `validation.message.E1023`                             |
+| `dependency.edge`     | `dependency.edge.site.sample_group`                    |
+| `sead.rule`           | `sead.identity.tracked-entity`                         |
+| `sims.rule`           | `sims.responsibility.allocation`                       |
 | `reconciliation.rule` | `reconciliation.authoritative-service.supported-types` |
-| `knowledge.pack` | `knowledge.pack.sead.identity.sims-owns-allocation` |
+| `knowledge.pack`      | `knowledge.pack.sead.identity.sims-owns-allocation`    |
 
 **Citation object shape:**
 
@@ -488,32 +507,32 @@ Citations are not free text. They are structured references generated by the det
 
 1. The backend assembles all available citation IDs before calling the model.
 2. The model may only reference citation IDs that appear in the assembled context.
-3. The response parser rejects or flags citation IDs not in the allowed set.
-4. Citations are persisted with the chat session so users can review evidence later.
+3. The response parser rejects or flags citation IDs that are not in the allowed set.
+4. Citations are persisted with the chat session so users can review them later.
 5. The UI renders citations as clickable chips that navigate to the relevant entity, validation message, or knowledge-pack rule.
 
-A vague citation like "SEAD rule" is not sufficient. A useful citation should point to a specific rule ID, validation message, or YAML path.
+A vague citation like "SEAD rule" is not enough. A useful citation should point to a specific rule ID, validation message, or YAML path.
 
 ---
 
 ## Evaluation Plan
 
-Before implementation, define an evaluation suite so the advisor's quality can be measured and regressed against.
+Define the evaluation suite before implementation so advisor quality can be measured and checked for regressions.
 
 ### Test Categories
 
-| Category | What it checks |
-|----------|---------------|
-| Validation-error explanation | Can the advisor explain a real validation message in plain language? |
-| Dependency-cycle explanation | Can the advisor explain why a cycle exists and how to break it? |
-| Tracked/shared/value-object classification | Does the advisor correctly distinguish entity types? |
-| SIMS boundary | Does the advisor avoid claiming Shape Shifter allocates canonical identities? |
-| Authoritative-service boundary | Does the advisor correctly describe when the authoritative service is involved? |
-| YAML patch proposal | (Phase 2) Are proposed patches valid and minimal? |
-| Refusal/uncertainty | Does the advisor say "I don't know" rather than inventing rules? |
-| Hallucination | Does the advisor avoid inventing SEAD rules or YAML fields? |
-| Redaction | Are secrets excluded from context sent to hosted providers? |
-| Regression | Do known Shape Shifter projects still produce correct advice? |
+| Category                                   | What it checks                                                                    |
+|--------------------------------------------|-----------------------------------------------------------------------------------|
+| Validation-error explanation               | Can the advisor explain a real validation message in plain language?              |
+| Dependency-cycle explanation               | Can the advisor explain why a cycle exists and how to break it?                   |
+| Tracked/shared/value-object classification | Does the advisor correctly distinguish entity types?                              |
+| SIMS responsibility split                  | Does the advisor avoid claiming that Shape Shifter allocates official identities? |
+| Authoritative-service responsibility split | Does the advisor correctly describe when the authoritative service is involved?   |
+| YAML patch proposal                        | Phase 2: Are proposed patches valid and minimal?                                  |
+| Refusal and uncertainty                    | Does the advisor say "I don't know" instead of inventing rules?                   |
+| Hallucination                              | Does the advisor avoid inventing SEAD rules or YAML fields?                       |
+| Redaction                                  | Are secrets excluded from context sent to hosted providers?                       |
+| Regression                                 | Do known Shape Shifter projects still produce correct advice?                     |
 
 ### Scenario-Based Format
 
@@ -536,7 +555,7 @@ expected:
     - reconciliation
     - authoritative service
   must_not_claim:
-    - Shape Shifter allocates canonical SEAD UUIDs
+    - Shape Shifter allocates official SEAD UUIDs
   acceptable_citations:
     - sead.rule.tracked-entity
     - reconciliation.rule.authoritative-service.supported-types
@@ -544,9 +563,9 @@ expected:
 
 ### Evaluation Gates
 
-1. Phase 1a (backend API) must pass all scenario tests before Phase 1b (frontend) begins.
-2. Phase 2 (proposal generation) must pass YAML patch validation tests before user-facing proposal mode is enabled.
-3. Each phase addition should include regression scenarios covering previous phases.
+1. Phase 1a, the backend API, must pass all scenario tests before Phase 1b, the frontend, begins.
+2. Phase 2, proposal generation, must pass YAML patch validation tests before user-facing proposal mode is enabled.
+3. Each phase should add regression scenarios that cover previous phases.
 
 ---
 
@@ -556,54 +575,55 @@ expected:
 
 Before building the advisor API, create a curated knowledge pack containing:
 
-1. stable Shape Shifter modeling rules,
-2. stable SEAD/SIMS concepts,
-3. stable SEAD Authoritative Service concepts,
-4. explicit caveats where the SEAD design is still unsettled.
+1. Stable Shape Shifter modeling rules.
+2. Stable SEAD/SIMS concepts.
+3. Stable SEAD Authoritative Service concepts.
+4. Explicit caveats where the SEAD design is still unsettled.
 
 This is the most important prerequisite for useful advice.
 
 ### Phase 1a: Backend-Only Advisor API
 
-Deliver the advisor as a backend service with a test harness, no frontend yet.
+Deliver the advisor as a backend service with a test harness. Do not add the frontend yet.
 
 **Deliverables:**
 
-1. Provider abstraction (local + hosted)
-2. Context assembler with redaction
-3. Knowledge pack loader and rule selection
-4. Citation ID generation
-5. Response parsing and citation validation
-6. CLI or script-based test harness for scenario evaluation
+1. Provider abstraction for local and hosted providers.
+2. Context assembler with redaction.
+3. Knowledge pack loader and rule selection.
+4. Citation ID generation.
+5. Response parsing and citation validation.
+6. CLI or script-based test harness for scenario evaluation.
 
 **Expected effort:** roughly 1 to 2 focused weeks.
 
-This phase is higher risk than a typical backend endpoint because the context assembly and citation mechanisms need to be reliable before the frontend adds user-facing surface area.
+This phase is higher risk than a typical backend endpoint because context assembly and citations need to be reliable before users see
+the feature in the frontend.
 
-### Phase 1b: Frontend Chat Surface
+### Phase 1b: Frontend Chat UI
 
 Add the user-facing advisor UI after the backend API is stable.
 
 **Deliverables:**
 
-1. Advisor tab or drawer in the project detail page
-2. Pinia store for session state
-3. Citation chip rendering
-4. Streaming or non-streaming response display
+1. Advisor tab or drawer in the project detail page.
+2. Pinia store for session state.
+3. Citation chip rendering.
+4. Streaming or non-streaming response display.
 
 **Expected effort:** roughly 1 focused week after Phase 1a is complete.
 
 ### Phase 2: Structured Proposal Generation
 
-Add a mode that returns explicit suggested changes without applying them.
+Add a mode that suggests changes without applying them.
 
 **Includes:**
 
 1. Schema-guided output using the existing generated JSON schemas as a starting point.
 2. YAML patch proposals with citations.
 3. Project YAML repair suggestions.
-4. Proposal preview UX.
-5. Richer evaluation scenarios for proposal quality.
+4. Proposal preview UI.
+5. More evaluation scenarios for proposal quality.
 
 **Expected effort:** roughly 2 to 4 additional weeks.
 
@@ -623,14 +643,14 @@ Add source-data exploration that can propose an initial config file from observe
 
 ### Phase 4: Approval-Based Apply
 
-Only after proposal mode and data-to-configuration mode are stable, consider approval-based YAML modification.
+Only add approval-based YAML changes after proposal mode and data-to-configuration mode are stable.
 
 **Includes:**
 
 1. Proposal-to-change conversion.
 2. Preview and rollback integration.
 3. Approval workflow.
-4. Conflict/version handling.
+4. Conflict and version handling.
 5. Regression validation.
 
 **Expected effort:** roughly 2 to 4 additional weeks.
@@ -639,9 +659,9 @@ Only after proposal mode and data-to-configuration mode are stable, consider app
 
 ## Risks and Mitigations
 
-### Risk: Stale or contested SEAD knowledge
+### Risk: Stale or Contested SEAD Knowledge
 
-The SEAD identity design has unresolved areas. Knowledge-pack rules may become outdated or reflect contested assumptions.
+The SEAD identity design has unresolved areas. Knowledge-pack rules may become outdated or may reflect assumptions that later change.
 
 **Mitigation:**
 
@@ -650,48 +670,48 @@ The SEAD identity design has unresolved areas. Knowledge-pack rules may become o
 3. Make uncertainty visible in advisor responses.
 4. Require review when SEAD identity documents change.
 
-### Risk: Advisor becomes trusted more than validators
+### Risk: Users Trust the Advisor More Than Validators
 
-Users may over-trust fluent explanations and treat advisor output as authoritative.
+Users may over-trust fluent explanations and treat advisor output as definitive.
 
 **Mitigation:**
 
-1. Every YAML proposal must be validated by existing Shape Shifter validators before display.
-2. UI should label advice as advisory, not definitive.
-3. Applied changes should always show a diff and validation result.
+1. Validate every YAML proposal with existing Shape Shifter validators before display.
+2. Label advice as advisory in the UI.
+3. Always show a diff and validation result before applying changes.
 
-### Risk: Context leakage to hosted providers
+### Risk: Project Data Leaks to Hosted Providers
 
 Project data sent to external LLM providers may contain sensitive information.
 
 **Mitigation:**
 
-1. Explicit context whitelist (see Context Assembly section).
-2. Secret scanning and redaction before provider calls.
-3. Provider-specific privacy modes (local-only option).
-4. Logging controls for audit trails.
+1. Use the explicit context whitelist described above.
+2. Scan and redact secrets before provider calls.
+3. Support provider-specific privacy modes, including a local-only option.
+4. Add logging controls for audit trails.
 
-### Risk: Citations become decorative
+### Risk: Citations Become Decorative
 
-If the model can invent citation IDs, citations lose trust value.
+If the model can invent citation IDs, citations lose their value.
 
 **Mitigation:**
 
-1. Backend assembles citation IDs before calling the model.
-2. Model may only reference citation IDs provided in the assembled context.
-3. Response parser rejects unknown citation IDs.
+1. The backend assembles citation IDs before calling the model.
+2. The model may only reference citation IDs provided in the assembled context.
+3. The response parser rejects unknown citation IDs.
 
 ---
 
 ## Success Criteria
 
-The feature should be considered successful when it can reliably do the following:
+The feature should be considered successful when it can reliably:
 
-1. Explain current project issues using real project evidence.
-2. Give advice that respects Shape Shifter semantics.
-3. Give advice that respects SEAD ecosystem boundaries, including SIMS and the SEAD Authoritative Service.
+1. Explain current project issues using real project data.
+2. Give advice that follows Shape Shifter rules.
+3. Give advice that respects SEAD service responsibilities, including SIMS and the SEAD Authoritative Service.
 4. Clearly distinguish confidence from uncertainty.
-5. Review, repair, and author project YAML through explicit proposals (Phase 2+).
+5. Review, repair, and author project YAML through explicit proposals in Phase 2 and later.
 6. Help users avoid downstream modeling mistakes.
 7. Remain safe even when the model is wrong.
 
@@ -701,13 +721,15 @@ The feature should be considered successful when it can reliably do the followin
 
 Build this feature.
 
-But build it as a **grounded SEAD-aware project advisor**, not as a generic chat client.
+Build it as a **grounded SEAD-aware project advisor**, not as a generic chat client.
 
-The highest-value design decision is to make target-system knowledge explicit and curated from the start. Without that, the assistant may be superficially helpful about YAML while still giving poor advice about the actual SEAD domain and the external SEAD services that already shape project behavior.
+The most important design choice is to make target-system knowledge explicit and curated from the start. Without that, the advisor may
+explain YAML well while still giving poor advice about the SEAD domain and the external SEAD services that already affect project
+behavior.
 
-With that knowledge layer in place, the feature has a realistic path from:
+With that knowledge layer in place, the feature has a realistic path:
 
-1. explain,
-2. to recommend,
-3. to propose,
-4. and only later to apply.
+1. Explain.
+2. Recommend.
+3. Propose.
+4. Apply only after approval.
