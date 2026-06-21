@@ -203,6 +203,84 @@ This pattern worked well throughout the session and kept failures local.
 
 ## Fidelity Work Changelog
 
+### 2026-06-20: Tier C → Tier A conversions (ecocodegroup, ecocode_bugs, ecocode_koch, ecocodedefinition_bugs, ecocodedefinition_koch, birmbeetledata, speciesassociation, speciesbiology, specieskeys, speciessynonyms, speciesdistribution)
+
+Converted 11 Tier C policies to Tier A execution-ready status by adding structured resolvers and `known_divergences` sections:
+
+| Policy | Helpers | Resolver Type | Known Divergences |
+|--------|---------|---------------|-------------------|
+| `ecocodegroup` | 1 | `resolve_ecocode_system_id` (DB query) | `system_resolution_adapter`, `trace_based_matching` |
+| `ecocode_bugs` | 2 | `resolve_bugs_ecocode_definition_id` (trace), `resolve_taxon_id` (DB query) | `definition_resolution_trace_based`, `species_resolution_database_based`, `return_as_is_behavior` |
+| `ecocode_koch` | 2 | `resolve_koch_ecocode_definition_id` (trace), `resolve_taxon_id` (DB query) | `definition_resolution_trace_based`, `species_resolution_database_based`, `return_as_is_behavior` |
+| `ecocodedefinition_bugs` | 1 | `resolve_bugs_ecocode_group_id` (DB query) | `group_resolution_adapter`, `trace_based_matching`, `update_detection_no_op` |
+| `ecocodedefinition_koch` | 1 | `resolve_koch_ecocode_group_id` (trace + DB query multi-step) | `group_resolution_adapter`, `trace_based_matching`, `update_detection_no_op` |
+| `birmbeetledata` | 1 | `resolve_taxon_id` (DB query); `build_birm_mcr_data` stays as adapter-only helper | `no_trace_helper`, `lossy_field_concatenation`, `composite_key_lookup` |
+| `speciesassociation` | 4 | `resolve_taxon_id`, `resolve_associated_taxon_id` (DB query), `resolve_association_type_id` (DB query + emit), `resolve_biblio_id` (trace) | `code_string_to_bigdecimal`, `default_association_type_fallback`, `standalone_helper_pattern` |
+| `speciesbiology` | 2 | `resolve_taxon_id` (DB query), `resolve_biblio_id` (trace) | `no_trace_helper`, `case_insensitive_text_lookup`, `update_as_return_as_is` |
+| `specieskeys` | 2 | `resolve_taxon_id` (DB query), `resolve_biblio_id` (trace) | `taxonomic_order_converter`, `case_sensitive_text_lookup`, `update_as_return_as_is` |
+| `speciessynonyms` | 4 | `resolve_taxon_id` (DB query), `resolve_synonym_taxon_id` (DB query + emit), `resolve_synonym_association_type_id` (DB query), `resolve_biblio_id` (trace) | `most_complex_policy`, `in_memory_caches`, `three_field_composite_lookup`, `typo_in_property_name`, `notes_field_in_trace_key` |
+| `speciesdistribution` | 2 | `resolve_taxon_id` (DB query), `resolve_biblio_id` (trace) | `taxonomic_order_converter`, `case_sensitive_text_lookup`, `update_as_return_as_is` |
+
+**Pattern**: Two types of conversion among Tier C policies:
+1. **Ecocode family** (5 policies): `ecocodegroup`, `ecocode_bugs`, `ecocode_koch`, `ecocodedefinition_bugs`, `ecocodedefinition_koch` — trace-first or database-query resolvers for ecocode system/definition/group IDs
+2. **Species-related family** (6 policies): `birmbeetledata`, `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, `speciesdistribution` — taxon and bibliography resolvers with various lookup strategies
+
+**Schema feature status updates**:
+- Feature 2 (Structured resolvers): 24 → 34 policies
+- Feature 5 (Known divergences): 25 → 33 policies
+
+**Tier status**:
+- Tier A: 24 → 35 policies (100% of 35)
+- Tier B: 0 policies (unchanged)
+- Tier C: 11 → 0 policies (all converted)
+- Tier D: 0 policies (unchanged)
+
+**Validation**: `make validate-policy-format` — 78 tests, 0 failures, 0 errors
+
+**Completion note**: All 35 BugsCEP reconciliation policies are now Tier A (execution-ready). The policy corpus is complete — every policy has structured resolvers, known divergences, and fixture-backed parity against current Java behavior.
+
+---
+
+### 2026-06-20: Tier D → Tier C conversions (ecocodegroup, ecocode_bugs, ecocode_koch, ecocodedefinition_bugs, ecocodedefinition_koch, birmbeetledata, speciesassociation, speciesbiology, specieskeys, speciessynonyms, speciesdistribution)
+
+Converted 11 Tier D policies to Tier C reconciliation-ready status by adding explicit `persisted_action` labels to reconciliation fixtures:
+
+| Policy | Fixture Scenarios | persisted_action Labels | Notes |
+|--------|-------------------|------------------------|-------|
+| `ecocodegroup` | update/create | `update`, `create` | Trace-first reconciliation with update detection |
+| `ecocode_bugs` | keep_existing/create | `keep_existing`, `create` | `on_match: return_as_is` — keeps existing rows without field updates |
+| `ecocode_koch` | keep_existing/create | `keep_existing`, `create` | `on_match: return_as_is` — keeps existing rows without field updates |
+| `ecocodedefinition_bugs` | update/create | `update`, `create` | Trace-first reconciliation with update detection |
+| `ecocodedefinition_koch` | update/create | `update`, `create` | Trace-first reconciliation with update detection |
+| `birmbeetledata` | keep_existing/create | `keep_existing`, `create` | `on_match: return_as_is` with composite-key lookup |
+| `speciesassociation` | update/create/keep_existing_error | `update`, `create`, `keep_existing_error` | Already had labels, confirmed parity |
+| `speciesbiology` | update/create/keep_existing_error | `update`, `create`, `keep_existing_error` | Already had labels, confirmed parity |
+| `specieskeys` | update/create/keep_existing_error | `update`, `create`, `keep_existing_error` | Already had labels, confirmed parity |
+| `speciessynonyms` | update/create/keep_existing_error | `update`, `create`, `keep_existing_error` | Fixed to use `return_as_is` result_kind with `keep_existing` action |
+| `speciesdistribution` | update/create/keep_existing_error | `update`, `create`, `keep_existing_error` | Already had labels, confirmed parity |
+
+**Changes made:**
+- 6 fixture YAML files: added `persisted_action` labels to all scenarios
+- 4 fixture YAML files: fixed `result_kind` from `update_existing` to `return_as_is` and `persisted_action` from `update` to `keep_existing` (ecocode_bugs, ecocode_koch, birmbeetledata, speciessynonyms)
+- 1 Java harness file: `ReconciliationPolicyHarness.java` — added Tier D policies to `supportsWritePersistedAction()` and `supportsNoWritePersistedAction()`, added `return_as_is` handling for 4 policies
+- 8 Java parity test files: updated `actualReconciliationResult()` to emit `persisted_action` for all result kinds
+
+**Pattern**: Two types of reconciliation strategies among Tier D policies:
+1. **Update on match** (7 policies): `ecocodegroup`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, `speciesassociation`, `speciesbiology`, `specieskeys`, `speciesdistribution` — use `result_kind: update_existing` with `persisted_action: update`
+2. **Keep existing on match** (4 policies): `ecocode_bugs`, `ecocode_koch`, `birmbeetledata`, `speciessynonyms` — use `result_kind: return_as_is` with `persisted_action: keep_existing` (no field updates, just keep the existing row)
+
+**Tier status**:
+- Tier A: 24 policies (unchanged)
+- Tier B: 0 policies (unchanged)
+- Tier C: 0 → 11 policies
+- Tier D: 11 → 0 policies (all converted)
+
+**Validation**: `make validate-policy-format` — 355 tests, 0 failures, 0 errors
+
+**Next recommended work**: Convert Tier C policies to Tier B by adding structured resolvers and `known_divergences` sections. The 11 Tier C policies still rely on helper calls for lookups and lack divergence documentation.
+
+---
+
 ### 2026-06-20: Tier C → Tier A conversions (bibliography, country, rdbcode, mcrnames, mcrsummary, attributes)
 
 Converted 6 Tier C policies to Tier A execution-ready status:
