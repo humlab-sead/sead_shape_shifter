@@ -4,13 +4,13 @@
 
 - Proposed change request
 - Scope: choose and test the next implementation path for moving the BugsCEP importer from Java-owned behavior to policy-driven execution
-- Goal: use the finished execution-ready policy set as the implementation contract for a focused design spike, then decide whether to continue with a direct Python policy runtime or a Shape Shifter flow plus a BugsCEP-specific automatic reconciliation step
+- Goal: use the finished execution-ready BugsCEP importer policy set as the implementation contract for a focused "design spike", then decide whether to continue with a direct Python policy runtime or a Shape Shifter flow plus a BugsCEP-specific automatic reconciliation step
 
 ## Summary
 
 The policy-generation and machine-readable fidelity work for BugsCEP is complete. All 35 reconciliation policies are now Tier A, execution-ready, and covered by 355 validation tests.
 
-The next phase should stop treating policy authoring as the main task. The main task is now proving how those policies will run. This proposal recommends a short decision phase built around one design spike. In this document, a design spike means a small, time-boxed implementation exercise that tests a risky design question with real code and real outputs before the team commits to a larger build. The spike should test both candidate implementation paths against the same policy contract and the same fixture expectations. It should then recommend one path or clearly state why the decision should stay open a little longer.
+The next phase should stop treating policy authoring as the main task. The main task is now proving how those policies will run. This proposal recommends a short decision phase built around one design spike. In this document, a design spike means a small, time-boxed proof-of-concept implementation that tests a risky design question with real code and real outputs before the team commits to a larger build. The spike should test both candidate implementation paths against the same policy contract and the same fixture expectations. It should then recommend one path or clearly state why the decision should stay open a little longer.
 
 The decision should be based on working results, not architecture preference. The first proof should use the geochronology golden reference and one site/contact persisted-action case. Together, those examples cover resolvers, postprocess behavior, related-output graphs, emitted outcomes, supporting outputs, and list-output action contracts.
 
@@ -100,15 +100,15 @@ The decision rule is:
 
 Use the following split as a review checklist during the spike.
 
-| Policy-managed behavior | Adapter-only behavior |
-|---|---|
-| Source normalization rules that change matching or persisted values | Source file access and runtime configuration |
-| Resolver order, fallback behavior, and emitted resolver outcomes | Repository access and query execution |
-| Ordered reconciliation rules, prerequisite guards, and create-versus-update decisions | Persistence orchestration and transaction handling |
-| Supporting-output and related-output identity flow | Runtime caching mechanics that do not change decisions |
-| Postprocess grouping, retained rows, merge results, and conflict outcomes | Logging, diagnostics transport, and command wiring |
-| Persisted-action intent for list-result updaters | Database connection management |
-| Known divergence semantics | Test harness setup and fixture loading |
+| Policy-managed behavior                                                               | Adapter-only behavior                                  |
+|---------------------------------------------------------------------------------------|--------------------------------------------------------|
+| Source normalization rules that change matching or persisted values                   | Source file access and runtime configuration           |
+| Resolver order, fallback behavior, and emitted resolver outcomes                      | Repository access and query execution                  |
+| Ordered reconciliation rules, prerequisite guards, and create-versus-update decisions | Persistence orchestration and transaction handling     |
+| Supporting-output and related-output identity flow                                    | Runtime caching mechanics that do not change decisions |
+| Postprocess grouping, retained rows, merge results, and conflict outcomes             | Logging, diagnostics transport, and command wiring     |
+| Persisted-action intent for list-result updaters                                      | Database connection management                         |
+| Known divergence semantics                                                            | Test harness setup and fixture loading                 |
 
 If implementation code changes matching, row identity, emitted outcomes, retained rows, persisted values, or output graph structure, that behavior belongs in the policy layer and must not exist only in adapter code.
 
