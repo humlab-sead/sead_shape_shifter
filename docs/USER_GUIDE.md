@@ -267,17 +267,17 @@ A project contains:
 
 ## Workspace Tabs
 
-| Tab | Purpose |
-|---|---|
-| Entities | Create and manage entities |
-| Dependencies | Visualize entity dependency graph |
-| Reconciliation | Configure and run reconciliation |
-| Validation | Run validation workflows |
-| Dispatch | Run the ingester to deliver processed data |
-| Data Sources | Connect shared database sources |
-| Metadata | Edit project metadata |
-| Files | Upload local files |
-| YAML | Edit raw project YAML directly |
+| Tab            | Purpose                                    |
+|----------------|--------------------------------------------|
+| Entities       | Create and manage entities                 |
+| Dependencies   | Visualize entity dependency graph          |
+| Reconciliation | Configure and run reconciliation           |
+| Validation     | Run validation workflows                   |
+| Dispatch       | Run the ingester to deliver processed data |
+| Data Sources   | Connect shared database sources            |
+| Metadata       | Edit project metadata                      |
+| Files          | Upload local files                         |
+| YAML           | Edit raw project YAML directly             |
 
 ---
 
@@ -285,24 +285,24 @@ A project contains:
 
 The sidebar provides access to top-level pages:
 
-| Page | Purpose |
-|---|---|
-| Projects | Create and open projects |
-| Data Sources | Manage shared database connections |
-| Schema Explorer | Browse database table and column structure |
-| Query Tester | Run SQL queries against connected data sources |
-| Data Ingestion | Run registered ingesters to load data into a database |
-| Settings | Application preferences |
-| What's New | Recent release notes |
+| Page            | Purpose                                               |
+|-----------------|-------------------------------------------------------|
+| Projects        | Create and open projects                              |
+| Data Sources    | Manage shared database connections                    |
+| Schema Explorer | Browse database table and column structure            |
+| Query Tester    | Run SQL queries against connected data sources        |
+| Data Ingestion  | Run registered ingesters to load data into a database |
+| Settings        | Application preferences                               |
+| What's New      | Recent release notes                                  |
 
 ## Header Actions
 
-| Button | Purpose |
-|---|---|
-| Execute | Run the normalization workflow and produce output |
-| Backups | View and restore earlier project versions |
-| Refresh | Reload project state from disk |
-| Save Changes | Save current edits |
+| Button       | Purpose                                           |
+|--------------|---------------------------------------------------|
+| Execute      | Run the normalization workflow and produce output |
+| Backups      | View and restore earlier project versions         |
+| Refresh      | Reload project state from disk                    |
+| Save Changes | Save current edits                                |
 
 ---
 
@@ -358,11 +358,11 @@ Typical editing process:
 
 ## Entity Editor Modes
 
-| Mode | Purpose |
-|---|---|
-| Form Only | Focused editing |
-| Split View | Edit and preview together |
-| Preview Only | Inspect transformed data |
+| Mode         | Purpose                   |
+|--------------|---------------------------|
+| Form Only    | Focused editing           |
+| Split View   | Edit and preview together |
+| Preview Only | Inspect transformed data  |
 
 Shortcut:
 
@@ -372,16 +372,16 @@ Shortcut:
 
 ## Entity Editor Tabs
 
-| Tab | Purpose |
-|---|---|
-| Basic | Core settings |
-| Foreign Keys | Relationship configuration |
-| Filters | Row filtering |
-| Unnest | Wide-to-long transformations |
-| Append | Concatenate data |
-| Replace | Value replacement rules |
-| Extra Columns | Add derived fields |
-| YAML | Raw configuration editing |
+| Tab           | Purpose                      |
+|---------------|------------------------------|
+| Basic         | Core settings                |
+| Foreign Keys  | Relationship configuration   |
+| Filters       | Row filtering                |
+| Unnest        | Wide-to-long transformations |
+| Append        | Concatenate data             |
+| Replace       | Value replacement rules      |
+| Extra Columns | Add derived fields           |
+| YAML          | Raw configuration editing    |
 
 ---
 
@@ -478,15 +478,15 @@ Depending on entity type, entities can load data from:
 
 Different entity types support different workflows.
 
-| Type | Purpose |
-|---|---|
-| entity | Derived entity from another entity |
-| sql | Query-based entity |
-| fixed | Inline static values |
-| merged | Combined multi-source entity |
-| csv | CSV or TSV file import |
-| xlsx | Excel import via Pandas |
-| openpyxl | Excel import with range support |
+| Type     | Purpose                            |
+|----------|------------------------------------|
+| entity   | Derived entity from another entity |
+| sql      | Query-based entity                 |
+| fixed    | Inline static values               |
+| merged   | Combined multi-source entity       |
+| csv      | CSV or TSV file import             |
+| xlsx     | Excel import via Pandas            |
+| openpyxl | Excel import with range support    |
 
 ---
 
@@ -727,24 +727,24 @@ When editing a materialized entity and assigning `public_id` values:
 
 The sidecar file supports full CRUD via API endpoints:
 
-| Action | Endpoint |
-|---|---|
-| List links for entity | `GET /projects/{project}/mapping/{entity}` |
-| Get single link | `GET /projects/{project}/mapping/{entity}/{key}` |
-| Create/update link | `PUT /projects/{project}/mapping/{entity}/{key}` |
+| Action                        | Endpoint                                                       |
+|-------------------------------|----------------------------------------------------------------|
+| List links for entity         | `GET /projects/{project}/mapping/{entity}`                     |
+| Get single link               | `GET /projects/{project}/mapping/{entity}/{key}`               |
+| Create/update link            | `PUT /projects/{project}/mapping/{entity}/{key}`               |
 | Sync from materialized entity | `PATCH /projects/{project}/mapping/from-materialized/{entity}` |
-| Commit draft links | `POST /projects/{project}/mapping/commit` |
-| Delete link | `DELETE /projects/{project}/mapping/{entity}/{key}` |
-| Export to CSV | `GET /projects/{project}/mapping/export?format=csv` |
-| Import from CSV | `POST /projects/{project}/mapping/import` |
+| Commit draft links            | `POST /projects/{project}/mapping/commit`                      |
+| Delete link                   | `DELETE /projects/{project}/mapping/{entity}/{key}`            |
+| Export to CSV                 | `GET /projects/{project}/mapping/export?format=csv`            |
+| Import from CSV               | `POST /projects/{project}/mapping/import`                      |
 
 ## Reconcile Tab Areas
 
-| Area | Purpose |
-|---|---|
-| Configuration | Define reconciliation specs |
-| YAML | Edit raw reconciliation config |
-| Reconcile & Review | Interactive review grid |
+| Area               | Purpose                        |
+|--------------------|--------------------------------|
+| Configuration      | Define reconciliation specs    |
+| YAML               | Edit raw reconciliation config |
+| Reconcile & Review | Interactive review grid        |
 
 ---
 
@@ -758,13 +758,13 @@ Execute runs the normalization workflow and produces output.
 
 ## Common Output Types
 
-| Type | Dispatcher |
-|---|---|
-| CSV Folder | csv |
-| ZIP CSV | zipcsv |
-| Excel | xlsx |
-| Excel (advanced) | openpyxl |
-| Database | db |
+| Type             | Dispatcher |
+|------------------|------------|
+| CSV Folder       | csv        |
+| ZIP CSV          | zipcsv     |
+| Excel            | xlsx       |
+| Excel (advanced) | openpyxl   |
+| Database         | db         |
 
 ---
 
@@ -780,11 +780,11 @@ Execute runs the normalization workflow and produces output.
 
 ## Execution Options
 
-| Option | Purpose |
-|---|---|
-| Run validation first | Validate before processing |
-| Apply translations | Apply mapping rules |
-| Drop FK columns | Remove FK columns from output |
+| Option               | Purpose                       |
+|----------------------|-------------------------------|
+| Run validation first | Validate before processing    |
+| Apply translations   | Apply mapping rules           |
+| Drop FK columns      | Remove FK columns from output |
 
 ---
 
@@ -805,11 +805,11 @@ The dialog reports:
 
 These three actions are distinct:
 
-| Action | Where | Purpose |
-|---|---|---|
-| **Execute** | Header button | Runs the normalization pipeline and produces output files (CSV, Excel, ZIP, or database) |
-| **Dispatch** | Project → Dispatch tab | Runs a configured ingester directly from the project workspace to deliver processed data to a target system |
-| **Data Ingestion** | Top-level page | Runs any registered ingester independently of a project |
+| Action             | Where                  | Purpose                                                                                                     |
+|--------------------|------------------------|-------------------------------------------------------------------------------------------------------------|
+| **Execute**        | Header button          | Runs the normalization pipeline and produces output files (CSV, Excel, ZIP, or database)                    |
+| **Dispatch**       | Project → Dispatch tab | Runs a configured ingester directly from the project workspace to deliver processed data to a target system |
+| **Data Ingestion** | Top-level page         | Runs any registered ingester independently of a project                                                     |
 
 ## Dispatch Tab (in Project Workspace)
 
@@ -1005,17 +1005,17 @@ python -m src.shapeshift output.xlsx \
 
 ## Common CLI Options
 
-| Option | Purpose |
-|---|---|
-| `--project` / `-p` | Project YAML file path |
-| `--mode` / `-m` | Output format: `xlsx`, `csv`, `db` (default: `xlsx`) |
-| `--default-entity` / `-de` | Override the default entity name |
-| `--env-file` / `-e` | Load environment variables from a file |
-| `--verbose` / `-v` | Enable detailed logs |
-| `--translate` / `-t` | Apply translation rules |
-| `--drop-foreign-keys` / `-d` | Remove FK columns from output |
-| `--log-file` / `-l` | Write log output to a file |
-| `--validate-then-exit` | Validate configuration only, then exit |
+| Option                       | Purpose                                              |
+|------------------------------|------------------------------------------------------|
+| `--project` / `-p`           | Project YAML file path                               |
+| `--mode` / `-m`              | Output format: `xlsx`, `csv`, `db` (default: `xlsx`) |
+| `--default-entity` / `-de`   | Override the default entity name                     |
+| `--env-file` / `-e`          | Load environment variables from a file               |
+| `--verbose` / `-v`           | Enable detailed logs                                 |
+| `--translate` / `-t`         | Apply translation rules                              |
+| `--drop-foreign-keys` / `-d` | Remove FK columns from output                        |
+| `--log-file` / `-l`          | Write log output to a file                           |
+| `--validate-then-exit`       | Validate configuration only, then exit               |
 
 ---
 
