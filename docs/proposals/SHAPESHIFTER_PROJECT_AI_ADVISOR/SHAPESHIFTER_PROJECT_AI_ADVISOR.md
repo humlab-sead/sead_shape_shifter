@@ -2,7 +2,7 @@
 
 **Date:** March 15, 2026  
 **Status:** Feature proposal  
-**Scope:** Project-level advisory chat for Shape Shifter, with a clear understanding of SEAD as the downstream system
+**Scope:** Project-level advisory chat for Shape Shifter, with a clear understanding of SEAD as the target system.
 
 ---
 
@@ -10,14 +10,13 @@
 
 This proposal describes an **AI Project Advisor** for Shape Shifter.
 
-The advisor is not meant to be a generic chatbot. It should help users understand a Shape Shifter project, explain validation and
+The advisor is not a generic chatbot. It should help users understand a Shape Shifter project, explain validation and
 dependency problems, review modeling choices, and suggest next steps before any project configuration is changed.
 
 The advisor needs two kinds of input:
 
 1. The current Shape Shifter project state.
-2. The SEAD concepts that affect project design, especially identity, reconciliation, tracked entities, shared metadata, SIMS, and
-   the SEAD Authoritative Service.
+2. The SEAD concepts that affect project design, especially identity, reconciliation, tracked entities, shared metadata, SIMS, and the SEAD Authoritative Service.
 
 The safest rollout is phased:
 
@@ -78,7 +77,7 @@ The advisor must be a **grounded project advisor**, not a free-form assistant.
 "Grounded" means the advisor answers from known project data and curated rules. It should not invent project state, YAML fields, or
 SEAD policy.
 
-The advisor needs three kinds of input.
+The advisor needs four kinds of input.
 
 ### 1. Project Context
 
@@ -103,8 +102,19 @@ This is curated knowledge from active Shape Shifter documentation and rules:
 4. Directive behavior.
 5. Validation rules.
 6. Reconciliation workflow expectations.
+7. Target-model and conformance-validation behavior.
 
-### 3. SEAD Target-System Knowledge
+### 3. Target Model Conformance Knowledge
+
+This is curated, versioned knowledge from the target-model guides and the active target-model specification:
+
+1. Target-model structure and semantics.
+2. Conformance validation expectations.
+3. Required entities, columns, and foreign-key relationships for the active target system.
+4. Naming and identity requirements expressed by the target model.
+5. The bundled SEAD superset model as a concrete reference example.
+
+### 4. SEAD Target-System Knowledge
 
 This is curated, versioned knowledge about SEAD and the related services around it:
 
@@ -117,7 +127,7 @@ This is curated, versioned knowledge about SEAD and the related services around 
 7. SEAD Authoritative Service responsibilities versus Shape Shifter responsibilities.
 8. How reconciliation, authority lookup, and identity allocation fit together.
 
-This third input is essential. The advisor should answer not only "how do I write this YAML?" but also "is this a good SEAD model?"
+The target-model and SEAD inputs are both essential. The advisor should answer not only "how do I write this YAML?" but also" does this conform to the target model?" and "is this a good SEAD model?"
 
 ---
 
@@ -150,8 +160,7 @@ The advisor must not imply that Shape Shifter should become the long-term identi
 
 Shape Shifter already calls a SEAD-facing reconciliation service during reconciliation workflows.
 
-This means target-system advice is not only about final export. External SEAD service behavior already affects project design and
-reconciliation.
+This means target-system advice is not only about final export. External SEAD service behavior already affects project design and reconciliation.
 
 The advisor should be able to explain:
 
@@ -159,6 +168,19 @@ The advisor should be able to explain:
 2. When a modeling choice improves or weakens reconciliation quality.
 3. How reconciliation data differs from identity allocation.
 4. Where authority lookup ends and SIMS-style identity allocation begins.
+
+### The Target Model Is a Conformance Source
+
+The target model is not only supporting documentation. It is the concrete conformance specification for what the project must expose
+for the target system.
+
+The advisor should be able to use the active target model to explain:
+
+1. Which entities are required.
+2. Which columns and foreign-key relationships are required.
+3. Which naming rules and `public_id` expectations apply.
+4. Whether a project issue is a Shape Shifter validation problem, a conformance problem, or both.
+5. How the bundled SEAD superset model illustrates expected SEAD-oriented structure.
 
 ### Ownership and Association Must Be Kept Separate
 
@@ -379,6 +401,13 @@ applies_to:
 3. Architecture and developer guides.
 4. Generated `projectSchema.json` and `entitySchema.json` as structural references.
 
+**Target model and conformance sources:**
+
+1. `docs/TARGET_MODEL_GUIDE.md`
+2. `docs/TARGET_MODEL_SCHEMA_REFERENCE.md`
+3. `resources/target_models/sead_superset_model.yml`
+4. The active target-model file referenced by `metadata.target_model` in the project being reviewed
+
 **SEAD and SIMS sources:**
 
 1. `sead_identity_system/docs/README.md`
@@ -426,9 +455,11 @@ Include this for every question:
 1. Project name.
 2. Active tab or selected entity, if available.
 3. Summary of validation state.
-4. Dependency summary.
-5. Concise project metadata.
-6. Structural schema metadata from the generated project and entity JSON schemas.
+4. Summary of conformance state when a target model is present.
+5. Dependency summary.
+6. Concise project metadata.
+7. Active target-model metadata and conformance summary, when present.
+8. Structural schema metadata from the generated project and entity JSON schemas.
 
 ### Entity Context
 
@@ -437,8 +468,9 @@ Include this when the question is about a specific entity:
 1. Selected entity YAML.
 2. Resolved entity configuration.
 3. Relevant validation messages.
-4. Neighboring dependencies.
-5. Preview summary, if available.
+4. Relevant conformance messages, when present.
+5. Neighboring dependencies.
+6. Preview summary, if available.
 
 ### Knowledge Pack Rules
 
@@ -449,10 +481,11 @@ tags and the active entity types.
 
 Raw document injection will become noisy and may include conflicting notes. A knowledge pack is better because it:
 
-1. Extracts stable rules from the SEAD docs.
+1. Extracts stable rules from the SEAD docs and target-model sources.
 2. Cites the source documents used to create those rules.
 3. Can be updated intentionally when SEAD design changes.
 4. Keeps the prompt compact and easier to audit.
+5. Lets the advisor distinguish between broad SEAD guidance and active target-model conformance requirements.
 
 ---
 
@@ -569,91 +602,8 @@ expected:
 
 ---
 
-## Phased Delivery Plan
-
-### Phase 0: Knowledge Foundation
-
-Before building the advisor API, create a curated knowledge pack containing:
-
-1. Stable Shape Shifter modeling rules.
-2. Stable SEAD/SIMS concepts.
-3. Stable SEAD Authoritative Service concepts.
-4. Explicit caveats where the SEAD design is still unsettled.
-
-This is the most important prerequisite for useful advice.
-
-### Phase 1a: Backend-Only Advisor API
-
-Deliver the advisor as a backend service with a test harness. Do not add the frontend yet.
-
-**Deliverables:**
-
-1. Provider abstraction for local and hosted providers.
-2. Context assembler with redaction.
-3. Knowledge pack loader and rule selection.
-4. Citation ID generation.
-5. Response parsing and citation validation.
-6. CLI or script-based test harness for scenario evaluation.
-
-**Expected effort:** roughly 1 to 2 focused weeks.
-
-This phase is higher risk than a typical backend endpoint because context assembly and citations need to be reliable before users see
-the feature in the frontend.
-
-### Phase 1b: Frontend Chat UI
-
-Add the user-facing advisor UI after the backend API is stable.
-
-**Deliverables:**
-
-1. Advisor tab or drawer in the project detail page.
-2. Pinia store for session state.
-3. Citation chip rendering.
-4. Streaming or non-streaming response display.
-
-**Expected effort:** roughly 1 focused week after Phase 1a is complete.
-
-### Phase 2: Structured Proposal Generation
-
-Add a mode that suggests changes without applying them.
-
-**Includes:**
-
-1. Schema-guided output using the existing generated JSON schemas as a starting point.
-2. YAML patch proposals with citations.
-3. Project YAML repair suggestions.
-4. Proposal preview UI.
-5. More evaluation scenarios for proposal quality.
-
-**Expected effort:** roughly 2 to 4 additional weeks.
-
-### Phase 3: Data-To-Configuration Assistance
-
-Add source-data exploration that can propose an initial config file from observed files, columns, types, and sample values.
-
-**Includes:**
-
-1. Source-file discovery and profiling.
-2. Column and type summaries.
-3. Candidate entity and relationship suggestions.
-4. Draft `shapeshifter.yml` generation.
-5. Validation-guided refinement.
-
-**Expected effort:** roughly 2 to 4 additional weeks.
-
-### Phase 4: Approval-Based Apply
-
-Only add approval-based YAML changes after proposal mode and data-to-configuration mode are stable.
-
-**Includes:**
-
-1. Proposal-to-change conversion.
-2. Preview and rollback integration.
-3. Approval workflow.
-4. Conflict and version handling.
-5. Regression validation.
-
-**Expected effort:** roughly 2 to 4 additional weeks.
+Delivery sequencing is documented in
+[SHAPESHIFTER_PROJECT_AI_ADVISOR_PHASE_PLAN.md](./SHAPESHIFTER_PROJECT_AI_ADVISOR_PHASE_PLAN.md).
 
 ---
 
@@ -712,8 +662,41 @@ The feature should be considered successful when it can reliably:
 3. Give advice that respects SEAD service responsibilities, including SIMS and the SEAD Authoritative Service.
 4. Clearly distinguish confidence from uncertainty.
 5. Review, repair, and author project YAML through explicit proposals in Phase 2 and later.
-6. Help users avoid downstream modeling mistakes.
+6. Help users avoid target modeling mistakes.
 7. Remain safe even when the model is wrong.
+
+---
+
+## Glossary
+
+| Term | Definition |
+|------|------------|
+| **Advisor** | The AI Project Advisor feature. A grounded, project-scoped chat interface that explains validation errors, entity risks, and modeling choices using real project data and curated SEAD knowledge. |
+| **Association** | A relationship between independently meaningful entities. The child entity has its own identity and lifecycle, separate from the parent. Contrasted with ownership. |
+| **Authority keys** | Identifiers assigned by an external identity authority, such as a taxonomic naming authority. Used to link local records to official external identities. |
+| **Business keys** | Human-meaningful identifiers that uniquely distinguish an entity within a domain, such as a site code or scientific name. Used for matching and deduplication. |
+| **Child values** | Data objects that do not have independent identity. They exist only as part of a parent entity and are not reconciled or tracked separately. |
+| **Conformance validation** | Validation against an active target model specification. Checks whether a project exposes the required entities, columns, foreign-key relationships, and naming rules for the target system. |
+| **Context assembly** | The process of building a structured, redacted packet of project data, validation results, dependency summaries, and knowledge-pack rules. This packet is sent to the LLM provider as the basis for an advisor response. |
+| **Citation** | A structured reference embedded in an advisor response. Points to a specific validation message, YAML path, dependency edge, or knowledge-pack rule. Uses a stable ID format: `<category>.<scope>.<identifier>`. |
+| **Directives** | YAML-level instructions such as `@include:`, `@value:`, and `${ENV_VAR}` that are resolved at the API-to-Core conversion boundary. Core models receive resolved values, not raw directives. |
+| **Foreign key** | A relationship between entities using local `system_id` values. Foreign keys never use external IDs as internal reference values. |
+| **Grounded advisor** | An advisor that answers from known project data and curated rules. It does not invent project state, YAML fields, or SEAD policy. |
+| **Knowledge pack** | A curated, versioned collection of structured rules about SEAD, SIMS, reconciliation, and target-model conformance. Each rule has an ID, confidence level, source documents, and scope tags. |
+| **Ownership** | A parent-child relationship where the child's identity and lifecycle are tied to the parent. Deleting the parent affects the child. Contrasted with association. |
+| **Provider abstraction** | A backend interface that supports multiple LLM providers (local Ollama, hosted providers) without hardwiring one vendor into the advisor feature logic. |
+| **Provider keys** | Identifiers assigned by the data provider or source system. May differ from official SEAD identities and require reconciliation or authority lookup. |
+| **Reconciliation** | The process of matching incoming data against existing SEAD records or external authoritative services. Determines whether to create new records, update existing ones, or merge duplicates. |
+| **SEAD** | Scientific Evidence and Data. The target system for Shape Shifter. A relational database with specific identity, reconciliation, and modeling requirements. |
+| **SEAD Authoritative Service** | An existing SEAD-facing service that Shape Shifter calls during reconciliation workflows. Provides authority lookups for specific entity types and fields. |
+| **Shape Shifter** | The normalization and transformation engine. Converts source data into SEAD-compatible formats using project YAML configuration, validation, and reconciliation workflows. |
+| **Shared metadata** | Classifiers, categories, or reference data that are shared across multiple entities. Have stable identity and should be reconciled rather than duplicated. |
+| **SIMS** | Scientific Identity Management Service. The official authority for long-term SEAD identity allocation and mapping. Shape Shifter prepares reconciliation inputs but does not replace SIMS. |
+| **system_id** | A local sequential integer that serves as the primary key for all Shape Shifter entities. Used for all internal foreign-key relationships. |
+| **Target model** | A specification that defines the required entities, columns, foreign-key relationships, and naming rules for a given target system. Used for conformance validation. |
+| **Three-tier identity system** | Shape Shifter's identity model: (1) `system_id` for internal references, (2) `keys` for business-key matching and deduplication, (3) `public_id` for target schema column names that hold SEAD IDs after mapping. |
+| **Tracked entities** | Entities with stable, long-term identity that are followed across imports and reconciliations. Contrasted with shared metadata and child values. |
+| **Validation** | The process of checking project YAML and data against Shape Shifter rules. Includes structural validation (YAML schema), data validation (source data quality), and conformance validation (target model requirements). |
 
 ---
 
