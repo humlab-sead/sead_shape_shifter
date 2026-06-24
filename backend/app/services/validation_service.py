@@ -139,6 +139,7 @@ class ValidationService:
                 project_cfg,
                 source_path=source_path,
                 env_prefix=settings.env_prefix,
+                runtime_root=settings.application_root,
                 try_without_prefix=True,
             )
         except FileNotFoundError as e:
