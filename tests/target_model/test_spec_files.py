@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 import yaml
 
 from src.target_model.models import TargetModel
@@ -9,13 +10,13 @@ EXAMPLES_DIR = Path("tests/test_data/examples")
 SPECS_DIR = Path("tests/test_data/specs")
 
 
-def test_sead_v2_spec_loads_and_validates() -> None:
-    spec_path: Path = SPECS_DIR / "sead_standard_model.yml"
+@pytest.mark.parametrize("spec_path", list(SPECS_DIR.glob("*.yml")))
+def test_sead_v2_spec_loads_and_validates(spec_path: Path) -> None:
     target_model = TargetModel.model_validate(yaml.safe_load(spec_path.read_text(encoding="utf-8")))
 
     issues = TargetModelSpecValidator().validate(target_model)
 
-    assert target_model.model.name == "SEAD Clearinghouse Extended"
+    assert target_model.model.name.startswith("SEAD Clearinghouse")
     assert "sample_group" in target_model.entities
     assert {"abundance", "abundance_element", "abundance_element_group", "abundance_modification", "abundance_property"}.issubset(
         target_model.entities
