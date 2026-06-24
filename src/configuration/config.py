@@ -29,36 +29,7 @@ class ConfigLike(Protocol):
     def exists(self, *keys: str) -> bool: ...
     def update(self, data: tuple[str, Any] | dict[str, Any] | list[tuple[str, Any]]) -> None: ...
     def save(self, updates: dict[str, Any] | None = None) -> None: ...
-
-
-def yaml_str_join(loader: yaml.Loader, node: yaml.SequenceNode) -> str:
-    return "".join([str(i) for i in loader.construct_sequence(node)])
-
-
-def yaml_path_join(loader: yaml.Loader, node: yaml.SequenceNode) -> str:
-    return join(*[str(i) for i in loader.construct_sequence(node)])
-
-
-def nj(*paths: str) -> str | None:
-    return normpath(join(*paths)) if None not in paths else None
-
-
-class SafeLoaderIgnoreUnknown(yaml.SafeLoader):  # pylint: disable=too-many-ancestors
-    def let_unknown_through(self, node):  # pylint: disable=unused-argument
-        """Ignore unknown tags silently"""
-        if isinstance(node, yaml.ScalarNode):
-            return self.construct_scalar(node)
-        if isinstance(node, yaml.SequenceNode):
-            return self.construct_sequence(node)
-        if isinstance(node, yaml.MappingNode):
-            return self.construct_mapping(node)
-        return None
-
-
-SafeLoaderIgnoreUnknown.add_constructor(None, SafeLoaderIgnoreUnknown.let_unknown_through)  # type: ignore
-SafeLoaderIgnoreUnknown.add_constructor("!join", yaml_str_join)
-SafeLoaderIgnoreUnknown.add_constructor("!jj", yaml_path_join)
-SafeLoaderIgnoreUnknown.add_constructor("!path_join", yaml_path_join)
+    def resolve(self, skip_resolve: bool = False) -> ConfigLike: ...
 
 
 class Config(ConfigLike):
@@ -166,18 +137,19 @@ class Config(ConfigLike):
             application_root_env_var=self.application_root_env_var,
         )
 
-    def resolve(self) -> Config:
+    def resolve(self, skip_resolve: bool = False) -> Config:
         """Resolve configuration directives in self.data."""
-        self.data: dict[str, Any] = resolve_references(
-            self.data,
-            context=self.context,
-            env_filename=self.env_filename,
-            env_prefix=self.env_prefix,
-            runtime_root=self.runtime_root,
-            application_root_env_var=self.application_root_env_var,
-            source_path=self.filename,
-            inplace=True,
-        )
+        if not skip_resolve:
+            self.data: dict[str, Any] = resolve_references(
+                self.data,
+                context=self.context,
+                env_filename=self.env_filename,
+                env_prefix=self.env_prefix,
+                runtime_root=self.runtime_root,
+                application_root_env_var=self.application_root_env_var,
+                source_path=self.filename,
+                inplace=True,
+            )
         return self
 
 
