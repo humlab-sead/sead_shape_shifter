@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.configuration import Config, ConfigLike, is_config_path, is_path_to_existing_file, load_config
+from src.configuration import Config, ConfigLike, is_path_to_existing_file, is_yaml_file, load_config
 
 
 def test_is_config_path_validation(tmp_path) -> None:
@@ -15,10 +15,10 @@ def test_is_config_path_validation(tmp_path) -> None:
     cfg_file = tmp_path / "config.yml"
     cfg_file.write_text("root: 1\n", encoding="utf-8")
 
-    assert is_config_path(str(cfg_file)) is True
-    assert is_config_path(str(tmp_path / "config.txt"), raise_if_missing=False) is False
+    assert is_yaml_file(str(cfg_file)) is True
+    assert is_yaml_file(str(tmp_path / "config.txt"), raise_if_missing=False) is False
     with pytest.raises(FileNotFoundError):
-        is_config_path(str(tmp_path / "missing.yml"))
+        is_yaml_file(str(tmp_path / "missing.yml"))
 
 
 def test_is_path_to_existing_file(tmp_path) -> None:
