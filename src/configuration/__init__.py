@@ -12,7 +12,7 @@ from .provider import (
     set_config_provider,
 )
 from .resolve import find_unresolved_directives, resolve_references
-from .utility import is_config_path, is_path_to_existing_file
+from .utility import is_path_to_existing_file, is_yaml_file
 
 __all__ = [
     # config
@@ -20,7 +20,7 @@ __all__ = [
     "load_config",
     "resolve_references",
     "find_unresolved_directives",
-    "is_config_path",
+    "is_yaml_file",
     "is_path_to_existing_file",
     # interface
     "ConfigLike",
