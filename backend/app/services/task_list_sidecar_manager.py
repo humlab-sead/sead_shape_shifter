@@ -14,7 +14,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.services.yaml_service import YamlService, get_yaml_service
-from src.task_list import TaskList
+from src.sidecars import TaskList
 
 
 class TaskListSidecarManager:

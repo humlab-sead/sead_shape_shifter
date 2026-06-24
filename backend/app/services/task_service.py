@@ -19,7 +19,7 @@ from backend.app.services.shapeshift_service import ShapeShiftService, get_shape
 from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from src.model import ShapeShiftProject, TableConfig
-from src.task_list import TaskList
+from src.sidecars import TaskList
 
 
 class TaskService:

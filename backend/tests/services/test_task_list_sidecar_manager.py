@@ -7,7 +7,7 @@ import pytest
 
 from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager
 from backend.app.services.yaml_service import YamlService
-from src.task_list import TaskList
+from src.sidecars import TaskList
 
 
 class TestTaskListSidecarManager:
