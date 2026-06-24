@@ -15,7 +15,7 @@ from loguru import logger
 from src.utility import dget, dotexists, dotset
 
 from .resolve import resolve_references
-from .utility import is_config_path
+from .utility import is_yaml_file, load_yaml_file
 
 # pylint: disable=too-many-arguments, unused-argument
 
@@ -169,36 +169,11 @@ def load_config(
     if isinstance(source, (Config, ConfigLike)):
         return source
 
-    filename: str | None = source if isinstance(source, str) and is_config_path(source, raise_if_missing=False) else None
+    filename: str | None = source if isinstance(source, str) and is_yaml_file(source, raise_if_missing=False) else None
 
-    if source is None:
-        source = {}
-
-    data: dict[str, Any] = (
-        (
-            yaml.load(
-                Path(source).read_text(encoding="utf-8"),
-                Loader=SafeLoaderIgnoreUnknown,
-            )
-            if is_config_path(source, raise_if_missing=True)
-            else yaml.load(io.StringIO(source), Loader=SafeLoaderIgnoreUnknown)
-        )
-        if isinstance(source, str)
-        else source
-    ) or {}
+    data: dict[str, Any] | str | None = load_yaml_file(source or {})
 
     assert isinstance(data, dict)
-
-    if not skip_resolve:
-        data = resolve_references(
-            data,
-            context=context,
-            env_filename=env_filename,
-            env_prefix=env_prefix,
-            runtime_root=runtime_root,
-            application_root_env_var=application_root_env_var,
-            source_path=filename,
-        )
 
     return Config(
         data=data,
@@ -208,4 +183,4 @@ def load_config(
         env_prefix=env_prefix,
         runtime_root=runtime_root,
         application_root_env_var=application_root_env_var,
-    )
+    ).resolve(skip_resolve=skip_resolve)
