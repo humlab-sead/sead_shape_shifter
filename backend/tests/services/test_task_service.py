@@ -11,7 +11,7 @@ from backend.app.models.task import TaskPriority, TaskStatus
 from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.task_service import TaskService
 from src.model import ShapeShiftProject
-from src.task_list import TaskList
+from src.sidecars import TaskList
 
 # pylint: disable=redefined-outer-name, unused-argument
 
