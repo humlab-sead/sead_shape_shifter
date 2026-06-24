@@ -18,7 +18,8 @@ from backend.app.services.project_service import ProjectService, get_project_ser
 from backend.app.services.shapeshift_service import ShapeShiftService, get_shapeshift_service
 from backend.app.services.task_list_sidecar_manager import TaskListSidecarManager
 from backend.app.services.validation_service import ValidationService, get_validation_service
-from src.model import ShapeShiftProject, TableConfig, TaskList
+from src.model import ShapeShiftProject, TableConfig
+from src.task_list import TaskList
 
 
 class TaskService:
