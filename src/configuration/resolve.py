@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import copy
+import re
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 from loguru import logger
@@ -19,6 +20,8 @@ def resolve_references(
     context: str | None = None,
     env_filename: str | None = None,
     env_prefix: str | None = None,
+    runtime_root: str | Path | None = None,
+    application_root_env_var: str = "APPLICATION_ROOT",
     source_path: str | None = None,
     inplace: bool = False,
     strict: bool = False,
@@ -35,11 +38,15 @@ def resolve_references(
     if not inplace:
         data = copy.deepcopy(data)
 
+    resolved_runtime_root = _resolve_runtime_root(runtime_root, env_prefix, application_root_env_var)
+
     for resolver_cls in [SubConfigResolver, LoadResolver]:
         data = resolver_cls(
             context=context,
             env_filename=env_filename,
             env_prefix=env_prefix,
+            runtime_root=resolved_runtime_root,
+            application_root_env_var=application_root_env_var,
             source_path=source_path,
         ).resolve(data)
 
@@ -48,7 +55,16 @@ def resolve_references(
         data = env2dict(env_prefix, data)
 
     # Do a recursive replace of values with pattern "${ENV_NAME}" with value of environment
-    data = replace_env_vars(data, env_prefix=env_prefix, try_without_prefix=try_without_prefix)  # type: ignore
+    data = cast(
+        dict[str, Any],
+        _replace_env_vars_with_runtime_paths(
+            data,
+            env_prefix=env_prefix,
+            runtime_root=resolved_runtime_root,
+            application_root_env_var=application_root_env_var,
+            try_without_prefix=try_without_prefix,
+        ),
+    )
     data = replace_references(data)  # type: ignore
 
     if strict:
@@ -59,6 +75,80 @@ def resolve_references(
             raise ValueError(f"Unresolved configuration directives at: {paths}{extra}")
 
     return data
+
+
+def _resolve_runtime_root(runtime_root: str | Path | None, env_prefix: str | None, application_root_env_var: str) -> Path | None:
+    """Return the base directory for env-derived relative paths."""
+    if runtime_root:
+        return Path(runtime_root).resolve()
+
+    application_root = replace_env_vars(f"${{{application_root_env_var}}}", env_prefix=env_prefix or "", try_without_prefix=True)
+    return Path(application_root).resolve() if application_root else None
+
+
+def _is_path_env_var(env_var_name: str, env_prefix: str | None, application_root_env_var: str) -> bool:
+    """Return True when an environment variable is expected to contain a path."""
+    normalized_prefix = (env_prefix or "").rstrip("_")
+    normalized_name = env_var_name
+    if normalized_prefix and normalized_name.startswith(f"{normalized_prefix}_"):
+        normalized_name = normalized_name[len(normalized_prefix) + 1 :]
+
+    normalized_name = normalized_name.upper()
+    return normalized_name == application_root_env_var.upper() or normalized_name.endswith(("_DIR", "_PATH", "_FILE", "_FILENAME"))
+
+
+def _replace_env_vars_with_runtime_paths(
+    data: dict[str, Any] | list[Any] | str,
+    *,
+    env_prefix: str | None,
+    runtime_root: Path | None,
+    application_root_env_var: str,
+    try_without_prefix: bool,
+) -> dict[str, Any] | list[Any] | str:
+    """Replace environment variables and anchor path-like values to runtime_root."""
+    if isinstance(data, dict):
+        return {
+            key: _replace_env_vars_with_runtime_paths(
+                value,
+                env_prefix=env_prefix,
+                runtime_root=runtime_root,
+                application_root_env_var=application_root_env_var,
+                try_without_prefix=try_without_prefix,
+            )
+            for key, value in data.items()
+        }
+    if isinstance(data, list):
+        return [
+            _replace_env_vars_with_runtime_paths(
+                value,
+                env_prefix=env_prefix,
+                runtime_root=runtime_root,
+                application_root_env_var=application_root_env_var,
+                try_without_prefix=try_without_prefix,
+            )
+            for value in data
+        ]
+    if not isinstance(data, str):
+        return data
+
+    def replacer(match: re.Match[str]) -> str:
+        env_var_name = match.group(1)
+        resolved_value = replace_env_vars(
+            match.group(0),
+            env_prefix=env_prefix or "",
+            try_without_prefix=try_without_prefix,
+        )
+        if not resolved_value:
+            return resolved_value
+        if (
+            runtime_root is not None
+            and _is_path_env_var(env_var_name, env_prefix, application_root_env_var)
+            and not Path(resolved_value).is_absolute()
+        ):
+            return str((runtime_root / resolved_value).resolve())
+        return resolved_value
+
+    return re.sub(r"\$\{([^}]+)\}", replacer, data)
 
 
 def find_unresolved_directives(data: Any, path: str | None = None) -> list[str]:
@@ -97,11 +187,15 @@ class BaseResolver:
         context: str | None = None,
         env_filename: str | None = None,
         env_prefix: str | None = None,
+        runtime_root: str | Path | None = None,
+        application_root_env_var: str = "APPLICATION_ROOT",
         source_path: str | None = None,
     ) -> None:
         self.context: str | None = context
         self.env_filename: str | None = env_filename
         self.env_prefix: str | None = env_prefix
+        self.application_root_env_var: str = application_root_env_var
+        self.runtime_root: Path | None = _resolve_runtime_root(runtime_root, env_prefix, application_root_env_var)
         self.source_path: str | None = source_path
         self.source_folder: Path | None = (
             Path(source_path).parent if source_path and is_config_path(source_path, raise_if_missing=False) else None
@@ -148,9 +242,16 @@ class BaseResolver:
             env_prefix=self.env_prefix,  # type: ignore
             try_without_prefix=True,
         )
+        is_expanded: bool = resolved_path != path
 
         path_obj = Path(resolved_path)
-        if path != resolved_path and not path_obj.is_absolute() and self.env_filename:
+        if path_obj.is_absolute():
+            return str(path_obj)
+
+        if is_expanded and self.runtime_root is not None:
+            return str((self.runtime_root / path_obj).resolve())
+
+        if is_expanded and self.env_filename:
             env_base_path = Path(self.env_filename).resolve().parent
             resolved_path = str(env_base_path / resolved_path)
 
@@ -186,9 +287,22 @@ class SubConfigResolver(BaseResolver):
     directive: str = "@include"
 
     def __init__(
-        self, context: str | None = None, env_filename: str | None = None, env_prefix: str | None = None, source_path: str | None = None
+        self,
+        context: str | None = None,
+        env_filename: str | None = None,
+        env_prefix: str | None = None,
+        runtime_root: str | Path | None = None,
+        application_root_env_var: str = "APPLICATION_ROOT",
+        source_path: str | None = None,
     ) -> None:
-        super().__init__(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path)
+        super().__init__(
+            context=context,
+            env_filename=env_filename,
+            env_prefix=env_prefix,
+            runtime_root=runtime_root,
+            application_root_env_var=application_root_env_var,
+            source_path=source_path,
+        )
 
     def resolve_directive(self, directive_argument: str, base_path: Path | None) -> dict[str, Any]:
         """Resolve @include: directive with environment variable expansion.
@@ -211,7 +325,12 @@ class SubConfigResolver(BaseResolver):
         filename: str = self._resolve_path(directive_argument, base_path=base_path, raise_if_missing=False)
 
         loaded_data: dict[str, Any] = load_config(
-            source=filename, context=self.context, env_filename=self.env_filename, env_prefix=self.env_prefix
+            source=filename,
+            context=self.context,
+            env_filename=self.env_filename,
+            env_prefix=self.env_prefix,
+            runtime_root=self.runtime_root,
+            application_root_env_var=self.application_root_env_var,
         ).data
         return self._resolve(loaded_data, Path(filename).parent)
 
@@ -221,9 +340,22 @@ class LoadResolver(BaseResolver):
     directive: str = "@load"
 
     def __init__(
-        self, context: str | None = None, env_filename: str | None = None, env_prefix: str | None = None, source_path: str | None = None
+        self,
+        context: str | None = None,
+        env_filename: str | None = None,
+        env_prefix: str | None = None,
+        runtime_root: str | Path | None = None,
+        application_root_env_var: str = "APPLICATION_ROOT",
+        source_path: str | None = None,
     ) -> None:
-        super().__init__(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path)
+        super().__init__(
+            context=context,
+            env_filename=env_filename,
+            env_prefix=env_prefix,
+            runtime_root=runtime_root,
+            application_root_env_var=application_root_env_var,
+            source_path=source_path,
+        )
 
     def resolve_directive(self, directive_argument: str, base_path: Path | None) -> Any:
         """Resolve "@load: argument" directive with environment variable expansion.

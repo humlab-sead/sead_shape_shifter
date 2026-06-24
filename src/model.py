@@ -1,6 +1,7 @@
 import copy
 from dataclasses import dataclass
 from functools import cached_property
+from pathlib import Path
 from typing import Any, Generator, Literal, Self
 
 import pandas as pd
@@ -1548,6 +1549,8 @@ class ShapeShiftProject:
                 self.cfg,
                 env_filename=dotget(context, "env_filename, env_file"),
                 env_prefix=dotget(context, "env_prefix"),
+                runtime_root=dotget(context, "runtime_root, application_root"),
+                application_root_env_var=dotget(context, "application_root_env_var", "APPLICATION_ROOT"),
                 source_path=dotget(context, "filename, file_path") or self.filename,
                 inplace=False,
                 strict=strict,
@@ -1626,7 +1629,13 @@ class ShapeShiftProject:
         return table
 
     @staticmethod
-    def from_file(filename: str, env_file: str = ".env", env_prefix: str = "SHAPE_SHIFTER") -> "ShapeShiftProject":
+    def from_file(
+        filename: str,
+        env_file: str = ".env",
+        env_prefix: str = "SHAPE_SHIFTER",
+        runtime_root: str | Path | None = None,
+        application_root_env_var: str = "APPLICATION_ROOT",
+    ) -> "ShapeShiftProject":
         """Load ShapeShiftProject from a YAML project file."""
 
         cfg: ConfigLike = load_config(
@@ -1634,6 +1643,8 @@ class ShapeShiftProject:
             context="shape_shifter",
             env_filename=env_file,
             env_prefix=env_prefix,
+            runtime_root=runtime_root,
+            application_root_env_var=application_root_env_var,
         )
 
         return ShapeShiftProject(cfg=cfg.data, filename=filename)

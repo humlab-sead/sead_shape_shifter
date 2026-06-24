@@ -141,7 +141,12 @@ class Settings(BaseSettings):
     @property
     def env_opts(self) -> dict[str, str]:
         """Get environment options."""
-        return {"env_file": self.env_file, "env_prefix": self.env_prefix}
+        return {
+            "env_file": self.env_file,
+            "env_prefix": self.env_prefix,
+            "runtime_root": str(self.APPLICATION_ROOT),
+            "application_root_env_var": "APPLICATION_ROOT",
+        }
 
     @property
     def reconciliation_service_url(self) -> str:

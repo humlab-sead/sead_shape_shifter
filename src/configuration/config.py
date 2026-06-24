@@ -72,12 +72,16 @@ class Config(ConfigLike):
         filename: str | None = None,
         env_filename: str | None = None,
         env_prefix: str | None = None,
+        runtime_root: str | Path | None = None,
+        application_root_env_var: str = "APPLICATION_ROOT",
     ) -> None:
         self.data: dict[str, Any] = data or {}
         self.context: str = context
         self.filename: str | None = filename
         self.env_filename: str | None = env_filename
         self.env_prefix: str | None = env_prefix
+        self.runtime_root: str | Path | None = runtime_root
+        self.application_root_env_var: str = application_root_env_var
 
     def get(self, *keys: str, default: Any | type[Any] = None, mandatory: bool = False) -> Any:
         if self.data is None:
@@ -158,6 +162,8 @@ class Config(ConfigLike):
             filename=self.filename,
             env_filename=self.env_filename,
             env_prefix=self.env_prefix,
+            runtime_root=self.runtime_root,
+            application_root_env_var=self.application_root_env_var,
         )
 
     def resolve(self) -> Config:
@@ -167,6 +173,8 @@ class Config(ConfigLike):
             context=self.context,
             env_filename=self.env_filename,
             env_prefix=self.env_prefix,
+            runtime_root=self.runtime_root,
+            application_root_env_var=self.application_root_env_var,
             source_path=self.filename,
             inplace=True,
         )
@@ -179,6 +187,8 @@ def load_config(
     context: str | None = None,
     env_filename: str | None = None,
     env_prefix: str | None = None,
+    runtime_root: str | Path | None = None,
+    application_root_env_var: str = "APPLICATION_ROOT",
     skip_resolve: bool = False,
 ) -> Config | ConfigLike:
 
@@ -213,6 +223,8 @@ def load_config(
             context=context,
             env_filename=env_filename,
             env_prefix=env_prefix,
+            runtime_root=runtime_root,
+            application_root_env_var=application_root_env_var,
             source_path=filename,
         )
 
@@ -222,4 +234,6 @@ def load_config(
         filename=filename,
         env_filename=env_filename,
         env_prefix=env_prefix,
+        runtime_root=runtime_root,
+        application_root_env_var=application_root_env_var,
     )
