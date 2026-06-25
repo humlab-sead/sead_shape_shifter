@@ -1,0 +1,2777 @@
+model:
+  name: SEAD Clearinghouse Extended
+  format_version: "1"
+  version: 2.1.0
+  description: SEAD archaeological research data model with enhanced spatial, dating, and metadata coverage
+
+entities:
+  location:
+    role: lookup
+    required: true
+    description: Geographic location referenced by sites and other context entities.
+    domains: [core, spatial]
+    target_table: tbl_locations
+    public_id: location_id
+    identity_columns: [location_type_id, location_name]
+    columns:
+      location_name:
+        required: true
+        type: string
+        nullable: false
+      location_type_id:
+        required: true
+        type: integer
+        nullable: false
+      default_lat_dd:
+        type: decimal
+        nullable: true
+      default_long_dd:
+        type: decimal
+        nullable: true
+    unique_sets:
+      - [location_type_id, location_name]
+    foreign_keys:
+      - entity: location_type
+        required: true
+
+  location_type:
+    role: classifier
+    required: true
+    description: Controlled vocabulary for location classification.
+    domains: [core, spatial]
+    target_table: tbl_location_types
+    public_id: location_type_id
+    identity_columns: [location_type]
+    columns:
+      location_type:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [location_type]
+
+  site:
+    role: lookup
+    required: true
+    description: Archaeological site anchored to a location.
+    domains: [core, spatial]
+    target_table: tbl_sites
+    public_id: site_id
+    identity_columns: [site_name]
+    columns:
+      site_name:
+        required: true
+        type: string
+        nullable: false
+      site_type_id:
+        type: integer
+        nullable: true
+      national_site_identifier:
+        type: string
+        nullable: true
+      site_description:
+        type: string
+        nullable: true
+      latitude_dd:
+        type: decimal
+        nullable: true
+      longitude_dd:
+        type: decimal
+        nullable: true
+      altitude:
+        type: decimal
+        nullable: true
+    foreign_keys:
+      - entity: location
+        required: true
+        via: site_location
+      - entity: site_type
+        required: false
+
+  site_location:
+    role: bridge
+    required: true
+    description: Join entity connecting sites to locations, allowing for many-to-many relationships between the two.
+    domains: [core, spatial]
+    target_table: tbl_site_locations
+    public_id: site_location_id
+    identity_columns: [site_id, location_id]
+    columns:
+      site_id:
+        required: true
+        type: integer
+        nullable: false
+      location_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: site
+        required: true
+      - entity: location
+        required: true
+        
+  site_type_group:
+    role: classifier
+    required: false
+    description: Controlled grouping for site-type vocabularies used by archaeological site classifiers.
+    domains: [core, spatial]
+    target_table: tbl_site_type_groups
+    public_id: site_type_group_id
+    identity_columns: [site_type_group]
+    columns:
+      site_type_group:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: false
+      site_type_group_abbrev:
+        type: string
+        nullable: false
+      origin_code:
+        type: string
+        nullable: true
+      origin_description:
+        type: string
+        nullable: false
+    unique_sets:
+      - [site_type_group]
+
+  site_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for site classification in SEAD.
+    domains: [core, spatial]
+    target_table: tbl_site_types
+    public_id: site_type_id
+    identity_columns: [site_type]
+    columns:
+      site_type_group_id:
+        required: true
+        type: integer
+        nullable: false
+      site_type:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: false
+      site_type_abbrev:
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: site_type_group
+        required: false
+
+  sample_group:
+    role: lookup
+    required: true
+    description: Collection or contextual grouping that sits between site and physical samples.
+    domains: [core]
+    target_table: tbl_sample_groups
+    public_id: sample_group_id
+    identity_columns: [site_id, sample_group_name]
+    columns:
+      site_id:
+        required: true
+        type: integer
+        nullable: false
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+      sample_group_name:
+        type: string
+        nullable: true
+      sample_group_description:
+        type: string
+        nullable: true
+      sampling_context_id:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [site_id, sample_group_name]
+    foreign_keys:
+      - entity: site
+        required: true
+      - entity: method
+        required: true
+      - entity: sample_group_sampling_context
+        required: false
+
+  sample_group_sampling_context:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for sampling contexts attached to sample groups and related sample metadata tables.
+    domains: [core, sample-metadata]
+    target_table: tbl_sample_group_sampling_contexts
+    public_id: sampling_context_id
+    identity_columns: [sampling_context]
+    columns:
+      sampling_context:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+      sort_order:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [sampling_context]
+
+  sample_group_coordinate:
+    role: fact
+    required: false
+    description: Coordinate or position measurement attached to a sample group.
+    aggregate_parent: sample_group
+    domains: [spatial, sample-metadata]
+    target_table: tbl_sample_group_coordinates
+    public_id: sample_group_position_id
+    identity_columns: [sample_group_id, coordinate_method_dimension_id]
+    columns:
+      sample_group_id:
+        required: true
+        type: integer
+        nullable: false
+      coordinate_method_dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      sample_group_position:
+        required: true
+        type: decimal
+        nullable: false
+      position_accuracy:
+        type: string
+        nullable: true
+    foreign_keys:
+      - entity: sample_group
+        required: true
+      - entity: coordinate_method_dimension
+        required: true
+
+  sample_group_dimension:
+    role: fact
+    required: false
+    description: Physical dimension measurement attached to a sample group.
+    aggregate_parent: sample_group
+    domains: [sample-metadata, physical-properties]
+    target_table: tbl_sample_group_dimensions
+    public_id: sample_group_dimension_id
+    identity_columns: [sample_group_id, dimension_id]
+    columns:
+      sample_group_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_value:
+        required: true
+        type: decimal
+        nullable: false
+      qualifier_id:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: sample_group
+        required: true
+      - entity: dimension
+        required: true
+      - entity: value_qualifier
+        required: false
+
+  sample_group_note:
+    role: fact
+    required: false
+    description: Free-text note attached to a sample group.
+    aggregate_parent: sample_group
+    domains: [sample-metadata]
+    target_table: tbl_sample_group_notes
+    public_id: sample_group_note_id
+    identity_columns: [sample_group_id, note]
+    columns:
+      sample_group_id:
+        required: true
+        type: integer
+        nullable: false
+      note:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [sample_group_id, note]
+    foreign_keys:
+      - entity: sample_group
+        required: true
+
+  sample_group_reference:
+    role: fact
+    required: false
+    description: Bibliographic reference attached to a sample group.
+    aggregate_parent: sample_group
+    domains: [sample-metadata, provenance, bibliography]
+    target_table: tbl_sample_group_references
+    public_id: sample_group_reference_id
+    identity_columns: [sample_group_id, biblio_id]
+    columns:
+      sample_group_id:
+        required: true
+        type: integer
+        nullable: false
+      biblio_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [sample_group_id, biblio_id]
+    foreign_keys:
+      - entity: sample_group
+        required: true
+      - entity: citation
+        required: true
+
+  sample:
+    role: fact
+    required: true
+    description: Core analytical specimen represented in SEAD as a physical sample.
+    domains: [core]
+    target_table: tbl_physical_samples
+    public_id: physical_sample_id
+    identity_columns: [sample_group_id, sample_name]
+    columns:
+      sample_group_id:
+        required: true
+        type: integer
+        nullable: false
+      sample_type_id:
+        required: true
+        type: integer
+        nullable: false
+      sample_name:
+        required: true
+        type: string
+        nullable: false
+      alt_ref_type_id:
+        type: integer
+        nullable: true
+      date_sampled:
+        type: string
+        nullable: true
+    unique_sets:
+      - [sample_group_id, sample_name]
+    foreign_keys:
+      - entity: sample_group
+        required: true
+      - entity: sample_type
+        required: true
+      - entity: alt_ref_type
+        required: false
+
+  sample_description_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for typed sample descriptions.
+    domains: [core, sample-metadata]
+    target_table: tbl_sample_description_types
+    public_id: sample_description_type_id
+    identity_columns: [type_name]
+    columns:
+      type_name:
+        required: true
+        type: string
+        nullable: true
+      type_description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [type_name]
+
+  sample_description:
+    role: fact
+    required: false
+    description: Typed free-text or coded description attached to a physical sample.
+    aggregate_parent: sample
+    domains: [core, sample-metadata]
+    target_table: tbl_sample_descriptions
+    public_id: sample_description_id
+    identity_columns: [physical_sample_id, sample_description_type_id]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      sample_description_type_id:
+        required: true
+        type: integer
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: sample_description_type
+        required: true
+
+  sample_colour:
+    role: fact
+    required: false
+    description: Colour observation attached to a physical sample.
+    aggregate_parent: sample
+    domains: [sample-metadata]
+    target_table: tbl_sample_colours
+    public_id: sample_colour_id
+    identity_columns: [physical_sample_id, colour_id]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      colour_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [physical_sample_id, colour_id]
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: colour
+        required: true
+
+  sample_type:
+    role: classifier
+    required: true
+    description: Controlled vocabulary for sample classification.
+    domains: [core]
+    target_table: tbl_sample_types
+    public_id: sample_type_id
+    identity_columns: [type_name]
+    columns:
+      type_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [type_name]
+
+  # PHASE 1 ADDITIONS - Spatial/Coordinate Domain
+
+  dimension:
+    role: classifier
+    required: false
+    description: Measurement dimension type (X, Y, Z, depth, altitude, thickness, etc.)
+    domains: [spatial, physical-properties]
+    target_table: tbl_dimensions
+    public_id: dimension_id
+    identity_columns: [dimension_abbrev]
+    columns:
+      dimension_abbrev:
+        required: true
+        type: string
+        nullable: false
+      dimension_name:
+        required: true
+        type: string
+        nullable: false
+      method_group_id:
+        type: integer
+        nullable: true
+      unit_id:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [dimension_abbrev]
+    foreign_keys:
+      - entity: method_group
+        required: false
+
+  coordinate_method_dimension:
+    role: classifier
+    required: false
+    description: Coordinate measurement method with dimensional constraints
+    domains: [spatial]
+    target_table: tbl_coordinate_method_dimensions
+    public_id: coordinate_method_dimension_id
+    identity_columns: [method_id, dimension_id]
+    columns:
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      limit_upper:
+        type: decimal
+        nullable: true
+      limit_lower:
+        type: decimal
+        nullable: true
+    unique_sets:
+      - [method_id, dimension_id]
+    foreign_keys:
+      - entity: method
+        required: true
+      - entity: dimension
+        required: true
+
+  coordinate_system:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for coordinate reference systems used by SEAD spatial data.
+    domains: [spatial]
+    target_table: tbl_coordinate_systems
+    public_id: coordinate_system_id
+    identity_columns: [coordinate_system]
+    columns:
+      coordinate_system:
+        required: true
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [coordinate_system]
+
+  sample_coordinate:
+    role: fact
+    required: false
+    description: Spatial coordinate measurement for a physical sample
+    aggregate_parent: sample
+    domains: [spatial, sample-metadata]
+    target_table: tbl_sample_coordinates
+    public_id: sample_coordinate_id
+    identity_columns: [physical_sample_id, coordinate_method_dimension_id]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      coordinate_method_dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      measurement:
+        required: true
+        type: decimal
+        nullable: false
+      accuracy:
+        type: decimal
+        nullable: true
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: coordinate_method_dimension
+        required: true
+
+  # PHASE 1 ADDITIONS - Sample Metadata Domain
+
+  alt_ref_type:
+    role: classifier
+    required: false
+    description: Type of alternative reference (lab number, field ID, museum number)
+    domains: [sample-metadata]
+    target_table: tbl_alt_ref_types
+    public_id: alt_ref_type_id
+    identity_columns: [alt_ref_type]
+    columns:
+      alt_ref_type:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [alt_ref_type]
+
+  colour:
+    role: classifier
+    required: false
+    description: Controlled colour vocabulary used by sample-colour observations.
+    domains: [sample-metadata]
+    target_table: tbl_colours
+    public_id: colour_id
+    identity_columns: [method_id, colour_name]
+    columns:
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+      colour_name:
+        required: true
+        type: string
+        nullable: false
+      rgb:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [method_id, colour_name]
+    foreign_keys:
+      - entity: method
+        required: true
+
+  value_qualifier:
+    role: classifier
+    required: false
+    description: Base qualifier vocabulary for qualified values such as greater-than or less-than.
+    domains: [sample-metadata, analysis]
+    target_table: tbl_value_qualifiers
+    public_id: qualifier_id
+    identity_columns: [symbol]
+    columns:
+      symbol:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [symbol]
+
+  value_qualifier_symbol:
+    role: classifier
+    required: false
+    description: Alternate symbol mapped to a base value qualifier.
+    domains: [sample-metadata, analysis]
+    target_table: tbl_value_qualifier_symbols
+    public_id: qualifier_symbol_id
+    identity_columns: [symbol]
+    columns:
+      symbol:
+        required: true
+        type: string
+        nullable: false
+      cardinal_qualifier_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [symbol]
+    foreign_keys:
+      - entity: value_qualifier
+        required: true
+
+  value_type:
+    role: classifier
+    required: false
+    description: Value-type definition describing the base storage shape and optional unit for analytical values.
+    domains: [analysis]
+    target_table: tbl_value_types
+    public_id: value_type_id
+    identity_columns: [name]
+    columns:
+      unit_id:
+        type: integer
+        nullable: true
+      data_type_id:
+        type: integer
+        nullable: true
+      name:
+        required: true
+        type: string
+        nullable: false
+      base_type:
+        required: true
+        type: string
+        nullable: false
+      precision:
+        type: integer
+        nullable: true
+      description:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [name]
+    foreign_keys:
+      - entity: unit
+        required: false
+      - entity: data_type
+        required: false
+
+  value_type_item:
+    role: classifier
+    required: false
+    description: Category value attached to a categorical value type.
+    domains: [analysis]
+    target_table: tbl_value_type_items
+    public_id: value_type_item_id
+    identity_columns: [value_type_id, name]
+    columns:
+      value_type_id:
+        required: true
+        type: integer
+        nullable: false
+      name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [value_type_id, name]
+    foreign_keys:
+      - entity: value_type
+        required: true
+
+  value_class:
+    role: classifier
+    required: false
+    description: Analytical value class describing a data column or measurement family.
+    domains: [analysis]
+    target_table: tbl_value_classes
+    public_id: value_class_id
+    identity_columns: [value_type_id, method_id, name]
+    columns:
+      value_type_id:
+        required: true
+        type: integer
+        nullable: false
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+      parent_id:
+        type: integer
+        nullable: true
+      name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [value_type_id, method_id, name]
+    foreign_keys:
+      - entity: value_type
+        required: true
+      - entity: method
+        required: true
+      - entity: value_class
+        required: false
+
+  sample_alt_ref:
+    role: fact
+    required: false
+    description: Alternative reference identifier for a sample
+    aggregate_parent: sample
+    domains: [sample-metadata]
+    target_table: tbl_sample_alt_refs
+    public_id: sample_alt_ref_id
+    identity_columns: [physical_sample_id, alt_ref_type_id, alt_ref]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      alt_ref_type_id:
+        required: true
+        type: integer
+        nullable: false
+      alt_ref:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [physical_sample_id, alt_ref_type_id, alt_ref]
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: alt_ref_type
+        required: true
+
+  sample_dimension:
+    role: fact
+    required: false
+    description: Physical dimension measurement of a sample
+    aggregate_parent: sample
+    domains: [sample-metadata, physical-properties]
+    target_table: tbl_sample_dimensions
+    public_id: sample_dimension_id
+    identity_columns: [physical_sample_id, dimension_id, method_id]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_value:
+        required: true
+        type: decimal
+        nullable: false
+      qualifier_id:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: dimension
+        required: true
+      - entity: method
+        required: true
+      - entity: value_qualifier
+        required: false
+
+  sample_location_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for within-sample location descriptions.
+    domains: [sample-metadata, spatial]
+    target_table: tbl_sample_location_types
+    public_id: sample_location_type_id
+    identity_columns: [location_type]
+    columns:
+      location_type:
+        required: true
+        type: string
+        nullable: false
+      location_type_description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [location_type]
+
+  sample_location:
+    role: fact
+    required: false
+    description: Typed within-sample location note attached to a physical sample.
+    aggregate_parent: sample
+    domains: [sample-metadata, spatial]
+    target_table: tbl_sample_locations
+    public_id: sample_location_id
+    identity_columns: [physical_sample_id, sample_location_type_id, location]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      sample_location_type_id:
+        required: true
+        type: integer
+        nullable: false
+      location:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [physical_sample_id, sample_location_type_id, location]
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: sample_location_type
+        required: true
+
+  sample_note:
+    role: fact
+    required: false
+    description: Free-text note attached to a physical sample.
+    aggregate_parent: sample
+    domains: [sample-metadata]
+    target_table: tbl_sample_notes
+    public_id: sample_note_id
+    identity_columns: [physical_sample_id, note_type, note]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      note_type:
+        type: string
+        nullable: true
+      note:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [physical_sample_id, note_type, note]
+    foreign_keys:
+      - entity: sample
+        required: true
+
+  sample_horizon:
+    role: fact
+    required: false
+    description: Horizon assignment attached to a physical sample.
+    aggregate_parent: sample
+    domains: [sample-metadata]
+    target_table: tbl_sample_horizons
+    public_id: sample_horizon_id
+    identity_columns: [physical_sample_id, horizon_id]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      horizon_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [physical_sample_id, horizon_id]
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: horizon
+        required: true
+
+  horizon:
+    role: classifier
+    required: false
+    description: Controlled horizon vocabulary referenced by sample horizon assignments.
+    domains: [sample-metadata]
+    target_table: tbl_horizons
+    public_id: horizon_id
+    identity_columns: [horizon_name, method_id]
+    columns:
+      horizon_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [horizon_name, method_id]
+    foreign_keys:
+      - entity: method
+        required: true
+
+  method:
+    role: classifier
+    required: true
+    description: Analytical or collection method referenced by datasets.
+    reconciliation: lookup-extensible
+    domains: [core]
+    target_table: tbl_methods
+    public_id: method_id
+    identity_columns: [method_name]
+    columns:
+      method_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        required: true
+        type: string
+        nullable: false
+      method_group_id:
+        required: true
+        type: integer
+        nullable: false
+      method_abbrev_or_alt_name:
+        type: string
+        nullable: true
+      biblio_id:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [method_name]
+    foreign_keys:
+      - entity: citation
+        required: false
+      - entity: method_group
+        required: false
+
+  dataset:
+    role: lookup
+    required: true
+    description: Dataset context for imported analytical observations.
+    domains: [core]
+    target_table: tbl_datasets
+    public_id: dataset_id
+    identity_columns: [dataset_name]
+    columns:
+      dataset_name:
+        required: true
+        type: string
+        nullable: false
+      data_type_id:
+        required: true
+        type: integer
+        nullable: false
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+      master_set_id:
+        type: integer
+        nullable: true
+      biblio_id:
+        type: integer
+        nullable: true
+      project_id:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [dataset_name]
+    foreign_keys:
+      - entity: method
+        required: true
+      - entity: master_dataset
+        required: false
+      - entity: citation
+        required: false
+      - entity: project
+        required: false
+
+  master_dataset:
+    role: lookup
+    required: false
+    description: Master dataset grouping referenced by one or more datasets.
+    domains: [core, provenance]
+    target_table: tbl_dataset_masters
+    public_id: master_set_id
+    identity_columns: [master_name]
+    columns:
+      contact_id:
+        type: integer
+        nullable: true
+      biblio_id:
+        type: integer
+        nullable: true
+      master_name:
+        required: true
+        type: string
+        nullable: true
+      master_notes:
+        type: string
+        nullable: true
+      url:
+        type: string
+        nullable: true
+    unique_sets:
+      - [master_name]
+    foreign_keys:
+      - entity: contact
+        required: false
+      - entity: citation
+        required: false
+
+  project:
+    role: lookup
+    required: false
+    description: Project-level metadata referenced by datasets and site collections.
+    domains: [core, provenance]
+    target_table: tbl_projects
+    public_id: project_id
+    identity_columns: [project_name]
+    columns:
+      project_name:
+        required: true
+        type: string
+        nullable: true
+      project_type_id:
+        type: integer
+        nullable: true
+      project_stage_id:
+        type: integer
+        nullable: true
+      project_abbrev_name:
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [project_abbrev_name]
+    foreign_keys:
+      - entity: project_type
+        required: false
+      - entity: project_stage
+        required: false
+
+  project_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for project classification.
+    domains: [core, provenance]
+    target_table: tbl_project_types
+    public_id: project_type_id
+    identity_columns: [project_type_name]
+    columns:
+      project_type_name:
+        required: true
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [project_type_name]
+
+  project_stage:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for project stage or lifecycle state.
+    domains: [core, provenance]
+    target_table: tbl_project_stages
+    public_id: project_stage_id
+    identity_columns: [stage_name]
+    columns:
+      stage_name:
+        required: true
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [stage_name]
+
+  citation:
+    role: lookup
+    required: false
+    description: Bibliographic reference reused by datasets, methods, and other SEAD entities.
+    reconciliation: reconcile-fuzzy
+    domains: [provenance, bibliography]
+    target_table: tbl_biblio
+    public_id: biblio_id
+    identity_columns: [title, year, authors]
+    columns:
+      bugs_reference:
+        type: string
+        nullable: true
+      doi:
+        type: string
+        nullable: true
+      isbn:
+        type: string
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+      title:
+        type: string
+        nullable: true
+      year:
+        type: string
+        nullable: true
+      authors:
+        type: string
+        nullable: true
+      full_reference:
+        type: string
+        nullable: false
+      url:
+        type: string
+        nullable: true
+
+  analysis_entity:
+    role: bridge
+    required: true
+    description: Analytical observation context connecting sample and dataset.
+    identity_tracking: tracked
+    reconciliation: allocate
+    domains: [core]
+    target_table: tbl_analysis_entities
+    public_id: analysis_entity_id
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      dataset_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: dataset
+        required: true
+
+  analysis_value:
+    role: fact
+    required: false
+    description: Core analysis value record attached to an analysis entity.
+    aggregate_parent: analysis_entity
+    domains: [analysis]
+    target_table: tbl_analysis_values
+    public_id: analysis_value_id
+    identity_columns: [analysis_entity_id, value_class_id, analysis_value]
+    columns:
+      analysis_entity_id:
+        required: true
+        type: integer
+        nullable: false
+      value_class_id:
+        required: true
+        type: integer
+        nullable: false
+      analysis_value:
+        type: string
+        nullable: true
+      boolean_value:
+        type: boolean
+        nullable: true
+      is_boolean:
+        type: boolean
+        nullable: true
+      is_uncertain:
+        type: boolean
+        nullable: true
+      is_undefined:
+        type: boolean
+        nullable: true
+      is_not_analyzed:
+        type: boolean
+        nullable: true
+      is_indeterminable:
+        type: boolean
+        nullable: true
+      is_anomaly:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_entity
+        required: true
+      - entity: value_class
+        required: true
+
+  analysis_note:
+    role: fact
+    required: false
+    description: Free-text note attached to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_notes
+    public_id: analysis_note_id
+    identity_columns: [analysis_value_id, value]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      value:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [analysis_value_id, value]
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+
+  analysis_identifier:
+    role: fact
+    required: false
+    description: Identifier string attached to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_identifiers
+    public_id: analysis_identifier_id
+    identity_columns: [analysis_value_id, value]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      value:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [analysis_value_id, value]
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+
+  analysis_boolean_value:
+    role: fact
+    required: false
+    description: Boolean analysis result recorded as a typed child row of an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_boolean_values
+    public_id: analysis_boolean_value_id
+    identity_columns: [analysis_value_id, qualifier, value]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      qualifier:
+        type: string
+        nullable: true
+      value:
+        required: true
+        type: boolean
+        nullable: false
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+
+  analysis_categorical_value:
+    role: fact
+    required: false
+    description: Categorical analysis result linked to a controlled value-type item.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_categorical_values
+    public_id: analysis_categorical_value_id
+    identity_columns: [analysis_value_id, value_type_item_id]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      value_type_item_id:
+        required: true
+        type: integer
+        nullable: false
+      value:
+        type: decimal
+        nullable: true
+      is_variant:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: value_type_item
+        required: true
+
+  analysis_integer_value:
+    role: fact
+    required: false
+    description: Integer-valued analysis result with an optional qualifier symbol.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_integer_values
+    public_id: analysis_integer_value_id
+    identity_columns: [analysis_value_id, qualifier, value]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      qualifier:
+        type: string
+        nullable: true
+      value:
+        required: true
+        type: integer
+        nullable: false
+      is_variant:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: value_qualifier_symbol
+        required: false
+
+  analysis_integer_range:
+    role: fact
+    required: false
+    description: Qualified integer range attached to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_integer_ranges
+    public_id: analysis_integer_range_id
+    identity_columns: [analysis_value_id, low_value, high_value, low_qualifier, high_qualifier]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      low_value:
+        required: true
+        type: integer
+        nullable: false
+      high_value:
+        required: true
+        type: integer
+        nullable: false
+      low_is_uncertain:
+        type: boolean
+        nullable: true
+      high_is_uncertain:
+        type: boolean
+        nullable: true
+      low_qualifier:
+        type: string
+        nullable: true
+      high_qualifier:
+        type: string
+        nullable: true
+      is_variant:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: value_qualifier_symbol
+        required: false
+
+  analysis_numerical_value:
+    role: fact
+    required: false
+    description: Numerical analysis result with an optional qualifier symbol.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_numerical_values
+    public_id: analysis_numerical_value_id
+    identity_columns: [analysis_value_id, qualifier, value]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      qualifier:
+        type: string
+        nullable: true
+      value:
+        required: true
+        type: decimal
+        nullable: false
+      is_variant:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: value_qualifier_symbol
+        required: false
+
+  analysis_numerical_range:
+    role: fact
+    required: false
+    description: Numerical range stored in the SEAD `numrange` column format and attached to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_numerical_ranges
+    public_id: analysis_numerical_range_id
+    identity_columns: [analysis_value_id, value, low_qualifier, high_qualifier]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      value:
+        required: true
+        type: numrange
+        nullable: false
+      low_is_uncertain:
+        type: boolean
+        nullable: true
+      high_is_uncertain:
+        type: boolean
+        nullable: true
+      low_qualifier:
+        type: string
+        nullable: true
+      high_qualifier:
+        type: string
+        nullable: true
+      is_variant:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: value_qualifier_symbol
+        required: false
+
+  analysis_taxon_count:
+    role: fact
+    required: false
+    description: Taxon-specific count attached to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis, taxonomy]
+    target_table: tbl_analysis_taxon_counts
+    public_id: analysis_taxon_count_id
+    identity_columns: [analysis_value_id, taxon_id]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+      value:
+        required: true
+        type: decimal
+        nullable: false
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: taxa_tree_master
+        required: true
+
+  analysis_value_dimension:
+    role: fact
+    required: false
+    description: Dimension measurement attached directly to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis]
+    target_table: tbl_analysis_value_dimensions
+    public_id: analysis_value_dimension_id
+    identity_columns: [analysis_value_id, dimension_id]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      dimension_id:
+        required: true
+        type: integer
+        nullable: false
+      value:
+        required: true
+        type: decimal
+        nullable: false
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: dimension
+        required: true
+
+  analysis_dating_range:
+    role: fact
+    required: false
+    description: Qualified dating range attached to an analysis value.
+    aggregate_parent: analysis_value
+    domains: [analysis, dating]
+    target_table: tbl_analysis_dating_ranges
+    public_id: analysis_dating_range_id
+    identity_columns: [analysis_value_id, low_value, high_value, low_qualifier, high_qualifier]
+    columns:
+      analysis_value_id:
+        required: true
+        type: integer
+        nullable: false
+      low_value:
+        required: true
+        type: integer
+        nullable: false
+      high_value:
+        required: true
+        type: integer
+        nullable: false
+      low_is_uncertain:
+        type: boolean
+        nullable: true
+      high_is_uncertain:
+        type: boolean
+        nullable: true
+      low_qualifier:
+        type: string
+        nullable: true
+      high_qualifier:
+        type: string
+        nullable: true
+      age_type_id:
+        type: integer
+        nullable: true
+      season_id:
+        type: integer
+        nullable: true
+      dating_uncertainty_id:
+        type: integer
+        nullable: true
+      is_variant:
+        type: boolean
+        nullable: true
+    foreign_keys:
+      - entity: analysis_value
+        required: true
+      - entity: value_qualifier_symbol
+        required: false
+      - entity: age_type
+        required: false
+      - entity: dating_uncertainty
+        required: false
+
+  abundance:
+    role: fact
+    required: false
+    description: Biological abundance observation linked to an analysis entity and typically to a taxon.
+    aggregate_parent: analysis_entity
+    domains: [abundance, taxonomy]
+    target_table: tbl_abundances
+    public_id: abundance_id
+    identity_columns: [analysis_entity_id, taxon_id]
+    columns:
+      analysis_entity_id:
+        required: true
+        type: integer
+        nullable: false
+      taxon_id:
+        type: integer
+        nullable: false
+      abundance_element_id:
+        type: integer
+        nullable: true
+      abundance:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: analysis_entity
+        required: true
+      - entity: abundance_element
+        required: false
+      - entity: taxa_tree_master
+        required: true
+
+  abundance_element:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for the element or remain type attached to an abundance observation.
+    reconciliation: lookup-extensible
+    domains: [abundance]
+    target_table: tbl_abundance_elements
+    public_id: abundance_element_id
+    identity_columns: [element_name]
+    columns:
+      element_name:
+        required: true
+        type: string
+        nullable: false
+      record_type_id:
+        type: integer
+        nullable: true
+      element_description:
+        type: string
+        nullable: true
+
+  abundance_element_group:
+    role: classifier
+    required: false
+    description: Common project-side grouping vocabulary for abundance elements used during SEAD abundance preparation.
+    domains: [abundance]
+    public_id: abundance_element_group_id
+    identity_columns: [abundance_element_group_name]
+    columns:
+      abundance_element_group_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+
+  abundance_modification:
+    role: bridge
+    required: false
+    description: Join entity linking an abundance record to one or more modification types.
+    domains: [abundance]
+    target_table: tbl_abundance_modifications
+    public_id: abundance_modification_id
+    identity_columns: [abundance_id, modification_type_id]
+    columns:
+      abundance_id:
+        required: true
+        type: integer
+        nullable: false
+      modification_type_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: abundance
+        required: false
+      - entity: modification_type
+        required: true
+
+  modification_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for abundance and specimen modification states.
+    domains: [abundance]
+    target_table: tbl_modification_types
+    public_id: modification_type_id
+    identity_columns: [modification_type_name]
+    columns:
+      modification_type_name:
+        required: true
+        type: string
+        nullable: true
+      modification_type_description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [modification_type_name]
+
+  abundance_property:
+    role: fact
+    required: false
+    description: Property/value observation attached to an abundance record.
+    aggregate_parent: abundance
+    domains: [abundance]
+    target_table: tbl_abundance_properties
+    public_id: abundance_property_id
+    identity_columns: [abundance_id, property_type_id, property_value]
+    columns:
+      abundance_id:
+        required: true
+        type: integer
+        nullable: false
+      property_type_id:
+        type: integer
+        nullable: false
+      property_value:
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: abundance
+        required: false
+      - entity: property_type
+        required: true
+
+  property_type:
+    role: classifier
+    required: false
+    description: Shared property-type vocabulary used by SEAD property tables.
+    domains: [abundance, spatial]
+    target_table: tbl_property_types
+    public_id: property_type_id
+    identity_columns: [property_type_name]
+    columns:
+      property_type_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        required: true
+        type: string
+        nullable: false
+      value_type_id:
+        type: integer
+        nullable: true
+      value_class_id:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [property_type_name]
+    foreign_keys:
+      - entity: value_type
+        required: false
+      - entity: value_class
+        required: false
+
+  identification_level:
+    role: classifier
+    required: false
+    description: Taxonomic identification confidence level (Family, Genus, Species, cf. X)
+    domains: [taxonomy, abundance]
+    target_table: tbl_identification_levels
+    public_id: identification_level_id
+    identity_columns: [identification_level_abbrev]
+    columns:
+      identification_level_abbrev:
+        required: true
+        type: string
+        nullable: false
+      identification_level_name:
+        required: true
+        type: string
+        nullable: false
+      notes:
+        type: string
+        nullable: true
+    unique_sets:
+      - [identification_level_abbrev]
+
+  abundance_ident_level:
+    role: bridge
+    required: false
+    description: Links abundance records to identification confidence levels
+    domains: [taxonomy, abundance]
+    target_table: tbl_abundance_ident_levels
+    public_id: abundance_ident_level_id
+    identity_columns: [abundance_id, identification_level_id]
+    columns:
+      abundance_id:
+        required: true
+        type: integer
+        nullable: false
+      identification_level_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [abundance_id, identification_level_id]
+    foreign_keys:
+      - entity: abundance
+        required: true
+      - entity: identification_level
+        required: true
+
+  taxa_tree_master:
+    role: classifier
+    required: false
+    description: Canonical SEAD taxonomy entity referenced by abundance and other taxon-linked observations.
+    reconciliation: lookup-extensible
+    domains: [taxonomy]
+    target_table: tbl_taxa_tree_master
+    public_id: taxon_id
+    identity_columns: [genus_id, species]
+    columns:
+      genus_id:
+        required: true
+        type: integer
+        nullable: true
+      species:
+        required: true
+        type: string
+        nullable: true
+      author_id:
+        type: integer
+        nullable: true
+
+  taxa_common_names:
+    role: lookup
+    required: false
+    description: Human-readable taxon names associated with SEAD taxonomy records.
+    aggregate_parent: taxa_tree_master
+    domains: [taxonomy]
+    target_table: tbl_taxa_common_names
+    public_id: taxon_common_name_id
+    identity_columns: [taxon_id, common_name]
+    columns:
+      taxon_id:
+        required: true
+        type: integer
+        nullable: true
+      common_name:
+        required: true
+        type: string
+        nullable: true
+      language_id:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: taxa_tree_master
+        required: true
+
+  taxa_synonyms:
+    role: lookup
+    required: false
+    description: Alternate taxon names recorded for SEAD taxonomy entries.
+    aggregate_parent: taxa_tree_master
+    domains: [taxonomy]
+    target_table: tbl_taxa_synonyms
+    public_id: synonym_id
+    identity_columns: [taxon_id, biblio_id, synonym]
+    columns:
+      biblio_id:
+        required: true
+        type: integer
+        nullable: false
+      family_id:
+        type: integer
+        nullable: true
+      genus_id:
+        type: integer
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+      taxon_id:
+        type: integer
+        nullable: true
+      author_id:
+        type: integer
+        nullable: true
+      synonym:
+        type: string
+        nullable: true
+      reference_type:
+        type: string
+        nullable: true
+      synonym_uuid:
+        required: true
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: citation
+        required: true
+      - entity: taxa_tree_master
+        required: false
+
+  taxa_measured_attributes:
+    role: fact
+    required: false
+    description: Measured attribute values attached to a taxon record.
+    aggregate_parent: taxa_tree_master
+    domains: [taxonomy]
+    target_table: tbl_taxa_measured_attributes
+    public_id: measured_attribute_id
+    identity_columns: [taxon_id, attribute_type, attribute_measure]
+    columns:
+      attribute_measure:
+        type: string
+        nullable: true
+      attribute_type:
+        type: string
+        nullable: true
+      attribute_units:
+        type: string
+        nullable: true
+      data:
+        type: decimal
+        nullable: true
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: taxa_tree_master
+        required: true
+
+  rdb_system:
+    role: lookup
+    required: false
+    description: Definition of a Red Data Book classification system.
+    domains: [taxonomy]
+    target_table: tbl_rdb_systems
+    public_id: rdb_system_id
+    identity_columns: [location_id, rdb_system, rdb_version]
+    columns:
+      biblio_id:
+        required: true
+        type: integer
+        nullable: false
+      location_id:
+        required: true
+        type: integer
+        nullable: false
+      rdb_first_published:
+        type: integer
+        nullable: true
+      rdb_system:
+        type: string
+        nullable: true
+      rdb_system_date:
+        type: integer
+        nullable: true
+      rdb_version:
+        type: string
+        nullable: true
+      rdb_system_uuid:
+        required: true
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: citation
+        required: true
+      - entity: location
+        required: true
+
+  rdb_code:
+    role: classifier
+    required: false
+    description: Code within a Red Data Book classification system.
+    domains: [taxonomy]
+    target_table: tbl_rdb_codes
+    public_id: rdb_code_id
+    identity_columns: [rdb_system_id, rdb_category]
+    columns:
+      rdb_category:
+        type: string
+        nullable: true
+      rdb_definition:
+        type: string
+        nullable: true
+      rdb_system_id:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [rdb_system_id, rdb_category]
+    foreign_keys:
+      - entity: rdb_system
+        required: false
+
+  rdb:
+    role: fact
+    required: false
+    description: Red Data Book status record for a taxon at a location.
+    aggregate_parent: taxa_tree_master
+    domains: [taxonomy]
+    target_table: tbl_rdb
+    public_id: rdb_id
+    identity_columns: [taxon_id, location_id, rdb_code_id]
+    columns:
+      location_id:
+        required: true
+        type: integer
+        nullable: false
+      rdb_code_id:
+        type: integer
+        nullable: true
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: location
+        required: true
+      - entity: rdb_code
+        required: false
+      - entity: taxa_tree_master
+        required: true
+
+  ecocode_system:
+    role: lookup
+    required: false
+    description: Definition of an ecocode classification system.
+    domains: [taxonomy]
+    target_table: tbl_ecocode_systems
+    public_id: ecocode_system_id
+    identity_columns: [name]
+    columns:
+      biblio_id:
+        type: integer
+        nullable: true
+      name:
+        required: true
+        type: string
+        nullable: false
+      notes:
+        type: string
+        nullable: true
+      definition:
+        type: string
+        nullable: true
+      ecocode_system_uuid:
+        type: string
+        nullable: true
+    unique_sets:
+      - [name]
+    foreign_keys:
+      - entity: citation
+        required: false
+
+  ecocode_group:
+    role: classifier
+    required: false
+    description: Controlled grouping within an ecocode classification system.
+    domains: [taxonomy]
+    target_table: tbl_ecocode_groups
+    public_id: ecocode_group_id
+    identity_columns: [ecocode_system_id, name]
+    columns:
+      ecocode_system_id:
+        required: true
+        type: integer
+        nullable: false
+      definition:
+        type: string
+        nullable: true
+      name:
+        required: true
+        type: string
+        nullable: false
+      abbreviation:
+        type: string
+        nullable: true
+    unique_sets:
+      - [ecocode_system_id, name]
+    foreign_keys:
+      - entity: ecocode_system
+        required: true
+
+  ecocode_definition:
+    role: classifier
+    required: false
+    description: Named ecocode definition grouped under an ecocode group.
+    domains: [taxonomy]
+    target_table: tbl_ecocode_definitions
+    public_id: ecocode_definition_id
+    identity_columns: [ecocode_group_id, name]
+    columns:
+      abbreviation:
+        type: string
+        nullable: true
+      definition:
+        type: string
+        nullable: true
+      ecocode_group_id:
+        required: true
+        type: integer
+        nullable: false
+      name:
+        required: true
+        type: string
+        nullable: false
+      notes:
+        type: string
+        nullable: true
+      sort_order:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [ecocode_group_id, name]
+    foreign_keys:
+      - entity: ecocode_group
+        required: true
+
+  ecocode:
+    role: fact
+    required: false
+    description: Ecocode assignment for a taxon.
+    aggregate_parent: taxa_tree_master
+    domains: [taxonomy]
+    target_table: tbl_ecocodes
+    public_id: ecocode_id
+    identity_columns: [taxon_id, ecocode_definition_id]
+    columns:
+      ecocode_definition_id:
+        required: true
+        type: integer
+        nullable: false
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+    unique_sets:
+      - [taxon_id, ecocode_definition_id]
+    foreign_keys:
+      - entity: ecocode_definition
+        required: true
+      - entity: taxa_tree_master
+        required: true
+
+  taxonomic_order_system:
+    role: lookup
+    required: false
+    description: Controlled system used to define taxonomic ordering codes.
+    domains: [taxonomy]
+    target_table: tbl_taxonomic_order_systems
+    public_id: taxonomic_order_system_id
+    identity_columns: [system_name]
+    columns:
+      system_name:
+        required: true
+        type: string
+        nullable: true
+      system_description:
+        type: string
+        nullable: true
+      taxonomic_order_system_uuid:
+        type: string
+        nullable: true
+    unique_sets:
+      - [system_name]
+
+  taxonomic_order:
+    role: fact
+    required: false
+    description: Taxonomic ordering code assigned to a taxon under a named order system.
+    aggregate_parent: taxa_tree_master
+    domains: [taxonomy]
+    target_table: tbl_taxonomic_order
+    public_id: taxonomic_order_id
+    identity_columns: [taxon_id, taxonomic_order_system_id, taxonomic_code]
+    columns:
+      taxon_id:
+        required: true
+        type: integer
+        nullable: false
+      taxonomic_order_system_id:
+        required: true
+        type: integer
+        nullable: false
+      taxonomic_code:
+        type: decimal
+        nullable: true
+    unique_sets:
+      - [taxon_id, taxonomic_order_system_id, taxonomic_code]
+    foreign_keys:
+      - entity: taxa_tree_master
+        required: true
+      - entity: taxonomic_order_system
+        required: true
+
+  # PHASE 1 ADDITIONS - Dating Domain
+
+  age_type:
+    role: classifier
+    required: false
+    description: Chronological notation system (AD, BC, BP, cal BP)
+    domains: [dating]
+    target_table: tbl_age_types
+    public_id: age_type_id
+    identity_columns: [age_type]
+    columns:
+      age_type:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [age_type]
+
+  relative_age_type:
+    role: classifier
+    required: false
+    description: Type of relative age system (archaeological period, geological epoch)
+    domains: [dating]
+    target_table: tbl_relative_age_types
+    public_id: relative_age_type_id
+    identity_columns: [age_type]
+    columns:
+      age_type:
+        required: true
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [age_type]
+
+  chronology:
+    role: lookup
+    required: false
+    description: Chronological framework or dating system
+    domains: [dating]
+    target_table: tbl_chronologies
+    public_id: chronology_id
+    identity_columns: [chronology_name]
+    columns:
+      chronology_name:
+        required: true
+        type: string
+        nullable: false
+      location_id:
+        type: integer
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+    unique_sets:
+      - [chronology_name]
+    foreign_keys:
+      - entity: location
+        required: false
+
+  dating_uncertainty:
+    role: classifier
+    required: false
+    description: Uncertainty qualifiers for dating results
+    domains: [dating]
+    target_table: tbl_dating_uncertainty
+    public_id: dating_uncertainty_id
+    identity_columns: [uncertainty]
+    columns:
+      uncertainty:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [uncertainty]
+
+  dating_material:
+    role: lookup
+    required: false
+    description: Material dated in geochronological analysis
+    domains: [dating]
+    target_table: tbl_dating_material
+    public_id: dating_material_id
+    identity_columns: [dating_material_name]
+    columns:
+      dating_material_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+      abundance_element_id:
+        type: integer
+        nullable: true
+    unique_sets:
+      - [dating_material_name]
+    foreign_keys:
+      - entity: abundance_element
+        required: false
+
+  relative_ages:
+    role: lookup
+    required: false
+    description: Controlled relative-age vocabulary used by archaeological dating records.
+    domains: [dating]
+    target_table: tbl_relative_ages
+    public_id: relative_age_id
+    identity_columns: [relative_age_name]
+    columns:
+      relative_age_name:
+        required: true
+        type: string
+        nullable: true
+      relative_age_type_id:
+        type: integer
+        nullable: true
+      description:
+        type: string
+        nullable: true
+      c14_age_older:
+        type: decimal
+        nullable: true
+      c14_age_younger:
+        type: decimal
+        nullable: true
+      cal_age_older:
+        type: decimal
+        nullable: true
+      cal_age_younger:
+        type: decimal
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+      location_id:
+        type: integer
+        nullable: true
+      abbreviation:
+        type: string
+        nullable: true
+    foreign_keys:
+      - entity: relative_age_type
+        required: false
+      - entity: location
+        required: false
+
+  relative_dating:
+    role: fact
+    required: false
+    description: Relative or archaeological dating observation linked to an analysis entity and optionally to a relative age vocabulary entry; Arbodat archaeological dating facts map here.
+    aggregate_parent: analysis_entity
+    domains: [dating]
+    target_table: tbl_relative_dates
+    public_id: relative_date_id
+    identity_columns: [analysis_entity_id, relative_age_id]
+    columns:
+      analysis_entity_id:
+        required: true
+        type: integer
+        nullable: false
+      relative_age_id:
+        type: integer
+        nullable: true
+      method_id:
+        type: integer
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+      dating_uncertainty_id:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: analysis_entity
+        required: true
+      - entity: relative_ages
+        required: false
+      - entity: method
+        required: false
+      - entity: dating_uncertainty
+        required: false
+
+  geochronology:
+    role: fact
+    required: false
+    description: Absolute or chronology dating observation linked to an analysis entity and optionally to a dating laboratory; Arbodat chronology/lab dating facts map here even when the project-local entity is named `dating`.
+    aggregate_parent: analysis_entity
+    domains: [dating]
+    target_table: tbl_geochronology
+    public_id: geochron_id
+    identity_columns: [analysis_entity_id, lab_number]
+    columns:
+      analysis_entity_id:
+        required: true
+        type: integer
+        nullable: false
+      dating_lab_id:
+        type: integer
+        nullable: true
+      lab_number:
+        type: string
+        nullable: true
+      age:
+        type: decimal
+        nullable: true
+      error_older:
+        type: decimal
+        nullable: true
+      error_younger:
+        type: decimal
+        nullable: true
+      delta_13c:
+        type: decimal
+        nullable: true
+      notes:
+        type: string
+        nullable: true
+      dating_uncertainty_id:
+        type: integer
+        nullable: true
+    foreign_keys:
+      - entity: analysis_entity
+        required: true
+      - entity: dating_lab
+        required: false
+      - entity: dating_uncertainty
+        required: false
+
+  dating_lab:
+    role: lookup
+    required: false
+    description: Laboratory metadata for dated samples and geochronology results.
+    domains: [dating]
+    target_table: tbl_dating_labs
+    public_id: dating_lab_id
+    identity_columns: [international_lab_id]
+    columns:
+      international_lab_id:
+        required: true
+        type: string
+        nullable: false
+      lab_name:
+        type: string
+        nullable: true
+      contact_id:
+        type: integer
+        nullable: true
+      country_id:
+        type: integer
+        nullable: true
+
+  method_group:
+    role: classifier
+    required: false
+    description: Controlled grouping for analytical and collection methods.
+    domains: [core, contacts]
+    target_table: tbl_method_groups
+    public_id: method_group_id
+    identity_columns: [group_name]
+    columns:
+      group_name:
+        required: true
+        type: string
+        nullable: false
+      description:
+        required: true
+        type: string
+        nullable: false
+    unique_sets:
+      - [group_name]
+
+  contact:
+    role: lookup
+    required: false
+    description: Person or organization contact metadata used by datasets, projects, and dating laboratories.
+    reconciliation: lookup-only
+    domains: [contacts]
+    target_table: tbl_contacts
+    public_id: contact_id
+    columns:
+      first_name:
+        type: string
+        nullable: true
+      last_name:
+        type: string
+        nullable: true
+      email:
+        type: string
+        nullable: true
+      phone_number:
+        type: string
+        nullable: true
+      address_1:
+        type: string
+        nullable: true
+      address_2:
+        type: string
+        nullable: true
+      location_id:
+        type: integer
+        nullable: true
+      url:
+        type: string
+        nullable: true
+
+  contact_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary describing a contact's role in a dataset or project context.
+    domains: [contacts]
+    target_table: tbl_contact_types
+    public_id: contact_type_id
+    identity_columns: [contact_type_name]
+    columns:
+      contact_type_name:
+        type: string
+        nullable: false
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [contact_type_name]
+
+  dataset_contact:
+    role: bridge
+    required: false
+    description: Many-to-many bridge connecting datasets, contacts, and contact roles.
+    domains: [contacts, provenance]
+    target_table: tbl_dataset_contacts
+    public_id: dataset_contact_id
+    identity_columns: [dataset_id, contact_id, contact_type_id]
+    columns:
+      dataset_id:
+        required: true
+        type: integer
+        nullable: false
+      contact_id:
+        required: true
+        type: integer
+        nullable: false
+      contact_type_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: dataset
+        required: true
+      - entity: contact
+        required: true
+      - entity: contact_type
+        required: true
+
+  feature_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for archaeological feature classification.
+    domains: [core, excavation]
+    target_table: tbl_feature_types
+    public_id: feature_type_id
+    identity_columns: [feature_type_name]
+    columns:
+      feature_type_name:
+        required: true
+        type: string
+        nullable: true
+      feature_type_description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [feature_type_name]
+
+  feature:
+    role: lookup
+    required: false
+    description: Archaeological feature or excavation context referenced by samples and site workflows.
+    domains: [core, excavation]
+    target_table: tbl_features
+    public_id: feature_id
+    identity_columns: [feature_type_id, feature_name]
+    columns:
+      feature_type_id:
+        required: true
+        type: integer
+        nullable: false
+      feature_name:
+        type: string
+        nullable: true
+      feature_description:
+        type: string
+        nullable: true
+    foreign_keys:
+      - entity: feature_type
+        required: true
+
+  site_property:
+    role: fact
+    required: false
+    description: Property/value observation attached to a site.
+    aggregate_parent: site
+    domains: [spatial]
+    target_table: tbl_site_properties
+    public_id: site_property_id
+    identity_columns: [site_id, property_type_id, property_value]
+    columns:
+      site_id:
+        required: true
+        type: integer
+        nullable: false
+      property_type_id:
+        required: true
+        type: integer
+        nullable: false
+      property_value:
+        required: true
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: site
+        required: true
+      - entity: property_type
+        required: true
+
+  feature_property:
+    role: fact
+    required: false
+    description: Property/value observation attached to an archaeological feature.
+    aggregate_parent: feature
+    domains: [excavation]
+    target_table: tbl_feature_properties
+    public_id: feature_property_id
+    identity_columns: [feature_id, property_type_id, property_value]
+    columns:
+      feature_id:
+        required: true
+        type: integer
+        nullable: false
+      property_type_id:
+        required: true
+        type: integer
+        nullable: false
+      property_value:
+        required: true
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: feature
+        required: true
+      - entity: property_type
+        required: true
+
+  site_natgridref:
+    role: fact
+    required: false
+    description: National-grid reference attached to a site using a specific method or coordinate system.
+    aggregate_parent: site
+    domains: [spatial]
+    target_table: tbl_site_natgridrefs
+    public_id: site_natgridref_id
+    identity_columns: [site_id, method_id, natgridref]
+    columns:
+      site_id:
+        required: true
+        type: integer
+        nullable: false
+      method_id:
+        required: true
+        type: integer
+        nullable: false
+      natgridref:
+        required: true
+        type: string
+        nullable: false
+    foreign_keys:
+      - entity: site
+        required: true
+      - entity: method
+        required: true
+
+  sample_feature:
+    role: bridge
+    required: false
+    description: Many-to-many bridge connecting physical samples to archaeological features.
+    domains: [core, excavation]
+    target_table: tbl_physical_sample_features
+    public_id: physical_sample_feature_id
+    identity_columns: [physical_sample_id, feature_id]
+    columns:
+      physical_sample_id:
+        required: true
+        type: integer
+        nullable: false
+      feature_id:
+        required: true
+        type: integer
+        nullable: false
+    foreign_keys:
+      - entity: sample
+        required: true
+      - entity: feature
+        required: true
+
+  data_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary for the type of data produced by an analytical method.
+    domains: [core]
+    target_table: tbl_data_types
+    public_id: data_type_id
+    identity_columns: [data_type_name]
+    columns:
+      data_type_name:
+        required: true
+        type: string
+        nullable: false
+      definition:
+        type: string
+        nullable: true
+    unique_sets:
+      - [data_type_name]
+
+  unit:
+    role: classifier
+    required: false
+    description: Unit of measurement referenced by dimensions, methods, and analytical values.
+    domains: [core]
+    target_table: tbl_units
+    public_id: unit_id
+    identity_columns: [unit_name]
+    columns:
+      unit_name:
+        required: true
+        type: string
+        nullable: false
+      unit_abbrev:
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+    unique_sets:
+      - [unit_name]
+      - [unit_abbrev]
+
+naming:
+  public_id_suffix: _id
+
+constraints:
+  - type: no_orphan_facts
+  - type: no_circular_dependencies
