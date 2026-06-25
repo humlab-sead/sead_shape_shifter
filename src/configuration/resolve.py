@@ -272,12 +272,12 @@ class BaseResolver:
         pass
 
 
-class SubConfigResolver(BaseResolver):
-    """Recursively resolve sub-configurations referenced in the main configuration.
+class IncludeResolver(BaseResolver):
+    """Load nested YAML configuration files referenced by @include.
 
-    A sub-config is referenced using the @include: prefix, e.g. "@include:path/to/subconfig.yaml"
-    Relative paths are resolved relative to the main configuration folder.
-    Sub-configs can themselves reference further sub-configs.
+    The directive argument is treated as a config file path. Relative paths are
+    resolved against the current configuration file, and included files are
+    resolved recursively so their own directives are processed too.
 
     Example:
         database: "@include:config/database.yml"
