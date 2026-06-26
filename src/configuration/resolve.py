@@ -207,9 +207,8 @@ def find_unresolved_directives(data: Any, path: str | None = None) -> list[str]:
             next_path = f"{path}[{idx}]" if path else f"[{idx}]"
             hits.extend(find_unresolved_directives(v, next_path))
     elif isinstance(data, str):
-        if any(tag in data for tag in tags):
+        if any(tag in data for tag in tags) or "${" in data:
             hits.append(f"{path or '<root>'}: {data}")
-
     return hits
 
 
