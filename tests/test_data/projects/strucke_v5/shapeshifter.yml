@@ -4,7 +4,7 @@ metadata:
   description: 'Project started 2026-05-04 for mapping of the newly delivered version of the Strucke data: c14_master_v05.xlsx'
   version: 1.0.0
   default_entity:
-  target_model: '@include: sead_standard_model.yml'
+  target_model: '@load: sead_standard_model.yml'
 entities:
   datasets:
     type: fixed
