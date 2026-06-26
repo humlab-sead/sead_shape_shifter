@@ -13,7 +13,7 @@ Check these boundaries and rules:
 
 - `src/` must not import `backend.*`
 - API and core conversions must go through `ProjectMapper`
-- Directives such as `@include:`, `@value:`, and `${ENV_VAR}` must be resolved only in `ProjectMapper.to_core()`
+- Directives such as `@include:`, `@load:`, `@value:`, and `${ENV_VAR}` must be resolved only in `ProjectMapper.to_core()`
 - Registry-based extension points must use the correct decorator
 - `ShapeShifter.normalize()` and loaders must remain async
 - Imports must stay absolute

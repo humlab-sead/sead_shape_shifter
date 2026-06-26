@@ -29,7 +29,7 @@ Do not use it for Python validator implementation, backend API changes, frontend
 7. For circular dependencies, prefer `defer_dependency: true` on the FK that breaks the cycle.
 8. For FK columns produced by `extra_columns`, keep the produced value and the FK together.
 
-Preserve directives such as `@include:`, `@value:`, and `${ENV_VAR}` in YAML. Resolution belongs at the API-to-core mapper boundary.
+Preserve directives such as `@include:`, `@load:`,  `@value:`, and `${ENV_VAR}` in YAML. Resolution belongs at the API-to-core mapper boundary.
 
 ## Validation Commands
 
