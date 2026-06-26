@@ -10,6 +10,7 @@
 **Quick Tips:**
 
 - Use `/help` in Copilot Chat to see all available commands
+- Use '/code-review' in Copilot chat to do av review of (un-commited?) changes
 - Reference files with `#file:path/to/file.ts`
 - Use `@workspace` to search across the entire workspace
 - Structure prompts: [Context] + [Specific Task] + [Constraints/Format]
@@ -99,13 +100,6 @@ The system most then resolve the reference so the end result is a flattened list
 Given the context, we should be able to constrict valid dot.path, e.g. when picking column given a source entity. We also need to add a validation that checks for "dangling" references in the project.
 
 What are your thought? How would an implementation plan look like? 
-
-### TODO: Consider adding a trash bin when deleteing projects (move instead of delete)
-### TODO: Change "optimistic locking" concurrency strategy
-
-When saving project YAML, the system compares client's project's version number to server side version number. If the version
-number differs, the the client's updates are discarded. We should instead use a merging strategy as the default 
-concurrency resolver. If client's project only differ
 
 ### TODO: File location resolution fails if project's folder name differs from metadata.name
 
@@ -202,11 +196,8 @@ We can't duplicate "where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_002
 
 /ide    # connects to vscode (auto when workspaces matches)
 
-
 https://spark-note.com/en/blog/serena-vs-graphify-search-comparison/
-
 https://medium.com/manomano-tech/project-aegis-benchmarking-ai-agents-and-why-serena-is-our-new-must-have-311673db35dd
-
 
 # rtk installed
 
@@ -253,3 +244,5 @@ We need to create a handoff for the next phase of this migration of BugsCEP impo
 1. Create add a new proposal named BUGCEP_IMPORT_MIGRATION.md to new folder sead_shape_shifter/docs/proposals/BUGCEP_IMPORT_MIGRATION/ and using instructions in sead_shape_shifter/.github/instructions/proposal-writing-guide.instructions.md. The goal of the proposal is to create a new BugsCEP importer using the reconciliation policy YAML files.   
 2. Craete a machine-readable document that an AI coding agent can use to more easy get up-to-speed in this migration work.
 d   
+
+# TODO: test Github Copilot /code-review chat command
