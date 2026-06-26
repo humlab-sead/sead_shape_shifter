@@ -2462,7 +2462,7 @@ remote_keys: "@value: entities.feature.keys"
 
 ### `@include:` Include Syntax
 
-The `@include:` syntax allows splitting configuration across multiple files.
+The `@include:` syntax allows splitting configuration across multiple files. This directive resolves recursively directives and references in the loaded data.  
 
 **Format:**
 ```yaml
@@ -2481,12 +2481,13 @@ options:
 
 ### `@load:` Load Syntax
 
-The `@load:` syntax loads external files (typically for translations).
+The `@load:` syntax loads external data files (e.g. for translations) without resolving directives or references.
 
 **Format:**
 ```yaml
 @load: path.to.property
 ```
+`path.to.property` must refer to a valid path in the raw input data. References to data introduced later during resolution, such as included or loaded data, are not currently supported.
 
 **Example:**
 ```yaml
@@ -3612,6 +3613,7 @@ This comprehensive validation system helps catch configuration errors early, pro
 
 - **Use `@value:` references** to avoid duplication
 - **Split large configs** using `@include:`
+- **Move data to seperate files** using `@load:`
 - **Keep data sources** in separate files
 - **Version control** your project files
 

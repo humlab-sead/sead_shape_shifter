@@ -34,7 +34,7 @@
 - **Absolute imports only**: `from src...` and `from backend.app...` — never relative across packages.
 - **Layer boundary**: API models stay in `backend/app/models/`; domain logic stays in `src/`. Never import `backend.*` from `src/`.
 - **Mapper**: all API↔Core conversions go through `ProjectMapper`. Never bypass it.
-- **Directives** (`@include:`, `@value:`, `${ENV_VAR}`) are resolved **only** in `ProjectMapper.to_core()` — API and YAML layers preserve them raw.
+- **Directives** (`@include:`, `@value:`, `@load:`, `${ENV_VAR}`) are resolved **only** in `ProjectMapper.to_core()` — API and YAML layers preserve them raw.
 - **Registries**: use `@Validators.register(...)`, `@DataLoaders.register(...)`, `@Ingesters.register(...)` — never bypass the registry.
 - **Circular imports**: use constructor injection or `TYPE_CHECKING` — never restructure imports as a workaround.
 - **Async**: `ShapeShifter.normalize()` and all data loaders are async — never call with `asyncio.run()` inside a loader or service.

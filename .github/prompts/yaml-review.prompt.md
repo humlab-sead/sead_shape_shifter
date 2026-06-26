@@ -41,6 +41,7 @@ Review `{PROJECT_FILE}` for correctness and best practices:
 ### 6. Environment Variables & Directives
 - [ ] `${ENV_VAR}` syntax correct
 - [ ] `@include: path/to/file.yml` paths valid
+- [ ] `@load: path/to/file.yml` paths valid
 - [ ] `@value: data_sources.source_name.field` paths valid
 - [ ] No unresolved references
 

@@ -142,7 +142,6 @@ class Config(ConfigLike):
         if not skip_resolve:
             self.data: dict[str, Any] = resolve_references(
                 self.data,
-                context=self.context,
                 env_filename=self.env_filename,
                 env_prefix=self.env_prefix,
                 runtime_root=self.runtime_root,
