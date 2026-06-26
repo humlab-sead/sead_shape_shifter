@@ -78,7 +78,7 @@ metadata:                             # Metadata definitions (required)
 - **description**: Detailed description of what this configuration does (supports multi-line strings using `|`)
 - **version**: Semantic version string (e.g., "1.0.0", "2.1.3") for tracking configuration changes
 - **default_entity**: Reference to an existing entity used as the default source for `data` type entities
-- **target_model**: Reference to a target model specification. Accepted as a `@include:` directive pointing to a YAML file (`"@include: resources/target_models/sead_superset_model.yml"`) or as an inline mapping. When present, the **Check Conformance** button in the editor validates the project entities against the spec. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the workflow and [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) for the generated field-level schema reference.
+- **target_model**: Reference to a target model specification. Accepted as a `@load:` directive pointing to a YAML file (`"@load: resources/target_models/sead_superset_model.yml"`) or as an inline mapping. When present, the **Check Conformance** button in the editor validates the project entities against the spec. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the workflow and [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) for the generated field-level schema reference.
 
 ### Examples
 
@@ -98,7 +98,7 @@ metadata:
     Transforms data to match SEAD Clearinghouse schema.
   version: "2.1.0"
   default_entity: sample_data
-  target_model: "@include: resources/target_models/sead_superset_model.yml"
+  target_model: "@load: resources/target_models/sead_superset_model.yml"
 ```
 
 ## Entity Section
@@ -2462,7 +2462,7 @@ remote_keys: "@value: entities.feature.keys"
 
 ### `@include:` Include Syntax
 
-The `@include:` syntax allows splitting configuration across multiple files.
+The `@include:` syntax allows splitting configuration across multiple files. This directive resolves recursively directives and references in the loaded data.  
 
 **Format:**
 ```yaml
@@ -2481,12 +2481,13 @@ options:
 
 ### `@load:` Load Syntax
 
-The `@load:` syntax loads external files (typically for translations).
+The `@load:` syntax loads external data files (e.g. for translations) without resolving directives or references.
 
 **Format:**
 ```yaml
 @load: path.to.property
 ```
+`path.to.property` must refer to a valid path in the raw input data. References to data introduced later during resolution, such as included or loaded data, are not currently supported.
 
 **Example:**
 ```yaml
@@ -3612,6 +3613,7 @@ This comprehensive validation system helps catch configuration errors early, pro
 
 - **Use `@value:` references** to avoid duplication
 - **Split large configs** using `@include:`
+- **Move data to seperate files** using `@load:`
 - **Keep data sources** in separate files
 - **Version control** your project files
 

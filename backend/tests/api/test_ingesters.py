@@ -16,7 +16,7 @@ from backend.app.services.ingester_runtime import (
     SeadChangeRequestSimsAdapter,
     SeadChangeRequestTargetCollisionChecker,
 )
-from backend.app.services.ingester_service import IngesterService, get_ingester_service
+from backend.app.services.ingester_service import get_ingester_service
 
 # pylint: disable=redefined-outer-name
 

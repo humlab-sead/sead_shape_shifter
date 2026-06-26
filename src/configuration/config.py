@@ -1,24 +1,19 @@
 from __future__ import annotations
 
-import contextlib
 import copy
-import io
-from abc import abstractmethod
 from datetime import datetime
 from inspect import isclass
-from os.path import join, normpath
 from pathlib import Path
 from typing import Any, Protocol, Type, runtime_checkable
 
-import pandas as pd
 import yaml
 from dotenv import load_dotenv
 from loguru import logger
 
-from src.utility import dget, dotexists, dotset, env2dict, replace_env_vars
+from src.utility import dget, dotexists, dotset, env2dict
 
-from .resolve import find_unresolved_directives, resolve_references
-from .utility import is_config_path, is_path_to_existing_file, replace_references
+from .resolve import resolve_directives
+from .utility import is_yaml_file, load_yaml_file
 
 # pylint: disable=too-many-arguments, unused-argument
 
@@ -32,36 +27,7 @@ class ConfigLike(Protocol):
     def exists(self, *keys: str) -> bool: ...
     def update(self, data: tuple[str, Any] | dict[str, Any] | list[tuple[str, Any]]) -> None: ...
     def save(self, updates: dict[str, Any] | None = None) -> None: ...
-
-
-def yaml_str_join(loader: yaml.Loader, node: yaml.SequenceNode) -> str:
-    return "".join([str(i) for i in loader.construct_sequence(node)])
-
-
-def yaml_path_join(loader: yaml.Loader, node: yaml.SequenceNode) -> str:
-    return join(*[str(i) for i in loader.construct_sequence(node)])
-
-
-def nj(*paths: str) -> str | None:
-    return normpath(join(*paths)) if None not in paths else None
-
-
-class SafeLoaderIgnoreUnknown(yaml.SafeLoader):  # pylint: disable=too-many-ancestors
-    def let_unknown_through(self, node):  # pylint: disable=unused-argument
-        """Ignore unknown tags silently"""
-        if isinstance(node, yaml.ScalarNode):
-            return self.construct_scalar(node)
-        if isinstance(node, yaml.SequenceNode):
-            return self.construct_sequence(node)
-        if isinstance(node, yaml.MappingNode):
-            return self.construct_mapping(node)
-        return None
-
-
-SafeLoaderIgnoreUnknown.add_constructor(None, SafeLoaderIgnoreUnknown.let_unknown_through)  # type: ignore
-SafeLoaderIgnoreUnknown.add_constructor("!join", yaml_str_join)
-SafeLoaderIgnoreUnknown.add_constructor("!jj", yaml_path_join)
-SafeLoaderIgnoreUnknown.add_constructor("!path_join", yaml_path_join)
+    def resolve(self, skip_resolve: bool = False) -> ConfigLike: ...
 
 
 class Config(ConfigLike):
@@ -75,12 +41,16 @@ class Config(ConfigLike):
         filename: str | None = None,
         env_filename: str | None = None,
         env_prefix: str | None = None,
+        runtime_root: str | Path | None = None,
+        application_root_env_var: str = "APPLICATION_ROOT",
     ) -> None:
         self.data: dict[str, Any] = data or {}
         self.context: str = context
         self.filename: str | None = filename
         self.env_filename: str | None = env_filename
         self.env_prefix: str | None = env_prefix
+        self.runtime_root: str | Path | None = runtime_root
+        self.application_root_env_var: str = application_root_env_var
 
     def get(self, *keys: str, default: Any | type[Any] = None, mandatory: bool = False) -> Any:
         if self.data is None:
@@ -110,7 +80,7 @@ class Config(ConfigLike):
     def save(self, updates: dict[str, Any] | None = None) -> None:
         """Save configuration to the YAML file.
 
-        This method preserves the raw YAML structure including @include:, @value:, and
+        This method preserves the raw YAML structure including @include:, @load:, @value:, and
         environment variables like ${VAR}. It only updates specific sections provided
         in the updates parameter.
 
@@ -161,18 +131,24 @@ class Config(ConfigLike):
             filename=self.filename,
             env_filename=self.env_filename,
             env_prefix=self.env_prefix,
+            runtime_root=self.runtime_root,
+            application_root_env_var=self.application_root_env_var,
         )
 
-    def resolve(self) -> Config:
+    def resolve(self, skip_resolve: bool = False) -> Config:
         """Resolve configuration directives in self.data."""
-        self.data: dict[str, Any] = resolve_references(
-            self.data,
-            context=self.context,
-            env_filename=self.env_filename,
-            env_prefix=self.env_prefix,
-            source_path=self.filename,
-            inplace=True,
-        )
+        if not skip_resolve:
+            self.data: dict[str, Any] = resolve_directives(
+                self.data,
+                env_filename=self.env_filename,
+                env_prefix=self.env_prefix,
+                runtime_root=self.runtime_root,
+                application_root_env_var=self.application_root_env_var,
+                source_path=self.filename,
+                inplace=True,
+            )
+            if self.env_prefix:
+                self.data = env2dict(self.env_prefix, self.data)
         return self
 
 
@@ -182,6 +158,8 @@ def load_config(
     context: str | None = None,
     env_filename: str | None = None,
     env_prefix: str | None = None,
+    runtime_root: str | Path | None = None,
+    application_root_env_var: str = "APPLICATION_ROOT",
     skip_resolve: bool = False,
 ) -> Config | ConfigLike:
 
@@ -190,34 +168,11 @@ def load_config(
     if isinstance(source, (Config, ConfigLike)):
         return source
 
-    filename: str | None = source if isinstance(source, str) and is_config_path(source, raise_if_missing=False) else None
+    filename: str | None = source if isinstance(source, str) and is_yaml_file(source, raise_if_missing=False) else None
 
-    if source is None:
-        source = {}
-
-    data: dict[str, Any] = (
-        (
-            yaml.load(
-                Path(source).read_text(encoding="utf-8"),
-                Loader=SafeLoaderIgnoreUnknown,
-            )
-            if is_config_path(source, raise_if_missing=True)
-            else yaml.load(io.StringIO(source), Loader=SafeLoaderIgnoreUnknown)
-        )
-        if isinstance(source, str)
-        else source
-    ) or {}
+    data: dict[str, Any] | str | None = load_yaml_file(source or {})
 
     assert isinstance(data, dict)
-
-    if not skip_resolve:
-        data = resolve_references(
-            data,
-            context=context,
-            env_filename=env_filename,
-            env_prefix=env_prefix,
-            source_path=filename,
-        )
 
     return Config(
         data=data,
@@ -225,4 +180,6 @@ def load_config(
         filename=filename,
         env_filename=env_filename,
         env_prefix=env_prefix,
-    )
+        runtime_root=runtime_root,
+        application_root_env_var=application_root_env_var,
+    ).resolve(skip_resolve=skip_resolve)

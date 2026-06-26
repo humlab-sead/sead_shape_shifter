@@ -6,10 +6,10 @@ Runbook for operators and maintainers of deployed Shape Shifter environments.
 
 ## Environments
 
-| Environment | Purpose | Branch | Port |
-|-------------|---------|--------|------|
-| Production | Live service on `sead-tools` | `main` | 8012 |
-| Development | Local developer instances | `dev` or feature | 8012 |
+| Environment | Purpose                      | Branch           | Port |
+|-------------|------------------------------|------------------|------|
+| Production  | Live service on `sead-tools` | `main`           | 8012 |
+| Development | Local developer instances    | `dev` or feature | 8012 |
 
 Production runs on the `sead-tools` host under the `sead` user. The canonical deploy directory is `/home/sead/sead-tools/sead_shape_shifter`.
 
@@ -31,17 +31,41 @@ Production runs on the `sead-tools` host under the `sead` user. The canonical de
 
 All backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from `docker/data/backend.env` via `env_file` in `docker-compose.yml`.
 
-Key runtime variables:
+Runtime variables:
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `SHAPE_SHIFTER_ENVIRONMENT` | `production` | Enables production-mode logging and CORS |
-| `SHAPE_SHIFTER_PROJECTS_DIR` | `/app/projects` | Mounted project YAML root |
-| `SHAPE_SHIFTER_LOG_LEVEL` | `INFO` | Loguru log level |
-| `SHAPE_SHIFTER_ALLOWED_ORIGINS` | _(dev defaults)_ | CORS whitelist |
-| `SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL` | `http://localhost:8000` | SEAD reconciliation service |
-| `SHAPE_SHIFTER_SIMS_SERVICE_URL` | `http://localhost:8000` | SEAD authority/SIMS service |
-| `SEAD_HOST` / `SEAD_DBNAME` / `SEAD_USER` / `SEAD_PORT` | _(none)_ | SEAD database connection (resolved in project YAML via `${VAR}`) |
+| Variable                                         | Default                 | Purpose                                                              |
+|--------------------------------------------------|-------------------------|----------------------------------------------------------------------|
+| `SHAPE_SHIFTER_APPLICATION_ROOT`                 | __cwd__                 | Root Folder for resolving relative paths                             |
+| `SHAPE_SHIFTER_ENVIRONMENT`                      | `development`           | Environment mode: `development`, `production`, or `test`             |
+| `SHAPE_SHIFTER_API_V1_PREFIX`                    | `/api/v1`               | URL prefix for API v1 endpoints                                      |
+| `SHAPE_SHIFTER_PROJECTS_DIR`                     | `projects`              | Folder for project YAML files (resolved under `APPLICATION_ROOT`)    |
+| `SHAPE_SHIFTER_GLOBAL_DATA_DIR`                  | `shared/shared-data`    | Folder for shared reference data (resolved under `APPLICATION_ROOT`) |
+| `SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR`           | `shared/data-sources`   | Folder for shared data sources (resolved under `APPLICATION_ROOT`)   |
+| `SHAPE_SHIFTER_LOG_DIR`                          | `logs`                  | Folder for log files (resolved under `APPLICATION_ROOT`)             |
+| `SHAPE_SHIFTER_LOG_LEVEL`                        | `INFO`                  | Loguru log level                                                     |
+| `SHAPE_SHIFTER_LOG_FILE_ENABLED`                 | `true`                  | Enable file-based logging                                            |
+| `SHAPE_SHIFTER_LOG_CONSOLE_ENABLED`              | `true`                  | Enable console logging                                               |
+| `SHAPE_SHIFTER_LOG_ROTATION`                     | `10 MB`                 | Log file rotation size                                               |
+| `SHAPE_SHIFTER_LOG_RETENTION`                    | `30 days`               | Log file retention period                                            |
+| `SHAPE_SHIFTER_LOG_COMPRESSION`                  | `zip`                   | Log file compression format                                          |
+| `SHAPE_SHIFTER_LOG_FILTER_FRAMEWORK_FRAMES`      | `true`                  | Filter framework frames from tracebacks                              |
+| `SHAPE_SHIFTER_ALLOWED_ORIGINS`                  | _(dev defaults)_        | CORS origin whitelist (JSON array)                                   |
+| `SHAPE_SHIFTER_ALLOWED_ORIGIN_REGEX`             | __(regex)__             | CORS regex pattern for wildcard origins (eg. (devtunnels + github    |
+| `SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL`       | `http://localhost:8000` | OpenRefine reconciliation service URL                                |
+| `SHAPE_SHIFTER_SIMS_SERVICE_URL`                 | `http://localhost:8000` | SEAD authority/SIMS service URL                                      |
+| `SHAPE_SHIFTER_ENABLE_FK_SUGGESTIONS`            | `false`                 | Enable foreign key candidate suggestions                             |
+| `SHAPE_SHIFTER_INGESTER_PATHS`                   | `["ingesters"]`         | Directories to scan for ingester modules                             |
+| `SHAPE_SHIFTER_ENABLED_INGESTERS`                | `null` (all)            | Comma-separated list of ingester keys to enable (filters ingesters)  |
+| `SHAPE_SHIFTER_MATERIALIZATION_INLINE_THRESHOLD` | `20`                    | Row count below which materialized data is stored inline in YAML     |
+
+Database connection variables (used in project YAML via `${VAR}` syntax, not prefixed with `SHAPE_SHIFTER_`):
+
+| Variable      | Default  | Purpose            |
+|---------------|----------|--------------------|
+| `SEAD_HOST`   | _(none)_ | SEAD database host |
+| `SEAD_DBNAME` | _(none)_ | SEAD database name |
+| `SEAD_USER`   | _(none)_ | SEAD database user |
+| `SEAD_PORT`   | _(none)_ | SEAD database port |
 
 ### Database passwords
 
@@ -61,12 +85,12 @@ db.example.com:5432:sead_production:sead_user:password
 
 These are set at image build time and require a rebuild to change:
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `VITE_API_BASE_URL` | `""` (same-origin) | API base URL for the frontend |
-| `VITE_ENV` | `production` | Frontend environment flag |
-| `VITE_ENABLE_ANALYTICS` | `false` | Analytics toggle |
-| `VITE_ENABLE_DEBUG` | `false` | Debug overlay toggle |
+| Variable                | Default            | Purpose                       |
+|-------------------------|--------------------|-------------------------------|
+| `VITE_API_BASE_URL`     | `""` (same-origin) | API base URL for the frontend |
+| `VITE_ENV`              | `production`       | Frontend environment flag     |
+| `VITE_ENABLE_ANALYTICS` | `false`            | Analytics toggle              |
+| `VITE_ENABLE_DEBUG`     | `false`            | Debug overlay toggle          |
 
 ---
 
@@ -74,14 +98,14 @@ These are set at image build time and require a rebuild to change:
 
 Persistent data is mounted from `docker/data/` on the host into `/app/` in the container:
 
-| Host path | Container path | Contents |
-|-----------|---------------|---------|
-| `docker/data/projects/` | `/app/projects/` | Project YAML files |
-| `docker/data/shared/` | `/app/shared/` | Shared data sources and reference data |
-| `docker/data/logs/` | `/app/logs/` | Application logs (JSON, rotated at 10 MB, kept 30 days) |
-| `docker/data/output/` | `/app/output/` | Execution output files |
-| `docker/data/backups/` | `/app/backups/` | Automatic pre-save YAML backups |
-| `docker/data/.pgpass/` | `/app/.pgpass:ro` | PostgreSQL password file |
+| Host path               | Container path    | Contents                                                |
+|-------------------------|-------------------|---------------------------------------------------------|
+| `docker/data/projects/` | `/app/projects/`  | Project YAML files                                      |
+| `docker/data/shared/`   | `/app/shared/`    | Shared data sources and reference data                  |
+| `docker/data/logs/`     | `/app/logs/`      | Application logs (JSON, rotated at 10 MB, kept 30 days) |
+| `docker/data/output/`   | `/app/output/`    | Execution output files                                  |
+| `docker/data/backups/`  | `/app/backups/`   | Automatic pre-save YAML backups                         |
+| `docker/data/.pgpass/`  | `/app/.pgpass:ro` | PostgreSQL password file                                |
 
 Create these directories before first startup:
 

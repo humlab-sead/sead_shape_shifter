@@ -259,7 +259,7 @@ class ProjectMapper:
     def to_core(api_config: Project) -> ShapeShiftProject:
         """Convert API Project to core ShapeShiftProject.
 
-        Conditionally resolves @include: and @value: directives only if needed.
+        Conditionally resolves @include:, @load: and @value: directives only if needed.
         Resolves file paths based on location field at the API → Core boundary using strategy pattern.
         """
         cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_config=api_config)

@@ -445,7 +445,7 @@ mappings:                            # Remote entity mappings
 ### 5.3 Infrastructure
 
 - **Browser Support**: Chrome/Edge, Firefox, Safari (latest 2 versions)
-- **Configuration**: YAML with `@include` directive support
+- **Configuration**: YAML with `@value`, `@include` and `@load` directive support
 - **Storage**: Local file system with automatic backup rotation
 - **Deployment**: Docker support, standalone application
 
@@ -520,6 +520,8 @@ Shape Shifter provides a comprehensive web-based interface for managing declarat
 **Dispatch**: Sending transformed data to target systems (e.g., databases, APIs)
 
 **@include**: YAML directive for modular configuration composition
+
+**@load**: YAML directive for inserting data from file
 
 **Data Source**: Connection configuration for databases or file sources
 

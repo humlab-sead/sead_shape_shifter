@@ -1177,8 +1177,13 @@ function getProjectLocalTargetModelPath(targetModel: string | null | undefined):
   if (!targetModel) {
     return null
   }
-
-  const rawPath = targetModel.startsWith('@include:') ? targetModel.slice('@include:'.length).trim() : targetModel.trim()
+  // strip any leading "@load:" or "@include:" prefix and whitespace, then check if the remaining string is a simple filename (no slashes)
+  let rawPath = targetModel;
+  for (const prefix of ['@load:', '@include:']) {
+    if (rawPath.startsWith(prefix)) {
+      return rawPath.slice(prefix.length).trim().split(/[\\/]/).length === 1 ? rawPath.slice(prefix.length).trim() : null
+    }
+  }
   if (!rawPath) {
     return null
   }

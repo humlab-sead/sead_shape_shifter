@@ -71,7 +71,7 @@ class MetadataUpdateRequest(BaseModel):
     version: str | None = Field(default=None, description="Project version (x.y.z format)")
     default_entity: str | None = Field(default=None, description="Default entity name")
     target_model: str | None = Field(
-        default=None, description="Target model spec path (e.g. @include: target.yml); empty string clears the field"
+        default=None, description="Target model spec path (e.g. @load: target.yml); empty string clears the field"
     )
 
 
@@ -589,23 +589,28 @@ def _resolve_target_model_path(project: Project, project_name: str) -> Path:
         BadRequestError: if target_model is an inline dict (no backing file).
         BaseAPIException (403): if the resolved path escapes the project directory.
     """
-    target_model = project.metadata.target_model if project.metadata else None
+    target_model: str | dict[str, Any] | None = project.metadata.target_model if project.metadata else None
     if target_model is None:
         raise NotFoundError(f"Project '{project_name}' has no target_model configured")
     if isinstance(target_model, dict):
         raise BadRequestError("Target model is defined inline and has no backing file to edit")
 
-    raw = str(target_model).strip()
-    rel_path = raw[len("@include:") :].strip() if raw.startswith("@include:") else raw
+    raw: str = str(target_model).strip()
+    rel_path: str = raw
+    if raw.startswith("@"):
+        for prefix in ("@load", "@include"):
+            if raw.startswith(prefix):
+                rel_path: str = raw[len(prefix) :].lstrip(":").strip()
+                break
 
     # Security: must stay inside the project directory
-    path_name = ProjectNameMapper.to_path(project_name)
-    project_dir = (settings.PROJECTS_DIR / path_name).resolve()
+    path_name: str = ProjectNameMapper.to_path(project_name)
+    project_dir: Path = (settings.PROJECTS_DIR / path_name).resolve()
 
     # Resolve the file path: simple filenames are project-local, paths with directories use APPLICATION_ROOT
     if "/" not in rel_path and "\\" not in rel_path:
         # Simple filename - resolve relative to project directory
-        target_path = (project_dir / rel_path).resolve()
+        target_path: Path = (project_dir / rel_path).resolve()
     else:
         # Path with directories - resolve relative to APPLICATION_ROOT (for shared specs)
         target_path = (settings.APPLICATION_ROOT / rel_path).resolve()

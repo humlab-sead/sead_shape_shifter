@@ -80,7 +80,8 @@ Evaluated before unnest. Deferred automatically if a referenced column is not ye
 ## Directives
 
 ```yaml
-field: "@include: ${DIR}/file.yml"   # inline YAML inclusion
+field: "@include: ${DIR}/file.yml"   # inline YAML inclusion with recursive resolution of directives and references
+field: "@load: ${DIR}/file.yml"      # load YAML file
 field: "@value: path.to.key"         # value lookup
 field: "${ENV_VAR}"                  # environment variable substitution
 ```

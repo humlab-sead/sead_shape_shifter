@@ -33,7 +33,7 @@ Core pipeline order matters: Extract → Filter → Link → Unnest → Translat
 - `keys` are business keys for matching and deduplication.
 - `public_id` names target and export identity columns and should end with `_id`.
 - Do not use external IDs as internal foreign-key values.
-- Directives such as `@include:` and `@value:` belong in YAML and API-layer models; core models should receive resolved values.
+- Directives such as `@include:`, `@load:`, and `@value:` belong in YAML and API-layer models; core models should receive resolved values.
 - Use the registry pattern for validators, loaders, filters, and ingesters.
 - Loader schemas belong on loader classes as `schema: ClassVar[DriverSchema]`.
 - Use absolute imports only: `from src...` and `from backend.app...`.

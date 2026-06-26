@@ -2,10 +2,12 @@
 
 ## Status
 
-- In progress
+- **Complete** (2026-06-20)
 - Scope: extend the BugsCEP reconciliation policies so importer behavior can be represented as implementation-ready policy data instead of helper names, comments, or Java-only control flow
 - Goal: make the policy files detailed enough to act as a build contract for either a Python runtime that implements the policies directly or a Shape Shifter flow plus a BugCEP-specific automatic reconciliation step
-- Implemented so far: direct related-output references, structured resolvers, grouped postprocess merge stages, shared `emit` blocks, initial `known_divergences` support, fixture-backed scenario validation, shared result-object comparisons against current Java behavior, execution-facing `supporting_action` and `persisted_action` labels in the first upgraded reference families, explicit write-action labels in simple reconciliation-only families plus additional ordered-reconciliation write paths in `period`, `country`, and `taxanotes`, broader explicit no-write action labels for reconciliation error and guard paths across ordered-reconciliation families including `country`, `mcrnames`, `mcrsummary`, `ecocodegroup`, `ecocode_bugs`, `ecocode_koch`, and `taxanotes`, richer no-write trace-hit coverage, explicit supporting-action labels for `sample` supporting dimensions, `datasetcontacts` supporting contacts, and the full `fossil` dataset-analysis-entity family, explicit `row_changed` expectations for all executable `datasetcontacts`, `sitelocations`, and `siteotherproxies` list-output scenarios, explicit `row_changed` expectations across all executable `species` related-output graph scenarios including mixed create-and-reuse, family-reuse-only, missing-author, and no-data-shortcut branches, explicit `row_changed` expectations across all executable `species`, `datasetcontacts`, and `fossil` supporting-output scenarios for family, genus, author, species, contact, dataset, and analysis-entity creation or reuse, explicit `row_changed` expectations across the 10 executable `datesperiod` and `sample` supporting-output scenarios that already exposed create, update, keep, and delete supporting actions, and explicit `row_changed` expectations across the 10 executable `datesradio` and `datescalendar` supporting-output scenarios for relative ages, datasets, and analysis entities
+- Implemented: schema extensions for related-output references, structured resolvers, postprocess merge stages, shared `emit` blocks, and `known_divergences`; fixture-backed scenario validation with execution-facing `supporting_action` and `persisted_action` labels across reconciliation, supporting-output, related-output graph, and list-output families; explicit `row_changed` expectations for executable scenarios in geochronology, taxa graph, site/contact, and fossil families
+- Result: all 35 policies are Tier A (execution-ready), 355 validation tests pass
+- Detailed batch history: see [WRAP_UP_BUGCEP_POLICY.md](WRAP_UP_BUGCEP_POLICY.md#fidelity-work-changelog)
 
 ## Summary
 
@@ -67,6 +69,143 @@ The current schema already supports:
 That has been enough to capture several useful patterns, including generated child rows, cached supporting rows, cascade-created supporting rows, and insert-only child graphs.
 
 The current limit is no longer simple feature breadth. The limit is that the most conditional behavior is still compressed into helpers, comments, fixture conventions, and Java-only side effects rather than being expressed clearly enough to guide implementation.
+
+## Schema Feature Status
+
+The five schema features proposed in this section have different levels of implementation. The status below reflects what is defined in `_schema.yml` and actively used in policy files.
+
+| # | Feature | Schema (`_schema.yml`) | Policy Usage | Status |
+|---|---------|------------------------|--------------|--------|
+| 1 | Direct related-output references (`phase: before_parent\|after_parent` and `related.<name>.<field>` expressions) | Defined in schema as `phase` on `related_outputs` entries and `related.<output_name>.<field>` in the expression language | Used in 2 policies: `fossil` (dataset and analysis_entity use `phase: before_parent`; analysis_entity references `related.dataset.dataset_id`; parent references `related.analysis_entity.analysis_entity_id`); `species` (all 4 related outputs use `phase: before_parent`; taxa_genus.family_id uses `related.taxa_family.family_id`; taxa_species uses `related.taxa_genus.genus_id` and `related.taxa_author.author_id`; parent uses `related.taxa_species.taxon_id`) | **Implemented** — schema and policy usage are active; fossil converted 2026-06-20, species converted 2026-06-20 |
+| 2 | Structured resolvers (ordered lookup steps with trace, database, and emit actions) | Defined in schema with full `resolvers` section including `steps`, `action`, `emit`, and `return` | Used in 34 policies: `lab`, `datesperiod`, `datesradio`, `species`, `datasetcontacts`, `sample`, `sitelocations`, `siteotherproxies`, `country`, `rdbcode`, `mcrnames`, `mcrsummary`, `attributes`, `sitereferences`, `period`, `taxanotes`, `rdbsystem`, `rdb`, `samplegroup`, `taxaseasonality`, `ecocodegroup`, `ecocode_bugs`, `ecocode_koch`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, `birmbeetledata`, `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, `speciesdistribution` | **Implemented** — schema and policy usage are active; resolvers replace opaque helper calls for dating-lab, method, uncertainty, taxonomic-order-system, dataset resolution, sample group, site resolution, fixed type lookups, species trace lookups, bibliography lookups, relative age type lookups, RDB system lookups, sampling context/method, season/activity type, history-conflict guards, ecocode group/taxon lookups, and species association type lookups |
+| 3 | Postprocess merge stages (grouped row merge after provisional mapping) | Defined in schema with `postprocess` section including `group_by`, `partition_by`, `pair_rules`, `retain_row`, `actions`, and `on_conflict` | Used in 1 policy: `datescalendar` | **Implemented** — schema and policy usage are active; covers calendar-date range merging with singleton retention |
+| 4 | Shared `emit` blocks (structured issues, warnings, flags) | Defined in schema as a reusable `emit` shape with `severity`, `code`, `message`, and `set_flagged` | Used in 4 policies: `lab` (3 emit blocks), `datesperiod` (1 emit block), `datesradio` (1 emit block), `datasetcontacts` (2 emit blocks) | **Implemented** — schema and policy usage are active; used in resolver steps for fallback and error outcomes |
+| 5 | Known divergences (policy-versus-Java differences) | Defined in schema with `known_divergences` section including `area`, `status`, `description`, and `policy_choice` | Used in 33 policies: `datescalendar`, `datesperiod`, `datesradio`, `sitelocations`, `siteotherproxies`, `species`, `datasetcontacts`, `sample`, `bibliography`, `country`, `rdbcode`, `mcrnames`, `mcrsummary`, `attributes`, `sitereferences`, `period`, `taxanotes`, `lab`, `site`, `rdbsystem`, `rdb`, `samplegroup`, `taxaseasonality`, `ecocodegroup`, `ecocode_bugs`, `ecocode_koch`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, `birmbeetledata`, `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, `speciesdistribution` | **Implemented** — schema and policy usage are active; records intentional parity decisions, suspected Java bugs, and adapter-only boundaries |
+
+### Feature 1: Direct Related-Output References (Implemented)
+
+This feature is now exercised in the `fossil` policy (converted 2026-06-20) and the `species` policy (converted 2026-06-20).
+
+The fossil policy's `dataset` and `analysis_entity` related outputs use `phase: before_parent`, and the parent abundance row references `analysis_entity_id` via `related.analysis_entity.analysis_entity_id` instead of the `resolve_fossil_analysis_entity_id` helper call. The `analysis_entity` mapping for `dataset_id` uses `related.dataset.dataset_id` instead of a `generated` field.
+
+The species policy's all 4 related outputs (`taxa_family`, `taxa_genus`, `taxa_author`, `taxa_species`) use `phase: before_parent`. The dependency chain is: `taxa_genus.family_id` uses `related.taxa_family.family_id`; `taxa_species.genus_id` uses `related.taxa_genus.genus_id` and `taxa_species.author_id` uses `related.taxa_author.author_id`; parent `taxon_id` uses `related.taxa_species.taxon_id`. The `resolve_species_taxon_id` helper is marked as superseded. Additionally, `resolve_bugs_taxonomic_order_system_id` is converted to a structured resolver, and `known_divergences` are added for the no-data species shortcut and cascade dependency null propagation.
+
+The fixture files include new `related_output_graph` scenarios:
+- fossil: `analysis_entity_references_dataset_via_related_expression` and `analysis_entity_dataset_id_null_when_dataset_missing`
+- species: `genus_family_id_resolved_via_related_expression` and `species_genus_and_author_resolved_via_related_expressions_when_family_exists`
+
+**Recommended next step:** The schema design and policy conversion work is complete. The remaining forward-looking slices are:
+1. Convert one geochronology policy (`datesperiod` or `datesradio`) to use `phase: before_parent` for a supporting output, further proving the expression language resolves `related.<name>.<field>` correctly
+2. Start downstream implementation planning — choose between Python runtime or Shape Shifter + BugCEP reconciliation path
+
+## Execution-Readiness Assessment
+
+This section classifies every policy against the execution-readiness checklist. Use it to see the gap between current state and the implementation-ready target.
+
+### Criteria Summary
+
+A policy is **execution-ready** when it satisfies all of the following:
+
+| # | Criterion | What it means |
+|---|-----------|---------------|
+| C1 | Schema and fixture validation passes | Policy passes `make validate-policy-format` and has a matching `.fixture.yml` |
+| C2 | Concrete result shapes in fixtures | Fixtures describe row actions, emitted issues, retained rows, supporting outputs, and postprocess outputs — not only which branch fired |
+| C3 | Explicit action labels | Fixtures use `supporting_action`, `persisted_action`, or `row_changed` where a runtime must distinguish create, reuse, keep, update, append, or stop-before-update |
+| C4 | Policy-managed vs adapter-only separated | Helper calls are either replaced by structured resolvers or explicitly documented as adapter-only |
+| C5 | Known divergences recorded | Surprising or ambiguous Java behavior is captured in `known_divergences` rather than hidden in comments |
+| C6 | Readable without Java helpers | The policy and fixtures explain the full execution path from source row to persisted result without referring back to Java code |
+
+### Tier A — Execution-Ready (All Criteria Met)
+
+Policies that satisfy C1–C6 and can serve as a build contract for downstream implementation work.
+
+| Policy | C1 | C2 | C3 | C4 | C5 | C6 | Notes |
+|--------|----|----|----|----|----|----|-------|
+| `datescalendar` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Postprocess merge, supporting outputs, related-output graph, known divergences, rich fixtures with `postprocess_merge`, `supporting_output_result`, `related_output_graph`, explicit `row_changed` |
+| `datesperiod` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolvers, supporting outputs, related-output graph, known divergences, fixtures with `resolver_path`, `supporting_output_result`, `related_output_graph`, explicit `row_changed` |
+| `datesradio` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolvers, supporting outputs, related-output graph, known divergences, fixtures with `resolver_path`, `supporting_output_result`, `related_output_graph`, explicit `row_changed` |
+| `fossil` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Related-output graph with dataset and analysis-entity, known divergences, fixtures with `supporting_output_result`, `related_output_graph`, explicit `supporting_action` and `row_changed` for clone-driven create, reuse, and graph-issue paths |
+| `species` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Related-output graph with 4 related outputs using `phase: before_parent` and `related.<name>.<field>` expressions, structured resolver for taxonomic-order-system, known divergences for no-data shortcut and cascade dependency, fixtures with `supporting_output_result`, `related_output_graph`, explicit `supporting_action` and `row_changed` |
+| `datasetcontacts` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for dataset resolution with trace lookup and emit blocks, one-to-many output with list reconciliation, known divergences for dataset reuse and contact parsing, fixtures with `resolver_path`, `supporting_output_result`, `output_result`, explicit `persisted_action` and `row_changed` |
+| `sample` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Three structured resolvers (sample group from countsheet trace, default alternative reference type, default sample type), child sample-dimensions output with create/update/keep/delete, known divergences for X/Y error detection and dimension supporting output, fixtures with `resolver_path`, `supporting_output_result`, explicit `supporting_action` and `row_changed` |
+| `sitelocations` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for site resolution from trace with deleted-site guard, one-to-many output with list reconciliation (keep, append, delete, replace), known divergences for replacement row actions and location expansion adapter, fixtures with `resolver_path`, `output_result`, explicit `persisted_action` and `row_changed` |
+| `siteotherproxies` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for site resolution from trace with deleted-site guard, one-to-many output with list reconciliation from proxy flags, known divergences for replacement row actions and proxy flag expansion adapter, fixtures with `resolver_path`, `output_result`, explicit `persisted_action` and `row_changed` |
+| `bibliography` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for bibliography ID (database query), known divergences for title/author/year matching and duplicate detection, reconciliation fixtures with `persisted_action` |
+| `country` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for country ID (trace lookup), known divergences for country code resolution and trace-based matching, reconciliation fixtures with `persisted_action` |
+| `rdbcode` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for RDB code ID (trace lookup), known divergences for code resolution and trace-based matching, reconciliation fixtures with `persisted_action` |
+| `mcrnames` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for MCR name ID (trace lookup), known divergences for name resolution and trace-based matching, reconciliation fixtures with `persisted_action` |
+| `mcrsummary` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for MCR summary ID (trace lookup), known divergences for summary resolution and trace-based matching, reconciliation fixtures with `persisted_action` |
+| `attributes` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for attribute ID (trace lookup), known divergences for attribute resolution and trace-based matching, reconciliation fixtures with `persisted_action` |
+| `sitereferences` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Two structured resolvers (site ID from trace, bibliography ID from database query), known divergences for site and bibliography resolution adapters, reconciliation fixtures with `persisted_action` |
+| `period` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Two structured resolvers (sample group ID from trace, period ID from database query), known divergences for sample group and period resolution adapters, reconciliation fixtures with `persisted_action` |
+| `taxanotes` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Two structured resolvers (taxon ID from trace, note type ID from database query), known divergences for taxon and note type resolution adapters, reconciliation fixtures with `persisted_action` |
+| `lab` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for country ID (trace lookup + database query), known divergences for country resolution adapter and address/telephone fields ignored, reconciliation fixtures with `persisted_action` |
+| `site` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Known divergences for external edit detection and float-to-decimal type conversion adapter, reconciliation fixtures with `persisted_action`, complex prerequisite location resolution |
+| `rdbsystem` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Two structured resolvers (biblio ID from database query, location ID from country lookup), known divergences for bibliography and location resolution adapters, reconciliation fixtures with `persisted_action` |
+| `rdb` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Three structured resolvers (RDB code, country location, taxon from trace lookups), known divergences for history conflict detection and trace-based resolution, reconciliation fixtures with `persisted_action` |
+| `samplegroup` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Three structured resolvers (site ID from trace, sampling context from database, sampling method from fixed lookup), known divergences for method resolution and site resolution adapters, reconciliation fixtures with `persisted_action` |
+| `taxaseasonality` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Four structured resolvers (adult active type, season, taxon, location), known divergences for history conflict detection and trace-based resolution, reconciliation fixtures with `persisted_action` |
+| `ecocodegroup` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for ecocode system ID (database query), known divergences for system resolution adapter and trace-based matching, reconciliation fixtures with `persisted_action` |
+| `ecocode_bugs` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Two structured resolvers (bugs ecocode definition ID from trace, taxon ID from database query), known divergences for definition resolution and return_as_is behavior, reconciliation fixtures with `persisted_action` |
+| `ecocode_koch` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Two structured resolvers (koch ecocode definition ID from trace, taxon ID from database query), known divergences for definition resolution and return_as_is behavior, reconciliation fixtures with `persisted_action` |
+| `ecocodedefinition_bugs` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for bugs ecocode group ID (database query), known divergences for group resolution adapter and trace-based matching, reconciliation fixtures with `persisted_action` |
+| `ecocodedefinition_koch` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Multi-step resolver for koch ecocode group ID (trace lookup + database query), known divergences for group resolution adapter and trace-based matching, reconciliation fixtures with `persisted_action` |
+| `birmbeetledata` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Structured resolver for taxon ID (database query), field concatenation documented as adapter-only helper, known divergences for composite-key lookup and lossy field concatenation, reconciliation fixtures with `persisted_action` |
+| `speciesassociation` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Four structured resolvers (taxon, associated taxon, association type, bibliography), known divergences for BigDecimal code conversion and fallback association type, reconciliation fixtures with `persisted_action` |
+| `speciesbiology` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Two structured resolvers (taxon ID from database query, bibliography ID from trace lookup), known divergences for no trace helper and return_as_is behavior, reconciliation fixtures with `persisted_action` |
+| `specieskeys` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Two structured resolvers (taxon ID from database query, bibliography ID from trace lookup), known divergences for TaxonomicOrderConverter and return_as_is behavior, reconciliation fixtures with `persisted_action` |
+| `speciessynonyms` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Four structured resolvers (taxon, synonym taxon, synonym association type, bibliography), known divergences for cascading creation logic and in-memory caches, reconciliation fixtures with `persisted_action` |
+| `speciesdistribution` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Two structured resolvers (taxon ID from database query, bibliography ID from trace lookup), known divergences for no trace helper and return_as_is behavior, reconciliation fixtures with `persisted_action` |
+
+**Total: 35 policies**
+
+These thirty-five form the complete set of BugsCEP reconciliation policies. They include the geochronology golden reference set, the fossil analysis-entity family, the taxa graph family, the site/contact/dataset-contacts policies, the sample policy, the site location/proxy policies, the simple leaf importers (bibliography, country, rdbcode, mcrnames, mcrsummary, attributes), the two-helper importers (sitereferences, period, taxanotes), the mixed-complexity importers (lab, site, rdbsystem), the ecocode family (ecocodegroup, ecocode_bugs, ecocode_koch, ecocodedefinition_bugs, ecocodedefinition_koch), the MCR beetle data policy, and the species-related policies (speciesassociation, speciesbiology, specieskeys, speciessynonyms, speciesdistribution). All thirty-five are now detailed enough to drive implementation without reading Java helper code.
+
+### Tier B — Near-Ready (C1–C3 Met, C4–C6 Partial)
+
+Policies with solid reconciliation and fixture coverage, explicit action labels, and rich related-output or output behavior, but still rely on helper calls for some lookups or lack known-divergence documentation.
+
+| Policy | C1 | C2 | C3 | C4 | C5 | C6 | Gap |
+|--------|----|----|----|----|----|----|-----|
+
+**Total: 0 policies**
+
+All previously Tier B policies have been promoted to Tier A. The `sitelocations` and `siteotherproxies` policies were the last remaining Tier B policies and were converted 2026-06-20.
+
+### Tier D — Parity-Only (C1 Met, C2–C6 Partial or Missing)
+
+Simple leaf policies with basic reconciliation and minimal fixture coverage. No supporting outputs, no resolvers, no explicit action labels, and no known divergences.
+
+| Policy | C1 | C2 | C3 | C4 | C5 | C6 | Gap |
+|--------|----|----|----|----|----|----|-----|
+
+**Total: 0 policies**
+
+All previously Tier D policies have been promoted through Tier C to Tier A. The `ecocodegroup`, `ecocode_bugs`, `ecocode_koch`, `ecocodedefinition_bugs`, `ecocodedefinition_koch`, `birmbeetledata`, `speciesassociation`, `speciesbiology`, `specieskeys`, `speciessynonyms`, and `speciesdistribution` policies were converted on 2026-06-20 by adding explicit `persisted_action` labels (D→C), then structured resolvers and `known_divergences` (C→A).
+
+### Summary
+
+| Tier | Count | Criteria | Ready for implementation? |
+|------|-------|----------|---------------------------|
+| A — Execution-Ready | 35 | C1–C6 all met | **Yes** — can serve as build contract |
+| B — Near-Ready | 0 | C1–C3 met, C4–C6 partial | **N/A** — all promoted to Tier A |
+| C — Reconciliation-Ready | 0 | C1–C3 met, C4–C6 partial | **N/A** — all promoted to Tier A |
+| D — Parity-Only | 0 | C1 met, C2–C6 partial | **N/A** — all promoted through to Tier A |
+| **Total** | **35** | | **35 of 35 (100%) are execution-ready** |
+
+### Promotion Path
+
+To move a policy from one tier to the next:
+
+- **D → C:** add explicit `persisted_action` labels to reconciliation fixtures for write and error paths (completed 2026-06-20 for all 11 remaining Tier D policies)
+- **C → A:** add structured resolvers for helper-based lookups; add `known_divergences` section; confirm policy is readable without Java code (completed 2026-06-20 for all 11 Tier C policies)
+- **B → A:** convert remaining helper calls to structured resolvers; add `known_divergences` where Java behavior is surprising; confirm the policy is readable without Java code
+
+### Gap Inventory
+
+For the detailed gap inventory with priority gaps, closure progress, golden reference families, adapter-only boundaries, and next recommended slices, see the [Gap Inventory section in the task plan](BUGSCEP_POLICY_SCHEMA_MACHINE_READABLE_FIDELITY_TASK_PLAN.md#gap-inventory).
+
+The execution-readiness assessment above shows which policies meet which criteria. The gap inventory in the task plan shows what work closes those gaps and which importer families are the best candidates for each gap.
 
 ## Execution-Readiness Checklist
 

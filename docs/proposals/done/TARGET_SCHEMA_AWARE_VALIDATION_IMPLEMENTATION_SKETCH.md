@@ -59,16 +59,16 @@ The proposal’s target model should be represented as a small shared schema ali
 
 See `src/target_model/models.py` for the current source of truth.
 
-## Loading And Resolution Model
+## Loading Model
 
 Not yet implemented at the backend boundary. The intended behaviour is unchanged from the original sketch:
 
-1. allow `metadata.target_model` to be either an inline object or an `@include:` reference,
-2. resolve the reference using the same infrastructure already used for included project content,
-3. validate the resolved object into `TargetModel`,
+1. allow `metadata.target_model` to be either an inline object or an `@load:` reference,
+~~2. resolve the reference using the same infrastructure already used for included project content,~~
+3. validate the loaded object into `TargetModel`,
 4. pass the parsed target model into the core conformance engine.
 
-This avoids leaking unresolved include directives into the semantic validation layer and aligns with the project's layer-boundary rule: directives live in the YAML or API boundary, resolved values live in the backend or core logic path that consumes them.
+~~This avoids leaking unresolved include directives into the semantic validation layer and aligns with the project's layer-boundary rule: directives live in the YAML or API boundary, resolved values live in the backend or core logic path that consumes them.~~
 
 ## Core Conformance Engine
 
@@ -202,7 +202,7 @@ Key constraints remain: structural validation stays first; target-model validati
 - [x] Add core-facing conformance engine: `TargetModelConformanceValidator.validate(target_model, project)`
 - [x] Add `TargetModelSpecValidator` for spec self-consistency checks
 - [x] Add `metadata.target_model` field to the API project model
-- [x] Implement `@include:` resolution for `target_model` at the backend boundary
+- [x] Implement `@load:` resolution for `target_model` at the backend boundary
 - [x] Ship validation in parallel with existing standalone example tests during transition
 
 ### Phase 2: Target-Facing Column Semantics In Core
@@ -219,7 +219,7 @@ Key constraints remain: structural validation stays first; target-model validati
 ### Phase 3: Migration And Backend Adoption
 
 - [x] Add `metadata.target_model` support to API project/mapper layer
-- [x] Implement target-model loading and `@include:` resolution at backend boundary
+- [x] Implement target-model loading and `@load:` filename resolution at backend boundary
 - [x] Add `TargetModelValidator` backend adapter (`backend/app/validators/`)
 - [x] Wire into `ValidationService.validate_target_model()`
 - [x] Migrate standalone `target_models/` example tests to use the core conformance engine

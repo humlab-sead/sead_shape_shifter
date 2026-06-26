@@ -146,7 +146,7 @@ class TestProjectMapperFilePathIntegration:
                     description="Test project",
                     version="1.0.0",
                     entity_count=0,
-                    target_model="@include: target-model.yml",
+                    target_model="@load: target-model.yml",
                 ),
                 entities={},
                 options={},

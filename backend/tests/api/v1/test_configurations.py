@@ -363,7 +363,7 @@ class TestConfigurationsValidate:
         data = response.json()
         assert data["is_valid"] is False
         assert data["error_count"] > 0
-        assert any("configuration file not found" in e["message"].lower() for e in data.get("errors", []))
+        assert any("YAML file not found" in e["message"] for e in data.get("errors", []))
 
 
 class TestConfigurationsBackups:

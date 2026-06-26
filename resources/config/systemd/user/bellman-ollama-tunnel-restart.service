@@ -1,0 +1,6 @@
+[Unit]
+Description=Restart Bellman Ollama tunnel service (User-Level)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl --user restart bellman-ollama-tunnel.service

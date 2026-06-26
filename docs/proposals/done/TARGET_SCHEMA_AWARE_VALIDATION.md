@@ -42,7 +42,7 @@ Milestones 1-3 are complete. The delivered follow-through and deferred notes liv
 
 ## Summary
 
-Add optional target-schema-aware validation that reasons about modeling intent and target system requirements, not just YAML structure. The validator would catch semantic mismatches like fact tables using lookup-style IDs or entities missing required relationships. Target models are defined in reusable specification files and referenced via `@include:`, making Shape Shifter generic while still allowing target-specific guidance when needed.
+Add optional target-schema-aware validation that reasons about modeling intent and target system requirements, not just YAML structure. The validator would catch semantic mismatches like fact tables using lookup-style IDs or entities missing required relationships. Target models are defined in reusable specification files and referenced via `@load:`, making Shape Shifter generic while still allowing target-specific guidance when needed.
 
 ## Problem
 
@@ -203,13 +203,13 @@ constraints:
 
 ### Project Referencing
 
-Projects reference target models using existing `@include:` pattern:
+Projects reference target models using existing `@load:` pattern:
 
 ```yaml
 metadata:
   type: shapeshifter-project
   name: "Arbodat Dendrochronology Import"
-  target_model: "@include: resources/target_models/sead_standard_model.yml"
+  target_model: "@load: resources/target_models/sead_standard_model.yml"
   
 entities:
   location:

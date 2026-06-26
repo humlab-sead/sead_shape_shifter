@@ -1,9 +1,11 @@
 """Application configuration."""
 
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Import version from package
@@ -11,18 +13,22 @@ from backend.app import __version__
 
 # pylint: disable=invalid-name
 
+DEFAULT_APPLICATION_ROOT: Path = Path(os.getenv("SHAPE_SHIFTER_APPLICATION_ROOT", Path.cwd())).resolve()
+
+DEFAULT_ENV_FILE: Path = Path(os.getenv("SHAPE_SHIFTER_ENV_FILE", DEFAULT_APPLICATION_ROOT / ".env")).resolve()
+
 
 class Settings(BaseSettings):
     """Application settings."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(DEFAULT_ENV_FILE),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
         env_prefix="SHAPE_SHIFTER_",
     )
-    APPLICATION_ROOT: Path = Path(__file__).parent.parent.parent
+    APPLICATION_ROOT: Path = DEFAULT_APPLICATION_ROOT
     APPLICATION_NAME: str = "Shape Shifter Project Editor"
     VERSION: str = __version__
     ENVIRONMENT: Literal["development", "production", "test"] = "development"
@@ -45,21 +51,21 @@ class Settings(BaseSettings):
     )
 
     # File paths
-    PROJECTS_DIR: Path = Path("./projects")
-    LOG_DIR: Path = Path("./logs")
+    PROJECTS_DIR: Path = Path("projects")
 
     # Shared data paths for project portability (converted to absolute in model_post_init)
-    GLOBAL_DATA_DIR: Path = Path("./shared/shared-data")
-    GLOBAL_DATA_SOURCE_DIR: Path = Path("./shared/data-sources")
+    GLOBAL_DATA_DIR: Path = Path("shared/shared-data")
+    GLOBAL_DATA_SOURCE_DIR: Path = Path("shared/data-sources")
 
     # Logging configuration
+    LOG_DIR: Path = Path("logs")
     LOG_LEVEL: str = "INFO"
     LOG_FILE_ENABLED: bool = True
     LOG_CONSOLE_ENABLED: bool = True
     LOG_ROTATION: str = "10 MB"
     LOG_RETENTION: str = "30 days"
     LOG_COMPRESSION: str = "zip"
-    LOG_FILTER_FRAMEWORK_FRAMES: bool = True  # Filter FastAPI/Uvicorn frames from console logs
+    LOG_FILTER_FRAMEWORK_FRAMES: bool = True
 
     # Services
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
@@ -71,21 +77,36 @@ class Settings(BaseSettings):
     # Ingester configuration
     INGESTER_PATHS: list[str] = ["ingesters"]
     ENABLED_INGESTERS: list[str] | None = None  # None = all discovered ingesters
+
     MATERIALIZATION_INLINE_THRESHOLD: int = 20  # Rows below which data is stored inline in YAML
 
-    def model_post_init(self, __context) -> None:  # pylint: disable=arguments-differ
-        """Convert paths to absolute and ensure directories exist."""
-        # Convert to absolute paths (required for @load: directive resolution)
-        self.PROJECTS_DIR = self.PROJECTS_DIR.absolute()
-        self.LOG_DIR = self.LOG_DIR.absolute()
-        self.GLOBAL_DATA_DIR = self.GLOBAL_DATA_DIR.absolute()
-        self.GLOBAL_DATA_SOURCE_DIR = self.GLOBAL_DATA_SOURCE_DIR.absolute()
+    @model_validator(mode="after")
+    def resolve_paths(self) -> "Settings":
+        """Resolve relative paths against APPLICATION_ROOT and ensure directories exist."""
 
-        # Ensure directories exist
-        self.PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
-        self.LOG_DIR.mkdir(parents=True, exist_ok=True)
-        self.GLOBAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
-        self.GLOBAL_DATA_SOURCE_DIR.mkdir(parents=True, exist_ok=True)
+        self.APPLICATION_ROOT = self.APPLICATION_ROOT.resolve()
+
+        self.PROJECTS_DIR = self._resolve_under_root(self.PROJECTS_DIR)
+        self.LOG_DIR = self._resolve_under_root(self.LOG_DIR)
+        self.GLOBAL_DATA_DIR = self._resolve_under_root(self.GLOBAL_DATA_DIR)
+        self.GLOBAL_DATA_SOURCE_DIR = self._resolve_under_root(self.GLOBAL_DATA_SOURCE_DIR)
+
+        for path in (
+            self.PROJECTS_DIR,
+            self.LOG_DIR,
+            self.GLOBAL_DATA_DIR,
+            self.GLOBAL_DATA_SOURCE_DIR,
+        ):
+            path.mkdir(parents=True, exist_ok=True)
+
+        return self
+
+    def _resolve_under_root(self, value: Path) -> Path:
+        """Resolve a path against the repository root when it is relative."""
+        path = Path(value)
+        if path.is_absolute():
+            return path
+        return (self.APPLICATION_ROOT / path).resolve()
 
     @property
     def env_prefix(self) -> str:
@@ -120,7 +141,12 @@ class Settings(BaseSettings):
     @property
     def env_opts(self) -> dict[str, str]:
         """Get environment options."""
-        return {"env_file": self.env_file, "env_prefix": self.env_prefix}
+        return {
+            "env_file": self.env_file,
+            "env_prefix": self.env_prefix,
+            "runtime_root": str(self.APPLICATION_ROOT),
+            "application_root_env_var": "APPLICATION_ROOT",
+        }
 
     @property
     def reconciliation_service_url(self) -> str:
