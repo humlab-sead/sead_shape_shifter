@@ -4,7 +4,7 @@ metadata:
   description: Configuration for importing data from ArboDat database into SEAD.
   version: 1.0.0
   default_entity: survey
-  target_model: '@include: sead_superset_model.yml'
+  target_model: '@load: sead_superset_model.yml'
 entities:
   abundance:
     type: sql

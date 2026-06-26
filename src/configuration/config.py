@@ -82,7 +82,7 @@ class Config(ConfigLike):
     def save(self, updates: dict[str, Any] | None = None) -> None:
         """Save configuration to the YAML file.
 
-        This method preserves the raw YAML structure including @include:, @value:, and
+        This method preserves the raw YAML structure including @include:, @load:, @value:, and
         environment variables like ${VAR}. It only updates specific sections provided
         in the updates parameter.
 

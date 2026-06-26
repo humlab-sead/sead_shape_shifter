@@ -33,7 +33,7 @@ See [Target-Model-Aware Data Conformance](#target-model-aware-data-conformance) 
 
 ### Test Coverage
 - [x] Target model spec parsing — valid and invalid cases are covered; round-trip coverage is still missing
-- [x] `@include:` resolution at mapper boundary (inline dict, file ref, missing file, relative path)
+- [x] `@load:` resolution at mapper boundary (inline dict, file ref, missing file, relative path)
 - [x] Projects without target model — structural validation unaffected, conformance returns empty
 - [x] Missing target model file — graceful handling, treated as no target model rather than a 500
 - [x] Backend adapter integration — `TargetModelValidator` code mapping, endpoint response, category tagging
@@ -78,17 +78,17 @@ This proposal consolidates deferred and future items from:
 
 Nine conformance validators are registered and active:
 
-| Key                            | What it checks                                                                            |
-|--------------------------------|-------------------------------------------------------------------------------------------|
-| `required_entity`              | Required entities present in the project                                                  |
-| `public_id`                    | `public_id` present and not unexpected                                                    |
-| `foreign_key`                  | Required FK targets present on entities that are in the project (with bridge and transitive path support) |
-| `required_columns`             | Required columns present                                                                  |
-| `naming_convention`            | `public_id` values end with `naming.public_id_suffix`                                    |
-| `induced_requirements`         | If optional entity X is present and has a required FK to Y, then Y is required (transitively) |
-| `source_type_appropriateness`  | Classifiers (`role: classifier`) must use `type: fixed` or `type: sql`, not `type: entity` |
-| `no_orphan_facts`              | Fact entities present in the project must reach at least one lookup or classifier when the target model declares that global constraint |
-| `schema_aware_append`          | Each append branch must provide the parent's required target-facing columns after `align_by_position` or `column_mapping` is applied |
+| Key                           | What it checks                                                                                                                          |
+|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| `required_entity`             | Required entities present in the project                                                                                                |
+| `public_id`                   | `public_id` present and not unexpected                                                                                                  |
+| `foreign_key`                 | Required FK targets present on entities that are in the project (with bridge and transitive path support)                               |
+| `required_columns`            | Required columns present                                                                                                                |
+| `naming_convention`           | `public_id` values end with `naming.public_id_suffix`                                                                                   |
+| `induced_requirements`        | If optional entity X is present and has a required FK to Y, then Y is required (transitively)                                           |
+| `source_type_appropriateness` | Classifiers (`role: classifier`) must use `type: fixed` or `type: sql`, not `type: entity`                                              |
+| `no_orphan_facts`             | Fact entities present in the project must reach at least one lookup or classifier when the target model declares that global constraint |
+| `schema_aware_append`         | Each append branch must provide the parent's required target-facing columns after `align_by_position` or `column_mapping` is applied    |
 
 Backend wiring, frontend Check Conformance button, and Conformance panel in ValidationPanel are all live.
 
@@ -206,7 +206,7 @@ The project-level YAML view currently shows only the `shapeshifter.yml` file. Wh
 
 **Constraints:**
 - Raw YAML only — no structured form or entity-level UI.
-- Backend read/write access is limited to **project-local files** (i.e. the `@include:` path lives inside the project's own directory). Shared/global spec files (e.g. `resources/target_models/sead_superset_model.yml`) are read-only in this view, and the frontend now hides the edit tab for those references.
+- Backend read/write access is limited to **project-local files** (i.e. the `@load:` path lives inside the project's own directory). Shared/global spec files (e.g. `resources/target_models/sead_superset_model.yml`) are read-only in this view, and the frontend now hides the edit tab for those references.
 - API passes the YAML file content as raw text; the server validates syntax but **never re-serialises** it, so comments and formatting survive the round-trip.
 - Save writes directly to the referenced target model YAML file.
 - Changing the file triggers a re-run of conformance validation (same as editing the project YAML).
@@ -294,8 +294,8 @@ The core Monaco editing experience with autocomplete, save/load wiring, and proj
 #### Risk / Complications
 
 | Item                                | Risk       | Notes                                                                                                     |
-|-------------------------------------|------------|-----------------------------------------------------------------------------------------------------------|
-| `@include:` path root resolution    | Low        | One existing precedent in `Config.resolve_includes()`; target model path is always repo-root-relative     |
+|-------------------------------------|------------|----------------------------------------------------------------------------------------------------------|
+| `@load:` path root resolution       | Low        | One existing precedent in `Config.resolve_includes()`; target model path is always repo-root-relative     |
 | Project-local check                 | Low        | `Path.is_relative_to(project_dir)` — one line; non-local paths return 403                                 |
 | Comment-preserving write            | Low        | Never call `yaml.dump()` on PUT; validate with `yaml.safe_load()` then write the submitted bytes verbatim |
 | Inline-dict guard                   | Low        | One `isinstance` check; clear 422 response                                                                |
@@ -501,14 +501,14 @@ These test areas were identified in the implementation sketch but not yet covere
 
 **Status:** Valid payloads, invalid field rejection, and round-trip coverage are now in place.
 
-### `@include:` Resolution (Backend Boundary)
+### `@load:` Resolution (Backend Boundary)
 
 - Inline `target_model: {...}` dict passes through mapper unchanged
-- `target_model: "@include: resources/target_models/sead_superset_model.yml"` resolves to dict at mapper boundary
-- Missing include file produces a clear error, not a cryptic KeyError
+- `target_model: "@load: resources/target_models/sead_superset_model.yml"` resolves to dict at mapper boundary
+- Missing file produces a clear error, not a cryptic KeyError
 - Relative path resolution from project file location
 
-**Status:** Covered for project-local include resolution and missing include files.
+**Status:** Covered for project-local load and missing files.
 
 ### Projects Without Target Model
 

@@ -974,7 +974,7 @@ sequenceDiagram
     FE->>BE: POST /projects/{name}/validate/target-model
     BE->>VS: validate_target_model(project_name)
     VS->>PM: to_core(api_project)
-    note over PM: Expand @include: in<br/>metadata.target_model
+    note over PM: Expand @load: in<br/>metadata.target_model
     PM-->>VS: Resolved project + target_model dict
 
     opt metadata.target_model is configured

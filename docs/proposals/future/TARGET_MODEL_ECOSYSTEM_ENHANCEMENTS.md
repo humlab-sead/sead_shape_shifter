@@ -22,7 +22,7 @@ That mix makes the active proposal harder to read and makes the remaining backlo
 ## Scope
 
 - target-model diff tooling for upgrade planning
-- remote target-model references beyond local `@include:` files
+- remote target-model references beyond local `@load:` files
 - a curated target-model registry with short-name resolution
 
 ## Non-Goals

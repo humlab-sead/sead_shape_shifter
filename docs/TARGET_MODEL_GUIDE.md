@@ -21,7 +21,7 @@ Target model specs are optional. Existing projects without a `target_model` refe
 metadata:
   type: 'shapeshifter-project'
   name: "Dendrochronology Import"
-  target_model: "@include: resources/target_models/sead_superset_model.yml"
+  target_model: "@load: resources/target_models/sead_superset_model.yml"
 ```
 
 3. Open your project in the editor, go to the **Validate** tab, and click **Check Conformance**.
@@ -52,7 +52,7 @@ Use the `metadata.target_model` field. The value may be either a file reference 
 ```yaml
 metadata:
   type: 'shapeshifter-project'
-  target_model: "@include: resources/target_models/sead_superset_model.yml"
+  target_model: "@load: resources/target_models/sead_superset_model.yml"
 ```
 
 **Inline definition (for small custom models):**
@@ -77,7 +77,7 @@ metadata:
       public_id_suffix: "_id"
 ```
 
-The Metadata Editor in the project workspace surfaces this as a **Target Model** combobox that lists uploaded YAML files in `@include:` format. You can also type a path directly.
+The Metadata Editor in the project workspace surfaces this as a **Target Model** combobox that lists uploaded YAML files in `@load:` format. You can also type a path directly.
 
 ---
 
@@ -300,7 +300,7 @@ Current constraints are modeled as simple typed entries. Add new constraint-spec
 
 When you click **Check Conformance** in the editor, Shape Shifter:
 
-1. Loads the project and resolves the `target_model` reference (expanding `@include:` if needed).
+1. Loads the project and resolves the `target_model` reference (expanding `@load:` if needed).
 2. Parses the target model spec into a `TargetModel` domain object.
 3. Runs the target-model spec validator to check self-consistency, including unknown FK targets, invalid aggregate-parent relationships, and invalid identity-tracking or reconciliation combinations.
 4. Runs the built-in conformance validators against the resolved project.

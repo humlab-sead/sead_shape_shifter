@@ -572,7 +572,7 @@ class ProjectService:
             description: Project description (optional)
             version: Project version (optional)
             default_entity: Default entity name (optional)
-            target_model: Target model path string (e.g. '@include: target.yml').  Pass
+            target_model: Target model path string (e.g. '@load: target.yml').  Pass
                 ``None`` with ``target_model_provided=False`` to leave unchanged.  Pass
                 ``None`` with ``target_model_provided=True`` to clear the field.
                 Pass an empty string to also clear the field.

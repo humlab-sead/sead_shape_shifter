@@ -143,7 +143,7 @@ class ValidationService:
                 try_without_prefix=True,
             )
         except FileNotFoundError as e:
-            # Missing @include file should be reported as a normal validation error,
+            # Missing /@load file should be reported as a normal validation error,
             # not as a 500 internal server error.
             return ValidationResult(
                 is_valid=False,
@@ -242,7 +242,7 @@ class ValidationService:
         Run target-model conformance validation for a project.
 
         Loads the project, resolves it to the core model (which expands any
-        @include: reference in metadata.target_model), then runs
+        @load: reference in metadata.target_model), then runs
         TargetModelConformanceValidator against the resolved spec.
 
         If the project has no metadata.target_model, returns an empty valid result.
@@ -262,7 +262,7 @@ class ValidationService:
         try:
             core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
         except FileNotFoundError as e:
-            # @include: in metadata.target_model points to a missing file.
+            # @load: in metadata.target_model points to a missing file.
             # Treat as if no target_model was configured — skip conformance silently.
             logger.debug(f"Target model file not found for project '{project_name}', skipping conformance: {e}")
             return ValidationResult(is_valid=True)
