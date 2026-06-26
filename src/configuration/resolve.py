@@ -635,7 +635,7 @@ class ReferenceResolver(DirectiveResolver):
                         result.extend(list_value)
                     else:
                         result.append(list_value)
-                except Exception:  # noqa: BLE001
+                except Exception:  # pylint: disable=broad-exception-caught
                     return expr
 
         return result if result else expr
