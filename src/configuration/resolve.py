@@ -10,7 +10,7 @@ import yaml
 from dotenv import load_dotenv
 from loguru import logger
 
-from src.utility import Registry, dget, dotexists, dotget, env2dict, replace_env_vars
+from src.utility import Registry, dget, dotexists, dotget, replace_env_vars
 
 from .utility import is_path_to_existing_file, is_yaml_file, load_data_file, load_yaml_file
 
@@ -119,7 +119,7 @@ def resolve_directives(
     1. Walk the data tree once, dispatching @include, @load, and ${ENV_VAR}
        directives to stateless resolver handlers.  Included YAML files are
        resolved recursively by the orchestrator.
-    2. Apply env-prefix expansion and @value references.
+    2. Apply @value cross-references (post-processing pass).
 
     This method does not mutate the input data unless inplace=True. It creates a
     deep copy by default so the original input stays unchanged.
@@ -153,16 +153,63 @@ def resolve_directives(
     # Included documents are recursively resolved by re-entering this traversal.
     data = _resolve_node(data, context=ctx, resolvers=resolvers)
 
-    # Post-processing (env-prefix injection and @value references)
-    if env_prefix:
-        data = env2dict(env_prefix, data)
-
+    # Post-processing: @value cross-references
     data = ReferenceResolver().resolve_all(data)
 
     if strict:
         _raise_on_unresolved_directives(data)
 
     return data
+
+
+def load_resolved_yaml(
+    source: str | dict[str, Any],
+    *,
+    env_filename: str | None = None,
+    env_prefix: str | None = None,
+    runtime_root: str | Path | None = None,
+    application_root_env_var: str = "APPLICATION_ROOT",
+    strict: bool = False,
+    try_without_prefix: bool = True,
+) -> dict[str, Any]:
+    """Load and resolve a YAML project file.
+
+    Returns the fully resolved dict with @include, @load, ${ENV_VAR}, and
+    @value: directives processed.  Does NOT inject env-prefixed values into
+    the data — that behavior belongs to ``Config.resolve()`` for app settings.
+
+    Args:
+        source: Path to a YAML file or an already-loaded dict.
+        env_filename: Optional .env file to load before resolution.
+        env_prefix: Environment variable prefix for ${VAR} scoping.
+        runtime_root: Base directory for anchoring relative env-derived paths.
+        application_root_env_var: Env var name holding the application root.
+        strict: If True, raise ValueError on unresolved directives.
+        try_without_prefix: If True, try env vars without the prefix as fallback.
+
+    Returns:
+        Resolved configuration dict.
+    """
+    load_dotenv(dotenv_path=env_filename)
+
+    if isinstance(source, dict):
+        data: dict[str, Any] | None = source
+    else:
+        data = load_yaml_file(source)
+        if not isinstance(data, dict):
+            raise ValueError(f"Project file must contain a mapping: {source}")
+
+    return resolve_directives(
+        data,
+        env_filename=env_filename,
+        env_prefix=env_prefix,
+        runtime_root=runtime_root,
+        application_root_env_var=application_root_env_var,
+        source_path=source if isinstance(source, str) else None,
+        inplace=True,
+        strict=strict,
+        try_without_prefix=try_without_prefix,
+    )
 
 
 def _raise_on_unresolved_directives(data):
