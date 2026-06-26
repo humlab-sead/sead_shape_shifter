@@ -490,7 +490,7 @@ class TestValidateTargetModel:
         assert result.errors == []
 
     def test_missing_target_model_file_is_silently_ignored(self, validation_service: ValidationService):
-        """FileNotFoundError from @include resolution must be silently ignored (valid=True, no errors)."""
+        """FileNotFoundError from @load resolution must be silently ignored (valid=True, no errors)."""
         mock_api_project = Mock(spec=Project)
 
         with patch("backend.app.services.validation_service.get_project_service") as mock_get_service:

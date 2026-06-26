@@ -1,13 +1,18 @@
-"""Tests for src.configuration.utility helpers."""
+"""Tests for @value: reference resolution (ReferenceResolver)."""
 
-from src.configuration.utility import replace_references
+from src.configuration.resolve import ReferenceResolver
+
+
+def _resolve(data: dict) -> dict:
+    """Shorthand for resolving @value: references."""
+    return ReferenceResolver().resolve_all(data)  # type: ignore[return-value]
 
 
 def test_replace_references_simple_include() -> None:
     """@value directive should copy referenced data."""
     data: dict = {"base": {"letters": ["a", "b"]}, "copy": "@value: base.letters"}
 
-    resolved: dict = replace_references(data)  # type: ignore
+    resolved: dict = _resolve(data)
 
     assert resolved["copy"] == ["a", "b"]
 
@@ -16,7 +21,7 @@ def test_replace_references_list_operations() -> None:
     """List operations should concatenate literal lists and referenced lists."""
     data: dict = {"base": ["a"], "combined": "@value: base + ['b', 'c']"}
 
-    resolved: dict = replace_references(data)  # type: ignore
+    resolved: dict = _resolve(data)
 
     assert resolved["combined"] == ["a", "b", "c"]
 
@@ -26,7 +31,7 @@ def test_replace_references_ignores_nested_list_expression() -> None:
     expr = "@value: base + [['nested']]"
     data: dict = {"base": ["x"], "bad": expr}
 
-    resolved: dict = replace_references(data)  # type: ignore
+    resolved: dict = _resolve(data)
 
     assert resolved["bad"] == expr
 
@@ -38,7 +43,7 @@ def test_replace_references_directive_as_list_element() -> None:
         "child_keys": ["@value: parent_keys", "c"],
     }
 
-    resolved: dict = replace_references(data)  # type: ignore
+    resolved: dict = _resolve(data)
 
     assert resolved["child_keys"] == ["a", "b", "c"]
 
@@ -51,7 +56,7 @@ def test_replace_references_multiple_directive_list_elements() -> None:
         "combined": ["@value: list_a", "@value: list_b"],
     }
 
-    resolved: dict = replace_references(data)  # type: ignore
+    resolved: dict = _resolve(data)
 
     assert resolved["combined"] == ["x", "y", "z"]
 
@@ -63,7 +68,7 @@ def test_replace_references_directive_list_element_scalar_result_not_flattened()
         "mixed": ["@value: single", "world"],
     }
 
-    resolved: dict = replace_references(data)  # type: ignore
+    resolved: dict = _resolve(data)
 
     assert resolved["mixed"] == ["hello", "world"]
 
@@ -72,7 +77,7 @@ def test_replace_references_plain_list_unchanged() -> None:
     """A plain list with no directives should remain exactly as-is."""
     data: dict = {"plain": ["a", "b", "c"]}
 
-    resolved: dict = replace_references(data)  # type: ignore
+    resolved: dict = _resolve(data)
 
     assert resolved["plain"] == ["a", "b", "c"]
 
@@ -86,7 +91,7 @@ def test_replace_references_with_space_after_directive() -> None:
         "list_op": "@value: base.letters + ['d']",  # Space in list operation
     }
 
-    resolved: dict = replace_references(data)  # type: ignore
+    resolved: dict = _resolve(data)
 
     # Both should resolve to the same value
     assert resolved["no_space"] == ["a", "b", "c"]

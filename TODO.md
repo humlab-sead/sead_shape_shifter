@@ -10,6 +10,7 @@
 **Quick Tips:**
 
 - Use `/help` in Copilot Chat to see all available commands
+- Use '/code-review' in Copilot chat to do av review of (un-commited?) changes
 - Reference files with `#file:path/to/file.ts`
 - Use `@workspace` to search across the entire workspace
 - Structure prompts: [Context] + [Specific Task] + [Constraints/Format]
@@ -100,13 +101,6 @@ Given the context, we should be able to constrict valid dot.path, e.g. when pick
 
 What are your thought? How would an implementation plan look like? 
 
-### TODO: Consider adding a trash bin when deleteing projects (move instead of delete)
-### TODO: Change "optimistic locking" concurrency strategy
-
-When saving project YAML, the system compares client's project's version number to server side version number. If the version
-number differs, the the client's updates are discarded. We should instead use a merging strategy as the default 
-concurrency resolver. If client's project only differ
-
 ### TODO: File location resolution fails if project's folder name differs from metadata.name
 
 if project not in folder "xyz" then this fails with FileLoader raising FileNotFoundError:
@@ -122,6 +116,7 @@ entities:
       filename: abc.xlsx
       location: local
       sheet_name: Sheet1
+```
 
 ### FIXME: Buggar
 
@@ -201,15 +196,11 @@ We can't duplicate "where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_002
 
 /ide    # connects to vscode (auto when workspaces matches)
 
-
 https://spark-note.com/en/blog/serena-vs-graphify-search-comparison/
-
 https://medium.com/manomano-tech/project-aegis-benchmarking-ai-agents-and-why-serena-is-our-new-must-have-311673db35dd
 
-
-
-
 # rtk installed
+
 λ brew install rtk
 λ rtk init -g --copilot
 [rtk] /!\ No hook installed — run `rtk init -g` for automatic token savings
@@ -237,12 +228,21 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 
-
 openai_base_url = "http://localhost:8787/v1"
 
 ## Add PATH for non-interactive shells (needed for vscode Codex extension, remote SSH)
+.pam.environment
+
 PATH OVERRIDE=/home/roger/source/sead_shape_shifter/.venv/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/roger/.dotnet/tools:/home/roger/.local/bin:/home/roger/bin/go/bin:/home/roger/.npm/lib/bin:/home/roger/bin:/usr/local/bin:/usr/bin:/bin
 
 
-# TODO:
-- Silence test run from test explorer
+# TODO: BUGCEP_IMPORT_MIGRATION
+
+
+We need to create a handoff for the next phase of this migration of BugsCEP importer. Please suggest what this handoff should include.
+
+1. Create add a new proposal named BUGCEP_IMPORT_MIGRATION.md to new folder sead_shape_shifter/docs/proposals/BUGCEP_IMPORT_MIGRATION/ and using instructions in sead_shape_shifter/.github/instructions/proposal-writing-guide.instructions.md. The goal of the proposal is to create a new BugsCEP importer using the reconciliation policy YAML files.   
+2. Craete a machine-readable document that an AI coding agent can use to more easy get up-to-speed in this migration work.
+d   
+
+# TODO: test Github Copilot /code-review chat command

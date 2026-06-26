@@ -186,7 +186,7 @@ class IngesterService:
         )
 
 
-default_ingester_service: IngesterService | None = None
+__DEFAULT_INGESTER_SERVICE: IngesterService | None = None
 
 
 def get_ingester_service() -> IngesterService:
@@ -195,6 +195,6 @@ def get_ingester_service() -> IngesterService:
     Returns:
         IngesterService instance
     """
-    global default_ingester_service
-    default_ingester_service = default_ingester_service or IngesterService()
-    return default_ingester_service
+    global __DEFAULT_INGESTER_SERVICE  # pylint: disable=global-statement
+    __DEFAULT_INGESTER_SERVICE = __DEFAULT_INGESTER_SERVICE or IngesterService()
+    return __DEFAULT_INGESTER_SERVICE

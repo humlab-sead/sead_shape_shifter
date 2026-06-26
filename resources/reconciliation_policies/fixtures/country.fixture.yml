@@ -1,0 +1,104 @@
+fixture_version: "1.0"
+policy: country
+scenarios:
+  - name: trace_hit_updates_existing_country
+    intent: reconciliation_path
+    source_rows:
+      - CountryCode: C001
+        Country: Sweden
+    policy_context:
+      step_hits:
+        trace_lookup: true
+        existing_country_lookup: false
+      state:
+        existing_row_id: 801
+    expects:
+      reconciliation_path: [trace_lookup]
+      reconciliation_result:
+        result_kind: update_existing
+        persisted_action: update
+        source: trace_lookup
+        row_id: 801
+        country_code: C001
+  - name: trace_hit_returns_existing_country_error
+    intent: reconciliation_path
+    source_rows:
+      - CountryCode: C001E
+        Country: Sweden
+    policy_context:
+      step_hits:
+        trace_lookup: true
+        existing_country_lookup: false
+      state:
+        existing_row_id: 804
+        existing_error_message: Existing country trace error
+    expects:
+      reconciliation_path: [trace_lookup]
+      reconciliation_result:
+        result_kind: return_existing_error
+        persisted_action: keep_existing_error
+        source: trace_lookup
+        row_id: 804
+        issue:
+          severity: error
+          message: Existing country trace error
+        country_code: C001E
+  - name: existing_country_lookup_updates_existing_country
+    intent: reconciliation_path
+    source_rows:
+      - CountryCode: C002
+        Country: Norway
+    policy_context:
+      step_hits:
+        trace_lookup: false
+        existing_country_lookup: true
+      state:
+        existing_row_id: 802
+    expects:
+      reconciliation_path: [trace_lookup, existing_country_lookup]
+      reconciliation_result:
+        result_kind: update_existing
+        persisted_action: update
+        source: existing_country_lookup
+        row_id: 802
+        country_code: C002
+  - name: existing_country_lookup_returns_existing_error
+    intent: reconciliation_path
+    source_rows:
+      - CountryCode: C002E
+        Country: Norway
+    policy_context:
+      step_hits:
+        trace_lookup: false
+        existing_country_lookup: true
+      state:
+        existing_row_id: 803
+        existing_error_message: Existing country lookup error
+    expects:
+      reconciliation_path: [trace_lookup, existing_country_lookup]
+      reconciliation_result:
+        result_kind: return_existing_error
+        persisted_action: keep_existing_error
+        source: existing_country_lookup
+        row_id: 803
+        issue:
+          severity: error
+          message: Existing country lookup error
+        country_code: C002E
+  - name: create_new_country_when_no_match_exists
+    intent: reconciliation_path
+    source_rows:
+      - CountryCode: C003
+        Country: Denmark
+    policy_context:
+      step_hits:
+        trace_lookup: false
+        existing_country_lookup: false
+    expects:
+      reconciliation_path: [trace_lookup, existing_country_lookup, create_new]
+      reconciliation_result:
+        result_kind: insert_new
+        persisted_action: create
+        source: create_new
+        row_id: null
+        country_code: C003

@@ -39,7 +39,7 @@ from loguru import logger
 from backend.app.core.config import Settings
 from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
 from backend.app.models.ingester import IngestRequest, ValidateRequest
-from backend.app.services.ingester_service import IngesterService, get_ingester_service
+from backend.app.services.ingester_service import get_ingester_service
 
 # Discover ingesters on module load (before CLI commands run)
 

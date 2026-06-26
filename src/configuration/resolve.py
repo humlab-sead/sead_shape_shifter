@@ -1,31 +1,113 @@
 from __future__ import annotations
 
-import contextlib
 import copy
-import io
-from abc import abstractmethod
-from datetime import datetime
-from inspect import isclass
-from os.path import join, normpath
+import dataclasses
+import re
 from pathlib import Path
-from typing import Any, Protocol, Type, runtime_checkable
+from typing import Any, Protocol
 
-import pandas as pd
 import yaml
 from dotenv import load_dotenv
 from loguru import logger
 
-from src.utility import dget, dotexists, dotset, env2dict, replace_env_vars
+from src.utility import Registry, dget, dotexists, dotget, replace_env_vars
 
-from .utility import is_config_path, is_path_to_existing_file, replace_references
+from .utility import is_path_to_existing_file, load_data_file, load_yaml_file
 
 
-def resolve_references(
+@dataclasses.dataclass
+class ResolutionContext:
+    """Immutable context passed through directive resolution.
+
+    Carries all the state that was previously scattered across resolver
+    instance attributes (env_prefix, runtime_root, etc.) so resolvers can
+    remain stateless.
+    """
+
+    env_prefix: str | None = None
+    runtime_root: Path | None = None
+    application_root_env_var: str = "APPLICATION_ROOT"
+    source_path: str | None = None
+    source_folder: Path | None = None
+    root_data: dict[str, Any] = dataclasses.field(default_factory=dict)
+    env_filename: str | None = None
+    try_without_prefix: bool = True
+
+    def for_loaded_source(self, source_path: str, root_data: dict[str, Any]) -> "ResolutionContext":
+        """Return a context for resolving a newly loaded document.
+
+        Updates source_path, source_folder, and root_data to the loaded file
+        while preserving environment-related settings.
+        """
+        return ResolutionContext(
+            env_prefix=self.env_prefix,
+            runtime_root=self.runtime_root,
+            application_root_env_var=self.application_root_env_var,
+            source_path=source_path,
+            # source_folder=Path(source_path).parent if is_path_to_existing_file(source_path) else None,
+            source_folder=Path(source_path).resolve().parent,
+            root_data=root_data,
+            env_filename=self.env_filename,
+            try_without_prefix=self.try_without_prefix,
+        )
+
+
+@dataclasses.dataclass
+class ResolvedDirective:
+    """Result returned by a directive resolver's load() method.
+
+    Attributes:
+        value: The loaded data (dict, list, etc.).
+        should_resolve_recursively: If True, the orchestrator recursively
+            resolves directives in the loaded value. @include uses True;
+            @load uses False.
+        source_path: Path to the file that was loaded, if any.
+    """
+
+    value: Any
+    should_resolve_recursively: bool = True
+    source_path: str | None = None
+
+
+class DirectiveResolver(Protocol):
+    """Protocol for directive handler classes.
+
+    Each resolver handles one directive pattern (e.g. @include, @load, ${...}).
+    It is stateless — all runtime state comes from ResolutionContext.
+    """
+
+    key: str
+
+    def can_handle(self, value: str) -> bool:
+        """Return True when *value* matches this resolver's directive pattern."""
+        ...
+
+    def resolve_directive(self, value: str, context: ResolutionContext) -> ResolvedDirective:
+        """Resolve the directive in *value* and return a ResolvedDirective."""
+        ...
+
+
+class ResolverRegistry(Registry[type["DirectiveResolver"]]):
+    """Registry for directive resolvers.
+
+    Each resolver is registered under its directive prefix (e.g. @include, @load).
+    """
+
+    items: dict[str, type["DirectiveResolver"]] = {}
+
+
+# ---------------------------------------------------------------------------
+# Public API — resolve_directives
+# ---------------------------------------------------------------------------
+
+
+def resolve_directives(
     data: dict[str, Any],
     *,
-    context: str | None = None,
     env_filename: str | None = None,
     env_prefix: str | None = None,
+    runtime_root: str | Path | None = None,
+    application_root_env_var: str = "APPLICATION_ROOT",
     source_path: str | None = None,
     inplace: bool = False,
     strict: bool = False,
@@ -33,8 +115,14 @@ def resolve_references(
 ) -> dict[str, Any]:
     """Resolve configuration directives in the provided data dictionary.
 
-    Note: This method does NOT mutate the input data parameter.
-    It creates a deep copy to ensure the original remains unchanged.
+    Processing order:
+    1. Walk the data tree once, dispatching @include, @load, and ${ENV_VAR}
+       directives to stateless resolver handlers.  Included YAML files are
+       resolved recursively by the orchestrator.
+    2. Apply @value cross-references (post-processing pass).
+
+    This method does not mutate the input data unless inplace=True. It creates a
+    deep copy by default so the original input stays unchanged.
 
     Environment variables are expected to already be loaded in os.environ.
     The env_filename parameter is kept for backward compatibility but not used.
@@ -42,30 +130,114 @@ def resolve_references(
     if not inplace:
         data = copy.deepcopy(data)
 
-    for resolver_cls in [SubConfigResolver, LoadResolver]:
-        data = resolver_cls(
-            context=context,
-            env_filename=env_filename,
-            env_prefix=env_prefix,
-            source_path=source_path,
-        ).resolve(data)
+    resolved_runtime_root: Path | None = _resolve_runtime_root(runtime_root, env_prefix, application_root_env_var)
 
-    # Update data based on environment variables with a name that starts with `env_prefix`
-    if env_prefix:
-        data = env2dict(env_prefix, data)
+    # Build the resolution context
+    source_folder: Path | None = Path(source_path).parent if source_path and is_path_to_existing_file(source_path) else None
+    ctx = ResolutionContext(
+        env_prefix=env_prefix,
+        runtime_root=resolved_runtime_root,
+        application_root_env_var=application_root_env_var,
+        source_path=source_path,
+        source_folder=source_folder,
+        root_data=data,
+        env_filename=env_filename,
+        try_without_prefix=try_without_prefix,
+    )
 
-    # Do a recursive replace of values with pattern "${ENV_NAME}" with value of environment
-    data = replace_env_vars(data, env_prefix=env_prefix, try_without_prefix=try_without_prefix)  # type: ignore
-    data = replace_references(data)  # type: ignore
+    # Build directive resolver map (order does not matter — each resolver only
+    # handles its own directive prefix)
+    resolvers: dict[str, DirectiveResolver] = {key: cls() for key, cls in ResolverRegistry.items.items()}
+
+    # Single orchestration path: the orchestrator owns all traversal and dispatch.
+    # Included documents are recursively resolved by re-entering this traversal.
+    data = _resolve_node(data, context=ctx, resolvers=resolvers)
+
+    # Post-processing: @value cross-references
+    data = ReferenceResolver().resolve_all(data)
 
     if strict:
-        unresolved: list[str] = find_unresolved_directives(data)
-        if unresolved:
-            paths: str = ", ".join(unresolved[:5])
-            extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
-            raise ValueError(f"Unresolved configuration directives at: {paths}{extra}")
+        _raise_on_unresolved_directives(data)
 
     return data
+
+
+def load_resolved_yaml(
+    source: str | dict[str, Any],
+    *,
+    env_filename: str | None = None,
+    env_prefix: str | None = None,
+    runtime_root: str | Path | None = None,
+    application_root_env_var: str = "APPLICATION_ROOT",
+    strict: bool = False,
+    try_without_prefix: bool = True,
+) -> dict[str, Any]:
+    """Load and resolve a YAML project file.
+
+    Returns the fully resolved dict with @include, @load, ${ENV_VAR}, and
+    @value: directives processed.  Does NOT inject env-prefixed values into
+    the data — that behavior belongs to ``Config.resolve()`` for app settings.
+
+    Args:
+        source: Path to a YAML file or an already-loaded dict.
+        env_filename: Optional .env file to load before resolution.
+        env_prefix: Environment variable prefix for ${VAR} scoping.
+        runtime_root: Base directory for anchoring relative env-derived paths.
+        application_root_env_var: Env var name holding the application root.
+        strict: If True, raise ValueError on unresolved directives.
+        try_without_prefix: If True, try env vars without the prefix as fallback.
+
+    Returns:
+        Resolved configuration dict.
+    """
+    load_dotenv(dotenv_path=env_filename)
+
+    if isinstance(source, dict):
+        data: dict[str, Any] | None = source
+    else:
+        data = load_yaml_file(source)
+        if not isinstance(data, dict):
+            raise ValueError(f"Project file must contain a mapping: {source}")
+
+    return resolve_directives(
+        data,
+        env_filename=env_filename,
+        env_prefix=env_prefix,
+        runtime_root=runtime_root,
+        application_root_env_var=application_root_env_var,
+        source_path=source if isinstance(source, str) else None,
+        inplace=True,
+        strict=strict,
+        try_without_prefix=try_without_prefix,
+    )
+
+
+def _raise_on_unresolved_directives(data):
+    unresolved: list[str] = find_unresolved_directives(data)
+    if unresolved:
+        paths: str = ", ".join(unresolved[:5])
+        extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
+        raise ValueError(f"Unresolved configuration directives at: {paths}{extra}")
+
+
+def _resolve_runtime_root(runtime_root: str | Path | None, env_prefix: str | None, application_root_env_var: str) -> Path | None:
+    """Return the base directory for env-derived relative paths."""
+    if runtime_root:
+        return Path(runtime_root).resolve()
+
+    application_root: str = replace_env_vars(f"${{{application_root_env_var}}}", env_prefix=env_prefix or "", try_without_prefix=True)
+    return Path(application_root).resolve() if application_root else None
+
+
+def _is_path_env_var(env_var_name: str, env_prefix: str | None, application_root_env_var: str) -> bool:
+    """Return True when an environment variable is expected to contain a path."""
+    normalized_prefix: str = (env_prefix or "").rstrip("_")
+    normalized_name: str = env_var_name
+    if normalized_prefix and normalized_name.startswith(f"{normalized_prefix}_"):
+        normalized_name = normalized_name[len(normalized_prefix) + 1 :]
+
+    normalized_name = normalized_name.upper()
+    return normalized_name == application_root_env_var.upper() or normalized_name.endswith(("_DIR", "_PATH", "_FILE", "_FILENAME"))
 
 
 def find_unresolved_directives(data: Any, path: str | None = None) -> list[str]:
@@ -82,213 +254,388 @@ def find_unresolved_directives(data: Any, path: str | None = None) -> list[str]:
             next_path = f"{path}[{idx}]" if path else f"[{idx}]"
             hits.extend(find_unresolved_directives(v, next_path))
     elif isinstance(data, str):
-        if any(tag in data for tag in tags):
+        if any(tag in data for tag in tags) or "${" in data:
             hits.append(f"{path or '<root>'}: {data}")
-
     return hits
 
 
-class BaseResolver:
-    """Base class for configuration resolvers.
+def _resolve_path(
+    path: str,
+    *,
+    base_path: Path | None = None,
+    env_prefix: str | None = None,
+    runtime_root: Path | None = None,
+    env_filename: str | None = None,
+    raise_if_missing: bool = False,
+) -> str:
+    """Resolve a file path with environment variable expansion and relative path support.
 
-    Resolvers process configuration data to resolve specific directives.
-    Example directives include:
-        - @include: to include sub-configuration files
-        - @load: to load dictionary data from external CSV/TSV-files into the configuration
+    Supports partial replacement in paths (e.g., ${DATA_DIR}/subfolder/file.xlsx).
+
+    Args:
+        path: Path string potentially containing ${VAR} references
+        base_path: Base directory for resolving relative paths
+        env_prefix: Environment variable prefix for scoped resolution
+        runtime_root: Base directory for anchoring env-derived relative paths
+        env_filename: Path to .env file for resolving env-variable paths
+        raise_if_missing: If True, raise ValueError for unresolved env vars
+
+    Returns:
+        Resolved absolute path string
+
+    Raises:
+        ValueError: If raise_if_missing=True and env var cannot be resolved
     """
+    if not path:
+        return path
 
-    directive: str = ""
+    # Step 1: Expand environment variables
+    resolved_path: str = replace_env_vars(
+        path,
+        raise_if_unresolved=raise_if_missing,
+        env_prefix=env_prefix,  # type: ignore[arg-type]
+        try_without_prefix=True,
+    )
+    is_expanded: bool = resolved_path != path
 
-    def __init__(
-        self,
-        context: str | None = None,
-        env_filename: str | None = None,
-        env_prefix: str | None = None,
-        source_path: str | None = None,
-    ) -> None:
-        self.context: str | None = context
-        self.env_filename: str | None = env_filename
-        self.env_prefix: str | None = env_prefix
-        self.source_path: str | None = source_path
-        self.source_folder: Path | None = (
-            Path(source_path).parent if source_path and is_config_path(source_path, raise_if_missing=False) else None
-        )
-        self.data: dict[str, Any] = {}
+    path_obj = Path(resolved_path)
+    if path_obj.is_absolute():
+        return str(path_obj)
 
-    def resolve(self, data: dict[str, Any]) -> dict[str, Any]:
-        self.data = data
-        return self._resolve(data, self.source_folder)
+    if is_expanded and runtime_root is not None:
+        return str((runtime_root / path_obj).resolve())
 
-    def _resolve(self, value: Any, base_path: Path | None) -> Any:
-        if isinstance(value, dict):
-            return {k: self._resolve(v, base_path) for k, v in value.items()}
-        if isinstance(value, list):
-            return [self._resolve(v, base_path) for v in value]
-        if isinstance(value, str) and value.startswith(self.directive):
-            directive_argument: str = value[len(self.directive) :].lstrip(":").strip()  # Remove "@include:" prefix
-            return self.resolve_directive(directive_argument, base_path)
-        return value
+    if is_expanded and env_filename:
+        env_base_path = Path(env_filename).resolve().parent
+        resolved_path = str(env_base_path / resolved_path)
 
-    def _resolve_path(self, path: str, base_path: Path | None = None, raise_if_missing: bool = False) -> str:
-        """Resolve a file path with environment variable expansion and relative path support.
+    # Step 2: Handle absolute vs relative paths
+    path_obj = Path(resolved_path)
 
-        Supports partial replacement in paths (e.g., ${DATA_DIR}/subfolder/file.xlsx).
+    if path_obj.is_absolute():
+        return str(path_obj)
 
-        Args:
-            path: Path string potentially containing ${VAR} references
-            base_path: Base directory for resolving relative paths
-            raise_if_missing: If True, raise ValueError for unresolved env vars
+    # Step 3: Resolve relative paths
+    if base_path is not None:
+        return str(base_path / resolved_path)
 
-        Returns:
-            Resolved absolute path string
-
-        Raises:
-            ValueError: If raise_if_missing=True and env var cannot be resolved
-        """
-        if not path:
-            return path
-
-        # Step 1: Expand environment variables
-        resolved_path: str = replace_env_vars(
-            path,
-            raise_if_unresolved=raise_if_missing,
-            env_prefix=self.env_prefix,  # type: ignore
-            try_without_prefix=True,
-        )
-
-        path_obj = Path(resolved_path)
-        if path != resolved_path and not path_obj.is_absolute() and self.env_filename:
-            env_base_path = Path(self.env_filename).resolve().parent
-            resolved_path = str(env_base_path / resolved_path)
-
-        # Step 2: Handle absolute vs relative paths
-        path_obj = Path(resolved_path)
-
-        if path_obj.is_absolute():
-            return str(path_obj)
-
-        # Step 3: Resolve relative paths
-        if base_path is not None:
-            return str(base_path / resolved_path)
-
-        return resolved_path
-
-    @abstractmethod
-    def resolve_directive(self, directive_argument: str, base_path: Path | None) -> dict[str, Any]:
-        pass
+    return resolved_path
 
 
-class SubConfigResolver(BaseResolver):
-    """Recursively resolve sub-configurations referenced in the main configuration.
+# ---------------------------------------------------------------------------
+# Core tree traversal (single-pass orchestrator)
+# ---------------------------------------------------------------------------
 
-    A sub-config is referenced using the @include: prefix, e.g. "@include:path/to/subconfig.yaml"
-    Relative paths are resolved relative to the main configuration folder.
-    Sub-configs can themselves reference further sub-configs.
+
+def _resolve_node(value: Any, *, context: ResolutionContext, resolvers: dict[str, DirectiveResolver]) -> Any:
+    """Recursively walk *value* and dispatch directive strings to resolvers.
+
+    Dicts and lists are recursed into.  Strings are checked against every
+    registered resolver.  When a resolver produces a ``ResolvedDirective``
+    with ``should_resolve_recursively=True`` the loaded value is resolved
+    again (with an updated context), otherwise it is returned as-is.
+    """
+    if isinstance(value, dict):
+        return {key: _resolve_node(child, context=context, resolvers=resolvers) for key, child in value.items()}
+
+    if isinstance(value, list):
+        return [_resolve_node(item, context=context, resolvers=resolvers) for item in value]
+
+    if isinstance(value, str):
+        for resolver in resolvers.values():
+            if resolver.can_handle(value):
+                result: ResolvedDirective = resolver.resolve_directive(value, context)
+                if result.should_resolve_recursively:
+                    next_context: ResolutionContext = (
+                        context.for_loaded_source(result.source_path, result.value) if result.source_path else context
+                    )
+                    return _resolve_node(result.value, context=next_context, resolvers=resolvers)
+                return result.value
+
+    return value
+
+
+# ---------------------------------------------------------------------------
+# Stateless directive resolvers
+# ---------------------------------------------------------------------------
+
+
+@ResolverRegistry.register(key="@include")
+class IncludeResolver(DirectiveResolver):
+    """Load nested YAML configuration files referenced by @include.
+
+    The directive argument is treated as a config file path.  Relative paths
+    are resolved against the current configuration file.  The orchestrator
+    handles recursive resolution of the loaded document — this resolver only
+    loads and returns the raw YAML.
 
     Example:
         database: "@include:config/database.yml"
         api: "@include:config/api.yml"
     """
 
-    directive: str = "@include"
+    def can_handle(self, value: str) -> bool:
+        """Return True when *value* starts with @include."""
+        return value.startswith(self.key)
 
-    def __init__(
-        self, context: str | None = None, env_filename: str | None = None, env_prefix: str | None = None, source_path: str | None = None
-    ) -> None:
-        super().__init__(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path)
+    def resolve_directive(self, value: str, context: ResolutionContext) -> ResolvedDirective:
+        """Load the YAML file referenced by *argument*.
 
-    def resolve_directive(self, directive_argument: str, base_path: Path | None) -> dict[str, Any]:
-        """Resolve @include: directive with environment variable expansion.
-
-        Supports:
-        - Environment variables: @include: ${GLOBAL_DATA_SOURCE_DIR}/sead-options.yml
-        - Relative paths: @include: ./reconciliation.yml
-        - Absolute paths: @include: /abs/path/config.yml
-
-        Args:
-            directive_argument: Path after @include: prefix
-            base_path: Directory of current file for resolving relative paths
-
-        Returns:
-            Loaded configuration dict
+        Returns a ``ResolvedDirective`` with ``should_resolve_recursively=True``
+        so the orchestrator resolves directives inside the loaded document.
         """
-        from .config import load_config  # pylint: disable=import-outside-toplevel
+        argument: str = value[len(self.key) :].lstrip(":").strip()
+        filename: str = _resolve_path(
+            argument,
+            base_path=context.source_folder,
+            env_prefix=context.env_prefix,
+            runtime_root=context.runtime_root,
+            env_filename=context.env_filename,
+        )
 
-        # Resolve environment variables and paths
-        filename: str = self._resolve_path(directive_argument, base_path=base_path, raise_if_missing=False)
+        load_dotenv(dotenv_path=context.env_filename)
 
-        loaded_data: dict[str, Any] = load_config(
-            source=filename, context=self.context, env_filename=self.env_filename, env_prefix=self.env_prefix
-        ).data
-        return self._resolve(loaded_data, Path(filename).parent)
+        data: dict[str, Any] | str | None = load_yaml_file(filename)
+
+        if not isinstance(data, dict):
+            raise ValueError(f"Included file must contain a mapping: {filename}")
+
+        return ResolvedDirective(value=data, should_resolve_recursively=True, source_path=filename)
 
 
-class LoadResolver(BaseResolver):
+@ResolverRegistry.register(key="@load")
+class LoadResolver(DirectiveResolver):
+    """Load external data payloads referenced by @load.
 
-    directive: str = "@load"
+    The directive argument may be a file path or a dotted path into the
+    current configuration.  If the dotted path resolves to a string, that
+    value is treated as the filename.  If it resolves to a dict, the
+    resolver uses its ``filename`` and ``delimiter`` keys.
 
-    def __init__(
-        self, context: str | None = None, env_filename: str | None = None, env_prefix: str | None = None, source_path: str | None = None
-    ) -> None:
-        super().__init__(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path)
+    Loaded data is returned as-is and is **not** recursively resolved for
+    more directives.
 
-    def resolve_directive(self, directive_argument: str, base_path: Path | None) -> Any:
-        """Resolve "@load: argument" directive with environment variable expansion.
+    Example:
+        values: "@load:data/translations.csv"
+        values: "@load:options.data_sources.my_source"
+    """
 
-        Supports loading CSV/TSV data from files with env var paths:
-        - @load: ${DATA_DIR}/lookup.csv
-        - @load: ./data/local.csv
+    def can_handle(self, value: str) -> bool:
+        """Return True when *value* starts with @load."""
+        return value.startswith(self.key)
 
-        Args:
-            directive_argument: Either 1) a file path or 2) a dotted config path to load options
-            base_path: Directory of current file for resolving relative paths
+    def resolve_directive(self, value: str, context: ResolutionContext) -> ResolvedDirective:
+        """Load the data file referenced by *argument*.
 
-        Returns:
-            Loaded data as list of dicts, or directive_argument if load fails
+        Returns a ``ResolvedDirective`` with ``should_resolve_recursively=False``
+        so the loaded payload is inserted as-is.
         """
-
-        filename: str
+        argument: str = value[len(self.key) :].lstrip(":").strip()
+        filename: Any
         sep: str
 
-        if dotexists(self.data, directive_argument):
-            opts: dict[str, Any] = dget(self.data, directive_argument)
+        if dotexists(context.root_data, argument):
+            opts: Any = dget(context.root_data, argument)
 
             if not isinstance(opts, dict):
-                logger.warning(f"ignoring load directive options for path '{directive_argument}' since it's not a dict")
-                return directive_argument
+                filename, sep = opts, ","
+            else:
+                if "filename" not in opts:
+                    logger.warning(f"ignoring load directive for path '{argument}' since no filename is specified in options")
+                    return ResolvedDirective(value=opts, should_resolve_recursively=False)
 
-            if "filename" not in opts:
-                logger.warning(f"ignoring load directive for path '{directive_argument}' since no filename is specified in options")
-                return directive_argument
-
-            filename, sep = opts["filename"], opts.get("delimiter", ",")
+                filename, sep = opts["filename"], opts.get("delimiter", ",")
 
         else:
-            filename, sep = directive_argument, ","
+            filename, sep = argument, ","
 
         # Resolve environment variables and relative paths
-        filename = self._resolve_path(filename, base_path=base_path, raise_if_missing=False)
+        filename = _resolve_path(
+            filename,
+            base_path=context.source_folder,
+            env_prefix=context.env_prefix,
+            runtime_root=context.runtime_root,
+            env_filename=context.env_filename,
+            raise_if_missing=False,
+        )
 
-        return self.load_file(filename, sep) or directive_argument
+        loaded_data = load_data_file(filename, sep)
+        result = loaded_data if loaded_data is not None else argument
+        return ResolvedDirective(value=result, should_resolve_recursively=False)
 
-    def load_file(self, filename: str, sep: str) -> list[dict[Any, Any]] | None:
-        """Load CSV/TSV file into a list of dictionaries."""
-        loaded_data: list[dict[Any, Any]] | None = None
-        if not is_path_to_existing_file(filename):
-            logger.warning(f"file '{filename}' referenced in load directive does not exist")
-            return None
 
-        try:
-            if filename.lower().endswith(".parquet"):
-                loaded_data = pd.read_parquet(filename).to_dict(orient="records")
+@ResolverRegistry.register(key="${")
+class EnvironmentVariableResolver(DirectiveResolver):
+    """Resolve ${ENV_VAR} references in configuration values.
+
+    Handles full-string values like ``"${API_URL}"`` and partial replacements
+    like ``"prefix_${VAR}_suffix"``.  Path-like environment variables (names
+    ending in ``_DIR``, ``_PATH``, ``_FILE``, ``_FILENAME``, or matching
+    ``application_root_env_var``) are anchored to ``runtime_root`` when their
+    resolved value is relative.
+
+    Returns ``should_resolve_recursively=False`` — the resolved string is
+    never walked again for more directives.
+    """
+
+    def can_handle(self, value: str) -> bool:
+        """Return True when *value* contains a ${...} reference."""
+        return "${" in value
+
+    def resolve_directive(self, value: str, context: ResolutionContext) -> ResolvedDirective:
+        """Replace all ${ENV_VAR} references in *value* with environment values."""
+
+        def replacer(match: re.Match[str]) -> str:
+            env_var_name = match.group(1)
+            resolved_value = replace_env_vars(
+                match.group(0),
+                env_prefix=context.env_prefix or "",
+                try_without_prefix=context.try_without_prefix,
+            )
+            if not resolved_value:
+                return resolved_value
+            if (
+                context.runtime_root is not None
+                and _is_path_env_var(env_var_name, context.env_prefix, context.application_root_env_var)
+                and not Path(resolved_value).is_absolute()
+            ):
+                return str((context.runtime_root / resolved_value).resolve())
+            return resolved_value
+
+        result = re.sub(r"\$\{([^}]+)\}", replacer, value)
+        return ResolvedDirective(value=result, should_resolve_recursively=False)
+
+
+@ResolverRegistry.register(key="@value")
+class ReferenceResolver(DirectiveResolver):
+    """Resolve @value: cross-references within the resolved configuration.
+
+    Unlike other resolvers, this is NOT dispatched by ``_resolve_node`` during
+    the tree walk.  It is called explicitly via ``resolve_all()`` after all
+    @include/@load/${ENV_VAR} resolution is complete, because it needs the
+    fully resolved document to perform dotted-path lookups.
+
+    Supports:
+      - Simple: ``"@value: entities.foo.keys"``
+      - List concatenation: ``"@value: base + ['b', 'c']"``
+      - YAML-list flattening: ``["@value: path1", "@value: path2", "col_a"]``
+    """
+
+    @property
+    def resolve_key(self) -> str:
+        """Return the directive key handled by this resolver."""
+        return f"{self.key}:"
+
+    def can_handle(self, value: str) -> bool:
+        """Return True when *value* contains an @value: directive."""
+        return self.resolve_key in value
+
+    def resolve_directive(self, value: str, context: ResolutionContext) -> ResolvedDirective:
+        """Resolve a single @value: reference string."""
+        resolved = self._resolve_ref_value(value, full_data=context.root_data)
+        return ResolvedDirective(value=resolved, should_resolve_recursively=False)
+
+    def resolve_all(self, data: dict[str, Any] | list[Any] | str) -> dict[str, Any] | list[Any] | str:
+        """Resolve all @value: references in *data* (post-processing entry point)."""
+        return self._resolve_ref_value(data, full_data=data)  # type: ignore[arg-type]
+
+    def _resolve_ref_value(
+        self, data: dict[str, Any] | list[Any] | str, full_data: dict[str, Any] | list[Any] | str
+    ) -> dict[str, Any] | list[Any] | str:
+        """Recursive helper for @value: reference resolution."""
+        if isinstance(data, dict):
+            return {k: self._resolve_ref_value(v, full_data=full_data) for k, v in data.items()}
+        if isinstance(data, list):
+            result: list[Any] = []
+            for item in data:
+                resolved = self._resolve_ref_value(item, full_data=full_data)
+                if isinstance(item, str) and item.strip().startswith(self.resolve_key) and isinstance(resolved, list):
+                    result.extend(resolved)
+                else:
+                    result.append(resolved)
+            return result
+        if isinstance(data, str):
+            if (self.resolve_key in data and "+" in data) or (data.count("[") > 0 and "+" in data):
+                parsed = self._parse_list_expression(data, full_data)  # type: ignore[arg-type]
+                if parsed != data and not isinstance(parsed, str):
+                    return self._resolve_ref_value(parsed, full_data=full_data)
+                if isinstance(parsed, str):
+                    data = parsed
+            if data.startswith(self.resolve_key):
+                ref_path: str = data[len(self.resolve_key) :].strip()
+                if not dotexists(full_data, ref_path):  # type: ignore[arg-type]
+                    logger.error(f"Reference path '{ref_path}' not found in configuration data.")
+                ref_value: Any = dotget(full_data, ref_path)  # type: ignore[arg-type]
+                ref_value = self._resolve_ref_value(ref_value, full_data=full_data)
+                return ref_value if ref_value is not None else data
+        return data
+
+    def _parse_list_expression(self, expr: str, full_data: dict[str, Any]) -> list[Any] | str:
+        """Parse @value: list concatenation expressions like "@value: base + ['b']".
+
+        Constraints: no nested lists, no brackets in list values.
+        """
+        if self.resolve_key not in expr and "[" not in expr:
+            return expr
+        if expr.count("[") != expr.count("]"):
+            return expr
+        if "+" not in expr:
+            return expr
+
+        tokens: list[str] = []
+        current_token: str = ""
+        bracket_depth: int = 0
+
+        for char in expr:
+            if char == "[":
+                bracket_depth += 1
+                current_token += char
+            elif char == "]":
+                bracket_depth -= 1
+                current_token += char
+                if bracket_depth < 0:
+                    return expr
+            elif char == "+" and bracket_depth == 0:
+                if current_token.strip():
+                    tokens.append(current_token.strip())
+                current_token = ""
             else:
-                loaded_data = pd.read_csv(filename, sep=sep, dtype=str).to_dict(orient="records")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.warning(f"file '{filename}' referenced in load directive could not be parsed: {e}")
-            return None
+                current_token += char
 
-        return loaded_data
+        if current_token.strip():
+            tokens.append(current_token.strip())
+        if bracket_depth != 0:
+            return expr
+        if len(tokens) == 1 and tokens[0].startswith(self.resolve_key):
+            return tokens[0]
 
-    def is_load_directive(self, value: Any) -> bool:
-        """Check if the value is a load directive string."""
-        return isinstance(value, str) and value.startswith(self.directive)
+        result: list[Any] = []
+        for token in tokens:
+            if token.startswith(self.resolve_key):
+                ref_path: str = token[len(self.resolve_key) :].strip()
+                ref_value = dotget(full_data, ref_path)  # type: ignore[arg-type]
+                if ref_value is None:
+                    continue
+                ref_value = self._resolve_ref_value(ref_value, full_data=full_data)
+                if isinstance(ref_value, list):
+                    if any(isinstance(item, list) for item in ref_value):
+                        return expr
+                    result.extend(ref_value)
+                else:
+                    result.append(ref_value)
+            elif token.startswith("[") and token.endswith("]"):
+                inner: str = token[1:-1]
+                if "[" in inner or "]" in inner:
+                    return expr
+                try:
+                    list_value = yaml.safe_load(token)
+                    if isinstance(list_value, list):
+                        if any(isinstance(item, list) for item in list_value):
+                            return expr
+                        result.extend(list_value)
+                    else:
+                        result.append(list_value)
+                except Exception:  # pylint: disable=broad-exception-caught
+                    return expr
+
+        return result if result else expr

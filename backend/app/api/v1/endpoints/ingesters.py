@@ -9,7 +9,7 @@ from backend.app.models.ingester import (
     ValidateRequest,
     ValidateResponse,
 )
-from backend.app.services.ingester_service import IngesterService, get_ingester_service
+from backend.app.services.ingester_service import get_ingester_service
 
 router = APIRouter()
 

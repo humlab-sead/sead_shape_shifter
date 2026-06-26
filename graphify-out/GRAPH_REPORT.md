@@ -1,16 +1,16 @@
-# Graph Report - sead_shape_shifter  (2026-06-18)
+# Graph Report - sead_shape_shifter  (2026-06-26)
 
 ## Corpus Check
-- 396 files · ~279,331 words
+- 399 files · ~280,060 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 6391 nodes · 19479 edges · 240 communities (215 shown, 25 thin omitted)
-- Extraction: 65% EXTRACTED · 35% INFERRED · 0% AMBIGUOUS · INFERRED: 6746 edges (avg confidence: 0.5)
+- 6441 nodes · 19563 edges · 244 communities (213 shown, 31 thin omitted)
+- Extraction: 66% EXTRACTED · 34% INFERRED · 0% AMBIGUOUS · INFERRED: 6734 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `63d0c1f0`
+- Built from commit: `64ffee68`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -169,7 +169,6 @@
 - [[_COMMUNITY_Community 154|Community 154]]
 - [[_COMMUNITY_Community 155|Community 155]]
 - [[_COMMUNITY_Community 156|Community 156]]
-- [[_COMMUNITY_Community 157|Community 157]]
 - [[_COMMUNITY_Copy Project Dialog|Copy Project Dialog]]
 - [[_COMMUNITY_Create Project Dialog|Create Project Dialog]]
 - [[_COMMUNITY_API Routes Package|API Routes Package]]
@@ -184,7 +183,12 @@
 - [[_COMMUNITY_Global Component Types|Global Component Types]]
 - [[_COMMUNITY_Community 184|Community 184]]
 - [[_COMMUNITY_Community 185|Community 185]]
-- [[_COMMUNITY_Community 244|Community 244]]
+- [[_COMMUNITY_Community 204|Community 204]]
+- [[_COMMUNITY_Community 207|Community 207]]
+- [[_COMMUNITY_Community 237|Community 237]]
+- [[_COMMUNITY_Community 241|Community 241]]
+- [[_COMMUNITY_Community 243|Community 243]]
+- [[_COMMUNITY_Community 245|Community 245]]
 - [[_COMMUNITY_Community 319|Community 319]]
 - [[_COMMUNITY_Community 381|Community 381]]
 - [[_COMMUNITY_Community 447|Community 447]]
@@ -194,10 +198,10 @@
 
 ## God Nodes (most connected - your core abstractions)
 1. `TableConfig` - 381 edges
-2. `ShapeShiftProject` - 296 edges
+2. `ShapeShiftProject` - 295 edges
 3. `ProjectService` - 292 edges
 4. `Project` - 240 edges
-5. `Registry` - 192 edges
+5. `Registry` - 202 edges
 6. `ProjectMapper` - 157 edges
 7. `BaseModel` - 146 edges
 8. `TableStore` - 128 edges
@@ -224,87 +228,87 @@
 - 1-file cycle: `backend/app/core/state_manager.py -> backend/app/core/state_manager.py`
 - 3-file cycle: `src/configuration/config.py -> src/configuration/resolve.py -> src/configuration/provider.py -> src/configuration/config.py`
 
-## Communities (240 total, 25 thin omitted)
+## Communities (244 total, 31 thin omitted)
 
 ### Community 0 - "Project Validation & Layout"
-Cohesion: 0.04
-Nodes (128): Any, Path, Project, ProjectFileInfo, ProjectMetadata, Response, UploadFile, ValidationResult (+120 more)
+Cohesion: 0.03
+Nodes (171): Any, Path, Project, ProjectFileInfo, ProjectMetadata, Response, UploadFile, ValidationResult (+163 more)
 
 ### Community 1 - "Resource Configuration Errors"
 Cohesion: 0.03
-Nodes (130): ConfigurationError, EntityConflictError, Invalid project configuration.      Occurs when project structure violates speci, Requested resource does not exist.      Used for projects, entities, files, etc., Resource already exists with same identifier.      Used for duplicate names, ID, Entity was concurrently modified; ETag mismatch.      Raised when a PUT /entitie, ResourceConflictError, ResourceNotFoundError (+122 more)
+Nodes (114): ConfigurationError, EntityConflictError, Domain Exception Hierarchy for Shape Shifter.  This module defines the exception, Invalid project configuration.      Occurs when project structure violates speci, Base class for resource access/availability errors., Requested resource does not exist.      Used for projects, entities, files, etc., Resource already exists with same identifier.      Used for duplicate names, ID, Entity was concurrently modified; ETag mismatch.      Raised when a PUT /entitie (+106 more)
 
 ### Community 2 - "Branch & ForeignKey Config"
-Cohesion: 0.05
-Nodes (76): Any, MaterializationService, Any, Any, DataFrame, Path, ProjectService, _build_entity_response() (+68 more)
+Cohesion: 0.07
+Nodes (54): Any, MaterializationService, Any, _build_entity_response(), create_entity(), delete_entity(), EntityCreateRequest, EntityResponse (+46 more)
 
 ### Community 3 - "Data Source Management"
 Cohesion: 0.06
-Nodes (22): EntityReferencesExistSpecification, ExtraColumnsExpressionSpecification, FilterSpecification, Check that depends_on references are valid., Validates that all referenced entities exist in the configuration.     Note: The, Validates staged filter configuration and basic stage-aware column availability., Check that materialized entity is properly configured., Check that unnest configuration is valid. (+14 more)
+Nodes (24): EntityReferencesExistSpecification, ExtraColumnsExpressionSpecification, FilterSpecification, Check that depends_on references are valid., Validates that all referenced entities exist in the configuration.     Note: The, Validates staged filter configuration and basic stage-aware column availability., Check that materialized entity is properly configured., Check that unnest configuration is valid. (+16 more)
 
 ### Community 4 - "Table Config & FK Links"
 Cohesion: 0.02
-Nodes (56): ProjectService, ShapeShiftProject, Initialize resolver with core project.          Args:             project_name:, SourceStrategyType, Any, DataFrame, Self, Get all key columns including system_id and public_id. (+48 more)
+Nodes (48): Configuration for appending data to an entity.      Supports three append strate, Any, DataFrame, Self, Get all key columns including system_id and public_id., Compute a hash of the metadata for change detection., Get ingester configurations from project options., Get configuration for a specific ingester. (+40 more)
 
 ### Community 5 - "Project Validation & Fixes"
 Cohesion: 0.06
-Nodes (68): Any, DataValidationMode, Any, Path, ProjectService, ValidationError, apply_fixes(), check_dependencies() (+60 more)
+Nodes (67): Any, DataValidationMode, Any, Path, ProjectService, ValidationError, apply_fixes(), check_dependencies() (+59 more)
 
 ### Community 6 - "Data Loader Base"
-Cohesion: 0.21
-Nodes (10): DataLoader, FixedLoader, Loader for fixed data entities., Create a fixed data entity based on configuration., Normalize loaded fixed values before building the DataFrame., Validate the fixed data entity configuration., Resolve effective fixed-value columns and validate shape with entity-aware error, Any (+2 more)
+Cohesion: 0.13
+Nodes (22): DataLoader, FixedLoader, Loader for fixed data entities., Create a fixed data entity based on configuration., Normalize loaded fixed values before building the DataFrame., Validate the fixed data entity configuration., Resolve effective fixed-value columns and validate shape with entity-aware error, Any (+14 more)
 
 ### Community 7 - "Reconciliation Client"
 Cohesion: 0.09
-Nodes (41): AsyncClient, UUID, BindingSetResponse, ChangeDetectionRequest, ChangeDetectionResult, HTTP client for the SIMS (SEAD Identity Management System) API.  Wraps the six /, Fetch the current state of a Binding Set (GET /identity/binding-sets/{uuid})., Manually confirm a proposed Binding Set (POST /identity/binding-sets/{uuid}/conf (+33 more)
+Nodes (42): AsyncClient, UUID, BindingSetResponse, ChangeDetectionRequest, ChangeDetectionResult, HTTP client for the SIMS (SEAD Identity Management System) API.  Wraps the six /, Fetch the current state of a Binding Set (GET /identity/binding-sets/{uuid})., Manually confirm a proposed Binding Set (POST /identity/binding-sets/{uuid}/conf (+34 more)
 
 ### Community 8 - "Table Store Dispatchers"
 Cohesion: 0.10
-Nodes (41): Any, DataFrame, ProjectService, ShapeShiftProject, ShapeShiftService, TableStore, TargetModel, ValidationIssue (+33 more)
+Nodes (39): Any, DataFrame, ProjectService, ShapeShiftProject, ShapeShiftService, TableStore, TargetModel, ValidationIssue (+31 more)
 
 ### Community 9 - "DSL Evaluation"
-Cohesion: 0.06
-Nodes (23): CustomLayoutConfig, LayoutOptions, LayoutPosition, Initialize metadata from configuration data., Position of a node in custom graph layout., Initialize layout position from configuration data.          Args:             d, Convert position to dictionary for serialization., Custom graph layout configuration. (+15 more)
+Cohesion: 0.04
+Nodes (27): Get list of ongoing entity names., Get list of ignored entity names., Get mapping of flagged entity statuses., Check if entity is required (in todo or done lists)., Check if entity is marked as todo., Check if entity is marked as completed., Check if entity is marked as done (alias for is_completed)., Check if entity is marked as ongoing. (+19 more)
 
 ### Community 10 - "Project File Management"
-Cohesion: 0.02
-Nodes (178): DispatcherMetadata, ExecuteRequest, ExecuteResult, Any, ProjectTaskStatus, ProjectService, ApplicationStateManager, DispatcherMetadata (+170 more)
+Cohesion: 0.05
+Nodes (65): Any, YamlService, Any, Path, TaskList, YamlService, list_backups(), List all backup files for a project.      Returns backups sorted by creation tim (+57 more)
 
 ### Community 11 - "Project Service & Schema"
-Cohesion: 0.09
-Nodes (29): Entity schema validation failure.      Common causes:     - Missing required fie, SchemaValidationError, Any, DataFrame, DefaultEntityPersistenceStrategy, EntityPersistenceStrategy, FixedEntityPersistenceStrategy, Entity persistence strategies for type-specific validation and normalization. (+21 more)
+Cohesion: 0.11
+Nodes (23): Entity schema validation failure.      Common causes:     - Missing required fie, SchemaValidationError, Any, DataFrame, DefaultEntityPersistenceStrategy, EntityPersistenceStrategy, FixedEntityPersistenceStrategy, Entity persistence strategies for type-specific validation and normalization. (+15 more)
 
 ### Community 12 - "Deploy Artifact Bundle"
 Cohesion: 0.05
-Nodes (77): DeployArtifact, Any, Path, SubmissionContext, ChangeRequestPackage, DataFrame, Series, SubmissionContext (+69 more)
+Nodes (72): DeployArtifact, Any, Path, SubmissionContext, ChangeRequestPackage, Series, SubmissionContext, TargetModel (+64 more)
 
 ### Community 13 - "Data Ingestion Infrastructure"
-Cohesion: 0.03
-Nodes (136): MaterializationResult, MaterializeRequest, UnmaterializationResult, UnmaterializeRequest, MaterializationResult, MaterializationService, MaterializedMappingSyncResult, UnmaterializationResult (+128 more)
+Cohesion: 0.05
+Nodes (74): EntityMapping, Link, EntityMapping, Link, MappingCatalog, Project, ProjectService, TableConfig (+66 more)
 
 ### Community 14 - "Project Config & Ingestion"
 Cohesion: 0.05
-Nodes (46): JClass, PostgresSqlLoader, Loader for fixed data entities., Allow loaders to repair vendor-specific metadata quirks before validation., Load SQL data entity based on configuration.         Note: Columns are auto-dete, Return fully qualified table name., Return quoted identifier., Load entire table as DataFrame. (+38 more)
+Nodes (43): JClass, Loader for fixed data entities., Allow loaders to repair vendor-specific metadata quirks before validation., Load SQL data entity based on configuration.         Note: Columns are auto-dete, Return fully qualified table name., Return quoted identifier., Load entire table as DataFrame., Read SQL query into a DataFrame using the provided connection. (+35 more)
 
 ### Community 15 - "OpenRefine Reconciliation Client"
 Cohesion: 0.03
-Nodes (96): Any, ColumnMetadata, ForeignKeyMetadata, Metadata about a table column., Metadata about a foreign key relationship., AppendConfig, BranchConfig, FilterConfig (+88 more)
+Nodes (118): Any, Enum, AppendConfig, BranchConfig, FilterConfig, ForeignKeyConfig, ForeignKeyConstraints, Pydantic models for an entity. (+110 more)
 
 ### Community 16 - "Ingestion Result & Validation"
-Cohesion: 0.12
-Nodes (23): EntityMapping, Link, delete_mapping_link(), get_entity_mapping(), get_mapping_link(), get_mapping_service(), put_mapping_link(), API endpoints for mapping sidecar CRUD operations. (+15 more)
+Cohesion: 0.25
+Nodes (4): Return the shapeshifter.yml path for *project_name*.          Raises:, Replace only the ``metadata`` section on disk.          All other project sectio, Replace only the ``options`` section on disk.          All other project section, Replace or delete one entity on disk without touching other entities.          P
 
 ### Community 17 - "FK Constraint Validators"
-Cohesion: 0.11
-Nodes (11): ColumnType, Get the configuration for a specific entity., Check fields based on the specified check type.          Args:             entit, Get specified types of result columns available.         FIXME: consider moving, Validate a specific field in the entity configuration, or target_cfg if provided, Apply the validation rule to the specified field., Log the failure of the validation rule., Clear all errors and warnings. (+3 more)
+Cohesion: 0.08
+Nodes (15): ColumnType, Get the configuration for a specific entity., Check fields based on the specified check type.          Args:             entit, Structural/configuration issue emitted by specification checks.      Additional, Get specified types of result columns available.         FIXME: consider moving, Validate a specific field in the entity configuration, or target_cfg if provided, Apply the validation rule to the specified field., Log the failure of the validation rule. (+7 more)
 
 ### Community 18 - "Identity Orchestration & Planning"
-Cohesion: 0.11
-Nodes (34): DataFrame, EntitySpec, ChangeRequestPackage, IdentityResolutionResult, TargetProjectionResult, IdentityResolutionResult, TargetModel, TargetProjectionResult (+26 more)
+Cohesion: 0.09
+Nodes (22): Ingester infrastructure for data ingestion into external systems.  Ingesters are, Path, IngesterMetadata, Ingester, Ingester, IngesterMetadata, Protocol definitions for data ingesters.  This module defines the standard inter, Metadata about an ingester.      Attributes:         key: Unique identifier for (+14 more)
 
 ### Community 19 - "Identity Resolution & Collision"
 Cohesion: 0.06
-Nodes (67): ConnectTestResult, DataLoader, DataLoaderRegistry, LoaderType, Get loader keys filtered by loader type., Get connection time in seconds., Base class for all data loaders.      Subclasses should define a 'schema' class, Get the loader type (e.g., 'file', 'sql', 'value'). (+59 more)
+Nodes (62): ConnectTestResult, DataLoader, DataLoaderRegistry, LoaderType, Get loader keys filtered by loader type., Get connection time in seconds., Base class for all data loaders.      Subclasses should define a 'schema' class, Get the loader type (e.g., 'file', 'sql', 'value'). (+54 more)
 
 ### Community 20 - "Dispatcher Registry & Utilities"
 Cohesion: 0.04
@@ -312,35 +316,35 @@ Nodes (50): DispatcherRegistry, Registry for dispatcher classes., Any, Self, Sub
 
 ### Community 21 - "Entity Relationship Suggestions"
 Cohesion: 0.05
-Nodes (69): ABC, CoreIssue, ValidationIssue, ConformanceIssue, GlobalConstraint, SeverityLevel, CoreIssue, Any (+61 more)
+Nodes (89): Any, ShapeShiftProject, ValidationError, CoreIssue, Environment, ExcelWriter, GlobalConstraint, SeverityLevel (+81 more)
 
 ### Community 22 - "Reconciliation Service"
-Cohesion: 0.10
-Nodes (30): Any, Identifier, ReconciliationClient, Settings, SubmissionContext, Composed, IdentitySignal, IdentityType (+22 more)
+Cohesion: 0.05
+Nodes (83): ReconciliationCandidate, Any, AsyncClient, ReconciliationCandidate, Any, Identifier, ReconciliationClient, Settings (+75 more)
 
 ### Community 23 - "Circular Dependency Detection"
-Cohesion: 0.07
-Nodes (63): CircularDependencyError, DataIntegrityError, Base class for data integrity violations., Circular dependency detected in entity relationships.      Occurs when entities, DataSourceConfig, DataSourceService, ProjectService, QueryResult (+55 more)
-
-### Community 24 - "Layout & Materialization Config"
-Cohesion: 0.06
-Nodes (71): EntityTypeInfo, get_data_source_service(), Get DataSourceService instance.      Creates service for managing global data so, DataSourceConfig, DataSourceService, DataSourceStatus, DataSourceTestResult, ProjectFileInfo (+63 more)
-
-### Community 25 - "SEAD Clearinghouse Ingester"
 Cohesion: 0.13
 Nodes (15): DataFrame, DataFrame, MockSchemaService, Returns foreign key columns from SEAD columns (performance only)., Build a SeadSchema from sead_tables and sead_columns dataframes., Returns a dataframe of tables from SEAD with attributes., Returns a dataframe of table columns from SEAD with attributes., Returns a dataframe of tables from SEAD with attributes. (+7 more)
 
+### Community 24 - "Layout & Materialization Config"
+Cohesion: 0.05
+Nodes (83): EntityTypeInfo, get_data_source_service(), Get DataSourceService instance.      Creates service for managing global data so, DataSourceConfig, DataSourceService, DataSourceStatus, DataSourceTestResult, ProjectFileInfo (+75 more)
+
+### Community 25 - "SEAD Clearinghouse Ingester"
+Cohesion: 0.11
+Nodes (24): Any, DataFrame, Path, ProjectService, EntityValuesService, get_entity_values_service(), _normalized_isnan_values(), Service for managing external entity values (parquet/csv files). (+16 more)
+
 ### Community 26 - "Entity Normalization & Conversion"
-Cohesion: 0.12
-Nodes (19): useDependencies(), UseDependenciesOptions, useValidation(), UseValidationOptions, useValidationStore, CircularDependency, CircularDependencyCheck, DependencyCheckResult (+11 more)
+Cohesion: 0.08
+Nodes (13): MaterializationConfig, Initialize metadata from configuration data., Configuration for unnesting a column. Wraps unnest setting from table config., Configuration for materialized entity state. Read-Only., Initialize materialization config from data., Check if entity is materialized., Get saved pre-materialization entity config., Get materialization timestamp (ISO format). (+5 more)
 
 ### Community 27 - "@value Directive Parsing"
 Cohesion: 0.06
-Nodes (32): dget(), dotexpand(), filter_once_per_message(), find_parent_with(), get_connection_uri(), import_sub_modules(), load_resource_yaml(), normalize_text() (+24 more)
+Nodes (36): Specifications for validating entity configurations., Specifications for validating fields in entity configurations., Validate the metadata section of the project configuration., Resolve and return a new ShapeShiftProject instance., Set columns list. Used to update columns after auto-detection. Not persistent., Get set of all columns used in keys, columns, and foreign keys, pending unnestin, dget(), dotexists() (+28 more)
 
 ### Community 28 - "Entity Specifications Registry"
-Cohesion: 0.10
-Nodes (55): AppendSpecification, DataEntityFieldsSpecification, DependsOnResolvedSpecification, DependsOnSpecification, DropDuplicatesSpecification, EntityFieldsBaseSpecification, EntityFieldsSpecification, EntitySpecificationRegistry (+47 more)
+Cohesion: 0.11
+Nodes (56): ProjectSpecification, Base specification for project validation., AppendSpecification, DataEntityFieldsSpecification, DependsOnResolvedSpecification, DependsOnSpecification, DropDuplicatesSpecification, EntityFieldsBaseSpecification (+48 more)
 
 ### Community 29 - "Data-Aware Validation"
 Cohesion: 0.07
@@ -348,187 +352,187 @@ Nodes (20): autoRefresh, cardStyle, cardTextStyle, dialogHeight, dialogPosition,
 
 ### Community 30 - "Schema Introspection & SQL Loaders"
 Cohesion: 0.08
-Nodes (31): Schema introspection failed.      Common causes:     - Data source not connected, SchemaIntrospectionError, Any, TableSchema, Any, DataSourceConfig, Path, SqlLoader (+23 more)
+Nodes (39): Schema introspection failed.      Common causes:     - Data source not connected, SchemaIntrospectionError, DataSourceConfig, Any, TableSchema, DataSourceStatus, DataSourceTestResult, Any (+31 more)
 
 ### Community 31 - "Submission Identifier Normalization"
-Cohesion: 0.06
-Nodes (95): datetime, IdentityOrchestrationResult, IngesterConfig, Configuration for an ingester instance.      This is the base configuration clas, Any, IngesterConfig, IngesterMetadata, IngestionResult (+87 more)
+Cohesion: 0.09
+Nodes (41): datetime, IdentityAssignment, IngesterConfig, Path, SourceTableBundle, is_valid_submission_identifier(), normalize_submission_identifier(), Normalize the change-request identifier for bundle naming. (+33 more)
 
 ### Community 32 - "Entity Materialization Service"
-Cohesion: 0.25
-Nodes (7): DispatcherMetadata, ExecuteRequest, ExecuteResult, Models for executing full workflow., Request to execute full workflow., Result of workflow execution., Metadata about a dispatcher.
+Cohesion: 0.09
+Nodes (39): Serve SPA for all routes (except API and static assets)., serve_spa(), DispatcherMetadata, ExecuteRequest, ExecuteResult, ApplicationStateManager, DispatcherMetadata, ExecuteRequest (+31 more)
 
 ### Community 33 - "Entity Config Mapping"
-Cohesion: 0.10
-Nodes (16): FixedEntityColumnTypeName, Check that fields are for the fixed entity., Check that entities are properly configured., Check that fields are for the SQL entity., Get the appropriate specification based on entity type., Check that entity's fields are valid (based on entity type)., Check that fields are for the data entity., Validate that fixed-entity values match declared or inferred backend types. (+8 more)
+Cohesion: 0.08
+Nodes (33): Any, DataFrame, FixedEntityTypeConvention, MaterializationError, MaterializationService, Service for entity materialization operations., Infer explicit fixed column types needed to preserve materialized values., Convert a materialized dataframe to fixed-safe Python row values. (+25 more)
 
 ### Community 34 - "SQL Data Loading (JDBC)"
-Cohesion: 0.11
-Nodes (21): ColumnRef, Literal, Parser, Reference to a column by name., Token types for the DSL., A token with position information., Hand-written recursive descent parser., Parse an expression: function_call | column_ref | literal. (+13 more)
+Cohesion: 0.10
+Nodes (24): ColumnRef, DSLParseError, Expr, FormulaParser, Parser, Reference to a column by name., Token types for the DSL., Hand-written recursive descent parser. (+16 more)
 
 ### Community 35 - "SEAD Schema Specifications"
-Cohesion: 0.10
-Nodes (30): Any, Column, SeadSchema, Submission, Column, Table, ColumnTypesSpecification, ForeignKeyColumnsHasValuesSpecification (+22 more)
+Cohesion: 0.18
+Nodes (6): Submission, Check if the given submission satisfies all the specifications defined in the Sp, Foreign key columns must have values, All submission tables MUST have a non null "system_id", All fields in metadata.Table.Fields MUST exist in DataTable.columns, Checks that non-nullable columns have values.         Records that has a public_
 
 ### Community 36 - "Configuration Provider Interface"
-Cohesion: 0.12
-Nodes (18): Re-evaluate deferred extra_columns for an entity after FK linking or unnesting., Any, DataFrame, Series, Identify extra_columns that could not be evaluated and their missing dependencie, Convert value to string, handling numbers and nulls., Detect if value is an escaped equals literal (starts with '==').          String, Remove the escape character from an escaped equals literal.          Converts '= (+10 more)
+Cohesion: 0.10
+Nodes (21): Re-evaluate deferred extra_columns for an entity after FK linking or unnesting., Any, DataFrame, Series, extract_column_references(), Extract all column references from an expression AST.      Args:         expr: E, Extra columns evaluation with support for constants, column copies, interpolated, Identify extra_columns that could not be evaluated and their missing dependencie (+13 more)
 
 ### Community 37 - "Workflow Execution API"
-Cohesion: 0.14
-Nodes (18): ValidationError, Any, ShapeShiftProject, ValidationError, CoreIssue, Mapper for translating between domain validation models and API validation model, Mapper for validation layer boundaries (Domain ↔ API)., Convert any CoreIssue subclass to an API ValidationError.          Args: (+10 more)
+Cohesion: 0.25
+Nodes (23): EntitySuggestions, SchemaIntrospectionService, DependencySuggestion, ForeignKeySuggestion, Metadata about a database table., Complete schema information for a table., TableMetadata, TableSchema (+15 more)
 
 ### Community 38 - "Entity Resolution Catalog"
 Cohesion: 0.07
-Nodes (29): Entity mapping registry management., EntityResolutionCatalog, EntityResolutionMetadata, EntityResolutionSet, Domain models for reconciliation system.  These models represent the business do, Get mapping item by source value., Check if this mapping has any items., Get count of mapping items. (+21 more)
+Nodes (28): EntityResolutionCatalog, EntityResolutionMetadata, EntityResolutionSet, Domain models for reconciliation system.  These models represent the business do, Get mapping item by source value., Check if this mapping has any items., Get count of mapping items., Complete entity mapping registry for all entities.      Top-level domain model f (+20 more)
 
 ### Community 39 - "Entity CRUD API"
-Cohesion: 0.16
-Nodes (12): BaseResolver, LoadResolver, Resolve a file path with environment variable expansion and relative path suppor, Recursively resolve sub-configurations referenced in the main configuration., Resolve @include: directive with environment variable expansion.          Suppor, Resolve "@load: argument" directive with environment variable expansion., Load CSV/TSV file into a list of dictionaries., Check if the value is a load directive string. (+4 more)
+Cohesion: 0.05
+Nodes (53): DirectiveResolver, EnvironmentVariableResolver, find_unresolved_directives(), IncludeResolver, _is_path_env_var(), load_resolved_yaml(), LoadResolver, _raise_on_unresolved_directives() (+45 more)
 
 ### Community 40 - "Schema Introspection & Tables"
-Cohesion: 0.09
-Nodes (40): Any, SchemaIntrospectionService, TableMetadata, TableSchema, Any, DataSourceConfigRequest, get_table_schema(), get_table_schema_with_config() (+32 more)
+Cohesion: 0.12
+Nodes (30): Any, SchemaIntrospectionService, TableMetadata, TableSchema, DataSourceConfigRequest, get_table_schema(), get_table_schema_with_config(), get_type_mappings() (+22 more)
 
 ### Community 41 - "Frontend Validation & Graph"
-Cohesion: 0.13
-Nodes (14): useCytoscape(), UseCytoscapeOptions, createBaseStyles(), CytoscapeStyleConfig, CytoscapeStyleOptions, darkThemeStyles, getCytoscapeStyles(), lightThemeStyles (+6 more)
+Cohesion: 0.06
+Nodes (36): useCytoscape(), UseCytoscapeOptions, useDependencies(), UseDependenciesOptions, useValidation(), UseValidationOptions, createBaseStyles(), CytoscapeStyleConfig (+28 more)
 
 ### Community 42 - "Data Policies (Identity)"
 Cohesion: 0.09
 Nodes (35): ConfigValue, A value that can be resolved from a configuration store., DataFrame, PolicyBase, AddIdentityMappingSystemIdToPublicIdPolicy, AddPrimaryKeyColumnIfMissingPolicy, DropIgnoredColumns, _get_series() (+27 more)
 
 ### Community 43 - "Validation Messages & Validators"
-Cohesion: 0.08
-Nodes (36): format_validation_message_with_context(), Any, Shared helpers for formatting human-readable validation messages., Prefix a message with entity and field context and append expression details whe, Any, DataFrame, ColumnExistsValidator, DataTypeCompatibilityValidator (+28 more)
+Cohesion: 0.09
+Nodes (32): format_validation_message_with_context(), Any, Shared helpers for formatting human-readable validation messages., Prefix a message with entity and field context and append expression details whe, Any, DataFrame, ColumnExistsValidator, DataTypeCompatibilityValidator (+24 more)
 
 ### Community 44 - "Data Replacement Operations"
 Cohesion: 0.12
 Nodes (39): Pattern, Any, DataFrame, Series, _apply_normalize_op_scalar(), _apply_normalize_op_series(), _apply_replacement_rule(), apply_replacements() (+31 more)
 
 ### Community 45 - "Preview & Constraint Validation"
-Cohesion: 0.11
-Nodes (23): Backend, Call, DSLException, DSLParseError, DSLValidationError, Evaluator, extract_column_references(), FormulaParser (+15 more)
+Cohesion: 0.14
+Nodes (17): DSLException, DSLValidationError, Evaluator, FunctionSpec, dsl.py  A recursive descent parser for the formula DSL used in extra_columns.  F, A token with position information., Hand-written tokenizer for the formula DSL., Tokenize the entire source string. (+9 more)
 
 ### Community 46 - "SQL Query Execution API"
-Cohesion: 0.08
-Nodes (37): Any, Settings, Any, Path, Settings, DefaultEntityConfigMapper, EntityConfigMapper, EntityMapperContext (+29 more)
+Cohesion: 0.05
+Nodes (52): Path, Any, Settings, Path, Settings, BaseSettings, Resolve a path against the repository root when it is relative., Get full environment variable name with prefix. (+44 more)
 
 ### Community 47 - "File-Based Entity Mapper"
-Cohesion: 0.09
-Nodes (21): apiClient, apiRequest(), dataSourceFilesApi, dataSourcesApi, entitiesApi, excelMetadataApi, healthApi, HealthResponse (+13 more)
+Cohesion: 0.10
+Nodes (18): apiClient, apiRequest(), dataSourceFilesApi, dataSourcesApi, excelMetadataApi, healthApi, HealthResponse, projectsApi (+10 more)
 
 ### Community 48 - "Configuration Resolver"
-Cohesion: 0.16
-Nodes (8): Config, Save configuration to the YAML file.          This method preserves the raw YAML, Create a deep copy of the configuration., Resolve configuration directives in self.data., Container for configuration elements., Any, dotset(), Sets element in dict using dot notation x.y.z or x:y:z
+Cohesion: 0.18
+Nodes (19): get_schema_service(), Get SchemaIntrospectionService instance.      Creates service with current confi, EntitySuggestions, SchemaIntrospectionService, analyze_entities(), get_suggestion_service_dep(), API endpoints for entity relationship suggestions., Dependency injection for suggestion service. (+11 more)
 
 ### Community 49 - "Core Issue Types"
 Cohesion: 0.07
-Nodes (22): LogDownloadResponse, LogLevel, LogResponse, LogType, CustomThemeColors, THEME_PRESETS, ThemePreset, useTheme() (+14 more)
+Nodes (23): LogDownloadResponse, LogLevel, LogResponse, logsApi, LogType, CustomThemeColors, THEME_PRESETS, ThemePreset (+15 more)
 
 ### Community 50 - "Conformance Validation"
 Cohesion: 0.19
 Nodes (11): Any, Series, DSLEvaluationError, PandasStringBackend, Backend that evaluates DSL functions against a Pandas DataFrame.      Evaluation, Convert each element to int, passing None/NaN through as None., Convert each element to float, passing None/NaN through as None., Convert each element to str, passing None/NaN through as None. (+3 more)
 
 ### Community 51 - "Frontend API Client"
-Cohesion: 0.11
-Nodes (24): DataSourceConfig, Any, DataSourceConfig, DataSourceStatus, DataSourceTestResult, Path, DataSourceMapper, Data source configuration mapper between API and core models. (+16 more)
+Cohesion: 0.13
+Nodes (14): Any, DataSourceConfig, Path, List all global data source files.          Returns:             List of data so, Load a specific data source by filename.          If it's a dict, assume it's al, Create a new global data source file.          Args:             filename: Filen, Update an existing data source file.          Args:             filename: Curren, Delete a data source file.          Args:             filename: Data source file (+6 more)
 
 ### Community 52 - "API Dependency Injection"
-Cohesion: 0.06
-Nodes (66): Environment, ExcelWriter, IdentityResolutionResult, TargetModel, TargetProjectionResult, Series, _build_remote_id_mapping(), PK/FK target projection for the SEAD change request ingester. (+58 more)
+Cohesion: 0.08
+Nodes (36): ShapeShiftProject, TargetModel, DocumentFormat, DocumentGenerator, ExcelGenerator, HTMLDocumentGenerator, MarkdownDocumentGenerator, Target model documentation generator with project context integration.  Generate (+28 more)
 
 ### Community 53 - "Entity Reference Specifications"
-Cohesion: 0.12
-Nodes (20): Path, PreparationResult, Scaffold ingester for SEAD change request generation., Get an optional injected client from config.extra., Run the shared preparation workflow after inputs are resolved., SeadChangeRequestIngester, build_validation_infos(), build_validation_result() (+12 more)
+Cohesion: 0.09
+Nodes (49): IngesterConfig, Configuration for an ingester instance.      This is the base configuration clas, Any, IngesterConfig, IngesterMetadata, IngestionResult, Path, PreparationResult (+41 more)
 
 ### Community 54 - "DuckDB Loader"
-Cohesion: 0.11
-Nodes (22): Path, ProjectFileInfo, UploadFile, Path, FileManager, File management operations: upload, list, and inspect files for projects., Sanitize uploaded filename to prevent path traversal.          Args:, List files stored under a project's uploads directory.          Args: (+14 more)
+Cohesion: 0.13
+Nodes (15): Path, ProjectFileInfo, UploadFile, File management operations: upload, list, and inspect files for projects., Sanitize uploaded filename to prevent path traversal.          Args:, List files stored under a project's uploads directory.          Args:, Handles file operations for projects and data sources.      This component manag, Save an uploaded file into the project's uploads directory.          Args: (+7 more)
 
 ### Community 55 - "Frontend Data Source Store"
 Cohesion: 0.08
-Nodes (21): schemaApi, useDataSourceStore, ColumnMetadata, DataSourceConfig, DataSourceFormData, DataSourceStatus, DataSourceTestResult, DataSourceType (+13 more)
+Nodes (20): schemaApi, ColumnMetadata, DataSourceConfig, DataSourceFormData, DataSourceStatus, DataSourceTestResult, DataSourceType, ForeignKeyMetadata (+12 more)
 
 ### Community 56 - "Base Project Validation Spec"
-Cohesion: 0.18
-Nodes (30): IngesterMetadataResponse, IngestRequest, IngestResponse, ValidateRequest, ValidateResponse, Any, IngesterConfig, IngesterMetadataResponse (+22 more)
+Cohesion: 0.17
+Nodes (30): IngesterMetadataResponse, IngestRequest, IngestResponse, ValidateRequest, ValidateResponse, IngesterMetadataResponse, ingest_data(), list_ingesters() (+22 more)
 
 ### Community 57 - "Validation Model Mapping"
 Cohesion: 0.14
-Nodes (8): UUID, Find an existing active session for the given project and user., Retrieve and touch a session., Release a session and clear project if no other sessions., Periodically cleanup inactive sessions (30min timeout)., Update last accessed timestamp., Start background tasks., Create a new editing session for a project file.          If a session already e
+Nodes (22): get_current_session(), get_session_id(), API Dependencies  Provides dependency injection functions for FastAPI endpoints., Extract session ID from header or cookie., Get current editing session (optional)., Require an active session., require_session(), getCurrentSession() (+14 more)
 
 ### Community 58 - "YAML File Handling"
 Cohesion: 0.07
-Nodes (28): Any, Path, Any, CommentedMap, CommentedSeq, CommentRegistry, Save data to YAML file with atomic write and optional backup.          Uses atom, Load YAML file and return the raw ruamel.yaml CommentedMap.          Unlike ``lo (+20 more)
+Nodes (26): Any, Path, CommentedMap, CommentedSeq, CommentRegistry, Save data to YAML file with atomic write and optional backup.          Uses atom, Load YAML file and return the raw ruamel.yaml CommentedMap.          Unlike ``lo, Save a CommentedMap to file with atomic write, preserving comment metadata. (+18 more)
 
 ### Community 59 - "Configuration Factory & Store"
-Cohesion: 0.09
-Nodes (22): ConfigLike, ConfigStore, MockConfigProvider, Check if a config is currently loaded., Unload a config from memory., Force reload a config from disk., Check if configuration is available (uses provider layer), Get configuration (uses provider layer) (+14 more)
+Cohesion: 0.05
+Nodes (48): ABC, ConfigLike, Config, ConfigLike, Create a deep copy of the configuration., Container for configuration elements., Configurable, inject_config() (+40 more)
 
 ### Community 60 - "SEAD Schema Service"
-Cohesion: 0.09
-Nodes (9): Dtype, ItemsView, KeysView, Get a table by name, or return default if not found., Get a table by name, table type or alias (excel_sheet), or raise KeyError if not, Returns a list of tablenames referencing the given table, Returns a dict of table to datatype mappings., SeadSchema (+1 more)
+Cohesion: 0.08
+Nodes (33): Dtype, Any, Column, SeadSchema, ItemsView, KeysView, Column, Get a table by name, or return default if not found. (+25 more)
 
 ### Community 61 - "Frontend Execute Dialog"
 Cohesion: 0.06
 Nodes (31): DispatcherMetadata, executeApi, ExecuteRequest, ExecuteResult, canExecute, dataSourceNames, { dataSources }, dataSourceStore (+23 more)
 
 ### Community 62 - "Frontend Spec Management"
-Cohesion: 0.10
-Nodes (10): [], deleteDialog, deletingSpec, editorDialog, headers, isNewSpec, { specifications, loadingSpecs, specsError }, { success, error: showError } (+2 more)
+Cohesion: 0.07
+Nodes (24): reconciliationServiceApi, reconciliationSpecApi, [], deleteDialog, deletingSpec, editorDialog, headers, isNewSpec (+16 more)
 
 ### Community 63 - "Frontend Entity Preview"
 Cohesion: 0.11
-Nodes (29): ColumnInfo, PreviewResult, PreviewValidationIssue, useEntityPreview(), useErrorHandler(), UseErrorHandlerOptions, UseErrorHandlerReturn, useSimpleError() (+21 more)
+Nodes (30): ColumnInfo, PreviewResult, PreviewValidationIssue, useEntityPreview(), useErrorHandler(), UseErrorHandlerOptions, UseErrorHandlerReturn, useSimpleError() (+22 more)
 
 ### Community 64 - "Extra Columns Formula Evaluation"
-Cohesion: 0.06
-Nodes (38): Registry, FieldValidatorRegistry, Registry for field validators., Any, ShapeShiftProject, ShapeShiftProject, TableStore, Any (+30 more)
+Cohesion: 0.07
+Nodes (35): Registry, ShapeShiftProject, TableStore, Any, DataFrame, Temporarily suspend hooks and emit them once after the batch., Dictionary-like entity store with hooks.      Hooks fire when an entity DataFram, Register a hook called after an entity is assigned.          Args:             h (+27 more)
 
 ### Community 65 - "Functional Dependencies & Subset"
-Cohesion: 0.10
-Nodes (18): get_schema_service(), Get SchemaIntrospectionService instance.      Creates service with current confi, SchemaIntrospectionService, PlainTextResponse, health_check(), HealthResponse, Health check endpoint., Health check response model. (+10 more)
+Cohesion: 0.16
+Nodes (12): PlainTextResponse, health_check(), HealthResponse, Health check endpoint., Health check response model., Health check endpoint.      Returns application status and configuration informa, get_help_doc(), API endpoints for markdown help documents used by the frontend. (+4 more)
 
 ### Community 66 - "Domain Exception Hierarchy"
-Cohesion: 0.12
-Nodes (49): ConstraintViolationError, Base class for business rule validation errors., Constraint validation failed.      Occurs when data violates cardinality, unique, ValidationError, Any, PreviewResult, ProjectService, ShapeShiftService (+41 more)
+Cohesion: 0.13
+Nodes (43): ConstraintViolationError, Base class for business rule validation errors., Constraint validation failed.      Occurs when data violates cardinality, unique, ValidationError, Any, PreviewResult, ProjectService, ShapeShiftService (+35 more)
 
 ### Community 67 - "Project Entity Specifications"
-Cohesion: 0.14
-Nodes (16): Any, Extract source nodes and edges from project entities., Factory method to get appropriate extractor based on entity type., Extract source nodes and edges for an entity., Do nothing for unsupported types., Extract source nodes and edges for a file entity.          Subclasses must imple, Create file node if it doesn't exist.          Args:             filename: Path, Extract filename from entity configuration. (+8 more)
+Cohesion: 0.05
+Nodes (65): CircularDependencyError, DataIntegrityError, Base class for data integrity violations., Circular dependency detected in entity relationships.      Occurs when entities, Any, Project, Any, dict (+57 more)
 
 ### Community 68 - "FastAPI Application Entry"
-Cohesion: 0.08
-Nodes (25): DataFrameGroupBy, Base specification for project validation., Check if there are any errors., Check if there are any warnings., Generate a human-readable validation report., Specification, FunctionalDependencySpecification, Specification for checking functional dependencies when dropping duplicates. (+17 more)
+Cohesion: 0.10
+Nodes (19): Base specification for project validation., Check if there are any errors., Check if there are any warnings., Generate a human-readable validation report., Specification, ForeignKeyConfigSpecification, ForeignKeyDataSpecification, Checks if local and remote keys are present in the actual table data (pandas.Dat (+11 more)
 
 ### Community 69 - "Entity Field Validators"
-Cohesion: 0.14
-Nodes (13): AvailableColumnsResponse, ColumnAvailability, useColumnIntrospection(), DirectiveValidationResult, useDirectiveValidation(), ForeignKeyKeyInput, normalizeForeignKeyKeys(), buildForeignKeySummary() (+5 more)
+Cohesion: 0.15
+Nodes (12): AvailableColumnsResponse, ColumnAvailability, useColumnIntrospection(), DirectiveValidationResult, useDirectiveValidation(), ForeignKeyKeyInput, normalizeForeignKeyKeys(), buildForeignKeySummary() (+4 more)
 
 ### Community 70 - "Frontend API Client & Health"
-Cohesion: 0.07
-Nodes (41): Any, Entity, Project, ShapeShiftProject, FixedEntityNormalizationWarning, Emit structured log details for a load-time fixed-entity normalization., Convert core config dict to API Project.          Note: The filename (name param, Convert API Project to core config dict.          Args:             api_config: (+33 more)
+Cohesion: 0.09
+Nodes (28): FixedEntityColumnTypeName, Check that fields are for the fixed entity., Validate that fixed-entity values match declared or inferred backend types., Get normalized project fixed-entity type conventions., Any, CoercionIssue, find_duplicate_fixed_entity_columns(), infer_fixed_entity_column_type() (+20 more)
 
 ### Community 71 - "Entity Values Service"
-Cohesion: 0.09
-Nodes (51): EntitySuggestions, SchemaIntrospectionService, Project, Any, EntitySuggestions, SchemaIntrospectionService, TableSchema, DependencySuggestion (+43 more)
+Cohesion: 0.13
+Nodes (14): Any, TableSchema, Find matching columns between two entities.          Matching strategies:, Calculate confidence score for a foreign key suggestion.          Scoring:, Get data type for a column., Check if column is a primary key., Check if two data types are compatible for foreign keys., Infer processing dependencies from foreign key suggestions.          Entities wi (+6 more)
 
 ### Community 72 - "Vue App Shell & Commands"
-Cohesion: 0.07
-Nodes (22): acknowledgeLatestWhatsNew(), commandSearch, currentProject, dismissWhatsNewDialog(), drawer, filteredCommands, hasUnreadWhatsNew, isResizing (+14 more)
+Cohesion: 0.06
+Nodes (26): AppSettings, DEFAULT_SETTINGS, settings, useSettings(), acknowledgeLatestWhatsNew(), commandSearch, currentProject, dismissWhatsNewDialog() (+18 more)
 
 ### Community 73 - "Task Status & Context Menu"
 Cohesion: 0.08
 Nodes (13): EntityTaskStatus, ProjectTaskStatus, TaskOperationResponse, TaskPriority, TaskStatus, useTaskStatus(), activatorStyle, canMarkComplete (+5 more)
 
 ### Community 74 - "CSV Dispatcher & Processor"
-Cohesion: 0.22
-Nodes (5): Path, Get projects root directory path., Get application root directory path., Get global data directory path., Get global data source directory path.
+Cohesion: 0.13
+Nodes (16): _normalise_local_key(), Sidecar validation functions for ``<project>-mapping.yml`` alignment.  These val, Return *local_key* as a list of column-name strings., Validate that *entity_mapping.public_id* matches *entity_config.public_id*., Validate that *entity_mapping.local_key* is a valid business key.      Checks pe, validate_entity_mapping(), validate_local_key(), Validate sidecar entity mappings against project entity configs. (+8 more)
 
 ### Community 75 - "Frontend Materialization API"
-Cohesion: 0.17
-Nodes (17): reconciliationServiceApi, Query for reconciliation service., Get reconciliation service URL., API endpoints for entity reconciliation., Get reconciliation service manifest.      Returns:         Full service manifest, AutoReconcileResult, EntityResolutionCatalog, EntityResolutionCatalogCreateRequest (+9 more)
+Cohesion: 0.16
+Nodes (16): DataFrameGroupBy, FunctionalDependencySpecification, Specification for checking functional dependencies when dropping duplicates., Check functional dependency: for each unique combination of determinant_columns,, DataFrame, Series, Any, DataFrame (+8 more)
 
 ### Community 76 - "Sidecar File Management"
 Cohesion: 0.17
@@ -543,28 +547,28 @@ Cohesion: 0.11
 Nodes (16): Any, OperationManager, Manager for long-running operations with progress tracking and cancellation., Initialize operation manager., Create a new operation and return its ID.          Args:             operation_t, Update operation progress.          Args:             operation_id: Operation ID, Mark operation as completed., Mark operation as failed. (+8 more)
 
 ### Community 79 - "Filter API & Schema"
-Cohesion: 0.13
-Nodes (16): Any, IngestionResult, Build a standard failed ingestion result., Result of ingester validation.      Attributes:         is_valid: Whether valida, Check if validation has errors., Check if validation has warnings., Result of ingestion operation.      Attributes:         success: Whether ingesti, Build a standard successful ingestion result. (+8 more)
+Cohesion: 0.22
+Nodes (8): Any, IngestRequest, IngestResponse, IngestionResult, Build a standard failed ingestion result., Result of ingestion operation.      Attributes:         success: Whether ingesti, Build a standard successful ingestion result., Ingest data using specified ingester.          Args:             key: Ingester k
 
 ### Community 80 - "Frontend Logs & Settings"
-Cohesion: 0.07
-Nodes (41): Any, PreviewResult, ProjectService, ShapeShiftProject, TableConfig, TableStore, BaseSettings, Get environment options. (+33 more)
+Cohesion: 0.09
+Nodes (38): Any, PreviewResult, ProjectService, ShapeShiftProject, TableConfig, TableStore, EntityMapperContext, EntityConfigMapperFactory (+30 more)
 
 ### Community 81 - "Entity Persistence Strategies"
-Cohesion: 0.08
-Nodes (29): global_exception_handler(), lifespan(), FastAPI application entry point., Serve SPA for all routes (except API and static assets)., Root endpoint - redirect to docs (API-only mode)., Application lifespan events., Catch all unhandled exceptions and log with full traceback.      This is a last-, root() (+21 more)
+Cohesion: 0.06
+Nodes (31): global_exception_handler(), lifespan(), FastAPI application entry point., Root endpoint - redirect to docs (API-only mode)., Application lifespan events., Catch all unhandled exceptions and log with full traceback.      This is a last-, root(), DataSourceService (+23 more)
 
 ### Community 82 - "FK Merge Validation & Tracking"
 Cohesion: 0.14
 Nodes (8): Any, BaseUploader, Connection, NullConnection, Get list of table names in underscored format for a submission.         NOTE: ev, Explode submission into public tables., Delete submission from staging tables., SubmissionRepository
 
 ### Community 83 - "Application Settings & Paths"
-Cohesion: 0.09
-Nodes (43): IdentityWorkPlan, IdentityAssignment, IdentityResolutionResult, PlannedTable, TargetModel, DataFrame, PlannedTable, Any (+35 more)
+Cohesion: 0.05
+Nodes (116): IdentityOrchestrationResult, IdentityWorkPlan, DataFrame, EntitySpec, IdentityResolutionResult, TargetModel, TargetProjectionResult, IdentityAssignment (+108 more)
 
 ### Community 84 - "Field Validators & Transformers"
-Cohesion: 0.13
-Nodes (19): Any, DataFrame, Any, DataFrame, Series, Given a mapping dict, transform values in specified columns., Transformer, TransformerRegistry (+11 more)
+Cohesion: 0.14
+Nodes (18): Any, DataFrame, Any, DataFrame, Series, Given a mapping dict, transform values in specified columns., Transformer, TranslateTransformer (+10 more)
 
 ### Community 85 - "Health & Introspection API"
 Cohesion: 0.10
@@ -572,11 +576,7 @@ Nodes (22): IDispatcher, CsvProcessor, _format_value(), Convert value to int or 
 
 ### Community 86 - "Entity Resolution DTO Mapping"
 Cohesion: 0.12
-Nodes (18): Project, ProjectCreateRequest, ProjectListItem, ProjectLoadRequest, ProjectMetadata, ProjectSaveRequest, BranchConfig, Cardinality (+10 more)
-
-### Community 87 - "Frontend YAML Intelligence"
-Cohesion: 0.20
-Nodes (8): _parse_list_expression(), Helper function for replace_references, Recursively searches dict for values matching @value directives optionally with, Parse and evaluate list expressions with "@value:" directives and list operation, _replace_references(), Check if a specific entity exists in the configuration., Check if a specific field exists in the entity configuration., dotexists()
+Nodes (18): Project, ProjectCreateRequest, ProjectListItem, ProjectLoadRequest, ProjectSaveRequest, BranchConfig, Cardinality, Entity (+10 more)
 
 ### Community 88 - "Frontend Ingester Management"
 Cohesion: 0.14
@@ -587,20 +587,20 @@ Cohesion: 0.12
 Nodes (22): Any, Project, get_valid_directives(), API endpoints for @value directive validation., Request to validate a @value directive., Response from directive validation., Validate a @value directive against project structure.      Args:         projec, Get all valid @value directive paths in the project.      Args:         project_ (+14 more)
 
 ### Community 90 - "Community 90"
-Cohesion: 0.08
-Nodes (18): api, Result of configuration validation., Calculate error and warning counts from lists., Total number of issues (errors + warnings + info)., Get all errors for a specific entity., Get all warnings for a specific entity., ValidationResult, DataValidationMode (+10 more)
+Cohesion: 0.15
+Nodes (6): DataValidationMode, ValidationBranchGroup, ValidationCategory, ValidationError, ValidationPriority, ValidationSeverity
 
 ### Community 91 - "Target Model Domain Types"
-Cohesion: 0.28
-Nodes (16): _as_schema_mapping(), _as_str_list(), _collect_child_paths(), _collect_paths(), _escape_table(), _extra_keys_allowed(), _format_allowed_values(), _format_default() (+8 more)
+Cohesion: 0.15
+Nodes (27): TargetModel, Shared target-model domain types and validators., ColumnSpec, ModelMetadata, NamingConventions, _as_schema_mapping(), _as_str_list(), _collect_child_paths() (+19 more)
 
 ### Community 92 - "Community 92"
-Cohesion: 0.21
-Nodes (20): ForeignKeyConstraintValidator, ForeignKeyRuntimeOptions, ForeignKeyConstraintValidator, ForeignKeyRuntimeOptions, Orchestrates validation of foreign key constraints during and after merging., Resolved runtime behavior for foreign-key null handling., ForeignKeyMergeSetup, Setup configuration for foreign key merge operation.      Attributes:         re (+12 more)
+Cohesion: 0.14
+Nodes (24): ForeignKeyConstraints, ForeignKeyConstraintValidator, ForeignKeyRuntimeOptions, ForeignKeyConstraintValidator, ForeignKeyRuntimeOptions, Orchestrates validation of foreign key constraints during and after merging., Return opts required for merge validation., Resolved runtime behavior for foreign-key null handling. (+16 more)
 
 ### Community 93 - "Community 93"
-Cohesion: 0.13
-Nodes (26): QueryExecutionError, QuerySecurityError, Query execution failed.      Common causes:     - Data source connection issues, Query contains prohibited operations.      Occurs when query attempts destructiv, DataSourceConfig, QueryResult, QueryValidation, Identifier (+18 more)
+Cohesion: 0.10
+Nodes (48): QueryExecutionError, QuerySecurityError, Query execution failed.      Common causes:     - Data source connection issues, Query contains prohibited operations.      Occurs when query attempts destructiv, DataSourceConfig, DataSourceService, ProjectService, QueryResult (+40 more)
 
 ### Community 94 - "CSV Database Uploader"
 Cohesion: 0.13
@@ -611,66 +611,10 @@ Cohesion: 0.12
 Nodes (16): ALL_FIXED_GRID_COLUMN_TYPES, applyClipboardMatrix(), ApplyClipboardMatrixOptions, ApplyClipboardMatrixResult, CoercedGridValue, CoerceGridRowsResult, coerceGridValue(), FixedGridColumnTypeName (+8 more)
 
 ### Community 96 - "Community 96"
-Cohesion: 0.19
-Nodes (11): Any, calculate_depths(), find_cycles(), Find all cycles in dependency graph using DFS.      Args:         dependency_map, Perform topological sort on dependency graph.      Args:         dependency_map:, Calculate depth of each node in dependency graph.      Args:         dependency_, topological_sort(), Utility modules for the backend application.  This package contains reusable uti (+3 more)
+Cohesion: 0.24
+Nodes (10): Any, Type Mapping Service  Suggests Shape Shifter entity field types from SQL data ty, Suggested type mapping for a column., Apply heuristic rules based on column naming patterns., Get alternative type suggestions., Get type mappings for all columns in a table.          Args:             columns, Service for mapping SQL types to Shape Shifter entity field types., Get suggested type mapping for a SQL column.          Args:             sql_type (+2 more)
 
 ### Community 97 - "Community 97"
-Cohesion: 0.28
-Nodes (5): Register a validator with optional sub_key for constraint value mapping., Get a specific validator by constraint key and value (sub_key lookup)., Return opts required for merge validation., ValidatorRegistry, Any
-
-### Community 98 - "Community 98"
-Cohesion: 0.10
-Nodes (7): ForeignKeyConstraints, ForeignKeyConstraints, Constraints for foreign key relationships. Read-Only. Wraps constraints setting, Get cardinality constraint., Check if no constraints are set., ForeignKeyConfig, TableConfig
-
-### Community 99 - "Database Submission Management"
-Cohesion: 0.17
-Nodes (14): CanMaterializeResponse, materializationApi, canMaterialize, checkCanMaterialize(), close(), loading, materialize(), storageFormats (+6 more)
-
-### Community 100 - "Data Normalization Pipeline"
-Cohesion: 0.15
-Nodes (11): DataFrame, _demo(), Expr, Parse a formula starting with '='., Parse a formula string into an AST., Validator for expressions in the DSL., Validate the expression against the allowed columns, functions, and config., Recursively validate an expression node. (+3 more)
-
-### Community 101 - "Community 101"
-Cohesion: 0.14
-Nodes (38): get_current_session(), get_session_id(), API Dependencies  Provides dependency injection functions for FastAPI endpoints., Extract session ID from header or cookie., Get current editing session (optional)., Require an active session., require_session(), closeSession() (+30 more)
-
-### Community 102 - "API Error Handling"
-Cohesion: 0.05
-Nodes (40): EntityResolutionCatalog, Path, EntityResolutionSet, get_project_raw_yaml(), Get project as raw YAML string.      Args:         name: Project name      Retur, Return the absolute path to the project-local target model file.      Raises:, _resolve_target_model_path(), cancel_operation() (+32 more)
-
-### Community 103 - "Entity Configuration Models"
-Cohesion: 0.18
-Nodes (15): BackupInfo, MetadataUpdateRequest, ProjectCreateRequest, ProjectUpdateRequest, RestoreBackupRequest, sessionsApi, useProjects(), UseProjectsOptions (+7 more)
-
-### Community 104 - "Session State Management"
-Cohesion: 0.07
-Nodes (34): AllowRowDecreaseValidator, ConstraintValidator, _get_series(), ManyToOneCardinalityValidator, NullKeyValidator, OneToManyCardinalityValidator, OneToOneCardinalityValidator, Retrieve all registered validators for a given stage. (+26 more)
-
-### Community 105 - "Community 105"
-Cohesion: 0.22
-Nodes (11): get_ingester_registry(), Get the global ingester registry instance., inject_ingester_database_dependencies(), Inject database-backed runtime collaborators when DB config is available., IngesterService, Service layer for ingester operations., Ingest data using specified ingester.          Args:             key: Ingester k, Create IngesterConfig from dict, extracting standard fields.          Args: (+3 more)
-
-### Community 106 - "Column Introspection Service"
-Cohesion: 0.17
-Nodes (14): Project, get_available_columns(), API endpoints for column introspection., Get available columns for FK editing.      Returns categorized columns for the l, ColumnAvailability, ColumnIntrospectionService, Column introspection service for FK editor assistance.  Analyzes entity configur, Extract column names that will be generated by unnesting.          Args: (+6 more)
-
-### Community 107 - "ForeignKey Editor UI"
-Cohesion: 0.24
-Nodes (8): CardinalityInfo, JoinStatistics, Models for foreign key join testing., A row that failed to match during the join., Information about join cardinality., Statistics about the join operation., UnmatchedRow, Test a foreign key join to validate the relationship.          Args:
-
-### Community 108 - "Data Validation UI"
-Cohesion: 0.24
-Nodes (9): _normalise_local_key(), Return *local_key* as a list of column-name strings., Validate that *entity_mapping.public_id* matches *entity_config.public_id*., Validate that *entity_mapping.local_key* is a valid business key.      Checks pe, validate_entity_mapping(), validate_local_key(), Validate sidecar entity mappings against project entity configs., EntityMapping (+1 more)
-
-### Community 109 - "WhatsNew Release Notes"
-Cohesion: 0.19
-Nodes (14): Path, PlainTextResponse, _build_manifest(), _extract_metadata(), get_whats_new_content(), get_whats_new_manifest(), API endpoints for user-facing release notes metadata., Metadata for a single what's-new markdown file. (+6 more)
-
-### Community 110 - "Community 110"
-Cohesion: 0.16
-Nodes (7): ForeignKeyConfig, Configuration for a foreign key. Read-Only. Wraps foreign key setting from table, Whether to defer hard dependency on the remote entity.          When True, the F, Resolve extra columns for the foreign key configuration.          The mapping re, Get list of valid remote columns to select from the remote dataframe based on th, Generate the setup for linking based on the foreign key configuration., Check if the foreign key linking has already been added to the table.
-
-### Community 111 - "WhatsNew API Endpoints"
 Cohesion: 0.15
 Nodes (9): { error: showError }, handleClose(), handleSave(), {
   hasActiveSession,
@@ -687,13 +631,69 @@ Nodes (9): { error: showError }, handleClose(), handleSave(), {
   checkConcurrentEditors,
 }, projectNames, projectStore, snackbar, SnackbarState (+1 more)
 
+### Community 98 - "Community 98"
+Cohesion: 0.22
+Nodes (8): Any, Path, Delete layout sidecar file if present., Get sidecar file path for a project file., Check whether layout sidecar exists., Load custom layout from sidecar if it exists.          Supports both:         -, Save custom layout to sidecar file., Migrate legacy options.layout.custom to sidecar if needed.          Returns migr
+
+### Community 99 - "Database Submission Management"
+Cohesion: 0.08
+Nodes (31): CanMaterializeResponse, materializationApi, MaterializeRequest, UnmaterializationResult, UnmaterializeRequest, API endpoints for entity materialization., canMaterialize, checkCanMaterialize() (+23 more)
+
+### Community 100 - "Data Normalization Pipeline"
+Cohesion: 0.19
+Nodes (7): DataFrame, _demo(), Validator for expressions in the DSL., Validate the expression against the allowed columns, functions, and config., Recursively validate an expression node., Count the number of nodes in an expression., Validator
+
+### Community 101 - "Community 101"
+Cohesion: 0.25
+Nodes (20): closeSession(), createSession(), listActiveSessions(), ApplicationState, Depends, get_app_state, ProjectSession, Response (+12 more)
+
+### Community 102 - "API Error Handling"
+Cohesion: 0.16
+Nodes (13): EntityResolutionCatalog, Path, EntityMappingManager, Create a new entity resolution mapping.          Works with domain models throug, Update an existing entity mapping registry.          Works with domain models th, Manager for entity resolution catalog and specification CRUD operations.      Ha, Delete an entity-field resolution set from resolution catalog.          Works wi, Initialize entity resolution catalog manager.          Args:             project (+5 more)
+
+### Community 103 - "Entity Configuration Models"
+Cohesion: 0.17
+Nodes (16): BackupInfo, MetadataUpdateRequest, ProjectCreateRequest, ProjectUpdateRequest, RestoreBackupRequest, sessionsApi, useProjects(), useSession() (+8 more)
+
+### Community 104 - "Session State Management"
+Cohesion: 0.05
+Nodes (45): AllowRowDecreaseValidator, ConstraintValidator, _get_series(), ManyToOneCardinalityValidator, NullKeyValidator, OneToManyCardinalityValidator, OneToOneCardinalityValidator, Register a validator with optional sub_key for constraint value mapping. (+37 more)
+
+### Community 105 - "Community 105"
+Cohesion: 0.08
+Nodes (18): CustomLayoutConfig, LayoutOptions, LayoutPosition, Initialize layout position from configuration data.          Args:             d, Get custom layout configuration., Convert to dictionary for serialization., Convert position to dictionary for serialization., Custom graph layout configuration. (+10 more)
+
+### Community 106 - "Column Introspection Service"
+Cohesion: 0.17
+Nodes (14): Project, get_available_columns(), API endpoints for column introspection., Get available columns for FK editing.      Returns categorized columns for the l, ColumnAvailability, ColumnIntrospectionService, Column introspection service for FK editor assistance.  Analyzes entity configur, Extract column names that will be generated by unnesting.          Args: (+6 more)
+
+### Community 107 - "ForeignKey Editor UI"
+Cohesion: 0.10
+Nodes (38): CoreIssue, ValidationError, ValidationIssue, Any, DataValidationMode, Project, ValidationError, ValidationResult (+30 more)
+
+### Community 108 - "Data Validation UI"
+Cohesion: 0.21
+Nodes (34): MaterializationResult, MaterializationResult, MaterializationService, MaterializedMappingSyncResult, UnmaterializationResult, EntityMapping, EntityPersistenceStrategyRegistry, Link (+26 more)
+
+### Community 109 - "WhatsNew Release Notes"
+Cohesion: 0.19
+Nodes (14): Path, PlainTextResponse, _build_manifest(), _extract_metadata(), get_whats_new_content(), get_whats_new_manifest(), API endpoints for user-facing release notes metadata., Metadata for a single what's-new markdown file. (+6 more)
+
+### Community 110 - "Community 110"
+Cohesion: 0.19
+Nodes (6): Resolve extra columns for the foreign key configuration.          The mapping re, Get list of valid remote columns to select from the remote dataframe based on th, Generate the setup for linking based on the foreign key configuration., Check if the foreign key linking has already been added to the table., Return FK target entities that contribute to target-facing output., Return the columns this entity presents to a target model.          Contract in
+
+### Community 111 - "WhatsNew API Endpoints"
+Cohesion: 0.24
+Nodes (8): Result of ingester validation.      Attributes:         is_valid: Whether valida, Check if validation has errors., Check if validation has warnings., ValidationResult, ValidationResult, InputResolutionError, build_validation_input_failure(), Build a validation failure result for expected input-resolution errors.
+
 ### Community 112 - "Session Lifecycle Management"
-Cohesion: 0.13
-Nodes (16): ForeignKeyError, Invalid foreign key definition or reference.      Common causes:     - Keys not, Initialize foreign key error.          Args:             message: Error descript, Initialize schema validation error.          Args:             message: Error de, Initialize circular dependency error.          Args:             message: Error, Initialize missing dependency error.          Args:             message: Error d, Initialize constraint violation error.          Args:             message: Error, Initialize configuration error.          Args:             message: Error descri (+8 more)
+Cohesion: 0.08
+Nodes (27): DependencyError, DomainException, ForeignKeyError, MissingDependencyError, Truncate large nested values for safe, concise API error payloads., Invalid foreign key definition or reference.      Common causes:     - Keys not, Initialize foreign key error.          Args:             message: Error descript, Initialize schema validation error.          Args:             message: Error de (+19 more)
 
 ### Community 113 - "Session Manager UI"
-Cohesion: 0.11
-Nodes (18): get_tips(), Centralized error tips registry.  Maps error codes to actionable recovery tips f, Get tips for an error code with optional template formatting.      Args:, Register or update tips for an error code.      Args:         error_code: Error, register_tips(), DependencyError, DomainException, MissingDependencyError (+10 more)
+Cohesion: 0.29
+Nodes (6): get_tips(), Centralized error tips registry.  Maps error codes to actionable recovery tips f, Get tips for an error code with optional template formatting.      Args:, Register or update tips for an error code.      Args:         error_code: Error, register_tips(), Any
 
 ### Community 114 - "Extra Column Editor"
 Cohesion: 0.18
@@ -704,40 +704,40 @@ Cohesion: 0.07
 Nodes (26): error, filterSchemas, loading, list_filter_types(), Filter API Endpoints  Provides REST API for filter metadata and configuration sc, Get metadata for all available filter types.      Returns schema information for, FilterSchemaResponse, Get all registered driver schemas.          Returns:             Dictionary mapp (+18 more)
 
 ### Community 116 - "Community 116"
-Cohesion: 0.06
-Nodes (65): ReconciliationCandidate, Any, AsyncClient, ReconciliationCandidate, Reconciliation service module.  This module provides services for entity reconci, Any, AutoReconcileResult, EntityResolutionCatalog (+57 more)
+Cohesion: 0.05
+Nodes (50): Reconciliation service module.  This module provides services for entity reconci, Entity mapping registry management., EntityResolutionSet, get_app_state_manager(), Get the application state singleton., get_project_raw_yaml(), Get project as raw YAML string.      Args:         name: Project name      Retur, auto_reconcile_entity() (+42 more)
 
 ### Community 117 - "Community 117"
-Cohesion: 0.06
-Nodes (26): Any, DataFrame, TableConfig, Reorder columns in DataFrame to match specified order., Expose the source entity's public_id as a selected column backed by source syste, Get the list of columns to extract from the table configuration.         Exclude, Return a subset of the source DataFrame with specified columns, optional extra c, Return a subset of the source DataFrame with specified columns, optional extra c (+18 more)
+Cohesion: 0.19
+Nodes (11): Any, DataFrame, TableConfig, Class for extracting subsets from DataFrames with various options., Initialize SubsetService with ExtraColumnEvaluator., Reorder columns in DataFrame to match specified order., Expose the source entity's public_id as a selected column backed by source syste, Get the list of columns to extract from the table configuration.         Exclude (+3 more)
 
 ### Community 118 - "Reconciliation Models"
-Cohesion: 0.22
-Nodes (11): EntityCreateRequest, EntityResponse, EntityUpdateRequest, EntityValuesResponse, EntityValuesUpdateRequest, FixedSchema, GenerateFromTableRequest, MaterializedMetadata (+3 more)
+Cohesion: 0.18
+Nodes (13): entitiesApi, EntityCreateRequest, EntityResponse, EntityUpdateRequest, EntityValuesResponse, EntityValuesUpdateRequest, FixedSchema, GenerateFromTableRequest (+5 more)
 
 ### Community 119 - "Active Project Management"
-Cohesion: 0.06
-Nodes (53): FileLocation, Dispatcher, Base class for data dispatchers., Class for extracting subsets from DataFrames with various options., SubsetService, DuckDbWorkspace, LinkToRemoteService, Any (+45 more)
+Cohesion: 0.05
+Nodes (55): FileLocation, MappingCatalog, Root container for the mapping sidecar file.      Holds entity-level mappings an, Return the link for *entity_name* / *local_key_value*, or ``None``., Create or replace a link for an entity.          Raises:             KeyError: I, Return only links with a non-null ``committed_at`` for *entity_name*., Return only links whose ``committed_at`` is null for *entity_name*., Dispatcher (+47 more)
 
 ### Community 120 - "Alternative Search UI"
 Cohesion: 0.18
 Nodes (4): onSearchInput, searched, searching, searchTerm
 
 ### Community 121 - "Null-Safe Merge Utility"
-Cohesion: 0.27
-Nodes (6): TableConfig, Cache DataFrame for entity with metadata including entity hash.          Args:, Cache all entities from table_store individually with entity hashes.          Ar, Gather all cached dependencies for an entity with hash validation.          Args, Generate cache key from config and entity name., Get cached DataFrame for entity with 3-tier validation.          Validation orde
+Cohesion: 0.22
+Nodes (4): Return a list of columns with system_id and FK columns first, then other columns, Reorder columns in the DataFrame to have system_id, public_id, FK columns, extra, Resolve target entities including all dependencies. If no target entities are pr, Get all entities required to process the given entity (including the entity itse
 
 ### Community 122 - "Help Documentation Viewer"
 Cohesion: 0.18
 Nodes (11): currentDoc, githubDocHref, handleContentClick(), { renderedContent, loading, error, loadHelp }, route, router, scrollToSection(), sections (+3 more)
 
 ### Community 123 - "Community 123"
-Cohesion: 0.17
-Nodes (7): MaterializationConfig, Configuration for materialized entity state. Read-Only., Initialize materialization config from data., Check if entity is materialized., Get saved pre-materialization entity config., Get materialization timestamp (ISO format)., Get materialization configuration.
+Cohesion: 0.29
+Nodes (5): Extract resolution source if present.          Args:             entity_mapping:, Determine which source strategy to use (pure business logic).          Business, Get the entity name to use for data (business logic).          Args:, EntityResolutionSet, ResolutionSource
 
 ### Community 124 - "Community 124"
-Cohesion: 0.31
-Nodes (12): DataFrame, Series, _build_null_safe_merge_key(), _coerce_compatible_merge_key_dtypes(), _create_null_safe_merges(), _get_series(), _has_nulls_in_columns(), merge_with_null_safety() (+4 more)
+Cohesion: 0.40
+Nodes (3): Invalidate all cached data for a data source., Remove a cached value., Invalidate all cached data for a data source.
 
 ### Community 125 - "Community 125"
 Cohesion: 0.07
@@ -748,56 +748,40 @@ Cohesion: 0.22
 Nodes (4): router, routes, app, configureMonacoWorkers()
 
 ### Community 127 - "Community 127"
-Cohesion: 0.29
-Nodes (5): Extract resolution source if present.          Args:             entity_mapping:, Determine which source strategy to use (pure business logic).          Business, Get the entity name to use for data (business logic).          Args:, EntityResolutionSet, ResolutionSource
+Cohesion: 0.07
+Nodes (43): Any, Entity, Project, ShapeShiftProject, ProjectService, ShapeShiftService, DataFrame, Project (+35 more)
 
 ### Community 128 - "Entity Form Materialization"
 Cohesion: 0.25
 Nodes (3): buildFixedValuesColumns(), MaterializationRoundTripState, normalizeFixedValuesRowsForForm()
 
 ### Community 129 - "Community 129"
-Cohesion: 0.07
-Nodes (38): ConfigLike, load_config(), Configurable, inject_config(), Create a field for a dataclass that will be resolved at creation time., Replace any ConfigValue arguments (positional or keyword) with their resolved va, A base class for dataclasses that can have ConfigValue fields., Resolve all ConfigValue fields in the dataclass. (+30 more)
+Cohesion: 0.50
+Nodes (3): Any, IngesterConfig, Create IngesterConfig from dict, extracting standard fields.          Args:
 
 ### Community 130 - "Community 130"
-Cohesion: 0.09
-Nodes (20): Ingester infrastructure for data ingestion into external systems.  Ingesters are, Path, IngesterMetadata, Ingester, Ingester, IngesterMetadata, Protocol definitions for data ingesters.  This module defines the standard inter, Metadata about an ingester.      Attributes:         key: Unique identifier for (+12 more)
+Cohesion: 0.50
+Nodes (3): ValidateRequest, ValidateResponse, Validate data using specified ingester.          Args:             key: Ingester
 
 ### Community 131 - "Query Execution & Security"
 Cohesion: 0.29
 Nodes (6): Path, configure_logging(), format_exception_with_filtered_frames(), Logging configuration for the backend application., Format exception with filtered stack frames (removes framework noise).      Args, Configure application logging with loguru.      Args:         log_dir: Directory
 
-### Community 133 - "Data Loader Registry"
-Cohesion: 0.38
-Nodes (3): Initialize dependency graph., Initialize dependency node., Initialize source node.          Args:             name: Unique identifier for t
-
-### Community 134 - "Community 134"
-Cohesion: 0.24
-Nodes (7): Sidecar validation functions for ``<project>-mapping.yml`` alignment.  These val, FunctionalDependencyError, Any, Core exception types for Shape Shifter domain/runtime errors.  These exceptions, Base class for core-layer runtime/validation errors., Raised when functional dependency validation fails., ShapeShifterCoreError
-
 ### Community 135 - "Source Node Extractor Registry"
-Cohesion: 0.29
-Nodes (4): AppSettings, DEFAULT_SETTINGS, settings, useSettings()
-
-### Community 136 - "Community 136"
-Cohesion: 0.33
-Nodes (6): decode_local_key(), _decode_single(), Split an encoded compound key on unescaped ``|`` characters., Decode a string key back into individual component values.      Reverses the enc, Decode a single value: ``<NULL>`` back to empty string, unescape., _split_compound()
-
-### Community 137 - "Community 137"
-Cohesion: 0.33
-Nodes (3): Return the on-disk mtime of a cached project's YAML file, or None if unavailable, Record file path and mtime from a freshly loaded API project., Get ShapeShiftProject with caching and version tracking.          Uses Applicati
+Cohesion: 0.25
+Nodes (4): Ensure project exists in new directory structure.          Returns:, Get upload directory for a project., Resolve a user-supplied path relative to project root (or projects dir) and vali, List files stored under a project's uploads directory.          Args:
 
 ### Community 138 - "Entity JSON Schema"
-Cohesion: 0.67
-Nodes (4): yaml_path_join(), yaml_str_join(), Loader, SequenceNode
+Cohesion: 0.07
+Nodes (29): load_config(), Resolve configuration directives in self.data., Save configuration to the YAML file.          This method preserves the raw YAML, is_path_to_existing_file(), is_yaml_file(), load_data_file(), load_yaml_file(), Ignore unknown tags silently (+21 more)
 
 ### Community 141 - "Driver Schema Registry"
-Cohesion: 0.09
-Nodes (18): Project, get_app_state(), Get all active sessions for a project file., Get the currently active project being edited., Get a specific project from active editing sessions., Set/update the active project.          Args:             project: Project to se, Mark a project as saved (no unsaved changes)., Check if project has unsaved changes. (+10 more)
+Cohesion: 0.11
+Nodes (16): Project, get_app_state(), Get all active sessions for a project file., Get the currently active project being edited., Get a specific project from active editing sessions., Set/update the active project.          Args:             project: Project to se, Mark a project as saved (no unsaved changes)., Check if project has unsaved changes. (+8 more)
 
 ### Community 142 - "Community 142"
 Cohesion: 0.05
-Nodes (77): Any, AutoReconcileResult, EntityResolutionCatalog, EntityResolutionListItem, EntityResolutionCatalog, EntityResolutionSet, ResolutionSource, ResolutionTarget (+69 more)
+Nodes (75): Any, AutoReconcileResult, EntityResolutionCatalog, EntityResolutionListItem, EntityResolutionCatalog, EntityResolutionSet, ResolutionSource, ResolutionTarget (+67 more)
 
 ### Community 143 - "Preview Error Display"
 Cohesion: 0.33
@@ -805,19 +789,31 @@ Nodes (5): errorMessage, errorType, rawError, traceback, validationErrors
 
 ### Community 151 - "Core Config & Utilities"
 Cohesion: 0.09
-Nodes (23): PatternFill, CsvDispatcher, DatabaseDispatcher, DispatchRegistry, ExcelDispatcher, IDispatcher, OpenpyxlExcelDispatcher, DataFrame (+15 more)
+Nodes (22): PatternFill, CsvDispatcher, DatabaseDispatcher, DispatchRegistry, ExcelDispatcher, IDispatcher, OpenpyxlExcelDispatcher, DataFrame (+14 more)
 
 ### Community 153 - "Frontend Entry Assets"
 Cohesion: 0.50
 Nodes (4): Favicon ICO, Favicon SVG, Frontend Entry HTML, Main TypeScript Entry
 
+### Community 155 - "Community 155"
+Cohesion: 0.33
+Nodes (6): Path, get_excel_metadata(), _parse_cell_range_max_column(), Excel file utilities for metadata extraction and inspection., Extract sheet names and column headers from an Excel file.      Args:         fi, Parse Excel cell range to extract maximum column index.      Supports formats li
+
 ### Community 156 - "Community 156"
-Cohesion: 0.25
+Cohesion: 0.22
 Nodes (8): get_settings(), Application configuration., Get cached settings instance., download_logs(), get_logs(), Fetch application logs.      Args:         log_type: Type of log file ('app' or, Get download path for log file.      Args:         log_type: Type of log file (', LogType
 
-### Community 244 - "Community 244"
-Cohesion: 0.11
-Nodes (17): Any, Path, Migrate task list from main project file to sidecar file.      One-time migratio, Load task list from sidecar file if it exists.          Implements backward comp, Load entity notes from the sidecar file if they exist., Save task list to sidecar file.          Args:             project_file_path: Pa, Migrate task_list from main project file to sidecar.          One-time migration, Return the note for an entity if one exists. (+9 more)
+### Community 204 - "Community 204"
+Cohesion: 0.33
+Nodes (4): Protocol for loading reconciliation source data (domain interface).      Applica, Load data from an entity.          Args:             entity_name: Name of entity, Execute a custom query against a data source.          Args:             data_so, ReconciliationDataProvider
+
+### Community 207 - "Community 207"
+Cohesion: 0.29
+Nodes (5): Backend, Call, Literal, Function call expression., Literal value (string, int, bool, or null).
+
+### Community 237 - "Community 237"
+Cohesion: 0.50
+Nodes (5): encode_local_key(), _encode_single(), Encode one or more local-key column values into a stable string key.      Single, Encode a single value, escaping embedded pipes and normalising null., Any
 
 ### Community 319 - "Community 319"
 Cohesion: 0.06
@@ -825,15 +821,15 @@ Nodes (52): ExcelFile, Index, IngesterConfig, IngesterMetadata, IngestionResult,
 
 ### Community 381 - "Community 381"
 Cohesion: 0.09
-Nodes (18): DuckDbLoader, SQL loader over Shape Shifter's internal table_store.      This loader does not, Load an internal DuckDB-derived entity., DuckDbWorkspace, Persistent DuckDB workspace over Shape Shifter's TableStore.      DataFrames are, Copy a DataFrame into DuckDB as a physical table.          Usually not needed in, Queue an entity DataFrame for registration on the next query., Register or re-register an entity DataFrame immediately in DuckDB. (+10 more)
+Nodes (23): DuckDbLoader, SQL loader over Shape Shifter's internal table_store.      This loader does not, Load an internal DuckDB-derived entity., DuckDbWorkspace, Persistent DuckDB workspace over Shape Shifter's TableStore.      DataFrames are, Copy a DataFrame into DuckDB as a physical table.          Usually not needed in, Queue an entity DataFrame for registration on the next query., Register or re-register an entity DataFrame immediately in DuckDB. (+15 more)
 
 ### Community 447 - "Community 447"
-Cohesion: 0.06
-Nodes (38): FieldValidator, Structural/configuration issue emitted by specification checks.      Additional, Return the appropriate method to log based on severity., Add an error message., Add a warning message., SpecificationIssue, Specifications for validating entity configurations., EndsWithIdValidator (+30 more)
+Cohesion: 0.07
+Nodes (29): FieldValidator, Return the appropriate method to log based on severity., EndsWithIdValidator, FieldExistsValidator, FieldIsAbsentValidator, FieldIsNonEmptyValidator, FieldIsNotEmptyStringValidator, FieldIsStringListValidator (+21 more)
 
 ### Community 587 - "Community 587"
-Cohesion: 0.09
-Nodes (34): MappingCatalog, Root container for the mapping sidecar file.      Holds entity-level mappings an, Return the link for *entity_name* / *local_key_value*, or ``None``., Create or replace a link for an entity.          Raises:             KeyError: I, Return only links with a non-null ``committed_at`` for *entity_name*., Return only links whose ``committed_at`` is null for *entity_name*., Raised when a sidecar ``EntityMapping`` fails validation against its entity conf, SidecarValidationError (+26 more)
+Cohesion: 0.10
+Nodes (27): Raised when a sidecar ``EntityMapping`` fails validation against its entity conf, SidecarValidationError, EntitySpecification, Validates that entities are properly configured.      Composite specification th, Get the list of specifications to run for entity validation.          Override t, Check that entities are properly configured., Check that fields are for the SQL entity., Check that fields are for the data entity. (+19 more)
 
 ### Community 603 - "Community 603"
 Cohesion: 0.18
@@ -846,17 +842,17 @@ Nodes (6): Metadata, Configuration metadata. Read-Only. Wraps metadata section f
 ## Knowledge Gaps
 - **286 isolated node(s):** `PlainTextResponse`, `Path`, `PlainTextResponse`, `Path`, `Any` (+281 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **25 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **31 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `TableConfig` connect `Table Config & FK Links` to `Data Source Management`, `Data Loader Base`, `Community 134`, `DSL Evaluation`, `Project File Management`, `Data Ingestion Infrastructure`, `Project Config & Ingestion`, `OpenRefine Reconciliation Client`, `FK Constraint Validators`, `Identity Resolution & Collision`, `Entity Relationship Suggestions`, `Core Config & Utilities`, `Entity Specifications Registry`, `API Dependency Injection`, `Community 447`, `Extra Columns Formula Evaluation`, `Domain Exception Hierarchy`, `FastAPI Application Entry`, `Frontend API Client & Health`, `Community 587`, `Frontend Logs & Settings`, `Community 92`, `Community 97`, `Community 98`, `API Error Handling`, `Session State Management`, `Data Validation UI`, `Community 110`, `Community 116`, `Community 117`, `Active Project Management`, `Null-Safe Merge Utility`, `Community 123`, `Community 381`?**
-  _High betweenness centrality (0.163) - this node is a cross-community bridge._
-- **Why does `ProjectService` connect `Resource Configuration Errors` to `Project Validation & Layout`, `@value Directive Validation`, `Branch & ForeignKey Config`, `Domain Exception Hierarchy`, `Project Validation & Fixes`, `Entity Resolution Catalog`, `Entity Values Service`, `Table Store Dispatchers`, `Column Introspection Service`, `Project File Management`, `Data Ingestion Infrastructure`, `Frontend Logs & Settings`, `Community 116`, `API Dependency Injection`, `DuckDB Loader`, `Circular Dependency Detection`, `Layout & Materialization Config`, `Null-Safe Merge Utility`?**
-  _High betweenness centrality (0.096) - this node is a cross-community bridge._
-- **Why does `ShapeShiftProject` connect `Project File Management` to `Project Validation & Layout`, `Community 129`, `Table Config & FK Links`, `Table Store Dispatchers`, `DSL Evaluation`, `User Settings Store`, `Data Ingestion Infrastructure`, `Identity Resolution & Collision`, `Entity Relationship Suggestions`, `Circular Dependency Detection`, `Core Config & Utilities`, `Entity Specifications Registry`, `Workflow Execution API`, `API Dependency Injection`, `Extra Columns Formula Evaluation`, `Domain Exception Hierarchy`, `Project Entity Specifications`, `FastAPI Application Entry`, `Frontend API Client & Health`, `Frontend Materialization API`, `Frontend Logs & Settings`, `Community 723`, `Community 92`, `API Error Handling`, `Community 116`, `Community 117`, `Active Project Management`, `Null-Safe Merge Utility`, `Community 125`?**
-  _High betweenness centrality (0.076) - this node is a cross-community bridge._
+- **Why does `TableConfig` connect `Table Config & FK Links` to `Project Validation & Layout`, `Data Source Management`, `Data Loader Base`, `Data Ingestion Infrastructure`, `Project Config & Ingestion`, `OpenRefine Reconciliation Client`, `FK Constraint Validators`, `Identity Resolution & Collision`, `Entity Relationship Suggestions`, `Reconciliation Service`, `Core Config & Utilities`, `Entity Normalization & Conversion`, `@value Directive Parsing`, `Entity Specifications Registry`, `Entity Config Mapping`, `Community 447`, `Extra Columns Formula Evaluation`, `Domain Exception Hierarchy`, `FastAPI Application Entry`, `Frontend API Client & Health`, `CSV Dispatcher & Processor`, `Community 587`, `Frontend Materialization API`, `Frontend Logs & Settings`, `Community 92`, `Database Submission Management`, `Session State Management`, `Data Validation UI`, `Community 110`, `Community 116`, `Community 117`, `Community 245`, `Active Project Management`, `Null-Safe Merge Utility`, `Community 381`, `Community 127`?**
+  _High betweenness centrality (0.155) - this node is a cross-community bridge._
+- **Why does `ProjectService` connect `Project Validation & Layout` to `Resource Configuration Errors`, `Branch & ForeignKey Config`, `Project Validation & Fixes`, `Community 134`, `Source Node Extractor Registry`, `Table Store Dispatchers`, `Community 136`, `Project File Management`, `Data Ingestion Infrastructure`, `OpenRefine Reconciliation Client`, `Ingestion Result & Validation`, `Entity Relationship Suggestions`, `Reconciliation Service`, `Layout & Materialization Config`, `SEAD Clearinghouse Ingester`, `Entity Materialization Service`, `Entity Config Mapping`, `DuckDB Loader`, `Domain Exception Hierarchy`, `Frontend Logs & Settings`, `@value Directive Validation`, `Community 93`, `Database Submission Management`, `Column Introspection Service`, `ForeignKey Editor UI`, `Data Validation UI`, `Community 116`, `Community 127`?**
+  _High betweenness centrality (0.083) - this node is a cross-community bridge._
+- **Why does `ShapeShiftProject` connect `Entity Relationship Suggestions` to `Project Validation & Layout`, `Table Config & FK Links`, `Table Store Dispatchers`, `Community 137`, `Entity JSON Schema`, `Data Ingestion Infrastructure`, `OpenRefine Reconciliation Client`, `Community 144`, `Reconciliation Service`, `Core Config & Utilities`, `Entity Normalization & Conversion`, `@value Directive Parsing`, `Entity Specifications Registry`, `Entity Materialization Service`, `Entity Config Mapping`, `Entity CRUD API`, `API Dependency Injection`, `Extra Columns Formula Evaluation`, `Domain Exception Hierarchy`, `Project Entity Specifications`, `FastAPI Application Entry`, `Frontend Logs & Settings`, `Community 723`, `Community 92`, `Community 93`, `Database Submission Management`, `ForeignKey Editor UI`, `Data Validation UI`, `Community 116`, `Active Project Management`, `Null-Safe Merge Utility`, `Community 125`, `Community 127`?**
+  _High betweenness centrality (0.080) - this node is a cross-community bridge._
 - **Are the 283 inferred relationships involving `TableConfig` (e.g. with `MaterializationResult` and `MaterializationResult`) actually correct?**
   _`TableConfig` has 283 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 246 inferred relationships involving `ShapeShiftProject` (e.g. with `MaterializationResult` and `reconciliation.ts`) actually correct?**

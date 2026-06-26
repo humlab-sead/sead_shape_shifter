@@ -2,7 +2,7 @@
 
 Bridges the core conformance engine (src/target_model/conformance.py) and the backend
 API layer.  It accepts a resolved target-model dict (already expanded from any
-@include: directive by Config.resolve_references) and a resolved ShapeShiftProject,
+@load/@include: directive by src.configuration.resolve.resolve_directives) and a resolved ShapeShiftProject,
 runs all registered conformance validators, and returns API ValidationError objects.
 
 Follows the pure-domain-validator pattern: the core engine receives data, this adapter
@@ -36,8 +36,7 @@ class TargetModelValidator:
 
         Args:
             target_model_data: Resolved target-model configuration dict (already
-                expanded from any @include: reference).  Must be parseable into
-                ``TargetModel``.
+                expanded from any @include:/@load: reference).  Must be parseable into ``TargetModel``.
             project: Fully resolved core ``ShapeShiftProject`` instance.
 
         Returns:

@@ -34,7 +34,7 @@
 - **Absolute imports only**: `from src...` and `from backend.app...` — never relative across packages.
 - **Layer boundary**: API models stay in `backend/app/models/`; domain logic stays in `src/`. Never import `backend.*` from `src/`.
 - **Mapper**: all API↔Core conversions go through `ProjectMapper`. Never bypass it.
-- **Directives** (`@include:`, `@value:`, `${ENV_VAR}`) are resolved **only** in `ProjectMapper.to_core()` — API and YAML layers preserve them raw.
+- **Directives** (`@include:`, `@value:`, `@load:`, `${ENV_VAR}`) are resolved **only** in `ProjectMapper.to_core()` — API and YAML layers preserve them raw.
 - **Registries**: use `@Validators.register(...)`, `@DataLoaders.register(...)`, `@Ingesters.register(...)` — never bypass the registry.
 - **Circular imports**: use constructor injection or `TYPE_CHECKING` — never restructure imports as a workaround.
 - **Async**: `ShapeShifter.normalize()` and all data loaders are async — never call with `asyncio.run()` inside a loader or service.
@@ -86,10 +86,13 @@ This project has a knowledge graph at graphify-out/ with god nodes, community st
 When the user types `/graphify`, invoke the `skill` tool with `skill: "graphify"` before doing anything else.
 
 Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- The VS Code Codex extension may start with a minimal `PATH`. Run graphify through the project virtualenv: `.venv/bin/graphify ...` rather than bare `graphify`.
+- For codebase questions, first run `.venv/bin/graphify query "<question>"` when graphify-out/graph.json exists. Use `.venv/bin/graphify path "<A>" "<B>"` for relationships and `.venv/bin/graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
 - Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- After modifying code, run `.venv/bin/graphify update .` to keep the graph current (AST-only, no API cost).
 
-@RTK.md
+## rtk (Token Optimization)
+
+Prefix shell commands with `rtk` to compress output and reduce token usage (saves 60–90%). Examples: `rtk uv run pytest`, `rtk make test`, `rtk git log -10`. Use `rtk gain` for analytics and `rtk proxy <cmd>` for raw output. See `RTK.md` for details.

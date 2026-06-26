@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.configuration.config import Config, ConfigLike, is_config_path, is_path_to_existing_file, load_config
+from src.configuration import Config, ConfigLike, is_path_to_existing_file, is_yaml_file, load_config, resolve_directives
 
 
 def test_is_config_path_validation(tmp_path) -> None:
@@ -15,10 +15,10 @@ def test_is_config_path_validation(tmp_path) -> None:
     cfg_file = tmp_path / "config.yml"
     cfg_file.write_text("root: 1\n", encoding="utf-8")
 
-    assert is_config_path(str(cfg_file)) is True
-    assert is_config_path(str(tmp_path / "config.txt"), raise_if_missing=False) is False
+    assert is_yaml_file(str(cfg_file)) is True
+    assert is_yaml_file(str(tmp_path / "config.txt"), raise_if_missing=False) is False
     with pytest.raises(FileNotFoundError):
-        is_config_path(str(tmp_path / "missing.yml"))
+        is_yaml_file(str(tmp_path / "missing.yml"))
 
 
 def test_is_path_to_existing_file(tmp_path) -> None:
@@ -106,6 +106,48 @@ def test_configfactory_resolves_include_and_load(tmp_path: Path, monkeypatch) ->
     assert cfg.data["nested"]["child"]["key"] == "sub"
     assert cfg.data["values"] == [{"name": "alice", "age": "30"}, {"name": "bob", "age": "40"}]
     assert cfg.data["api"] == "https://example.test"
+
+
+def test_configfactory_preserves_empty_load_result(tmp_path: Path) -> None:
+    """load_config should keep an empty loaded file instead of the directive string."""
+    empty_csv: Path = tmp_path / "empty.csv"
+    empty_csv.write_text("name,age\n", encoding="utf-8")
+
+    main_file: Path = tmp_path / "config.yml"
+    main_file.write_text(f'values: "@load:{empty_csv.name}"\n', encoding="utf-8")
+
+    cfg: Config | ConfigLike = load_config(source=str(main_file), context="test_ctx")
+
+    assert cfg.data["values"] == []
+
+
+def test_configfactory_loads_from_dotpath_filename(tmp_path: Path) -> None:
+    """load_config should dereference dotpaths that point to a filename string."""
+    csv_file: Path = tmp_path / "values.csv"
+    csv_file.write_text("name,age\nalice,30\n", encoding="utf-8")
+
+    main_file: Path = tmp_path / "config.yml"
+    main_file.write_text(
+        'sources:\n  translation_file: "values.csv"\nvalues: "@load:sources.translation_file"\n',
+        encoding="utf-8",
+    )
+
+    cfg: Config | ConfigLike = load_config(source=str(main_file), context="test_ctx")
+
+    assert cfg.data["values"] == [{"name": "alice", "age": "30"}]
+
+
+def test_resolve_references_uses_any_existing_source_file_for_relative_paths(tmp_path: Path) -> None:
+    """resolve_references should resolve relative includes from non-YAML source files too."""
+    child_file: Path = tmp_path / "child.yml"
+    child_file.write_text("child:\n  key: value\n", encoding="utf-8")
+
+    source_file: Path = tmp_path / "config.json"
+    source_file.write_text('{"nested": "@include:child.yml"}', encoding="utf-8")
+
+    resolved = resolve_directives({"nested": "@include:child.yml"}, source_path=str(source_file))
+
+    assert resolved["nested"]["child"]["key"] == "value"
 
 
 def test_configfactory_applies_env_prefix(tmp_path: Path, monkeypatch) -> None:
