@@ -97,11 +97,11 @@ class ResolverRegistry(Registry[type["DirectiveResolver"]]):
 
 
 # ---------------------------------------------------------------------------
-# Public API — resolve_references
+# Public API — resolve_directives
 # ---------------------------------------------------------------------------
 
 
-def resolve_references(
+def resolve_directives(
     data: dict[str, Any],
     *,
     env_filename: str | None = None,
@@ -160,13 +160,17 @@ def resolve_references(
     data = ReferenceResolver().resolve_all(data)
 
     if strict:
-        unresolved: list[str] = find_unresolved_directives(data)
-        if unresolved:
-            paths: str = ", ".join(unresolved[:5])
-            extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
-            raise ValueError(f"Unresolved configuration directives at: {paths}{extra}")
+        _raise_on_unresolved_directives(data)
 
     return data
+
+
+def _raise_on_unresolved_directives(data):
+    unresolved: list[str] = find_unresolved_directives(data)
+    if unresolved:
+        paths: str = ", ".join(unresolved[:5])
+        extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
+        raise ValueError(f"Unresolved configuration directives at: {paths}{extra}")
 
 
 def _resolve_runtime_root(runtime_root: str | Path | None, env_prefix: str | None, application_root_env_var: str) -> Path | None:
@@ -454,11 +458,6 @@ class EnvironmentVariableResolver(DirectiveResolver):
 
         result = re.sub(r"\$\{([^}]+)\}", replacer, value)
         return ResolvedDirective(value=result, should_resolve_recursively=False)
-
-
-# ---------------------------------------------------------------------------
-# @value: cross-reference resolver (post-processing, not in tree walk)
-# ---------------------------------------------------------------------------
 
 
 @ResolverRegistry.register(key="@value")

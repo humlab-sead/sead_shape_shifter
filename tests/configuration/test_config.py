@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.configuration import Config, ConfigLike, is_path_to_existing_file, is_yaml_file, load_config, resolve_references
+from src.configuration import Config, ConfigLike, is_path_to_existing_file, is_yaml_file, load_config, resolve_directives
 
 
 def test_is_config_path_validation(tmp_path) -> None:
@@ -145,7 +145,7 @@ def test_resolve_references_uses_any_existing_source_file_for_relative_paths(tmp
     source_file: Path = tmp_path / "config.json"
     source_file.write_text('{"nested": "@include:child.yml"}', encoding="utf-8")
 
-    resolved = resolve_references({"nested": "@include:child.yml"}, source_path=str(source_file))
+    resolved = resolve_directives({"nested": "@include:child.yml"}, source_path=str(source_file))
 
     assert resolved["nested"]["child"]["key"] == "value"
 
