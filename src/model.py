@@ -8,7 +8,7 @@ import pandas as pd
 import xxhash
 from loguru import logger
 
-from src.configuration import ConfigLike, find_unresolved_directives, is_yaml_file, load_config, resolve_directives
+from src.configuration import ConfigLike, find_unresolved_directives, is_yaml_file, load_resolved_yaml, resolve_directives
 from src.sidecars import LayoutOptions, TaskList
 from src.types.fixed_entity_types import FixedEntityTypeConvention, normalize_fixed_entity_type_conventions
 from src.utility import dotget, unique
@@ -1237,16 +1237,15 @@ class ShapeShiftProject:
     ) -> "ShapeShiftProject":
         """Load ShapeShiftProject from a YAML project file."""
 
-        cfg: ConfigLike = load_config(
+        data: dict[str, Any] = load_resolved_yaml(
             source=filename,
-            context="shape_shifter",
             env_filename=env_file,
             env_prefix=env_prefix,
             runtime_root=runtime_root,
             application_root_env_var=application_root_env_var,
         )
 
-        return ShapeShiftProject(cfg=cfg.data, filename=filename)
+        return ShapeShiftProject(cfg=data, filename=filename)
 
     @staticmethod
     def from_source(source: "ShapeShiftProject | str | None") -> "ShapeShiftProject":

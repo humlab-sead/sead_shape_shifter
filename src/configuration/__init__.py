@@ -11,7 +11,7 @@ from .provider import (
     reset_config_provider,
     set_config_provider,
 )
-from .resolve import find_unresolved_directives, resolve_directives
+from .resolve import find_unresolved_directives, load_resolved_yaml, resolve_directives
 from .utility import is_path_to_existing_file, is_yaml_file
 
 __all__ = [
@@ -19,6 +19,7 @@ __all__ = [
     "Config",
     "load_config",
     "resolve_directives",
+    "load_resolved_yaml",
     "find_unresolved_directives",
     "is_yaml_file",
     "is_path_to_existing_file",

@@ -12,7 +12,7 @@ import yaml
 from dotenv import load_dotenv
 from loguru import logger
 
-from src.utility import dget, dotexists, dotset
+from src.utility import dget, dotexists, dotset, env2dict
 
 from .resolve import resolve_directives
 from .utility import is_yaml_file, load_yaml_file
@@ -149,6 +149,8 @@ class Config(ConfigLike):
                 source_path=self.filename,
                 inplace=True,
             )
+            if self.env_prefix:
+                self.data = env2dict(self.env_prefix, self.data)
         return self
 
 
