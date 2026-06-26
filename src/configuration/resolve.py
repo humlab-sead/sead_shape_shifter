@@ -12,7 +12,7 @@ from loguru import logger
 
 from src.utility import Registry, dget, dotexists, dotget, replace_env_vars
 
-from .utility import is_path_to_existing_file, is_yaml_file, load_data_file, load_yaml_file
+from .utility import is_path_to_existing_file, load_data_file, load_yaml_file
 
 
 @dataclasses.dataclass

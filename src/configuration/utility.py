@@ -1,7 +1,6 @@
 import contextlib
 import io
 import json
-from fileinput import filename
 from os.path import join, normpath
 from pathlib import Path
 from typing import Any

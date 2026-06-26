@@ -8,7 +8,7 @@ import pandas as pd
 import xxhash
 from loguru import logger
 
-from src.configuration import ConfigLike, find_unresolved_directives, is_yaml_file, load_resolved_yaml, resolve_directives
+from src.configuration import find_unresolved_directives, is_yaml_file, load_resolved_yaml, resolve_directives
 from src.sidecars import LayoutOptions, TaskList
 from src.types.fixed_entity_types import FixedEntityTypeConvention, normalize_fixed_entity_type_conventions
 from src.utility import dotget, unique
