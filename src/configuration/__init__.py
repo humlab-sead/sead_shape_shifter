@@ -11,14 +11,14 @@ from .provider import (
     reset_config_provider,
     set_config_provider,
 )
-from .resolve import find_unresolved_directives, resolve_references
+from .resolve import find_unresolved_directives, resolve_directives
 from .utility import is_path_to_existing_file, is_yaml_file
 
 __all__ = [
     # config
     "Config",
     "load_config",
-    "resolve_references",
+    "resolve_directives",
     "find_unresolved_directives",
     "is_yaml_file",
     "is_path_to_existing_file",

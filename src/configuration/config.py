@@ -14,7 +14,7 @@ from loguru import logger
 
 from src.utility import dget, dotexists, dotset
 
-from .resolve import resolve_references
+from .resolve import resolve_directives
 from .utility import is_yaml_file, load_yaml_file
 
 # pylint: disable=too-many-arguments, unused-argument
@@ -140,7 +140,7 @@ class Config(ConfigLike):
     def resolve(self, skip_resolve: bool = False) -> Config:
         """Resolve configuration directives in self.data."""
         if not skip_resolve:
-            self.data: dict[str, Any] = resolve_references(
+            self.data: dict[str, Any] = resolve_directives(
                 self.data,
                 env_filename=self.env_filename,
                 env_prefix=self.env_prefix,
