@@ -34,12 +34,18 @@
     "editor.minimap.enabled": false,
     "files.autoSave": "afterDelay",
     "files.watcherExclude": {
+        "**/tmp/**": true,
+        "**/test_data/**": true,
         "**/.venv/**": true,
         "**/venv/**": true,
         "**/.git/**": true,
         "**/node_modules/**": true,
+        "**/data/**": true,
+        "**/graphify-out/**": true,
+        "**/docs/**": true,
         "**/__pycache__/**": true,
-        "**/data/**": true
+        "**/.pytest_cache/**": true,
+        "**/.ruff_cache/**": true,
     },
     "git.confirmSync": false,
     "gitlens.rebaseEditor.ordering": "asc",
@@ -137,7 +143,7 @@
     "search.exclude": {
         "**/htmlcov": true,
         "**/.venv": true,
-        "**//__pycache__": true,
+        "**/__pycache__": true,
         "**/venv": true,
         "**/node_modules": true,
         "**/data": true,
