@@ -75,7 +75,6 @@
     "python.analysis.autoFormatStrings": true,
     "python.analysis.autoImportCompletions": true,
     "python.analysis.diagnosticMode": "openFilesOnly",
-    "python.analysis.disableTaggedHints": true,
     "python.analysis.exclude": [
         "**/.*",
         "**/__pycache__/**",
