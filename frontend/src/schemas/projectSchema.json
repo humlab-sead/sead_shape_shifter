@@ -123,7 +123,7 @@
             }
           ],
           "default": null,
-          "description": "Target model spec: inline dict or @include: path string",
+          "description": "Target model spec: inline dict or @load: path string",
           "title": "Target Model"
         }
       },
