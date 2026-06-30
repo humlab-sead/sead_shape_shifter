@@ -34,6 +34,7 @@ For the single consolidated tracker of remaining work, use:
 - [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) — durable lifecycle rules reference
 - [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) — decision proposal for provider-owned versus shared-data update scope
 - [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md) — lifecycle delivery sequencing phases
+- [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md) — issue-ready phase 1 and phase 2 implementation slices
 - [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) — promotion handoff for moving accepted lifecycle rules into durable docs
 - [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md) — focused existing-row update proposal (candidate)
 - [NEXT_DELIVERY_CANDIDATES.md](./NEXT_DELIVERY_CANDIDATES.md) — undecided candidate capability backlog
@@ -61,6 +62,7 @@ For the single consolidated tracker of remaining work, use:
 - Next-delivery scope: candidate only; rollback, update handling, stronger idempotency, and related capabilities are not yet committed as one delivery
 - Data-provider update scope is accepted and now governs downstream existing-row update behavior
 - Provider-submission lifecycle work uses a durable lifecycle reference plus phase plan structure
+- Phase 1 and Phase 2 issue-ready drafts are tracked in `LIFECYCLE_PHASE_1_2_ISSUES.md`
 - Update handling has a dedicated next-delivery CR and remains proposed rather than accepted
 - Frontend issue breakdown exists as implementation record and deferred follow-up tracking
 - Upstream SIMS handoff docs now live in `humlab-sead/sead_authority_service:docs/proposals/`
