@@ -115,6 +115,7 @@ class SeadChangeRequestIngester:
         change_package: ChangeRequestPackage = build_change_request_package(
             preparation.projection_result,
             preparation.resolution_result,
+            preparation.planned.tables,
         )
         package_table_count: int = len(change_package.tables)
         insert_row_count: int = sum(len(table.frame.index) for table in change_package.tables.values())
