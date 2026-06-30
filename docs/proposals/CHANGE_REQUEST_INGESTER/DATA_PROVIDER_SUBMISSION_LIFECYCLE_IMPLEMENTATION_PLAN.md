@@ -28,7 +28,7 @@ This plan does not redefine policy, frontend IA, release scheduling, or staffing
 
 - lifecycle policy scope decision is accepted through [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md)
 - delivery order exists, but implementation tracking is split across multiple proposal documents
-- existing-row update handling remains proposed and should stay downstream of lifecycle rule enforcement
+- existing-row update handling is implemented on the current branch and now serves as the baseline for future lifecycle refinements
 - shared-data governance boundaries are documented at proposal level but not yet implemented as a review path contract
 
 ## Phase Entry Status
@@ -37,7 +37,7 @@ This plan does not redefine policy, frontend IA, release scheduling, or staffing
 |-------|--------------|------|
 | Phase 1: Lifecycle Metadata And Invariants | implemented on current branch | lifecycle metadata contracts and one-live-version invariant checks are in code and tests |
 | Phase 2: Submission Planning And Classification | implemented on current branch | outcome classification and diagnostics are implemented with scenario and integration coverage |
-| Phase 3: Existing-Row Provider Update Path | blocked | remains downstream of Phase 1 and Phase 2 outcomes |
+| Phase 3: Existing-Row Provider Update Path | implemented on current branch | existing-row update engine and SQL/artifact rendering are implemented with focused tests |
 | Phase 4: Shared-Data Review And Operator Contract | ready to scope, implementation after Phase 2 outcome contract | governance boundaries are accepted at policy level but delivery path is not yet implemented |
 
 ## Phase Plan
