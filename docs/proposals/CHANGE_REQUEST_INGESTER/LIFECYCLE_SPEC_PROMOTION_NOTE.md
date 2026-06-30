@@ -10,7 +10,7 @@
 
 `DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md` is now the accepted lifecycle baseline for provider-submission rules.
 
-This note records the promotion target, required alignment checks, and the remaining action needed to complete the move into the main documentation set.
+This note records the promotion target, alignment checks, and the final completion state for the move into the main documentation set.
 
 ## Completed Scope
 
