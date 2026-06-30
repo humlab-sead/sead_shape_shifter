@@ -5,7 +5,14 @@ from datetime import datetime
 import pandas as pd
 
 from ingesters.sead_change_request import ChangeRequestPackage, ChangeRequestTable, ChangeRowState, SourceTableBundle, SubmissionContext
-from ingesters.sead_change_request.contracts import IdentityResolutionResult, PendingConfirmationReport, ResolvedIdentityTable
+from ingesters.sead_change_request.contracts import (
+    IdentityResolutionResult,
+    LifecycleVersionState,
+    LogicalRecordVersion,
+    PendingConfirmationReport,
+    ResolvedIdentityTable,
+    validate_one_live_version,
+)
 
 
 class TestChangeRowState:
@@ -123,3 +130,42 @@ class TestBuildPendingConfirmationReport:
         assert report.outstanding_step == "Confirm the Binding Set before change-package generation can continue"
         assert report.operator_action == "Confirm the Binding Set in SIMS, then rerun the ingester with the same submission context"
         assert "test-submission" in report.rerun_instruction
+
+
+class TestLifecycleVersionContracts:
+    """Tests for phase-1 lifecycle metadata and invariant checks."""
+
+    def test_lifecycle_version_state_values(self):
+        """Lifecycle version state names should match the accepted lifecycle policy terms."""
+        assert LifecycleVersionState.LIVE == "live"
+        assert LifecycleVersionState.SUPERSEDED == "superseded"
+        assert LifecycleVersionState.PENDING_REVIEW == "pending_review"
+        assert LifecycleVersionState.BLOCKED == "blocked"
+
+    def test_one_live_version_check_passes_when_each_logical_record_has_at_most_one_live_version(self):
+        """Invariant check should pass when logical records have zero or one live version."""
+        records = [
+            LogicalRecordVersion(logical_record_key="sample:1", version_key="v1", lifecycle_state=LifecycleVersionState.LIVE),
+            LogicalRecordVersion(
+                logical_record_key="sample:1",
+                version_key="v0",
+                lifecycle_state=LifecycleVersionState.SUPERSEDED,
+                supersedes_version_key=None,
+            ),
+            LogicalRecordVersion(logical_record_key="sample:2", version_key="v1", lifecycle_state=LifecycleVersionState.PENDING_REVIEW),
+        ]
+
+        assert validate_one_live_version(records) == []
+
+    def test_one_live_version_check_reports_violation_when_logical_record_has_multiple_live_versions(self):
+        """Invariant check should report a violation when one logical record has multiple live versions."""
+        records = [
+            LogicalRecordVersion(logical_record_key="sample:1", version_key="v1", lifecycle_state=LifecycleVersionState.LIVE),
+            LogicalRecordVersion(logical_record_key="sample:1", version_key="v2", lifecycle_state=LifecycleVersionState.LIVE),
+        ]
+
+        violations = validate_one_live_version(records)
+
+        assert len(violations) == 1
+        assert "sample:1" in violations[0]
+        assert "2 live versions" in violations[0]

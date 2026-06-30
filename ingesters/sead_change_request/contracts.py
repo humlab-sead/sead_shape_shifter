@@ -46,6 +46,15 @@ class PlannedRowAction(StrEnum):
     EVALUATE_BRIDGE = "evaluate_bridge"
 
 
+class LifecycleVersionState(StrEnum):
+    """Lifecycle states for versioned logical records."""
+
+    LIVE = "live"
+    SUPERSEDED = "superseded"
+    PENDING_REVIEW = "pending_review"
+    BLOCKED = "blocked"
+
+
 @dataclass(slots=True)
 class SourceTableBundle:
     """Normalized table bundle handed to the ingester core."""
@@ -114,6 +123,17 @@ class IdentityAssignment:
     state: ChangeRowState
     target_id: int | None = None
     note: str | None = None
+
+
+@dataclass(slots=True)
+class LogicalRecordVersion:
+    """Version metadata for one logical record entry."""
+
+    logical_record_key: str
+    version_key: str
+    lifecycle_state: LifecycleVersionState
+    supersedes_version_key: str | None = None
+    submitted_at: datetime | None = None
 
 
 @dataclass(slots=True)
@@ -230,6 +250,24 @@ class DeployArtifact:
     verify_sql: str = ""
     metadata_artifact: dict[str, Any] = field(default_factory=dict)
     bundle_files: dict[str, str] = field(default_factory=dict)
+
+
+def validate_one_live_version(records: list[LogicalRecordVersion]) -> list[str]:
+    """Return invariant violations when a logical record has multiple live versions."""
+    live_counts: dict[str, int] = {}
+    violations: list[str] = []
+
+    for record in records:
+        if record.lifecycle_state != LifecycleVersionState.LIVE:
+            continue
+        live_counts[record.logical_record_key] = live_counts.get(record.logical_record_key, 0) + 1
+
+    for logical_record_key, count in live_counts.items():
+        if count <= 1:
+            continue
+        violations.append(f"Logical record '{logical_record_key}' has {count} live versions; expected at most one live version")
+
+    return violations
 
 
 def normalize_submission_identifier(identifier: str) -> str:
