@@ -687,7 +687,6 @@ entities:
       feature_property_type: 1
       feature_property_name: 1
       feature_property_description: 1
-    surrogate_names: feature_property_type
   feature_type:
     type: fixed
     public_id: feature_type_id
@@ -1008,7 +1007,6 @@ entities:
     - [7, null, Elevation ASL, Elevation of sample above sea level., Prob_üNN]
     - [8, null, Sediment, Indicates whether the sample is sediment., SedProb]
     - [9, null, Cultural group, Cultural group, KultGr]
-    surrogate_name: type_name
     type_names:
     - Vorfu
     - Trocken
@@ -1211,7 +1209,6 @@ entities:
     - [4, null, EVNr, 'LfD excavation record number, according to the State Office for Monument Preservation (LfD)', EVNr]
     - [5, null, AnmFustel, 'e.g., pollen analysis by NN; soil science by NN; anthropology, etc.', AnmFustel]
     depends_on: []
-    surrogate_name: site_property_type
   site_property:
     type: sql
     source:
@@ -1229,7 +1226,7 @@ entities:
       local_keys: '@value: entities.site.keys'
       remote_keys: '@value: entities.site.keys'
     - entity: site_property_type
-      local_keys: ['@value: entities.site_property_type.surrogate_name']
+      local_keys: [site_property_type]
       remote_keys: [arbodat_code]
     depends_on: [site, site_property_type]
     drop_duplicates: [Fustel, EVNr, site_property_type]

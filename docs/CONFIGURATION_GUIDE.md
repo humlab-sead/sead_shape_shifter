@@ -112,7 +112,6 @@ entities:
   entity_name:
     # Identity & Keys
     public_id: string                       # Target system primary key name
-    surrogate_name: string                  # Alternative name for public ID
     keys: [string, ...]                     # Natural (business) key columns
     
     # Data Selection
@@ -269,24 +268,6 @@ This architecture separates concerns between:
       public_id: entity_id
   ```
 - **Note**: Both fields are accepted for backward compatibility, but `public_id` takes precedence if both are present.
-
-#### `surrogate_name`
-- **Type**: `string`
-- **Required**: No
-- **Description**: Name of a text column associated with the `public_id`. This column can be used when reconciling entities by name in the UI editor.
-- **Example**:
-  ```yaml
-  public_id: contact_type_id
-  surrogate_name: contact_type
-  ```
-- **Validation Rules**:
-  - **Type**: Must be `string` if provided
-  - **Usage**: Currently not validated but should be documented
-- **Suggested Additional Validation**:
-  - Should not conflict with existing column names
-  - Should not be the same as `public_id`
-  - Must exist in `columns` if provided
-
 
 #### `keys`
 - **Type**: `list[string]`
@@ -3076,7 +3057,6 @@ contact_type:
   source: null
   type: fixed
   public_id: contact_type_id
-  surrogate_name: contact_type
   columns: ["contact_type_name", "description", "arbodat_code"]
   column_types:
     arbodat_code: string
@@ -3807,7 +3787,6 @@ options:
 EntityConfig:
   # Identity
   surrogate_id?: string
-  surrogate_name?: string
   public_id?: string
   keys?: list[string]
   
