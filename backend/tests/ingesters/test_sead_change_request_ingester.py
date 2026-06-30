@@ -634,6 +634,41 @@ class TestSeadChangeRequestIngesterValidation:
         assert result.pending_confirmation_report["binding_set_uuid"] == "binding-123"
         assert result.pending_confirmation_report["binding_set_state"] == "proposed"
 
+    @pytest.mark.asyncio
+    async def test_validate_reports_outcome_counts_for_existing_rows_with_mutable_field_scope(self):
+        """Validation infos should include no-op and allowed-update counts based on configured mutable fields."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {
+                        "sample": pd.DataFrame(
+                            {
+                                "sample_id": [101, 102],
+                                "sample_name": ["A", "B updated"],
+                                "sample_name__existing": ["A", "B"],
+                                "sample_note": ["new note", "new note"],
+                                "sample_note__existing": ["old note", "old note"],
+                            }
+                        )
+                    },
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(),
+                    "mutable_fields_by_entity": {"sample": ["sample_name"]},
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is True
+        assert any(
+            "Outcome classification: 0 new_data, 1 no_op, 1 allowed_update, 0 pending_review, 0 blocked" in info for info in result.infos
+        )
+
 
 class TestSeadChangeRequestIngesterIngest:
     """Tests for scaffold ingest behavior."""
