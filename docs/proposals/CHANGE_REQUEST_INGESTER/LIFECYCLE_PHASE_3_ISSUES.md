@@ -44,7 +44,7 @@ Files:
 
 Status:
 
-`Ready after Issue 3A contracts are stable`
+`Implemented on branch cr-ingester-final-work`
 
 Title:
 

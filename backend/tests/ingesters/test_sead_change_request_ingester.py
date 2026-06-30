@@ -956,6 +956,45 @@ class TestSeadChangeRequestIngesterIngest:
         assert 'INSERT INTO "tbl_sample" ("sample_id") VALUES (501);' in result.deploy_artifact["deploy_sql"]
 
     @pytest.mark.asyncio
+    async def test_ingest_emits_update_statement_for_accepted_existing_row(self, tmp_path):
+        """Ingest should render accepted existing-row updates as UPDATE statements in the deploy artifact."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {
+                        "sample": pd.DataFrame(
+                            {
+                                "sample_id": [101],
+                                "sample_name": ["updated name"],
+                                "sample_name__existing": ["old name"],
+                            }
+                        )
+                    },
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"}),
+                    "submission_context": minimal_submission_context(),
+                    "mutable_fields_by_entity": {"sample": ["sample_name"]},
+                    "existing_row_update_entities": ["sample"],
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx")
+
+        assert result.success is True
+        assert result.tables_processed == 1
+        assert result.records_inserted == 1
+        assert result.deploy_artifact is not None
+        assert 'UPDATE "tbl_sample" SET "sample_name" = \'updated name\' WHERE "sample_id" = 101;' in result.deploy_artifact["deploy_sql"]
+        assert "INSERT INTO" not in result.deploy_artifact["deploy_sql"]
+        bundle_name = expected_bundle_name()
+        assert (tmp_path / bundle_name / "deploy" / f"{bundle_name}.sql").exists()
+
+    @pytest.mark.asyncio
     async def test_ingest_emits_strategy_sidecar_files(self, tmp_path):
         """Ingest should write additional files emitted by a deploy strategy into the artifact bundle."""
         ingester = SeadChangeRequestIngester(
@@ -1441,7 +1480,7 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.deploy_artifact["metadata_artifact"]["deploy_statement_count"] == 2
         assert result.deploy_artifact["metadata_artifact"]["deploy_strategy"] == "inline_insert"
         assert result.deploy_artifact["metadata_artifact"]["verify_placeholder"] is True
-        assert 'INSERT INTO "tbl_sample" ("system_id", "sample_id", "sample_name") VALUES (2, 501, ' in result.deploy_artifact["deploy_sql"]
+        assert 'INSERT INTO "tbl_sample" ("sample_id", "sample_name") VALUES (501, ' in result.deploy_artifact["deploy_sql"]
         assert (
             'INSERT INTO "tbl_sample_taxon" ("sample_id", "taxon_id", "abundance") VALUES (501, 9200, 3);'
             in result.deploy_artifact["deploy_sql"]

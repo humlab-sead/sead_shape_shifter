@@ -262,6 +262,7 @@ class ChangeRequestTable:
     name: str
     frame: pd.DataFrame
     row_states: pd.Series
+    planned_actions: pd.Series | None = None
 
 
 @dataclass(slots=True)

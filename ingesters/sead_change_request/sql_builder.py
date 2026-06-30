@@ -11,7 +11,15 @@ from typing import Any, Protocol, cast
 
 import pandas as pd
 
-from ingesters.sead_change_request.contracts import ChangeRequestPackage, DeployArtifact, SubmissionContext, resolve_bundle_name
+from ingesters.sead_change_request.contracts import (
+    ChangeRequestPackage,
+    ChangeRequestTable,
+    ChangeRowState,
+    DeployArtifact,
+    PlannedRowAction,
+    SubmissionContext,
+    resolve_bundle_name,
+)
 from src.target_model.models import TargetModel
 
 DEFAULT_DEPLOY_ARTIFACT_STRATEGY = "inline_insert"
@@ -46,8 +54,11 @@ class InlineInsertDeployStrategy:
         for entity_name, package_table in change_package.tables.items():
             entity_spec = target_model.entities[entity_name]
             table_name = entity_spec.target_table or entity_name
-            for _, row in package_table.frame.iterrows():
-                statements.append(_render_insert_statement(table_name, row))
+            for row_index, row in package_table.frame.iterrows():
+                if _is_update_row(package_table, row_index):
+                    statements.append(_render_update_statement(table_name, row, entity_spec.public_id))
+                else:
+                    statements.append(_render_insert_statement(table_name, row))
 
         deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
         deploy_sql_lines.extend(statements)
@@ -83,16 +94,23 @@ class CopyCsvDeployStrategy:
         for entity_name, package_table in change_package.tables.items():
             entity_spec = target_model.entities[entity_name]
             table_name = entity_spec.target_table or entity_name
-            columns = _renderable_columns(package_table.frame)
-            if not columns:
-                continue
+            insert_mask, update_mask = _package_row_masks(package_table)
 
-            bundle_name = _artifact_directory_name(submission_context)
-            payload_relative_path = _build_bundle_payload_relative_path(bundle_name, table_name)
-            bundle_files[f"deploy/{payload_relative_path}"] = _render_copy_csv_bundle_file(package_table.frame, columns)
-            emitted_table_order.append(table_name)
-            emitted_row_counts[table_name] = len(package_table.frame.index)
-            statements.append(_render_copy_statement(table_name, columns, payload_relative_path))
+            if bool(insert_mask.any()):
+                columns = _renderable_columns(package_table.frame.loc[insert_mask])
+                if columns:
+                    bundle_name = _artifact_directory_name(submission_context)
+                    payload_relative_path = _build_bundle_payload_relative_path(bundle_name, table_name)
+                    bundle_files[f"deploy/{payload_relative_path}"] = _render_copy_csv_bundle_file(
+                        package_table.frame.loc[insert_mask], columns
+                    )
+                    emitted_table_order.append(table_name)
+                    emitted_row_counts[table_name] = len(package_table.frame.loc[insert_mask].index)
+                    statements.append(_render_copy_statement(table_name, columns, payload_relative_path))
+
+            if bool(update_mask.any()):
+                for row_index, row in package_table.frame.loc[update_mask].iterrows():
+                    statements.append(_render_update_statement(table_name, row, entity_spec.public_id))
 
         deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
         deploy_sql_lines.extend(statements)
@@ -313,6 +331,24 @@ def _render_insert_statement(table_name: str, row: pd.Series) -> str:
     return f"INSERT INTO {_quote_identifier(table_name)} ({identifiers}) VALUES ({values});"
 
 
+def _render_update_statement(table_name: str, row: pd.Series, public_id_column: str | None) -> str:
+    """Render a single UPDATE statement for an accepted existing-row update."""
+    if not public_id_column:
+        raise ValueError(f"Cannot render update statement for '{table_name}' without public_id metadata")
+    if public_id_column not in row.index:
+        raise ValueError(
+            f"Cannot render update statement for '{table_name}' because '{public_id_column}' is missing from the projected row"
+        )
+
+    set_columns = _update_assignment_columns(row, public_id_column)
+    if not set_columns:
+        raise ValueError(f"Cannot render update statement for '{table_name}' because no mutable columns were available")
+
+    assignments = ", ".join(f"{_quote_identifier(column)} = {_render_literal(row[column])}" for column in set_columns)
+    where_clause = f"{_quote_identifier(public_id_column)} = {_render_literal(row[public_id_column])}"
+    return f"UPDATE {_quote_identifier(table_name)} SET {assignments} WHERE {where_clause};"
+
+
 def _render_copy_statement(table_name: str, columns: list[str], relative_path: str) -> str:
     """Render a psql \\copy statement for a CSV sidecar file."""
     identifiers = ", ".join(_quote_identifier(column) for column in columns)
@@ -387,11 +423,49 @@ def _render_copy_csv_real(value: Real) -> str:
 
 def _renderable_columns(row_like: pd.Series | pd.DataFrame) -> list[str]:
     """Return non-internal column names in stable order for artifact rendering."""
-    return (
-        [str(column) for column in row_like.columns if not str(column).startswith("_")]
-        if isinstance(row_like, pd.DataFrame)
-        else [str(column) for column in row_like.index if not str(column).startswith("_")]
-    )
+    if isinstance(row_like, pd.DataFrame):
+        return [
+            str(column)
+            for column in row_like.columns
+            if not str(column).startswith("_") and not str(column).endswith("__existing") and str(column) != "system_id"
+        ]
+    return [
+        str(column)
+        for column in row_like.index
+        if not str(column).startswith("_") and not str(column).endswith("__existing") and str(column) != "system_id"
+    ]
+
+
+def _package_row_masks(package_table: ChangeRequestTable) -> tuple[pd.Series, pd.Series]:
+    """Return the insert and update masks for one packaged table."""
+    insert_mask = package_table.row_states.isin({ChangeRowState.NEWLY_ALLOCATED_ENTITY, ChangeRowState.DERIVED_BRIDGE_ROW})
+    update_mask = pd.Series(False, index=package_table.frame.index)
+    if package_table.planned_actions is not None:
+        update_mask = package_table.planned_actions == PlannedRowAction.UPDATE_EXISTING_CANDIDATE
+    return insert_mask, update_mask
+
+
+def _is_update_row(package_table: ChangeRequestTable, row_index: object) -> bool:
+    """Return True when one packaged row should be rendered as an UPDATE statement."""
+    if package_table.planned_actions is None:
+        return False
+    return package_table.planned_actions.loc[row_index] == PlannedRowAction.UPDATE_EXISTING_CANDIDATE
+
+
+def _update_assignment_columns(row: pd.Series, public_id_column: str) -> list[str]:
+    """Return the columns that should be updated for one existing-row update."""
+    columns: list[str] = []
+    for column_name in row.index:
+        if str(column_name).startswith("_"):
+            continue
+        if column_name in {public_id_column, "system_id"}:
+            continue
+        if str(column_name).endswith("__existing"):
+            continue
+        if f"{column_name}__existing" not in row.index:
+            continue
+        columns.append(str(column_name))
+    return columns
 
 
 def _quote_identifier(identifier: str) -> str:
