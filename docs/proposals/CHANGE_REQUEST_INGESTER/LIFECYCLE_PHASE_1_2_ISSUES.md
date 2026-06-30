@@ -8,7 +8,7 @@ Each issue body follows the repository's preferred `Problem`, `Solution`, and `F
 
 Status:
 
-`Ready`
+`In progress on branch cr-ingester-final-work`
 
 Title:
 
@@ -37,7 +37,7 @@ Files:
 
 Status:
 
-`Ready`
+`In progress on branch cr-ingester-final-work`
 
 Title:
 

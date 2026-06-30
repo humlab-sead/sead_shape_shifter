@@ -5,6 +5,12 @@ import pandas as pd
 import pytest
 
 from ingesters.sead_change_request import PlannedRowAction, plan_table
+from ingesters.sead_change_request.contracts import (
+    ChangeRowState,
+    IdentityResolutionResult,
+    ResolvedIdentityTable,
+    classify_submission_outcomes,
+)
 from src.target_model.models import EntitySpec
 
 
@@ -95,3 +101,86 @@ class TestPlanTable:
 
         with pytest.raises(ValueError, match="missing public_id column 'sample_id'"):
             plan_table("sample", frame, entity_spec)
+
+
+class TestSubmissionOutcomeClassification:
+    """Tests for phase-2 submission outcome classification."""
+
+    def test_classification_reports_all_outcome_classes(self):
+        """Classification should count new/no-op/allowed/pending-review/blocked rows."""
+        planned = [
+            plan_table(
+                "sample",
+                pd.DataFrame({"sample_id": [101, 102], "_no_op": [True, False]}),
+                EntitySpec(role="fact", public_id="sample_id"),
+            ),
+            plan_table(
+                "sample_taxon",
+                pd.DataFrame({"sample_id": [1], "taxon_id": [2]}),
+                EntitySpec(role="bridge", unique_sets=[["sample_id", "taxon_id"]]),
+            ),
+            plan_table(
+                "abundance_class",
+                pd.DataFrame({"class_id": [None]}),
+                EntitySpec(role="classifier", public_id="class_id"),
+            ),
+            plan_table(
+                "sample_missing",
+                pd.DataFrame({"sample_id": [None]}),
+                EntitySpec(role="fact", public_id="sample_id"),
+            ),
+        ]
+
+        identity_result = IdentityResolutionResult(
+            tables={
+                "sample": ResolvedIdentityTable(
+                    entity_name="sample",
+                    frame=planned[0].frame,
+                    row_states=pd.Series(
+                        [ChangeRowState.EXISTING_ENTITY, ChangeRowState.EXISTING_ENTITY],
+                        index=planned[0].frame.index,
+                        name="_row_state",
+                    ),
+                    resolved_target_ids=pd.Series([101, 102], index=planned[0].frame.index, dtype="Int64", name="_target_id"),
+                ),
+                "sample_taxon": ResolvedIdentityTable(
+                    entity_name="sample_taxon",
+                    frame=planned[1].frame,
+                    row_states=pd.Series(
+                        [ChangeRowState.DERIVED_BRIDGE_ROW],
+                        index=planned[1].frame.index,
+                        name="_row_state",
+                    ),
+                    resolved_target_ids=pd.Series([pd.NA], index=planned[1].frame.index, dtype="Int64", name="_target_id"),
+                ),
+                "abundance_class": ResolvedIdentityTable(
+                    entity_name="abundance_class",
+                    frame=planned[2].frame,
+                    row_states=pd.Series(
+                        [ChangeRowState.RECONCILED_CLASSIFIER],
+                        index=planned[2].frame.index,
+                        name="_row_state",
+                    ),
+                    resolved_target_ids=pd.Series([501], index=planned[2].frame.index, dtype="Int64", name="_target_id"),
+                ),
+                "sample_missing": ResolvedIdentityTable(
+                    entity_name="sample_missing",
+                    frame=planned[3].frame,
+                    row_states=pd.Series(
+                        [ChangeRowState.BLOCKED_UNRESOLVED],
+                        index=planned[3].frame.index,
+                        name="_row_state",
+                    ),
+                    resolved_target_ids=pd.Series([pd.NA], index=planned[3].frame.index, dtype="Int64", name="_target_id"),
+                ),
+            }
+        )
+
+        summary = classify_submission_outcomes(planned, identity_result, has_pending_review=True)
+
+        assert summary.new_data_rows == 2
+        assert summary.no_op_rows == 1
+        assert summary.allowed_update_rows == 1
+        assert summary.pending_review_rows == 1
+        assert summary.blocked_rows == 0
+        assert any("Outcome classification:" in diagnostic for diagnostic in summary.diagnostics)

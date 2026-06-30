@@ -543,6 +543,8 @@ class TestSeadChangeRequestIngesterValidation:
 
         assert result.is_valid is False
         assert any("Blocked rows after identity resolution: 1" in info for info in result.infos)
+        assert any("Outcome classification:" in info for info in result.infos)
+        assert any("pending_review" in info for info in result.infos)
         assert result.errors == [
             "Entity 'sample' has 1 row(s) without a resolved target ID for 'sample_id'",
             "Entity 'sample' row '0' is missing an identity assignment for planned action 'allocate'",
@@ -578,6 +580,8 @@ class TestSeadChangeRequestIngesterValidation:
 
         assert result.is_valid is True
         assert any("Blocked rows after identity resolution: 0" in info for info in result.infos)
+        assert any("Outcome classification:" in info for info in result.infos)
+        assert any("allowed_update" in info for info in result.infos)
         assert result.warnings == ["Entity 'sample' row '0': Allocated by test harness"]
 
     @pytest.mark.asyncio

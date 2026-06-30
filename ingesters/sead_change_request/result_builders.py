@@ -60,6 +60,7 @@ def build_validation_infos(preparation: PreparationResult) -> list[str]:
         )
         + preparation.planned.infos
         + summarize_identity_work(preparation)
+        + preparation.outcome_summary.diagnostics
         + [
             f"Resolved identity tables: {len(preparation.resolution_result.tables)}",
             f"Blocked rows after identity resolution: {preparation.resolution_result.blocked_rows}",

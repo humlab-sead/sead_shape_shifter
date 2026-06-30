@@ -55,6 +55,16 @@ class LifecycleVersionState(StrEnum):
     BLOCKED = "blocked"
 
 
+class SubmissionOutcome(StrEnum):
+    """Outcome classes used by phase-2 submission planning."""
+
+    NEW_DATA = "new_data"
+    NO_OP = "no_op"
+    ALLOWED_UPDATE = "allowed_update"
+    PENDING_REVIEW = "pending_review"
+    BLOCKED = "blocked"
+
+
 @dataclass(slots=True)
 class SourceTableBundle:
     """Normalized table bundle handed to the ingester core."""
@@ -134,6 +144,18 @@ class LogicalRecordVersion:
     lifecycle_state: LifecycleVersionState
     supersedes_version_key: str | None = None
     submitted_at: datetime | None = None
+
+
+@dataclass(slots=True)
+class SubmissionOutcomeSummary:
+    """Row-count summary for phase-2 outcome classification."""
+
+    new_data_rows: int = 0
+    no_op_rows: int = 0
+    allowed_update_rows: int = 0
+    pending_review_rows: int = 0
+    blocked_rows: int = 0
+    diagnostics: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -268,6 +290,69 @@ def validate_one_live_version(records: list[LogicalRecordVersion]) -> list[str]:
         violations.append(f"Logical record '{logical_record_key}' has {count} live versions; expected at most one live version")
 
     return violations
+
+
+def classify_submission_outcomes(
+    planned_tables: list[PlannedTable],
+    identity_result: IdentityResolutionResult,
+    *,
+    has_pending_review: bool,
+) -> SubmissionOutcomeSummary:
+    """Classify rows into phase-2 outcomes and return a summary."""
+    reference_existing_rows = 0
+    no_op_rows = 0
+
+    for planned_table in planned_tables:
+        reference_mask = planned_table.planned_actions == PlannedRowAction.REFERENCE_EXISTING
+        reference_existing_rows += int(reference_mask.sum())
+
+        if "_no_op" not in planned_table.frame.columns:
+            continue
+
+        no_op_source = planned_table.frame["_no_op"].reindex(planned_table.planned_actions.index, fill_value=False)
+        no_op_mask = no_op_source.fillna(False).astype(bool)
+        no_op_rows += int((reference_mask & no_op_mask).sum())
+
+    allowed_update_rows = max(reference_existing_rows - no_op_rows, 0)
+
+    new_data_rows = 0
+    blocked_rows = 0
+    for resolved_table in identity_result.tables.values():
+        row_states = resolved_table.row_states
+        new_data_rows += int(
+            (
+                (row_states == ChangeRowState.NEWLY_ALLOCATED_ENTITY)
+                | (row_states == ChangeRowState.RECONCILED_CLASSIFIER)
+                | (row_states == ChangeRowState.DERIVED_BRIDGE_ROW)
+            ).sum()
+        )
+        blocked_rows += int((row_states == ChangeRowState.BLOCKED_UNRESOLVED).sum())
+
+    pending_review_rows = blocked_rows if has_pending_review else 0
+    blocked_rows = max(blocked_rows - pending_review_rows, 0)
+
+    diagnostics = [
+        (
+            "Outcome classification: "
+            f"{new_data_rows} {SubmissionOutcome.NEW_DATA.value}, "
+            f"{no_op_rows} {SubmissionOutcome.NO_OP.value}, "
+            f"{allowed_update_rows} {SubmissionOutcome.ALLOWED_UPDATE.value}, "
+            f"{pending_review_rows} {SubmissionOutcome.PENDING_REVIEW.value}, "
+            f"{blocked_rows} {SubmissionOutcome.BLOCKED.value}"
+        )
+    ]
+
+    if no_op_rows == 0:
+        diagnostics.append("No no-op rows detected; mutable-field no-op comparison remains phase-2 dependent")
+
+    return SubmissionOutcomeSummary(
+        new_data_rows=new_data_rows,
+        no_op_rows=no_op_rows,
+        allowed_update_rows=allowed_update_rows,
+        pending_review_rows=pending_review_rows,
+        blocked_rows=blocked_rows,
+        diagnostics=diagnostics,
+    )
 
 
 def normalize_submission_identifier(identifier: str) -> str:
