@@ -11,7 +11,9 @@ from ingesters.sead_change_request.contracts import (
     PlannedTable,
     SourceTableBundle,
     SubmissionContext,
+    SubmissionOutcomeSummary,
     TargetProjectionResult,
+    classify_submission_outcomes,
 )
 from ingesters.sead_change_request.identity_resolution import resolve_planned_tables
 from ingesters.sead_change_request.identity_work import build_identity_work_plan
@@ -54,6 +56,7 @@ class PreparationResult:
     orchestration_result: IdentityOrchestrationResult
     resolution_result: IdentityResolutionResult
     projection_result: TargetProjectionResult
+    outcome_summary: SubmissionOutcomeSummary
     pending_confirmation_report: dict[str, Any] | None = None
 
 
@@ -81,6 +84,16 @@ async def prepare_change_request(
         orchestration_result.assignments,
     )
     projection_result: TargetProjectionResult = project_target_ids(resolution_result, inputs.target_model)
+    pending_confirmation_report = _build_pending_confirmation_report(
+        inputs.submission_context,
+        orchestration_result,
+        resolution_result,
+    )
+    outcome_summary = classify_submission_outcomes(
+        planned.tables,
+        resolution_result,
+        has_pending_review=pending_confirmation_report is not None,
+    )
 
     return PreparationResult(
         inputs=inputs,
@@ -88,11 +101,8 @@ async def prepare_change_request(
         orchestration_result=orchestration_result,
         resolution_result=resolution_result,
         projection_result=projection_result,
-        pending_confirmation_report=_build_pending_confirmation_report(
-            inputs.submission_context,
-            orchestration_result,
-            resolution_result,
-        ),
+        outcome_summary=outcome_summary,
+        pending_confirmation_report=pending_confirmation_report,
     )
 
 
