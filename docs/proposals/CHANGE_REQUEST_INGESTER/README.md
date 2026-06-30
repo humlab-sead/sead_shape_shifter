@@ -67,7 +67,7 @@ For the single consolidated tracker of remaining work, use:
 
 ## Remaining Tasks Snapshot
 
-- execute the lifecycle baseline promotion move in [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md)
+- lifecycle baseline promotion is complete; keep [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the handoff record
 - maintain link alignment with [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) as the durable lifecycle reference
 - complete lifecycle phase implementation starting with metadata and classification contracts
 - decide shared-data review ownership and governance routing

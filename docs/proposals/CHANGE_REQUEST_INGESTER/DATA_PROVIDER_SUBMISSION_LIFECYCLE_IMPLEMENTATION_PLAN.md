@@ -4,11 +4,11 @@
 
 This plan sequences lifecycle implementation work for provider-owned data changes in `sead_change_request`.
 
-It is an execution plan, not a policy document. Lifecycle policy comes from [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) and [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md).
+It is an execution plan, not a policy document. Lifecycle policy comes from [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) and [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
 
 ## Problem
 
-The repository has draft lifecycle rules but no completed implementation path that enforces those rules end to end.
+The repository has accepted lifecycle rules but no completed implementation path that enforces those rules end to end.
 
 Without phased delivery, existing-row update handling risks becoming SQL-first and bypassing ownership classification, one-live-version invariants, and review routing for restricted changes.
 
