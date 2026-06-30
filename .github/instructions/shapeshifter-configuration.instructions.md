@@ -237,3 +237,4 @@ Do not auto-flag these as errors:
 - Preserve comments, ordering, directives, and local style.
 - Never invent data-source names, table names, sheet names, source columns, or target columns.
 - Only claim validation passed if it actually ran successfully.
+- Store findings in a markdown file next to the config, named `YYYYMMDD_REVIEW_FINDINGS.md`.
