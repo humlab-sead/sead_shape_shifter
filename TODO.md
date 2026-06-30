@@ -243,7 +243,7 @@ We need to create a handoff for the next phase of this migration of BugsCEP impo
 
 1. Create add a new proposal named BUGCEP_IMPORT_MIGRATION.md to new folder sead_shape_shifter/docs/proposals/BUGCEP_IMPORT_MIGRATION/ and using instructions in sead_shape_shifter/.github/instructions/proposal-writing-guide.instructions.md. The goal of the proposal is to create a new BugsCEP importer using the reconciliation policy YAML files.   
 2. Craete a machine-readable document that an AI coding agent can use to more easy get up-to-speed in this migration work.
-d   
+
 
 # TODO: test Github Copilot /code-review chat command
 
