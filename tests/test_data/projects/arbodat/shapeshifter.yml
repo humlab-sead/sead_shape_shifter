@@ -330,8 +330,6 @@ entities:
     - [3, null, 'Author(s) ', Publication/manuscript/short report, Aut]
     - [4, null, Bot. Determination, 'Name(s) of person(s) responsible for charcoal or seed/fruit determination, etc', BotBest]
     - [5, null, Site Director/Institution, Name of site director and/or institution, ArchAusg]
-    contact_types: [ArchAusg, ArchBear, BotBear, Aut, BotBest]
-    surrogate_name: contact_type
   coordinate_method_dimension:
     type: fixed
     source:
@@ -393,13 +391,10 @@ entities:
       local_keys: [Projekt]
       remote_keys: [Projekt]
       how: left
-      contraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-        cardinality: many_to_one
       constraints:
         cardinality: many_to_one
         require_unique_left: false
+        allow_unmatched_left: false
         allow_null_keys: false
     - entity: method
       local_keys: [Fraktion]
@@ -824,7 +819,7 @@ entities:
     type: sql
     public_id: method_group_id
     keys: [method_group_id]
-    columns: [group_name, description]
+    columns: [method_group_id, group_name, description]
     depends_on: []
     data_source: sead
     query: select "method_group_id", "group_name", "description" from public.tbl_method_groups
@@ -1063,7 +1058,7 @@ entities:
         allow_row_decrease: true
     - entity: method
       local_keys: [method_id]
-      remote_keys: [method_id]
+      remote_keys: [system_id]
       how: inner
       constraints:
         cardinality: many_to_one
