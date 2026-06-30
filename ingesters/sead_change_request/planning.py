@@ -32,6 +32,7 @@ def plan_table(
     entity_spec: EntitySpec,
     *,
     mutable_fields: list[str] | None = None,
+    existing_row_update_entities: set[str] | None = None,
 ) -> PlannedTable:
     """Plan row actions for one entity table in a deterministic way."""
     diagnostics: list[str] = []
@@ -54,6 +55,11 @@ def plan_table(
     planned_actions.loc[existing_mask] = PlannedRowAction.REFERENCE_EXISTING
 
     if mutable_fields is not None and bool(existing_mask.any()):
+        if existing_row_update_entities is not None and entity_name not in existing_row_update_entities:
+            planned_actions.loc[existing_mask] = PlannedRowAction.BLOCK_EXISTING_UPDATE
+            diagnostics.append(f"Entity '{entity_name}' is outside the first existing-row update slice; existing-row updates are blocked")
+            return PlannedTable(entity_name=entity_name, frame=frame, planned_actions=planned_actions, diagnostics=diagnostics)
+
         missing_requirements = _missing_mutable_field_requirements(frame, mutable_fields)
         if missing_requirements:
             planned_actions.loc[existing_mask] = PlannedRowAction.BLOCK_EXISTING_UPDATE
@@ -86,6 +92,7 @@ def plan_bundle(
     target_model_entities: dict[str, EntitySpec],
     *,
     mutable_fields_by_entity: dict[str, list[str]] | None = None,
+    existing_row_update_entities: set[str] | None = None,
 ) -> PlannedBundle:
     """Plan all source tables against the target model and collect diagnostics."""
     planned_tables: list[PlannedTable] = []
@@ -105,6 +112,7 @@ def plan_bundle(
                 frame,
                 entity_spec,
                 mutable_fields=(mutable_fields_by_entity or {}).get(entity_name),
+                existing_row_update_entities=existing_row_update_entities,
             )
         except ValueError as exc:
             errors.append(str(exc))

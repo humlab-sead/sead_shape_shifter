@@ -718,6 +718,39 @@ class TestSeadChangeRequestIngesterValidation:
         )
         assert any("blocked existing-row update planning" in warning for warning in result.warnings)
 
+    @pytest.mark.asyncio
+    async def test_validate_blocks_existing_row_updates_outside_first_slice_scope(self):
+        """Validation should keep existing-row updates blocked for entities outside the first-slice allowlist."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {
+                        "sample": pd.DataFrame(
+                            {
+                                "sample_id": [101],
+                                "sample_name": ["A changed"],
+                                "sample_name__existing": ["A"],
+                            }
+                        )
+                    },
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(),
+                    "mutable_fields_by_entity": {"sample": ["sample_name"]},
+                    "existing_row_update_entities": ["other_entity"],
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert any("outside the first existing-row update slice" in warning for warning in result.warnings)
+        assert any("1 blocked_existing_update" in info for info in result.infos)
+
 
 class TestSeadChangeRequestIngesterIngest:
     """Tests for scaffold ingest behavior."""

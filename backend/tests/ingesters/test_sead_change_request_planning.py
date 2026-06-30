@@ -136,6 +136,28 @@ class TestPlanTable:
         assert plan.planned_actions.tolist() == [PlannedRowAction.BLOCK_EXISTING_UPDATE]
         assert any("blocked existing-row update planning" in diagnostic for diagnostic in plan.diagnostics)
 
+    def test_existing_rows_blocked_outside_first_slice_scope(self):
+        """Entities outside the first-slice allowlist should keep existing-row updates blocked."""
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101],
+                "sample_name": ["A changed"],
+                "sample_name__existing": ["A"],
+            }
+        )
+        entity_spec = EntitySpec(role="fact", public_id="sample_id")
+
+        plan = plan_table(
+            "sample",
+            frame,
+            entity_spec,
+            mutable_fields=["sample_name"],
+            existing_row_update_entities={"other_entity"},
+        )
+
+        assert plan.planned_actions.tolist() == [PlannedRowAction.BLOCK_EXISTING_UPDATE]
+        assert any("outside the first existing-row update slice" in diagnostic for diagnostic in plan.diagnostics)
+
 
 class TestSubmissionOutcomeClassification:
     """Tests for phase-2 submission outcome classification."""

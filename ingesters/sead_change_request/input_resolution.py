@@ -82,6 +82,7 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
         submission_context: SubmissionContext = _resolve_submission_context(config)
         fallback_assignments: dict[str, dict[object, IdentityAssignment]] = _resolve_identity_assignments(config)
         mutable_fields_by_entity: dict[str, list[str]] = _resolve_mutable_fields_by_entity(config)
+        existing_row_update_entities: set[str] | None = _resolve_existing_row_update_entities(config)
         deploy_strategy: Any | None = _resolve_deploy_strategy(config)
     except InputResolutionError as exc:
         raise exc.with_warnings(bundle.warnings) from exc
@@ -92,6 +93,7 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
         submission_context=submission_context,
         fallback_assignments=fallback_assignments,
         mutable_fields_by_entity=mutable_fields_by_entity,
+        existing_row_update_entities=existing_row_update_entities,
         deploy_strategy=deploy_strategy,
     )
 
@@ -372,4 +374,21 @@ def _resolve_mutable_fields_by_entity(config: IngesterConfig) -> dict[str, list[
 
         resolved[entity_name.strip()] = normalized_fields
 
+    return resolved
+
+
+def _resolve_existing_row_update_entities(config: IngesterConfig) -> set[str] | None:
+    """Resolve the optional first-slice allowlist for existing-row updates."""
+    extras: dict[str, Any] = config.extra or {}
+    raw = extras.get("existing_row_update_entities")
+    if raw is None:
+        return None
+    if not isinstance(raw, list):
+        raise InputResolutionError("existing_row_update_entities must be a list of entity names")
+
+    resolved: set[str] = set()
+    for entity_name in raw:
+        if not isinstance(entity_name, str) or not entity_name.strip():
+            raise InputResolutionError("existing_row_update_entities entries must be non-empty strings")
+        resolved.add(entity_name.strip())
     return resolved
