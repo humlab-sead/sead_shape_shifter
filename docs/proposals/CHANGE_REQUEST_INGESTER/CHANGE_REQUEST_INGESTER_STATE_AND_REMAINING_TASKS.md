@@ -13,6 +13,7 @@ This document consolidates what is complete, what is still draft or candidate, a
 - Frontend UX integration CR is implemented, with one deferred metadata-defaults follow-up.
 - Provider-update lifecycle policy gate is accepted through [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md).
 - Lifecycle rules are promoted to durable docs at [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
+- Lifecycle Phase 1 and Phase 2 prerequisites are implemented on the current branch, including outcome classification diagnostics and integration coverage.
 - Existing-row update handling remains a candidate and is still downstream of lifecycle acceptance.
 - Next-delivery capability list remains undecided and is not a committed delivery scope.
 
@@ -30,6 +31,7 @@ This document consolidates what is complete, what is still draft or candidate, a
 - Proposal-era lifecycle baseline record: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md)
 - Lifecycle sequencing plan: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md)
 - Lifecycle phase issue drafts: [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md)
+- Lifecycle phase 3 issue draft: [LIFECYCLE_PHASE_3_ISSUE.md](./LIFECYCLE_PHASE_3_ISSUE.md)
 - Existing-row update proposal: [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
 - Candidate backlog scope: [NEXT_DELIVERY_CANDIDATES.md](./NEXT_DELIVERY_CANDIDATES.md)
 
@@ -43,11 +45,12 @@ This document consolidates what is complete, what is still draft or candidate, a
 
 2. Complete lifecycle Phase 1 and Phase 2 implementation prerequisites.
 - Track issue-ready work items in [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md).
-- Confirm where lifecycle metadata is stored.
-- Confirm logical-record and record-version identity representation.
-- Confirm classification outcomes and diagnostics contract.
+- Phase 1 contracts are implemented: lifecycle metadata plus one-live-version invariant checks.
+- Phase 2 contracts are implemented: outcome classification for `new_data`, `no_op`, `allowed_update`, `pending_review`, and `blocked`.
+- Integration-level validation info now includes outcome-count diagnostics, with mutable-field scope coverage.
 
 3. Prepare existing-row implementation slice after lifecycle prerequisites are complete.
+- Track issue-ready scope in [LIFECYCLE_PHASE_3_ISSUE.md](./LIFECYCLE_PHASE_3_ISSUE.md).
 - Confirm first entity set for mutable-field comparison.
 - Confirm no-op rerun behavior and supersession rules in implementation tests.
 - Keep ambiguous existing-row changes blocked or review-routed.
@@ -74,8 +77,8 @@ Use this as the short execution checklist for the six open tasks.
 - [x] 1. Decide lifecycle policy acceptance boundary.
 Reason: completed on 2026-06-30 and promoted to durable docs; this removed the highest ambiguity for downstream update behavior.
 
-- [ ] 2. Complete lifecycle Phase 1 and Phase 2 prerequisites.
-Reason: implements the required metadata and classification contracts before any mutation-oriented work.
+- [x] 2. Complete lifecycle Phase 1 and Phase 2 prerequisites.
+Reason: completed on branch; metadata and classification contracts are now in code and tests.
 
 - [ ] 3. Define shared-data review ownership and path.
 Reason: closes governance risk early and prevents provider-owned and shared-data paths from blending.

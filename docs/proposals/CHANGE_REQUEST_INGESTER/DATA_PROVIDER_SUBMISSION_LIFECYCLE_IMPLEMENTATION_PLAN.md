@@ -35,8 +35,8 @@ This plan does not redefine policy, frontend IA, release scheduling, or staffing
 
 | Phase | Entry status | Note |
 |-------|--------------|------|
-| Phase 1: Lifecycle Metadata And Invariants | ready to start | lifecycle policy gate is complete |
-| Phase 2: Submission Planning And Classification | ready after Phase 1 core model contracts land | depends on Phase 1 identity and state model choices |
+| Phase 1: Lifecycle Metadata And Invariants | implemented on current branch | lifecycle metadata contracts and one-live-version invariant checks are in code and tests |
+| Phase 2: Submission Planning And Classification | implemented on current branch | outcome classification and diagnostics are implemented with scenario and integration coverage |
 | Phase 3: Existing-Row Provider Update Path | blocked | remains downstream of Phase 1 and Phase 2 outcomes |
 | Phase 4: Shared-Data Review And Operator Contract | ready to scope, implementation after Phase 2 outcome contract | governance boundaries are accepted at policy level but delivery path is not yet implemented |
 
