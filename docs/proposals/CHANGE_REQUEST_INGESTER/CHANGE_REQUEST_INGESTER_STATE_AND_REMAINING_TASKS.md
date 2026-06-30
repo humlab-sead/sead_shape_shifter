@@ -118,3 +118,25 @@ Dependency guardrails:
 - Keep issue-level execution details in dedicated issue docs or GitHub issues.
 - Use [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the promotion handoff for moving lifecycle rules into durable docs.
 - Use [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) as the active lifecycle policy reference.
+
+## Restart Prompt
+
+Resume the `CHANGE_REQUEST_INGESTER` lifecycle work on branch `cr-ingester-final-work` in `/home/roger/source/sead_shape_shifter`.
+
+Current implementation status:
+
+- lifecycle policy acceptance is already promoted to durable docs
+- phase 1 and phase 2 contracts are implemented
+- phase 3 existing-row provider update handling is implemented
+- the phase plan already marks phase 3 implemented
+- phase 4 is now the active open slice
+
+The current phase-4 draft in [LIFECYCLE_PHASE_4_ISSUES.md](./LIFECYCLE_PHASE_4_ISSUES.md) should be refined next. The draft already says:
+
+- SEAD owns shared data
+- shared lookups should not be duplicated
+- the current reconciliation workflow stays inside Shape Shifter for now and is not published to providers
+- a future provider-facing reconciliation service may exist later
+- third-party authorities may be preferred for some shared concepts
+
+Continue by tightening the phase-4 ownership and routing contract, and update the handoff or issue draft if a decision changes around review ownership, provider-facing reconciliation, or authority-backed lookups.
