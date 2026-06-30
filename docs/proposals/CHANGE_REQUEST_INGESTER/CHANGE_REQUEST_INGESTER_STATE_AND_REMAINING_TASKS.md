@@ -15,6 +15,7 @@ This document consolidates what is complete, what is still draft or candidate, a
 - Lifecycle rules are promoted to durable docs at [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
 - Lifecycle Phase 1 and Phase 2 prerequisites are implemented on the current branch, including outcome classification diagnostics and integration coverage.
 - Existing-row update handling is implemented on the current branch, including both SQL/artifact rendering and the engine-path allowlist/orchestration guard.
+- Phase 4 issue draft now captures shared-data review ownership and operator routing.
 - Next-delivery capability list remains undecided and is not a committed delivery scope.
 
 ## Completed Work
@@ -55,6 +56,7 @@ This document consolidates what is complete, what is still draft or candidate, a
 - Keep ambiguous existing-row changes blocked or review-routed.
 
 4. Define shared-data review ownership and path.
+- Track the draft issue in [LIFECYCLE_PHASE_4_ISSUES.md](./LIFECYCLE_PHASE_4_ISSUES.md).
 - Confirm authority owner for new shared-term requests.
 - Confirm owner for corrections to existing shared terms.
 - Confirm boundary between provider-owned reference updates and shared-row governance changes.
@@ -80,7 +82,7 @@ Reason: completed on 2026-06-30 and promoted to durable docs; this removed the h
 Reason: completed on branch; metadata and classification contracts are now in code and tests.
 
 - [ ] 3. Define shared-data review ownership and path.
-Reason: closes governance risk early and prevents provider-owned and shared-data paths from blending.
+Reason: phase 4 draft is now in place and closes governance risk early by preventing provider-owned and shared-data paths from blending.
 
 - [x] 4. Prepare and scope the first existing-row implementation slice.
 Reason: completed on branch; the existing-row SQL/artifact and engine-path guard are both implemented.

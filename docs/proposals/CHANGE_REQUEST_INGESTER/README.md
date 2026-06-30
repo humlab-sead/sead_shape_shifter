@@ -36,6 +36,7 @@ For the single consolidated tracker of remaining work, use:
 - [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md) — lifecycle delivery sequencing phases
 - [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md) — issue-ready phase 1 and phase 2 implementation slices
 - [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md) — phase 3 implementation record for existing-row provider update handling
+- [LIFECYCLE_PHASE_4_ISSUES.md](./LIFECYCLE_PHASE_4_ISSUES.md) — phase 4 issue draft for shared-data review ownership and routing
 - [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) — promotion handoff for moving accepted lifecycle rules into durable docs
 - [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md) — focused existing-row update proposal (candidate)
 - [NEXT_DELIVERY_CANDIDATES.md](./NEXT_DELIVERY_CANDIDATES.md) — undecided candidate capability backlog
@@ -65,6 +66,7 @@ For the single consolidated tracker of remaining work, use:
 - Provider-submission lifecycle work uses a durable lifecycle reference plus phase plan structure
 - Phase 1 and Phase 2 issue-ready drafts are tracked in `LIFECYCLE_PHASE_1_2_ISSUES.md`
 - Update handling has a dedicated next-delivery CR; existing-row update handling is implemented and the next open work is governance or broader candidate selection
+- Phase 4 issue-ready draft now captures shared-data review ownership and routing
 - Frontend issue breakdown exists as implementation record and deferred follow-up tracking
 - Upstream SIMS handoff docs now live in `humlab-sead/sead_authority_service:docs/proposals/`
 
