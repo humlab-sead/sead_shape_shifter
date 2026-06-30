@@ -31,7 +31,7 @@ This document consolidates what is complete, what is still draft or candidate, a
 - Proposal-era lifecycle baseline record: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md)
 - Lifecycle sequencing plan: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md)
 - Lifecycle phase issue drafts: [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md)
-- Lifecycle phase 3 issue draft: [LIFECYCLE_PHASE_3_ISSUE.md](./LIFECYCLE_PHASE_3_ISSUE.md)
+- Lifecycle phase 3 issue drafts: [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md)
 - Existing-row update proposal: [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
 - Candidate backlog scope: [NEXT_DELIVERY_CANDIDATES.md](./NEXT_DELIVERY_CANDIDATES.md)
 
@@ -49,8 +49,8 @@ This document consolidates what is complete, what is still draft or candidate, a
 - Phase 2 contracts are implemented: outcome classification for `new_data`, `no_op`, `allowed_update`, `pending_review`, and `blocked`.
 - Integration-level validation info now includes outcome-count diagnostics, with mutable-field scope coverage.
 
-3. Prepare existing-row implementation slice after lifecycle prerequisites are complete.
-- Track issue-ready scope in [LIFECYCLE_PHASE_3_ISSUE.md](./LIFECYCLE_PHASE_3_ISSUE.md).
+3. Prepare existing-row implementation slices after lifecycle prerequisites are complete.
+- Track issue-ready scope in [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md) for Issue 3A (engine path) and Issue 3B (SQL/artifact path).
 - Confirm first entity set for mutable-field comparison.
 - Confirm no-op rerun behavior and supersession rules in implementation tests.
 - Keep ambiguous existing-row changes blocked or review-routed.
