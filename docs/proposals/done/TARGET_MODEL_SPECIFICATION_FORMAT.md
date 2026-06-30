@@ -262,7 +262,7 @@ Richer relationship semantics may be added later if a concrete validator or gene
 
 #### Role Semantics
 
-Roles describe modeling intent (see [ENTITY_SEMANTIC_ROLES](ENTITY_SEMANTIC_ROLES.md) for detailed rationale):
+Roles describe modeling intent within the target model:
 
 - **`lookup`** — Reference entity with stable identity. Defines reusable domain values (locations, site types, methods). Expected to have `public_id` and `keys`. Referenced by many entities.
 - **`fact`** — Observational or transactional entity. Records measurements, samples, events. Depends on lookups and parent entities. Usually sits lower in the dependency graph.

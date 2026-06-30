@@ -258,7 +258,7 @@ This works and is already supported. The `type: merged` proposal is about ergono
 ## Related Proposals
 
 - [Branch-Scoped Consumers](../COMPLEX_ENTITY_MODELING_ERGONOMICS.md#proposal-4-branch-scoped-consumers) — Allows downstream entities to consume only one branch
-- [Entity Semantic Roles](../ENTITY_SEMANTIC_ROLES.md) — Makes fact-versus-lookup intent explicit
+- [Target Schema Aware Validation](TARGET_SCHEMA_AWARE_VALIDATION.md) — Captures target-model semantic roles and conformance checks
 
 ## Status
 

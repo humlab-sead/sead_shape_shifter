@@ -24,7 +24,6 @@
 - [ ] First-class merged parent entities — `type: merged` with explicit named branches, per-branch key validation, unified public ID space
 
 ### Semantic Roles and Lookup Helpers
-- [ ] Entity semantic roles — `role: fact | lookup | classifier` (see [ENTITY_SEMANTIC_ROLES.md](ENTITY_SEMANTIC_ROLES.md))
 - [ ] Derived lookup helpers — `type: derived_lookup` for bootstrapping or validating lookup tables from source columns
 
 ### Templates and Macros
@@ -66,7 +65,7 @@ In addition, the completed follow-through work now provides:
 
 That materially changes the framing of this proposal.
 
-The Arbodat-style workaround no longer needs to be described primarily as a missing derived-value feature. Many of the synthetic branch markers and identity columns that previously felt like SQL-only workarounds can now be modeled directly in configuration. The remaining friction is centered on declaration of modeling intent rather than on the ability to compute a value.
+The Arbodat-style workaround no longer needs to be described primarily as a missing derived-value feature. Many of the synthetic branch markers and identity columns that previously felt like SQL-only workarounds can now be modeled directly in configuration. The remaining friction is centered on branch topology and downstream branch handling rather than on the ability to compute a value.
 
 The append mechanism has also received meaningful improvements since this proposal was first written. Source-based append is now a first-class feature: an append item with a `source` key is treated as a source-based append regardless of the parent entity type, and users can choose between name-based (default), position-based (`align_by_position: true`), and explicit column mapping (`column_mapping:`) alignment modes. Position-based alignment properly excludes identity columns (`system_id` and `public_id`) to avoid collisions between differently named public ID columns. This resolves the class of problems that previously required per-branch staging and post-merge cleanup when appending heterogeneous source entities. The `defer_dependency` flag is also now available to break circular FK references when two entities have mutual dependencies. See [done/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md](done/SOURCE_BASED_APPEND_WITH_POSITION_ALIGNMENT.md) for the complete implementation record.
 
@@ -99,7 +98,6 @@ This works, but it has costs:
 ## Goals
 
 - Make shared-parent multi-branch models easier to declare
-- Make fact versus lookup intent explicit in configuration
 - Reduce the need for branch discriminator and identity columns whose only purpose is to satisfy `append`
 - Reduce downstream cleanup rules caused by branch mixing
 - Improve readability and maintainability of complex YAML projects
@@ -121,15 +119,7 @@ See [FIRST_CLASS_MERGED_PARENT_ENTITIES.md](FIRST_CLASS_MERGED_PARENT_ENTITIES.m
 
 The core issue is providing first-class support for merged parent entities composed from explicit branches. Currently these scenarios require manual `extra_columns` for branch discriminators and synthetic pipe-joined keys (e.g. `analysis_entity_value: '{PCODE}|{Fraktion}|...'`), plus generic `append` to merge rows. The recommended approach is a new entity type `type: merged` with explicit `branches:` declaration, automatic branch discriminator and sparse integer FK columns per branch (which replace the synthetic key entirely), and per-branch validation.
 
-## Proposal 2: Entity Semantic Roles (Fact vs Lookup)
-
-**Status: Extracted to standalone proposal**
-
-See [ENTITY_SEMANTIC_ROLES.md](ENTITY_SEMANTIC_ROLES.md) for the complete proposal.
-
-The core issue is making fact-versus-lookup intent explicit to enable better validation. The recommended approach is adding an optional `role` field to entity configuration rather than overloading the existing `type` field.
-
-## Proposal 3: Derived-Value Ergonomics Follow-Through
+## Proposal 2: Derived-Value Ergonomics Follow-Through
 
 Derived-value ergonomics was tracked separately in [done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md) and is now complete.
 

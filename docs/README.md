@@ -118,9 +118,6 @@ Current proposals:
 - **[proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md](proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md)**
   - Proposes new modeling ergonomics for complex target-schema scenarios such as merged parent entities, lookup/fact pairs, and branch-aware downstream entities.
 
-- **[proposals/ENTITY_SEMANTIC_ROLES.md](proposals/ENTITY_SEMANTIC_ROLES.md)**
-  - Proposes an explicit `role` field so projects can distinguish lookup intent from fact intent and catch modeling mistakes earlier.
-
 - **[proposals/OPT_IN_PRESERVE_SYSTEM_ID_FILE_BACKED.md](proposals/OPT_IN_PRESERVE_SYSTEM_ID_FILE_BACKED.md)**
   - Proposes an explicit opt-in path for preserving curated `system_id` values on file-backed reference entities.
 
