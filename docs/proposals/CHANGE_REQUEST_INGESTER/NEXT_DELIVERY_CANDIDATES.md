@@ -14,7 +14,7 @@ The repository still has several capabilities that matter for a fuller operation
 
 This proposal records that candidate set so the closed Delivery 1 baseline can stay closed without losing the backlog context.
 
-Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](./FRONTEND_UX_INTEGRATION_CR.md), with GitHub-ready issue drafts in [FRONTEND_UX_INTEGRATION_ISSUES.md](./FRONTEND_UX_INTEGRATION_ISSUES.md). The closed post-Delivery-1 follow-up record now lives in [closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md](./closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md).
+Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](./FRONTEND_UX_INTEGRATION_CR.md), with GitHub-ready issue drafts in [FRONTEND_UX_INTEGRATION_ISSUES.md](./FRONTEND_UX_INTEGRATION_ISSUES.md). The closed post-Delivery-1 follow-up record now lives in [archive/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md](./archive/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md).
 
 ## Problem
 

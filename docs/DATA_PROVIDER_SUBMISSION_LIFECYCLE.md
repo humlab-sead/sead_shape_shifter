@@ -1,41 +1,34 @@
-# Specification: Data Provider Submission Lifecycle
+# Data Provider Submission Lifecycle
 
 ## Status
 
-- Promoted proposal-era lifecycle baseline record
-- Source proposals: [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md), [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
-- Scoping decision alignment: [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) accepted on 2026-06-30
-- Durable lifecycle reference: [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)
-- Intended role: keep the accepted proposal-era baseline as a historical record
-
-## Promotion Note
-
-The durable lifecycle reference now lives at [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
-
-This file is retained to preserve proposal history and decision traceability.
+- Active durable reference
+- Promoted from proposal baseline on 2026-06-30
+- Source decision: [proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_UPDATE_SCOPING_CR.md](proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_UPDATE_SCOPING_CR.md)
+- Source baseline record: [proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md)
 
 ## Purpose
 
-This document defines the lifecycle rules for provider-submitted data that changes over time through `sead_change_request`.
+This document defines lifecycle rules for provider-submitted data that changes over time through `sead_change_request`.
 
-It is the stable rules document that should outlive proposal-specific delivery plans, issue lists, and implementation checklists.
+It is the durable rules reference and replaces proposal-era status as the primary source for lifecycle policy.
 
 ## Scope
 
-This specification covers:
+This document covers:
 
 - lifecycle terms for provider submissions and record versions
 - ownership rules for provider-owned data, shared reference data, and system-managed data
 - invariants for history, supersession, and live-version status
 - allowed, restricted, and blocked classes of provider-visible change
-- the expected outcomes of submission processing at the policy level
+- policy-level outcomes of submission processing
 
 ## Non-Goals
 
-- defining the SQL artifact format
+- defining SQL artifact format
 - defining frontend screens or operator UX in detail
 - defining delivery phases, milestones, or implementation checklists
-- replacing curator or authority workflows for shared data governance
+- replacing curator or authority workflows for shared-data governance
 - defining rollback mechanics in this document
 
 ## Core Terms
@@ -46,7 +39,7 @@ A provider submission is a request to add, correct, extend, revise, or supersede
 
 ### Logical record
 
-A logical record is the business-level record whose identity remains stable across versions. Different versions of the same logical record describe the same underlying record at different stages of correction or revision.
+A logical record is the business-level record whose identity stays stable across versions. Different versions of the same logical record describe the same underlying record at different stages of correction or revision.
 
 ### Record version
 
@@ -146,7 +139,7 @@ At the policy level, submission processing should end in one of these outcomes f
 
 ## Minimum State Model
 
-This specification expects at least the following record-version states:
+This document expects at least the following record-version states:
 
 - live
 - superseded
@@ -170,7 +163,7 @@ The lifecycle must support at least the following state transitions.
 | blocked | corrected resubmission that passes checks | pending review or live | follow the normal acceptance path; blocked status does not grant a shortcut |
 | superseded | historical retention | superseded | superseded versions remain available as history and do not become live again without a new accepted change |
 
-These transitions are a minimum policy contract. Later implementation documents may add finer-grained workflow states, but they must preserve the outcomes and invariants defined here.
+These transitions are a minimum policy contract. Implementation documents may add finer-grained workflow states, but they must preserve the outcomes and invariants defined here.
 
 ## Traceability Requirements
 
@@ -182,16 +175,9 @@ The repository should retain enough metadata to answer these questions for each 
 - which earlier version was superseded, if any
 - why the change was accepted, blocked, or routed to review
 
-## Relationship To Other Documents
+## Related Documents
 
-- [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) is the durable lifecycle reference for current implementation and validation work
-- [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) defines the proposal-level decision about provider-visible change scope
-- [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md) defines phased delivery planning and progress tracking
-- [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md) narrows one follow-up scenario for existing-row update handling
-- implementation plans and checklists should stay in separate planning documents rather than in this specification
-
-## Promotion Rule
-
-Promotion completed on 2026-06-30.
-
-Use [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) as the active lifecycle reference.
+- [proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_UPDATE_SCOPING_CR.md](proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_UPDATE_SCOPING_CR.md) defines the decision about provider-visible change scope
+- [proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md) defines phased delivery and phase entry status
+- [proposals/CHANGE_REQUEST_INGESTER/UPDATE_HANDLING_FOR_EXISTING_ROWS.md](proposals/CHANGE_REQUEST_INGESTER/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) narrows one follow-up scenario for existing-row update handling
+- [proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md) is retained as the proposal-era baseline record
