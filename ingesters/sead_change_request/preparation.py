@@ -30,6 +30,7 @@ class ResolvedInputs:
     target_model: TargetModel
     submission_context: SubmissionContext
     fallback_assignments: dict[str, dict[object, IdentityAssignment]]
+    mutable_fields_by_entity: dict[str, list[str]]
     deploy_strategy: Any | None
 
 
@@ -93,6 +94,7 @@ async def prepare_change_request(
         planned.tables,
         resolution_result,
         has_pending_review=pending_confirmation_report is not None,
+        mutable_fields_by_entity=inputs.mutable_fields_by_entity,
     )
 
     return PreparationResult(

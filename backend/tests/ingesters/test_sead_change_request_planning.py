@@ -191,6 +191,80 @@ class TestSubmissionOutcomeClassification:
         assert summary.blocked_rows == 0
         assert any("Outcome classification:" in diagnostic for diagnostic in summary.diagnostics)
 
+    def test_classification_uses_configured_mutable_fields_scope(self):
+        """Configured mutable fields should control no-op detection for existing rows."""
+        planned = [
+            plan_table(
+                "sample",
+                pd.DataFrame(
+                    {
+                        "sample_id": [101],
+                        "sample_name": ["A"],
+                        "sample_name__existing": ["A"],
+                        "sample_note": ["changed"],
+                        "sample_note__existing": ["old"],
+                    }
+                ),
+                EntitySpec(role="fact", public_id="sample_id"),
+            )
+        ]
+        identity_result = IdentityResolutionResult(
+            tables={
+                "sample": ResolvedIdentityTable(
+                    entity_name="sample",
+                    frame=planned[0].frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=planned[0].frame.index, name="_row_state"),
+                    resolved_target_ids=pd.Series([101], index=planned[0].frame.index, dtype="Int64", name="_target_id"),
+                )
+            }
+        )
+
+        summary = classify_submission_outcomes(
+            planned,
+            identity_result,
+            has_pending_review=False,
+            mutable_fields_by_entity={"sample": ["sample_name"]},
+        )
+
+        assert summary.no_op_rows == 1
+        assert summary.allowed_update_rows == 0
+
+    def test_classification_treats_row_as_allowed_update_when_configured_mutable_field_differs(self):
+        """Configured mutable fields should mark existing rows as allowed_update when any scoped field changes."""
+        planned = [
+            plan_table(
+                "sample",
+                pd.DataFrame(
+                    {
+                        "sample_id": [101],
+                        "sample_name": ["A changed"],
+                        "sample_name__existing": ["A"],
+                    }
+                ),
+                EntitySpec(role="fact", public_id="sample_id"),
+            )
+        ]
+        identity_result = IdentityResolutionResult(
+            tables={
+                "sample": ResolvedIdentityTable(
+                    entity_name="sample",
+                    frame=planned[0].frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=planned[0].frame.index, name="_row_state"),
+                    resolved_target_ids=pd.Series([101], index=planned[0].frame.index, dtype="Int64", name="_target_id"),
+                )
+            }
+        )
+
+        summary = classify_submission_outcomes(
+            planned,
+            identity_result,
+            has_pending_review=False,
+            mutable_fields_by_entity={"sample": ["sample_name"]},
+        )
+
+        assert summary.no_op_rows == 0
+        assert summary.allowed_update_rows == 1
+
     def test_classification_reports_missing_baseline_columns_when_existing_rows_cannot_be_compared(self):
         """Classification should explain when existing rows have no mutable baseline columns."""
         planned = [
