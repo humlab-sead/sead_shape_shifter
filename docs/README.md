@@ -118,9 +118,6 @@ Current proposals:
 - **[proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md)**
   - Proposes explicit branch-scoped consumption for downstream entities that read mixed-branch parent rows.
 
-- **[proposals/OPT_IN_PRESERVE_SYSTEM_ID_FILE_BACKED.md](proposals/OPT_IN_PRESERVE_SYSTEM_ID_FILE_BACKED.md)**
-  - Proposes an explicit opt-in path for preserving curated `system_id` values on file-backed reference entities.
-
 - **[proposals/QUERY_FILTER_ENGINE_SELECTION.md](proposals/QUERY_FILTER_ENGINE_SELECTION.md)**
   - Proposes adding an explicit `engine` field to `type: query` filters for advanced pandas query behavior.
 
