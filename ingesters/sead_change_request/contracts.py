@@ -301,17 +301,20 @@ def classify_submission_outcomes(
     """Classify rows into phase-2 outcomes and return a summary."""
     reference_existing_rows = 0
     no_op_rows = 0
+    compared_reference_rows = 0
 
     for planned_table in planned_tables:
         reference_mask = planned_table.planned_actions == PlannedRowAction.REFERENCE_EXISTING
         reference_existing_rows += int(reference_mask.sum())
 
-        if "_no_op" not in planned_table.frame.columns:
+        baseline_pairs = _baseline_column_pairs(planned_table.frame)
+        if not baseline_pairs:
             continue
 
-        no_op_source = planned_table.frame["_no_op"].reindex(planned_table.planned_actions.index, fill_value=False)
-        no_op_mask = no_op_source.fillna(False).astype(bool)
-        no_op_rows += int((reference_mask & no_op_mask).sum())
+        for row_key in planned_table.frame.index[reference_mask]:
+            compared_reference_rows += 1
+            if _is_no_op_row(planned_table.frame, row_key, baseline_pairs):
+                no_op_rows += 1
 
     allowed_update_rows = max(reference_existing_rows - no_op_rows, 0)
 
@@ -342,8 +345,15 @@ def classify_submission_outcomes(
         )
     ]
 
-    if no_op_rows == 0:
-        diagnostics.append("No no-op rows detected; mutable-field no-op comparison remains phase-2 dependent")
+    if compared_reference_rows == 0:
+        diagnostics.append("No existing-row references detected; no-op comparison skipped")
+    elif no_op_rows == 0:
+        diagnostics.append("No no-op rows detected from mutable-field comparison")
+
+    if reference_existing_rows and compared_reference_rows == 0:
+        diagnostics.append(
+            "No mutable baseline columns were provided for existing-row comparison; treated all existing references as allowed_update"
+        )
 
     return SubmissionOutcomeSummary(
         new_data_rows=new_data_rows,
@@ -353,6 +363,40 @@ def classify_submission_outcomes(
         blocked_rows=blocked_rows,
         diagnostics=diagnostics,
     )
+
+
+def _baseline_column_pairs(frame: pd.DataFrame) -> list[tuple[str, str]]:
+    """Return (current, baseline) column pairs using the '<field>__existing' convention."""
+    pairs: list[tuple[str, str]] = []
+    for baseline_column in frame.columns:
+        if not baseline_column.endswith("__existing"):
+            continue
+        current_column = baseline_column[: -len("__existing")]
+        if not current_column or current_column.startswith("_"):
+            continue
+        if current_column not in frame.columns:
+            continue
+        pairs.append((current_column, baseline_column))
+    return pairs
+
+
+def _is_no_op_row(frame: pd.DataFrame, row_key: object, baseline_pairs: list[tuple[str, str]]) -> bool:
+    """Return True when all mutable fields match their baseline values for one row."""
+    for current_column, baseline_column in baseline_pairs:
+        current_value = frame.at[row_key, current_column]
+        baseline_value = frame.at[row_key, baseline_column]
+        if not _values_equal_for_outcome_comparison(current_value, baseline_value):
+            return False
+    return True
+
+
+def _values_equal_for_outcome_comparison(left: Any, right: Any) -> bool:
+    """Compare mutable-field values for no-op outcome detection."""
+    if pd.isna(left) and pd.isna(right):
+        return True
+    if isinstance(left, str) and isinstance(right, str):
+        return left.strip() == right.strip()
+    return left == right
 
 
 def normalize_submission_identifier(identifier: str) -> str:
