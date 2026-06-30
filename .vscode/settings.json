@@ -34,18 +34,34 @@
     "editor.minimap.enabled": false,
     "files.autoSave": "afterDelay",
     "files.watcherExclude": {
-        "**/tmp/**": true,
-        "**/test_data/**": true,
+        "**/.git/**": true,
         "**/.venv/**": true,
         "**/venv/**": true,
-        "**/.git/**": true,
         "**/node_modules/**": true,
+        "**/frontend/node_modules/**": true,
+        "**/frontend/dist/**": true,
+        "**/frontend/coverage/**": true,
+        "**/frontend/.vite/**": true,
+        "**/frontend/.nuxt/**": true,
+        "**/frontend/.output/**": true,
+        "**/frontend/playwright-report/**": true,
+        "**/frontend/test-results/**": true,
+
+        "**/tmp/**": true,
         "**/data/**": true,
         "**/graphify-out/**": true,
-        "**/docs/**": true,
+        "**/output/**": true,
+        "**/logs/**": true,
+
         "**/__pycache__/**": true,
         "**/.pytest_cache/**": true,
         "**/.ruff_cache/**": true,
+        "**/.mypy_cache/**": true,
+        "**/.tox/**": true,
+        "**/.nox/**": true,
+        "**/htmlcov/**": true,
+
+        "**/sead-tools/**": true
     },
     "git.confirmSync": false,
     "gitlens.rebaseEditor.ordering": "asc",
@@ -70,7 +86,6 @@
         }
     },
     "peacock.remoteColor": "#336c73",
-    // "python.analysis.logLevel": "Trace",
     "python.analysis.aiHoverSummaries": false,
     "python.analysis.autoFormatStrings": true,
     "python.analysis.autoImportCompletions": true,
@@ -183,5 +198,7 @@
         "/home/roger/source/sead_shape_shifter/frontend/src/schemas/projectSchema.json": [
             "**/shapeshifter.yml"
         ]
-    }
+    },
+    "vitest.filesWatcherInclude": "frontend/src/**/*",
+    "vitest.watchOnStartup": false
 }
