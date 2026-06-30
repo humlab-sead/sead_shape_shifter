@@ -41,6 +41,8 @@ class PlannedRowAction(StrEnum):
     """Planned row actions before identity work is carried out."""
 
     REFERENCE_EXISTING = "reference_existing"
+    UPDATE_EXISTING_CANDIDATE = "update_existing_candidate"
+    BLOCK_EXISTING_UPDATE = "block_existing_update"
     ALLOCATE = "allocate"
     RECONCILE = "reconcile"
     EVALUATE_BRIDGE = "evaluate_bridge"
@@ -105,6 +107,8 @@ class IdentityWorkPlan:
     """Groups of planned rows organized by the identity work they need."""
 
     existing_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
+    update_candidate_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
+    blocked_existing_update_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     allocation_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     reconciliation_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     bridge_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
@@ -112,6 +116,14 @@ class IdentityWorkPlan:
     @property
     def total_existing_rows(self) -> int:
         return sum(len(frame.index) for frame in self.existing_rows.values())
+
+    @property
+    def total_update_candidate_rows(self) -> int:
+        return sum(len(frame.index) for frame in self.update_candidate_rows.values())
+
+    @property
+    def total_blocked_existing_update_rows(self) -> int:
+        return sum(len(frame.index) for frame in self.blocked_existing_update_rows.values())
 
     @property
     def total_allocation_rows(self) -> int:
@@ -300,17 +312,49 @@ def classify_submission_outcomes(
     mutable_fields_by_entity: dict[str, list[str]] | None = None,
 ) -> SubmissionOutcomeSummary:
     """Classify rows into phase-2 outcomes and return a summary."""
-    reference_existing_rows = 0
+    unscoped_reference_existing_rows = 0
+    unscoped_no_op_rows = 0
     no_op_rows = 0
+    allowed_update_rows = 0
     compared_reference_rows = 0
 
     for planned_table in planned_tables:
         reference_mask = planned_table.planned_actions == PlannedRowAction.REFERENCE_EXISTING
-        reference_existing_rows += int(reference_mask.sum())
+        update_candidate_mask = planned_table.planned_actions == PlannedRowAction.UPDATE_EXISTING_CANDIDATE
+        blocked_existing_update_mask = planned_table.planned_actions == PlannedRowAction.BLOCK_EXISTING_UPDATE
+
+        scoped_mutable_fields = mutable_fields_by_entity.get(planned_table.entity_name) if mutable_fields_by_entity else None
+        if scoped_mutable_fields is not None:
+            has_phase3_existing_row_actions = bool(update_candidate_mask.any()) or bool(blocked_existing_update_mask.any())
+            if has_phase3_existing_row_actions:
+                scoped_reference_rows = int(reference_mask.sum())
+                scoped_update_rows = int(update_candidate_mask.sum())
+                no_op_rows += scoped_reference_rows
+                allowed_update_rows += scoped_update_rows
+                compared_reference_rows += scoped_reference_rows + scoped_update_rows
+                continue
+
+            unscoped_reference_existing_rows += int(reference_mask.sum())
+
+            baseline_pairs = _baseline_column_pairs(
+                planned_table.frame,
+                mutable_fields=scoped_mutable_fields,
+            )
+            if not baseline_pairs:
+                continue
+
+            for row_key in planned_table.frame.index[reference_mask]:
+                compared_reference_rows += 1
+                if _is_no_op_row(planned_table.frame, row_key, baseline_pairs):
+                    no_op_rows += 1
+                    unscoped_no_op_rows += 1
+            continue
+
+        unscoped_reference_existing_rows += int(reference_mask.sum())
 
         baseline_pairs = _baseline_column_pairs(
             planned_table.frame,
-            mutable_fields=mutable_fields_by_entity.get(planned_table.entity_name) if mutable_fields_by_entity else None,
+            mutable_fields=None,
         )
         if not baseline_pairs:
             continue
@@ -319,8 +363,9 @@ def classify_submission_outcomes(
             compared_reference_rows += 1
             if _is_no_op_row(planned_table.frame, row_key, baseline_pairs):
                 no_op_rows += 1
+                unscoped_no_op_rows += 1
 
-    allowed_update_rows = max(reference_existing_rows - no_op_rows, 0)
+    allowed_update_rows += max(unscoped_reference_existing_rows - unscoped_no_op_rows, 0)
 
     new_data_rows = 0
     blocked_rows = 0
@@ -354,7 +399,7 @@ def classify_submission_outcomes(
     elif no_op_rows == 0:
         diagnostics.append("No no-op rows detected from mutable-field comparison")
 
-    if reference_existing_rows and compared_reference_rows == 0:
+    if unscoped_reference_existing_rows and compared_reference_rows == 0:
         diagnostics.append(
             "No mutable baseline columns were provided for existing-row comparison; treated all existing references as allowed_update"
         )

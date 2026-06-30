@@ -37,3 +37,23 @@ class TestBuildIdentityWorkPlan:
         assert work_plan.allocation_rows["sample"]["sample_name"].tolist() == ["B"]
         assert work_plan.reconciliation_rows["abundance_class"]["name"].tolist() == ["class-a"]
         assert work_plan.bridge_rows["sample_taxon"]["taxon_id"].tolist() == [2]
+
+    def test_partitions_phase3_existing_row_update_queues(self):
+        """Existing-row update candidates and blocked rows should have dedicated Issue 3A queues."""
+        sample_frame = pd.DataFrame({"sample_id": [101, 102], "sample_name": ["A", "B"]})
+        sample_actions = pd.Series(
+            [PlannedRowAction.UPDATE_EXISTING_CANDIDATE, PlannedRowAction.BLOCK_EXISTING_UPDATE],
+            index=sample_frame.index,
+            name="_planned_action",
+        )
+
+        work_plan = build_identity_work_plan(
+            [
+                PlannedTable(entity_name="sample", frame=sample_frame, planned_actions=sample_actions),
+            ]
+        )
+
+        assert work_plan.total_update_candidate_rows == 1
+        assert work_plan.total_blocked_existing_update_rows == 1
+        assert work_plan.update_candidate_rows["sample"]["sample_id"].tolist() == [101]
+        assert work_plan.blocked_existing_update_rows["sample"]["sample_id"].tolist() == [102]
