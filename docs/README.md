@@ -118,9 +118,6 @@ Current proposals:
 - **[proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md)**
   - Proposes explicit branch-scoped consumption for downstream entities that read mixed-branch parent rows.
 
-- **[proposals/QUERY_FILTER_ENGINE_SELECTION.md](proposals/QUERY_FILTER_ENGINE_SELECTION.md)**
-  - Proposes adding an explicit `engine` field to `type: query` filters for advanced pandas query behavior.
-
 - **[proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)**
   - Records the completed conformance backlog rollout and the deferred follow-up that moved out of the active proposal set.
 
@@ -143,6 +140,9 @@ Future proposals:
 
 - **[proposals/future/FK_NULL_KEY_POLICY_MODEL.md](proposals/future/FK_NULL_KEY_POLICY_MODEL.md)**
   - Placeholder for a later phase proposal about an explicit missing-key policy model.
+
+- **[proposals/future/QUERY_FILTER_ENGINE_SELECTION.md](proposals/future/QUERY_FILTER_ENGINE_SELECTION.md)**
+  - Defers a narrow extension to allow explicit pandas query-engine selection (`engine: python`) on `type: query` filters.
 
 - **[proposals/future/PENDING_IMPROVEMENTS.md](proposals/future/PENDING_IMPROVEMENTS.md)**
   - Collects proposal ideas that remain deferred but not yet closed.
