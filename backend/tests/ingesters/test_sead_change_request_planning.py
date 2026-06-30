@@ -111,7 +111,13 @@ class TestSubmissionOutcomeClassification:
         planned = [
             plan_table(
                 "sample",
-                pd.DataFrame({"sample_id": [101, 102], "_no_op": [True, False]}),
+                pd.DataFrame(
+                    {
+                        "sample_id": [101, 102],
+                        "sample_name": ["A", "B"],
+                        "sample_name__existing": ["A", "B-old"],
+                    }
+                ),
                 EntitySpec(role="fact", public_id="sample_id"),
             ),
             plan_table(
@@ -184,3 +190,29 @@ class TestSubmissionOutcomeClassification:
         assert summary.pending_review_rows == 1
         assert summary.blocked_rows == 0
         assert any("Outcome classification:" in diagnostic for diagnostic in summary.diagnostics)
+
+    def test_classification_reports_missing_baseline_columns_when_existing_rows_cannot_be_compared(self):
+        """Classification should explain when existing rows have no mutable baseline columns."""
+        planned = [
+            plan_table(
+                "sample",
+                pd.DataFrame({"sample_id": [101], "sample_name": ["A"]}),
+                EntitySpec(role="fact", public_id="sample_id"),
+            )
+        ]
+        identity_result = IdentityResolutionResult(
+            tables={
+                "sample": ResolvedIdentityTable(
+                    entity_name="sample",
+                    frame=planned[0].frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=planned[0].frame.index, name="_row_state"),
+                    resolved_target_ids=pd.Series([101], index=planned[0].frame.index, dtype="Int64", name="_target_id"),
+                )
+            }
+        )
+
+        summary = classify_submission_outcomes(planned, identity_result, has_pending_review=False)
+
+        assert summary.no_op_rows == 0
+        assert summary.allowed_update_rows == 1
+        assert any("No mutable baseline columns were provided" in diagnostic for diagnostic in summary.diagnostics)
