@@ -81,6 +81,7 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
         target_model: TargetModel = _resolve_target_model(config)
         submission_context: SubmissionContext = _resolve_submission_context(config)
         fallback_assignments: dict[str, dict[object, IdentityAssignment]] = _resolve_identity_assignments(config)
+        mutable_fields_by_entity: dict[str, list[str]] = _resolve_mutable_fields_by_entity(config)
         deploy_strategy: Any | None = _resolve_deploy_strategy(config)
     except InputResolutionError as exc:
         raise exc.with_warnings(bundle.warnings) from exc
@@ -90,6 +91,7 @@ def resolve_inputs(config: IngesterConfig, source: object) -> ResolvedInputs:
         target_model=target_model,
         submission_context=submission_context,
         fallback_assignments=fallback_assignments,
+        mutable_fields_by_entity=mutable_fields_by_entity,
         deploy_strategy=deploy_strategy,
     )
 
@@ -344,3 +346,30 @@ def _resolve_deploy_strategy(config: IngesterConfig) -> Any | None:
         return resolve_deploy_artifact_strategy(extras.get("deploy_strategy"))
     except ValueError as exc:
         raise DeployStrategyError(str(exc)) from exc
+
+
+def _resolve_mutable_fields_by_entity(config: IngesterConfig) -> dict[str, list[str]]:
+    """Resolve optional mutable-field comparison scope per entity."""
+    extras: dict[str, Any] = config.extra or {}
+    raw = extras.get("mutable_fields_by_entity")
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise InputResolutionError("mutable_fields_by_entity must be a mapping of entity names to field lists")
+
+    resolved: dict[str, list[str]] = {}
+    for entity_name, fields in raw.items():
+        if not isinstance(entity_name, str) or not entity_name.strip():
+            raise InputResolutionError("mutable_fields_by_entity keys must be non-empty strings")
+        if not isinstance(fields, list):
+            raise InputResolutionError(f"mutable_fields_by_entity['{entity_name}'] must be a list of field names")
+
+        normalized_fields: list[str] = []
+        for field_name in fields:
+            if not isinstance(field_name, str) or not field_name.strip():
+                raise InputResolutionError(f"mutable_fields_by_entity['{entity_name}'] entries must be non-empty strings")
+            normalized_fields.append(field_name.strip())
+
+        resolved[entity_name.strip()] = normalized_fields
+
+    return resolved

@@ -297,6 +297,7 @@ def classify_submission_outcomes(
     identity_result: IdentityResolutionResult,
     *,
     has_pending_review: bool,
+    mutable_fields_by_entity: dict[str, list[str]] | None = None,
 ) -> SubmissionOutcomeSummary:
     """Classify rows into phase-2 outcomes and return a summary."""
     reference_existing_rows = 0
@@ -307,7 +308,10 @@ def classify_submission_outcomes(
         reference_mask = planned_table.planned_actions == PlannedRowAction.REFERENCE_EXISTING
         reference_existing_rows += int(reference_mask.sum())
 
-        baseline_pairs = _baseline_column_pairs(planned_table.frame)
+        baseline_pairs = _baseline_column_pairs(
+            planned_table.frame,
+            mutable_fields=mutable_fields_by_entity.get(planned_table.entity_name) if mutable_fields_by_entity else None,
+        )
         if not baseline_pairs:
             continue
 
@@ -365,8 +369,21 @@ def classify_submission_outcomes(
     )
 
 
-def _baseline_column_pairs(frame: pd.DataFrame) -> list[tuple[str, str]]:
-    """Return (current, baseline) column pairs using the '<field>__existing' convention."""
+def _baseline_column_pairs(frame: pd.DataFrame, *, mutable_fields: list[str] | None = None) -> list[tuple[str, str]]:
+    """Return (current, baseline) pairs using configured fields or '<field>__existing' discovery."""
+    if mutable_fields is not None:
+        pairs: list[tuple[str, str]] = []
+        for current_column in mutable_fields:
+            if not current_column or current_column.startswith("_"):
+                continue
+            baseline_column = f"{current_column}__existing"
+            if current_column not in frame.columns:
+                continue
+            if baseline_column not in frame.columns:
+                continue
+            pairs.append((current_column, baseline_column))
+        return pairs
+
     pairs: list[tuple[str, str]] = []
     for baseline_column in frame.columns:
         if not baseline_column.endswith("__existing"):
