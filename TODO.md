@@ -246,3 +246,14 @@ We need to create a handoff for the next phase of this migration of BugsCEP impo
 d   
 
 # TODO: test Github Copilot /code-review chat command
+
+Rules in semantic_rules.yml that are not implemented in a specification:
+entity.xlsx.requires_filename
+entity.openpyxl.requires_filename
+entity.csv.requires_filename
+entity.tsv.requires_filename
+entity.duckdb.requires_query
+entity.duckdb.requires_depends_on
+entity.xlsx.filename_must_exist
+entity.openpyxl.filename_must_exist
+entity.csv.filename_must_exist
