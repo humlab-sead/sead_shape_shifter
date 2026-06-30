@@ -298,6 +298,12 @@
           ],
           "default": null,
           "description": "Foreign key constraints"
+        },
+        "defer_dependency": {
+          "default": false,
+          "description": "Break a dependency cycle by deferring the FK link to a final pass. Use only when circular references are unavoidable.",
+          "title": "Defer Dependency",
+          "type": "boolean"
         }
       },
       "required": [
@@ -678,6 +684,142 @@
       "default": null,
       "description": "Fixed values for 'fixed' type entities",
       "title": "Values"
+    },
+    "options": {
+      "type": "object",
+      "description": "Loader-specific options. Required keys depend on entity type.",
+      "oneOf": [
+        {
+          "description": "Options for type: sqlite",
+          "properties": {
+            "filename": {
+              "type": "string",
+              "description": "Path to .db or .sqlite file"
+            }
+          },
+          "required": [
+            "filename"
+          ]
+        },
+        {
+          "description": "Options for type: access",
+          "properties": {
+            "filename": {
+              "type": "string",
+              "description": "Path to .mdb or .accdb file"
+            },
+            "ucanaccess_dir": {
+              "type": "string",
+              "description": "Path to UCanAccess library directory",
+              "default": "lib/ucanaccess"
+            }
+          },
+          "required": [
+            "filename"
+          ]
+        },
+        {
+          "description": "Options for type: csv",
+          "properties": {
+            "filename": {
+              "type": "string",
+              "description": "Path to .csv file"
+            },
+            "encoding": {
+              "type": "string",
+              "description": "File encoding",
+              "default": "utf-8"
+            },
+            "delimiter": {
+              "type": "string",
+              "description": "Field delimiter",
+              "default": ","
+            }
+          },
+          "required": [
+            "filename"
+          ]
+        },
+        {
+          "description": "Options for type: xlsx",
+          "properties": {
+            "filename": {
+              "type": "string",
+              "description": "Path to .xlsx or .xls file"
+            },
+            "sheet_name": {
+              "type": "string",
+              "description": "Sheet name to load"
+            },
+            "sanitize_header": {
+              "type": "boolean",
+              "description": "Whether to sanitize column headers to be YAML-friendly",
+              "default": true
+            }
+          },
+          "required": [
+            "filename"
+          ]
+        },
+        {
+          "description": "Options for type: openpyxl",
+          "properties": {
+            "filename": {
+              "type": "string",
+              "description": "Path to .xlsx file"
+            },
+            "sheet_name": {
+              "type": "string",
+              "description": "Sheet name to load"
+            },
+            "range": {
+              "type": "string",
+              "description": "Cell range to load (e.g., A1:D10)"
+            },
+            "sanitize_header": {
+              "type": "boolean",
+              "description": "Whether to sanitize column headers to be YAML-friendly",
+              "default": true
+            }
+          },
+          "required": [
+            "filename"
+          ]
+        }
+      ]
+    },
+    "check_functional_dependency": {
+      "default": true,
+      "description": "Whether to check functional dependency when dropping duplicates. Default True.",
+      "title": "Check Functional Dependency",
+      "type": "boolean"
+    },
+    "surrogate_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Fixed entity type name used when the entity represents a controlled vocabulary type.",
+      "title": "Surrogate Name"
+    },
+    "type_names": {
+      "description": "Column name list for unnest type columns, referenced by @value: in other entities.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Type Names",
+      "type": "array"
+    },
+    "replacements": {
+      "additionalProperties": true,
+      "description": "Value replacement rules applied during data extraction.",
+      "title": "Replacements",
+      "type": "object"
     }
   },
   "required": [],
