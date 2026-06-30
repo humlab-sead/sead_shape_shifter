@@ -59,6 +59,7 @@ class SeadChangeRequestIngester:
             inputs.bundle,
             inputs.target_model.entities,
             mutable_fields_by_entity=inputs.mutable_fields_by_entity,
+            existing_row_update_entities=inputs.existing_row_update_entities,
         )
 
         return await prepare_change_request(

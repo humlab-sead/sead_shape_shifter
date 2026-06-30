@@ -31,6 +31,7 @@ class ResolvedInputs:
     submission_context: SubmissionContext
     fallback_assignments: dict[str, dict[object, IdentityAssignment]]
     mutable_fields_by_entity: dict[str, list[str]]
+    existing_row_update_entities: set[str] | None
     deploy_strategy: Any | None
 
 

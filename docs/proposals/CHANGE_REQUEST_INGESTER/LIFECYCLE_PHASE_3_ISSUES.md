@@ -8,7 +8,7 @@ Each issue body follows the repository's preferred `Problem`, `Solution`, and `F
 
 Status:
 
-`Ready after shared-data governance owner and first-entity scope decision`
+`Ready after shared-data governance owner and first-slice update allowlist decision`
 
 Title:
 
@@ -20,11 +20,13 @@ Phase 1 and Phase 2 lifecycle prerequisites are now implemented, but the existin
 
 Without an engine-level phase-3 slice, submissions that include provider-owned changes to existing rows cannot move from classification outcomes into deterministic decision paths for no-op, accepted update, and blocked outcomes.
 
+The engine also needs an explicit first-slice allowlist so only approved entity families can enter the existing-row update path while the rest stay blocked.
+
 Solution:
 
 Implement the planning and orchestration path for existing-row updates using explicit mutable-field boundaries.
 
-Treat unchanged reruns as no-op, route accepted updates as update candidates, and block ambiguous or disallowed updates with clear diagnostics and outcome accounting.
+Treat unchanged reruns as no-op, route accepted updates as update candidates, and block ambiguous, disallowed, or out-of-slice updates with clear diagnostics and outcome accounting.
 
 Files:
 
