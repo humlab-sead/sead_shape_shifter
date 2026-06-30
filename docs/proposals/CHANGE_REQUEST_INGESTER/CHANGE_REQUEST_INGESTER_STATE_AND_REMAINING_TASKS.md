@@ -29,15 +29,24 @@ This document consolidates what is complete, what is still draft or candidate, a
 - Durable lifecycle rules: [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)
 - Proposal-era lifecycle baseline record: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md)
 - Lifecycle sequencing plan: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md)
+- Lifecycle phase issue drafts: [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md)
 - Existing-row update proposal: [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
 - Candidate backlog scope: [NEXT_DELIVERY_CANDIDATES.md](./NEXT_DELIVERY_CANDIDATES.md)
 
 ## Next Actions
 
 1. Record and carry forward lifecycle policy acceptance.
- lifecycle baseline promotion is complete; keep [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the handoff record
+- Acceptance decision is complete for `DATA_PROVIDER_UPDATE_SCOPING_CR.md`.
+- Durable lifecycle doc created: [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
+- Promotion note completed: [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md).
+- Lifecycle baseline promotion is complete; keep [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the handoff record.
+
 2. Complete lifecycle Phase 1 and Phase 2 implementation prerequisites.
+- Track issue-ready work items in [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md).
 - Confirm where lifecycle metadata is stored.
+- Confirm logical-record and record-version identity representation.
+- Confirm classification outcomes and diagnostics contract.
+
 3. Prepare existing-row implementation slice after lifecycle prerequisites are complete.
 - Confirm first entity set for mutable-field comparison.
 - Confirm no-op rerun behavior and supersession rules in implementation tests.
