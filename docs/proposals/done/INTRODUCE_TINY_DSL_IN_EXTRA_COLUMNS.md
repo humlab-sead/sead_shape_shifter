@@ -6,7 +6,7 @@
 
 - Scope: configuration ergonomics for derived values in `extra_columns`
 - Goal: extend the current interpolation-based `extra_columns` feature with a small, safe expression language for common transforms
-- Relationship to Proposal 3: this is a concrete follow-on to Proposal 3 in [docs/proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md](docs/proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md), not as a competing feature
+- Relationship to later branch-scoping work: this supports follow-up authoring improvements tracked in [docs/proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](docs/proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md), not as a competing feature
 - **Implementation**: Hand-written recursive descent parser in [src/transforms/dsl.py](../../src/transforms/dsl.py)
 - **Tests**: 73 comprehensive tests in [tests/transforms/test_dsl.py](../../tests/transforms/test_dsl.py) with 91% coverage
 - **Documentation**: DSL syntax documented in [docs/CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md)
@@ -35,7 +35,7 @@ The remaining gap is not basic derivation. The gap is that interpolation becomes
 
 This proposal recommended introducing a tiny DSL for derived values in `extra_columns`, but only as a small, explicit, safe vocabulary. **This has now been implemented.**
 
-The implementation aligns with Proposal 3 by treating:
+The implementation aligns with the derived-value follow-through direction by treating:
 
 1. current interpolated `extra_columns` as the baseline feature,
 2. the tiny DSL as the next ergonomics layer above interpolation,
@@ -189,7 +189,7 @@ That cliff creates several problems:
 
 **This proposal has been implemented as of March 2026.**
 
-The implementation follows the recommendations from Proposal 3:
+The implementation follows the derived-value follow-through recommendations:
 
 1. ✅ Plain interpolation remains exactly as it was
 2. ✅ Tiny DSL marker (`=`) added for friendly derived expressions
@@ -286,7 +286,7 @@ Reasons:
 2. it complicates debugging and validation,
 3. it creates inconsistent semantics across entity types,
 4. it encourages power-user shortcuts instead of a stable configuration language,
-5. it overlaps poorly with the more deliberate direction in Proposal 3.
+5. it overlaps poorly with the more deliberate derived-value direction already chosen for `extra_columns`.
 
 If richer, engine-specific expressions are ever needed later, that should be a separate feature with its own execution model and validation rules.
 
@@ -394,21 +394,16 @@ Costs:
 
 That tradeoff is acceptable if the scope stays small.
 
-## Recommendation To Align With Proposal 3
+## Recommendation
 
-This document should be treated as a concrete refinement of Proposal 3 rather than a separate strategic direction.
+This document should be treated as a concrete refinement of the derived-value follow-through decision rather than a separate strategic direction.
 
 Recommended alignment:
 
-1. Proposal 3 remains the umbrella statement about derived-value ergonomics,
-2. this proposal becomes the specific implementation candidate for the cross-entity path under Proposal 3,
+1. the derived-value follow-through document remains the decision record for the supported `extra_columns` path,
+2. this proposal captures the implemented cross-entity DSL layer under that path,
 3. any future SQL-only `computed_columns` feature should remain a separate question,
 4. this proposal should not reintroduce raw-expression execution as the default path.
-
-In short:
-
-1. Proposal 3 says what direction to go,
-2. this proposal says how to make the cross-entity part of that direction concrete.
 
 ## Next Steps
 

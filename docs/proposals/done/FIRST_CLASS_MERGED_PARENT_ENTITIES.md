@@ -257,7 +257,7 @@ This works and is already supported. The `type: merged` proposal is about ergono
 
 ## Related Proposals
 
-- [Branch-Scoped Consumers](../COMPLEX_ENTITY_MODELING_ERGONOMICS.md#proposal-4-branch-scoped-consumers) — Allows downstream entities to consume only one branch
+- [Branch-Scoped Consumers For Mixed-Branch Parents](../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md) — Allows downstream entities to consume only one branch
 - [Target Schema Aware Validation](TARGET_SCHEMA_AWARE_VALIDATION.md) — Captures target-model semantic roles and conformance checks
 
 ## Status
@@ -284,7 +284,7 @@ This works and is already supported. The `type: merged` proposal is about ergono
 - ✅ README.md feature list updated
 - ✅ CHANGELOG.md updated automatically via semantic-release on merge
 
-This proposal is part of the [Complex Entity Modeling Ergonomics](../COMPLEX_ENTITY_MODELING_ERGONOMICS.md) umbrella proposal.
+This proposal pairs closely with [Branch-Scoped Consumers For Mixed-Branch Parents](../BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md), which covers downstream entities that should read only one branch.
 
 ## Design Decisions
 

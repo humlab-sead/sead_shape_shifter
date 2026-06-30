@@ -115,8 +115,8 @@ Current proposals:
 - **[proposals/BUGSCEP_PILOT_PROJECT.md](proposals/BUGSCEP_PILOT_PROJECT.md)**
   - Documents the current BugsCEP pilot and the next implementation slices for continued migration work.
 
-- **[proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md](proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md)**
-  - Proposes new modeling ergonomics for complex target-schema scenarios such as merged parent entities, lookup/fact pairs, and branch-aware downstream entities.
+- **[proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md)**
+  - Proposes explicit branch-scoped consumption for downstream entities that read mixed-branch parent rows.
 
 - **[proposals/OPT_IN_PRESERVE_SYSTEM_ID_FILE_BACKED.md](proposals/OPT_IN_PRESERVE_SYSTEM_ID_FILE_BACKED.md)**
   - Proposes an explicit opt-in path for preserving curated `system_id` values on file-backed reference entities.
