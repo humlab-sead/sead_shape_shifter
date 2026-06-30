@@ -1,176 +1,137 @@
-# Plan: Data Provider Submission Lifecycle Implementation
+# Phase Plan: Data Provider Submission Lifecycle Implementation
 
-## Status
+## Summary
 
-- Draft implementation plan
-- Related proposal: [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md)
-- Related specification: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md)
-- Intended role: delivery planning, work sequencing, and progress tracking for accepted lifecycle rules
+This plan sequences lifecycle implementation work for provider-owned data changes in `sead_change_request`.
 
-## Purpose
+It is an execution plan, not a policy document. Lifecycle policy comes from [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) and [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md).
 
-This document breaks the accepted provider-submission lifecycle work into implementation phases.
+## Problem
 
-It is a delivery document, not a policy document. If this plan conflicts with the proposal or the lifecycle specification, the proposal and specification win.
+The repository has draft lifecycle rules but no completed implementation path that enforces those rules end to end.
+
+Without phased delivery, existing-row update handling risks becoming SQL-first and bypassing ownership classification, one-live-version invariants, and review routing for restricted changes.
 
 ## Scope
 
-This plan covers:
+This plan covers lifecycle implementation sequencing for:
 
-- recommended delivery order
-- implementation workstreams
-- readiness checks between phases
-- progress checklist placeholders
+- lifecycle metadata and invariants
+- submission planning and classification outcomes
+- existing-row provider-owned update handling
+- restricted shared-data review routing
+- artifact and operator outcome behavior
 
-## Non-Goals
+This plan does not redefine policy, frontend IA, release scheduling, or staffing.
 
-- redefining provider-visible policy rules
-- replacing the lifecycle specification as the durable source of truth
-- tracking issue-level day-to-day notes in this document
+## Current Position
 
-## Planning Assumptions
+- lifecycle policy scope decision is accepted through [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md)
+- delivery order exists, but implementation tracking is split across multiple proposal documents
+- existing-row update handling remains proposed and should stay downstream of lifecycle rule enforcement
+- shared-data governance boundaries are documented at proposal level but not yet implemented as a review path contract
 
-- provider-owned changes require history-preserving handling
-- only one live version may exist for the same logical record at a given point in time
-- shared reference data remains outside the default provider update path
-- existing-row updates are one scenario inside the broader lifecycle work, not the full lifecycle scope
+## Phase Entry Status
 
-## Workstreams
+| Phase | Entry status | Note |
+|-------|--------------|------|
+| Phase 1: Lifecycle Metadata And Invariants | ready to start | lifecycle policy gate is complete |
+| Phase 2: Submission Planning And Classification | ready after Phase 1 core model contracts land | depends on Phase 1 identity and state model choices |
+| Phase 3: Existing-Row Provider Update Path | blocked | remains downstream of Phase 1 and Phase 2 outcomes |
+| Phase 4: Shared-Data Review And Operator Contract | ready to scope, implementation after Phase 2 outcome contract | governance boundaries are accepted at policy level but delivery path is not yet implemented |
 
-### 1. Lifecycle model and metadata
+## Phase Plan
 
-Define the minimum data model and metadata needed to represent logical records, versions, live status, supersession, and review outcomes.
+### Phase 1: Lifecycle Metadata And Invariants
 
-Checklist:
+**Goal**
 
-- [ ] define the minimum lifecycle fields needed for provider-owned version tracking
-- [ ] define how logical record identity is distinguished from record-version identity
-- [ ] define how live and superseded status are represented
-- [ ] define the minimum audit and traceability metadata
+Define and implement the minimum state and metadata model that can enforce lifecycle invariants.
 
-### 2. Planning and decision engine
+**Focus**
 
-Define how incoming submissions are classified as new data, no-op, allowed update, restricted change, or blocked change.
+- define logical-record identity versus record-version identity
+- implement live and superseded state handling with traceability fields
+- ensure one-live-version enforcement is represented in the implementation model
 
-Checklist:
+**Acceptance Criteria**
 
-- [ ] classify changes by provider-owned, shared reference, or system-managed data role
-- [ ] define no-op comparison rules for provider-owned data
-- [ ] define when a change becomes pending review instead of blocked
-- [ ] define operator-facing diagnostics for blocked and review-required outcomes
+- logical record and record-version identities are explicit in implementation contracts
+- one-live-version behavior is enforceable by the model, not only by documentation
+- accepted, no-op, pending-review, and blocked outcomes are represented consistently in lifecycle state handling
 
-### 3. Existing-row update handling
+### Phase 2: Submission Planning And Classification
 
-Implement the narrower existing-row scenario only after lifecycle rules and minimum metadata are in place.
+**Goal**
 
-Checklist:
+Classify incoming provider submissions before SQL artifact generation.
 
-- [ ] align field mutability rules with [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
-- [ ] define how an accepted new version supersedes the previous live version
-- [ ] define how no-op reruns avoid creating duplicate live versions
-- [ ] define how ambiguous existing-row changes stop or route to review
+**Focus**
 
-### 4. Shared-data review path
+- classify requested changes as provider-owned, shared-reference, or system-managed
+- classify outcomes as new data, no-op, allowed update, pending review, or blocked
+- produce operator-facing diagnostics for blocked and review-required outcomes
 
-Define the path for requested changes that involve shared classifiers or shared lookups.
+**Acceptance Criteria**
 
-Checklist:
+- planning distinguishes all required outcome classes for provider-submitted changes
+- no-op outcomes are explicit and do not create duplicate live versions
+- diagnostics describe why changes were blocked or routed to review
 
-- [ ] define request flow for new shared terms
-- [ ] define review flow for corrections to existing shared terms
-- [ ] define how provider-owned reference changes are separated from shared-row changes
-- [ ] define the boundary between provider workflow and curator or authority workflow
+### Phase 3: Existing-Row Provider Update Path
 
-### 5. Artifact generation and execution contract
+**Goal**
 
-Define how accepted outcomes are rendered into change artifacts without weakening lifecycle rules.
+Implement the narrow accepted existing-row update path for provider-owned data.
 
-Checklist:
+**Focus**
 
-- [ ] define artifact behavior for accepted new versions
-- [ ] define artifact behavior for no-op outcomes
-- [ ] define artifact behavior for blocked and pending-review outcomes
-- [ ] confirm that artifact generation preserves the one-live-version rule
+- align mutable-field comparison boundaries with [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
+- apply supersession when a new accepted version replaces the current live version
+- block ambiguous or unsupported updates instead of applying speculative mutation
 
-### 6. Frontend and operator workflow
+**Acceptance Criteria**
 
-Define how the system explains lifecycle outcomes to operators and how review-required work is handled.
+- accepted existing-row changes produce a new live version and supersede the prior live version
+- unchanged reruns are no-op and do not create duplicate live versions
+- ambiguous or disallowed existing-row changes do not mutate current live records silently
 
-Checklist:
+### Phase 4: Shared-Data Review And Operator Contract
 
-- [ ] show whether a submission produced new data, a new live version, a no-op, a blocked result, or a review-required result
-- [ ] show which earlier version was superseded when a new version becomes live
-- [ ] show why a change was blocked or routed to review
-- [ ] define rerun guidance for corrected submissions
+**Goal**
 
-## Recommended Delivery Order
+Implement restricted shared-data handling and operator-visible lifecycle outcomes.
 
-### Phase 1. Lifecycle rules and minimum metadata
+**Focus**
 
-Finish the minimum lifecycle model, invariants, and traceability requirements needed to support provider-owned history.
+- define reviewed request flow for new or corrected shared terms
+- keep provider-owned reference updates separate from shared-row mutation
+- align artifact and frontend outcome reporting for accepted, no-op, blocked, and pending-review paths
 
-Exit criteria:
+**Acceptance Criteria**
 
-- [ ] logical record and record-version concepts are defined well enough for implementation
-- [ ] the one-live-version rule can be enforced by the planned model
-- [ ] accepted, blocked, pending-review, and no-op outcomes are defined clearly enough for downstream work
+- shared-data changes are routed to a defined reviewed path instead of default provider update execution
+- provider-owned reference changes are handled separately from shared-row governance actions
+- operator-visible results distinguish accepted, no-op, blocked, and review-required outcomes
 
-### Phase 2. Planning behavior and diagnostics
+## Cross-Phase Rules
 
-Implement or document the decision path that classifies provider submissions before SQL-oriented handling begins.
+- do not implement existing-row update mutation before lifecycle metadata and classification rules are in place
+- preserve one-live-version behavior in every accepted provider-owned update path
+- treat ambiguous changes as blocked or pending review, never as implicit acceptance
+- keep shared-data governance outside default provider-owned update execution
+- keep plan state in this file and move issue-level tracking to dedicated issue documents
 
-Exit criteria:
+## Validation Strategy
 
-- [ ] new data, no-op, allowed update, restricted change, and blocked change outcomes are distinguishable
-- [ ] operator-facing diagnostics exist for blocked and pending-review outcomes
-- [ ] shared-data requests are separated from default provider-owned update handling
+- validate lifecycle state transitions and one-live-version behavior with focused unit tests in ingester and planning modules
+- validate classification behavior with scenario tests for new, no-op, allowed, pending-review, and blocked outcomes
+- validate existing-row update behavior with explicit mutable-field boundary tests and rerun-idempotency checks
+- validate operator-facing outcome payloads used by frontend states for blocked, pending-review, no-op, and accepted paths
+- update this plan only when acceptance criteria are actually met in code and tests
 
-### Phase 3. Existing-row update path
+## Final Recommendation
 
-Implement the accepted subset of existing-row updates for provider-owned data.
+Use this phase plan as the only lifecycle sequencing document.
 
-Exit criteria:
-
-- [ ] accepted existing-row changes create a new live version and supersede the older live version
-- [ ] no-op reruns do not create duplicate live versions
-- [ ] ambiguous changes do not mutate the current live version silently
-
-### Phase 4. Review and governance extensions
-
-Add or refine the reviewed paths for shared-data requests and other restricted changes.
-
-Exit criteria:
-
-- [ ] review-required changes have a defined path
-- [ ] shared-data governance actions remain outside the default provider update flow
-- [ ] operator workflow makes the distinction between provider-owned changes and shared-data changes clear
-
-## Progress Tracking
-
-Use this section for high-level progress only. Detailed issue tracking should stay in GitHub or other delivery tooling.
-
-### Current status
-
-- [ ] Phase 1 not started
-- [ ] Phase 2 not started
-- [ ] Phase 3 not started
-- [ ] Phase 4 not started
-
-### Open delivery dependencies
-
-- [ ] confirm where lifecycle metadata will live
-- [ ] confirm which existing-row entities will support mutable-field comparison first
-- [ ] confirm review path ownership for shared-data requests
-- [ ] confirm frontend scope for blocked and pending-review results
-
-## Relationship To Other Documents
-
-- [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) defines the problem and recommendation
-- [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md) defines the durable lifecycle rules and invariants
-- [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md) narrows the existing-row implementation scenario
-
-## Maintenance Rule
-
-Keep this plan lean.
-
-When a phase is complete, update the checklist or archive the finished planning details instead of turning this document into a historical narrative.
+Track cross-document status and remaining tasks in [CHANGE_REQUEST_INGESTER_STATE_AND_REMAINING_TASKS.md](./CHANGE_REQUEST_INGESTER_STATE_AND_REMAINING_TASKS.md), then keep issue-level execution details outside this phase plan.

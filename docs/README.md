@@ -50,6 +50,12 @@ These are the primary system documentation files:
   - Complete examples and best practices
   - Troubleshooting guide
 
+- **[DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)**
+  - Durable lifecycle policy for provider-submitted data changes
+  - Ownership-first update rules and one-live-version history invariants
+  - Allowed, restricted, and blocked change classes
+  - Minimum state model and state-transition policy contract
+
 ### Development
 
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** (10,000+ lines)

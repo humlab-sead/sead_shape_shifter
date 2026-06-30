@@ -337,5 +337,6 @@ The running container picks up the restored file on the next API read (no restar
 - [docker/README.md](../docker/README.md) — Docker setup, volume layout, and all `make` targets
 - [docker/BUILD_SCRIPT_GUIDE.md](../docker/BUILD_SCRIPT_GUIDE.md) — `build.sh` options and cache invalidation
 - [docs/DEVELOPMENT.md](DEVELOPMENT.md) — Local development setup and contributor workflow
+- [docs/DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) — Durable lifecycle policy for provider-submitted data changes and review outcomes
 - [docs/DESIGN.md](DESIGN.md) — Architecture, layer boundaries, and single-worker constraint rationale
 - [AGENTS.md](../AGENTS.md) — Quick-reference commands and workflow conventions
