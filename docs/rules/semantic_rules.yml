@@ -1,0 +1,367 @@
+version: 1
+
+# Semantic validation rules for Shape Shifter project YAML files.
+#
+# These rules capture contextual and conditional constraints that the generated
+# JSON Schema cannot express. Rules are grouped by category:
+#
+#   conditional      — rules depending on discriminator values such as type: xlsx
+#   structural       — basic required-field rules important for explanation and repair
+#   project_resource — file paths and external resources that must exist
+#   consistency      — cross-entity reference checks
+#
+# Rule IDs follow the pattern: <area>.<context>.<rule_name>
+# See docs/ai/semantic-rules-agent.md for format details.
+
+rules:
+
+  # ---------------------------------------------------------------------------
+  # conditional — required options per file-loader entity type
+  # ---------------------------------------------------------------------------
+
+  - id: entity.xlsx.requires_filename
+    title: xlsx entities require options.filename
+    severity: error
+    category: conditional
+    applies_to: entities.*
+    when:
+      type: xlsx
+    require:
+      - options.filename
+    message: "xlsx entities must define options.filename."
+    fix: "Add options.filename pointing to the .xlsx or .xls file."
+    confidence: high
+    source:
+      - kind: loader
+        path: src/loaders/excel_loaders.py
+        symbol: PandasLoader
+        note: "DriverSchema declares filename as required=True for the xlsx driver."
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Entity type contract table: xlsx requires options.filename."
+
+  - id: entity.openpyxl.requires_filename
+    title: openpyxl entities require options.filename
+    severity: error
+    category: conditional
+    applies_to: entities.*
+    when:
+      type: openpyxl
+    require:
+      - options.filename
+    message: "openpyxl entities must define options.filename."
+    fix: "Add options.filename pointing to the .xlsx file."
+    confidence: high
+    source:
+      - kind: loader
+        path: src/loaders/excel_loaders.py
+        symbol: OpenPyxlLoader
+        note: "DriverSchema declares filename as required=True for the openpyxl driver."
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Entity type contract table: openpyxl requires options.filename."
+
+  - id: entity.csv.requires_filename
+    title: csv entities require options.filename
+    severity: error
+    category: conditional
+    applies_to: entities.*
+    when:
+      type: csv
+    require:
+      - options.filename
+    message: "csv entities must define options.filename."
+    fix: "Add options.filename pointing to the .csv file."
+    confidence: high
+    source:
+      - kind: loader
+        path: src/loaders/file_loaders.py
+        symbol: CsvLoader
+        note: "DriverSchema declares filename as required=True for the csv driver."
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Entity type contract table: csv requires options.filename."
+
+  - id: entity.tsv.requires_filename
+    title: tsv entities require options.filename
+    severity: error
+    category: conditional
+    applies_to: entities.*
+    when:
+      type: tsv
+    require:
+      - options.filename
+    message: "tsv entities must define options.filename."
+    fix: "Add options.filename pointing to the .tsv file."
+    confidence: high
+    source:
+      - kind: loader
+        path: src/loaders/file_loaders.py
+        symbol: CsvLoader
+        note: "tsv is registered as an alias for the csv loader; the same DriverSchema applies with filename required=True."
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Entity type contract table: tsv uses the csv loader and requires options.filename."
+
+  # ---------------------------------------------------------------------------
+  # structural — required top-level fields per entity type
+  # ---------------------------------------------------------------------------
+
+  - id: entity.sql.requires_data_source
+    title: sql entities require data_source
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: sql
+    require:
+      - data_source
+    message: "sql entities must define data_source."
+    fix: >-
+      Add data_source referencing a name in options.data_sources, or use
+      data_source: "@internal" for queries against already-processed entities.
+    confidence: high
+    agent_guidance:
+      explanation: >
+        External sql entities reference a named data source that must exist in options.data_sources.
+        The special value "@internal" is the only exception — it signals that the entity queries
+        already-processed entities within the same run and does not require a data_sources entry.
+      repair_strategy:
+        - Check options.data_sources for available data source names.
+        - 'If the query reads from other entities processed in the same run, use data_source: "@internal".'
+        - Do not remove data_source; add it if missing.
+      safe_autofix: false
+    source:
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Entity type contract table: sql requires data_source."
+      - kind: loader
+        path: src/loaders/sql_loaders.py
+        note: "SqlLoader validates that data_source is present at load time."
+
+  - id: entity.sql.requires_query
+    title: sql entities require query
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: sql
+    require:
+      - query
+    message: "sql entities must define query."
+    fix: "Add query with the SQL statement to execute against the configured data source."
+    confidence: high
+    source:
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Entity type contract table: sql requires query."
+
+  - id: entity.fixed.requires_columns
+    title: fixed entities require columns
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: fixed
+    require:
+      - columns
+    message: "fixed entities must define columns."
+    fix: "Add columns listing the column names that match each position in the values rows."
+    confidence: high
+    source:
+      - kind: loader
+        path: src/loaders/fixed_loader.py
+        symbol: FixedLoader
+        note: "FixedLoader requires columns to construct the DataFrame."
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Entity type contract table: fixed requires columns."
+
+  - id: entity.fixed.requires_values
+    title: fixed entities require values
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: fixed
+    require:
+      - values
+    message: "fixed entities must define values."
+    fix: "Add values with a list of rows. Each row must have the same width as columns."
+    confidence: high
+    source:
+      - kind: loader
+        path: src/loaders/fixed_loader.py
+        symbol: FixedLoader
+        note: "FixedLoader requires values to construct the DataFrame."
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Entity type contract table: fixed requires values."
+
+  - id: entity.merged.requires_branches
+    title: merged entities require branches
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: merged
+    require:
+      - branches
+    message: "merged entities must define branches."
+    fix: "Add branches listing the entities to merge. Each branch requires name and source."
+    confidence: high
+    source:
+      - kind: pydantic_model
+        path: backend/app/models/entity.py
+        symbol: Entity
+        note: "branches field is required for merged entities in the API model."
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Entity type contract table: merged requires branches."
+
+  - id: entity.merged.requires_public_id
+    title: merged entities require public_id
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: merged
+    require:
+      - public_id
+    message: "merged entities must define public_id."
+    fix: "Add public_id with a column name ending in _id (for example, site_id) to identify the merged entity."
+    confidence: high
+    source:
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Entity type contract table: merged requires public_id."
+
+  - id: entity.duckdb.requires_query
+    title: duckdb entities require query
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: duckdb
+    require:
+      - query
+    message: "duckdb entities must define query."
+    fix: "Add query with the DuckDB SQL statement. The query can reference other already-processed entities by name."
+    confidence: high
+    source:
+      - kind: loader
+        path: src/loaders/duckdb_loader/duckdb_loader.py
+        symbol: DuckDbLoader
+        note: "DuckDbLoader raises ValueError if sql_query is absent at load time."
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Entity type contract table: duckdb requires query."
+
+  - id: entity.duckdb.requires_depends_on
+    title: duckdb entities require depends_on
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: duckdb
+    require:
+      - depends_on
+    message: "duckdb entities must define depends_on listing the entities they query."
+    fix: "Add depends_on listing every entity name referenced in the DuckDB query to ensure correct processing order."
+    confidence: high
+    source:
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Entity type contract table: duckdb requires depends_on."
+      - kind: core
+        path: src/workflow.py
+        note: "Workflow builds the dependency graph from depends_on; missing entries cause incorrect processing order."
+
+  # ---------------------------------------------------------------------------
+  # project_resource — options.filename must point to an existing file
+  # ---------------------------------------------------------------------------
+
+  - id: entity.xlsx.filename_must_exist
+    title: xlsx options.filename must point to an existing file
+    severity: error
+    category: project_resource
+    applies_to: entities.*
+    when:
+      type: xlsx
+    check:
+      kind: project_file_exists
+      file: options.filename
+    message: "options.filename '{{ options.filename }}' does not exist."
+    fix: "Check the path relative to the project file. Verify the file name and extension (.xlsx or .xls)."
+    confidence: high
+    source:
+      - kind: loader
+        path: src/loaders/excel_loaders.py
+        symbol: PandasLoader
+        note: "PandasLoader raises FileNotFoundError if the file does not exist."
+
+  - id: entity.openpyxl.filename_must_exist
+    title: openpyxl options.filename must point to an existing file
+    severity: error
+    category: project_resource
+    applies_to: entities.*
+    when:
+      type: openpyxl
+    check:
+      kind: project_file_exists
+      file: options.filename
+    message: "options.filename '{{ options.filename }}' does not exist."
+    fix: "Check the path relative to the project file. Verify the file name and extension (.xlsx)."
+    confidence: high
+    source:
+      - kind: loader
+        path: src/loaders/excel_loaders.py
+        symbol: OpenPyxlLoader
+        note: "OpenPyxlLoader raises FileNotFoundError if the file does not exist."
+
+  - id: entity.csv.filename_must_exist
+    title: csv options.filename must point to an existing file
+    severity: error
+    category: project_resource
+    applies_to: entities.*
+    when:
+      type: csv
+    check:
+      kind: project_file_exists
+      file: options.filename
+    message: "options.filename '{{ options.filename }}' does not exist."
+    fix: "Check the path relative to the project file. Verify the file name and extension."
+    confidence: high
+    source:
+      - kind: loader
+        path: src/loaders/file_loaders.py
+        symbol: CsvLoader
+        note: "CsvLoader raises FileNotFoundError if the file does not exist."
+
+  # ---------------------------------------------------------------------------
+  # consistency — cross-entity references must resolve
+  # ---------------------------------------------------------------------------
+
+  - id: reference.entity_must_exist
+    title: All entity references must resolve to a defined entity
+    severity: error
+    category: consistency
+    applies_to: entities.*
+    check:
+      kind: reference_resolves
+      scope: entities
+      fields:
+        - source
+        - foreign_keys[].entity
+        - append[].source
+        - merged.branches[].source
+    message: "Entity reference '{{ value }}' does not exist in entities."
+    fix: "Check the entity name for typos. Add the missing entity to the entities mapping if it is required."
+    confidence: high
+    source:
+      - kind: instructions
+        path: .github/instructions/shapeshifter-configuration.instructions.md
+        note: "Dependency rules: all dependency references must point to existing entities."
+      - kind: core
+        path: src/workflow.py
+        note: "Workflow builds a dependency graph from these references; unresolved names cause KeyError at runtime."

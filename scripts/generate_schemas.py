@@ -30,6 +30,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project
+from src.loaders.driver_metadata import DriverSchemaRegistry
 from src.target_model.models import TargetModel
 
 SCHEMA_CONFIG: dict[str, dict[str, Any]] = {
@@ -38,6 +39,7 @@ SCHEMA_CONFIG: dict[str, dict[str, Any]] = {
         "title": "ShapeShifter Entity Definition",
         "description": "Schema for a single entity definition (table/view/query configuration)",
         "remove_required": ["name"],
+        "add_loader_options": True,
         "field_patches": {
             "public_id": {
                 "set_if_missing": {
@@ -76,6 +78,63 @@ SCHEMA_CONFIG: dict[str, dict[str, Any]] = {
 }
 
 
+_FIELD_TYPE_TO_JSON_SCHEMA: dict[str, str] = {
+    "string": "string",
+    "integer": "integer",
+    "boolean": "boolean",
+    "password": "string",
+    "file_path": "string",
+}
+
+
+def build_loader_options_schema() -> dict[str, Any]:
+    """Build the options property schema from registered file-loader DriverSchemas.
+
+    Returns a JSON Schema object with a oneOf array, one entry per unique file
+    loader (aliases are deduplicated by schema.driver). Database loaders are
+    excluded because they use data_source + query, not options.
+    """
+    all_schemas = DriverSchemaRegistry.all()
+
+    seen_drivers: set[str] = set()
+    one_of: list[dict[str, Any]] = []
+
+    for driver_schema in all_schemas.values():
+        if driver_schema.category != "file":
+            continue
+        if driver_schema.driver in seen_drivers:
+            continue
+        seen_drivers.add(driver_schema.driver)
+
+        properties: dict[str, Any] = {}
+        required: list[str] = []
+
+        for field in driver_schema.fields:
+            prop: dict[str, Any] = {"type": _FIELD_TYPE_TO_JSON_SCHEMA.get(field.type, "string")}
+            if field.description:
+                prop["description"] = field.description
+            if field.default is not None:
+                prop["default"] = field.default
+            properties[field.name] = prop
+            if field.required:
+                required.append(field.name)
+
+        entry: dict[str, Any] = {
+            "description": f"Options for type: {driver_schema.driver}",
+            "properties": properties,
+        }
+        if required:
+            entry["required"] = required
+
+        one_of.append(entry)
+
+    return {
+        "type": "object",
+        "description": "Loader-specific options. Required keys depend on entity type.",
+        "oneOf": one_of,
+    }
+
+
 def apply_field_patches(properties: dict[str, Any], field_patches: dict[str, Any]) -> None:
     """Apply configured field-level schema patches in-place."""
     for field_name, patch_config in field_patches.items():
@@ -111,6 +170,9 @@ def clean_schema(schema: dict[str, Any], config: dict[str, Any]) -> dict[str, An
     if isinstance(properties, dict):
         apply_field_patches(properties, config.get("field_patches", {}))
 
+        if config.get("add_loader_options") and "options" in properties:
+            properties["options"] = build_loader_options_schema()
+
     return schema
 
 
@@ -124,10 +186,7 @@ def build_schema(model: type[Any], config: dict[str, Any]) -> dict[str, Any]:
     return clean_schema(schema, config)
 
 
-def generate_schemas(
-    output_dir: Path | None = None,
-    print_only: bool = False
-) -> dict[str, dict[str, Any]]:
+def generate_schemas(output_dir: Path | None = None, print_only: bool = False) -> dict[str, dict[str, Any]]:
     """Generate JSON schemas from configured Pydantic models.
 
     Args:

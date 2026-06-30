@@ -1,5 +1,7 @@
 """Pydantic models for an entity."""
 
+from __future__ import annotations
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -58,6 +60,10 @@ class ForeignKeyConfig(BaseModel):
     )
     drop_remote_id: bool = Field(default=False, description="Drop remote surrogate ID after merge")
     constraints: ForeignKeyConstraints | None = Field(default=None, description="Foreign key constraints")
+    defer_dependency: bool = Field(
+        default=False,
+        description="Break a dependency cycle by deferring the FK link to a final pass. Use only when circular references are unavoidable.",
+    )
 
     @field_validator("local_keys", "remote_keys", mode="before")
     @classmethod
@@ -173,6 +179,26 @@ class Entity(BaseModel):
     drop_empty_rows: bool | list[str] = Field(default=False, description="Drop empty rows")
     check_column_names: bool = Field(default=True, description="Validate column names")
     values: list[list[Any]] | None = Field(default=None, description="Fixed values for 'fixed' type entities")
+    options: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Loader-specific options (filename, sheet_name, range, etc.). Required keys depend on entity type.",
+    )
+    check_functional_dependency: bool = Field(
+        default=True,
+        description="Whether to check functional dependency when dropping duplicates. Default True.",
+    )
+    surrogate_name: str | None = Field(
+        default=None,
+        description="Fixed entity type name used when the entity represents a controlled vocabulary type.",
+    )
+    type_names: list[str] = Field(
+        default_factory=list,
+        description="Column name list for unnest type columns, referenced by @value: in other entities.",
+    )
+    replacements: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Value replacement rules applied during data extraction.",
+    )
 
     @field_validator("name")
     @classmethod
