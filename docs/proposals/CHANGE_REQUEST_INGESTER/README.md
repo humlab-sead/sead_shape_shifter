@@ -21,7 +21,7 @@ The accepted Delivery 1 direction is:
 - Frontend UX integration is implemented, with one deferred follow-up for stable metadata defaults.
 - Provider-update lifecycle policy gate is accepted.
 - Provider-submission lifecycle rules are promoted to durable docs at [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
-- Phase entry status is active: Phase 1 is ready to start, and existing-row implementation remains blocked until Phase 1 and Phase 2 outcomes are complete.
+- Phase entry status is active: Phase 1 and Phase 2 are implemented on the current branch, and existing-row implementation remains blocked pending governance and first-slice scoping decisions.
 - Existing-row update handling remains candidate scope and stays downstream of the accepted lifecycle policy baseline.
 - Candidate next-delivery capabilities remain undecided and are not committed scope.
 
@@ -35,6 +35,7 @@ For the single consolidated tracker of remaining work, use:
 - [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) — decision proposal for provider-owned versus shared-data update scope
 - [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md) — lifecycle delivery sequencing phases
 - [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md) — issue-ready phase 1 and phase 2 implementation slices
+- [LIFECYCLE_PHASE_3_ISSUE.md](./LIFECYCLE_PHASE_3_ISSUE.md) — issue-ready phase 3 existing-row provider update slice
 - [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) — promotion handoff for moving accepted lifecycle rules into durable docs
 - [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md) — focused existing-row update proposal (candidate)
 - [NEXT_DELIVERY_CANDIDATES.md](./NEXT_DELIVERY_CANDIDATES.md) — undecided candidate capability backlog
