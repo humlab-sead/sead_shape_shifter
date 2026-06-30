@@ -365,3 +365,1406 @@ rules:
       - kind: core
         path: src/workflow.py
         note: "Workflow builds a dependency graph from these references; unresolved names cause KeyError at runtime."
+
+  # ---------------------------------------------------------------------------
+  # structural + consistency — rules implemented in src/specifications
+  # ---------------------------------------------------------------------------
+
+  - id: project.metadata.requires_section
+    title: Project configuration requires metadata
+    severity: error
+    category: structural
+    applies_to: metadata
+    require:
+      - metadata
+    message: "Project metadata section is missing."
+    fix: "Add a metadata section with at least type: shapeshifter-project."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/project.py
+        symbol: IsProjectSpecification
+
+  - id: project.metadata.type_must_be_shapeshifter_project
+    title: metadata.type must be shapeshifter-project
+    severity: error
+    category: structural
+    applies_to: metadata.type
+    check:
+      kind: one_of
+      values:
+        - shapeshifter-project
+    message: "Project metadata must include type: shapeshifter-project."
+    fix: "Set metadata.type to shapeshifter-project."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/project.py
+        symbol: IsProjectSpecification
+
+  - id: project.circular_dependencies.not_allowed
+    title: Circular dependencies are not allowed
+    severity: error
+    category: consistency
+    applies_to: entities
+    check:
+      kind: acyclic_dependency_graph
+      fields:
+        - depends_on
+        - source
+    message: "Circular dependency detected in entities dependency graph."
+    fix: "Remove or defer one dependency edge so the dependency graph becomes acyclic."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/project.py
+        symbol: CircularDependencySpecification
+
+  - id: project.data_source_must_exist
+    title: Referenced data_source values must exist in options.data_sources
+    severity: error
+    category: consistency
+    applies_to: entities.*
+    check:
+      kind: reference_resolves
+      scope: options.data_sources
+      fields:
+        - data_source
+        - append[].data_source
+      allow_values:
+        - "@internal"
+    message: "Referenced data_source '{{ value }}' does not exist in options.data_sources."
+    fix: "Add the data source under options.data_sources or use @internal when querying in-memory entities."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/project.py
+        symbol: DataSourceExistsSpecification
+
+  - id: entity.base.requires_keys
+    title: entities require keys
+    severity: error
+    category: structural
+    applies_to: entities.*
+    require:
+      - keys
+    message: "Entities must define keys."
+    fix: "Add keys as a list of business key columns used for deduplication and matching."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: EntityFieldsBaseSpecification
+
+  - id: entity.base.requires_type
+    title: entities require type
+    severity: error
+    category: structural
+    applies_to: entities.*
+    require:
+      - type
+    message: "Entities must define type."
+    fix: "Add type with a supported entity type (for example entity, fixed, sql, merged)."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: EntityFieldsBaseSpecification
+
+  - id: entity.base.keys_must_be_string_list
+    title: keys must be a list of strings
+    severity: error
+    category: structural
+    applies_to: entities.*.keys
+    check:
+      kind: type_compatible
+      expected: list[string]
+    message: "Entity keys must be a list of strings."
+    fix: "Set keys to a YAML list containing only string column names."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: EntityFieldsBaseSpecification
+
+  - id: entity.base.columns_must_be_string_list
+    title: columns must be a list of strings when present
+    severity: error
+    category: structural
+    applies_to: entities.*.columns
+    check:
+      kind: type_compatible
+      expected: list[string]
+    message: "Entity columns must be a list of strings when present."
+    fix: "Set columns to a YAML list containing only string column names."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: EntityFieldsBaseSpecification
+
+  - id: entity.base.type_must_be_string
+    title: type must be a string
+    severity: error
+    category: structural
+    applies_to: entities.*.type
+    check:
+      kind: type_compatible
+      expected: string
+    message: "Entity type must be a string."
+    fix: "Set type to a string value."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: EntityFieldsBaseSpecification
+
+  - id: entity.data_entity.must_not_define_data_source_or_query
+    title: entity type must not define data_source or query
+    severity: error
+    category: conditional
+    applies_to: entities.*
+    when:
+      type: entity
+    check:
+      kind: absent
+      fields:
+        - data_source
+        - query
+    message: "Non-sql data entities must not define data_source or query."
+    fix: "Remove data_source/query or change type to sql."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: DataEntityFieldsSpecification
+
+  - id: entity.sql.query_must_be_non_empty_string
+    title: sql query must be a non-empty string
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: sql
+    check:
+      kind: not_empty
+      field: query
+      expected_type: string
+    message: "sql entities must define query as a non-empty string."
+    fix: "Set query to a non-empty SQL statement string."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: SqlEntityFieldsSpecification
+
+  - id: entity.fixed.requires_public_id
+    title: fixed entities require public_id
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: fixed
+    require:
+      - public_id
+    message: "Fixed entities must define public_id (or surrogate_id for legacy configs)."
+    fix: "Add public_id ending with _id."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FixedEntityFieldsSpecification
+
+  - id: entity.fixed.values_must_be_list
+    title: fixed entity values must be a list
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: fixed
+    check:
+      kind: type_compatible
+      field: values
+      expected: list
+    message: "Fixed entities must define values as a list."
+    fix: "Set values to a list of rows (list rows or dict rows)."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FixedEntityFieldsSpecification
+
+  - id: entity.fixed.values_should_not_be_empty_without_append
+    title: fixed entity values should not be empty when append is not used
+    severity: warning
+    category: structural
+    applies_to: entities.*
+    when:
+      type: fixed
+    check:
+      kind: not_empty
+      field: values
+      unless:
+        has_append: true
+    message: "Fixed entities should provide non-empty values when append is not configured."
+    fix: "Populate values or configure append for incoming rows."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FixedEntityFieldsSpecification
+
+  - id: entity.fixed.source_data_source_query_should_be_empty
+    title: fixed entity source/data_source/query should be empty
+    severity: warning
+    category: conditional
+    applies_to: entities.*
+    when:
+      type: fixed
+    check:
+      kind: empty
+      fields:
+        - source
+        - data_source
+        - query
+    message: "Fixed entities should not define source, data_source, or query."
+    fix: "Remove source, data_source, and query from fixed entities."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FixedEntityFieldsSpecification
+
+  - id: entity.fixed.values_rows_must_be_lists_or_dict_rows
+    title: fixed values must use consistent row format
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: fixed
+    check:
+      kind: one_of
+      variants:
+        - list_rows
+        - dict_rows
+    message: "Fixed entity values must be list rows or dict rows with consistent shape."
+    fix: "Use either list-of-lists or list-of-dicts consistently for all rows."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FixedEntityFieldsSpecification
+
+  - id: entity.fixed.values_row_length_must_match_columns
+    title: fixed list rows must match expected column width
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: fixed
+    check:
+      kind: row_width_matches
+      allowed_widths:
+        - columns
+        - columns_plus_identity
+    message: "Fixed list rows must match columns width (data-only or with identity columns)."
+    fix: "Adjust row widths to match columns or columns plus system_id/public_id."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FixedEntityFieldsSpecification
+
+  - id: entity.fixed.system_id_if_present_must_be_valid
+    title: fixed system_id values must be non-null unique positive integers
+    severity: error
+    category: consistency
+    applies_to: entities.*
+    when:
+      type: fixed
+    check:
+      kind: system_id_integrity
+      when_column_present: system_id
+      constraints:
+        - non_null
+        - unique
+        - positive_integer
+    message: "When fixed entities provide system_id, values must be non-null, unique, and positive integers."
+    fix: "Correct invalid system_id values or remove system_id to let Shape Shifter auto-generate it."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FixedEntitySystemIdSpecification
+
+  - id: entity.merged.branches_must_be_non_empty_list
+    title: merged entities require at least one branch
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type: merged
+    check:
+      kind: not_empty
+      field: branches
+    message: "Merged entities must define at least one branch."
+    fix: "Add one or more branch entries with name and source."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: MergedEntityFieldsSpecification
+
+  - id: entity.merged.branch_name_and_source_required
+    title: each merged branch requires name and source strings
+    severity: error
+    category: structural
+    applies_to: entities.*.branches[]
+    when:
+      type: merged
+    require:
+      - name
+      - source
+    message: "Each merged branch must define non-empty name and source string fields."
+    fix: "For every branch, set name and source to non-empty strings."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: MergedEntityFieldsSpecification
+
+  - id: entity.merged.branch_name_must_be_unique
+    title: merged branch names must be unique
+    severity: error
+    category: consistency
+    applies_to: entities.*.branches[]
+    when:
+      type: merged
+    check:
+      kind: unique_within_scope
+      field: name
+    message: "Merged branch names must be unique within an entity."
+    fix: "Rename duplicate branch names so each branch name is unique."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: MergedEntityFieldsSpecification
+
+  - id: entity.merged.branch_source_must_exist
+    title: merged branch source must reference an existing entity
+    severity: error
+    category: consistency
+    applies_to: entities.*.branches[]
+    when:
+      type: merged
+    check:
+      kind: reference_resolves
+      scope: entities
+      field: source
+    message: "Merged branch source '{{ value }}' does not exist in entities."
+    fix: "Fix branch source name or add the missing source entity."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: MergedEntityFieldsSpecification
+
+  - id: entity.merged.source_data_source_query_should_be_empty
+    title: merged entities should not define source/data_source/query
+    severity: warning
+    category: conditional
+    applies_to: entities.*
+    when:
+      type: merged
+    check:
+      kind: empty
+      fields:
+        - source
+        - data_source
+        - query
+    message: "Merged entities should not define top-level source, data_source, or query."
+    fix: "Move source references into branches and remove source/data_source/query fields."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: MergedEntityFieldsSpecification
+
+  - id: entity.sql.columns_must_be_unique_when_configured
+    title: configured sql columns must not contain duplicates
+    severity: error
+    category: consistency
+    applies_to: entities.*
+    when:
+      type: sql
+    check:
+      kind: unique_within_scope
+      field: columns
+    message: "Configured sql columns contain duplicates."
+    fix: "Remove duplicate entries from columns."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: SqlColumnConfigurationSpecification
+
+  - id: entity.sql.auto_detect_disabled_requires_columns
+    title: sql entities require configured columns when auto-detect is disabled
+    severity: error
+    category: conditional
+    applies_to: entities.*
+    when:
+      type: sql
+      auto_detect_columns: false
+    require:
+      - columns
+    message: "When auto_detect_columns is false, sql entities must define columns."
+    fix: "Add columns or enable auto_detect_columns."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: SqlColumnConfigurationSpecification
+
+  - id: entity.sql.auto_detect_disabled_keys_must_be_in_columns
+    title: sql keys must be included in configured columns when auto-detect is disabled
+    severity: error
+    category: consistency
+    applies_to: entities.*
+    when:
+      type: sql
+      auto_detect_columns: false
+    check:
+      kind: subset
+      subset: keys
+      superset: columns
+    message: "When auto_detect_columns is false, every key must be present in columns."
+    fix: "Add missing key columns to columns or enable auto-detect."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: SqlColumnConfigurationSpecification
+
+  - id: entity.non_fixed.must_not_declare_system_id_column
+    title: non-fixed entities must not declare derived system_id columns
+    severity: error
+    category: structural
+    applies_to: entities.*
+    when:
+      type_not: fixed
+    check:
+      kind: absent_from_list
+      field: columns
+      values:
+        - system_id
+    message: "Non-fixed entities must not include system_id in columns; it is added later in the pipeline."
+    fix: "Remove system_id from columns for non-fixed entities."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: NonFixedIdentityColumnsSpecification
+
+  - id: entity.public_id.should_exist
+    title: entities should define public_id
+    severity: warning
+    category: structural
+    applies_to: entities.*
+    require:
+      - public_id
+    message: "Entities should define public_id for target-facing identity naming."
+    fix: "Add public_id ending with _id."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: PublicIdSpecification
+
+  - id: entity.public_id.must_be_string_and_end_with_id
+    title: public_id must be a string ending with _id
+    severity: error
+    category: structural
+    applies_to: entities.*.public_id
+    check:
+      kind: matches_regex
+      pattern: ".*_id$"
+    message: "public_id must be a string ending with _id."
+    fix: "Rename public_id to use an _id suffix (for example, sample_id)."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: PublicIdSpecification
+
+  - id: entity.public_id.must_not_match_source_public_id
+    title: derived entity public_id must not match source entity public_id
+    severity: error
+    category: consistency
+    applies_to: entities.*
+    check:
+      kind: source_public_id_conflict
+      fields:
+        - source
+        - public_id
+    message: "A derived entity cannot use the same public_id as its source entity."
+    fix: "Use a distinct public_id for the derived entity; source public_id is reserved for parent reference."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: PublicIdSpecification
+
+  - id: entity.unnest.requires_value_vars_var_name_value_name
+    title: unnest requires value_vars, var_name, and value_name
+    severity: error
+    category: structural
+    applies_to: entities.*.unnest
+    require:
+      - value_vars
+      - var_name
+      - value_name
+    message: "Unnest requires value_vars, var_name, and value_name."
+    fix: "Add unnest.value_vars, unnest.var_name, and unnest.value_name."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: UnnestSpecification
+
+  - id: entity.unnest.id_vars_recommended
+    title: unnest should define id_vars
+    severity: warning
+    category: structural
+    applies_to: entities.*.unnest
+    require:
+      - id_vars
+    message: "Unnest should define id_vars to preserve intended identifier columns during melt."
+    fix: "Add unnest.id_vars as a list of identifier columns to keep."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: UnnestSpecification
+
+  - id: entity.unnest.id_vars_and_value_vars_must_exist
+    title: unnest id_vars/value_vars must reference available columns
+    severity: error
+    category: consistency
+    applies_to: entities.*.unnest
+    check:
+      kind: reference_resolves
+      scope: entity.available_columns_after_link
+      fields:
+        - id_vars[]
+        - value_vars[]
+    message: "Unnest references columns that are not available when unnest runs."
+    fix: "Use columns available after linking (columns, keys, extra_columns, or FK-added columns)."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: UnnestColumnsSpecification
+
+  - id: entity.drop_duplicates.allowed_types
+    title: drop_duplicates supports bool, string, list, or dict
+    severity: error
+    category: structural
+    applies_to: entities.*.drop_duplicates
+    check:
+      kind: type_compatible
+      expected:
+        - boolean
+        - string
+        - list
+        - dict
+    message: "drop_duplicates must be bool, string, list, or dict."
+    fix: "Use drop_duplicates: true/false, include string, list of columns, or dict format."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: DropDuplicatesSpecification
+
+  - id: entity.drop_duplicates.dict_requires_columns
+    title: drop_duplicates dict format requires columns key
+    severity: error
+    category: structural
+    applies_to: entities.*.drop_duplicates
+    check:
+      kind: exists
+      field: columns
+      when_type: dict
+    message: "drop_duplicates dict format requires a columns key."
+    fix: "Add drop_duplicates.columns."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: DropDuplicatesSpecification
+
+  - id: entity.drop_duplicates.dict_columns_type
+    title: drop_duplicates.columns in dict format must be bool, string, or list
+    severity: error
+    category: structural
+    applies_to: entities.*.drop_duplicates.columns
+    check:
+      kind: type_compatible
+      expected:
+        - boolean
+        - string
+        - list
+    message: "drop_duplicates.columns must be bool, string, or list[string]."
+    fix: "Set drop_duplicates.columns to true/false, a string, or a list of strings."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: DropDuplicatesSpecification
+
+  - id: entity.drop_duplicates.fd_flags_must_be_boolean
+    title: drop_duplicates functional dependency flags must be boolean
+    severity: error
+    category: structural
+    applies_to: entities.*.drop_duplicates
+    check:
+      kind: type_compatible
+      fields:
+        - check_functional_dependency
+        - strict_functional_dependency
+      expected: boolean
+    message: "drop_duplicates.check_functional_dependency and strict_functional_dependency must be boolean when present."
+    fix: "Set both functional dependency flags to true or false."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: DropDuplicatesSpecification
+
+  - id: entity.foreign_keys.requires_entity_local_keys_remote_keys
+    title: foreign keys require entity, local_keys, and remote_keys
+    severity: error
+    category: structural
+    applies_to: entities.*.foreign_keys[]
+    require:
+      - entity
+      - local_keys
+      - remote_keys
+    message: "Each foreign key must define entity, local_keys, and remote_keys."
+    fix: "Add entity, local_keys, and remote_keys for each foreign key entry."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: ForeignKeySpecification
+
+  - id: entity.foreign_keys.join_keys_must_be_string_lists
+    title: foreign key local_keys and remote_keys must be string lists
+    severity: error
+    category: structural
+    applies_to: entities.*.foreign_keys[]
+    check:
+      kind: type_compatible
+      fields:
+        - local_keys
+        - remote_keys
+      expected: list[string]
+    message: "local_keys and remote_keys must be lists of strings."
+    fix: "Use YAML lists of key column names for both local_keys and remote_keys."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: ForeignKeySpecification
+
+  - id: entity.foreign_keys.how_must_be_supported
+    title: foreign key how must be a supported join type
+    severity: error
+    category: structural
+    applies_to: entities.*.foreign_keys[].how
+    check:
+      kind: one_of
+      values:
+        - inner
+        - left
+        - right
+        - outer
+        - cross
+    message: "foreign_keys[].how must be one of inner, left, right, outer, cross."
+    fix: "Use one of the supported join types."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: ForeignKeySpecification
+
+  - id: entity.foreign_keys.cross_must_not_define_join_keys
+    title: cross joins must not define local_keys or remote_keys
+    severity: error
+    category: conditional
+    applies_to: entities.*.foreign_keys[]
+    when:
+      how: cross
+    check:
+      kind: empty
+      fields:
+        - local_keys
+        - remote_keys
+    message: "cross joins should not specify local_keys or remote_keys."
+    fix: "Remove local_keys and remote_keys for cross joins."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: ForeignKeySpecification
+
+  - id: entity.foreign_keys.local_remote_key_lengths_must_match
+    title: foreign key local_keys and remote_keys lengths must match
+    severity: error
+    category: consistency
+    applies_to: entities.*.foreign_keys[]
+    check:
+      kind: equal_length
+      fields:
+        - local_keys
+        - remote_keys
+    message: "foreign key local_keys and remote_keys must have the same length."
+    fix: "Add or remove keys so local_keys and remote_keys have equal length."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: ForeignKeySpecification
+
+  - id: entity.foreign_keys.extra_columns_supported_types
+    title: foreign key extra_columns must be string, list, or dict
+    severity: error
+    category: structural
+    applies_to: entities.*.foreign_keys[].extra_columns
+    check:
+      kind: type_compatible
+      expected:
+        - string
+        - list
+        - dict
+    message: "foreign_keys[].extra_columns must be string, list, or dict when provided."
+    fix: "Use a string, list of strings, or mapping for extra_columns."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: ForeignKeySpecification
+
+  - id: entity.foreign_keys.local_keys_must_be_available_in_sequence
+    title: foreign key local_keys must exist at their processing step
+    severity: error
+    category: consistency
+    applies_to: entities.*.foreign_keys[]
+    check:
+      kind: reference_resolves
+      scope: entity.available_columns_with_prior_fk_outputs
+      field: local_keys[]
+    message: "foreign key local_keys reference columns that are not available at this step."
+    fix: "Use columns available before this FK or reorder foreign keys so required columns are produced earlier."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: ForeignKeyColumnsSpecification
+
+  - id: entity.depends_on_should_be_string_list
+    title: depends_on should be a list of strings
+    severity: warning
+    category: structural
+    applies_to: entities.*.depends_on
+    check:
+      kind: type_compatible
+      expected: list[string]
+    message: "depends_on should be a list of strings."
+    fix: "Set depends_on to a YAML list of entity names."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: DependsOnSpecification
+
+  - id: entity.depends_on_references_must_exist
+    title: depends_on references must resolve to existing entities
+    severity: error
+    category: consistency
+    applies_to: entities.*.depends_on[]
+    check:
+      kind: reference_resolves
+      scope: entities
+    message: "depends_on reference '{{ value }}' does not exist in entities."
+    fix: "Fix the entity name or add the missing dependency entity."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: DependsOnResolvedSpecification
+
+  - id: entity.source_reference_must_exist
+    title: source references must resolve to existing entities
+    severity: error
+    category: consistency
+    applies_to: entities.*.source
+    check:
+      kind: reference_resolves
+      scope: entities
+    message: "source reference '{{ value }}' does not exist in entities."
+    fix: "Fix source name or add the missing source entity."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: EntityReferencesExistSpecification
+
+  - id: entity.extra_columns_must_be_dict
+    title: extra_columns must be a dictionary
+    severity: error
+    category: structural
+    applies_to: entities.*.extra_columns
+    check:
+      kind: type_compatible
+      expected: dict
+    message: "extra_columns must be a dictionary mapping column names to expressions or constants."
+    fix: "Convert extra_columns to a mapping object."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: ExtraColumnsExpressionSpecification
+
+  - id: entity.extra_columns.references_must_be_eventually_available
+    title: extra_columns expressions must reference columns that can exist in the entity
+    severity: error
+    category: transformation
+    applies_to: entities.*.extra_columns
+    check:
+      kind: expression_reference_resolves
+      scope: entity.eventual_columns
+    message: "extra_columns expression references columns that are never available in this entity."
+    fix: "Use existing columns or create required intermediate columns first."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: ExtraColumnsExpressionSpecification
+
+  - id: entity.extra_columns.deferred_dependencies_warn
+    title: extra_columns expressions referencing later-stage columns should warn
+    severity: warning
+    category: transformation
+    applies_to: entities.*.extra_columns
+    check:
+      kind: expression_reference_resolves
+      scope: entity.initial_columns
+      policy: warn_if_only_available_later
+    message: "extra_columns expression depends on columns available only after deferred stages."
+    fix: "Confirm evaluation order is intended or rewrite expression to use earlier columns."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: ExtraColumnsExpressionSpecification
+
+  - id: entity.extra_columns.must_not_conflict_with_existing_columns
+    title: extra_columns names must not override existing result columns
+    severity: error
+    category: consistency
+    applies_to: entities.*.extra_columns
+    check:
+      kind: unique_within_scope
+      scope: entity.result_columns
+      conflict_with:
+        - columns
+        - unnest
+        - system_id
+        - public_id
+    message: "extra_columns names conflict with existing result columns."
+    fix: "Rename extra_columns to avoid overriding source/system/unnest columns."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: ExtraColumnsConflictsSpecification
+
+  - id: entity.append_mode_must_be_all_or_distinct
+    title: append_mode must be all or distinct
+    severity: error
+    category: structural
+    applies_to: entities.*.append_mode
+    check:
+      kind: one_of
+      values:
+        - all
+        - distinct
+    message: "append_mode must be all or distinct."
+    fix: "Set append_mode to all or distinct."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.append.item_requires_type_or_source
+    title: append item must define type or source
+    severity: error
+    category: structural
+    applies_to: entities.*.append[]
+    require:
+      - type_or_source
+    message: "Each append item must specify at least one of type or source."
+    fix: "Add type or source to the append item."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.append.type_and_source_requires_entity_type
+    title: append item with both type and source must use type entity
+    severity: error
+    category: conditional
+    applies_to: entities.*.append[]
+    check:
+      kind: equals
+      when_fields_present:
+        - type
+        - source
+      field: type
+      expected: entity
+    message: "When append item defines both type and source, type must be entity."
+    fix: "Set type to entity or remove one of type/source."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.append.type_only_must_be_fixed_or_sql
+    title: append type-only items must be fixed or sql
+    severity: error
+    category: conditional
+    applies_to: entities.*.append[]
+    check:
+      kind: one_of
+      field: type
+      values:
+        - fixed
+        - sql
+      when_field_absent: source
+    message: "Append items without source must use type fixed or sql."
+    fix: "Set type to fixed/sql, or provide source."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.append.fixed_requires_values_list
+    title: fixed append items require values list
+    severity: error
+    category: conditional
+    applies_to: entities.*.append[]
+    when:
+      type: fixed
+    require:
+      - values
+    message: "Append fixed items must define values as a list."
+    fix: "Add values list for fixed append item."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.append.fixed_empty_values_warn
+    title: fixed append items with empty values should warn
+    severity: warning
+    category: conditional
+    applies_to: entities.*.append[]
+    when:
+      type: fixed
+    check:
+      kind: not_empty
+      field: values
+    message: "Append fixed item values is empty."
+    fix: "Populate append values or remove the append item."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.append.sql_requires_query_string
+    title: sql append items require query string
+    severity: error
+    category: conditional
+    applies_to: entities.*.append[]
+    when:
+      type: sql
+    require:
+      - query
+    message: "Append sql items must define query as a string."
+    fix: "Add query string for sql append item."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.append.source_must_exist
+    title: append source must reference an existing entity
+    severity: error
+    category: consistency
+    applies_to: entities.*.append[]
+    check:
+      kind: reference_resolves
+      scope: entities
+      field: source
+    message: "Append source '{{ value }}' does not exist in entities."
+    fix: "Fix source name or add the missing source entity."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.append.columns_recommended_for_source
+    title: append source items should define columns
+    severity: warning
+    category: structural
+    applies_to: entities.*.append[]
+    require:
+      - columns
+    when:
+      has_field: source
+    message: "Append source items should define columns for explicit alignment."
+    fix: "Add append.columns explicitly to avoid implicit source column assumptions."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.append.align_by_position_requires_equal_payload_columns
+    title: append align_by_position requires equal payload column counts
+    severity: error
+    category: consistency
+    applies_to: entities.*.append[]
+    when:
+      align_by_position: true
+    check:
+      kind: equal_payload_column_count
+      exclude_identity:
+        - system_id
+        - public_id
+    message: "align_by_position requires equal payload column counts between target and source after excluding identity columns."
+    fix: "Adjust source/target columns, or use column_mapping/match-by-name instead."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.append.align_by_position_and_column_mapping_mutually_exclusive
+    title: append cannot define both align_by_position and column_mapping
+    severity: error
+    category: structural
+    applies_to: entities.*.append[]
+    check:
+      kind: mutually_exclusive
+      fields:
+        - align_by_position
+        - column_mapping
+    message: "append items cannot specify both align_by_position and column_mapping."
+    fix: "Choose one alignment strategy: align_by_position or column_mapping."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.append.column_mapping_must_be_dict_of_strings
+    title: append column_mapping must be a dictionary of string-to-string mappings
+    severity: error
+    category: structural
+    applies_to: entities.*.append[].column_mapping
+    check:
+      kind: dict_key_value_types
+      key_type: string
+      value_type: string
+    message: "column_mapping must be a dict where keys and values are strings."
+    fix: "Set column_mapping to mappings like source_col: target_col."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.append.match_by_name_requires_source_columns_or_mapping
+    title: append match-by-name requires source payload columns to cover target payload columns
+    severity: error
+    category: consistency
+    applies_to: entities.*.append[]
+    check:
+      kind: subset
+      when:
+        align_by_position: false
+        column_mapping_absent: true
+      subset: target_payload_columns
+      superset: source_payload_columns
+    message: "Append match-by-name cannot map all target payload columns from source payload columns."
+    fix: "Add missing source columns, provide append.columns, or configure column_mapping/align_by_position."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: AppendSpecification
+
+  - id: entity.filters.must_be_list
+    title: filters must be a list
+    severity: error
+    category: structural
+    applies_to: entities.*.filters
+    check:
+      kind: type_compatible
+      expected: list
+    message: "filters must be a list."
+    fix: "Set filters to a YAML list of filter definitions."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FilterSpecification
+
+  - id: entity.filters.item_must_be_mapping
+    title: each filter item must be a mapping
+    severity: error
+    category: structural
+    applies_to: entities.*.filters[]
+    check:
+      kind: type_compatible
+      expected: dict
+    message: "Each filter item must be a mapping."
+    fix: "Rewrite filter entry as a mapping with type and options."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FilterSpecification
+
+  - id: entity.filters.requires_type
+    title: each filter requires type
+    severity: error
+    category: structural
+    applies_to: entities.*.filters[]
+    require:
+      - type
+    message: "Each filter entry must define type."
+    fix: "Add type with a registered filter name."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FilterSpecification
+
+  - id: entity.filters.type_must_be_registered
+    title: filter type must be registered
+    severity: error
+    category: consistency
+    applies_to: entities.*.filters[].type
+    check:
+      kind: reference_resolves
+      scope: registered_filters
+    message: "Unknown filter type '{{ value }}'."
+    fix: "Use a supported filter type or register the custom filter implementation."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FilterSpecification
+
+  - id: entity.filters.stage_must_be_supported
+    title: filter stage must be supported
+    severity: error
+    category: structural
+    applies_to: entities.*.filters[]
+    check:
+      kind: one_of
+      field: stage
+      values:
+        - extract
+        - after_link
+        - after_unnest
+    message: "Filter stage is invalid."
+    fix: "Use extract, after_link, or after_unnest stage values."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FilterSpecification
+
+  - id: entity.filters.column_must_exist_at_stage
+    title: filter column must exist at the configured stage
+    severity: error
+    category: consistency
+    applies_to: entities.*.filters[]
+    check:
+      kind: reference_resolves
+      scope: entity.columns_by_stage
+      field: column
+      except_filter_type:
+        - query
+    message: "Filter column is not available at the configured stage."
+    fix: "Use a column available at that stage or move the filter to a later stage."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FilterSpecification
+
+  - id: entity.filters.exists_in_requires_column
+    title: exists_in filter requires column
+    severity: error
+    category: conditional
+    applies_to: entities.*.filters[]
+    when:
+      type: exists_in
+    require:
+      - column
+    message: "exists_in filters require column."
+    fix: "Set column to the local column to test for existence."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FilterSpecification
+
+  - id: entity.filters.exists_in_requires_other_entity
+    title: exists_in filter requires other_entity
+    severity: error
+    category: conditional
+    applies_to: entities.*.filters[]
+    when:
+      type: exists_in
+    require:
+      - other_entity
+    message: "exists_in filters require other_entity."
+    fix: "Set other_entity to the remote entity used by the existence check."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FilterSpecification
+
+  - id: entity.filters.exists_in_other_entity_must_exist
+    title: exists_in other_entity must reference an existing entity
+    severity: error
+    category: consistency
+    applies_to: entities.*.filters[]
+    when:
+      type: exists_in
+    check:
+      kind: reference_resolves
+      scope: entities
+      field: other_entity
+    message: "exists_in other_entity '{{ value }}' does not exist in entities."
+    fix: "Fix other_entity name or add the missing entity."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FilterSpecification
+
+  - id: entity.filters.exists_in_other_column_must_exist
+    title: exists_in other_column must exist in other_entity
+    severity: error
+    category: consistency
+    applies_to: entities.*.filters[]
+    when:
+      type: exists_in
+    check:
+      kind: reference_resolves
+      scope: other_entity.columns
+      field: other_column
+    message: "exists_in other_column is not available in the referenced other_entity."
+    fix: "Use a valid other_column from the other_entity schema."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: FilterSpecification
+
+  - id: entity.materialized.enabled_requires_fixed_type
+    title: materialized enabled entities must have type fixed
+    severity: error
+    category: conditional
+    applies_to: entities.*
+    when:
+      materialized.enabled: true
+    check:
+      kind: equals
+      field: type
+      expected: fixed
+    message: "Materialized entities must have type fixed."
+    fix: "Set type to fixed when materialized.enabled is true."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: MaterializationSpecification
+
+  - id: entity.materialized.enabled_requires_values
+    title: materialized enabled entities must include values
+    severity: error
+    category: conditional
+    applies_to: entities.*
+    when:
+      materialized.enabled: true
+    require:
+      - values
+    message: "Materialized entities must include values (inline or file directive)."
+    fix: "Add values for materialized entities."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: MaterializationSpecification
+
+  - id: entity.materialized.enabled_requires_source_state
+    title: materialized enabled entities must include materialized.source_state
+    severity: error
+    category: conditional
+    applies_to: entities.*
+    when:
+      materialized.enabled: true
+    require:
+      - materialized.source_state
+    message: "Materialized entities must include materialized.source_state for unmaterialization."
+    fix: "Add materialized.source_state snapshot metadata."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: MaterializationSpecification
+
+  - id: entity.materialized.enabled_should_include_materialized_at
+    title: materialized enabled entities should include materialized.materialized_at
+    severity: warning
+    category: conditional
+    applies_to: entities.*
+    when:
+      materialized.enabled: true
+    require:
+      - materialized.materialized_at
+    message: "Materialized entities should include materialized.materialized_at metadata."
+    fix: "Add materialized.materialized_at timestamp metadata."
+    confidence: high
+    source:
+      - kind: specification
+        path: src/specifications/entity.py
+        symbol: MaterializationSpecification
