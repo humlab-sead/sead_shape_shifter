@@ -60,12 +60,6 @@
           "description": "File path if loaded from file",
           "title": "File Path"
         },
-        "entity_count": {
-          "description": "Number of entities (computed)",
-          "exclude_from_schema": true,
-          "title": "Entity Count",
-          "type": "integer"
-        },
         "created_at": {
           "anyOf": [
             {
@@ -128,8 +122,7 @@
         }
       },
       "required": [
-        "name",
-        "entity_count"
+        "name"
       ],
       "title": "ProjectMetadata",
       "type": "object"

@@ -154,8 +154,43 @@ def apply_field_patches(properties: dict[str, Any], field_patches: dict[str, Any
             field_schema[key] = value
 
 
+def prune_excluded_fields(schema_fragment: Any) -> None:
+    """Remove fields marked with exclude_from_schema from a schema tree in-place."""
+    if isinstance(schema_fragment, list):
+        for item in schema_fragment:
+            prune_excluded_fields(item)
+        return
+
+    if not isinstance(schema_fragment, dict):
+        return
+
+    properties = schema_fragment.get("properties")
+    if isinstance(properties, dict):
+        excluded_fields = [
+            field_name
+            for field_name, field_schema in properties.items()
+            if isinstance(field_schema, dict) and field_schema.get("exclude_from_schema")
+        ]
+
+        for field_name in excluded_fields:
+            properties.pop(field_name, None)
+
+        required = schema_fragment.get("required")
+        if isinstance(required, list) and excluded_fields:
+            schema_fragment["required"] = [field_name for field_name in required if field_name not in excluded_fields]
+
+        for field_schema in properties.values():
+            if isinstance(field_schema, dict):
+                field_schema.pop("exclude_from_schema", None)
+
+    for value in schema_fragment.values():
+        prune_excluded_fields(value)
+
+
 def clean_schema(schema: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
     """Clean and customize schema for Monaco editor use."""
+    prune_excluded_fields(schema)
+
     schema["$schema"] = JSON_SCHEMA_VERSION
     schema["title"] = config["title"]
     schema["description"] = config["description"]
