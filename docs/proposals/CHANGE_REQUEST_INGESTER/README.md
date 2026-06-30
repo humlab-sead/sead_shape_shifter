@@ -21,8 +21,8 @@ The accepted Delivery 1 direction is:
 - Frontend UX integration is implemented, with one deferred follow-up for stable metadata defaults.
 - Provider-update lifecycle policy gate is accepted.
 - Provider-submission lifecycle rules are promoted to durable docs at [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
-- Phase entry status is active: Phase 1 and Phase 2 are implemented on the current branch, and existing-row implementation remains blocked pending governance and first-slice scoping decisions.
-- Existing-row update handling remains candidate scope and stays downstream of the accepted lifecycle policy baseline.
+- Phase entry status is active: Phase 1, Phase 2, and Phase 3 existing-row update handling are implemented on the current branch.
+- Existing-row update handling is now an implemented baseline; future work shifts to governance and broader next-delivery decisions.
 - Candidate next-delivery capabilities remain undecided and are not committed scope.
 
 For the single consolidated tracker of remaining work, use:
@@ -35,7 +35,7 @@ For the single consolidated tracker of remaining work, use:
 - [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) — decision proposal for provider-owned versus shared-data update scope
 - [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md) — lifecycle delivery sequencing phases
 - [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md) — issue-ready phase 1 and phase 2 implementation slices
-- [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md) — issue-ready phase 3 existing-row provider update slices (engine path and SQL/artifact path)
+- [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md) — phase 3 implementation record for existing-row provider update handling
 - [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) — promotion handoff for moving accepted lifecycle rules into durable docs
 - [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md) — focused existing-row update proposal (candidate)
 - [NEXT_DELIVERY_CANDIDATES.md](./NEXT_DELIVERY_CANDIDATES.md) — undecided candidate capability backlog
@@ -60,11 +60,11 @@ For the single consolidated tracker of remaining work, use:
 - Delivery 1 confirmation model: synchronous at the change-package boundary; manual confirmation blocks artifact generation and returns a pending confirmation report
 - Delivery 1 deploy artifact baseline: inline `INSERT` SQL plus placeholder revert and verify files when required
 - Closed follow-up record: deploy-rendering strategy split, CSV plus `\copy` artifact format, Jinja2 evaluation, and target-model/schema review are archived under `closed_delivery_1`
-- Next-delivery scope: candidate only; rollback, update handling, stronger idempotency, and related capabilities are not yet committed as one delivery
+- Next-delivery scope: candidate only; rollback, stronger idempotency, and related capabilities are not yet committed as one delivery
 - Data-provider update scope is accepted and now governs downstream existing-row update behavior
 - Provider-submission lifecycle work uses a durable lifecycle reference plus phase plan structure
 - Phase 1 and Phase 2 issue-ready drafts are tracked in `LIFECYCLE_PHASE_1_2_ISSUES.md`
-- Update handling has a dedicated next-delivery CR and remains proposed rather than accepted
+- Update handling has a dedicated next-delivery CR; existing-row update handling is implemented and the next open work is governance or broader candidate selection
 - Frontend issue breakdown exists as implementation record and deferred follow-up tracking
 - Upstream SIMS handoff docs now live in `humlab-sead/sead_authority_service:docs/proposals/`
 

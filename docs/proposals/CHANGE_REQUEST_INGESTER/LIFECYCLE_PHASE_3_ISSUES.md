@@ -8,7 +8,7 @@ Each issue body follows the repository's preferred `Problem`, `Solution`, and `F
 
 Status:
 
-`Ready after shared-data governance owner and first-slice update allowlist decision`
+`Implemented on branch cr-ingester-final-work`
 
 Title:
 
