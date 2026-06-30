@@ -57,9 +57,6 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
         if self.field_exists(f"entities.{entity_name}.type"):
             self.check_fields(entity_name, ["type"], "of_type/E", expected_types=(str,))
 
-        if self.field_exists(f"entities.{entity_name}.surrogate_name"):
-            self.check_fields(entity_name, ["surrogate_name"], "is_in_columns/E")
-
         return not self.has_errors()
 
 

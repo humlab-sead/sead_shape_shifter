@@ -78,7 +78,7 @@ class TestCreateFixedTable:
 
     @pytest.mark.asyncio
     async def test_raises_when_empty_columns(self):
-        """Test raises ValueError when single column config has no surrogate_name and no columns."""
+        """Test raises ValueError when single-column config has no columns."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "keys": [], "public_id": "entity_id", "values": ["val1", "val2"]}}
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
@@ -87,26 +87,7 @@ class TestCreateFixedTable:
             await FixedLoader(data_source=None).load(entity, table_cfg)
 
     @pytest.mark.asyncio
-    async def test_single_column_with_surrogate_name_but_not_in_columns(self):
-        """Test create fixed table with single column using surrogate_name."""
-        entity = "location_type"
-        config = {
-            "location_type": {
-                "type": "fixed",
-                "keys": [],
-                "public_id": "location_type_id",
-                "surrogate_name": "location_type",
-                "columns": ["xyz"],
-                "values": ["Ort", "Kreis", "Land", "Staat"],
-            }
-        }
-        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
-
-        with pytest.raises(ValueError, match=" 'surrogate_name' not specified in 'columns'"):
-            await FixedLoader(data_source=None).load(entity, table_cfg)
-
-    @pytest.mark.asyncio
-    async def test_single_column_with_surrogate_name_and_surrogate_id(self):
+    async def test_single_column_with_public_id_and_identity_columns(self):
         """Test creates fixed table with public_id added."""
         entity = "location_type"
         config = {
@@ -115,7 +96,6 @@ class TestCreateFixedTable:
                 "keys": [],
                 "columns": ["system_id", "location_type_id", "location_type"],
                 "public_id": "location_type_id",
-                "surrogate_name": "location_type",
                 "values": [[1, None, "Ort"], [2, None, "Kreis"], [3, None, "Land"]],
             }
         }
@@ -151,8 +131,8 @@ class TestCreateFixedTable:
         assert result["type_name"].tolist() == ["Type1", "Type2", "Type3"]
 
     @pytest.mark.asyncio
-    async def test_single_column_with_surrogate_id_no_surrogate_name(self):
-        """Test single column with public_id but no surrogate_name uses column name."""
+    async def test_single_column_with_public_id_uses_column_name(self):
+        """Test single column with public_id uses the configured column name."""
         entity = "test_entity"
         config = {
             "test_entity": {
@@ -271,7 +251,6 @@ class TestCreateFixedTable:
                 "keys": [],
                 "columns": ["system_id", "site_property_type_id", "site_property_type"],
                 "public_id": "site_property_type_id",
-                "surrogate_name": "site_property_type",
                 "values": [[1, None, "Limes"], [2, None, "FustelTyp?"], [3, None, "okFustel"], [4, None, "TK"], [5, None, "EVNr"]],
             }
         }
@@ -332,7 +311,6 @@ class TestCreateFixedTable:
                 "type": "fixed",
                 "keys": [],
                 "public_id": "location_type_id",
-                "surrogate_name": "location_type",
                 "columns": ["system_id", "location_type_id", "location_type"],
                 "values": [[1, None, "Ort"], [2, None, "Kreis"], [3, None, "Land"], [4, None, "Staat"], [5, None, "FlurStr"]],
             }
@@ -354,7 +332,6 @@ class TestCreateFixedTable:
             "test_entity": {
                 "type": "fixed",
                 "public_id": "id",
-                "surrogate_name": "value",
                 "keys": [],
                 "columns": ["value"],
                 "values": ["OnlyOne"],
@@ -378,7 +355,6 @@ class TestCreateFixedTable:
                 "column_types": {"level": "int"},
                 "columns": ["system_id", "id", "level"],
                 "public_id": "id",
-                "surrogate_name": "level",
                 "values": [[1, None, 1], [2, None, 2], [3, None, 3], [4, None, 5], [5, None, 10]],
             },
         }
@@ -522,7 +498,7 @@ class TestCreateFixedTable:
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
-        # Surrogate ID is added by add_surrogate_id which appends it
+        # public_id should exist in the resulting table columns
         assert "id" in result.columns
         assert "name" in result.columns
         assert "value" in result.columns
@@ -535,7 +511,6 @@ class TestCreateFixedTable:
             "test_entity": {
                 "type": "fixed",
                 "public_id": "id",
-                "surrogate_name": "number",
                 "keys": [],
                 "column_types": {"number": "int"},
                 "columns": ["system_id", "id", "number"],
@@ -558,7 +533,6 @@ class TestCreateFixedTable:
             "test_entity": {
                 "type": "fixed",
                 "public_id": "id",
-                "surrogate_name": "text",
                 "keys": [],
                 "columns": ["system_id", "id", "text"],
                 "values": [
@@ -586,7 +560,6 @@ class TestCreateFixedTable:
             "test_entity": {
                 "type": "fixed",
                 "public_id": "id",
-                "surrogate_name": "text",
                 "keys": [],
                 "columns": ["text"],
                 "values": ["Ö", "ä", "ü", "ß", "é"],
@@ -666,7 +639,6 @@ class TestCreateFixedTable:
             "test_entity": {
                 "type": "fixed",
                 "public_id": "system_id",
-                "surrogate_name": "dimension_name",
                 "keys": [],
                 "columns": ["dimension_id", "dimension_name"],
                 "values": [[1, "Width"], [2, "Height"], [3, "Depth"]],

@@ -308,10 +308,6 @@ class TableConfig:
         return self.entity_cfg.get("type", None)
 
     @property
-    def surrogate_name(self) -> str:
-        return self.entity_cfg.get("surrogate_name", "")
-
-    @property
     def source(self) -> str | None:
         return self.entity_cfg.get("source", None)
 

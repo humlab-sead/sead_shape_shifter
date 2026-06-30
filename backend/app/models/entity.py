@@ -187,10 +187,6 @@ class Entity(BaseModel):
         default=True,
         description="Whether to check functional dependency when dropping duplicates. Default True.",
     )
-    surrogate_name: str | None = Field(
-        default=None,
-        description="Fixed entity type name used when the entity represents a controlled vocabulary type.",
-    )
     type_names: list[str] = Field(
         default_factory=list,
         description="Column name list for unnest type columns, referenced by @value: in other entities.",
