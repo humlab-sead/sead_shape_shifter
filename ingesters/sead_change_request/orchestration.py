@@ -56,7 +56,16 @@ async def orchestrate_identity_assignments(
     for planned_table in planned_tables:
         entity_assignments: dict[object, IdentityAssignment] = assignments.setdefault(planned_table.entity_name, {})
         for row_index, planned_action in planned_table.planned_actions.items():
-            if planned_action == PlannedRowAction.REFERENCE_EXISTING:
+            if planned_action in {PlannedRowAction.REFERENCE_EXISTING, PlannedRowAction.UPDATE_EXISTING_CANDIDATE}:
+                continue
+            if planned_action == PlannedRowAction.BLOCK_EXISTING_UPDATE:
+                entity_assignments[row_index] = IdentityAssignment(
+                    state=ChangeRowState.BLOCKED_UNRESOLVED,
+                    note=(
+                        f"Existing-row update for '{planned_table.entity_name}' row '{row_index}' "
+                        "is blocked until mutable-field boundaries are complete"
+                    ),
+                )
                 continue
             if row_index in entity_assignments:
                 continue

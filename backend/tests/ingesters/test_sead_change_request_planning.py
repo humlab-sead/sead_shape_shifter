@@ -102,6 +102,40 @@ class TestPlanTable:
         with pytest.raises(ValueError, match="missing public_id column 'sample_id'"):
             plan_table("sample", frame, entity_spec)
 
+    def test_existing_rows_route_to_update_candidate_when_mutable_field_changes(self):
+        """Existing rows should become update candidates when configured mutable fields differ from baseline."""
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101, 102],
+                "sample_name": ["A", "B updated"],
+                "sample_name__existing": ["A", "B"],
+            }
+        )
+        entity_spec = EntitySpec(role="fact", public_id="sample_id")
+
+        plan = plan_table("sample", frame, entity_spec, mutable_fields=["sample_name"])
+
+        assert plan.planned_actions.tolist() == [
+            PlannedRowAction.REFERENCE_EXISTING,
+            PlannedRowAction.UPDATE_EXISTING_CANDIDATE,
+        ]
+        assert plan.diagnostics == []
+
+    def test_existing_rows_blocked_when_mutable_baseline_columns_are_missing(self):
+        """Existing-row update planning should block rows when configured mutable baseline columns are missing."""
+        frame = pd.DataFrame(
+            {
+                "sample_id": [101],
+                "sample_name": ["A changed"],
+            }
+        )
+        entity_spec = EntitySpec(role="fact", public_id="sample_id")
+
+        plan = plan_table("sample", frame, entity_spec, mutable_fields=["sample_name"])
+
+        assert plan.planned_actions.tolist() == [PlannedRowAction.BLOCK_EXISTING_UPDATE]
+        assert any("blocked existing-row update planning" in diagnostic for diagnostic in plan.diagnostics)
+
 
 class TestSubmissionOutcomeClassification:
     """Tests for phase-2 submission outcome classification."""

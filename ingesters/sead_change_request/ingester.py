@@ -55,7 +55,11 @@ class SeadChangeRequestIngester:
     async def _prepare_change_request(self, source: Path | str) -> PreparationResult:
         """Run the shared preparation workflow after inputs are resolved."""
         inputs: ResolvedInputs = resolve_inputs(self.config, source)
-        planned = plan_bundle(inputs.bundle, inputs.target_model.entities)
+        planned = plan_bundle(
+            inputs.bundle,
+            inputs.target_model.entities,
+            mutable_fields_by_entity=inputs.mutable_fields_by_entity,
+        )
 
         return await prepare_change_request(
             inputs,

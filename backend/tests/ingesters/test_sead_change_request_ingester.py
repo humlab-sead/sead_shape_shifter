@@ -669,6 +669,55 @@ class TestSeadChangeRequestIngesterValidation:
             "Outcome classification: 0 new_data, 1 no_op, 1 allowed_update, 0 pending_review, 0 blocked" in info for info in result.infos
         )
 
+    @pytest.mark.asyncio
+    async def test_validate_routes_existing_rows_to_issue3a_planning_actions(self):
+        """Validation should route existing-row updates into candidate and blocked Issue 3A planning actions."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {
+                        "sample": pd.DataFrame(
+                            {
+                                "sample_id": [101, 102],
+                                "sample_name": ["A changed", "B changed"],
+                                "sample_name__existing": ["A", "B"],
+                            }
+                        ),
+                        "sample_location": pd.DataFrame(
+                            {
+                                "sample_location_id": [201],
+                                "site_note": ["new"],
+                            }
+                        ),
+                    },
+                    "target_model": minimal_target_model(
+                        sample={"role": "fact", "public_id": "sample_id"},
+                        sample_location={"role": "fact", "public_id": "sample_location_id"},
+                    ),
+                    "submission_context": minimal_submission_context(),
+                    "mutable_fields_by_entity": {
+                        "sample": ["sample_name"],
+                        "sample_location": ["site_note"],
+                    },
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert any("Planned 'sample': 2 update_existing_candidate" in info for info in result.infos)
+        assert any("Planned 'sample_location': 1 block_existing_update" in info for info in result.infos)
+        assert any(
+            "Identity work queues:" in info and "2 update_candidate" in info and "1 blocked_existing_update" in info
+            for info in result.infos
+        )
+        assert any("blocked existing-row update planning" in warning for warning in result.warnings)
+
 
 class TestSeadChangeRequestIngesterIngest:
     """Tests for scaffold ingest behavior."""
