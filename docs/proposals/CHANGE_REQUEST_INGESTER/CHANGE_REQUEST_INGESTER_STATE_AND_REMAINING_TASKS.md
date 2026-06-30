@@ -14,7 +14,7 @@ This document consolidates what is complete, what is still draft or candidate, a
 - Provider-update lifecycle policy gate is accepted through [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md).
 - Lifecycle rules are promoted to durable docs at [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
 - Lifecycle Phase 1 and Phase 2 prerequisites are implemented on the current branch, including outcome classification diagnostics and integration coverage.
-- Existing-row update handling remains a candidate and is still downstream of lifecycle acceptance.
+- Existing-row update handling is implemented on the current branch, including both SQL/artifact rendering and the engine-path allowlist/orchestration guard.
 - Next-delivery capability list remains undecided and is not a committed delivery scope.
 
 ## Completed Work
@@ -50,8 +50,7 @@ This document consolidates what is complete, what is still draft or candidate, a
 - Integration-level validation info now includes outcome-count diagnostics, with mutable-field scope coverage.
 
 3. Prepare existing-row implementation slices after lifecycle prerequisites are complete.
-- Track issue-ready scope in [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md) for Issue 3A (engine path) and Issue 3B (SQL/artifact path).
-- Confirm first entity set for mutable-field comparison.
+- Existing-row update handling is implemented on the current branch; keep [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md) as the implementation record.
 - Confirm no-op rerun behavior and supersession rules in implementation tests.
 - Keep ambiguous existing-row changes blocked or review-routed.
 
@@ -83,8 +82,8 @@ Reason: completed on branch; metadata and classification contracts are now in co
 - [ ] 3. Define shared-data review ownership and path.
 Reason: closes governance risk early and prevents provider-owned and shared-data paths from blending.
 
-- [ ] 4. Prepare and scope the first existing-row implementation slice.
-Reason: depends on steps 1-3; safest point to lock mutable-field boundaries and no-op/supersession behavior.
+- [x] 4. Prepare and scope the first existing-row implementation slice.
+Reason: completed on branch; the existing-row SQL/artifact and engine-path guard are both implemented.
 
 - [ ] 5. Close the deferred frontend metadata-defaults follow-up.
 Reason: lower data-integrity risk than lifecycle/governance items; can proceed once outcome contracts are stable.
@@ -107,7 +106,7 @@ Dependency guardrails:
 ## Open Decisions
 
 - Which team owns reviewed shared-data requests and approvals?
-- Which existing-row entity families are first in scope for mutable-field update behavior?
+- Which shared-data review and approval path should govern future non-provider existing-row scenarios?
 - Should project YAML carry stable `sead_change_request` submission defaults?
 - Which single candidate from `NEXT_DELIVERY_CANDIDATES.md` should become the next accepted proposal slice?
 
