@@ -99,6 +99,7 @@ class PlannedTable:
     entity_name: str
     frame: pd.DataFrame
     planned_actions: pd.Series
+    mutable_fields: list[str] | None = None
     diagnostics: list[str] = field(default_factory=list)
 
 
@@ -263,6 +264,7 @@ class ChangeRequestTable:
     frame: pd.DataFrame
     row_states: pd.Series
     planned_actions: pd.Series | None = None
+    mutable_fields: list[str] | None = None
 
 
 @dataclass(slots=True)

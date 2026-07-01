@@ -55,11 +55,6 @@ def plan_table(
     planned_actions.loc[existing_mask] = PlannedRowAction.REFERENCE_EXISTING
 
     if mutable_fields is not None and bool(existing_mask.any()):
-        if existing_row_update_entities is not None and entity_name not in existing_row_update_entities:
-            planned_actions.loc[existing_mask] = PlannedRowAction.BLOCK_EXISTING_UPDATE
-            diagnostics.append(f"Entity '{entity_name}' is outside the first existing-row update slice; existing-row updates are blocked")
-            return PlannedTable(entity_name=entity_name, frame=frame, planned_actions=planned_actions, diagnostics=diagnostics)
-
         missing_requirements = _missing_mutable_field_requirements(frame, mutable_fields)
         if missing_requirements:
             planned_actions.loc[existing_mask] = PlannedRowAction.BLOCK_EXISTING_UPDATE
@@ -68,9 +63,16 @@ def plan_table(
                 f"'{entity_name}' blocked existing-row update planning because mutable-field requirements are missing: "
                 + ", ".join(missing_requirements)
             )
-            return PlannedTable(entity_name=entity_name, frame=frame, planned_actions=planned_actions, diagnostics=diagnostics)
+            return PlannedTable(
+                entity_name=entity_name,
+                frame=frame,
+                planned_actions=planned_actions,
+                mutable_fields=mutable_fields,
+                diagnostics=diagnostics,
+            )
 
         baseline_pairs = [(field_name, f"{field_name}__existing") for field_name in mutable_fields if field_name]
+        update_candidate_rows: list[object] = []
         for row_index in frame.index[existing_mask]:
             is_no_op = True
             for current_column, baseline_column in baseline_pairs:
@@ -82,9 +84,26 @@ def plan_table(
                     break
 
             if not is_no_op:
+                update_candidate_rows.append(row_index)
+
+        if existing_row_update_entities is not None and entity_name not in existing_row_update_entities:
+            if update_candidate_rows:
+                for row_index in update_candidate_rows:
+                    planned_actions.at[row_index] = PlannedRowAction.BLOCK_EXISTING_UPDATE
+                diagnostics.append(
+                    f"Entity '{entity_name}' is outside the first existing-row update slice; existing-row updates are blocked"
+                )
+        else:
+            for row_index in update_candidate_rows:
                 planned_actions.at[row_index] = PlannedRowAction.UPDATE_EXISTING_CANDIDATE
 
-    return PlannedTable(entity_name=entity_name, frame=frame, planned_actions=planned_actions, diagnostics=diagnostics)
+    return PlannedTable(
+        entity_name=entity_name,
+        frame=frame,
+        planned_actions=planned_actions,
+        mutable_fields=mutable_fields,
+        diagnostics=diagnostics,
+    )
 
 
 def plan_bundle(
