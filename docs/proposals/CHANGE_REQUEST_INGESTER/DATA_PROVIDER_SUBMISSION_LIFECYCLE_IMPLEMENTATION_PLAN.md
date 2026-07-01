@@ -86,7 +86,7 @@ Implement the narrow accepted existing-row update path for provider-owned data.
 
 **Focus**
 
-- align mutable-field comparison boundaries with [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
+- align mutable-field comparison boundaries with [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
 - apply supersession when a new accepted version replaces the current live version
 - block ambiguous or unsupported updates instead of applying speculative mutation
 

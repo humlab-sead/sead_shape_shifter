@@ -43,7 +43,7 @@ Keep the current inline-`INSERT` output as the default strategy. Keep identity r
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/archive/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md`
 - `ingesters/sead_change_request/sql_builder.py`
 - `ingesters/sead_change_request/ingester.py`
 
@@ -73,7 +73,7 @@ The prototype should preserve the current planning and identity logic and only c
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/archive/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql`
 - `ingesters/sead_change_request/sql_builder.py`
 - `ingesters/sead_change_request/ingester.py`
@@ -98,7 +98,7 @@ Solution:
 
 Harden the `copy_csv` artifact bundle rather than redesigning the strategy.
 
-Keep the current planning and identity logic unchanged. Use [docs/proposals/CHANGE_REQUEST_INGESTER/archive/closed_delivery_1/DELIVERY_1_HARDENING.md](./closed_delivery_1/DELIVERY_1_HARDENING.md) as the target contract for this work.
+Keep the current planning and identity logic unchanged. Use [docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md](../done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md) as the target contract for this work.
 
 Concrete steps:
 
@@ -121,8 +121,8 @@ Current branch result:
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/archive/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/archive/closed_delivery_1/DELIVERY_1_HARDENING.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md`
 - `ingesters/sead_change_request/sql_builder.py`
 - `ingesters/sead_change_request/ingester.py`
 - `backend/tests/ingesters/test_sead_change_request_sql_builder.py`
@@ -162,7 +162,7 @@ Reasoning:
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/archive/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md`
 - `ingesters/sead_change_request/sql_builder.py`
 
 ## Issue 5 [docs(target_model): complete SEAD v2 target model completeness review](https://github.com/humlab-sead/sead_shape_shifter/issues/441)
@@ -192,7 +192,7 @@ That document now records:
 Files:
 
 - `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/archive/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md`
 - `resources/target_models/sead_superset_model.yml`
 
 ## Issue 6 [docs(metadata): compare SEAD target model with SeadSchema live-schema approach](https://github.com/humlab-sead/sead_shape_shifter/issues/442)
@@ -226,7 +226,7 @@ Issue status note:
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/archive/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md`
 - `docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md`
 - `ingesters/sead/metadata.py`
 
@@ -256,7 +256,7 @@ Detect date-only payload values before generic timestamp serialization, render t
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/archive/closed_delivery_1/DELIVERY_1_HARDENING.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md`
 - `ingesters/sead_change_request/sql_builder.py`
 - `backend/tests/ingesters/test_sead_change_request_sql_builder.py`

@@ -8,7 +8,7 @@ This document consolidates what is complete, what is still draft or candidate, a
 
 ## Current State
 
-- Delivery 1 baseline is closed and archived under `archive/closed_delivery_1/`.
+- Delivery 1 baseline is closed and archived under `done/CHANGE_REQUEST_INGESTER_DELIVERY_1/`.
 - Delivery 1 follow-up issue slices are resolved or implemented on the current branch.
 - Frontend UX integration CR is implemented, with one deferred metadata-defaults follow-up.
 - Provider-update lifecycle policy gate is accepted through [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md).
@@ -21,8 +21,8 @@ This document consolidates what is complete, what is still draft or candidate, a
 ## Completed Work
 
 - Delivery 1 implementation and hardening documents are closed artifacts.
-- Delivery 1 follow-up issue slices are marked resolved or implemented in [archive/DELIVERY_1_FOLLOWUP_ISSUES.md](./archive/DELIVERY_1_FOLLOWUP_ISSUES.md).
-- Frontend workflow integration is implemented in `FRONTEND_UX_INTEGRATION_CR.md` and tracked issue-by-issue in `FRONTEND_UX_INTEGRATION_ISSUES.md`.
+- Delivery 1 follow-up issue slices are marked resolved or implemented in [done/DELIVERY_1_FOLLOWUP_ISSUES.md](./done/DELIVERY_1_FOLLOWUP_ISSUES.md).
+- Frontend workflow integration is implemented in `done/FRONTEND_UX_INTEGRATION_CR.md` and tracked issue-by-issue in `done/FRONTEND_UX_INTEGRATION_ISSUES.md`.
 - Ingester readability refactor plan is complete and explicitly stopped at a stable boundary.
 
 ## Key References
@@ -31,27 +31,27 @@ This document consolidates what is complete, what is still draft or candidate, a
 - Durable lifecycle rules: [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)
 - Proposal-era lifecycle baseline record: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md)
 - Lifecycle sequencing plan: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md)
-- Lifecycle phase issue drafts: [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md)
-- Lifecycle phase 3 issue drafts: [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md)
-- Existing-row update proposal: [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
-- Candidate backlog scope: [NEXT_DELIVERY_CANDIDATES.md](./NEXT_DELIVERY_CANDIDATES.md)
+- Lifecycle phase issue drafts: [LIFECYCLE_PHASE_1_2_ISSUES.md](./done/LIFECYCLE_PHASE_1_2_ISSUES.md)
+- Lifecycle phase 3 issue drafts: [LIFECYCLE_PHASE_3_ISSUES.md](./done/LIFECYCLE_PHASE_3_ISSUES.md)
+- Existing-row update proposal: [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
+- Candidate backlog scope: [NEXT_DELIVERY_CANDIDATES.md](./future/NEXT_DELIVERY_CANDIDATES.md)
 
 ## Next Actions
 
 1. Record and carry forward lifecycle policy acceptance.
 - Acceptance decision is complete for `DATA_PROVIDER_UPDATE_SCOPING_CR.md`.
 - Durable lifecycle doc created: [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
-- Promotion note completed: [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md).
-- Lifecycle baseline promotion is complete; keep [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the handoff record.
+- Promotion note completed: [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./done/LIFECYCLE_SPEC_PROMOTION_NOTE.md).
+- Lifecycle baseline promotion is complete; keep [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./done/LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the handoff record.
 
 2. Complete lifecycle Phase 1 and Phase 2 implementation prerequisites.
-- Track issue-ready work items in [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md).
+- Track issue-ready work items in [LIFECYCLE_PHASE_1_2_ISSUES.md](./done/LIFECYCLE_PHASE_1_2_ISSUES.md).
 - Phase 1 contracts are implemented: lifecycle metadata plus one-live-version invariant checks.
 - Phase 2 contracts are implemented: outcome classification for `new_data`, `no_op`, `allowed_update`, `pending_review`, and `blocked`.
 - Integration-level validation info now includes outcome-count diagnostics, with mutable-field scope coverage.
 
 3. Prepare existing-row implementation slices after lifecycle prerequisites are complete.
-- Existing-row update handling is implemented on the current branch; keep [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md) as the implementation record.
+- Existing-row update handling is implemented on the current branch; keep [LIFECYCLE_PHASE_3_ISSUES.md](./done/LIFECYCLE_PHASE_3_ISSUES.md) as the implementation record.
 - Confirm no-op rerun behavior and supersession rules in implementation tests.
 - Keep ambiguous existing-row changes blocked or review-routed.
 
@@ -110,13 +110,13 @@ Dependency guardrails:
 - Which team owns reviewed shared-data requests and approvals?
 - Which shared-data review and approval path should govern future non-provider existing-row scenarios?
 - Should project YAML carry stable `sead_change_request` submission defaults?
-- Which single candidate from `NEXT_DELIVERY_CANDIDATES.md` should become the next accepted proposal slice?
+- Which single candidate from `future/NEXT_DELIVERY_CANDIDATES.md` should become the next accepted proposal slice?
 
 ## Suggested Follow-Up Documents
 
 - Keep lifecycle sequencing updates in `DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`.
 - Keep issue-level execution details in dedicated issue docs or GitHub issues.
-- Use [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the promotion handoff for moving lifecycle rules into durable docs.
+- Use [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./done/LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the promotion handoff for moving lifecycle rules into durable docs.
 - Use [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) as the active lifecycle policy reference.
 
 ## Restart Prompt
