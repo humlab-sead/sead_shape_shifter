@@ -18,9 +18,9 @@ This CR recommends an ownership-first and history-preserving change model. Data 
 
 History should not mean multiple active copies of the same provider-owned record. The rule should be that for a given logical record and point in time, the repository keeps at most one live version, while older versions remain available as history.
 
-The existing-row SQL update path described in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) is one downstream scenario inside this broader problem. It should not define the problem statement for this CR.
+The existing-row SQL update path described in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) is one downstream scenario inside this broader problem. It should not define the problem statement for this CR.
 
-This document is the decision record for the problem and recommendation. The durable lifecycle rules now live in [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md), and phased delivery planning belongs in [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md).
+This document is the decision record for the problem and recommendation. The durable lifecycle rules now live in [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md), and phased delivery planning belongs in [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md).
 
 ## Problem
 
@@ -127,7 +127,7 @@ Examples include:
 
 The repository should consider at least these scenarios when defining provider-visible change support over time.
 
-The existing-row planning and SQL contract in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) is one follow-up scenario inside this set, not the umbrella problem statement.
+The existing-row planning and SQL contract in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) is one follow-up scenario inside this set, not the umbrella problem statement.
 
 | Scenario | Typical example | Recommended handling |
 |----------|-----------------|----------------------|
@@ -178,4 +178,4 @@ Do not implement existing-row update handling until the repository accepts an ow
 
 The next safe step is to treat provider-owned corrections and revisions as the primary allowed change class, require history-preserving workflow semantics for those changes, and keep direct shared-data mutation out of the default provider path.
 
-The narrower existing-row update CR in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) should then be handled as one downstream implementation scenario alongside other accepted provider-change scenarios from this document.
+The narrower existing-row update CR in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) should then be handled as one downstream implementation scenario alongside other accepted provider-change scenarios from this document.

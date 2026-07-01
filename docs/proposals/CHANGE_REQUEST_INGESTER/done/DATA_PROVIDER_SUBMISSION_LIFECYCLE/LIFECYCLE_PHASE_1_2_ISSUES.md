@@ -29,7 +29,7 @@ Use this issue to establish stable building blocks for later planner and orchest
 Files:
 
 - `docs/DATA_PROVIDER_SUBMISSION_LIFECYCLE.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`
 - `ingesters/sead_change_request/contracts.py`
 - `backend/tests/ingesters/test_sead_change_request_contracts.py`
 
@@ -58,7 +58,7 @@ Require tests for at least: new data, no-op, allowed update, pending review, and
 Files:
 
 - `docs/DATA_PROVIDER_SUBMISSION_LIFECYCLE.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`
 - `ingesters/sead_change_request/planning.py`
 - `ingesters/sead_change_request/preparation.py`
 - `ingesters/sead_change_request/result_builders.py`

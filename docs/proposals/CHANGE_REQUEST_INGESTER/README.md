@@ -20,25 +20,23 @@ The accepted Delivery 1 direction is:
 - Delivery 1 follow-up issue slices are resolved or implemented on the current branch.
 - Frontend UX integration is implemented, with one deferred follow-up for stable metadata defaults.
 - Provider-update lifecycle policy gate is accepted.
-- Provider-submission lifecycle rules are promoted to durable docs at [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
-- Phase entry status is active: Phase 1, Phase 2, and Phase 3 existing-row update handling are implemented on the current branch.
-- Existing-row update handling is now an implemented baseline; future work shifts to governance and broader next-delivery decisions.
+- Provider-submission lifecycle docs are archived under [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE).
+- Shared-data review and operator contract work now lives in [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md).
 - Candidate next-delivery capabilities remain undecided and are not committed scope.
 
 For the single consolidated tracker of remaining work, use:
 
-- [CHANGE_REQUEST_INGESTER_STATE_AND_REMAINING_TASKS.md](./CHANGE_REQUEST_INGESTER_STATE_AND_REMAINING_TASKS.md)
+- [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/CHANGE_REQUEST_INGESTER_STATE_AND_REMAINING_TASKS.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/CHANGE_REQUEST_INGESTER_STATE_AND_REMAINING_TASKS.md)
 
 ## Authoritative Active Documents
 
 - [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) — durable lifecycle rules reference
-- [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) — decision proposal for provider-owned versus shared-data update scope
-- [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md) — lifecycle delivery sequencing phases
-- [LIFECYCLE_PHASE_1_2_ISSUES.md](./done/LIFECYCLE_PHASE_1_2_ISSUES.md) — issue-ready phase 1 and phase 2 implementation slices
-- [LIFECYCLE_PHASE_3_ISSUES.md](./done/LIFECYCLE_PHASE_3_ISSUES.md) — phase 3 implementation record for existing-row provider update handling
-- [LIFECYCLE_PHASE_4_ISSUES.md](./LIFECYCLE_PHASE_4_ISSUES.md) — phase 4 issue draft for shared-data review ownership and routing
-- [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./done/LIFECYCLE_SPEC_PROMOTION_NOTE.md) — promotion handoff for moving accepted lifecycle rules into durable docs
-- [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) — focused existing-row update proposal (candidate)
+- [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md) — archived provider-submission lifecycle set
+- [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md) — separate shared-data review proposal
+- [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_PHASE_1_2_ISSUES.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_PHASE_1_2_ISSUES.md) — issue-ready phase 1 and phase 2 implementation slices
+- [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_PHASE_3_ISSUES.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_PHASE_3_ISSUES.md) — phase 3 implementation record for existing-row provider update handling
+- [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_SPEC_PROMOTION_NOTE.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_SPEC_PROMOTION_NOTE.md) — promotion handoff for moving accepted lifecycle rules into durable docs
+- [future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) — focused existing-row update proposal (candidate)
 - [NEXT_DELIVERY_CANDIDATES.md](./future/NEXT_DELIVERY_CANDIDATES.md) — undecided candidate capability backlog
 
 ## Implemented Or Historical References
@@ -51,7 +49,7 @@ For the single consolidated tracker of remaining work, use:
 - [FRONTEND_UX_INTEGRATION_CR.md](./done/FRONTEND_UX_INTEGRATION_CR.md) — Separate CR for frontend workflow integration and required user interaction
 - [FRONTEND_UX_INTEGRATION_ISSUES.md](./done/FRONTEND_UX_INTEGRATION_ISSUES.md) — issue-level tracking for frontend UX integration, including deferred follow-up item
 - [done/INGESTER_READABILITY_REFACTOR_PLAN.md](./done/INGESTER_READABILITY_REFACTOR_PLAN.md) — Focused plan for reducing `SeadChangeRequestIngester` size and mixed responsibilities
-- [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md) — proposal-era lifecycle baseline record retained after promotion
+- [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md) — proposal-era lifecycle baseline record retained after promotion
 
 ## Current Status
 
@@ -63,19 +61,16 @@ For the single consolidated tracker of remaining work, use:
 - Closed follow-up record: deploy-rendering strategy split, CSV plus `\copy` artifact format, Jinja2 evaluation, and target-model/schema review are archived under `done/CHANGE_REQUEST_INGESTER_DELIVERY_1`
 - Next-delivery scope: candidate only; rollback, stronger idempotency, and related capabilities are not yet committed as one delivery
 - Data-provider update scope is accepted and now governs downstream existing-row update behavior
-- Provider-submission lifecycle work uses a durable lifecycle reference plus phase plan structure
-- Phase 1 and Phase 2 issue-ready drafts are tracked in `done/LIFECYCLE_PHASE_1_2_ISSUES.md`
-- Update handling has a dedicated next-delivery CR; existing-row update handling is implemented and the next open work is governance or broader candidate selection
-- Phase 4 issue-ready draft now captures shared-data review ownership and routing
+- Provider-submission lifecycle work is archived under `done/DATA_PROVIDER_SUBMISSION_LIFECYCLE`
+- Shared-data review and operator routing now has a separate proposal folder
 - Frontend issue breakdown exists as implementation record and deferred follow-up tracking
 - Upstream SIMS handoff docs now live in `humlab-sead/sead_authority_service:docs/proposals/`
 
 ## Remaining Tasks Snapshot
 
-- lifecycle baseline promotion is complete; keep [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./done/LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the handoff record
-- maintain link alignment with [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) as the durable lifecycle reference
-- complete lifecycle phase implementation starting with metadata and classification contracts
-- decide shared-data review ownership and governance routing
+- lifecycle baseline promotion is complete; use the archived provider lifecycle folder for history
+- keep link alignment with [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) as the durable lifecycle reference
+- continue shared-data review design in the separate proposal folder
 - decide first existing-row entity set for mutable-field update support
 - resolve deferred frontend metadata-defaults follow-up
 - choose one next-delivery candidate slice for the next accepted proposal

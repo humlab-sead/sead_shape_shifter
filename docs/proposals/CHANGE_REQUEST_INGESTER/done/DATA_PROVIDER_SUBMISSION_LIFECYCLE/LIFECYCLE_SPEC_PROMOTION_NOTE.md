@@ -19,7 +19,7 @@ This note records the promotion target, alignment checks, and the final completi
 - confirmed governing decision document:
   - [DATA_PROVIDER_UPDATE_SCOPING_CR.md](../DATA_PROVIDER_UPDATE_SCOPING_CR.md)
 - defined target durable-doc path:
-  - [docs/DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)
+  - [docs/DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)
 - defined minimum promotion checks:
   - preserve lifecycle invariants and state-transition contract
   - preserve allowed/restricted/blocked change classes
@@ -35,6 +35,6 @@ This note records the promotion target, alignment checks, and the final completi
 
 ## Remaining Follow-Up
 
-- [x] create [docs/DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) from the accepted baseline content
+- [x] create [docs/DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) from the accepted baseline content
 - [x] update links in proposal docs to point to the durable lifecycle page
 - keep [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](../DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md) as a proposal-era history record with a short pointer to the durable page

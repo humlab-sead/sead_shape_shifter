@@ -31,7 +31,7 @@ Treat unchanged reruns as no-op, route accepted updates as update candidates, an
 Files:
 
 - `docs/DATA_PROVIDER_SUBMISSION_LIFECYCLE.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md`
 - `ingesters/sead_change_request/planning.py`
 - `ingesters/sead_change_request/preparation.py`
@@ -65,7 +65,7 @@ Keep the output contract explicit and constrained to accepted mutable-field upda
 Files:
 
 - `docs/DATA_PROVIDER_SUBMISSION_LIFECYCLE.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md`
 - `ingesters/sead_change_request/sql_builder.py`
 - `ingesters/sead_change_request/package_builder.py`

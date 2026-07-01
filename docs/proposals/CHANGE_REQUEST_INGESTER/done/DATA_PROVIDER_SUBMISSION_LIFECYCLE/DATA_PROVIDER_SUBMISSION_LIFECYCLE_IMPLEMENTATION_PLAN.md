@@ -4,7 +4,7 @@
 
 This plan sequences lifecycle implementation work for provider-owned data changes in `sead_change_request`.
 
-It is an execution plan, not a policy document. Lifecycle policy comes from [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) and [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
+It is an execution plan, not a policy document. Lifecycle policy comes from [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) and [../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
 
 ## Problem
 
@@ -19,7 +19,6 @@ This plan covers lifecycle implementation sequencing for:
 - lifecycle metadata and invariants
 - submission planning and classification outcomes
 - existing-row provider-owned update handling
-- restricted shared-data review routing
 - artifact and operator outcome behavior
 
 This plan does not redefine policy, frontend IA, release scheduling, or staffing.
@@ -29,7 +28,7 @@ This plan does not redefine policy, frontend IA, release scheduling, or staffing
 - lifecycle policy scope decision is accepted through [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md)
 - delivery order exists, but implementation tracking is split across multiple proposal documents
 - existing-row update handling is implemented on the current branch and now serves as the baseline for future lifecycle refinements
-- shared-data governance boundaries are documented at proposal level but not yet implemented as a review path contract
+- shared-data governance boundaries now live in the separate [../../../SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](../../../SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md) proposal
 
 ## Phase Entry Status
 
@@ -38,7 +37,6 @@ This plan does not redefine policy, frontend IA, release scheduling, or staffing
 | Phase 1: Lifecycle Metadata And Invariants | implemented on current branch | lifecycle metadata contracts and one-live-version invariant checks are in code and tests |
 | Phase 2: Submission Planning And Classification | implemented on current branch | outcome classification and diagnostics are implemented with scenario and integration coverage |
 | Phase 3: Existing-Row Provider Update Path | implemented on current branch | existing-row update engine and SQL/artifact rendering are implemented with focused tests |
-| Phase 4: Shared-Data Review And Operator Contract | ready to scope, implementation after Phase 2 outcome contract | governance boundaries are accepted at policy level but delivery path is not yet implemented |
 
 ## Phase Plan
 
@@ -86,7 +84,7 @@ Implement the narrow accepted existing-row update path for provider-owned data.
 
 **Focus**
 
-- align mutable-field comparison boundaries with [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
+- align mutable-field comparison boundaries with [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
 - apply supersession when a new accepted version replaces the current live version
 - block ambiguous or unsupported updates instead of applying speculative mutation
 
@@ -96,30 +94,11 @@ Implement the narrow accepted existing-row update path for provider-owned data.
 - unchanged reruns are no-op and do not create duplicate live versions
 - ambiguous or disallowed existing-row changes do not mutate current live records silently
 
-### Phase 4: Shared-Data Review And Operator Contract
-
-**Goal**
-
-Implement restricted shared-data handling and operator-visible lifecycle outcomes.
-
-**Focus**
-
-- define reviewed request flow for new or corrected shared terms
-- keep provider-owned reference updates separate from shared-row mutation
-- align artifact and frontend outcome reporting for accepted, no-op, blocked, and pending-review paths
-
-**Acceptance Criteria**
-
-- shared-data changes are routed to a defined reviewed path instead of default provider update execution
-- provider-owned reference changes are handled separately from shared-row governance actions
-- operator-visible results distinguish accepted, no-op, blocked, and review-required outcomes
-
 ## Cross-Phase Rules
 
 - do not implement existing-row update mutation before lifecycle metadata and classification rules are in place
 - preserve one-live-version behavior in every accepted provider-owned update path
 - treat ambiguous changes as blocked or pending review, never as implicit acceptance
-- keep shared-data governance outside default provider-owned update execution
 - keep plan state in this file and move issue-level tracking to dedicated issue documents
 
 ## Validation Strategy
@@ -127,11 +106,11 @@ Implement restricted shared-data handling and operator-visible lifecycle outcome
 - validate lifecycle state transitions and one-live-version behavior with focused unit tests in ingester and planning modules
 - validate classification behavior with scenario tests for new, no-op, allowed, pending-review, and blocked outcomes
 - validate existing-row update behavior with explicit mutable-field boundary tests and rerun-idempotency checks
-- validate operator-facing outcome payloads used by frontend states for blocked, pending-review, no-op, and accepted paths
+- validate operator-facing outcome payloads used by frontend states for blocked, no-op, and accepted paths
 - update this plan only when acceptance criteria are actually met in code and tests
 
 ## Final Recommendation
 
-Use this phase plan as the only lifecycle sequencing document.
+Use this phase plan as the archived sequencing record for provider-owned lifecycle work.
 
-Track cross-document status and remaining tasks in [CHANGE_REQUEST_INGESTER_STATE_AND_REMAINING_TASKS.md](./CHANGE_REQUEST_INGESTER_STATE_AND_REMAINING_TASKS.md), then keep issue-level execution details outside this phase plan.
+Track shared-data review work in the separate proposal folder, then keep issue-level execution details outside this phase plan.

@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Provide one operational status view for the `CHANGE_REQUEST_INGESTER` proposal set.
+Provide one archived operational status view for the `CHANGE_REQUEST_INGESTER` provider-lifecycle proposal set.
 
-This document consolidates what is complete, what is still draft or candidate, and what tasks remain open.
+This document consolidates the provider-lifecycle work that is complete and records the handoff to the separate shared-data review proposal.
 
 ## Current State
 
@@ -12,10 +12,10 @@ This document consolidates what is complete, what is still draft or candidate, a
 - Delivery 1 follow-up issue slices are resolved or implemented on the current branch.
 - Frontend UX integration CR is implemented, with one deferred metadata-defaults follow-up.
 - Provider-update lifecycle policy gate is accepted through [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md).
-- Lifecycle rules are promoted to durable docs at [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
+- Lifecycle rules are promoted to durable docs at [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
 - Lifecycle Phase 1 and Phase 2 prerequisites are implemented on the current branch, including outcome classification diagnostics and integration coverage.
 - Existing-row update handling is implemented on the current branch, including both SQL/artifact rendering and the engine-path allowlist/orchestration guard.
-- Phase 4 issue draft now captures shared-data review ownership and operator routing.
+- Shared-data review ownership and operator routing now live in a separate proposal.
 - Next-delivery capability list remains undecided and is not a committed delivery scope.
 
 ## Completed Work
@@ -24,39 +24,40 @@ This document consolidates what is complete, what is still draft or candidate, a
 - Delivery 1 follow-up issue slices are marked resolved or implemented in [done/DELIVERY_1_FOLLOWUP_ISSUES.md](./done/DELIVERY_1_FOLLOWUP_ISSUES.md).
 - Frontend workflow integration is implemented in `done/FRONTEND_UX_INTEGRATION_CR.md` and tracked issue-by-issue in `done/FRONTEND_UX_INTEGRATION_ISSUES.md`.
 - Ingester readability refactor plan is complete and explicitly stopped at a stable boundary.
+- The provider-lifecycle proposal set is archived under [README.md](./README.md).
 
 ## Key References
 
 - Decision proposal: [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md)
-- Durable lifecycle rules: [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)
+- Durable lifecycle rules: [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)
 - Proposal-era lifecycle baseline record: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md)
 - Lifecycle sequencing plan: [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md)
-- Lifecycle phase issue drafts: [LIFECYCLE_PHASE_1_2_ISSUES.md](./done/LIFECYCLE_PHASE_1_2_ISSUES.md)
-- Lifecycle phase 3 issue drafts: [LIFECYCLE_PHASE_3_ISSUES.md](./done/LIFECYCLE_PHASE_3_ISSUES.md)
-- Existing-row update proposal: [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
+- Lifecycle phase issue drafts: [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md)
+- Lifecycle phase 3 issue drafts: [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md)
+- Existing-row update proposal: [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
 - Candidate backlog scope: [NEXT_DELIVERY_CANDIDATES.md](./future/NEXT_DELIVERY_CANDIDATES.md)
 
 ## Next Actions
 
 1. Record and carry forward lifecycle policy acceptance.
 - Acceptance decision is complete for `DATA_PROVIDER_UPDATE_SCOPING_CR.md`.
-- Durable lifecycle doc created: [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
-- Promotion note completed: [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./done/LIFECYCLE_SPEC_PROMOTION_NOTE.md).
-- Lifecycle baseline promotion is complete; keep [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./done/LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the handoff record.
+- Durable lifecycle doc created: [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md).
+- Promotion note completed: [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md).
+- Lifecycle baseline promotion is complete; keep [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the handoff record.
 
 2. Complete lifecycle Phase 1 and Phase 2 implementation prerequisites.
-- Track issue-ready work items in [LIFECYCLE_PHASE_1_2_ISSUES.md](./done/LIFECYCLE_PHASE_1_2_ISSUES.md).
+- Track issue-ready work items in [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md).
 - Phase 1 contracts are implemented: lifecycle metadata plus one-live-version invariant checks.
 - Phase 2 contracts are implemented: outcome classification for `new_data`, `no_op`, `allowed_update`, `pending_review`, and `blocked`.
 - Integration-level validation info now includes outcome-count diagnostics, with mutable-field scope coverage.
 
 3. Prepare existing-row implementation slices after lifecycle prerequisites are complete.
-- Existing-row update handling is implemented on the current branch; keep [LIFECYCLE_PHASE_3_ISSUES.md](./done/LIFECYCLE_PHASE_3_ISSUES.md) as the implementation record.
+- Existing-row update handling is implemented on the current branch; keep [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md) as the implementation record.
 - Confirm no-op rerun behavior and supersession rules in implementation tests.
 - Keep ambiguous existing-row changes blocked or review-routed.
 
-4. Define shared-data review ownership and path.
-- Track the draft issue in [LIFECYCLE_PHASE_4_ISSUES.md](./LIFECYCLE_PHASE_4_ISSUES.md).
+4. Define shared-data review ownership and path in the separate proposal.
+- Track the draft in [../../../SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](../../../SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md).
 - Confirm authority owner for new shared-term requests.
 - Confirm owner for corrections to existing shared terms.
 - Confirm boundary between provider-owned reference updates and shared-row governance changes.
@@ -82,7 +83,7 @@ Reason: completed on 2026-06-30 and promoted to durable docs; this removed the h
 Reason: completed on branch; metadata and classification contracts are now in code and tests.
 
 - [ ] 3. Define shared-data review ownership and path.
-Reason: phase 4 draft is now in place and closes governance risk early by preventing provider-owned and shared-data paths from blending.
+Reason: the shared-data proposal now stands on its own and closes governance risk early by preventing provider-owned and shared-data paths from blending.
 
 - [x] 4. Prepare and scope the first existing-row implementation slice.
 Reason: completed on branch; the existing-row SQL/artifact and engine-path guard are both implemented.
@@ -116,27 +117,19 @@ Dependency guardrails:
 
 - Keep lifecycle sequencing updates in `DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`.
 - Keep issue-level execution details in dedicated issue docs or GitHub issues.
-- Use [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./done/LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the promotion handoff for moving lifecycle rules into durable docs.
-- Use [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) as the active lifecycle policy reference.
+- Use [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the promotion handoff for moving lifecycle rules into durable docs.
+- Use [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) as the active lifecycle policy reference.
 
 ## Restart Prompt
 
-Resume the `CHANGE_REQUEST_INGESTER` lifecycle work on branch `cr-ingester-final-work` in `/home/roger/source/sead_shape_shifter`.
+Resume the `CHANGE_REQUEST_INGESTER` provider-lifecycle work on branch `cr-ingester-final-work` in `/home/roger/source/sead_shape_shifter`.
 
 Current implementation status:
 
 - lifecycle policy acceptance is already promoted to durable docs
 - phase 1 and phase 2 contracts are implemented
 - phase 3 existing-row provider update handling is implemented
-- the phase plan already marks phase 3 implemented
-- phase 4 is now the active open slice
+- the provider-lifecycle phase plan is archived
+- shared-data review work now continues in a separate proposal
 
-The current phase-4 draft in [LIFECYCLE_PHASE_4_ISSUES.md](./LIFECYCLE_PHASE_4_ISSUES.md) should be refined next. The draft already says:
-
-- SEAD owns shared data
-- shared lookups should not be duplicated
-- the current reconciliation workflow stays inside Shape Shifter for now and is not published to providers
-- a future provider-facing reconciliation service may exist later
-- third-party authorities may be preferred for some shared concepts
-
-Continue by tightening the phase-4 ownership and routing contract, and update the handoff or issue draft if a decision changes around review ownership, provider-facing reconciliation, or authority-backed lookups.
+Continue by using the archived provider-lifecycle docs as reference and move shared-data ownership and routing decisions into the separate proposal folder.
