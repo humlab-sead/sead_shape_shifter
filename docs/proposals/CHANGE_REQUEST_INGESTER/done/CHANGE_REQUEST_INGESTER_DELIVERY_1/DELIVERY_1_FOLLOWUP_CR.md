@@ -29,7 +29,7 @@ The final metadata-review follow-up is now complete:
 
 These are follow-up improvements. They should not reopen Delivery 1 identity, confirmation, materialization, or collision-check behavior.
 
-Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](../../FRONTEND_UX_INTEGRATION_CR.md). This CR now serves as a historical record of the completed deploy-artifact and metadata-review follow-up work.
+Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](../../done/FRONTEND_UX_INTEGRATION_CR.md). This CR now serves as a historical record of the completed deploy-artifact and metadata-review follow-up work.
 
 ## Problem
 
@@ -101,7 +101,7 @@ The current strategy set is:
 
 The next step is not another architecture split. It is to harden the prototype around deterministic file layout, value-shape handling, operator execution support, and artifact metadata.
 
-That hardening should use the current contract decisions in [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md), including:
+That hardening should use the current contract decisions in [docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md), including:
 
 - unpacked directory output as the only Delivery 1 artifact form
 - approved `datatype` validation against the current SCCS project subset
@@ -151,7 +151,7 @@ Validation completed on the current branch includes:
 
 - regression tests proving the current inline-`INSERT` strategy still emits the existing Delivery 1 artifact shape
 - focused hardening tests for the current `copy_csv` output, including generated payload files, deploy SQL structure, CSV edge cases, and emitted bundle metadata
-- focused hardening tests that prove conformance to [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md)
+- focused hardening tests that prove conformance to [docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md)
 - comparison of the hardened `copy_csv` output shape with the historical example in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](../../example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql), with any intentional differences documented explicitly
 
 The metadata review validation is now complete: [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for the `SeadSchema` comparison.
@@ -161,7 +161,7 @@ The metadata review validation is now complete: [docs/proposals/done/SEAD_V2_TAR
 - the current deploy-strategy boundary remains intact
 - the current inline-`INSERT` behavior remains available as the default strategy
 - the `copy_csv` artifact contract is hardened enough for operator review and stable test coverage
-- the `copy_csv` artifact contract conforms to [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md)
+- the `copy_csv` artifact contract conforms to [docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md)
 - the Jinja2 decision is documented as deferred with reasons
 - [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for both the completeness review and the `SeadSchema` comparison
 
@@ -210,7 +210,7 @@ Includes:
 - lock down path rules, naming rules, and deterministic table ordering
 - harden CSV value handling for realistic payloads
 - expand strategy metadata and end-to-end artifact tests
-- implement the contract documented in `docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md`
+- implement the contract documented in `docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md`
 
 Exit criteria:
 
@@ -220,7 +220,7 @@ Exit criteria:
 
 Follow-up note:
 
-- operator-facing bundle execution guidance is now tracked with the frontend workflow in `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_CR.md`
+- operator-facing bundle execution guidance is now tracked with the frontend workflow in `docs/proposals/CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_CR.md`
 - the narrow date-only payload formatting bug was fixed separately on the current branch and does not reopen this hardening issue
 
 ### Issue 4. Decide On Jinja2 For Rendering
@@ -273,4 +273,4 @@ Do not reopen `copy_csv` hardening or the Jinja2 decision in this CR. Keep the a
 
 ## Issue-Ready Drafts
 
-Use [docs/proposals/CHANGE_REQUEST_INGESTER/archive/DELIVERY_1_FOLLOWUP_ISSUES.md](../DELIVERY_1_FOLLOWUP_ISSUES.md) as the current source of truth for issue-ready drafts and per-issue status.
+Use [docs/proposals/CHANGE_REQUEST_INGESTER/done/DELIVERY_1_FOLLOWUP_ISSUES.md](../DELIVERY_1_FOLLOWUP_ISSUES.md) as the current source of truth for issue-ready drafts and per-issue status.

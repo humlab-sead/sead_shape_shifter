@@ -16,7 +16,7 @@ This proposal records that candidate set so the closed Delivery 1 baseline can s
 
 Provider-update scope and existing-row update handling are tracked separately in the lifecycle proposal set and are no longer part of this candidate backlog.
 
-Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](./FRONTEND_UX_INTEGRATION_CR.md), with GitHub-ready issue drafts in [FRONTEND_UX_INTEGRATION_ISSUES.md](./FRONTEND_UX_INTEGRATION_ISSUES.md). The closed post-Delivery-1 follow-up record now lives in [archive/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md](./archive/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md).
+Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](../done/FRONTEND_UX_INTEGRATION_CR.md), with GitHub-ready issue drafts in [FRONTEND_UX_INTEGRATION_ISSUES.md](../done/FRONTEND_UX_INTEGRATION_ISSUES.md). The closed post-Delivery-1 follow-up record now lives in [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md](../done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md).
 
 ## Problem
 

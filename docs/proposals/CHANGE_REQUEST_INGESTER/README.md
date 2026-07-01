@@ -4,7 +4,7 @@
 
 This folder contains active and historical proposal material for the `sead_change_request` ingester.
 
-The closed Delivery 1 baseline now lives under [closed_delivery_1](./closed_delivery_1).
+The closed Delivery 1 baseline now lives under [CHANGE_REQUEST_INGESTER_DELIVERY_1](./done/CHANGE_REQUEST_INGESTER_DELIVERY_1).
 
 The accepted Delivery 1 direction is:
 
@@ -34,23 +34,23 @@ For the single consolidated tracker of remaining work, use:
 - [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) — durable lifecycle rules reference
 - [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) — decision proposal for provider-owned versus shared-data update scope
 - [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md) — lifecycle delivery sequencing phases
-- [LIFECYCLE_PHASE_1_2_ISSUES.md](./LIFECYCLE_PHASE_1_2_ISSUES.md) — issue-ready phase 1 and phase 2 implementation slices
-- [LIFECYCLE_PHASE_3_ISSUES.md](./LIFECYCLE_PHASE_3_ISSUES.md) — phase 3 implementation record for existing-row provider update handling
+- [LIFECYCLE_PHASE_1_2_ISSUES.md](./done/LIFECYCLE_PHASE_1_2_ISSUES.md) — issue-ready phase 1 and phase 2 implementation slices
+- [LIFECYCLE_PHASE_3_ISSUES.md](./done/LIFECYCLE_PHASE_3_ISSUES.md) — phase 3 implementation record for existing-row provider update handling
 - [LIFECYCLE_PHASE_4_ISSUES.md](./LIFECYCLE_PHASE_4_ISSUES.md) — phase 4 issue draft for shared-data review ownership and routing
-- [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) — promotion handoff for moving accepted lifecycle rules into durable docs
-- [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md) — focused existing-row update proposal (candidate)
-- [NEXT_DELIVERY_CANDIDATES.md](./NEXT_DELIVERY_CANDIDATES.md) — undecided candidate capability backlog
+- [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./done/LIFECYCLE_SPEC_PROMOTION_NOTE.md) — promotion handoff for moving accepted lifecycle rules into durable docs
+- [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) — focused existing-row update proposal (candidate)
+- [NEXT_DELIVERY_CANDIDATES.md](./future/NEXT_DELIVERY_CANDIDATES.md) — undecided candidate capability backlog
 
 ## Implemented Or Historical References
 
-- [archive/closed_delivery_1/SEAD_CHANGE_REQUEST_INGESTER.md](./archive/closed_delivery_1/SEAD_CHANGE_REQUEST_INGESTER.md) — Closed Delivery 1 baseline proposal and accepted design decisions
-- [archive/closed_delivery_1/DELIVERY_1_IMPLEMENTATION_PLAN.md](./archive/closed_delivery_1/DELIVERY_1_IMPLEMENTATION_PLAN.md) — Closed Delivery 1 implementation plan and workstream record
-- [archive/closed_delivery_1/DELIVERY_1_HARDENING.md](./archive/closed_delivery_1/DELIVERY_1_HARDENING.md) — Closed Delivery 1 hardening contract for the `copy_csv` artifact bundle
-- [archive/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md](./archive/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md) — Closed follow-up CR for post-Delivery-1 SQL rendering strategy and target-model review
-- [archive/DELIVERY_1_FOLLOWUP_ISSUES.md](./archive/DELIVERY_1_FOLLOWUP_ISSUES.md) — historical issue draft record for Delivery 1 follow-up slices
-- [FRONTEND_UX_INTEGRATION_CR.md](./FRONTEND_UX_INTEGRATION_CR.md) — Separate CR for frontend workflow integration and required user interaction
-- [FRONTEND_UX_INTEGRATION_ISSUES.md](./FRONTEND_UX_INTEGRATION_ISSUES.md) — issue-level tracking for frontend UX integration, including deferred follow-up item
-- [archive/INGESTER_READABILITY_REFACTOR_PLAN.md](./archive/INGESTER_READABILITY_REFACTOR_PLAN.md) — Focused plan for reducing `SeadChangeRequestIngester` size and mixed responsibilities
+- [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/SEAD_CHANGE_REQUEST_INGESTER.md](./done/CHANGE_REQUEST_INGESTER_DELIVERY_1/SEAD_CHANGE_REQUEST_INGESTER.md) — Closed Delivery 1 baseline proposal and accepted design decisions
+- [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_IMPLEMENTATION_PLAN.md](./done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_IMPLEMENTATION_PLAN.md) — Closed Delivery 1 implementation plan and workstream record
+- [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md](./done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md) — Closed Delivery 1 hardening contract for the `copy_csv` artifact bundle
+- [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md](./done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md) — Closed follow-up CR for post-Delivery-1 SQL rendering strategy and target-model review
+- [done/DELIVERY_1_FOLLOWUP_ISSUES.md](./done/DELIVERY_1_FOLLOWUP_ISSUES.md) — historical issue draft record for Delivery 1 follow-up slices
+- [FRONTEND_UX_INTEGRATION_CR.md](./done/FRONTEND_UX_INTEGRATION_CR.md) — Separate CR for frontend workflow integration and required user interaction
+- [FRONTEND_UX_INTEGRATION_ISSUES.md](./done/FRONTEND_UX_INTEGRATION_ISSUES.md) — issue-level tracking for frontend UX integration, including deferred follow-up item
+- [done/INGESTER_READABILITY_REFACTOR_PLAN.md](./done/INGESTER_READABILITY_REFACTOR_PLAN.md) — Focused plan for reducing `SeadChangeRequestIngester` size and mixed responsibilities
 - [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md) — proposal-era lifecycle baseline record retained after promotion
 
 ## Current Status
@@ -60,11 +60,11 @@ For the single consolidated tracker of remaining work, use:
 - Delivery 1 input contract: DataFrame-first, with adapter boundary only if framework compatibility requires it
 - Delivery 1 confirmation model: synchronous at the change-package boundary; manual confirmation blocks artifact generation and returns a pending confirmation report
 - Delivery 1 deploy artifact baseline: inline `INSERT` SQL plus placeholder revert and verify files when required
-- Closed follow-up record: deploy-rendering strategy split, CSV plus `\copy` artifact format, Jinja2 evaluation, and target-model/schema review are archived under `closed_delivery_1`
+- Closed follow-up record: deploy-rendering strategy split, CSV plus `\copy` artifact format, Jinja2 evaluation, and target-model/schema review are archived under `done/CHANGE_REQUEST_INGESTER_DELIVERY_1`
 - Next-delivery scope: candidate only; rollback, stronger idempotency, and related capabilities are not yet committed as one delivery
 - Data-provider update scope is accepted and now governs downstream existing-row update behavior
 - Provider-submission lifecycle work uses a durable lifecycle reference plus phase plan structure
-- Phase 1 and Phase 2 issue-ready drafts are tracked in `LIFECYCLE_PHASE_1_2_ISSUES.md`
+- Phase 1 and Phase 2 issue-ready drafts are tracked in `done/LIFECYCLE_PHASE_1_2_ISSUES.md`
 - Update handling has a dedicated next-delivery CR; existing-row update handling is implemented and the next open work is governance or broader candidate selection
 - Phase 4 issue-ready draft now captures shared-data review ownership and routing
 - Frontend issue breakdown exists as implementation record and deferred follow-up tracking
@@ -72,7 +72,7 @@ For the single consolidated tracker of remaining work, use:
 
 ## Remaining Tasks Snapshot
 
-- lifecycle baseline promotion is complete; keep [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the handoff record
+- lifecycle baseline promotion is complete; keep [LIFECYCLE_SPEC_PROMOTION_NOTE.md](./done/LIFECYCLE_SPEC_PROMOTION_NOTE.md) as the handoff record
 - maintain link alignment with [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) as the durable lifecycle reference
 - complete lifecycle phase implementation starting with metadata and classification contracts
 - decide shared-data review ownership and governance routing

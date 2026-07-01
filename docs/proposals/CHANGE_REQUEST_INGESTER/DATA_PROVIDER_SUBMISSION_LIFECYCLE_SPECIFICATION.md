@@ -3,7 +3,7 @@
 ## Status
 
 - Promoted proposal-era lifecycle baseline record
-- Source proposals: [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md), [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
+- Source proposals: [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md), [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md)
 - Scoping decision alignment: [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) accepted on 2026-06-30
 - Durable lifecycle reference: [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)
 - Intended role: keep the accepted proposal-era baseline as a historical record
@@ -187,7 +187,7 @@ The repository should retain enough metadata to answer these questions for each 
 - [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) is the durable lifecycle reference for current implementation and validation work
 - [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md) defines the proposal-level decision about provider-visible change scope
 - [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md) defines phased delivery planning and progress tracking
-- [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md) narrows one follow-up scenario for existing-row update handling
+- [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) narrows one follow-up scenario for existing-row update handling
 - implementation plans and checklists should stay in separate planning documents rather than in this specification
 
 ## Promotion Rule

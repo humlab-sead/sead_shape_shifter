@@ -28,8 +28,8 @@ The UI should make clear that this flow is a change-request workflow rather than
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_CR.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_ISSUES.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_ISSUES.md`
 - `frontend/src/**`
 
 ## Issue 2
@@ -56,8 +56,8 @@ The form should make the required operator inputs explicit, reviewable, and clea
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_CR.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_ISSUES.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_ISSUES.md`
 - `frontend/src/**`
 
 ## Issue 3
@@ -84,8 +84,8 @@ Show the confirmation summary, the fact that no bundle was generated, and the re
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_CR.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_ISSUES.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_ISSUES.md`
 - `frontend/src/**`
 
 ## Issue 4
@@ -112,8 +112,8 @@ The summary should present the key artifact outcomes, relevant warnings, and the
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_CR.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_ISSUES.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_ISSUES.md`
 - `frontend/src/**`
 
 ## Issue 5
@@ -140,8 +140,8 @@ Prefer an ingester-specific metadata subsection over adding flat workflow-specif
 
 Files:
 
-- `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_CR.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_ISSUES.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_CR.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_ISSUES.md`
 - `frontend/src/components/MetadataEditor.vue`
 - `backend/app/models/project.py`
 - `backend/app/api/v1/endpoints/projects.py`

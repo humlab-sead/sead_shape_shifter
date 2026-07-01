@@ -32,7 +32,7 @@ Files:
 
 - `docs/DATA_PROVIDER_SUBMISSION_LIFECYCLE.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/UPDATE_HANDLING_FOR_EXISTING_ROWS.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md`
 - `ingesters/sead_change_request/planning.py`
 - `ingesters/sead_change_request/preparation.py`
 - `ingesters/sead_change_request/orchestration.py`
@@ -66,7 +66,7 @@ Files:
 
 - `docs/DATA_PROVIDER_SUBMISSION_LIFECYCLE.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/UPDATE_HANDLING_FOR_EXISTING_ROWS.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md`
 - `ingesters/sead_change_request/sql_builder.py`
 - `ingesters/sead_change_request/package_builder.py`
 - `ingesters/sead_change_request/artifact_writer.py`

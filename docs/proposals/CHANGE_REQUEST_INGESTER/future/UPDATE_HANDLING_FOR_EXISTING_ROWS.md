@@ -15,7 +15,7 @@ That closes the direct path for new rows and new associations, but it leaves an 
 
 This proposal defines the next decision surface for that gap. It is intentionally focused on update handling for existing rows rather than bundling rollback, change detection, and every other later-stage concern into one omnibus follow-up.
 
-It should be read after [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md), because that document defines which provider-visible update scenarios should be allowed, restricted, or blocked before this CR narrows the SQL-oriented handling for accepted cases.
+It should be read after [DATA_PROVIDER_UPDATE_SCOPING_CR.md](../DATA_PROVIDER_UPDATE_SCOPING_CR.md), because that document defines which provider-visible update scenarios should be allowed, restricted, or blocked before this CR narrows the SQL-oriented handling for accepted cases.
 
 ## Problem
 
@@ -37,7 +37,7 @@ This proposal covers:
 - the output contract for update-oriented change packages when updates are accepted
 - the interaction between update handling, idempotency, and operator review
 
-It treats existing-row update handling as one downstream scenario inside the broader provider-change problem described in [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md).
+It treats existing-row update handling as one downstream scenario inside the broader provider-change problem described in [DATA_PROVIDER_UPDATE_SCOPING_CR.md](../DATA_PROVIDER_UPDATE_SCOPING_CR.md).
 
 ## Non-Goals
 

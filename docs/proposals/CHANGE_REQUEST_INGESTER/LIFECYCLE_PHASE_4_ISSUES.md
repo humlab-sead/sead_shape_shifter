@@ -57,7 +57,7 @@ Files:
 - `docs/proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/CHANGE_REQUEST_INGESTER_STATE_AND_REMAINING_TASKS.md`
 - `docs/proposals/CHANGE_REQUEST_INGESTER/DATA_PROVIDER_UPDATE_SCOPING_CR.md`
-- `docs/proposals/CHANGE_REQUEST_INGESTER/UPDATE_HANDLING_FOR_EXISTING_ROWS.md`
+- `docs/proposals/CHANGE_REQUEST_INGESTER/future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md`
 - `ingesters/sead_change_request/orchestration.py`
 - `ingesters/sead_change_request/result_builders.py`
 - `backend/tests/ingesters/test_sead_change_request_orchestration.py`
