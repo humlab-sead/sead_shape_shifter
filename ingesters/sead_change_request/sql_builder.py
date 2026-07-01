@@ -56,7 +56,7 @@ class InlineInsertDeployStrategy:
             table_name = entity_spec.target_table or entity_name
             for row_index, row in package_table.frame.iterrows():
                 if _is_update_row(package_table, row_index):
-                    statements.append(_render_update_statement(table_name, row, entity_spec.public_id))
+                    statements.append(_render_update_statement(table_name, row, entity_spec.public_id, package_table.mutable_fields))
                 else:
                     statements.append(_render_insert_statement(table_name, row))
 
@@ -110,7 +110,7 @@ class CopyCsvDeployStrategy:
 
             if bool(update_mask.any()):
                 for row_index, row in package_table.frame.loc[update_mask].iterrows():
-                    statements.append(_render_update_statement(table_name, row, entity_spec.public_id))
+                    statements.append(_render_update_statement(table_name, row, entity_spec.public_id, package_table.mutable_fields))
 
         deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
         deploy_sql_lines.extend(statements)
@@ -331,7 +331,12 @@ def _render_insert_statement(table_name: str, row: pd.Series) -> str:
     return f"INSERT INTO {_quote_identifier(table_name)} ({identifiers}) VALUES ({values});"
 
 
-def _render_update_statement(table_name: str, row: pd.Series, public_id_column: str | None) -> str:
+def _render_update_statement(
+    table_name: str,
+    row: pd.Series,
+    public_id_column: str | None,
+    mutable_fields: list[str] | None,
+) -> str:
     """Render a single UPDATE statement for an accepted existing-row update."""
     if not public_id_column:
         raise ValueError(f"Cannot render update statement for '{table_name}' without public_id metadata")
@@ -340,7 +345,7 @@ def _render_update_statement(table_name: str, row: pd.Series, public_id_column: 
             f"Cannot render update statement for '{table_name}' because '{public_id_column}' is missing from the projected row"
         )
 
-    set_columns = _update_assignment_columns(row, public_id_column)
+    set_columns = _update_assignment_columns(row, public_id_column, mutable_fields)
     if not set_columns:
         raise ValueError(f"Cannot render update statement for '{table_name}' because no mutable columns were available")
 
@@ -452,8 +457,22 @@ def _is_update_row(package_table: ChangeRequestTable, row_index: object) -> bool
     return package_table.planned_actions.loc[row_index] == PlannedRowAction.UPDATE_EXISTING_CANDIDATE
 
 
-def _update_assignment_columns(row: pd.Series, public_id_column: str) -> list[str]:
+def _update_assignment_columns(row: pd.Series, public_id_column: str, mutable_fields: list[str] | None) -> list[str]:
     """Return the columns that should be updated for one existing-row update."""
+    if mutable_fields is not None:
+        columns: list[str] = []
+        for column_name in mutable_fields:
+            if not isinstance(column_name, str) or not column_name.strip():
+                continue
+            if column_name in {public_id_column, "system_id"}:
+                continue
+            if column_name not in row.index:
+                continue
+            if f"{column_name}__existing" not in row.index:
+                continue
+            columns.append(column_name)
+        return columns
+
     columns: list[str] = []
     for column_name in row.index:
         if str(column_name).startswith("_"):

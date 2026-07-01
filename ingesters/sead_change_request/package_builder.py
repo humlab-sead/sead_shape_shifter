@@ -30,9 +30,13 @@ def build_change_request_package(
     planned_table_lookup: dict[str, PlannedTable] = {planned_table.entity_name: planned_table for planned_table in planned_tables or []}
 
     for entity_name, projected_table in projection_result.tables.items():
-        resolved_table = identity_result.tables.get(entity_name)
-        planned_table = planned_table_lookup.get(entity_name)
+        resolved_table: ResolvedIdentityTable | None = identity_result.tables.get(entity_name)
+        planned_table: PlannedTable | None = planned_table_lookup.get(entity_name)
+        if planned_table is None:
+            infos.append(f"Skipping change-package table '{entity_name}' because no planned table was found")
+            continue
         if resolved_table is None:
+            infos.append(f"Skipping change-package table '{entity_name}' because no resolved table was found")
             continue
 
         insert_mask: pd.Series = resolved_table.row_states.isin(INSERTABLE_ROW_STATES)
@@ -52,6 +56,7 @@ def build_change_request_package(
             frame=package_frame,
             row_states=package_row_states,
             planned_actions=package_planned_actions,
+            mutable_fields=planned_table.mutable_fields,
         )
 
         insert_row_count = int(insert_mask.loc[package_mask].sum())

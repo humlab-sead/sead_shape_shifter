@@ -454,6 +454,42 @@ class TestBuildDeployArtifact:
         assert artifact.statements == ['UPDATE "tbl_sample" SET "sample_name" = \'changed\' WHERE "sample_id" = 101;']
         assert 'UPDATE "tbl_sample" SET "sample_name" = \'changed\' WHERE "sample_id" = 101;' in artifact.deploy_sql
 
+    def test_builds_update_statement_using_only_configured_mutable_fields(self):
+        """Deploy SQL should keep UPDATE statements inside the configured mutable-field boundary."""
+        frame = pd.DataFrame(
+            {
+                "system_id": [1],
+                "sample_id": [101],
+                "sample_name": ["changed"],
+                "sample_name__existing": ["old"],
+                "sample_note": ["note changed"],
+                "sample_note__existing": ["note old"],
+            }
+        )
+        package = ChangeRequestPackage(
+            tables={
+                "sample": ChangeRequestTable(
+                    name="sample",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=frame.index, name="_row_state"),
+                    planned_actions=pd.Series([PlannedRowAction.UPDATE_EXISTING_CANDIDATE], index=frame.index, name="_planned_action"),
+                    mutable_fields=["sample_name"],
+                )
+            }
+        )
+        target_model = minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"})
+        submission_context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+        artifact = build_deploy_artifact(package, target_model, submission_context)
+
+        assert artifact.statements == ['UPDATE "tbl_sample" SET "sample_name" = \'changed\' WHERE "sample_id" = 101;']
+
     def test_copy_csv_renders_update_statements_inline_for_existing_rows(self):
         """CSV deploy rendering should keep insert sidecars and emit accepted existing-row updates inline."""
         frame = pd.DataFrame(
