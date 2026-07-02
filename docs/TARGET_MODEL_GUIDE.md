@@ -4,7 +4,7 @@
 
 A **target model specification** is a YAML file that describes what an external destination system — such as the SEAD Clearinghouse — expects from a Shape Shifter project. It defines which entities are required, what columns and foreign-key relationships they must have, and what naming conventions apply.
 
-The field-level schema authority lives in the Pydantic models in `src/target_model/models.py`. Use `TARGET_MODEL_GUIDE.md` as the narrative guide and `TARGET_MODEL_SCHEMA_REFERENCE.md` as the generated key-by-key reference derived from that schema.
+The field-level schema authority lives in the Pydantic models in `src/target_model/models.py`. Use `TARGET_MODEL_GUIDE.md` (this document) as the narrative guide and `TARGET_MODEL_SCHEMA_REFERENCE.md` as the generated key-by-key reference derived from that schema.
 
 When a project references a target model, Shape Shifter can perform **conformance validation**: checking whether the project entities actually satisfy the requirements described in the spec. This catches semantic modeling errors at configuration time, before you run the pipeline or attempt a dispatch.
 
