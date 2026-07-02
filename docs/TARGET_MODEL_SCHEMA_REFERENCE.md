@@ -51,12 +51,12 @@ Unknown keys in these sections are rejected because each model uses `extra="forb
 
 Top-level target model file structure.
 
-| Field | Type | Required | Default | Allowed |
-|---|---|---|---|---|
-| model | ModelMetadata | Yes | - | - |
-| entities | map[string, EntitySpec] | No | {} | - |
-| naming | NamingConventions \| null | No | null | null |
-| constraints | list[GlobalConstraint] | No | [] | - |
+| Field       | Type                      | Required | Default | Allowed |
+|-------------|---------------------------|----------|---------|---------|
+| model       | ModelMetadata             | Yes      | -       | -       |
+| entities    | map[string, EntitySpec]   | No       | {}      | -       |
+| naming      | NamingConventions \| null | No       | null    | null    |
+| constraints | list[GlobalConstraint]    | No       | []      | -       |
 
 Additional keys allowed: No
 
@@ -64,12 +64,12 @@ Additional keys allowed: No
 
 Values under the `model` section that identify the specification.
 
-| Field | Type | Required | Default | Allowed |
-|---|---|---|---|---|
-| name | string | Yes | - | - |
-| format_version | string | No | "1" | - |
-| version | string | Yes | - | - |
-| description | string \| null | No | null | null |
+| Field          | Type           | Required | Default | Allowed |
+|----------------|----------------|----------|---------|---------|
+| name           | string         | Yes      | -       | -       |
+| format_version | string         | No       | "1"     | -       |
+| version        | string         | Yes      | -       | -       |
+| description    | string \| null | No       | null    | null    |
 
 Additional keys allowed: No
 
@@ -77,21 +77,22 @@ Additional keys allowed: No
 
 Values under `entities.<entity_name>` for each target entity.
 
-| Field | Type | Required | Default | Allowed |
-|---|---|---|---|---|
-| role | enum[string] \| null | No | null | "fact", "lookup", "classifier", "bridge", null |
-| required | boolean | No | false | - |
-| description | string \| null | No | null | null |
-| domains | list[string] | No | [] | - |
-| target_table | string \| null | No | null | null |
-| public_id | string \| null | No | null | null |
-| identity_columns | list[string] | No | [] | - |
-| columns | map[string, ColumnSpec] | No | {} | - |
-| unique_sets | list[list[string]] | No | [] | - |
-| foreign_keys | list[ForeignKeySpec] | No | [] | - |
-| identity_tracking | enum[string] \| null | No | null | "tracked", "reconciled", "derived", "child", null |
-| reconciliation | enum[string] \| null | No | null | "allocate", "reconcile-exact", "reconcile-fuzzy", "lookup-only", "lookup-extensible", "derive", null |
-| aggregate_parent | string \| null | No | null | null |
+| Field             | Type                    | Required | Default | Allowed                                            |
+|-------------------|-------------------------|----------|---------|----------------------------------------------------|
+| role              | enum[string] \| null    | No       | null    | "fact", "lookup", "classifier", "bridge", null     |
+| required          | boolean                 | No       | false   | -                                                  |
+| description       | string \| null          | No       | null    | null                                               |
+| domains           | list[string]            | No       | []      | -                                                  |
+| target_table      | string \| null          | No       | null    | null                                               |
+| public_id         | string \| null          | No       | null    | null                                               |
+| identity_columns  | list[string]            | No       | []      | -                                                  |
+| columns           | map[string, ColumnSpec] | No       | {}      | -                                                  |
+| unique_sets       | list[list[string]]      | No       | []      | -                                                  |
+| foreign_keys      | list[ForeignKeySpec]    | No       | []      | -                                                  |
+| identity_tracking | enum[string] \| null    | No       | null    | "tracked", "reconciled", "derived", "child", null  |
+| reconciliation    | enum[string] \| null    | No       | null    | "allocate", "reconcile-exact", "reconcile-fuzzy"   |
+|                   |                         |          |         | "lookup-only", "lookup-extensible", "derive", null |
+| aggregate_parent  | string \| null          | No       | null    | null                                               |
 
 Additional keys allowed: No
 
@@ -99,14 +100,14 @@ Additional keys allowed: No
 
 Values under `entities.<entity_name>.columns.<column_name>` for each declared column.
 
-| Field | Type | Required | Default | Allowed |
-|---|---|---|---|---|
-| required | boolean | No | false | - |
-| generated | boolean | No | false | - |
-| allowed_values | list[string \| integer \| number \| boolean] | No | [] | - |
-| type | string \| null | No | null | null |
-| nullable | boolean \| null | No | null | null |
-| description | string \| null | No | null | null |
+| Field          | Type                                         | Required | Default | Allowed |
+|----------------|----------------------------------------------|----------|---------|---------|
+| required       | boolean                                      | No       | false   | -       |
+| generated      | boolean                                      | No       | false   | -       |
+| allowed_values | list[string \| integer \| number \| boolean] | No       | []      | -       |
+| type           | string \| null                               | No       | null    | null    |
+| nullable       | boolean \| null                              | No       | null    | null    |
+| description    | string \| null                               | No       | null    | null    |
 
 Additional keys allowed: No
 
@@ -114,11 +115,11 @@ Additional keys allowed: No
 
 Values under `entities.<entity_name>.foreign_keys[]` for each foreign key requirement.
 
-| Field | Type | Required | Default | Allowed |
-|---|---|---|---|---|
-| entity | string | Yes | - | - |
-| required | boolean | No | false | - |
-| via | string \| null | No | null | null |
+| Field    | Type           | Required | Default | Allowed |
+|----------|----------------|----------|---------|---------|
+| entity   | string         | Yes      | -       | -       |
+| required | boolean        | No       | false   | -       |
+| via      | string \| null | No       | null    | null    |
 
 Additional keys allowed: No
 
@@ -126,9 +127,9 @@ Additional keys allowed: No
 
 Optional naming rules under the `naming` section.
 
-| Field | Type | Required | Default | Allowed |
-|---|---|---|---|---|
-| public_id_suffix | string \| null | No | null | null |
+| Field            | Type           | Required | Default | Allowed |
+|------------------|----------------|----------|---------|---------|
+| public_id_suffix | string \| null | No       | null    | null    |
 
 Additional keys allowed: No
 
@@ -136,9 +137,9 @@ Additional keys allowed: No
 
 Entries under the optional `constraints[]` list.
 
-| Field | Type | Required | Default | Allowed |
-|---|---|---|---|---|
-| type | string | Yes | - | - |
-| required | boolean \| string \| null | No | null | null |
+| Field    | Type                      | Required | Default | Allowed |
+|----------|---------------------------|----------|---------|---------|
+| type     | string                    | Yes      | -       | -       |
+| required | boolean \| string \| null | No       | null    | null    |
 
 Additional keys allowed: No
