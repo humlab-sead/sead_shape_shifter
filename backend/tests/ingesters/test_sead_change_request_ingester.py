@@ -543,6 +543,8 @@ class TestSeadChangeRequestIngesterValidation:
 
         assert result.is_valid is False
         assert any("Blocked rows after identity resolution: 1" in info for info in result.infos)
+        assert any("Outcome classification:" in info for info in result.infos)
+        assert any("pending_review" in info for info in result.infos)
         assert result.errors == [
             "Entity 'sample' has 1 row(s) without a resolved target ID for 'sample_id'",
             "Entity 'sample' row '0' is missing an identity assignment for planned action 'allocate'",
@@ -578,6 +580,8 @@ class TestSeadChangeRequestIngesterValidation:
 
         assert result.is_valid is True
         assert any("Blocked rows after identity resolution: 0" in info for info in result.infos)
+        assert any("Outcome classification:" in info for info in result.infos)
+        assert any("allowed_update" in info for info in result.infos)
         assert result.warnings == ["Entity 'sample' row '0': Allocated by test harness"]
 
     @pytest.mark.asyncio
@@ -629,6 +633,123 @@ class TestSeadChangeRequestIngesterValidation:
         assert result.pending_confirmation_report is not None
         assert result.pending_confirmation_report["binding_set_uuid"] == "binding-123"
         assert result.pending_confirmation_report["binding_set_state"] == "proposed"
+
+    @pytest.mark.asyncio
+    async def test_validate_reports_outcome_counts_for_existing_rows_with_mutable_field_scope(self):
+        """Validation infos should include no-op and allowed-update counts based on configured mutable fields."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {
+                        "sample": pd.DataFrame(
+                            {
+                                "sample_id": [101, 102],
+                                "sample_name": ["A", "B updated"],
+                                "sample_name__existing": ["A", "B"],
+                                "sample_note": ["new note", "new note"],
+                                "sample_note__existing": ["old note", "old note"],
+                            }
+                        )
+                    },
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(),
+                    "mutable_fields_by_entity": {"sample": ["sample_name"]},
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is True
+        assert any(
+            "Outcome classification: 0 new_data, 1 no_op, 1 allowed_update, 0 pending_review, 0 blocked" in info for info in result.infos
+        )
+
+    @pytest.mark.asyncio
+    async def test_validate_routes_existing_rows_to_issue3a_planning_actions(self):
+        """Validation should route existing-row updates into candidate and blocked Issue 3A planning actions."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {
+                        "sample": pd.DataFrame(
+                            {
+                                "sample_id": [101, 102],
+                                "sample_name": ["A changed", "B changed"],
+                                "sample_name__existing": ["A", "B"],
+                            }
+                        ),
+                        "sample_location": pd.DataFrame(
+                            {
+                                "sample_location_id": [201],
+                                "site_note": ["new"],
+                            }
+                        ),
+                    },
+                    "target_model": minimal_target_model(
+                        sample={"role": "fact", "public_id": "sample_id"},
+                        sample_location={"role": "fact", "public_id": "sample_location_id"},
+                    ),
+                    "submission_context": minimal_submission_context(),
+                    "mutable_fields_by_entity": {
+                        "sample": ["sample_name"],
+                        "sample_location": ["site_note"],
+                    },
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert any("Planned 'sample': 2 update_existing_candidate" in info for info in result.infos)
+        assert any("Planned 'sample_location': 1 block_existing_update" in info for info in result.infos)
+        assert any(
+            "Identity work queues:" in info and "2 update_candidate" in info and "1 blocked_existing_update" in info
+            for info in result.infos
+        )
+        assert any("blocked existing-row update planning" in warning for warning in result.warnings)
+
+    @pytest.mark.asyncio
+    async def test_validate_blocks_existing_row_updates_outside_first_slice_scope(self):
+        """Validation should keep existing-row updates blocked for entities outside the first-slice allowlist."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {
+                        "sample": pd.DataFrame(
+                            {
+                                "sample_id": [101],
+                                "sample_name": ["A changed"],
+                                "sample_name__existing": ["A"],
+                            }
+                        )
+                    },
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id"}),
+                    "submission_context": minimal_submission_context(),
+                    "mutable_fields_by_entity": {"sample": ["sample_name"]},
+                    "existing_row_update_entities": ["other_entity"],
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert any("outside the first existing-row update slice" in warning for warning in result.warnings)
+        assert any("1 blocked_existing_update" in info for info in result.infos)
 
 
 class TestSeadChangeRequestIngesterIngest:
@@ -833,6 +954,45 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.deploy_artifact is not None
         assert result.deploy_artifact["metadata"]["deploy_strategy"] == "inline_insert"
         assert 'INSERT INTO "tbl_sample" ("sample_id") VALUES (501);' in result.deploy_artifact["deploy_sql"]
+
+    @pytest.mark.asyncio
+    async def test_ingest_emits_update_statement_for_accepted_existing_row(self, tmp_path):
+        """Ingest should render accepted existing-row updates as UPDATE statements in the deploy artifact."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {
+                        "sample": pd.DataFrame(
+                            {
+                                "sample_id": [101],
+                                "sample_name": ["updated name"],
+                                "sample_name__existing": ["old name"],
+                            }
+                        )
+                    },
+                    "target_model": minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"}),
+                    "submission_context": minimal_submission_context(),
+                    "mutable_fields_by_entity": {"sample": ["sample_name"]},
+                    "existing_row_update_entities": ["sample"],
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx")
+
+        assert result.success is True
+        assert result.tables_processed == 1
+        assert result.records_inserted == 1
+        assert result.deploy_artifact is not None
+        assert 'UPDATE "tbl_sample" SET "sample_name" = \'updated name\' WHERE "sample_id" = 101;' in result.deploy_artifact["deploy_sql"]
+        assert "INSERT INTO" not in result.deploy_artifact["deploy_sql"]
+        bundle_name = expected_bundle_name()
+        assert (tmp_path / bundle_name / "deploy" / f"{bundle_name}.sql").exists()
 
     @pytest.mark.asyncio
     async def test_ingest_emits_strategy_sidecar_files(self, tmp_path):
@@ -1320,7 +1480,7 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.deploy_artifact["metadata_artifact"]["deploy_statement_count"] == 2
         assert result.deploy_artifact["metadata_artifact"]["deploy_strategy"] == "inline_insert"
         assert result.deploy_artifact["metadata_artifact"]["verify_placeholder"] is True
-        assert 'INSERT INTO "tbl_sample" ("system_id", "sample_id", "sample_name") VALUES (2, 501, ' in result.deploy_artifact["deploy_sql"]
+        assert 'INSERT INTO "tbl_sample" ("sample_id", "sample_name") VALUES (501, ' in result.deploy_artifact["deploy_sql"]
         assert (
             'INSERT INTO "tbl_sample_taxon" ("sample_id", "taxon_id", "abundance") VALUES (501, 9200, 3);'
             in result.deploy_artifact["deploy_sql"]

@@ -186,7 +186,7 @@ This comparison is the detailed home for Issue 6.
 
 ### Review Method
 
-For Issue 6, the comparison was performed against the filtered offline snapshots in [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_tables.csv](../CHANGE_REQUEST_INGESTER/filtered_import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/filtered_import_columns.csv), not against an unfiltered live schema dump.
+For Issue 6, the comparison was performed against the filtered offline snapshots in [docs/proposals/CHANGE_REQUEST_INGESTER/resources/filtered_import_tables.csv](../CHANGE_REQUEST_INGESTER/resources/filtered_import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/resources/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/resources/filtered_import_columns.csv), not against an unfiltered live schema dump.
 
 That matters because this review is intended to support a stable target-model decision, not to mirror every runtime table that may exist in a live SEAD database.
 
@@ -206,13 +206,13 @@ Issue 6 should now be finished as a short, explicit review process rather than a
 
 Use these files as the offline baseline for the live-schema side of the comparison:
 
-- [docs/proposals/CHANGE_REQUEST_INGESTER/import_tables.csv](../CHANGE_REQUEST_INGESTER/import_tables.csv)
-- [docs/proposals/CHANGE_REQUEST_INGESTER/import_columns.csv](../CHANGE_REQUEST_INGESTER/import_columns.csv)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/resources/import_tables.csv](../CHANGE_REQUEST_INGESTER/resources/import_tables.csv)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/resources/import_columns.csv](../CHANGE_REQUEST_INGESTER/resources/import_columns.csv)
 
 The filtered working set initialized on the current branch is:
 
-- [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_tables.csv](../CHANGE_REQUEST_INGESTER/filtered_import_tables.csv)
-- [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/filtered_import_columns.csv)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/resources/filtered_import_tables.csv](../CHANGE_REQUEST_INGESTER/resources/filtered_import_tables.csv)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/resources/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/resources/filtered_import_columns.csv)
 
 These files are snapshots of the outputs from `SchemaService.get_sead_tables()` and `SchemaService.get_sead_columns()` in [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py).
 
@@ -242,11 +242,11 @@ It is a legacy update timestamp and should not influence target-model boundary d
 
 ### Step-By-Step Plan
 
-1. Build a filtered live-schema working set from [docs/proposals/CHANGE_REQUEST_INGESTER/import_tables.csv](../CHANGE_REQUEST_INGESTER/import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/import_columns.csv](../CHANGE_REQUEST_INGESTER/import_columns.csv).
+1. Build a filtered live-schema working set from [docs/proposals/CHANGE_REQUEST_INGESTER/resources/import_tables.csv](../CHANGE_REQUEST_INGESTER/resources/import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/resources/import_columns.csv](../CHANGE_REQUEST_INGESTER/resources/import_columns.csv).
 Remove the deprecated and out-of-scope table families listed above before doing any target-model comparison.
 For the column snapshot, also remove `date_updated` before doing any entity-level comparison.
 
-Current branch status: this step is initialized in [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_tables.csv](../CHANGE_REQUEST_INGESTER/filtered_import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/filtered_import_columns.csv).
+Current branch status: this step is initialized in [docs/proposals/CHANGE_REQUEST_INGESTER/resources/filtered_import_tables.csv](../CHANGE_REQUEST_INGESTER/resources/filtered_import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/resources/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/resources/filtered_import_columns.csv).
 
 2. Group the remaining live-schema tables into comparison buckets rather than reviewing them one by one.
 Use practical buckets such as core provenance, site and location, sample and sample group, feature context, chronology and dating, taxonomy, abundance, analysis values, project metadata, and lookup tables.
@@ -254,7 +254,7 @@ Use practical buckets such as core provenance, site and location, sample and sam
 3. Map each filtered live-schema bucket to the current target-model entities in [resources/target_models/sead_superset_model.yml](../../../resources/target_models/sead_superset_model.yml).
 For each bucket, record one of four outcomes: already covered, partially covered, missing from the target model, or intentionally out of scope for the shared model.
 
-4. Use [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/filtered_import_columns.csv) to check whether the apparent table-level gaps are real entity gaps or only column-level differences.
+4. Use [docs/proposals/CHANGE_REQUEST_INGESTER/resources/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/resources/filtered_import_columns.csv) to check whether the apparent table-level gaps are real entity gaps or only column-level differences.
 Do not propose a new target-model entity until the filtered column snapshot shows that the live-schema table carries a distinct business concept rather than only extra operational columns such as legacy XML names or analysis-value-specific structure.
 
 5. Separate true shared-model candidates from derived, operational, or legacy-only schema artifacts.
@@ -310,7 +310,7 @@ Issue 6 is ready to close when this document makes all of the following explicit
 
 This table applies the Issue 6 plan to the current CSV snapshots.
 
-It uses the filtered `get_sead_tables()` and `get_sead_columns()` outputs in [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_tables.csv](../CHANGE_REQUEST_INGESTER/filtered_import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/filtered_import_columns.csv), derived from the raw snapshots after excluding the deprecated and out-of-scope table families listed above and the legacy `date_updated` column from column-level review.
+It uses the filtered `get_sead_tables()` and `get_sead_columns()` outputs in [docs/proposals/CHANGE_REQUEST_INGESTER/resources/filtered_import_tables.csv](../CHANGE_REQUEST_INGESTER/resources/filtered_import_tables.csv) and [docs/proposals/CHANGE_REQUEST_INGESTER/resources/filtered_import_columns.csv](../CHANGE_REQUEST_INGESTER/resources/filtered_import_columns.csv), derived from the raw snapshots after excluding the deprecated and out-of-scope table families listed above and the legacy `date_updated` column from column-level review.
 
 | Comparison bucket | Live-schema concept or table family | Current target-model state | Decision | Reason |
 | --- | --- | --- | --- | --- |
@@ -490,5 +490,5 @@ Issue 6 should count as complete when all of the following are true:
 - [docs/TARGET_MODEL_GUIDE.md](../../TARGET_MODEL_GUIDE.md)
 - [ingesters/sead/metadata.py](../../../ingesters/sead/metadata.py)
 - [docs/proposals/done/SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md](./SEAD_V2_TARGET_MODEL_FOLLOWUP_ISSUES.md)
-- [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md](../CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md)
+- [docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md](../CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md)
 - [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md](../CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md)

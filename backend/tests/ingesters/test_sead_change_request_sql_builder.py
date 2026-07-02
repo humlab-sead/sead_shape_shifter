@@ -15,6 +15,7 @@ from ingesters.sead_change_request import (
     ChangeRowState,
     CopyCsvDeployStrategy,
     DeployArtifact,
+    PlannedRowAction,
     SubmissionContext,
     build_deploy_artifact,
     resolve_deploy_artifact_strategy,
@@ -418,3 +419,121 @@ class TestBuildDeployArtifact:
         assert artifact.statements == ['INSERT INTO "site" ("site_id") VALUES (501);']
         assert artifact.metadata_artifact["artifact_type"] == "delivery_1_change_package"
         assert artifact.metadata_artifact["deploy_strategy"] == "inline_insert"
+
+    def test_builds_update_statement_for_accepted_existing_row(self):
+        """Deploy SQL should render accepted existing-row updates as UPDATE statements."""
+        frame = pd.DataFrame(
+            {
+                "system_id": [1],
+                "sample_id": [101],
+                "sample_name": ["changed"],
+                "sample_name__existing": ["old"],
+            }
+        )
+        package = ChangeRequestPackage(
+            tables={
+                "sample": ChangeRequestTable(
+                    name="sample",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=frame.index, name="_row_state"),
+                    planned_actions=pd.Series([PlannedRowAction.UPDATE_EXISTING_CANDIDATE], index=frame.index, name="_planned_action"),
+                )
+            }
+        )
+        target_model = minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"})
+        submission_context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+        artifact = build_deploy_artifact(package, target_model, submission_context)
+
+        assert artifact.statements == ['UPDATE "tbl_sample" SET "sample_name" = \'changed\' WHERE "sample_id" = 101;']
+        assert 'UPDATE "tbl_sample" SET "sample_name" = \'changed\' WHERE "sample_id" = 101;' in artifact.deploy_sql
+
+    def test_builds_update_statement_using_only_configured_mutable_fields(self):
+        """Deploy SQL should keep UPDATE statements inside the configured mutable-field boundary."""
+        frame = pd.DataFrame(
+            {
+                "system_id": [1],
+                "sample_id": [101],
+                "sample_name": ["changed"],
+                "sample_name__existing": ["old"],
+                "sample_note": ["note changed"],
+                "sample_note__existing": ["note old"],
+            }
+        )
+        package = ChangeRequestPackage(
+            tables={
+                "sample": ChangeRequestTable(
+                    name="sample",
+                    frame=frame,
+                    row_states=pd.Series([ChangeRowState.EXISTING_ENTITY], index=frame.index, name="_row_state"),
+                    planned_actions=pd.Series([PlannedRowAction.UPDATE_EXISTING_CANDIDATE], index=frame.index, name="_planned_action"),
+                    mutable_fields=["sample_name"],
+                )
+            }
+        )
+        target_model = minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"})
+        submission_context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+        artifact = build_deploy_artifact(package, target_model, submission_context)
+
+        assert artifact.statements == ['UPDATE "tbl_sample" SET "sample_name" = \'changed\' WHERE "sample_id" = 101;']
+
+    def test_copy_csv_renders_update_statements_inline_for_existing_rows(self):
+        """CSV deploy rendering should keep insert sidecars and emit accepted existing-row updates inline."""
+        frame = pd.DataFrame(
+            {
+                "system_id": [1, 2],
+                "sample_id": [101, 102],
+                "sample_name": ["new row", "changed row"],
+                "sample_name__existing": ["new row", "old row"],
+            }
+        )
+        package = ChangeRequestPackage(
+            tables={
+                "sample": ChangeRequestTable(
+                    name="sample",
+                    frame=frame,
+                    row_states=pd.Series(
+                        [ChangeRowState.NEWLY_ALLOCATED_ENTITY, ChangeRowState.EXISTING_ENTITY],
+                        index=frame.index,
+                        name="_row_state",
+                    ),
+                    planned_actions=pd.Series(
+                        [PlannedRowAction.REFERENCE_EXISTING, PlannedRowAction.UPDATE_EXISTING_CANDIDATE],
+                        index=frame.index,
+                        name="_planned_action",
+                    ),
+                )
+            }
+        )
+        target_model = minimal_target_model(sample={"role": "fact", "public_id": "sample_id", "target_table": "tbl_sample"})
+        submission_context = SubmissionContext(
+            submission_name="test-submission",
+            project_name="test-project",
+            timestamp=datetime(2026, 5, 23, 23, 0, 0),
+            datatype="mal",
+            identifier="TEST_SUBMISSION",
+        )
+
+        artifact = build_deploy_artifact(package, target_model, submission_context, strategy="copy_csv")
+
+        expected_bundle_name = bundle_name(submission_context)
+        assert artifact.metadata_artifact["bundle_file_count"] == 1
+        assert artifact.metadata_artifact["row_counts"] == {"tbl_sample": 1}
+        assert artifact.bundle_files == {f"deploy/{expected_bundle_name}/tbl_sample.gz": "101\tnew row\n"}
+        assert artifact.statements == [
+            f"\\copy \"tbl_sample\" (\"sample_id\", \"sample_name\") FROM program 'zcat -qac {expected_bundle_name}/tbl_sample.gz' WITH (FORMAT csv, DELIMITER E'\\t', ENCODING 'utf-8');",
+            'UPDATE "tbl_sample" SET "sample_name" = \'changed row\' WHERE "sample_id" = 102;',
+        ]

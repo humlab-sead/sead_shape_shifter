@@ -16,7 +16,10 @@ from ingesters.sead_change_request.contracts import (
     ResolvedIdentityTable,
     SourceTableBundle,
     SubmissionContext,
+    SubmissionOutcome,
+    SubmissionOutcomeSummary,
     TargetProjectionResult,
+    classify_submission_outcomes,
 )
 from ingesters.sead_change_request.identity_resolution import resolve_planned_tables
 from ingesters.sead_change_request.identity_work import build_identity_work_plan
@@ -39,6 +42,8 @@ __all__ = [
     "ChangeRequestPackage",
     "ChangeRequestTable",
     "ChangeRowState",
+    "SubmissionOutcome",
+    "SubmissionOutcomeSummary",
     "CollisionCheckResult",
     "COPY_CSV_DEPLOY_ARTIFACT_STRATEGY",
     "DEFAULT_DEPLOY_ARTIFACT_STRATEGY",
@@ -65,6 +70,7 @@ __all__ = [
     "project_target_ids",
     "orchestrate_identity_assignments",
     "resolve_planned_tables",
+    "classify_submission_outcomes",
     "build_identity_work_plan",
     "plan_table",
     "resolve_deploy_artifact_strategy",

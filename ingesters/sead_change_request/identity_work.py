@@ -12,6 +12,8 @@ def build_identity_work_plan(planned_tables: list[PlannedTable]) -> IdentityWork
     for planned_table in planned_tables:
         for action, target in (
             (PlannedRowAction.REFERENCE_EXISTING, work_plan.existing_rows),
+            (PlannedRowAction.UPDATE_EXISTING_CANDIDATE, work_plan.update_candidate_rows),
+            (PlannedRowAction.BLOCK_EXISTING_UPDATE, work_plan.blocked_existing_update_rows),
             (PlannedRowAction.ALLOCATE, work_plan.allocation_rows),
             (PlannedRowAction.RECONCILE, work_plan.reconciliation_rows),
             (PlannedRowAction.EVALUATE_BRIDGE, work_plan.bridge_rows),

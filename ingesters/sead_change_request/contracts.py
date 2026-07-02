@@ -41,9 +41,30 @@ class PlannedRowAction(StrEnum):
     """Planned row actions before identity work is carried out."""
 
     REFERENCE_EXISTING = "reference_existing"
+    UPDATE_EXISTING_CANDIDATE = "update_existing_candidate"
+    BLOCK_EXISTING_UPDATE = "block_existing_update"
     ALLOCATE = "allocate"
     RECONCILE = "reconcile"
     EVALUATE_BRIDGE = "evaluate_bridge"
+
+
+class LifecycleVersionState(StrEnum):
+    """Lifecycle states for versioned logical records."""
+
+    LIVE = "live"
+    SUPERSEDED = "superseded"
+    PENDING_REVIEW = "pending_review"
+    BLOCKED = "blocked"
+
+
+class SubmissionOutcome(StrEnum):
+    """Outcome classes used by phase-2 submission planning."""
+
+    NEW_DATA = "new_data"
+    NO_OP = "no_op"
+    ALLOWED_UPDATE = "allowed_update"
+    PENDING_REVIEW = "pending_review"
+    BLOCKED = "blocked"
 
 
 @dataclass(slots=True)
@@ -78,6 +99,7 @@ class PlannedTable:
     entity_name: str
     frame: pd.DataFrame
     planned_actions: pd.Series
+    mutable_fields: list[str] | None = None
     diagnostics: list[str] = field(default_factory=list)
 
 
@@ -86,6 +108,8 @@ class IdentityWorkPlan:
     """Groups of planned rows organized by the identity work they need."""
 
     existing_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
+    update_candidate_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
+    blocked_existing_update_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     allocation_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     reconciliation_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
     bridge_rows: dict[str, pd.DataFrame] = field(default_factory=dict)
@@ -93,6 +117,14 @@ class IdentityWorkPlan:
     @property
     def total_existing_rows(self) -> int:
         return sum(len(frame.index) for frame in self.existing_rows.values())
+
+    @property
+    def total_update_candidate_rows(self) -> int:
+        return sum(len(frame.index) for frame in self.update_candidate_rows.values())
+
+    @property
+    def total_blocked_existing_update_rows(self) -> int:
+        return sum(len(frame.index) for frame in self.blocked_existing_update_rows.values())
 
     @property
     def total_allocation_rows(self) -> int:
@@ -114,6 +146,29 @@ class IdentityAssignment:
     state: ChangeRowState
     target_id: int | None = None
     note: str | None = None
+
+
+@dataclass(slots=True)
+class LogicalRecordVersion:
+    """Version metadata for one logical record entry."""
+
+    logical_record_key: str
+    version_key: str
+    lifecycle_state: LifecycleVersionState
+    supersedes_version_key: str | None = None
+    submitted_at: datetime | None = None
+
+
+@dataclass(slots=True)
+class SubmissionOutcomeSummary:
+    """Row-count summary for phase-2 outcome classification."""
+
+    new_data_rows: int = 0
+    no_op_rows: int = 0
+    allowed_update_rows: int = 0
+    pending_review_rows: int = 0
+    blocked_rows: int = 0
+    diagnostics: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -208,6 +263,8 @@ class ChangeRequestTable:
     name: str
     frame: pd.DataFrame
     row_states: pd.Series
+    planned_actions: pd.Series | None = None
+    mutable_fields: list[str] | None = None
 
 
 @dataclass(slots=True)
@@ -230,6 +287,181 @@ class DeployArtifact:
     verify_sql: str = ""
     metadata_artifact: dict[str, Any] = field(default_factory=dict)
     bundle_files: dict[str, str] = field(default_factory=dict)
+
+
+def validate_one_live_version(records: list[LogicalRecordVersion]) -> list[str]:
+    """Return invariant violations when a logical record has multiple live versions."""
+    live_counts: dict[str, int] = {}
+    violations: list[str] = []
+
+    for record in records:
+        if record.lifecycle_state != LifecycleVersionState.LIVE:
+            continue
+        live_counts[record.logical_record_key] = live_counts.get(record.logical_record_key, 0) + 1
+
+    for logical_record_key, count in live_counts.items():
+        if count <= 1:
+            continue
+        violations.append(f"Logical record '{logical_record_key}' has {count} live versions; expected at most one live version")
+
+    return violations
+
+
+def classify_submission_outcomes(
+    planned_tables: list[PlannedTable],
+    identity_result: IdentityResolutionResult,
+    *,
+    has_pending_review: bool,
+    mutable_fields_by_entity: dict[str, list[str]] | None = None,
+) -> SubmissionOutcomeSummary:
+    """Classify rows into phase-2 outcomes and return a summary."""
+    unscoped_reference_existing_rows = 0
+    unscoped_no_op_rows = 0
+    no_op_rows = 0
+    allowed_update_rows = 0
+    compared_reference_rows = 0
+
+    for planned_table in planned_tables:
+        reference_mask = planned_table.planned_actions == PlannedRowAction.REFERENCE_EXISTING
+        update_candidate_mask = planned_table.planned_actions == PlannedRowAction.UPDATE_EXISTING_CANDIDATE
+        blocked_existing_update_mask = planned_table.planned_actions == PlannedRowAction.BLOCK_EXISTING_UPDATE
+
+        scoped_mutable_fields = mutable_fields_by_entity.get(planned_table.entity_name) if mutable_fields_by_entity else None
+        if scoped_mutable_fields is not None:
+            has_phase3_existing_row_actions = bool(update_candidate_mask.any()) or bool(blocked_existing_update_mask.any())
+            if has_phase3_existing_row_actions:
+                scoped_reference_rows = int(reference_mask.sum())
+                scoped_update_rows = int(update_candidate_mask.sum())
+                no_op_rows += scoped_reference_rows
+                allowed_update_rows += scoped_update_rows
+                compared_reference_rows += scoped_reference_rows + scoped_update_rows
+                continue
+
+            unscoped_reference_existing_rows += int(reference_mask.sum())
+
+            baseline_pairs = _baseline_column_pairs(
+                planned_table.frame,
+                mutable_fields=scoped_mutable_fields,
+            )
+            if not baseline_pairs:
+                continue
+
+            for row_key in planned_table.frame.index[reference_mask]:
+                compared_reference_rows += 1
+                if _is_no_op_row(planned_table.frame, row_key, baseline_pairs):
+                    no_op_rows += 1
+                    unscoped_no_op_rows += 1
+            continue
+
+        unscoped_reference_existing_rows += int(reference_mask.sum())
+
+        baseline_pairs = _baseline_column_pairs(
+            planned_table.frame,
+            mutable_fields=None,
+        )
+        if not baseline_pairs:
+            continue
+
+        for row_key in planned_table.frame.index[reference_mask]:
+            compared_reference_rows += 1
+            if _is_no_op_row(planned_table.frame, row_key, baseline_pairs):
+                no_op_rows += 1
+                unscoped_no_op_rows += 1
+
+    allowed_update_rows += max(unscoped_reference_existing_rows - unscoped_no_op_rows, 0)
+
+    new_data_rows = 0
+    blocked_rows = 0
+    for resolved_table in identity_result.tables.values():
+        row_states = resolved_table.row_states
+        new_data_rows += int(
+            (
+                (row_states == ChangeRowState.NEWLY_ALLOCATED_ENTITY)
+                | (row_states == ChangeRowState.RECONCILED_CLASSIFIER)
+                | (row_states == ChangeRowState.DERIVED_BRIDGE_ROW)
+            ).sum()
+        )
+        blocked_rows += int((row_states == ChangeRowState.BLOCKED_UNRESOLVED).sum())
+
+    pending_review_rows = blocked_rows if has_pending_review else 0
+    blocked_rows = max(blocked_rows - pending_review_rows, 0)
+
+    diagnostics = [
+        (
+            "Outcome classification: "
+            f"{new_data_rows} {SubmissionOutcome.NEW_DATA.value}, "
+            f"{no_op_rows} {SubmissionOutcome.NO_OP.value}, "
+            f"{allowed_update_rows} {SubmissionOutcome.ALLOWED_UPDATE.value}, "
+            f"{pending_review_rows} {SubmissionOutcome.PENDING_REVIEW.value}, "
+            f"{blocked_rows} {SubmissionOutcome.BLOCKED.value}"
+        )
+    ]
+
+    if compared_reference_rows == 0:
+        diagnostics.append("No existing-row references detected; no-op comparison skipped")
+    elif no_op_rows == 0:
+        diagnostics.append("No no-op rows detected from mutable-field comparison")
+
+    if unscoped_reference_existing_rows and compared_reference_rows == 0:
+        diagnostics.append(
+            "No mutable baseline columns were provided for existing-row comparison; treated all existing references as allowed_update"
+        )
+
+    return SubmissionOutcomeSummary(
+        new_data_rows=new_data_rows,
+        no_op_rows=no_op_rows,
+        allowed_update_rows=allowed_update_rows,
+        pending_review_rows=pending_review_rows,
+        blocked_rows=blocked_rows,
+        diagnostics=diagnostics,
+    )
+
+
+def _baseline_column_pairs(frame: pd.DataFrame, *, mutable_fields: list[str] | None = None) -> list[tuple[str, str]]:
+    """Return (current, baseline) pairs using configured fields or '<field>__existing' discovery."""
+    if mutable_fields is not None:
+        pairs: list[tuple[str, str]] = []
+        for current_column in mutable_fields:
+            if not current_column or current_column.startswith("_"):
+                continue
+            baseline_column = f"{current_column}__existing"
+            if current_column not in frame.columns:
+                continue
+            if baseline_column not in frame.columns:
+                continue
+            pairs.append((current_column, baseline_column))
+        return pairs
+
+    pairs: list[tuple[str, str]] = []
+    for baseline_column in frame.columns:
+        if not baseline_column.endswith("__existing"):
+            continue
+        current_column = baseline_column[: -len("__existing")]
+        if not current_column or current_column.startswith("_"):
+            continue
+        if current_column not in frame.columns:
+            continue
+        pairs.append((current_column, baseline_column))
+    return pairs
+
+
+def _is_no_op_row(frame: pd.DataFrame, row_key: object, baseline_pairs: list[tuple[str, str]]) -> bool:
+    """Return True when all mutable fields match their baseline values for one row."""
+    for current_column, baseline_column in baseline_pairs:
+        current_value = frame.at[row_key, current_column]
+        baseline_value = frame.at[row_key, baseline_column]
+        if not _values_equal_for_outcome_comparison(current_value, baseline_value):
+            return False
+    return True
+
+
+def _values_equal_for_outcome_comparison(left: Any, right: Any) -> bool:
+    """Compare mutable-field values for no-op outcome detection."""
+    if pd.isna(left) and pd.isna(right):
+        return True
+    if isinstance(left, str) and isinstance(right, str):
+        return left.strip() == right.strip()
+    return left == right
 
 
 def normalize_submission_identifier(identifier: str) -> str:

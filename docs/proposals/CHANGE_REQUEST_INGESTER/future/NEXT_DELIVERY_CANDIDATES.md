@@ -14,7 +14,9 @@ The repository still has several capabilities that matter for a fuller operation
 
 This proposal records that candidate set so the closed Delivery 1 baseline can stay closed without losing the backlog context.
 
-Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](./FRONTEND_UX_INTEGRATION_CR.md), with GitHub-ready issue drafts in [FRONTEND_UX_INTEGRATION_ISSUES.md](./FRONTEND_UX_INTEGRATION_ISSUES.md). The closed post-Delivery-1 follow-up record now lives in [closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md](./closed_delivery_1/DELIVERY_1_FOLLOWUP_CR.md).
+Provider-update scope and existing-row update handling are tracked separately in the lifecycle proposal set and are no longer part of this candidate backlog.
+
+Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](../done/FRONTEND_UX_INTEGRATION_CR.md), with GitHub-ready issue drafts in [FRONTEND_UX_INTEGRATION_ISSUES.md](../done/FRONTEND_UX_INTEGRATION_ISSUES.md). The closed post-Delivery-1 follow-up record now lives in [done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md](../done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_FOLLOWUP_CR.md).
 
 ## Problem
 
@@ -46,8 +48,6 @@ This proposal covers:
 | Candidate | Why it matters | Current state |
 |-----------|----------------|---------------|
 | Functional rollback support | Delivery 1 is explicitly non-revertible | Candidate, not accepted |
-| Data-provider update scope and ownership rules | Needed before existing-row update behavior can be scoped safely | Proposed in [DATA_PROVIDER_UPDATE_SCOPING_CR.md](./DATA_PROVIDER_UPDATE_SCOPING_CR.md), not accepted |
-| UPDATE handling for existing rows | Delivery 1 only handles forward inserts | Proposed in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md), not accepted |
 | Stronger idempotency and re-submission behavior | Current guarantees are intentionally narrow | Candidate, not accepted |
 | Change detection | Useful for reruns and update planning | Candidate, not accepted |
 | More precise ordering when deferred constraints are insufficient | Needed only if deferred FK assumptions fail in broader practice | Candidate, not accepted |
@@ -78,7 +78,8 @@ That keeps the next delivery concrete and prevents the repository from silently 
 - the closed Delivery 1 baseline no longer carries committed later-delivery scope
 - the remaining capability areas are visible without being treated as accepted scope
 - this document makes the undecided state explicit
-- the document points to separate proposals for artifact hardening, frontend UX integration, provider update scope, and update handling
+- the document points to separate proposals for artifact hardening and frontend UX integration
+- provider-update scope and existing-row update handling remain documented in the lifecycle proposal set instead of this candidate backlog
 
 ## Final Recommendation
 

@@ -2,8 +2,9 @@
 
 ## Status
 
-- Proposed change request
-- Decision state: candidate, not accepted
+- Accepted change request
+- Decision state: accepted on 2026-06-30
+- Decision gate: passed with checklist complete
 - Scope: define how provider-submitted data may change over time through `sead_change_request`, and which change scenarios must stay allowed, restricted, or blocked
 - Goal: create the ownership, history, and workflow rules needed before implementing any provider-visible update path for previously ingested data
 
@@ -17,13 +18,13 @@ This CR recommends an ownership-first and history-preserving change model. Data 
 
 History should not mean multiple active copies of the same provider-owned record. The rule should be that for a given logical record and point in time, the repository keeps at most one live version, while older versions remain available as history.
 
-The existing-row SQL update path described in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md) is one downstream scenario inside this broader problem. It should not define the problem statement for this CR.
+The existing-row SQL update path described in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) is one downstream scenario inside this broader problem. It should not define the problem statement for this CR.
 
-This document is the decision record for the problem and recommendation. The durable lifecycle rules belong in [DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_SPECIFICATION.md), and phased delivery planning belongs in [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md).
+This document is the decision record for the problem and recommendation. The durable lifecycle rules now live in [../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../../../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md), and phased delivery planning belongs in [DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md](./DATA_PROVIDER_SUBMISSION_LIFECYCLE_IMPLEMENTATION_PLAN.md).
 
 ## Problem
 
-The repository currently lacks an accepted model for how provider-submitted data should evolve after the first ingest.
+Before this decision gate, the repository lacked an accepted model for how provider-submitted data should evolve after the first ingest.
 
 That is the root problem. The question is not only whether the system can generate `UPDATE` SQL for an existing row. The larger question is how the system should handle provider-owned data that changes over time while preserving history and protecting shared data.
 
@@ -67,7 +68,7 @@ This proposal covers:
 
 The current `sead_change_request` path is mainly insert-oriented and forward-only.
 
-Previously ingested rows are treated as reference-only, even when the ingester can resolve them. That keeps current behavior safe, but it leaves the repository without an accepted policy for provider corrections, revisions, or superseded data.
+Previously ingested rows are treated as reference-only, even when the ingester can resolve them. That keeps current behavior safe, but it leaves implementation behavior behind the now-accepted policy for provider corrections, revisions, or superseded data.
 
 ## Proposed Design
 
@@ -126,7 +127,7 @@ Examples include:
 
 The repository should consider at least these scenarios when defining provider-visible change support over time.
 
-The existing-row planning and SQL contract in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md) is one follow-up scenario inside this set, not the umbrella problem statement.
+The existing-row planning and SQL contract in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) is one follow-up scenario inside this set, not the umbrella problem statement.
 
 | Scenario | Typical example | Recommended handling |
 |----------|-----------------|----------------------|
@@ -160,10 +161,21 @@ The existing-row planning and SQL contract in [UPDATE_HANDLING_FOR_EXISTING_ROWS
 - the proposal is positioned clearly as the decision document rather than the long-term specification or delivery plan
 - later update-handling work can point to this document as the upstream scope for deciding which existing-row updates are even eligible for SQL generation
 
+## Decision Gate: Acceptance/Revision Checklist
+
+- [x] Ownership-first lifecycle policy is explicit and complete for provider-owned, shared-reference, and system-managed data classes
+- [x] Allowed, restricted, and blocked scenario boundaries are explicit and checkable
+- [x] History and one-live-version invariants are explicit and usable by downstream implementation plans
+- [x] Shared-data governance is separated from default provider-owned update execution
+- [x] Existing-row SQL update handling is kept downstream of lifecycle policy acceptance
+- [x] Cross-document alignment is updated in lifecycle specification, implementation plan phase entry status, and tracker state
+
+Gate outcome: accepted. No blocking revisions remain.
+
 ## Final Recommendation
 
 Do not implement existing-row update handling until the repository accepts an ownership-first provider update scope.
 
 The next safe step is to treat provider-owned corrections and revisions as the primary allowed change class, require history-preserving workflow semantics for those changes, and keep direct shared-data mutation out of the default provider path.
 
-The narrower existing-row update CR in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](./UPDATE_HANDLING_FOR_EXISTING_ROWS.md) should then be handled as one downstream implementation scenario alongside other accepted provider-change scenarios from this document.
+The narrower existing-row update CR in [UPDATE_HANDLING_FOR_EXISTING_ROWS.md](../../future/UPDATE_HANDLING_FOR_EXISTING_ROWS.md) should then be handled as one downstream implementation scenario alongside other accepted provider-change scenarios from this document.

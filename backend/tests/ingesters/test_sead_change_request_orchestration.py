@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from ingesters.sead_change_request import ChangeRowState, SubmissionContext, orchestrate_identity_assignments, plan_table
+from ingesters.sead_change_request.contracts import PlannedRowAction, PlannedTable
 from ingesters.sead_change_request.orchestration import SIMS_TARGET_ID_CAPABILITY_NOTE
 from src.target_model.models import EntitySpec
 
@@ -172,3 +173,18 @@ class TestOrchestrateIdentityAssignments:
         assert assignment.state == ChangeRowState.DERIVED_BRIDGE_ROW
         assert assignment.target_id is None
         assert assignment.note == "Derived sample_taxon"
+
+    @pytest.mark.asyncio
+    async def test_block_existing_update_action_creates_blocked_assignment(self):
+        frame = pd.DataFrame({"sample_id": [101], "sample_name": ["A changed"]})
+        planned_table = PlannedTable(
+            entity_name="sample",
+            frame=frame,
+            planned_actions=pd.Series([PlannedRowAction.BLOCK_EXISTING_UPDATE], index=frame.index, name="_planned_action"),
+        )
+
+        result = await orchestrate_identity_assignments([planned_table], minimal_submission_context())
+
+        assignment = result.assignments["sample"][0]
+        assert assignment.state == ChangeRowState.BLOCKED_UNRESOLVED
+        assert "blocked until mutable-field boundaries are complete" in (assignment.note or "")
