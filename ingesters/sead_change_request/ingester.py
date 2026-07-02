@@ -55,7 +55,12 @@ class SeadChangeRequestIngester:
     async def _prepare_change_request(self, source: Path | str) -> PreparationResult:
         """Run the shared preparation workflow after inputs are resolved."""
         inputs: ResolvedInputs = resolve_inputs(self.config, source)
-        planned = plan_bundle(inputs.bundle, inputs.target_model.entities)
+        planned = plan_bundle(
+            inputs.bundle,
+            inputs.target_model.entities,
+            mutable_fields_by_entity=inputs.mutable_fields_by_entity,
+            existing_row_update_entities=inputs.existing_row_update_entities,
+        )
 
         return await prepare_change_request(
             inputs,
@@ -110,6 +115,7 @@ class SeadChangeRequestIngester:
         change_package: ChangeRequestPackage = build_change_request_package(
             preparation.projection_result,
             preparation.resolution_result,
+            preparation.planned.tables,
         )
         package_table_count: int = len(change_package.tables)
         insert_row_count: int = sum(len(table.frame.index) for table in change_package.tables.values())

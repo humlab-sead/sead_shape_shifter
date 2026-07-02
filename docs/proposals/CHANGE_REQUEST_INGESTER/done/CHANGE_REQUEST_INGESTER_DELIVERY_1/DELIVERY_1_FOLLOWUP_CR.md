@@ -21,15 +21,15 @@ The original follow-up work is now complete on the current branch:
 
 - `copy_csv` hardening is implemented
 - Jinja2 is explicitly deferred for now
-- the SEAD v2 target-model review is documented in [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+- the SEAD v2 target-model review is documented in [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 The final metadata-review follow-up is now complete:
 
-- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for the target-model versus `SeadSchema` comparison tracked by Issue 6
+- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for the target-model versus `SeadSchema` comparison tracked by Issue 6
 
 These are follow-up improvements. They should not reopen Delivery 1 identity, confirmation, materialization, or collision-check behavior.
 
-Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](../FRONTEND_UX_INTEGRATION_CR.md). This CR now serves as a historical record of the completed deploy-artifact and metadata-review follow-up work.
+Frontend workflow integration is tracked separately in [FRONTEND_UX_INTEGRATION_CR.md](../../done/FRONTEND_UX_INTEGRATION_CR.md). This CR now serves as a historical record of the completed deploy-artifact and metadata-review follow-up work.
 
 ## Problem
 
@@ -37,7 +37,7 @@ The current Delivery 1 output path is intentionally narrow. It emits deploy SQL 
 
 That was enough to close Delivery 1, and the deploy-artifact follow-up work on this branch is now complete.
 
-The metadata source-of-truth review is now complete. Delivery 1 uses the SEAD v2 target model, and the accepted comparison with the older live-schema approach based on `SeadSchema` in [ingesters/sead/metadata.py](../../../../ingesters/sead/metadata.py) now lives in [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
+The metadata source-of-truth review is now complete. Delivery 1 uses the SEAD v2 target model, and the accepted comparison with the older live-schema approach based on `SeadSchema` in [ingesters/sead/metadata.py](../../../../../ingesters/sead/metadata.py) now lives in [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
 
 The completed `copy_csv` hardening and Jinja2 deferral work remains in this CR as historical context and issue history, not as the current implementation scope.
 
@@ -46,7 +46,7 @@ The completed `copy_csv` hardening and Jinja2 deferral work remains in this CR a
 This follow-up CR now covers:
 
 - keeping the completed deploy-artifact follow-up work recorded in one place for history and issue traceability
-- using [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the accepted detailed home for the metadata-boundary comparison
+- using [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) as the accepted detailed home for the metadata-boundary comparison
 
 ## Non-Goals
 
@@ -68,13 +68,13 @@ That path works, but it couples two distinct concerns:
 - deciding what data must be inserted
 - deciding how that insert payload should be rendered for deployment
 
-The older SEAD path demonstrates a different rendering model. It uses temp tables, file-backed payloads, and `\copy`-based loading in a change-request script, as shown in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](../example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql).
+The older SEAD path demonstrates a different rendering model. It uses temp tables, file-backed payloads, and `\copy`-based loading in a change-request script, as shown in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](../../example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql).
 
-Separately, the old `sead` ingester uses `SeadSchema` from [ingesters/sead/metadata.py](../../../../ingesters/sead/metadata.py) to fetch and work from the live SEAD SQL schema. Delivery 1 instead relies on the target model and related metadata.
+Separately, the old `sead` ingester uses `SeadSchema` from [ingesters/sead/metadata.py](../../../../../ingesters/sead/metadata.py) to fetch and work from the live SEAD SQL schema. Delivery 1 instead relies on the target model and related metadata.
 
 ## Intentional Differences From The Historical SCCS Example
 
-The historical script in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](../example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql) remains the reference point for SCCS-oriented deploy output.
+The historical script in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](../../example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql) remains the reference point for SCCS-oriented deploy output.
 
 The hardened Delivery 1 `copy_csv` contract intentionally differs from that example in these ways:
 
@@ -101,7 +101,7 @@ The current strategy set is:
 
 The next step is not another architecture split. It is to harden the prototype around deterministic file layout, value-shape handling, operator execution support, and artifact metadata.
 
-That hardening should use the current contract decisions in [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md), including:
+That hardening should use the current contract decisions in [docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md), including:
 
 - unpacked directory output as the only Delivery 1 artifact form
 - approved `datatype` validation against the current SCCS project subset
@@ -127,12 +127,12 @@ If the question is reopened later, Jinja2 should still be limited to formatting 
 
 ### 3. Use the target-model completeness proposal as the detailed metadata review surface
 
-The detailed home for the metadata review work is now [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
+The detailed home for the metadata review work is now [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md).
 
 That proposal now carries both parts of the metadata review work:
 
 - completion of the SEAD v2 target-model completeness review
-- comparison of the current target-model-driven approach with the older `SeadSchema` live-schema approach in [ingesters/sead/metadata.py](../../../../ingesters/sead/metadata.py)
+- comparison of the current target-model-driven approach with the older `SeadSchema` live-schema approach in [ingesters/sead/metadata.py](../../../../../ingesters/sead/metadata.py)
 
 This follow-up CR should stay high level.
 
@@ -151,19 +151,19 @@ Validation completed on the current branch includes:
 
 - regression tests proving the current inline-`INSERT` strategy still emits the existing Delivery 1 artifact shape
 - focused hardening tests for the current `copy_csv` output, including generated payload files, deploy SQL structure, CSV edge cases, and emitted bundle metadata
-- focused hardening tests that prove conformance to [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md)
-- comparison of the hardened `copy_csv` output shape with the historical example in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](../example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql), with any intentional differences documented explicitly
+- focused hardening tests that prove conformance to [docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md)
+- comparison of the hardened `copy_csv` output shape with the historical example in [docs/proposals/CHANGE_REQUEST_INGESTER/example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql](../../example/20240119_DML_SUBMISSION_DENDROCHRONOLOGY_COMMIT.sql), with any intentional differences documented explicitly
 
-The metadata review validation is now complete: [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for the `SeadSchema` comparison.
+The metadata review validation is now complete: [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for the `SeadSchema` comparison.
 
 ## Acceptance Criteria
 
 - the current deploy-strategy boundary remains intact
 - the current inline-`INSERT` behavior remains available as the default strategy
 - the `copy_csv` artifact contract is hardened enough for operator review and stable test coverage
-- the `copy_csv` artifact contract conforms to [docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md)
+- the `copy_csv` artifact contract conforms to [docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md](./DELIVERY_1_HARDENING.md)
 - the Jinja2 decision is documented as deferred with reasons
-- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for both the completeness review and the `SeadSchema` comparison
+- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md) is the accepted detailed home for both the completeness review and the `SeadSchema` comparison
 
 ## Recommended Delivery Order
 
@@ -210,7 +210,7 @@ Includes:
 - lock down path rules, naming rules, and deterministic table ordering
 - harden CSV value handling for realistic payloads
 - expand strategy metadata and end-to-end artifact tests
-- implement the contract documented in `docs/proposals/CHANGE_REQUEST_INGESTER/closed_delivery_1/DELIVERY_1_HARDENING.md`
+- implement the contract documented in `docs/proposals/CHANGE_REQUEST_INGESTER/done/CHANGE_REQUEST_INGESTER_DELIVERY_1/DELIVERY_1_HARDENING.md`
 
 Exit criteria:
 
@@ -220,7 +220,7 @@ Exit criteria:
 
 Follow-up note:
 
-- operator-facing bundle execution guidance is now tracked with the frontend workflow in `docs/proposals/CHANGE_REQUEST_INGESTER/FRONTEND_UX_INTEGRATION_CR.md`
+- operator-facing bundle execution guidance is now tracked with the frontend workflow in `docs/proposals/CHANGE_REQUEST_INGESTER/done/FRONTEND_UX_INTEGRATION_CR.md`
 - the narrow date-only payload formatting bug was fixed separately on the current branch and does not reopen this hardening issue
 
 ### Issue 4. Decide On Jinja2 For Rendering
@@ -245,7 +245,7 @@ Status: resolved on current branch
 
 Detailed proposal home:
 
-- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 Exit criteria:
 
@@ -258,7 +258,7 @@ Status: resolved on current branch
 
 Detailed proposal home:
 
-- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
+- [docs/proposals/done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md](../../../done/SEAD_V2_TARGET_MODEL_COMPLETENESS.md)
 
 Exit criteria:
 
@@ -273,4 +273,4 @@ Do not reopen `copy_csv` hardening or the Jinja2 decision in this CR. Keep the a
 
 ## Issue-Ready Drafts
 
-Use [docs/proposals/CHANGE_REQUEST_INGESTER/DELIVERY_1_FOLLOWUP_ISSUES.md](../DELIVERY_1_FOLLOWUP_ISSUES.md) as the current source of truth for issue-ready drafts and per-issue status.
+Use [docs/proposals/CHANGE_REQUEST_INGESTER/done/DELIVERY_1_FOLLOWUP_ISSUES.md](../DELIVERY_1_FOLLOWUP_ISSUES.md) as the current source of truth for issue-ready drafts and per-issue status.

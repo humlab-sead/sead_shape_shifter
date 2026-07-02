@@ -60,6 +60,7 @@ def build_validation_infos(preparation: PreparationResult) -> list[str]:
         )
         + preparation.planned.infos
         + summarize_identity_work(preparation)
+        + preparation.outcome_summary.diagnostics
         + [
             f"Resolved identity tables: {len(preparation.resolution_result.tables)}",
             f"Blocked rows after identity resolution: {preparation.resolution_result.blocked_rows}",
@@ -76,6 +77,8 @@ def summarize_identity_work(preparation: PreparationResult) -> list[str]:
         (
             "Identity work queues: "
             f"{work_plan.total_existing_rows} existing, "
+            f"{work_plan.total_update_candidate_rows} update_candidate, "
+            f"{work_plan.total_blocked_existing_update_rows} blocked_existing_update, "
             f"{work_plan.total_allocation_rows} allocation, "
             f"{work_plan.total_reconciliation_rows} reconciliation, "
             f"{work_plan.total_bridge_rows} bridge"

@@ -16,7 +16,7 @@ This keeps the first delivery small enough to implement and validate while still
 
 Post-Delivery-1 hardening is now tracked separately in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
 
-Candidate next-delivery capabilities are tracked in [../NEXT_DELIVERY_CANDIDATES.md](../NEXT_DELIVERY_CANDIDATES.md), and frontend workflow integration is tracked separately in [../FRONTEND_UX_INTEGRATION_CR.md](../FRONTEND_UX_INTEGRATION_CR.md).
+Candidate next-delivery capabilities are tracked in [../future/NEXT_DELIVERY_CANDIDATES.md](../../future/NEXT_DELIVERY_CANDIDATES.md), and frontend workflow integration is tracked separately in [../done/FRONTEND_UX_INTEGRATION_CR.md](../../done/FRONTEND_UX_INTEGRATION_CR.md).
 
 ## Problem
 
@@ -239,7 +239,7 @@ If Binding Set confirmation cannot be completed during the run, Delivery 1 shoul
 
 This closed baseline no longer defines a committed Delivery 2 scope.
 
-Candidate next-delivery capabilities now live in [../NEXT_DELIVERY_CANDIDATES.md](../NEXT_DELIVERY_CANDIDATES.md). User-interaction and frontend workflow requirements now live in [../FRONTEND_UX_INTEGRATION_CR.md](../FRONTEND_UX_INTEGRATION_CR.md).
+Candidate next-delivery capabilities now live in [../future/NEXT_DELIVERY_CANDIDATES.md](../../future/NEXT_DELIVERY_CANDIDATES.md). User-interaction and frontend workflow requirements now live in [../done/FRONTEND_UX_INTEGRATION_CR.md](../../done/FRONTEND_UX_INTEGRATION_CR.md).
 
 ### Entity handling by role
 
@@ -333,7 +333,7 @@ The main tradeoff is deliberate scope reduction in Delivery 1. The MVP will not 
 - Integration test covering both reconciled and SIMS-allocated classifier paths
 - Pilot run on a real project with review of generated SQL, SIMS Binding Set data, and at least one mixed submission containing existing references, new provider-owned entities, classifiers, and bridge rows
 
-Later-delivery validation work is now tracked as candidate scope in [../NEXT_DELIVERY_CANDIDATES.md](../NEXT_DELIVERY_CANDIDATES.md), not as committed acceptance work in this closed baseline.
+Later-delivery validation work is now tracked as candidate scope in [../future/NEXT_DELIVERY_CANDIDATES.md](../../future/NEXT_DELIVERY_CANDIDATES.md), not as committed acceptance work in this closed baseline.
 
 ## Acceptance Criteria
 
@@ -370,9 +370,9 @@ Closure note as of 2026-05-26:
 - Delivery 1 is now treated as closed on the current MVP baseline described in this proposal.
 - Post-Delivery-1 work on operator-facing artifact hardening, alternative deploy formats, and metadata-source review is tracked in [./DELIVERY_1_FOLLOWUP_CR.md](./DELIVERY_1_FOLLOWUP_CR.md).
 
-- Candidate next-delivery capabilities are tracked separately in [../NEXT_DELIVERY_CANDIDATES.md](../NEXT_DELIVERY_CANDIDATES.md).
+- Candidate next-delivery capabilities are tracked separately in [../future/NEXT_DELIVERY_CANDIDATES.md](../../future/NEXT_DELIVERY_CANDIDATES.md).
 
-- Frontend workflow integration is tracked separately in [../FRONTEND_UX_INTEGRATION_CR.md](../FRONTEND_UX_INTEGRATION_CR.md).
+- Frontend workflow integration is tracked separately in [../done/FRONTEND_UX_INTEGRATION_CR.md](../../done/FRONTEND_UX_INTEGRATION_CR.md).
 
 ## Resolved Delivery 1 Decisions
 

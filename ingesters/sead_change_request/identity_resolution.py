@@ -50,7 +50,7 @@ def _resolve_table(
     for row_index, planned_action in planned_table.planned_actions.items():
         row_key: Hashable = cast(Hashable, row_index)
 
-        if planned_action == PlannedRowAction.REFERENCE_EXISTING:
+        if planned_action in {PlannedRowAction.REFERENCE_EXISTING, PlannedRowAction.UPDATE_EXISTING_CANDIDATE}:
             row_states.at[row_key] = ChangeRowState.EXISTING_ENTITY
             if public_id_column is None:
                 diagnostics.append(f"Entity '{planned_table.entity_name}' cannot resolve existing rows without public_id metadata")

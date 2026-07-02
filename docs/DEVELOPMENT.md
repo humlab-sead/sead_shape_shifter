@@ -265,6 +265,7 @@ The biggest performance cost for AI in a large repository is not size — it is 
 - [DESIGN.md](DESIGN.md) — architecture, component responsibilities, key flows, design decisions
 - [TESTING.md](TESTING.md) — test strategy, levels, and repository-specific testing guidance
 - [OPERATIONS.md](OPERATIONS.md) — environments, deployment, CI/CD, rollback, and observability
+- [DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) — durable lifecycle policy for provider-submitted data changes through `sead_change_request`
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — complete YAML project configuration reference
 - [USER_GUIDE.md](USER_GUIDE.md) — end-user documentation for the editor UI
 - `.github/instructions/` — task-specific AI coding guidance (frontend, ingesters, validators, YAML config, etc.)
