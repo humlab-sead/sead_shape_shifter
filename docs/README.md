@@ -10,7 +10,7 @@ These are the primary system documentation files:
 
 ### User Documentation
 
-- **[USER_GUIDE.md](USER_GUIDE.md)** (7,500+ lines)
+- **[USER_GUIDE.md](USER_GUIDE.md)**
   - Getting started with Shape Shifter
   - Working with projects
   - Managing entities and relationships
@@ -21,14 +21,14 @@ These are the primary system documentation files:
 
 ### System Requirements & Architecture
 
-- **[REQUIREMENTS.md](REQUIREMENTS.md)** (5,900+ lines)
+- **[REQUIREMENTS.md](REQUIREMENTS.md)**
   - 33 functional requirements (FR-1 to FR-33)
   - 15 non-functional requirements (NFR-1 to NFR-15)
   - User personas and use cases
   - Success criteria and constraints
   - Comprehensive glossary
 
-- **[DESIGN.md](DESIGN.md)** (1,000+ lines)
+- **[DESIGN.md](DESIGN.md)**
   - System architecture (Vue3 + FastAPI)
   - Backend and frontend architecture details
   - Design patterns and best practices
@@ -38,7 +38,7 @@ These are the primary system documentation files:
 
 ### Project
 
-- **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** (2,500+ lines) **★ COMPREHENSIVE CONSOLIDATED GUIDE**
+- **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** 
   - Complete YAML configuration reference
   - Entity definitions and all properties
   - **Foreign Key Constraints** - Complete validation system with cardinality, match requirements, data quality constraints
@@ -58,7 +58,7 @@ These are the primary system documentation files:
 
 ### Development
 
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** (10,000+ lines)
+- **[DEVELOPMENT.md](DEVELOPMENT.md)**
   - Development environment setup
   - System architecture deep-dive
   - Backend development with Python/FastAPI
@@ -93,7 +93,7 @@ These are the primary system documentation files:
 
 ### Testing
 
-- **[TESTING.md](TESTING.md)** (3,800+ lines)
+- **[TESTING.md](TESTING.md)**
   - Testing philosophy and strategy
   - Backend testing with pytest
   - Frontend testing with Vitest
