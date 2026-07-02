@@ -16,7 +16,7 @@ Shape Shifter is a **data transformation system** that harmonizes heterogeneous 
 
 **In scope:** project configuration management, data extraction, transformation pipeline, validation, output dispatch, and the editor UI.
 
-**Out of scope:** the SEAD Clearinghouse itself, the SIMS identity management service, the OpenRefine reconciliation service, and the source databases. These are external systems that Shape Shifter integrates with but does not own.
+**Out of scope:** the SEAD Clearinghouse itself, the SIMS identity management service, the SEAD authority system, the OpenRefine reconciliation service, and the source databases. These are external systems that Shape Shifter integrates with but does not own.
 
 **External integrations:**
 
@@ -25,7 +25,8 @@ Shape Shifter is a **data transformation system** that harmonizes heterogeneous 
 | SEAD databases (PostgreSQL / MS Access) | Inbound   | SQL            | Source data for extraction               |
 | CSV / Excel files                       | Inbound   | File I/O       | Source data for extraction               |
 | SIMS (`sead_authority_service`)         | Outbound  | HTTP           | Identity resolution and change detection |
-| OpenRefine reconciliation service       | Outbound  | HTTP           | FK candidate suggestions                 |
+| SAS (`sead_authority_service`)          | Outbound  | HTTP           | Entity reconciliation                    |
+| ~~OpenRefine reconciliation service~~   | Outbound  | HTTP           | FK candidate suggestions                 |
 | Output files (Excel, CSV) or DB         | Outbound  | File I/O / SQL | Dispatch results                         |
 
 ---
@@ -36,26 +37,28 @@ Shape Shifter is a monorepo with three loosely-coupled layers served as a single
 
 ```
 ┌────────────────────────────────────────────────┐
-│              Web Browser                       │
-│  Frontend (Vue 3 + Vuetify + Pinia)            │
+│                  Web Browser                   │
+│       Frontend (Vue 3 + Vuetify + Pinia)       │
 │  Configuration editor • Validation • Preview   │
 └─────────────────────┬──────────────────────────┘
                       │ REST/JSON (/api/v1)
 ┌─────────────────────┴──────────────────────────┐
-│  Backend (FastAPI)                             │
-│  API Layer • Services • Mappers                │
+│              Backend (FastAPI)                 │
+│            API Layer • Services                │
+├------------------------------------------------┤
+│               Mappers layer                    │
 ├────────────────────────────────────────────────┤
-│  Core (src/)                                   │
+│                Core (src/)                     │
 │  Pipeline • Loaders • Validators • Dispatchers │
 └─────────────────────┬──────────────────────────┘
                       │
           ┌───────────┴──────────┐
-          │ File system          │  YAML projects, logs, output, backups
-          │ Source databases     │  PostgreSQL, SQLite, MS Access
+          │      File system     │  YAML projects, logs, output, backups
+          │   Source databases   │  PostgreSQL, SQLite, MS Access, Parquet, CSV, ...
           └──────────────────────┘
 ```
 
-The backend serves the built Vue frontend as static files, so the deployed artifact is a single container on port 8012.
+The backend serves the Vue frontend as static files, so the deployed artifact is a single container.
 
 ---
 
@@ -67,7 +70,7 @@ Owns the transformation pipeline. Takes a resolved project configuration and pro
 
 - **Pipeline phases** (in order): Extract → Filter → Link → Unnest → Translate → Store
 - **Orchestrator**: `ShapeShifter` in `src/normalizer.py` using `ProcessState`
-- **Entity types**: `sql`, `csv`, `xlsx`, `fixed`, `merged`
+- **Entity types**: `sql`, `csv`, `xlsx`, `fixed`, `merged`, `internal`
 - **Loaders** (`src/loaders/`): pluggable async data source connectors registered via `@DataLoaders.register`. Loaders that need runtime context (e.g., `DuckDbLoader`) override `DataLoader.create(**context)` to receive it; the orchestrator passes a uniform context dict without loader-specific branching. The reserved sentinel `data_source: "@internal"` routes a `type: sql` entity to `DuckDbLoader`, which queries already-processed entities via an in-memory DuckDB workspace.
 - **Validators** (`src/validators/`): constraint checks (cardinality, FK integrity, functional dependencies) registered via `@Validators.register`
 - **Dispatchers** (`src/dispatch.py`): output format handlers registered via `@Dispatchers.register`
@@ -312,26 +315,59 @@ Data loaders are async (database I/O). Backend services mix sync and async; chec
 
 ## Design Decisions and Tradeoffs
 
-| Decision                                            | Rationale                                                                    | Tradeoff                                                                       |
-|-----------------------------------------------------|------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| Mapper-only resolution                              | Prevents env vars from leaking into API responses or persisted YAML          | All API→Core paths must go through the mapper; skipping it is a silent bug     |
-| In-memory ApplicationState                          | Simple, no external dependencies                                             | Single-worker constraint; state lost on restart                                |
-| YAML as sole project store                          | Human-readable, version-control-friendly, no DB required                     | No concurrent write safety; large projects can be slow to parse                |
-| Registry pattern for loaders/validators/dispatchers | Runtime extensibility without modifying the orchestrator                     | Registration must happen at import time; missed imports cause silent omissions |
-| `system_id` as the universal FK value               | Stable local key unaffected by source-system IDs                             | External IDs must be mapped separately via `public_id` and reconciliation      |
-| Single container (frontend + backend)               | Simplified deployment; no separate static asset server                       | Frontend rebuild required to change any Vite build-time variable               |
-| Merged entity sparse FK columns                     | Gives downstream consumers typed paths to each branch without synthetic keys | Sparse `pd.NA` columns appear in all merged rows for branches that don't apply |
+### Mapper-only resolution of directives and environment variables
+
+**Rationale:** Prevents environment variables from leaking into API responses or persisted YAML.
+
+**Tradeoff:** All API-to-Core paths must go through the mapper; skipping it is a silent bug.
+
+### In-memory `ApplicationState`
+
+**Rationale:** Simple, with no external dependencies.
+
+**Tradeoff:** Imposes a single-worker constraint; state is lost on restart.
+
+### YAML as sole project store
+
+**Rationale:** Human-readable, version-control-friendly, and requires no database.
+
+**Tradeoff:** No concurrent write safety; large projects can be slow to parse.
+
+### Registry pattern for loaders, validators, and dispatchers
+
+**Rationale:** Enables runtime extensibility without modifying the orchestrator.
+
+**Tradeoff:** Registration must happen at import time; missed imports cause silent omissions.
+
+### `system_id` as the universal FK value
+
+**Rationale:** Provides a stable local key unaffected by source-system IDs.
+
+**Tradeoff:** External IDs must be mapped separately via `public_id` and reconciliation.
+
+### Single container for frontend and backend
+
+**Rationale:** Simplifies deployment and avoids a separate static asset server.
+
+**Tradeoff:** Frontend rebuild is required to change any Vite build-time variable.
+
+### Merged entity sparse FK columns
+
+**Rationale:** Gives downstream consumers typed paths to each branch without synthetic keys.
+
+**Tradeoff:** Sparse `pd.NA` columns appear in all merged rows for branches that do not apply.
+
 
 ---
 
 ## Known Limitations and Technical Debt
 
-- **No concurrent write safety**: simultaneous saves to the same project from multiple browser tabs or users will silently overwrite each other. Optimistic locking at the entity level is partially designed but not fully enforced.
+- **Concurrent write protection is only partial**: per-project locks and ETag/version checks reduce lost updates, but not every project write path is conditional yet, so last-write-wins conflicts can still happen in edge cases.
 - **No streaming or incremental processing**: the full entity DataFrame is materialized in memory before any downstream step runs.
-- **Validation does not sample full data by default**: data validators run on preview-row counts unless explicitly configured otherwise; large datasets may have issues that only appear at full scale.
-- **No automated cleanup of output and backup directories**: these grow unbounded; operators must prune manually.
-- **CORS allowlist includes hardcoded DevTunnels hostnames**: these should be moved to runtime configuration.
-- **FK suggestions are disabled by default** (`ENABLE_FK_SUGGESTIONS: false`): the reconciliation service integration is experimental.
+- **Data validation samples preview rows by default**: run the complete mode when you need full-data checks.
+- **No automated cleanup of output and backup directories**: these grow until operators prune them manually.
+- **CORS allowlist still includes hardcoded DevTunnels hostnames**: production deployments should narrow the runtime allowlist.
+- **FK suggestions are disabled by default** (`SHAPE_SHIFTER_ENABLE_FK_SUGGESTIONS=false`): enable this only when you want the suggestion service to run.
 
 ---
 
