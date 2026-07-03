@@ -2,50 +2,30 @@
 
 Use this file when generating or editing:
 
-- documentation
-- comments and docstrings
-- PR descriptions and issue text
-- proposals and user-facing messages
+* documentation
+* comments and docstrings
+* PR descriptions and issue text
+* proposals and user-facing messages
+* AI coding-agent instructions
 
 ## Standard
 
-Write for a junior developer who is new to the project but comfortable with
-Python, APIs, tests, and configuration files.
+Write for developers, technical project members, domain experts, and AI coding agents that need accurate implementation or review context.
 
-They should understand:
+Prefer clear technical writing over simplification. Preserve terminology, structure, tone, and intent unless a change clearly improves readability.
 
-- what the code, feature, or document describes
-- what input is required
-- what output or side effect is produced
-- what rule, constraint, or failure case applies
-- what to do next
+Readers should understand:
 
-Use clear, concrete, behavior-first language:
+* what is described
+* what input is required
+* what output or side effect is produced
+* what rule, constraint, tradeoff, or failure case applies
+* what to do next
 
-- name the actual thing, action, rule, input, output, or result
-- define project-specific terms near first use
-- avoid internal shorthand unless it is established project vocabulary
-- avoid metaphors, fashion-driven language, and vague claims
+Use concrete, behavior-first language:
 
-## Comments
-
-Explain what is not obvious from the code:
-
-- assumptions
-- constraints
-- edge cases
-- side effects
-- reasons for non-obvious choices
-
-Do not restate code that is already clear.
-
-Good:
-
-`# Use local system_id values because external IDs may change.`
-
-Bad:
-
-`# Increment counter.`
+* name the actual thing, action, rule, input, output, or result
+  -`# Increment counter.`
 
 ## Docstrings
 
@@ -53,36 +33,35 @@ Start with what the function, class, or module does.
 
 Prefer:
 
-- `Reads sample rows from a CSV file.`
-- `Returns validation errors for missing required fields.`
-- `Uses the site ID to find matching sample groups.`
-- `Does not write changes to the database.`
+* `Reads sample rows from a CSV file.`
+* `Returns validation errors for missing required fields.`
+* `Does not write changes to the database.`
 
-Avoid:
+Avoid vague or overloaded wording when a more precise description is available.
 
-- `Ingests artifacts across the import boundary.`
-- `Resolves canonical entities for downstream consumers.`
-- `Emits signals for the review surface.`
+Do not avoid technical terms when they are the correct project terms.
 
 ## Documentation
 
-For guides, design notes, and reference pages:
+For guides, design notes, proposals, and reference pages:
 
-- state the purpose before details
-- use numbered steps for procedures
-- state defaults, required fields, and error cases explicitly
-- include examples when they make the rule easier to apply
+* state the purpose before details
+* preserve the document’s register and technical level
+* use numbered steps for procedures
+* state defaults, required fields, constraints, tradeoffs, and error cases explicitly
+* keep examples, identifiers, paths, YAML, code blocks, and section order unless a small change improves readability
 
-## PRs and issues
+Do not normalize the whole document into a new writing style. Improve confusing, dense, repetitive, or vague passages in place.
+
+## PRs and Issues
 
 Include:
 
-- what changed
-- why it changed
-- expected impact
-- testing performed
+* what changed
+* why it changed
+* expected impact
+* testing performed
 
-Avoid vague summaries such as `improved architecture`,
-`enhanced functionality`, and `optimized workflow`.
+Avoid vague summaries such as `improved architecture`, `enhanced functionality`, and `optimized workflow`.
 
 Describe the actual behavior or code change instead.
