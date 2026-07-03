@@ -8,7 +8,7 @@
 
 ## Summary
 
-This proposal focuses on one remaining modeling gap.
+This proposal covers one remaining gap in the model.
 
 Shape Shifter can now build mixed-branch parents cleanly, but downstream entities still need ad hoc filters when they should only read one branch. The proposal adds an explicit way to declare that restriction in YAML and validate it early.
 
@@ -24,7 +24,7 @@ Shape Shifter now has the core features needed to build shared-parent models:
 - target-model conformance validation
 - first-class merged parent entities
 
-That means the main remaining problem is not parent construction. It is downstream consumption.
+That means the remaining problem is not building the parent. It is telling child entities which branch to read.
 
 When one source entity contains rows from multiple branches, some downstream entities are only valid for one branch. Today that intent is usually expressed indirectly through filters or null checks instead of being declared on the entity itself.
 
@@ -39,6 +39,28 @@ The current workaround has costs:
 - unrelated rows are loaded and discarded later
 - validation and review must infer intent from downstream logic
 - YAML stays harder to read than the actual model requires
+
+Illustration of the problem:
+
+Given a mixed-branch entity `C` defined as a merge of `A` and `B`:
+
+```text
+A ─────┐
+       ├─── C
+B ─────┘
+```
+
+Define `D` as the `A` branch of `C`:
+
+```text
+C[A] ─── D
+```
+
+```yaml
+D:
+  source: C
+  source_branch: A
+```
 
 ## Scope
 
@@ -68,7 +90,7 @@ Those filters work, but they are a weak substitute for an explicit branch restri
 
 ## Proposed Design
 
-Add an explicit way for a downstream entity to declare that it reads only one logical branch from its source entity.
+Add a direct way for a child entity to say that it reads only one branch from its source entity.
 
 Two illustrative shapes:
 
@@ -93,8 +115,8 @@ Recommended direction:
 
 Expected behavior:
 
-- rows that do not satisfy the branch restriction are excluded before downstream branch-specific cleanup filters
-- validation reports unknown branch names, contradictory selectors, or selectors that reference unavailable columns
+- rows that do not match the branch rule are removed before later cleanup filters run
+- validation reports unknown branch names, conflicting selectors, or selectors that use columns that are not available
 - preview and editor UI show that the entity is branch-scoped rather than reading the full parent
 
 ## Alternatives Considered
@@ -117,7 +139,7 @@ Templates would compress repetition, but they would package the workaround rathe
 - If both `source_branch` and `source_when` exist, the docs and API must make their relationship obvious.
 - Branch-scoped consumers should stay narrow and should not become a second general filtering language.
 
-The tradeoff is still favorable because this is a small feature that addresses a real remaining modeling pain point.
+The tradeoff is still good because this is a small feature that solves a real problem in the authoring flow.
 
 ## Testing And Validation
 
@@ -130,7 +152,7 @@ The tradeoff is still favorable because this is a small feature that addresses a
 ### Integration Tests
 
 - an Arbodat-style mixed-parent example where `dataset` and `abundance_ident_level` consume only one branch
-- comparison with the current filter-based workaround to confirm equivalent output with clearer config
+- comparison with the current filter-based workaround to confirm the same output with clearer YAML
 
 ### UX And Documentation
 
