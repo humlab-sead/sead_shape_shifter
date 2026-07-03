@@ -62,6 +62,7 @@ Use the focused files under `.github/instructions/` for detailed guidance:
 - `phase-plan.instructions.md` - phased implementation and delivery sequencing
 - `task-plan.instructions.md` - task plans for individual implementation phases
 - `writing-style.instructions.md` - concrete wording for docs, comments, and PR text
+- `simplify-docs` - rewrite documents in simpler, more direct language while keeping structure and meaning the same
 - `testing.instructions.md` - testing strategy, test levels, and validation guidance
 - `development.instructions.md` - local setup, workflow, and development practices
 
