@@ -8,6 +8,12 @@
 
 ## Executive Summary
 
+**For** Shape Shifter project authors and data managers **who** need to understand validation errors, model entities for SEAD,
+and assess project risks before execution, the **AI Project Advisor** is a grounded, project-scoped chat interface **that**
+explains problems using real project state and curated SEAD knowledge. **Unlike** a generic LLM chatbot or raw documentation
+search, the Advisor answers from deterministic context — validation results, dependency graphs, and versioned knowledge-pack
+rules — and cites its sources.
+
 This proposal describes an **AI Project Advisor** for Shape Shifter.
 
 The advisor is not a generic chatbot. It should help users understand a Shape Shifter project, explain validation and
@@ -70,6 +76,34 @@ That context exists but is not synthesized automatically. Users have no direct a
 3. "How should I model this relationship so it can be ingested into SEAD cleanly?"
 4. "Is this a tracked entity, shared metadata, or a child value?"
 5. "What would SIMS expect for identity allocation here?"
+
+---
+
+## Stakeholders and Users
+
+### Primary users
+
+| Role | Needs | Environment |
+|------|-------|-------------|
+| **Data manager** | Validate project YAML, explain errors in domain terms, assess whether entities will ingest cleanly into SEAD, understand reconciliation requirements | Shape Shifter frontend (project editor), sometimes the CLI |
+| **Project configurator** | Model entities correctly, choose between fixed/sql/merged entity types, set up foreign keys that match SEAD expectations, avoid identity and reconciliation mistakes | Shape Shifter frontend, editing `shapeshifter.yml` |
+| **AI coding agent** | Grounded project context to avoid hallucinating YAML patterns or SEAD rules, deterministic validation results to cite | Programmatic access through backend API |
+
+### Secondary stakeholders
+
+| Role | Interest |
+|------|----------|
+| **SEAD system maintainer** | Projects that conform to the target model and produce clean imports |
+| **Researcher (data provider)** | Clear explanations when their submission fails validation or requires re-modeling |
+| **Shape Shifter maintainer** | Reduced support burden from configuration questions that the Advisor can answer directly |
+
+### Key user needs
+
+1. "Why did this fail?" — plain-language explanations of validation errors, not raw error codes.
+2. "Is this the right entity type?" — guidance on fixed vs. sql vs. merged for a given modeling situation.
+3. "Will this work for SEAD?" — conformance checks against the active target model.
+4. "What am I missing?" — project-level risk summary before running a full import.
+5. "Don't invent answers." — explicit uncertainty when the Advisor lacks enough context.
 
 ---
 
@@ -222,11 +256,11 @@ The advisor should explain this distinction in practical Shape Shifter terms.
 
 The MVP should answer only three kinds of questions:
 
-1. **Explain this validation error.** Take a validation message and explain what it means, why it happened, and how the user can fix it.
-2. **Explain this entity and its risks.** Take a selected entity and summarize its configuration, dependencies, and possible
-   modeling problems.
-3. **Review project risks before execution.** Summarize project-level risks, dependency issues, and validation state before the user
-   runs a project.
+| Priority | Use case | Description |
+|----------|----------|-------------|
+| **P1** | Explain this validation error | Take a validation message and explain what it means, why it happened, and how the user can fix it. |
+| **P2** | Explain this entity and its risks | Take a selected entity and summarize its configuration, dependencies, and possible modeling problems. |
+| **P3** | Review project risks before execution | Summarize project-level risks, dependency issues, and validation state before the user runs a project. |
 
 These use cases are narrow enough to test well and broad enough to be useful. Open-ended modeling advice should wait until the
 knowledge pack and evaluation suite are in place.
@@ -416,6 +450,7 @@ applies_to:
 4. Generated `projectSchema.json` and `entitySchema.json` as structural references.
 5. `docs/rules/semantic_rules.yml` — machine-readable semantic validation rules with rule IDs, severity, fix suggestions, and agent guidance. Primary source for validation-error explanation and citation ID generation.
 6. `.github/skills/shapeshifter-configuration/SKILL.md` — curated YAML authoring rules, entity type selection guidance, and common configuration antipatterns. Use as a knowledge pack source for entity modeling advice; not a runtime integration point.
+7. `.github/instructions/shapeshifter-configuration.instructions.md` — compact YAML validation rules covering entity types, identity, foreign keys, dependencies, directives, and high-risk false positives. The skill loads this instruction file; both should be treated as a single curated rule source.
 
 **Target model and conformance sources:**
 
