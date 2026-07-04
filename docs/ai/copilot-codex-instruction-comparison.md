@@ -52,7 +52,7 @@ The highest-value additions are:
 
 Goal: give Codex a repo-local instruction set that is close to the Copilot instruction set without duplicating every `.github/instructions/*.instructions.md` file verbatim.
 
-### Step 1: Add repo-level Codex coverage for `.github`
+### Step 1: Add repo-level Codex coverage for `.github` **COMPLETED**
 
 Create:
 
@@ -69,7 +69,7 @@ Recommended content to include:
 - A short index of the instruction files under `.github/instructions/`
 - A note that `.github/instructions/*.instructions.md` remain the detailed source for Copilot users
 
-### Step 2: Add docs-scoped Codex coverage
+### Step 2: Add docs-scoped Codex coverage **COMPLETED**
 
 Create:
 
