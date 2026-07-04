@@ -28,9 +28,9 @@ The safest rollout is phased:
 
 ## Problem Statement
 
-Users working on larger projects currently need to connect several pieces of information manually:
+Users and AI coding agents working on complex projects currently need to connect several pieces of information to give correct and safe advice:
 
-1. Shape Shifter YAML rules.
+1. Project configuration rules and valid YAML patterns.
 2. Current validation and dependency results.
 3. The structure and quality of the source data.
 4. Reconciliation requirements.
@@ -45,10 +45,13 @@ This creates common problems:
 3. Users may not know whether a foreign key represents ownership or association.
 4. A modeling choice may create identity or reconciliation problems later.
 5. The editor can report errors, but it does not always explain them in domain terms.
+6. An AI coding agent may hallucinate SEAD rules or invent YAML patterns it was not given, because it has no grounded project context.
 
-The advisor should help close that gap.
+There is no way to connect these signals without expertise in all seven domains simultaneously.
 
-Shape Shifter already has much of the structured context an advisor would need:
+### Available context
+
+Shape Shifter already has much of the structured context needed to answer these questions:
 
 1. Project YAML loading and saving.
 2. API-to-Core conversion, including directive resolution.
@@ -60,7 +63,7 @@ Shape Shifter already has much of the structured context an advisor would need:
 8. Suggestion and auto-fix patterns.
 9. Project-level session handling.
 
-What is missing is a feature that turns those results into useful answers, such as:
+That context exists but is not synthesized automatically. Users have no direct answers to the questions that matter most for project quality:
 
 1. "Why is this entity failing validation?"
 2. "Should this be a fixed entity or a sourced entity?"
@@ -70,16 +73,27 @@ What is missing is a feature that turns those results into useful answers, such 
 
 ---
 
-## Product Principle: Grounded SEAD-Aware Advisor
+## Product Principles
+
+### Principle 1: Grounded, not generative
 
 The advisor must be a **grounded project advisor**, not a free-form assistant.
 
-"Grounded" means the advisor answers from known project data and curated rules. It should not invent project state, YAML fields, or
-SEAD policy.
+"Grounded" means the advisor answers from known project data and curated rules. It should not invent project state, YAML fields, or SEAD policy.
 
-The advisor needs four kinds of input.
+### Principle 2: Explicit uncertainty over confident invention
 
-### 1. Project Context
+When the advisor lacks sufficient grounded context to answer a question, it should say so. It should not produce a fluent but invented answer. Refusal and uncertainty are correct behaviors, not failures.
+
+### Principle 3: Deterministic code owns all factual claims
+
+The model explains what the deterministic layer found. It does not decide what is valid, invent rules, or apply changes. Every factual claim in an advisor response must be traceable to a citation ID assembled before the model was called.
+
+### Required inputs
+
+The advisor needs four kinds of grounded input to apply these principles.
+
+#### 1. Project Context
 
 This comes from the active project and current editor or runtime state:
 
@@ -92,7 +106,7 @@ This comes from the active project and current editor or runtime state:
 7. Preview and materialization summaries.
 8. Task and note context when relevant.
 
-### 2. Shape Shifter Domain Knowledge
+#### 2. Shape Shifter Domain Knowledge
 
 This is curated knowledge from active Shape Shifter documentation and rules:
 
@@ -102,9 +116,9 @@ This is curated knowledge from active Shape Shifter documentation and rules:
 4. Directive behavior.
 5. Validation rules.
 6. Reconciliation workflow expectations.
-7. Target-model and conformance-validation behavior.
+7. How Shape Shifter applies target-model conformance validation, including what is checked and what error shapes are produced.
 
-### 3. Target Model Conformance Knowledge
+#### 3. Target Model Conformance Knowledge
 
 This is curated, versioned knowledge from the target-model guides and the active target-model specification:
 
@@ -114,7 +128,7 @@ This is curated, versioned knowledge from the target-model guides and the active
 4. Naming and identity requirements expressed by the target model.
 5. The bundled SEAD superset model as a concrete reference example.
 
-### 4. SEAD Target-System Knowledge
+#### 4. SEAD Target-System Knowledge
 
 This is curated, versioned knowledge about SEAD and the related services around it:
 
@@ -127,7 +141,7 @@ This is curated, versioned knowledge about SEAD and the related services around 
 7. SEAD Authoritative Service responsibilities versus Shape Shifter responsibilities.
 8. How reconciliation, authority lookup, and identity allocation fit together.
 
-The target-model and SEAD inputs are both essential. The advisor should answer not only "how do I write this YAML?" but also" does this conform to the target model?" and "is this a good SEAD model?"
+The target-model and SEAD inputs are both essential. The advisor should answer not only "how do I write this YAML?" but also "does this conform to the target model?" and "is this a good SEAD model?"
 
 ---
 
@@ -204,7 +218,7 @@ The advisor should explain this distinction in practical Shape Shifter terms.
 
 ---
 
-## V1 Use Cases
+## MVP Use Cases
 
 The MVP should answer only three kinds of questions:
 
@@ -217,7 +231,7 @@ The MVP should answer only three kinds of questions:
 These use cases are narrow enough to test well and broad enough to be useful. Open-ended modeling advice should wait until the
 knowledge pack and evaluation suite are in place.
 
-Typical V1 prompts:
+Typical MVP prompts:
 
 1. "Explain why this project YAML fails validation."
 2. "What risks does this entity have before I run the project?"
@@ -227,7 +241,7 @@ Typical V1 prompts:
 
 ## Explicit Non-Goals
 
-V1 should not:
+MVP should not:
 
 1. Edit YAML automatically without user approval.
 2. Invent undocumented SEAD policy.
@@ -400,6 +414,8 @@ applies_to:
 2. AI validation guide.
 3. Architecture and developer guides.
 4. Generated `projectSchema.json` and `entitySchema.json` as structural references.
+5. `docs/rules/semantic_rules.yml` — machine-readable semantic validation rules with rule IDs, severity, fix suggestions, and agent guidance. Primary source for validation-error explanation and citation ID generation.
+6. `.github/skills/shapeshifter-configuration/SKILL.md` — curated YAML authoring rules, entity type selection guidance, and common configuration antipatterns. Use as a knowledge pack source for entity modeling advice; not a runtime integration point.
 
 **Target model and conformance sources:**
 
@@ -669,34 +685,16 @@ The feature should be considered successful when it can reliably:
 
 ## Glossary
 
+General Shape Shifter and SEAD terms are defined in [docs/GLOSSARY.md](../../GLOSSARY.md). This glossary defines only terms specific to the AI Project Advisor feature.
+
 | Term | Definition |
 |------|------------|
 | **Advisor** | The AI Project Advisor feature. A grounded, project-scoped chat interface that explains validation errors, entity risks, and modeling choices using real project data and curated SEAD knowledge. |
-| **Association** | A relationship between independently meaningful entities. The child entity has its own identity and lifecycle, separate from the parent. Contrasted with ownership. |
-| **Authority keys** | Identifiers assigned by an external identity authority, such as a taxonomic naming authority. Used to link local records to official external identities. |
-| **Business keys** | Human-meaningful identifiers that uniquely distinguish an entity within a domain, such as a site code or scientific name. Used for matching and deduplication. |
-| **Child values** | Data objects that do not have independent identity. They exist only as part of a parent entity and are not reconciled or tracked separately. |
-| **Conformance validation** | Validation against an active target model specification. Checks whether a project exposes the required entities, columns, foreign-key relationships, and naming rules for the target system. |
-| **Context assembly** | The process of building a structured, redacted packet of project data, validation results, dependency summaries, and knowledge-pack rules. This packet is sent to the LLM provider as the basis for an advisor response. |
 | **Citation** | A structured reference embedded in an advisor response. Points to a specific validation message, YAML path, dependency edge, or knowledge-pack rule. Uses a stable ID format: `<category>.<scope>.<identifier>`. |
-| **Directives** | YAML-level instructions such as `@include:`, `@value:`, and `${ENV_VAR}` that are resolved at the API-to-Core conversion boundary. Core models receive resolved values, not raw directives. |
-| **Foreign key** | A relationship between entities using local `system_id` values. Foreign keys never use external IDs as internal reference values. |
+| **Context assembly** | The process of building a structured, redacted packet of project data, validation results, dependency summaries, and knowledge-pack rules. This packet is sent to the LLM provider as the basis for an advisor response. |
 | **Grounded advisor** | An advisor that answers from known project data and curated rules. It does not invent project state, YAML fields, or SEAD policy. |
 | **Knowledge pack** | A curated, versioned collection of structured rules about SEAD, SIMS, reconciliation, and target-model conformance. Each rule has an ID, confidence level, source documents, and scope tags. |
-| **Ownership** | A parent-child relationship where the child's identity and lifecycle are tied to the parent. Deleting the parent affects the child. Contrasted with association. |
 | **Provider abstraction** | A backend interface that supports multiple LLM providers (local Ollama, hosted providers) without hardwiring one vendor into the advisor feature logic. |
-| **Provider keys** | Identifiers assigned by the data provider or source system. May differ from official SEAD identities and require reconciliation or authority lookup. |
-| **Reconciliation** | The process of matching incoming data against existing SEAD records or external authoritative services. Determines whether to create new records, update existing ones, or merge duplicates. |
-| **SEAD** | Scientific Evidence and Data. The target system for Shape Shifter. A relational database with specific identity, reconciliation, and modeling requirements. |
-| **SEAD Authoritative Service** | An existing SEAD-facing service that Shape Shifter calls during reconciliation workflows. Provides authority lookups for specific entity types and fields. |
-| **Shape Shifter** | The normalization and transformation engine. Converts source data into SEAD-compatible formats using project YAML configuration, validation, and reconciliation workflows. |
-| **Shared metadata** | Classifiers, categories, or reference data that are shared across multiple entities. Have stable identity and should be reconciled rather than duplicated. |
-| **SIMS** | Scientific Identity Management Service. The official authority for long-term SEAD identity allocation and mapping. Shape Shifter prepares reconciliation inputs but does not replace SIMS. |
-| **system_id** | A local sequential integer that serves as the primary key for all Shape Shifter entities. Used for all internal foreign-key relationships. |
-| **Target model** | A specification that defines the required entities, columns, foreign-key relationships, and naming rules for a given target system. Used for conformance validation. |
-| **Three-tier identity system** | Shape Shifter's identity model: (1) `system_id` for internal references, (2) `keys` for business-key matching and deduplication, (3) `public_id` for target schema column names that hold SEAD IDs after mapping. |
-| **Tracked entities** | Entities with stable, long-term identity that are followed across imports and reconciliations. Contrasted with shared metadata and child values. |
-| **Validation** | The process of checking project YAML and data against Shape Shifter rules. Includes structural validation (YAML schema), data validation (source data quality), and conformance validation (target model requirements). |
 
 ---
 
