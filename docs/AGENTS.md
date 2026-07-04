@@ -88,12 +88,12 @@ These rules apply to all documents in `docs/`.
 
 | Directory | Purpose |
 |---|---|
-| `docs/archive/` | Historical reference only. Do not treat as the source of truth for current practice. |
-| `docs/features/` | Feature backlog. Not authoritative implementation guidance unless the user is asking about planned features. |
+| `docs/archive/`   | Historical reference only. Do not treat as the source of truth for current practice. |
+| `docs/features/`  | Feature backlog. Not authoritative implementation guidance unless the user is asking about planned features. |
 | `docs/proposals/` | Design proposals and phase plans. Read `.github/instructions/proposal-document-structure.instructions.md` and `.github/instructions/proposal-writing-guide.instructions.md` before editing. |
-| `docs/ai/` | AI-facing comparison notes, prompt notes, and instruction summaries. Treat as reference notes, not policy. |
-| `docs/rules/` | Semantic validation rule definitions. |
-| `docs/images/` | Diagrams and screenshots referenced by other docs. |
+| `docs/ai/`        | AI-facing comparison notes, prompt notes, and instruction summaries. Treat as reference notes, not policy. |
+| `docs/rules/`     | Semantic validation rule definitions. |
+| `docs/images/`    | Diagrams and screenshots referenced by other docs. |
 | `docs/templates/` | Document templates for new contributors. |
-| `docs/testing/` | Supplementary testing notes and test data documentation. |
+| `docs/testing/`   | Supplementary testing notes and test data documentation. |
 | `docs/whats-new/` | Release notes and change summaries. |
