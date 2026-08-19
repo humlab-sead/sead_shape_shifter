@@ -9,6 +9,8 @@ applyTo: "frontend/src/**/*.vue,frontend/src/**/*.ts"
 - Use typed `defineProps<T>()` and `defineEmits<T>()`.
 - Use `storeToRefs()` when destructuring Pinia store state.
 - Keep API access in `frontend/src/api/` and call backend endpoints under `/api/v1`.
+- Keep UI logic, state management, and API wiring readable and direct.
+- Do not hide backend contract mismatches; surface them clearly in the frontend layer.
 - Handle `null` and `undefined` explicitly; keep strict null checks intact.
 - Prefer `type` for unions and `interface` for object-shaped API contracts.
 - Preserve the existing frontend patterns unless the task explicitly asks for a larger redesign.

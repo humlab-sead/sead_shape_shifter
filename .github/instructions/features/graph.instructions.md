@@ -61,6 +61,7 @@ All reactive inputs are `Ref<T>` — do not pass raw values. Key options:
 - Applying task status classes without clearing old ones first.
 - Passing raw values instead of `Ref<T>` to `useCytoscape`.
 - Adding a new layout type without adding it to both `getLayoutConfig()` and the `layoutType` union type.
+- Changing graph or dependency view logic in a way that alters the underlying data model or affects unrelated behavior.
 
 ## Testing Expectations
 

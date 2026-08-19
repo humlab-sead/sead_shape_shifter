@@ -12,6 +12,34 @@ Extract → Filter → Link → Unnest → Translate → Store
 
 This order is enforced in `ShapeShifter.normalize()`. Never reorder stages. Each stage receives the output of the previous one.
 
+## Stage Map
+
+| Stage     | What it does                                                         | Detailed rules                        |
+| --------- | -------------------------------------------------------------------- | ------------------------------------- |
+| Extract   | Loads the entity's source DataFrame via its registered loader        | `features/loaders.instructions.md`    |
+| Filter    | Applies `filters` to the raw source rows                             | `features/transforms.instructions.md` |
+| Link      | Adds FK columns (parent `public_id` name, parent `system_id` values) | `features/entities.instructions.md`   |
+| Unnest    | Melts `value_vars` into long form via `pd.melt()`                    | `features/transforms.instructions.md` |
+| Translate | Applies `replacements`, evaluates `extra_columns`, maps `public_id`  | `features/transforms.instructions.md` |
+| Store     | Writes the final DataFrame to `table_store`                          | this file                             |
+
+## Column Availability by Stage
+
+| Stage           | Available columns                                                                   |
+| --------------- | ----------------------------------------------------------------------------------- |
+| After Extract   | Source columns only                                                                 |
+| After Filter    | Source columns (rows reduced)                                                       |
+| After Link      | Source columns + FK columns (named from parent `public_id`)                         |
+| After Unnest    | Melted columns: `id_vars` + `var_name` + `value_name`                               |
+| After Translate | Final columns: `extra_columns` resolved, `replacements` applied, `public_id` mapped |
+
+## Cross-Stage Invariants
+
+- Never reference FK-added columns in filter expressions — filters run before linking.
+- `extra_columns` may reference FK-added columns; they are deferred until after linking, not an error on the first pass.
+- `unnest` `id_vars` and `value_vars` must exist at unnest time — they may be defined as `extra_columns` or FK columns, so do not assume they come from the source.
+- `system_id` is assigned per entity and is stable within a run; FK values always reference the parent's `system_id`, never external IDs.
+
 ## Orchestrator: `ShapeShifter`
 
 - Entry point: `ShapeShifter(project).normalize()` — async.
