@@ -190,10 +190,6 @@ Rules:
 - `@value:` references another config value by path.
 - Treat unresolved directives as residual risk, not automatic errors, unless visibly invalid.
 
-## Configuration Transformations
-
-- When transforming configuration data in code, avoid mutating the input; use deep copies where nested data must change.
-
 ## Materialized Entities
 
 If `materialized` is supported by the active project version:
