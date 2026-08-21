@@ -46,11 +46,11 @@ Use this priority order when deciding what to include:
 - Make tasks concrete, implementation-oriented, and independently checkable.
 - Use Markdown checklists for work items and Definition Of Done.
 - Use the Progress Tracker table for status. Do not duplicate the same status in multiple formats unless it adds new information.
-- Use `TBD` for unknown owners, dates, links, commands, decisions, and repository-specific details.
+- Use `TBD` for unknown owners, dates, links, commands, decisions, and other repository-specific details.
 - Do not invent project facts, file paths, commands, APIs, or test names.
 - If information is missing but the goal is clear, make only structural assumptions about sequencing, grouping, or ordering of work, and record them explicitly.
 - Do not infer owners, dates, dependencies, PR workflow, file paths, commands, APIs, or test names.
-- When the phase produces documentation, inventories, or other maintained artifacts, state the target document or file location explicitly.
+- When the phase produces documentation, inventories, or other maintained artifacts, state the target document or file location explicitly when known. If the location is undecided and affects implementation, record its selection as an open question.
 - Prefer the repository's document-placement guidance over ad hoc storage locations.
 - Put unresolved decisions in **Open Questions** only if they affect implementation.
 - Skip sections that would only contain generic filler.
@@ -63,7 +63,7 @@ Include phase title, goal, focus, and acceptance criteria as a checklist. Includ
 
 ### Work Breakdown — Essential
 
-Create 3-6 work areas based on the phase focus. For each area include objective, checklist tasks, and completion criteria. End each area with an observable completion condition. Prefer tasks that can reasonably be implemented and reviewed independently. For very small phases, use 1-2 work areas.
+Create the fewest work areas that keep work independently implementable and reviewable, typically 3-6 based on the phase focus. For each area include objective, checklist tasks, and completion criteria. End each area with an observable completion condition. For very small phases, use 1-2 work areas.
 
 ### Progress Tracker — Essential
 
@@ -89,7 +89,7 @@ Include when the phase changes code, contracts, data, migrations, APIs, or behav
 
 Include when the phase has concrete outputs such as code, docs, inventories, tests, migration scripts, or review artifacts.
 
-For documentation or inventory deliverables, include the target file or document family in the description or link column. If the target location is still undecided and that decision affects implementation, keep it as an explicit open question.
+For documentation or inventory deliverables, include the target file or document family in the description or link column when known. If the target location is undecided and affects implementation, keep its selection as an explicit open question.
 
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
