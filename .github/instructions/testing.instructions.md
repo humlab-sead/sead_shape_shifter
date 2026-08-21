@@ -1,5 +1,5 @@
 ---
-description: "Use for TESTING.md and other testing-focused documentation in sead_shape_shifter, including test strategy, test levels, validation scope, quality expectations, and repository-specific testing guidance."
+description: "Use for TESTING.md and other testing-focused documentation, including test strategy, test levels, validation scope, quality expectations, and repository-specific testing guidance."
 applyTo: "docs/TESTING.md"
 ---
 # Testing Docs

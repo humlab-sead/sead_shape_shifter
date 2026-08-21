@@ -40,7 +40,7 @@ Prefer deterministic, minimal fixes. Avoid broad rewrites when a local change so
 ## Workflow
 
 1. Identify the config file and intended workflow.
-2. Load `references/shapeshifter-configuration.instructions.md`. If `docs/rules/semantic_rules.yml` exists in the repository, also load it for machine-readable conditional rules.
+2. Load `references/shapeshifter-configuration.instructions.md`.If `docs/rules/semantic_rules.yml` exists in the repository, also load it for machine-readable conditional rules.
 3. Load nearby project docs only when they clarify local intent or patterns.
 4. Parse YAML structurally before reasoning about business intent.
 5. Validate top-level requirements: `metadata.name`, `metadata.type: shapeshifter-project`, and `entities`.

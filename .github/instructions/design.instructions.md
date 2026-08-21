@@ -1,5 +1,5 @@
 ---
-description: "Use for DESIGN.md and other architecture-focused documentation in sead_shape_shifter, including system structure, component boundaries, runtime flows, technical constraints, and major design decisions."
+description: "Use for DESIGN.md and other architecture-focused documentation, including system structure, component boundaries, runtime flows, technical constraints, and major design decisions."
 applyTo: "docs/DESIGN.md"
 ---
 # Design Docs

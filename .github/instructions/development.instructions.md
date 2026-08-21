@@ -1,5 +1,5 @@
 ---
-description: "Use for DEVELOPMENT.md and other developer-facing documentation in sead_shape_shifter, including local setup, contributor workflow, development practices, code quality checks, and day-to-day implementation guidance."
+description: "Use for DEVELOPMENT.md and other developer-facing documentation, including local setup, contributor workflow, development practices, code quality checks, and day-to-day implementation guidance."
 applyTo: "docs/DEVELOPMENT.md"
 ---
 # Development Docs

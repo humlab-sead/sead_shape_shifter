@@ -37,21 +37,6 @@ options:                          # optional
 
 Do not flag omitted `type` as an error if default `entity` semantics are valid.
 
-## Entity Type Contracts
-
-Required and optional fields per entity type. For machine-readable rules, see `docs/rules/semantic_rules.yml`.
-
-| Type | Required fields | Required options | Optional fields | Notes |
-|---|---|---|---|---|
-| `entity` | none | none | `source`, `columns`, `foreign_keys`, `depends_on` | `source` names a parent entity; omit to use the project default data source |
-| `sql` | `data_source`, `query` | none | `columns`, `keys`, `public_id`, `depends_on` | `data_source` must match an `options.data_sources` entry; `"@internal"` is exempt |
-| `fixed` | `columns`, `values` | none | `public_id`, `keys`, `column_types`, `extra_columns` | Row width must match `columns` length |
-| `csv`, `tsv` | — | `options.filename` | `options.delimiter`, `options.encoding` | `csv` and `tsv` use the same loader class |
-| `xlsx` | — | `options.filename` | `options.sheet_name`, `options.sanitize_header` | File loader, pandas engine |
-| `openpyxl` | — | `options.filename` | `options.sheet_name`, `options.range`, `options.sanitize_header` | File loader, openpyxl engine; supports cell range |
-| `merged` | `branches`, `public_id` | none | `keys`, `foreign_keys` | Each branch requires `name` + `source` |
-| `duckdb` | `query`, `depends_on` | none | `columns`, `keys`, `public_id` | No `data_source` |
-
 ## Identity
 
 - `system_id`: internal local ID. FK values always reference parent `system_id`.
@@ -237,4 +222,3 @@ Do not auto-flag these as errors:
 - Preserve comments, ordering, directives, and local style.
 - Never invent data-source names, table names, sheet names, source columns, or target columns.
 - Only claim validation passed if it actually ran successfully.
-- Store findings in a markdown file next to the config, named `YYYYMMDD_REVIEW_FINDINGS.md`.
