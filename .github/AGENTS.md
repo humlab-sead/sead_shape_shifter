@@ -19,8 +19,7 @@ The files under `instructions/` are the detailed source of truth for Copilot. Co
 
 | File                                                      | When to read it                                                |
 |-----------------------------------------------------------|----------------------------------------------------------------|
-| `instructions/project-config.instructions.md`             | Editing `shapeshifter.yml` or any project YAML file            |
-| `instructions/shapeshifter-configuration.instructions.md` | Validating entity identity, FK patterns, or directives in YAML |
+| `instructions/shapeshifter-configuration.instructions.md` | Editing or validating `shapeshifter.yml` and other project YAML files |
 
 ### Feature-specific engineering rules
 
