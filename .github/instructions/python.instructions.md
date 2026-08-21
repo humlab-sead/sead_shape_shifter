@@ -8,6 +8,7 @@ applyTo: "src/**/*.py,backend/**/*.py,ingesters/**/*.py,tests/**/*.py"
 - Keep API models in `backend/app/models/` and domain logic in `src/`.
 - Preserve the service and router separation; keep business logic in services, not API route handlers.
 - Convert API and Core models with mappers; resolve environment variables and directives only in the mapper layer.
+- When transforming configuration data, do not mutate input objects; make deep copies before changing nested values.
 - Prefer constructor injection or factory functions to break circular dependencies; use `TYPE_CHECKING` for type-only imports.
 - Keep validators in `src/validators/` pure: accept data/config, return domain issues, and do not fetch data or import API DTOs.
 - Register validators, loaders, filters, and ingesters through the existing registries.
