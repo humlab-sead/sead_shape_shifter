@@ -8,6 +8,12 @@ Keep this file small and always-on. Use `.github/instructions/*.instructions.md`
 - Ignore `docs/archive/`.
 - Treat `docs/features/` as backlog, not authoritative implementation guidance, unless the user asks about roadmap or planned features.
 
+## Documentation Evidence
+
+- Treat current code, configuration, scripts, workflows, and generated artifacts as authoritative for the behavior each implements.
+- Treat `docs/archive/` as historical context, not current practice.
+- Verify documentation claims against the source that implements or executes the described behavior.
+
 ## Repository structure
 
 - `src/`: core Python transformation engine
@@ -46,24 +52,11 @@ Core pipeline order matters: Extract → Filter → Link → Unnest → Translat
 - Run broader tests when a change crosses layers.
 - When touching project YAML, validate against `.github/instructions/shapeshifter-configuration.instructions.md`.
 
-## Task-specific instructions
+## Cross-cutting instructions
 
-Use the focused files under `.github/instructions/` for detailed guidance:
-
-- `python.instructions.md` - Python code, loaders, validators, and tests
-- `frontend.instructions.md` - Vue, Pinia, and frontend API conventions
-- `shapeshifter-configuration.instructions.md` - YAML rules, identity system, and FK patterns
-- `github-workflow.instructions.md` - issue, commit, and handoff workflow
-- `ingesters.instructions.md` - ingester structure, discovery, and testing
-- `diagrams.instructions.md` - Mermaid diagram style and conventions
-- `operations.instructions.md` - writing and maintaining `docs/OPERATIONS.md`
-- `user-guide.instructions.md` - writing and maintaining `docs/USER_GUIDE.md`
-- `phase-plan.instructions.md` - phased implementation and delivery sequencing
-- `task-plan.instructions.md` - task plans for individual implementation phases
-- `wricting-style.instructions.md` - concrete wording for docs, comments, and PR text
-- `simplify-docs` - rewrite documents in simpler, more direct language while keeping structure and meaning the same
-- `testing.instructions.md` - testing strategy, test levels, and validation guidance
-- `development.instructions.md` - local setup, workflow, and development practices
+- `writing-style.instructions.md`: prose, docstrings, PR text, and AI coding-agent instructions
+- `diagrams.instructions.md`: Mermaid diagram style and conventions
+- `github-workflow.instructions.md`: issue creation and commit workflow
 
 ## graphify
 

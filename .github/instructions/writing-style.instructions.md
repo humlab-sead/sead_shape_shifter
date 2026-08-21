@@ -1,3 +1,7 @@
+---
+description: "Use when writing or editing documentation, comments, docstrings, PR text, issues, proposals, user-facing messages, or AI coding-agent instructions."
+---
+
 # Writing Style Instructions
 
 Use this file when generating or editing:
@@ -24,8 +28,19 @@ Readers should understand:
 
 Use concrete, behavior-first language:
 
-* name the actual thing, action, rule, input, output, or result
-  -`# Increment counter.`
+* Name the actual thing, action, rule, input, output, or result.
+* Write `# Increment counter.` rather than an abstract comment.
+
+## Concrete Language
+
+Use plain, concrete language in generated code, comments, docstrings, PR text, and documentation.
+
+- Prefer words that name the actual thing, action, rule, input, output, or result directly.
+- Use abstract or overloaded terms carefully. When a technical term is necessary, define it nearby or pair it with a plain-language explanation.
+- Unless they are established project vocabulary, use terms such as `evidence`, `boundary`, `framing`, `canonical`, `surface`, `facing`, `slice`, and `signal` carefully.
+- Prefer explicit wording such as `data`, `result`, `source`, `check`, `validation result`, `limit`, `responsibility`, `allowed range`, `rule`, `purpose`, `reason`, `background`, `request details`, `standard`, `preferred`, `normalized`, `official`, `interface`, `page`, `endpoint`, `entry point`, `used by`, `shown to`, `exposed to`, `part`, `section`, `subset`, `step`, `indicator`, `warning`, `metric`, `status`, `input`, `output`, `error`, and `side effect`.
+- Match the level of detail to the reader: junior developers, maintainers, testers, data managers, researchers, and non-technical stakeholders may all use the text.
+- The closer text is to code or user-visible behavior, the more concrete it should be.
 
 ## Docstrings
 
@@ -37,7 +52,7 @@ Prefer:
 * `Returns validation errors for missing required fields.`
 * `Does not write changes to the database.`
 
-Avoid vague or overloaded wording when a more precise description is available.
+Explain behavior, responsibility, assumptions, inputs, outputs, and side effects. Avoid vague, metaphorical, fashion-driven, or overloaded wording when a more precise description is available.
 
 Do not avoid technical terms when they are the correct project terms.
 
