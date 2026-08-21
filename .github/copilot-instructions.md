@@ -52,7 +52,6 @@ Use the focused files under `.github/instructions/` for detailed guidance:
 
 - `python.instructions.md` - Python code, loaders, validators, and tests
 - `frontend.instructions.md` - Vue, Pinia, and frontend API conventions
-- `project-config.instructions.md` - `shapeshifter.yml` and config validation
 - `shapeshifter-configuration.instructions.md` - YAML rules, identity system, and FK patterns
 - `github-workflow.instructions.md` - issue, commit, and handoff workflow
 - `ingesters.instructions.md` - ingester structure, discovery, and testing
