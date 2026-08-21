@@ -1,5 +1,5 @@
 ---
-description: "Use for OPERATIONS.md, deployment/runbook docs, environments, runtime configuration, CI/CD, observability, rollback, and incident-readiness documentation in sead_shape_shifter."
+description: "Use for OPERATIONS.md, deployment/runbook docs, environments, runtime configuration, CI/CD, observability, rollback, and incident-readiness documentation."
 applyTo: "docs/OPERATIONS.md"
 ---
 # Operations Docs

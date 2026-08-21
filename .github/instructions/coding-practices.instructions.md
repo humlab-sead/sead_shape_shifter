@@ -1,5 +1,5 @@
 ---
-description: "General coding practices for all work in sead_shape_shifter: targeted changes, root-cause fixes, and verification before claiming completion."
+description: "General coding practices for all work: targeted changes, root-cause fixes, and verification before claiming completion."
 applyTo: "**/*"
 ---
 # General Coding Practices

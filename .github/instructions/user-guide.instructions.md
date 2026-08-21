@@ -1,5 +1,5 @@
 ---
-description: "Use for USER_GUIDE.md and related end-user documentation in sead_shape_shifter, including workflows, task-oriented guidance, and common user scenarios."
+description: "Use for USER_GUIDE.md and related end-user documentation, including workflows, task-oriented guidance, and common user scenarios."
 applyTo: "docs/USER_GUIDE.md"
 ---
 # User Guide Documentation Instructions
