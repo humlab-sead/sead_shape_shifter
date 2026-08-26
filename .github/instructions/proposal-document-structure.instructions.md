@@ -5,7 +5,7 @@ applyTo: "docs/proposals/**/*.md"
 
 # Proposal Document Structure
 
-Use this for Markdown files under `docs/proposals/`. It keeps proposals, phase plans, task plans, handoffs, and archive notes in separate roles. Detailed style lives in the proposal, phase-plan, task-plan, and writing-style instructions.
+Use this for Markdown files under `docs/proposals/`. It keeps proposals, phase plans, task plans, handoffs, and archive notes in separate roles. Detailed style lives in the proposal, phase-plan, task-plan, and writing-style instructions. Proposal section order follows the template at [docs/templates/PROPOSAL_TEMPLATE.md](../../docs/templates/PROPOSAL_TEMPLATE.md).
 
 ## Document Type
 
