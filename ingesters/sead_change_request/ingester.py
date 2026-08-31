@@ -4,7 +4,7 @@ This module resolves external inputs, runs the shared preparation flow, and
 turns the result into validation or ingestion output.
 """
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +15,12 @@ from backend.app.ingesters.registry import get_ingester_registry
 from ingesters.sead_change_request.artifact_writer import write_artifact_bundle
 from ingesters.sead_change_request.collision_checks import CollisionCheckResult, check_projected_collisions
 from ingesters.sead_change_request.contracts import ChangeRequestPackage, DeployArtifact
-from ingesters.sead_change_request.input_resolution import InputResolutionError, resolve_inputs
+from ingesters.sead_change_request.input_resolution import (
+    InputResolutionError,
+    SubmissionContextError,
+    TargetModelError,
+    resolve_inputs,
+)
 from ingesters.sead_change_request.package_builder import build_change_request_package
 from ingesters.sead_change_request.planning import plan_bundle
 from ingesters.sead_change_request.preparation import PreparationResult, ResolvedInputs, prepare_change_request
@@ -27,6 +32,7 @@ from ingesters.sead_change_request.result_builders import (
     failure_details,
 )
 from ingesters.sead_change_request.sql_builder import build_deploy_artifact
+from ingesters.sead_change_request.submission_tables import DERIVED_SUBMISSION_TABLES, build_submission_source_bundle
 
 
 @get_ingester_registry().register(key="sead_change_request")
@@ -55,6 +61,7 @@ class SeadChangeRequestIngester:
     async def _prepare_change_request(self, source: Path | str) -> PreparationResult:
         """Run the shared preparation workflow after inputs are resolved."""
         inputs: ResolvedInputs = resolve_inputs(self.config, source)
+        inputs = await self._add_submission_tables(inputs)
         planned = plan_bundle(
             inputs.bundle,
             inputs.target_model.entities,
@@ -68,6 +75,36 @@ class SeadChangeRequestIngester:
             sims_client=self._get_client("sims_client"),
             reconciliation_client=self._get_client("reconciliation_client"),
         )
+
+    async def _add_submission_tables(self, inputs: ResolvedInputs) -> ResolvedInputs:
+        """Resolve the project provider and add rows required by the submission target contract."""
+        if "submission" not in inputs.target_model.entities:
+            return inputs
+
+        missing_entities = sorted(DERIVED_SUBMISSION_TABLES.difference(inputs.target_model.entities))
+        if missing_entities:
+            raise TargetModelError("Submission target contract is missing entity or entities: " + ", ".join(missing_entities))
+
+        provider_code = inputs.submission_context.data_provider_code
+        if not provider_code:
+            raise SubmissionContextError("Submission context requires data_provider_code from project metadata")
+
+        reconciliation_client = self._get_client("reconciliation_client")
+        if reconciliation_client is None:
+            raise SubmissionContextError("Data provider resolution requires a reconciliation client")
+
+        data_provider_id = await reconciliation_client.reconcile_entity(
+            "data_provider",
+            {"data_provider_code": provider_code},
+        )
+        if data_provider_id is None:
+            raise SubmissionContextError(f"No SEAD data provider matched data_provider_code '{provider_code}'")
+
+        try:
+            bundle = build_submission_source_bundle(inputs.bundle, inputs.submission_context, data_provider_id)
+        except ValueError as exc:
+            raise SubmissionContextError(str(exc)) from exc
+        return replace(inputs, bundle=bundle)
 
     async def validate(self, excel_file: Path | str) -> ValidationResult:
         try:

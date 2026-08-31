@@ -13,11 +13,12 @@ export interface IngesterMetadata {
 export interface SubmissionContextInput {
   submission_name: string
   project_name: string
+  data_provider_code: string
   timestamp: string
   datatype: string
   identifier: string
   description?: string | null
-  issue_number?: string | null
+  issue_identifier?: string | null
   author?: string | null
 }
 
