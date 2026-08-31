@@ -33,6 +33,7 @@ For the single consolidated tracker of remaining work, use:
 - [../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](../../DATA_PROVIDER_SUBMISSION_LIFECYCLE.md) — durable lifecycle rules reference
 - [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/README.md) — archived provider-submission lifecycle set
 - [SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md](./SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT/SHARED_DATA_REVIEW_AND_OPERATOR_CONTRACT.md) — separate shared-data review proposal
+- [REFACTOR_SEAD_SUBMISSION_METADATA.md](./REFACTOR_SEAD_SUBMISSION_METADATA.md) — proposed CR for persisted submission defaults and SEAD submission container
 - [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_PHASE_1_2_ISSUES.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_PHASE_1_2_ISSUES.md) — issue-ready phase 1 and phase 2 implementation slices
 - [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_PHASE_3_ISSUES.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_PHASE_3_ISSUES.md) — phase 3 implementation record for existing-row provider update handling
 - [done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_SPEC_PROMOTION_NOTE.md](./done/DATA_PROVIDER_SUBMISSION_LIFECYCLE/LIFECYCLE_SPEC_PROMOTION_NOTE.md) — promotion handoff for moving accepted lifecycle rules into durable docs

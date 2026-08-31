@@ -8,6 +8,7 @@ export interface ProjectMetadata {
   name: string
   description?: string | null
   version?: string | null
+  data_provider_code?: string | null
   file_path?: string | null
   entity_count: number
   created_at?: string | null
@@ -15,6 +16,22 @@ export interface ProjectMetadata {
   is_valid?: boolean
   default_entity?: string | null
   target_model?: string | null
+}
+
+export interface SeadChangeRequestDefaults {
+  datatype?: string
+  deploy_strategy?: 'inline_insert' | 'copy_csv'
+  author?: string
+}
+
+export interface IngesterProjectConfig {
+  data_source?: string
+  options?: {
+    ignore_columns?: string[]
+    do_register?: boolean
+    explode?: boolean
+  }
+  defaults?: SeadChangeRequestDefaults
 }
 
 export interface Project {

@@ -207,8 +207,9 @@ def _resolve_submission_context(config: IngesterConfig) -> SubmissionContext:
     datatype: str | None = _optional_string(context_data, "datatype", SubmissionContextError)
     identifier: str | None = _optional_string(context_data, "identifier", SubmissionContextError)
     description: str | None = _optional_string(context_data, "description", SubmissionContextError)
-    issue_number: str | None = _optional_string(context_data, "issue_number", SubmissionContextError)
+    issue_identifier: str | None = _optional_string(context_data, "issue_identifier", SubmissionContextError)
     author: str | None = _optional_string(context_data, "author", SubmissionContextError)
+    data_provider_code: str | None = _optional_string(context_data, "data_provider_code", SubmissionContextError)
 
     normalized_datatype: str = _normalize_datatype(datatype)
     normalized_identifier: str = _normalize_identifier(identifier)
@@ -223,8 +224,9 @@ def _resolve_submission_context(config: IngesterConfig) -> SubmissionContext:
         datatype=normalized_datatype,
         identifier=normalized_identifier,
         description=normalized_description,
-        issue_number=issue_number.strip() if isinstance(issue_number, str) else None,
+        issue_identifier=issue_identifier.strip() if isinstance(issue_identifier, str) else None,
         author=author.strip() if isinstance(author, str) else None,
+        data_provider_code=data_provider_code.strip() if isinstance(data_provider_code, str) else None,
     )
 
 

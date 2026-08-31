@@ -175,6 +175,27 @@ def minimal_target_model(**extra_entities: dict) -> dict:
     }
 
 
+def submission_target_model() -> dict:
+    """Build the submission-aware target contract used by ingester tests."""
+    return minimal_target_model(
+        submission_state={"role": "classifier", "public_id": "submission_state_id", "target_table": "tbl_submission_states"},
+        data_provider={"role": "lookup", "public_id": "data_provider_id", "target_table": "tbl_data_providers"},
+        citation={"role": "lookup", "public_id": "biblio_id", "target_table": "tbl_biblio"},
+        submission={
+            "role": "fact",
+            "public_id": "submission_id",
+            "target_table": "tbl_submissions",
+            "foreign_keys": [{"entity": "submission_state"}, {"entity": "data_provider"}, {"entity": "citation"}],
+        },
+        dataset={
+            "role": "lookup",
+            "public_id": "dataset_id",
+            "target_table": "tbl_datasets",
+            "foreign_keys": [{"entity": "submission"}],
+        },
+    )
+
+
 def minimal_submission_context(**overrides: object) -> dict:
     """Build a minimal submission context payload for ingester tests."""
     payload: dict[str, object] = {
@@ -184,8 +205,9 @@ def minimal_submission_context(**overrides: object) -> dict:
         "datatype": "mal",
         "identifier": "TEST_SUBMISSION",
         "description": "test bundle",
-        "issue_number": "NNN",
+        "issue_identifier": "NNN",
         "author": "SEAD Expert",
+        "data_provider_code": "SEAD",
     }
     payload.update(overrides)
     return payload
@@ -202,7 +224,7 @@ def expected_bundle_name(**overrides: object) -> str:
         datatype=str(payload["datatype"]),
         identifier=str(payload["identifier"]),
         description=payload.get("description") if isinstance(payload.get("description"), str) else None,
-        issue_number=payload.get("issue_number") if isinstance(payload.get("issue_number"), str) else None,
+        issue_identifier=payload.get("issue_identifier") if isinstance(payload.get("issue_identifier"), str) else None,
         author=payload.get("author") if isinstance(payload.get("author"), str) else None,
     )
     return resolve_bundle_name(submission_context)
@@ -263,6 +285,52 @@ class TestSeadChangeRequestIngesterValidation:
         assert result.is_valid is True
         assert result.warnings == ["sample warning"]
         assert any("normalized submission" in info for info in result.infos)
+
+    @pytest.mark.asyncio
+    async def test_validate_requires_project_data_provider_code_for_submission_target(self):
+        """Submission-aware targets should require stable provider identity from project metadata."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {"dataset": pd.DataFrame({"dataset_id": [None]})},
+                    "target_model": submission_target_model(),
+                    "submission_context": minimal_submission_context(data_provider_code=None),
+                    "reconciliation_client": FakeReconciliationClient(target_id=51),
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert result.errors == ["Submission context requires data_provider_code from project metadata"]
+
+    @pytest.mark.asyncio
+    async def test_validate_rejects_unknown_project_data_provider_code(self):
+        """Submission-aware targets should not allocate an unknown provider."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                extra={
+                    "tables": {"dataset": pd.DataFrame({"dataset_id": [None]})},
+                    "target_model": submission_target_model(),
+                    "submission_context": minimal_submission_context(data_provider_code="UNKNOWN"),
+                    "reconciliation_client": FakeReconciliationClient(target_id=None),
+                },
+            )
+        )
+
+        result = await ingester.validate("submission.xlsx")
+
+        assert result.is_valid is False
+        assert result.errors == ["No SEAD data provider matched data_provider_code 'UNKNOWN'"]
 
     @pytest.mark.asyncio
     async def test_validate_accepts_excel_path_source(self, tmp_path):
@@ -782,6 +850,83 @@ class TestSeadChangeRequestIngesterIngest:
         assert result.error_details is None
         bundle_name = expected_bundle_name()
         assert (tmp_path / bundle_name / "deploy" / f"{bundle_name}.sql").exists()
+
+    @pytest.mark.asyncio
+    async def test_ingest_emits_submission_and_links_new_dataset(self, tmp_path):
+        """Ingest should resolve the provider, emit one submission, and link new datasets to it."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {
+                        "dataset": pd.DataFrame(
+                            {
+                                "system_id": [10],
+                                "dataset_id": [None],
+                                "dataset_name": ["Pilot dataset"],
+                            }
+                        )
+                    },
+                    "target_model": submission_target_model(),
+                    "submission_context": minimal_submission_context(),
+                    "reconciliation_client": FakeReconciliationClient(target_id=51),
+                    "sims_client": FakeSimsClient(binding_set_state="confirmed", target_id=501),
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx")
+
+        assert result.success is True
+        assert result.deploy_artifact is not None
+        deploy_sql = result.deploy_artifact["deploy_sql"]
+        assert 'INSERT INTO "tbl_submissions"' in deploy_sql
+        assert 'INSERT INTO "tbl_datasets"' in deploy_sql
+        assert '"submission_id"' in deploy_sql
+        assert "tbl_submission_tasks" not in deploy_sql
+
+    @pytest.mark.asyncio
+    async def test_ingest_copy_csv_emits_submission_and_dataset_payloads(self, tmp_path):
+        """Copy-CSV should emit payloads for the new submission and linked dataset only."""
+        ingester = SeadChangeRequestIngester(
+            IngesterConfig(
+                host="localhost",
+                port=5432,
+                dbname="test_db",
+                user="test_user",
+                output_folder=str(tmp_path),
+                extra={
+                    "tables": {
+                        "dataset": pd.DataFrame(
+                            {
+                                "system_id": [10],
+                                "dataset_id": [None],
+                                "dataset_name": ["Pilot dataset"],
+                            }
+                        )
+                    },
+                    "target_model": submission_target_model(),
+                    "submission_context": minimal_submission_context(),
+                    "deploy_strategy": "copy_csv",
+                    "reconciliation_client": FakeReconciliationClient(target_id=51),
+                    "sims_client": FakeSimsClient(binding_set_state="confirmed", target_id=501),
+                },
+            )
+        )
+
+        result = await ingester.ingest("submission.xlsx")
+
+        assert result.success is True
+        assert result.deploy_artifact is not None
+        bundle_files = result.deploy_artifact["bundle_files"]
+        assert any(path.endswith("/tbl_submissions.gz") for path in bundle_files)
+        assert any(path.endswith("/tbl_datasets.gz") for path in bundle_files)
+        assert not any(path.endswith("/tbl_data_providers.gz") for path in bundle_files)
+        assert not any(path.endswith("/tbl_submission_states.gz") for path in bundle_files)
 
     @pytest.mark.asyncio
     async def test_ingest_returns_validation_failure_for_invalid_bundle(self):

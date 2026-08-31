@@ -41,6 +41,7 @@ class ProjectMetadata(BaseModel):
     type: str | None = Field(default="shapeshifter-project", description="Project type identifier")
     description: str | None = Field(default=None, description="Project description")
     version: str | None = Field(default=None, description="Project version")
+    data_provider_code: str | None = Field(default=None, description="Stable SEAD data provider code for the project")
     file_path: str | None = Field(default=None, description="File path if loaded from file")
     entity_count: int = Field(
         ...,

@@ -440,6 +440,31 @@ class TestRoundTripConversion:
         assert restored_config.entities["sample"]["keys"] == original_config.entities["sample"]["keys"]
         assert restored_config.options == original_config.options
 
+    def test_data_provider_code_and_ingester_defaults_round_trip(self):
+        """Project provider identity and stable ingester defaults survive mapping."""
+        original_config = Project(
+            metadata=ProjectMetadata(name="test", entity_count=0, data_provider_code="SEAD"),
+            entities={},
+            options={
+                "ingesters": {
+                    "sead_change_request": {
+                        "defaults": {
+                            "datatype": "bugs",
+                            "deploy_strategy": "copy_csv",
+                            "author": "SEAD Lab",
+                        }
+                    }
+                }
+            },
+        )
+
+        core_dict = ProjectMapper.to_core_dict(original_config)
+        restored_config = ProjectMapper.to_api_config(core_dict, "test")
+
+        assert restored_config.metadata is not None
+        assert restored_config.metadata.data_provider_code == "SEAD"
+        assert restored_config.options == original_config.options
+
 
 class TestEdgeCases:
     """Tests for edge cases and error conditions."""

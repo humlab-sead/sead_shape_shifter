@@ -88,8 +88,9 @@ class SubmissionContext:
     datatype: str | None = None
     identifier: str | None = None
     description: str | None = None
-    issue_number: str | None = None
+    issue_identifier: str | None = None
     author: str | None = None
+    data_provider_code: str | None = None
 
 
 @dataclass(slots=True)
