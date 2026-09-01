@@ -457,7 +457,7 @@ def _is_update_row(package_table: ChangeRequestTable, row_index: object) -> bool
     """Return True when one packaged row should be rendered as an UPDATE statement."""
     if package_table.planned_actions is None:
         return False
-    return package_table.planned_actions.loc[row_index] == PlannedRowAction.UPDATE_EXISTING_CANDIDATE
+    return package_table.planned_actions.loc[row_index] == PlannedRowAction.UPDATE_EXISTING_CANDIDATE  # type: ignore
 
 
 def _update_assignment_columns(row: pd.Series, public_id_column: str, mutable_fields: list[str] | None) -> list[str]:
