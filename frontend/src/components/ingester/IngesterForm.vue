@@ -122,9 +122,9 @@
           </div>
 
           <v-text-field
-            v-model="seadChangeRequest.issue_number"
-            label="Issue Number"
-            hint="Optional change-control issue number used in SQL headers and metadata"
+            v-model="seadChangeRequest.issue_identifier"
+            label="Issue ID"
+            hint="Optional change-control issue ID or URL used in SQL headers and metadata"
             persistent-hint
             prepend-icon="mdi-pound"
           />
@@ -327,7 +327,7 @@
             </template>
             <template v-if="deployArtifactManifest">
               <div v-if="deployArtifactManifest.cr_name" class="text-caption"><strong>Bundle name:</strong> {{ deployArtifactManifest.cr_name }}</div>
-              <div v-if="deployArtifactManifest.issue_number" class="text-caption"><strong>Issue number:</strong> {{ deployArtifactManifest.issue_number }}</div>
+              <div v-if="deployArtifactManifest.issue_identifier" class="text-caption"><strong>Issue ID:</strong> {{ deployArtifactManifest.issue_identifier }}</div>
               <div v-if="deployArtifactBundleFiles.length > 0" class="text-caption"><strong>Bundle files:</strong> {{ deployArtifactBundleFiles.join(', ') }}</div>
             </template>
             <div v-if="isSeadChangeRequest" class="text-caption mt-2" data-test="deploy-artifact-guidance">
@@ -382,6 +382,7 @@ import { storeToRefs } from 'pinia'
 import { useIngesterStore } from '@/stores/ingester'
 import { useDataSourceStore } from '@/stores/data-source'
 import { useProjectStore } from '@/stores/project'
+import type { IngesterProjectConfig } from '@/types/config'
 import type { DeployArtifact, IngestRequest, PendingConfirmationReport, SubmissionContextInput, ValidateRequest } from '@/types/ingester'
 
 const ingesterStore = useIngesterStore()
@@ -425,7 +426,7 @@ interface SeadChangeRequestFormState {
   datatype: string
   identifier: string
   description: string
-  issue_number: string
+  issue_identifier: string
   author: string
 }
 
@@ -456,7 +457,7 @@ function createSeadChangeRequestState(projectName = ''): SeadChangeRequestFormSt
     datatype: 'bugs',
     identifier: '',
     description: '',
-    issue_number: '',
+    issue_identifier: '',
     author: ''
   }
 }
@@ -469,12 +470,13 @@ const ignoreColumnsText = ref('date_updated\n*_uuid\n(*')
 
 const availableIngesters = computed(() => ingesterStore.ingesters)
 const isSeadChangeRequest = computed(() => selectedIngester.value?.key === 'sead_change_request')
-const ingesterConfig = computed(() => {
+const ingesterConfig = computed<IngesterProjectConfig | null>(() => {
   if (!selectedProject.value || !selectedIngester.value) return null
   const ingesters = selectedProject.value.options?.ingesters || {}
   return ingesters[selectedIngester.value.key] || null
 })
 const defaultProjectName = computed(() => selectedProject.value?.metadata?.name?.trim() || '')
+const dataProviderCode = computed(() => selectedProject.value?.metadata?.data_provider_code?.trim() || '')
 
 const targetDataSourceName = computed(() => {
   return ingesterConfig.value?.data_source || null
@@ -518,6 +520,7 @@ const activeDeployArtifactGuidance = computed(() => {
 const lastAutoIdentifier = ref('')
 const lastAutoSubmissionName = ref('')
 const lastAutoDescription = ref('')
+const appliedDefaultsKey = ref('')
 const defaultProjectDescription = computed(() => selectedProject.value?.metadata?.description?.trim() || '')
 const projectDerivedSubmissionName = computed(() => createSubmissionNameDefault(defaultProjectName.value, seadChangeRequest.value.datatype))
 const projectDerivedIdentifier = computed(() => createProjectIdentifierDefault(defaultProjectName.value))
@@ -715,6 +718,15 @@ function applyIngesterDefaults() {
   form.value.do_register = config?.options?.do_register ?? false
   form.value.explode = config?.options?.explode ?? false
 
+  const defaultsKey = `${defaultProjectName.value}:${selectedIngester.value?.key || ''}`
+  if (isSeadChangeRequest.value && defaultsKey && appliedDefaultsKey.value !== defaultsKey) {
+    const defaults = config?.defaults
+    seadChangeRequest.value.datatype = defaults?.datatype || 'bugs'
+    seadChangeRequest.value.author = defaults?.author || ''
+    deployStrategy.value = defaults?.deploy_strategy || 'inline_insert'
+    appliedDefaultsKey.value = defaultsKey
+  }
+
   if (!seadChangeRequest.value.project_name && defaultProjectName.value) {
     seadChangeRequest.value.project_name = defaultProjectName.value
   }
@@ -745,11 +757,12 @@ function buildSubmissionContext(): SubmissionContextInput | undefined {
   return {
     submission_name: normalizeSubmissionName(form.value.submission_name),
     project_name: seadChangeRequest.value.project_name.trim(),
+    data_provider_code: dataProviderCode.value,
     timestamp: seadChangeRequest.value.timestamp,
     datatype: seadChangeRequest.value.datatype,
     identifier: normalizeSubmissionIdentifier(seadChangeRequest.value.identifier),
     description: seadChangeRequest.value.description.trim() || undefined,
-    issue_number: seadChangeRequest.value.issue_number.trim() || undefined,
+    issue_identifier: seadChangeRequest.value.issue_identifier.trim() || undefined,
     author: seadChangeRequest.value.author.trim() || undefined
   }
 }
@@ -804,6 +817,7 @@ function resetForm() {
   lastAutoIdentifier.value = ''
   lastAutoSubmissionName.value = ''
   lastAutoDescription.value = ''
+  appliedDefaultsKey.value = ''
   deployStrategy.value = 'inline_insert'
   applyIngesterDefaults()
   clearValidation()

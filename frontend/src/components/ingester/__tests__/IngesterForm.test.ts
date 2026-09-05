@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { reactive, toRefs } from 'vue'
+import { nextTick, reactive, toRefs } from 'vue'
 import { shallowMount } from '@vue/test-utils'
 
 import IngesterForm from '../IngesterForm.vue'
-import type { IngestResponse, IngesterMetadata, ValidateResponse } from '@/types/ingester'
+import type { IngestResponse, IngesterMetadata, ValidateRequest, ValidateResponse } from '@/types/ingester'
 
 vi.mock('pinia', async () => {
   const actual = await vi.importActual<typeof import('pinia')>('pinia')
@@ -52,11 +52,17 @@ const projectStore = reactive({
     metadata: {
       name: 'pilot_bugs',
       description: 'Pilot bugs change package',
+      data_provider_code: 'SEAD',
     },
     options: {
       ingesters: {
         sead_change_request: {
           data_source: 'sead_staging',
+          defaults: {
+            datatype: 'mal',
+            deploy_strategy: 'copy_csv',
+            author: 'SEAD Lab',
+          },
           options: {
             ignore_columns: ['date_updated'],
           },
@@ -196,7 +202,7 @@ describe('IngesterForm', () => {
         },
         metadata_artifact: {
           cr_name: 'pilot-bugs-001',
-          issue_number: '455',
+          issue_identifier: '455',
         },
         bundle_files: {
           'payload/sample.tsv.gz': 'content',
@@ -213,8 +219,9 @@ describe('IngesterForm', () => {
     expect(wrapper.text()).toContain('Review the emitted SQL, manifest, and compressed table payload files')
   })
 
-  it('prefills project-derived submission context fields and exposes backend-matched validation rules', () => {
+  it('prefills project-derived submission context fields and exposes backend-matched validation rules', async () => {
     const wrapper = mountForm()
+    await nextTick()
 
     const projectField = findTextField(wrapper, 'Project Name *')
     const submissionNameField = findTextField(wrapper, 'Submission Name *')
@@ -223,7 +230,7 @@ describe('IngesterForm', () => {
     const descriptionField = findTextarea(wrapper, 'Description')
 
     expect(projectField?.props('modelValue')).toBe('pilot_bugs')
-    expect(submissionNameField?.props('modelValue')).toBe('pilot_bugs_bugs')
+    expect(submissionNameField?.props('modelValue')).toBe('pilot_bugs_mal')
     expect(findTextField(wrapper, 'Submission Identifier *')?.props('modelValue')).toBe('PILOT_BUGS')
     expect(descriptionField?.props('modelValue')).toBe('Pilot bugs change package')
     expect(wrapper.text()).toContain('Auto-derived from the active project and selected datatype until you override it.')
@@ -233,13 +240,21 @@ describe('IngesterForm', () => {
     expect(wrapper.text()).toContain('Operator-entered for this run.')
     expect(wrapper.text()).toContain('Operator-selected for this run.')
 
-    const identifierRules = identifierField.props('rules') as Array<(value: string) => boolean | string>
-    const timestampRules = timestampField.props('rules') as Array<(value: string) => boolean | string>
-    const descriptionRules = descriptionField.props('rules') as Array<(value: string) => boolean | string>
+    const identifierRules = identifierField!.props('rules') as Array<(value: string) => boolean | string>
+    const timestampRules = timestampField!.props('rules') as Array<(value: string) => boolean | string>
+    const descriptionRules = descriptionField!.props('rules') as Array<(value: string) => boolean | string>
 
     expect(identifierRules[1]?.('bad-id')).toBe('Use only A-Z, 0-9, and _; max 39 characters')
     expect(identifierRules[1]?.('pilot_bugs')).toBe(true)
     expect(timestampRules[1]?.('not-a-date')).toBe('Enter a valid ISO-8601 local datetime')
     expect(descriptionRules[0]?.('line one\nline two')).toBe('Use a single line shorter than 80 characters')
+
+    const request = (wrapper.vm as unknown as { buildValidateRequest: () => ValidateRequest }).buildValidateRequest()
+    expect(request.deploy_strategy).toBe('copy_csv')
+    expect(request.submission_context).toMatchObject({
+      data_provider_code: 'SEAD',
+      datatype: 'mal',
+      author: 'SEAD Lab',
+    })
   })
 })

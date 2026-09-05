@@ -36,6 +36,8 @@ def project_target_ids(identity_result: IdentityResolutionResult, target_model: 
             fk_column = remote_spec.public_id
             if fk_column not in frame.columns:
                 continue
+            if not bool(frame[fk_column].notna().any()):
+                continue
 
             remote_table = identity_result.tables.get(remote_entity)
             if remote_table is None:

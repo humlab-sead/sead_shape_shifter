@@ -112,3 +112,26 @@ class TestProjectTargetIds:
 
         assert result.tables["sample"].frame["site_id"].isna().tolist() == [True]
         assert result.diagnostics == ["Entity 'sample' has 1 unresolved FK value(s) for 'site_id'"]
+
+    def test_skips_parent_resolution_for_entirely_null_foreign_key(self):
+        """A nullable FK with no values should not require its parent table in the bundle."""
+        submission_frame = pd.DataFrame({"system_id": [1], "submission_id": [None], "biblio_id": [None]})
+        identity_result = IdentityResolutionResult(
+            tables={
+                "submission": ResolvedIdentityTable(
+                    entity_name="submission",
+                    frame=submission_frame,
+                    row_states=pd.Series([ChangeRowState.NEWLY_ALLOCATED_ENTITY], index=submission_frame.index),
+                    resolved_target_ids=pd.Series([701], index=submission_frame.index, dtype="Int64"),
+                )
+            }
+        )
+        target_model = minimal_target_model(
+            citation={"role": "lookup", "public_id": "biblio_id"},
+            submission={"role": "fact", "public_id": "submission_id", "foreign_keys": [{"entity": "citation"}]},
+        )
+
+        result = project_target_ids(identity_result, target_model)
+
+        assert result.tables["submission"].frame["submission_id"].tolist() == [701]
+        assert not result.diagnostics

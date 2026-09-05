@@ -75,7 +75,7 @@ Rules:
 - `date`: required; defaults to the submission timestamp date when not supplied explicitly
 - `datatype`: required; must be one of the approved SCCS project values listed below
 - `identifier`: required; uppercase, filesystem-safe, and shorter than 40 characters
-- `issue_number`: optional metadata field; defaults to `NNN` when absent
+- `issue_identifier`: optional metadata field; defaults to `NNN` when absent
 - `description`: required SQL-header field; when absent it resolves to `submission_name`, and the resolved value must be single line and shorter than 80 characters
 
 Approved `datatype` values for Delivery 1 hardening:
@@ -217,7 +217,7 @@ At minimum it should include:
 - `identifier`
 - `dispatch_date`
 - `description`
-- `issue_number`
+- `issue_identifier`
 - `table_order`
 - `files`
 - `row_counts`

@@ -26,7 +26,17 @@ def test_sead_v2_spec_loads_and_validates(spec_path: Path) -> None:
     assert {"method_group", "contact", "contact_type"}.issubset(target_model.entities)
     assert {"project", "feature_type", "feature", "sample_description_type", "sample_description"}.issubset(target_model.entities)
     assert {"site_type_group", "site_type", "modification_type"}.issubset(target_model.entities)
-    assert {"citation", "master_dataset", "dataset_contact", "sample_feature"}.issubset(target_model.entities)
+    assert {
+        "citation",
+        "master_dataset",
+        "data_provider",
+        "submission_state",
+        "submission",
+        "submission_task_type",
+        "submission_task",
+        "dataset_contact",
+        "sample_feature",
+    }.issubset(target_model.entities)
     assert issues == []
 
 
@@ -86,10 +96,12 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     sample_location = target_model.entities["sample_location"]
     sample_note = target_model.entities["sample_note"]
     sample_horizon = target_model.entities["sample_horizon"]
+    submission_task = target_model.entities["submission_task"]
+    dataset_contact = target_model.entities["dataset_contact"]
 
     assert target_model.model.name == "SEAD Clearinghouse Extended"
     assert target_model.model.format_version == "1"
-    assert len(target_model.entities) == 98
+    assert len(target_model.entities) == 103
     assert {
         "analysis_value",
         "analysis_boolean_value",
@@ -135,6 +147,7 @@ def test_sead_superset_spec_loads_and_validates() -> None:
         "rdb",
     }.issubset(target_model.entities)
     assert {"value_qualifier", "value_qualifier_symbol"}.issubset(target_model.entities)
+    assert {"submission_task_type", "submission_task"}.issubset(target_model.entities)
     assert {
         "sample_group_coordinate",
         "sample_group_dimension",
@@ -227,6 +240,11 @@ def test_sead_superset_spec_loads_and_validates() -> None:
     assert value_type_item.target_table == "tbl_value_type_items"
     assert any(foreign_key.entity == "value_type" for foreign_key in value_type_item.foreign_keys)
     assert sample_group.target_table == "tbl_sample_groups"
+    assert submission_task.target_table == "tbl_submission_tasks"
+    assert submission_task.columns["biblio_id"].nullable is True
+    assert submission_task.columns["event_date"].type == "date"
+    assert dataset_contact.identity_columns == ["dataset_id", "contact_id", "contact_type_id", "event_date"]
+    assert dataset_contact.columns["event_date"].nullable is True
     assert any(foreign_key.entity == "sample_group_sampling_context" for foreign_key in sample_group.foreign_keys)
     assert sample_group_coordinate.target_table == "tbl_sample_group_coordinates"
     assert sample_group_coordinate.public_id == "sample_group_position_id"
