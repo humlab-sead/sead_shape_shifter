@@ -254,7 +254,7 @@ def _base_deploy_artifact_metadata(submission_context: SubmissionContext, strate
         "identifier": _resolved_identifier(submission_context),
         "dispatch_date": submission_context.timestamp.date().isoformat(),
         "description": _resolved_description(submission_context),
-        "issue_number": _resolved_issue_number(submission_context),
+        "issue_identifier": _resolved_issue_identifier(submission_context),
     }
 
 
@@ -296,7 +296,10 @@ def _render_sql_file(file_type: str, submission_context: SubmissionContext, body
         f"  Author            {_resolved_author(submission_context)}",
         f"  Date              {submission_context.timestamp.date().isoformat()}",
         f"  Description       {_resolved_description(submission_context)}",
-        ("  Issue             " f"https://github.com/humlab-sead/sead_change_control/issues/{_resolved_issue_number(submission_context)}"),
+        (
+            "  Issue             "
+            f"https://github.com/humlab-sead/sead_change_control/issues/{_resolved_issue_identifier(submission_context)}"
+        ),
         "***************************************************************************/",
         "",
     ]
@@ -315,8 +318,8 @@ def _resolved_description(submission_context: SubmissionContext) -> str:
     return submission_context.description or submission_context.submission_name
 
 
-def _resolved_issue_number(submission_context: SubmissionContext) -> str:
-    return submission_context.issue_number or "NNN"
+def _resolved_issue_identifier(submission_context: SubmissionContext) -> str:
+    return submission_context.issue_identifier or "NNN"
 
 
 def _resolved_author(submission_context: SubmissionContext) -> str:
@@ -454,7 +457,7 @@ def _is_update_row(package_table: ChangeRequestTable, row_index: object) -> bool
     """Return True when one packaged row should be rendered as an UPDATE statement."""
     if package_table.planned_actions is None:
         return False
-    return package_table.planned_actions.loc[row_index] == PlannedRowAction.UPDATE_EXISTING_CANDIDATE
+    return package_table.planned_actions.loc[row_index] == PlannedRowAction.UPDATE_EXISTING_CANDIDATE  # type: ignore
 
 
 def _update_assignment_columns(row: pd.Series, public_id_column: str, mutable_fields: list[str] | None) -> list[str]:

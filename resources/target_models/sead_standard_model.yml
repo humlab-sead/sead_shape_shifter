@@ -548,6 +548,9 @@ entities:
       project_id:
         type: integer
         nullable: true
+      submission_id:
+        type: integer
+        nullable: false
     unique_sets:
       - [dataset_name]
     foreign_keys:
@@ -558,6 +561,8 @@ entities:
       - entity: citation
         required: false
       - entity: project
+        required: false
+      - entity: submission
         required: false
 
   master_dataset:
@@ -592,6 +597,107 @@ entities:
         required: false
       - entity: citation
         required: false
+
+  data_provider:
+    role: lookup
+    required: false
+    description: Organization or individual that provides submitted data.
+    domains: [core, provenance]
+    target_table: tbl_data_providers
+    public_id: data_provider_id
+    identity_columns: [data_provider_code]
+    identity_tracking: reconciled
+    reconciliation: lookup-only
+    columns:
+      data_provider_code: {type: string, nullable: true}
+      data_provider_uuid: {type: uuid, nullable: false}
+      data_provider_name: {required: true, type: string, nullable: false}
+      notes: {type: string, nullable: true}
+      contact_id: {type: integer, nullable: true}
+      biblio_id: {type: integer, nullable: true}
+      url: {type: string, nullable: true}
+    unique_sets:
+      - [data_provider_code]
+      - [data_provider_uuid]
+      - [data_provider_name]
+
+  submission_state:
+    role: classifier
+    required: false
+    description: Lifecycle state assigned to a submission.
+    domains: [core, provenance]
+    target_table: tbl_submission_states
+    public_id: submission_state_id
+    identity_columns: [submission_state]
+    columns:
+      submission_state: {required: true, type: string, nullable: false}
+      note: {type: string, nullable: true}
+    unique_sets:
+      - [submission_state]
+
+  submission:
+    role: fact
+    required: false
+    description: Metadata that groups datasets delivered by one data provider.
+    domains: [core, provenance]
+    target_table: tbl_submissions
+    public_id: submission_id
+    identity_columns: [submission_uuid]
+    columns:
+      submission_state_id: {required: true, type: integer, nullable: false}
+      biblio_id: {type: integer, nullable: true}
+      upload_date: {type: date, nullable: true}
+      submission_date: {type: date, nullable: true}
+      submission_identifier: {type: string, nullable: true}
+      issue_identifier: {type: string, nullable: true}
+      author: {type: string, nullable: true}
+      notes: {type: string, nullable: true}
+      data_provider_id: {required: true, type: integer, nullable: false}
+      submission_name: {required: true, type: string, nullable: false}
+      source_name: {type: string, nullable: true}
+      data_types: {type: string, nullable: true}
+      submission_uuid: {required: true, type: uuid, nullable: false}
+    unique_sets:
+      - [submission_uuid]
+    foreign_keys:
+      - entity: submission_state
+        required: true
+      - entity: data_provider
+        required: true
+      - entity: citation
+        required: false
+
+  submission_task_type:
+    role: classifier
+    required: false
+    description: Controlled vocabulary describing work performed for a submission.
+    domains: [core, provenance]
+    target_table: tbl_submission_task_types
+    public_id: submission_task_type_id
+    identity_columns: [action_task_name]
+    columns:
+      action_task_name: {required: true, type: string, nullable: false}
+      description: {type: string, nullable: true}
+
+  submission_task:
+    role: fact
+    required: false
+    description: Dated work performed by a contact for a submission.
+    domains: [core, provenance]
+    target_table: tbl_submission_tasks
+    public_id: submission_task_id
+    columns:
+      submission_task_type_id: {required: true, type: integer, nullable: false}
+      contact_id: {required: true, type: integer, nullable: false}
+      submission_id: {required: true, type: integer, nullable: false}
+      biblio_id: {type: integer, nullable: true}
+      event_date: {type: date, nullable: true}
+      notes: {type: string, nullable: true}
+    foreign_keys:
+      - {entity: submission_task_type, required: true}
+      - {entity: contact, required: true}
+      - {entity: submission, required: true}
+      - {entity: citation, required: false}
 
   project:
     role: lookup
@@ -1249,7 +1355,7 @@ entities:
     domains: [contacts, provenance]
     target_table: tbl_dataset_contacts
     public_id: dataset_contact_id
-    identity_columns: [dataset_id, contact_id, contact_type_id]
+    identity_columns: [dataset_id, contact_id, contact_type_id, event_date]
     columns:
       dataset_id:
         required: true
@@ -1263,6 +1369,9 @@ entities:
         required: true
         type: integer
         nullable: false
+      event_date:
+        type: date
+        nullable: true
     foreign_keys:
       - entity: dataset
         required: true

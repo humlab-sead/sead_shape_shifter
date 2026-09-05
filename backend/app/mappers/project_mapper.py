@@ -155,6 +155,7 @@ class ProjectMapper:
             type=metadata_dict.get("type", "shapeshifter-project"),
             description=metadata_dict.get("description", ""),
             version=metadata_dict.get("version", "1.0.0"),
+            data_provider_code=metadata_dict.get("data_provider_code"),
             default_entity=metadata_dict.get("default_entity"),
             target_model=metadata_dict.get("target_model"),
             file_path=filename,
@@ -213,6 +214,7 @@ class ProjectMapper:
             "type": api_config.metadata.type or "shapeshifter-project",
             "description": api_config.metadata.description,
             "version": api_config.metadata.version,
+            "data_provider_code": api_config.metadata.data_provider_code,
             "default_entity": api_config.metadata.default_entity,
         }
         if api_config.metadata.target_model is not None:
