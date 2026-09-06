@@ -286,14 +286,14 @@ Domain exceptions in `backend/app/exceptions.py` carry a human-readable message,
 
 ### Authentication and authorization
 
-There is currently no authentication or user identity model. The API is assumed to be accessible only within a trusted network or behind a reverse proxy. `ApplicationState` has a placeholder `user_id` field for future use. Sessions track a `lock_holder` UUID for optimistic concurrency at the entity level, but no user identity is enforced.
+Nginx authenticates users and forwards a verified identity in `X-Authenticated-User` when trusted-proxy authentication is enabled. FastAPI rejects protected requests without that identity and binds sessions to it. Resource-level project authorization remains future work. Direct backend access must be restricted to the nginx host.
 
 ### Security
 
 - YAML is parsed with safe loaders (no arbitrary code execution).
 - Database credentials are resolved from environment variables at the mapper boundary; they are never logged or included in API responses.
 - PostgreSQL passwords use `.pgpass` rather than environment variables where possible.
-- CORS is restricted by origin allowlist (`ALLOWED_ORIGINS`) and a regex for DevTunnels/GitHub preview environments. Production deployments should narrow `ALLOWED_ORIGINS`.
+- CORS uses an explicit origin allowlist (`ALLOWED_ORIGINS`); the default does not trust remote wildcard domains. Configure deployed frontend origins explicitly and leave `ALLOWED_ORIGIN_REGEX` unset unless a controlled wildcard is required.
 - File uploads are accepted up to 100 MB (multipart limit).
 
 ### Asynchronous execution
@@ -366,7 +366,7 @@ Data loaders are async (database I/O). Backend services mix sync and async; chec
 - **No streaming or incremental processing**: the full entity DataFrame is materialized in memory before any downstream step runs.
 - **Data validation samples preview rows by default**: run the complete mode when you need full-data checks.
 - **No automated cleanup of output and backup directories**: these grow until operators prune them manually.
-- **CORS allowlist still includes hardcoded DevTunnels hostnames**: production deployments should narrow the runtime allowlist.
+- **Remote CORS origins require deployment configuration**: set `SHAPE_SHIFTER_ALLOWED_ORIGINS` for a deployed frontend and do not enable broad wildcard patterns.
 - **FK suggestions are disabled by default** (`SHAPE_SHIFTER_ENABLE_FK_SUGGESTIONS=false`): enable this only when you want the suggestion service to run.
 
 ---

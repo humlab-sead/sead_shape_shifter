@@ -21,6 +21,8 @@ Production runs on the `sead-tools` host under the `sead` user. The canonical de
 - **Non-root container user.** The container runs as `shapeshifter` (UID 1002, GID 33 / `www-data`). Host volume mounts must be owned by the same UID/GID.
 - **File-backed state.** All projects are YAML files on disk. There is no database for project state. Projects must not be edited simultaneously by more than one operator.
 - **No built-in TLS.** TLS termination is expected upstream (reverse proxy or tunnel). The container exposes plain HTTP on port 8012.
+- **Nginx is the authentication boundary.** Nginx must authenticate the user, overwrite `X-Authenticated-User` with `$remote_user`, and proxy to the loopback-only backend port. FastAPI rejects protected requests without this header and binds editing sessions to its value.
+- **Health is the only unauthenticated API path.** `/api/v1/health` is allowed without the proxy identity for container health checks. Do not expose port 8012 beyond the nginx host.
 - **Java required at runtime.** MS Access support (UCanAccess) requires a JRE (`default-jre-headless` is included in the production image).
 
 ---
@@ -49,8 +51,10 @@ Runtime variables:
 | `SHAPE_SHIFTER_LOG_RETENTION`                    | `30 days`               | Log file retention period                                            |
 | `SHAPE_SHIFTER_LOG_COMPRESSION`                  | `zip`                   | Log file compression format                                          |
 | `SHAPE_SHIFTER_LOG_FILTER_FRAMEWORK_FRAMES`      | `true`                  | Filter framework frames from tracebacks                              |
-| `SHAPE_SHIFTER_ALLOWED_ORIGINS`                  | _(dev defaults)_        | CORS origin whitelist (JSON array)                                   |
-| `SHAPE_SHIFTER_ALLOWED_ORIGIN_REGEX`             | __(regex)__             | CORS regex pattern for wildcard origins (eg. (devtunnels + github    |
+| `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED`        | `false`                 | Require an identity forwarded by nginx; enabled by Docker deployment  |
+| `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_HEADER`         | `X-Authenticated-User` | Header containing the nginx-authenticated username                    |
+| `SHAPE_SHIFTER_ALLOWED_ORIGINS`                  | _(localhost only)_      | CORS origin whitelist (JSON array); set explicitly for deployed UI    |
+| `SHAPE_SHIFTER_ALLOWED_ORIGIN_REGEX`             | `null`                  | Optional CORS regex; leave unset unless a controlled wildcard is required |
 | `SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL`       | `http://localhost:8000` | OpenRefine reconciliation service URL                                |
 | `SHAPE_SHIFTER_SIMS_SERVICE_URL`                 | `http://localhost:8000` | SEAD authority/SIMS service URL                                      |
 | `SHAPE_SHIFTER_ENABLE_FK_SUGGESTIONS`            | `false`                 | Enable foreign key candidate suggestions                             |
