@@ -155,7 +155,7 @@ class TestLifecycleVersionContracts:
             LogicalRecordVersion(logical_record_key="sample:2", version_key="v1", lifecycle_state=LifecycleVersionState.PENDING_REVIEW),
         ]
 
-        assert validate_one_live_version(records) == []
+        assert not validate_one_live_version(records)
 
     def test_one_live_version_check_reports_violation_when_logical_record_has_multiple_live_versions(self):
         """Invariant check should report a violation when one logical record has multiple live versions."""
