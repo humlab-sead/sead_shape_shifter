@@ -147,6 +147,9 @@ Future proposals:
 - **[proposals/future/FK_NULL_KEY_POLICY_MODEL.md](proposals/future/FK_NULL_KEY_POLICY_MODEL.md)**
   - Placeholder for a later phase proposal about an explicit missing-key policy model.
 
+- **[proposals/future/NATIVE_APPLICATION_AUTHENTICATION.md](proposals/future/NATIVE_APPLICATION_AUTHENTICATION.md)**
+  - Records native application authentication as a possible follow-up to the current nginx identity and application authorization controls.
+
 - **[proposals/future/QUERY_FILTER_ENGINE_SELECTION.md](proposals/future/QUERY_FILTER_ENGINE_SELECTION.md)**
   - Defers a narrow extension to allow explicit pandas query-engine selection (`engine: python`) on `type: query` filters.
 
