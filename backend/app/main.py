@@ -17,6 +17,7 @@ from backend.app.core.logging_config import configure_logging
 from backend.app.core.state_manager import ApplicationState, init_app_state
 from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
 from backend.app.middleware.correlation import CorrelationMiddleware
+from backend.app.middleware.proxy_auth import ProxyAuthenticationMiddleware
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 
 
@@ -112,6 +113,15 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 # Correlation ID middleware (outermost — wraps all requests for tracing)
 app.add_middleware(CorrelationMiddleware)
+
+# Require the identity authenticated by nginx when enabled for the deployment.
+# Health checks remain available without authentication for container orchestration.
+app.add_middleware(
+    ProxyAuthenticationMiddleware,
+    enabled=settings.TRUSTED_PROXY_AUTH_ENABLED,
+    header_name=settings.TRUSTED_PROXY_AUTH_HEADER,
+    public_paths={f"{settings.API_V1_PREFIX}/health"},
+)
 
 # Configure CORS
 app.add_middleware(

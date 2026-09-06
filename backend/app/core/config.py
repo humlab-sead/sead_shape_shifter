@@ -34,21 +34,21 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["development", "production", "test"] = "development"
     API_V1_PREFIX: str = "/api/v1"
 
+    # Reverse-proxy authentication
+    # Enable this in deployments where nginx authenticates the user and forwards the verified identity.
+    TRUSTED_PROXY_AUTH_ENABLED: bool = False
+    TRUSTED_PROXY_AUTH_HEADER: str = "X-Authenticated-User"
+
     # CORS
     ALLOWED_ORIGINS: list[str] = [
         "http://localhost:5173",  # Vite dev server
         "http://localhost:3000",  # Alternative frontend port
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
-        "https://tgx7q4bq-5173.euw.devtunnels.ms",  # DevTunnels frontend
-        "https://tgx7q4bq-8012.euw.devtunnels.ms",  # DevTunnels backend
     ]
 
-    # CORS regex patterns for wildcard domains (allows any devtunnel or github dev preview)
-    # Pattern matches: https://anything-port.region.devtunnels.ms
-    ALLOWED_ORIGIN_REGEX: str = (
-        r"https://[a-zA-Z0-9\-]+\.(euw|eus|weu|neu|sasia|asia|[a-z]+)\.devtunnels\.ms$|https://[a-zA-Z0-9\-]+\.preview\.app\.github\.dev$"
-    )
+    # Remote origins must be explicitly configured for the deployment.
+    ALLOWED_ORIGIN_REGEX: str | None = None
 
     # File paths
     PROJECTS_DIR: Path = Path("projects")
@@ -79,6 +79,13 @@ class Settings(BaseSettings):
     ENABLED_INGESTERS: list[str] | None = None  # None = all discovered ingesters
 
     MATERIALIZATION_INLINE_THRESHOLD: int = 20  # Rows below which data is stored inline in YAML
+
+    @model_validator(mode="after")
+    def validate_production_authentication(self) -> "Settings":
+        """Require trusted-proxy authentication for production settings."""
+        if self.ENVIRONMENT == "production" and not self.TRUSTED_PROXY_AUTH_ENABLED:
+            raise ValueError("TRUSTED_PROXY_AUTH_ENABLED must be true in production")
+        return self
 
     @model_validator(mode="after")
     def resolve_paths(self) -> "Settings":
