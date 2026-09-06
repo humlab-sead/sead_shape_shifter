@@ -21,7 +21,7 @@ class ProjectSession:
 
     session_id: UUID
     project_name: str
-    user_id: str | None  # Future: actual user identification
+    user_id: str | None  # Nginx-authenticated identity when trusted-proxy auth is enabled
     loaded_at: datetime
     last_accessed: datetime
     modified: bool = False
