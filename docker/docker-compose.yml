@@ -19,7 +19,13 @@ services:
     user: "${USER_UID:-1002}:${USER_GID:-33}"  # Run as shapeshifter user (matches build args)
 
     ports:
-      - "${HOST_PORT:-8012}:8012"
+      # Only nginx on this host should reach the backend directly.
+      - "127.0.0.1:${HOST_PORT:-8012}:8012"
+
+    environment:
+      # nginx authenticates the user and forwards X-Authenticated-User.
+      - SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED=true
+      - SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_HEADER=X-Authenticated-User
 
     env_file:
       # Load all environment variables from backend.env

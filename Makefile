@@ -179,7 +179,7 @@ backend-run:
 	@echo "Starting backend server on http://localhost:$(BACKEND_PORT)"
 	@PYTHONPATH=. uv run uvicorn backend.app.main:app \
 		--log-level debug \
-		--host 0.0.0.0 --port $(BACKEND_PORT) \
+		--host 127.0.0.1 --port $(BACKEND_PORT) \
 		--timeout-keep-alive 120
 
 .PHONY: backend-run-log
@@ -188,7 +188,7 @@ backend-run-log:
 	@mkdir -p logs
 	@PYTHONPATH=. uv run uvicorn backend.app.main:app \
 		--log-level debug \
-		--host 0.0.0.0 --port $(BACKEND_PORT) \
+		--host 127.0.0.1 --port $(BACKEND_PORT) \
 		--timeout-keep-alive 120 2>&1 | tee logs/backend.log
 
 .PHONY: backend-run-with-hmr
@@ -211,7 +211,7 @@ backend-run-with-hmr:
 		--timeout-keep-alive 120 \
 		--reload-exclude 'tests' \
 		--reload-exclude 'backend/tests' \
-		--host 0.0.0.0 --port $(BACKEND_PORT)
+		--host 127.0.0.1 --port $(BACKEND_PORT)
 
 
 .PHONY: backend-test
