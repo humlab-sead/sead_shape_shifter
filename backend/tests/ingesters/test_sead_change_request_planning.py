@@ -119,7 +119,7 @@ class TestPlanTable:
             PlannedRowAction.REFERENCE_EXISTING,
             PlannedRowAction.UPDATE_EXISTING_CANDIDATE,
         ]
-        assert plan.diagnostics == []
+        assert not plan.diagnostics
 
     def test_existing_rows_blocked_when_mutable_baseline_columns_are_missing(self):
         """Existing-row update planning should block rows when configured mutable baseline columns are missing."""

@@ -534,6 +534,7 @@ class TestBuildDeployArtifact:
         assert artifact.metadata_artifact["row_counts"] == {"tbl_sample": 1}
         assert artifact.bundle_files == {f"deploy/{expected_bundle_name}/tbl_sample.gz": "101\tnew row\n"}
         assert artifact.statements == [
-            f"\\copy \"tbl_sample\" (\"sample_id\", \"sample_name\") FROM program 'zcat -qac {expected_bundle_name}/tbl_sample.gz' WITH (FORMAT csv, DELIMITER E'\\t', ENCODING 'utf-8');",
+            f'\\copy "tbl_sample" ("sample_id", "sample_name") '
+            f"FROM program 'zcat -qac {expected_bundle_name}/tbl_sample.gz' WITH (FORMAT csv, DELIMITER E'\\t', ENCODING 'utf-8');",
             'UPDATE "tbl_sample" SET "sample_name" = \'changed row\' WHERE "sample_id" = 102;',
         ]

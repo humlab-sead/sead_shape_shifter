@@ -109,7 +109,7 @@ class CopyCsvDeployStrategy:
                     statements.append(_render_copy_statement(table_name, columns, payload_relative_path))
 
             if bool(update_mask.any()):
-                for row_index, row in package_table.frame.loc[update_mask].iterrows():
+                for _, row in package_table.frame.loc[update_mask].iterrows():
                     statements.append(_render_update_statement(table_name, row, entity_spec.public_id, package_table.mutable_fields))
 
         deploy_sql_lines = ["BEGIN;", "SET CONSTRAINTS ALL DEFERRED;"]
