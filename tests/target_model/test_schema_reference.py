@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pylint.lint import Run
+
 from src.target_model.schema_reference import generate_target_model_schema_reference
 
 REFERENCE_PATH = Path("docs/TARGET_MODEL_SCHEMA_REFERENCE.md")
@@ -28,4 +30,10 @@ def test_generated_reference_lists_allowed_enum_values():
 def test_committed_reference_is_in_sync():
     committed = REFERENCE_PATH.read_text(encoding="utf-8")
 
-    assert committed == generate_target_model_schema_reference()
+    # Ensure the committed reference matches the generated reference
+    # Run `make generate-target-model-schema-reference` to update the reference if it has changed
+
+    assert committed == generate_target_model_schema_reference(), (
+        "The committed reference is out of sync with the generated reference. "
+        "Run `make generate-target-model-schema-reference` to update the reference if it has changed."
+    )
