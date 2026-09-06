@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
-from backend.app.api.dependencies import require_session
+from backend.app.api.dependencies import get_authenticated_user, require_session
 from backend.app.core.state_manager import ApplicationState, ProjectSession, get_app_state
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 
@@ -39,6 +39,7 @@ async def create_session(
     request: SessionCreateRequest,
     response: Response,
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
+    authenticated_user: Annotated[str | None, Depends(get_authenticated_user)],
 ) -> SessionResponse:
     """
     Create a new editing session for a configuration file.
@@ -59,7 +60,8 @@ async def create_session(
         raise HTTPException(404, f"Project '{request.project_name}' not found")
 
     # Create session
-    session_id: UUID = await app_state.create_session(request.project_name, request.user_id)
+    session_user_id = authenticated_user if authenticated_user is not None else request.user_id
+    session_id: UUID = await app_state.create_session(request.project_name, session_user_id)
     session: ProjectSession | None = await app_state.get_session(session_id)
 
     if not session:
