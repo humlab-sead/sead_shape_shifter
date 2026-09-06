@@ -261,6 +261,18 @@ install-graphify:
 	@graphify codex install
 	@echo "✓ Graphify installed and pre-commit hook set up"
 
+# 	@graphify extract . --project
+# 	@graphify cluster-only $(HOME)/source/sead_shape_shifter
+# 	@graphify export callflow-html
+
+commit-graphify:
+	@git add graphify-out
+	@if git diff --cached --quiet -- graphify-out; then \
+		echo "No changes in graphify§-out"; \
+	else \
+		git commit -m "chore: updated graphify graph"; \
+	fi
+
 ################################################################################
 # Project Editor UI
 ################################################################################
