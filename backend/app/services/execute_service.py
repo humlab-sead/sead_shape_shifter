@@ -9,6 +9,7 @@ from loguru import logger
 
 from backend.app.core.state_manager import ApplicationStateManager
 from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.execute import DispatcherMetadata, ExecuteRequest, ExecuteResult
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
@@ -88,7 +89,7 @@ class ExecuteService:
                     return ExecuteResult(
                         success=False,
                         message="Validation failed. Please fix errors before executing workflow.",
-                        target=request.target,
+                        target=request.target if target_type == "database" else "",
                         dispatcher_key=request.dispatcher_key,
                         target_type=target_type,
                         entity_count=0,
@@ -97,10 +98,11 @@ class ExecuteService:
                         download_path=None,
                     )
 
-            target: str = self._resolve_target(request.target, target_type)
+            target: str = self.resolve_output_target(project_name, request.target, target_type)
             target_with_timestamp: str = self._add_timestamp_to_file_target(target, target_type)
 
-            download_path: str | None = self._build_download_path(project_name, target_with_timestamp, target_type)
+            output_identifier: str = self._output_identifier(project_name, target_with_timestamp, target_type)
+            download_path: str | None = self._build_download_path(project_name, output_identifier, target_type)
 
             logger.info(
                 f"Executing workflow for project '{project_name}' with dispatcher "
@@ -124,7 +126,7 @@ class ExecuteService:
             return ExecuteResult(
                 success=True,
                 message=f"Successfully executed workflow with {entity_count} entities",
-                target=target_with_timestamp,
+                target=output_identifier,
                 dispatcher_key=request.dispatcher_key,
                 target_type=target_type,
                 entity_count=entity_count,
@@ -138,7 +140,7 @@ class ExecuteService:
             return ExecuteResult(
                 success=False,
                 message=f"Workflow execution failed: {str(e)}",
-                target=request.target,
+                target=request.target if target_type == "database" else "",
                 dispatcher_key=request.dispatcher_key,
                 target_type=target_type,
                 entity_count=0,
@@ -175,11 +177,11 @@ class ExecuteService:
             logger.exception(f"Validation failed: {e}")
             return False, [f"Validation exception: {str(e)}"]
 
-    def _resolve_target(self, target: str, target_type: str) -> str:
-        """Resolve and validate target path.
+    def resolve_output_target(self, project_name: str, target: str, target_type: str) -> str:
+        """Resolve a file or folder output beneath the project's managed output directory.
 
         Args:
-            target: User-provided target path
+            target: Server-managed output name or relative path
             target_type: Type of target (file, folder, database)
 
         Returns:
@@ -189,8 +191,13 @@ class ExecuteService:
             # Database targets are data source names, return as-is
             return target
 
-        # For file/folder targets, resolve to absolute path
-        target_path: Path = Path(target).expanduser().resolve()
+        if not target or Path(target).is_absolute():
+            raise ValueError("File and folder outputs must use a non-empty relative output name")
+
+        output_root = (self.project_service.projects_dir / ProjectNameMapper.to_path(project_name) / "outputs").resolve()
+        target_path: Path = (output_root / target).resolve()
+        if output_root not in target_path.parents:
+            raise ValueError("Output target must remain inside the project's managed output directory")
 
         if target_type == "folder":
             # Ensure parent directory exists for folder targets
@@ -200,6 +207,14 @@ class ExecuteService:
             target_path.parent.mkdir(parents=True, exist_ok=True)
 
         return str(target_path)
+
+    def _output_identifier(self, project_name: str, target: str, target_type: str) -> str:
+        """Convert an internal output path to the client-visible relative identifier."""
+        if target_type == "database":
+            return target
+
+        output_root = (self.project_service.projects_dir / ProjectNameMapper.to_path(project_name) / "outputs").resolve()
+        return str(Path(target).resolve().relative_to(output_root))
 
     def _build_download_path(self, project_name: str, target: str, target_type: str) -> str | None:
         """Create API download path for file-targeted dispatches."""
