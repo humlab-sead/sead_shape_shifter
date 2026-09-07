@@ -1,9 +1,13 @@
 """\nQuery execution API endpoints.\n"""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 
 import backend.app.models.data_source as api
 from backend.app.api.dependencies import get_data_source_service
+from backend.app.authorization.dependencies import require_shared_data_source
+from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
 from backend.app.models.query import QueryExecution, QueryIntrospection, QueryResult, QueryValidation
@@ -13,6 +17,7 @@ from backend.app.services.query_service import QueryExecutionError, QuerySecurit
 from src.model import DataSourceConfig, ShapeShiftProject
 
 router = APIRouter()
+query_reader_dependency = require_shared_data_source(Action.READ)
 
 
 def get_query_service() -> QueryService:
@@ -93,6 +98,7 @@ def _resolve_data_source_config(
 async def execute_query(
     data_source_name: str,
     execution: QueryExecution,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(query_reader_dependency)],
     query_service: QueryService = Depends(get_query_service),
     data_source_service: DataSourceService = Depends(get_data_source_service),
 ) -> QueryResult:
@@ -112,7 +118,7 @@ async def execute_query(
         HTTPException: If query is invalid or execution fails
     """
     try:
-        ds_cfg = _resolve_data_source_config(data_source_name, data_source_service)
+        ds_cfg = _resolve_data_source_config(authorized_data_source.resource.locator, data_source_service)
         if ds_cfg is None:
             raise HTTPException(status_code=400, detail=f"Data source '{data_source_name}' cannot be queried directly")
         result: QueryResult = await query_service.execute_query(
@@ -208,6 +214,7 @@ async def validate_query(
 async def introspect_query_columns(
     data_source_name: str,
     introspection: QueryIntrospection,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(query_reader_dependency)],
     project_name: str | None = None,
     query_service: QueryService = Depends(get_query_service),
     data_source_service: DataSourceService = Depends(get_data_source_service),
@@ -231,7 +238,8 @@ async def introspect_query_columns(
         HTTPException: If query is invalid or execution fails
     """
     try:
-        ds_cfg = _resolve_data_source_config(data_source_name, data_source_service, project_name, project_service)
+        source_name = data_source_name if project_name else authorized_data_source.resource.locator
+        ds_cfg = _resolve_data_source_config(source_name, data_source_service, project_name, project_service)
         columns: list[str] = await query_service.introspect_query_columns(ds_cfg=ds_cfg, query=introspection.query)
         return {"columns": columns}
     except QuerySecurityError as e:

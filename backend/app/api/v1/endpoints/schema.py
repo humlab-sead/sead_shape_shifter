@@ -4,15 +4,15 @@ Schema Introspection API Endpoints
 Provides REST API for database schema inspection, table browsing, and data preview.
 """
 
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, Query, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from backend.app.api.dependencies import get_schema_service
-from backend.app.authorization.dependencies import require_application_action
-from backend.app.authorization.models import Action, Principal
+from backend.app.authorization.dependencies import require_application_action, require_shared_data_source
+from backend.app.authorization.models import Action, AuthorizedResource, Principal
 from backend.app.exceptions import SchemaIntrospectionError
 from backend.app.models.data_source import TableMetadata, TableSchema
 from backend.app.models.entity_import import EntityImportRequest, EntityImportResult
@@ -23,6 +23,7 @@ from backend.app.utils.exceptions import NotFoundError
 
 router = APIRouter(prefix="/data-sources", tags=["schema"])
 schema_cache_operator_dependency = require_application_action(Action.MANAGE_SHARED_SOURCES)
+schema_reader_dependency = require_shared_data_source(Action.READ)
 
 
 class DataSourceConfigRequest(BaseModel):
@@ -35,6 +36,7 @@ class DataSourceConfigRequest(BaseModel):
 @handle_endpoint_errors
 async def list_tables(
     name: str,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(schema_reader_dependency)],
     schema: Optional[str] = Query(None, description="Schema name (PostgreSQL only)"),
     service: SchemaIntrospectionService = Depends(get_schema_service),
 ) -> list[TableMetadata]:
@@ -55,7 +57,7 @@ async def list_tables(
     - 500: Database query failed
     """
     logger.info(f"Listing tables for data source: {name} (schema: {schema or 'default'})")
-    tables = await service.get_tables(name, schema)
+    tables = await service.get_tables(authorized_data_source.resource.locator, schema)
     logger.info(f"Found {len(tables)} tables in {name}")
     return tables
 
@@ -92,6 +94,7 @@ async def list_tables_with_config(
 async def get_table_schema(
     name: str,
     table_name: str,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(schema_reader_dependency)],
     schema: Optional[str] = Query(None, description="Schema name (if applicable)"),
     service: SchemaIntrospectionService = Depends(get_schema_service),
 ) -> TableSchema:
@@ -128,7 +131,7 @@ async def get_table_schema(
     - 500: Database query failed
     """
     logger.info(f"Getting schema for table {table_name} in {name}")
-    table_schema: TableSchema = await service.get_table_schema(name, table_name, schema)
+    table_schema: TableSchema = await service.get_table_schema(authorized_data_source.resource.locator, table_name, schema)
     logger.info(f"Retrieved schema for {table_name} with {len(table_schema.columns)} columns")
     return table_schema
 
@@ -170,6 +173,7 @@ async def get_table_schema_with_config(
 async def preview_table_data(
     name: str,
     table_name: str,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(schema_reader_dependency)],
     schema: Optional[str] = Query(None, description="Schema name (if applicable)"),
     limit: int = Query(50, ge=1, le=100, description="Maximum rows to return (1-100)"),
     offset: int = Query(0, ge=0, description="Number of rows to skip"),
@@ -211,7 +215,7 @@ async def preview_table_data(
     - 500: Query execution failed or timeout
     """
     logger.info(f"Previewing table {table_name} in {name} (limit={limit}, offset={offset})")
-    preview: dict[str, Any] = await service.preview_table_data(name, table_name, schema, limit, offset)
+    preview: dict[str, Any] = await service.preview_table_data(authorized_data_source.resource.locator, table_name, schema, limit, offset)
     logger.info(f"Retrieved {len(preview['rows'])} rows from {table_name}")
     return preview
 
@@ -221,6 +225,7 @@ async def preview_table_data(
 async def get_type_mappings(
     name: str,
     table_name: str,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(schema_reader_dependency)],
     schema: Optional[str] = None,
     service: SchemaIntrospectionService = Depends(get_schema_service),
 ):
@@ -265,7 +270,7 @@ async def get_type_mappings(
         logger.info(f"Getting type mappings for {table_name} in {name}")
 
         # Get table schema
-        table_schema = await service.get_table_schema(name, table_name, schema)
+        table_schema = await service.get_table_schema(authorized_data_source.resource.locator, table_name, schema)
 
         # Convert columns to dict format
         columns = [
@@ -299,6 +304,7 @@ async def get_type_mappings(
 async def import_entity_from_table(
     name: str,
     table_name: str,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(schema_reader_dependency)],
     request: "EntityImportRequest | None" = None,
     service: SchemaIntrospectionService = Depends(get_schema_service),
 ):
@@ -328,7 +334,10 @@ async def import_entity_from_table(
     logger.info(f"Importing entity from table {table_name} in {name}")
 
     result = await service.import_entity_from_table(
-        data_source_name=name, table_name=table_name, entity_name=request.entity_name, selected_columns=request.selected_columns
+        data_source_name=authorized_data_source.resource.locator,
+        table_name=table_name,
+        entity_name=request.entity_name,
+        selected_columns=request.selected_columns,
     )
 
     return EntityImportResult(**result)

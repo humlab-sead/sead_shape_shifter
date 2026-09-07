@@ -13,9 +13,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.api.dependencies import get_data_source_service
-from backend.app.api.v1.endpoints.data_sources import data_source_operator_dependency, data_source_principal_dependency
+from backend.app.api.v1.endpoints.data_sources import (
+    data_source_operator_dependency,
+    data_source_principal_dependency,
+    data_source_reader_dependency,
+)
 from backend.app.authorization.dependencies import get_authorization_service
-from backend.app.authorization.models import Principal, ResourceRecord, ResourceType
+from backend.app.authorization.models import Action, AuthorizedResource, Principal, ResourceRecord, ResourceType
 from backend.app.main import app
 from backend.app.models.data_source import (
     DataSourceConfig,
@@ -53,12 +57,17 @@ def client(mock_service, mock_authorization_service):
     def override_get_principal():
         return Principal("alice", "test", datetime.now(UTC))
 
+    def override_get_readable_source():
+        principal = override_get_principal()
+        return AuthorizedResource(principal, Action.READ, ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "sead-options"))
+
     def override_get_authorization_service():
         return mock_authorization_service
 
     app.dependency_overrides[get_data_source_service] = override_get_data_source_service
     app.dependency_overrides[data_source_principal_dependency] = override_get_principal
     app.dependency_overrides[data_source_operator_dependency] = override_get_principal
+    app.dependency_overrides[data_source_reader_dependency] = override_get_readable_source
     app.dependency_overrides[get_authorization_service] = override_get_authorization_service
     yield TestClient(app)
     app.dependency_overrides.clear()

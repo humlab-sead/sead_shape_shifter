@@ -5,13 +5,14 @@ Tests for schema introspection API endpoints.
 import pdb
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.api.dependencies import get_schema_service
-from backend.app.api.v1.endpoints.schema import schema_cache_operator_dependency
-from backend.app.authorization.models import Principal
+from backend.app.api.v1.endpoints.schema import schema_cache_operator_dependency, schema_reader_dependency
+from backend.app.authorization.models import Action, AuthorizedResource, Principal, ResourceRecord, ResourceType
 from backend.app.exceptions import ConfigurationError, ResourceNotFoundError, SchemaIntrospectionError
 from backend.app.main import app
 from backend.app.models.data_source import ColumnMetadata, TableMetadata, TableSchema
@@ -37,8 +38,13 @@ def client(mock_schema_service):
     def override_get_principal():
         return Principal("alice", "test", datetime.now(UTC))
 
+    def override_get_readable_source():
+        principal = override_get_principal()
+        return AuthorizedResource(principal, Action.READ, ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "sead"))
+
     app.dependency_overrides[get_schema_service] = override_get_schema_service
     app.dependency_overrides[schema_cache_operator_dependency] = override_get_principal
+    app.dependency_overrides[schema_reader_dependency] = override_get_readable_source
     yield TestClient(app)
     app.dependency_overrides.clear()
 
