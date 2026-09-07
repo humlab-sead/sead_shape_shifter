@@ -76,14 +76,15 @@ def restore(source: Path, database: Path | None) -> None:
 def reconcile(manifest: Path, database: Path | None) -> None:
     """Report reviewed manifest records missing from authorization storage."""
     result = reconcile_manifest(manifest, database or settings.AUTHORIZATION_DATABASE_PATH)
-    click.echo(
+    summary = (
         "Missing: "
         f"{result['missing_resources']} resources, "
         f"{result['missing_administrators']} administrators, "
         f"{result['missing_grants']} grants"
     )
+    click.echo(summary)
     if any(result.values()):
-        raise click.ClickException("Authorization resources do not match the reviewed manifest")
+        raise click.ClickException(f"{summary}\nAuthorization resources do not match the reviewed manifest")
 
 
 if __name__ == "__main__":
