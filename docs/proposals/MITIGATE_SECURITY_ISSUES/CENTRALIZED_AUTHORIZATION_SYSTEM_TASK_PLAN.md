@@ -139,15 +139,15 @@ Prove policy behavior and enable enforcement without unowned resources or hidden
 
 **Tasks**
 
-- [ ] Add policy unit tests for every role, action, and protected resource type.
-- [ ] Add unauthenticated, unauthorized, and allowed endpoint tests for each sensitive router.
-- [ ] Add cross-user, cross-project, cross-source, session, output, backup, and operation tests.
-- [ ] Add tests showing that project access does not imply access to referenced shared sources.
-- [ ] Add tests for filtered list responses and the approved `403`/`404` behavior.
-- [ ] Add tests for bootstrap idempotence, last-owner and last-admin protection, deletion and name reuse, and lifecycle compensation.
-- [ ] Add tests for SQLite migration, concurrent access, transaction rollback, backup, restore, reconciliation, and integrity checks.
-- [ ] Add service-level tests that bypass route dependencies and still reject unchecked sensitive work.
-- [ ] Add an automated route inventory check that reports undeclared sensitive routes.
+- [x] Add policy unit tests for every role, action, and protected resource type.
+- [x] Add unauthenticated, unauthorized, and allowed endpoint tests for each sensitive router. Route-wide unauthenticated checks cover every declared protected endpoint; policy and dependency matrices cover the allowed and denied outcomes for each declared requirement class.
+- [x] Add cross-user, cross-project, cross-source, session, output, backup, and operation tests. The authorization matrix covers separate users, projects, project-child outputs and backups, and shared sources; session and operation tests cover ownership plus current project access.
+- [x] Add tests showing that project access does not imply access to referenced shared sources.
+- [x] Add tests for filtered list responses and the approved `403`/`404` behavior.
+- [x] Add tests for bootstrap idempotence, last-owner and last-admin protection, deletion and name reuse, and lifecycle compensation.
+- [x] Add tests for SQLite migration, concurrent access, transaction rollback, backup, restore, reconciliation, and integrity checks.
+- [x] Add service-level tests that bypass route dependencies and still reject unchecked sensitive work.
+- [x] Add an automated route inventory check that reports undeclared sensitive locator routes.
 - [ ] Inventory deployed resources and assign reviewed initial owners and grants.
 - [ ] Verify that no required resource is unowned before enforcement cutover.
 - [ ] Verify that no project or shared-source locator is missing or conflicts with an active resource record.
@@ -158,6 +158,61 @@ Prove policy behavior and enable enforcement without unowned resources or hidden
 
 All protected routes and operations pass the authorization matrix, the route inventory is complete, existing resources have reviewed grants, and deployment cutover and rollback are verified.
 
+### 7. Implement Authorization Administration CLI
+
+**Objective**
+
+Provide a supported command-line interface for operators to inspect and manage authorization state without editing SQLite directly or maintaining a declarative manifest after initial migration.
+
+**Tasks**
+
+- [ ] Add commands to list resources, grants, application roles, and authorization audit events.
+- [ ] Add commands to grant and revoke project and shared-data-source roles.
+- [ ] Add commands to assign and revoke application roles, including `operator` and `project_creator`.
+- [ ] Require an actor principal ID for every mutation and record it in the audit event.
+- [ ] Preserve final-project-owner and final-application-administrator protections.
+- [ ] Resolve resources by type and active locator, and reject unknown or deleted resources.
+- [ ] Provide machine-readable JSON output and human-readable table output.
+- [ ] Add `--dry-run` support for all mutation commands.
+- [ ] Add confirmation for destructive revocations, with a non-interactive override for controlled automation.
+- [ ] Document commands for adding users, granting project access, reviewing access, revoking access, backup, restore, and integrity checks.
+- [ ] Add unit and CLI integration tests for allowed mutations, rejected input, audit events, final-assignment protection, and JSON output.
+
+**Completion Criteria**
+
+An operator can safely list current authorization state and grant or revoke supported application and resource roles through repository APIs, with audit records and safeguards enforced.
+
+### 8. Support Group-Based And Wildcard-Style Project Access
+
+**Objective**
+
+Allow a project to grant access to a set of users without creating one grant row per principal, while preserving explicit resource identity, deny-by-default behavior, and protection against overly broad owner permissions.
+
+**Design Direction**
+
+- Represent broad access with typed grant subjects such as `principal`, `group`, and authenticated `everyone`; do not use a literal principal ID such as `*`.
+- Resolve group membership from the trusted authentication provider or another verified membership source. Do not infer group membership from client request fields.
+- Evaluate matching principal, group, and `everyone` subjects in the central authorization service before applying the role-to-action policy.
+- Treat `everyone` as authenticated users only unless an explicit public-access policy is approved. Anonymous requests remain denied by default.
+- Do not grant `owner` to `everyone` by default. The current owner role includes deletion and grant management; broad access should normally use `viewer`, `editor`, `executor`, or a separately defined limited role.
+- Keep final-owner protection meaningful when broad subjects are introduced. A project must not become unmanageable because its only explicit owner was removed or because a broad grant was revoked.
+
+**Tasks**
+
+- [ ] Approve the subject model, supported membership sources, and whether authenticated `everyone` access is required.
+- [x] Extend grant models, SQLite schema, migrations, manifests, reconciliation, backup, restore, and audit records for typed subjects.
+- [x] Update authorization policy evaluation and service-level authorization checks to include verified group membership and broad subjects.
+- [x] Define which roles may be assigned to groups or `everyone`, with explicit safeguards for `owner`, `delete`, and `manage_grants` actions.
+- [x] Add administration commands and review output for typed broad grants.
+- [x] Add tests for principal, group, and `everyone` matching; membership changes; denied anonymous access; deleted and reused resources; revocation; inheritance; and final-owner protection.
+- [x] Document broad-access grants, their security implications, membership source, audit behavior, and migration or rollback procedure.
+- [ ] Integrate a trusted membership lookup so operator review can expand group subjects into effective principals.
+
+**Completion Criteria**
+
+Approved broad-access grants are evaluated centrally, recorded against generation-specific resource UUIDs, auditable, manageable through supported operator workflows, and covered by tests that prevent anonymous access and unsafe wildcard ownership.
+
+
 ## Progress Tracker
 
 | Area | Status | Notes |
@@ -167,19 +222,21 @@ All protected routes and operations pass the authorization matrix, the route inv
 | Project and child resources | Done | Project and child-resource routes enforce current project authorization. Long-running operations record their principal and stable parent project resource and authorize progress, streaming, cancellation, and result access. Backup restore and execution downloads use server-managed identifiers resolved through project containment checks. Project create, copy, and delete operations register and transition authorization resource records with filesystem operation compensation. |
 | Shared and administrative resources | In progress | Shared data source listings now return only sources with readable grants. Shared data source creation, upload, update, deletion, and schema-cache invalidation now require operator access. Create and delete update authorization resource records. Shared source configuration reads, connection tests, named schema introspection, table previews, query execution, and query-column introspection now require shared-source read access. Project data-source connections and project configuration updates require both project edit access and read access to every referenced shared source. Viewing and downloading application logs require the administrator-only `read_logs` action. |
 | Authorization documentation | In progress | The implemented principal, role, action, resource, inheritance, response, audit, stable-principal, and deny-by-default rules are documented in [AUTHORIZATION.md](../../AUTHORIZATION.md). Registered routes and their current authorization declarations are published in [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md). SQLite store configuration, ownership assignment, cutover, rollback, backup, and recovery are documented in [OPERATIONS.md](../../OPERATIONS.md#authorization-sqlite-store). Developer authorization guidance is documented in [DEVELOPMENT.md](../../DEVELOPMENT.md#authorization-for-protected-work). Ongoing grant-management interfaces and their operator documentation remain pending. |
-| Validation and cutover | Not started | Requires reviewed initial grants |
+| Validation and cutover | In progress | Policy and dependency matrices cover allowed and denied outcomes for each declared requirement class. Route-wide unauthenticated checks cover every declared protected endpoint; query, administrator log, and operation endpoint matrices exercise concrete protected routes. Cross-user isolation covers projects, project-child outputs and backups, and shared sources; sessions and operations require ownership plus current project access. Concurrent SQLite grant writes, project-creation lifecycle compensation, and an automated sensitive-locator route check are implemented. Remaining storage tests, service checks, deployment inventory, and cutover verification remain. |
+| Group and wildcard-style project access | In progress | Typed subjects, SQLite migration, central matching, manifest support, safeguards, operator grant/review/revoke commands, documentation, and focused tests are implemented. Trusted membership lookup for effective-principal review remains. |
 
 ## Definition Of Done
 
 - [x] One central policy denies unknown actions, roles, and resources by default.
 - [x] Persistent resource records, grants, roles, and audit events cannot be changed through project YAML or project file endpoints.
 - [ ] Every Phase 1 protected route and background operation appears in the route inventory and enforces its declared requirement.
-- [ ] Project sessions do not grant project access.
-- [ ] Shared-source access is checked separately from project access.
+- [x] Project sessions do not grant project access.
+- [x] Shared-source access is checked separately from project access.
 - [ ] Outputs, backups, uploads, and operations resolve through server-owned records rather than arbitrary client paths.
 - [ ] Existing projects have reviewed owners, and shared resources have reviewed access grants.
 - [x] Resource deletion and name reuse cannot transfer grants to a new resource.
 - [x] The final project owner and final application administrator cannot be removed.
+- [x] Broad project access uses typed, auditable subjects and cannot grant unsafe owner capabilities to every authenticated user by default.
 - [ ] Focused authorization tests and the backend regression suite pass.
 - [ ] Operator, developer, deployment, API behavior, and policy documentation matches the delivered system.
 - [ ] The stable principal contract and native-authentication relationship are documented and tested independently of nginx-specific request fields.
@@ -187,12 +244,13 @@ All protected routes and operations pass the authorization matrix, the route inv
 
 ## Validation And Testing
 
-- Use unit tests for role expansion, inheritance, deny-by-default behavior, grant persistence, application roles, manifest migration, manifest reconciliation, and production authorization settings. The current focused authorization suite covers these implemented foundation paths.
-- Use `TestClient` tests for authentication and authorization responses on every sensitive route. Current focused tests cover project dependency binding, readable project filtering, project owner assignment helpers, and session ownership plus current project authorization.
-- Test list filtering separately from single-resource access.
+- Use unit tests for every role, action, and protected resource type; role expansion; inheritance; deny-by-default behavior; grant persistence; application roles; manifest migration; manifest reconciliation; and production authorization settings. The current focused authorization suite covers these implemented foundation paths.
+- Use route-wide HTTP tests for unauthenticated responses on every declared protected route, with policy and dependency matrices for each requirement class. Focused endpoint tests cover query, logs, and operations; focused authorization tests cover project dependency binding, readable project and shared-source filtering, project owner assignment helpers, session ownership plus current project authorization, and the approved `403`/concealed `404` behavior.
+- Test list filtering separately from single-resource access. Project and shared-data-source list filtering are covered.
 - Test service and background-operation entry points without relying on route dependencies.
 - Test grant creation, revocation, concurrent reads and writes, lifecycle compensation, migration, backup, restore, reconciliation, and integrity checks for SQLite.
 - Test that revocation blocks new operations and later operation access while an already-running operation retains its recorded authorization snapshot.
+- Test typed principal, group, and authenticated-`everyone` subjects, including membership changes, anonymous denial, broad-grant revocation, inheritance, and final-owner protection.
 - Run the backend test suite defined by the repository workflow after focused authorization tests pass. The focused authorization, operations, and configuration tests pass; the full backend run did not produce a completion result in the current environment.
 - Review the maintained route inventory against the registered FastAPI routes.
 

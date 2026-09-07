@@ -28,7 +28,7 @@ class AuthorizationService:
         resource_ids = self._resource_and_ancestors(resource)
         return any(
             grant.resource_id in resource_ids and self.policy.allows_resource_role(resource.resource_type, grant.role, action)
-            for grant in self.repository.list_grants(principal.principal_id)
+            for grant in self.repository.list_matching_grants(principal.principal_id, tuple(principal.group_ids))
         )
 
     def authorize(self, principal: Principal, action: Action, resource: ResourceRecord) -> AuthorizedResource | None:

@@ -7,6 +7,7 @@ from urllib.parse import quote
 
 from loguru import logger
 
+from backend.app.authorization.models import Action, AuthorizedResource, ResourceType
 from backend.app.core.state_manager import ApplicationStateManager
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
@@ -52,20 +53,29 @@ class ExecuteService:
 
         return dispatchers
 
-    async def execute_workflow(self, project_name: str, request: ExecuteRequest) -> ExecuteResult:
+    async def execute_workflow(self, authorized_project: AuthorizedResource, request: ExecuteRequest) -> ExecuteResult:
         """Execute full Shape Shifter workflow.
 
         Args:
-            project_name: Name of project to execute
+            authorized_project: Server-authorized project resource
             request: Execution request parameters
 
         Returns:
             ExecuteResult with execution details
 
         Raises:
+            PermissionError: If the resource is not authorized for project execution
             ValueError: If dispatcher key is invalid
             Exception: If workflow execution fails
         """
+        if not isinstance(authorized_project, AuthorizedResource) or (
+            authorized_project.action != Action.EXECUTE
+            or authorized_project.resource.resource_type != ResourceType.PROJECT
+            or authorized_project.resource.lifecycle_state != "active"
+        ):
+            raise PermissionError("Project is not authorized for execution")
+
+        project_name = authorized_project.resource.locator
         if request.dispatcher_key not in Dispatchers.items:
             raise ValueError(f"Invalid dispatcher key: {request.dispatcher_key}. " f"Available: {', '.join(Dispatchers.items.keys())}")
 
