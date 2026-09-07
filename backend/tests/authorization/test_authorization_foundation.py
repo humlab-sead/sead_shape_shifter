@@ -55,3 +55,18 @@ def test_deleted_resource_name_can_be_reused_without_inheriting_grants(tmp_path)
     assert replacement.resource_id != deleted.resource_id
     assert not AuthorizationService(repository).is_allowed(_principal(), Action.READ, replacement)
     repository.close()
+
+
+def test_register_shared_data_source_creates_resource_and_reader_grant(tmp_path) -> None:
+    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
+
+    resource = AuthorizationService(repository).register_shared_data_source(_principal(), "source-a")
+
+    assert resource.resource_type == ResourceType.SHARED_DATA_SOURCE
+    assert resource.locator == "source-a"
+    assert repository.get_resource_by_locator(ResourceType.SHARED_DATA_SOURCE, "source-a") == resource
+    grants = repository.list_grants("alice")
+    assert len(grants) == 1
+    assert grants[0].resource_id == resource.resource_id
+    assert grants[0].role == "reader"
+    repository.close()

@@ -40,6 +40,10 @@ class DataSourceService:
             raise ValueError(f"Data source file '{filename}' not found")
         return path
 
+    def data_source_locator(self, filename: str | Path) -> str:
+        """Return the authorization locator for a data source filename."""
+        return self._resolve_data_source_path(filename).stem
+
     def _list_data_source_files(self) -> list[Path]:
         """List all data source YAML files in the projects directory.
 

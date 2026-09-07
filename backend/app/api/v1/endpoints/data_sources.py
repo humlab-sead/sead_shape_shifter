@@ -12,8 +12,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from loguru import logger
 
 from backend.app.api.dependencies import get_data_source_service
-from backend.app.authorization.dependencies import get_authorization_service, get_principal
-from backend.app.authorization.models import Principal
+from backend.app.authorization.dependencies import get_authorization_service, get_principal, require_application_action
+from backend.app.authorization.models import Action, Principal, ResourceRecord, ResourceType
 from backend.app.authorization.service import AuthorizationService
 from backend.app.models.data_source import (
     DataSourceConfig,
@@ -29,6 +29,7 @@ from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
 
 router = APIRouter(prefix="/data-sources", tags=["data-sources"])
 data_source_principal_dependency = get_principal()
+data_source_operator_dependency = require_application_action(Action.MANAGE_SHARED_SOURCES)
 
 ALLOWED_FILE_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 MAX_FILE_SIZE_MB = 50
@@ -207,7 +208,10 @@ async def get_excel_metadata(
     summary="Upload a data source file",
 )
 @handle_endpoint_errors
-async def upload_data_source_file(file: UploadFile = File(...)) -> ProjectFileInfo:
+async def upload_data_source_file(
+    _operator: Annotated[Principal, Depends(data_source_operator_dependency)],
+    file: UploadFile = File(...),
+) -> ProjectFileInfo:
     """Upload an Excel or CSV file for use in data source configurations."""
 
     project_service: ProjectService = get_project_service()
@@ -258,6 +262,8 @@ async def get_data_source(
 @router.post("", response_model=DataSourceConfig, status_code=status.HTTP_201_CREATED, summary="Create global data source file")
 async def create_data_source(
     config: DataSourceConfig,
+    principal: Annotated[Principal, Depends(data_source_operator_dependency)],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceConfig:
     """
@@ -290,7 +296,14 @@ async def create_data_source(
                 detail=f"Data source file '{filename}' already exists",
             )
 
-        created: DataSourceConfig = service.create_data_source(Path(filename), config)
+        created: DataSourceConfig | None = None
+        try:
+            created = service.create_data_source(Path(filename), config)
+            authorization_service.register_shared_data_source(principal, service.data_source_locator(filename))
+        except Exception:
+            if created is not None:
+                service.delete_data_source(Path(filename))
+            raise
         logger.info(f"Created data source file: {filename}")
         return created
     except HTTPException:
@@ -307,6 +320,7 @@ async def create_data_source(
 async def update_data_source(
     filename: str,
     config: DataSourceConfig,
+    _operator: Annotated[Principal, Depends(data_source_operator_dependency)],
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceConfig:
     """
@@ -352,6 +366,8 @@ async def update_data_source(
 @router.delete("/{filename}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete data source file")
 async def delete_data_source(
     filename: str,
+    _operator: Annotated[Principal, Depends(data_source_operator_dependency)],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     service: DataSourceService = Depends(get_data_source_service),
 ):
     """
@@ -379,7 +395,19 @@ async def delete_data_source(
                 detail=f"Data source file '{filename}' not found",
             )
 
-        service.delete_data_source(Path(filename))
+        resource: ResourceRecord | None = authorization_service.repository.get_resource_by_locator(
+            ResourceType.SHARED_DATA_SOURCE, service.data_source_locator(filename)
+        )
+        if resource is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+
+        authorization_service.transition_resource(resource, "deleting")
+        try:
+            service.delete_data_source(Path(filename))
+        except Exception:
+            authorization_service.transition_resource(resource, "active")
+            raise
+        authorization_service.transition_resource(resource, "deleted")
         logger.info(f"Deleted data source: {filename}")
     except HTTPException:
         raise

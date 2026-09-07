@@ -11,6 +11,8 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from backend.app.api.dependencies import get_schema_service
+from backend.app.authorization.dependencies import require_application_action
+from backend.app.authorization.models import Action, Principal
 from backend.app.exceptions import SchemaIntrospectionError
 from backend.app.models.data_source import TableMetadata, TableSchema
 from backend.app.models.entity_import import EntityImportRequest, EntityImportResult
@@ -20,6 +22,7 @@ from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.exceptions import NotFoundError
 
 router = APIRouter(prefix="/data-sources", tags=["schema"])
+schema_cache_operator_dependency = require_application_action(Action.MANAGE_SHARED_SOURCES)
 
 
 class DataSourceConfigRequest(BaseModel):
@@ -335,6 +338,7 @@ async def import_entity_from_table(
 @handle_endpoint_errors
 async def invalidate_cache(
     name: str,
+    _operator: Principal = Depends(schema_cache_operator_dependency),
     service: SchemaIntrospectionService = Depends(get_schema_service),
 ):
     """
