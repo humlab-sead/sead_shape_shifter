@@ -8,6 +8,7 @@ import pytest
 from fastapi import HTTPException, Request
 from fastapi.routing import APIRoute
 
+from backend.app.api.v1.endpoints.logs import router as logs_router
 from backend.app.api.v1.endpoints.projects import (
     _authorize_referenced_shared_data_sources,
 )
@@ -172,6 +173,23 @@ def test_project_data_source_connection_requires_project_and_shared_source_acces
         (("action", "edit"), ("resource_type", "project")),
         (("action", "read"), ("resource_type", "shared_data_source")),
     }
+
+
+def test_log_routes_require_administrator_access() -> None:
+    log_routes = [
+        route
+        for route in logs_router.routes
+        if isinstance(route, APIRoute) and route.path in {"/logs/{log_type}", "/logs/{log_type}/download"}
+    ]
+
+    assert len(log_routes) == 2
+    for route in log_routes:
+        requirements = {
+            tuple(sorted(dependency.call.authorization_requirement.items()))
+            for dependency in route.dependant.dependencies
+            if hasattr(dependency.call, "authorization_requirement")
+        }
+        assert requirements == {(("action", "read_logs"), ("resource_type", "application"))}
 
 
 @pytest.mark.asyncio

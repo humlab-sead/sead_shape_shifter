@@ -3,17 +3,20 @@
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 
+from backend.app.authorization.dependencies import require_application_action
+from backend.app.authorization.models import Action
 from backend.app.core.config import get_settings
 
 router = APIRouter()
+logs_reader_dependency = require_application_action(Action.READ_LOGS)
 
 LogType = Literal["app", "error"]
 
 
-@router.get("/logs/{log_type}")
+@router.get("/logs/{log_type}", dependencies=[Depends(logs_reader_dependency)])
 async def get_logs(
     log_type: LogType,
     lines: int = Query(default=500, ge=1, le=10000, description="Number of lines to fetch from end of file"),
@@ -62,7 +65,7 @@ async def get_logs(
         raise HTTPException(status_code=500, detail=f"Failed to read log file: {str(e)}") from e
 
 
-@router.get("/logs/{log_type}/download")
+@router.get("/logs/{log_type}/download", dependencies=[Depends(logs_reader_dependency)])
 async def download_logs(log_type: LogType) -> dict[str, str]:
     """Get download path for log file.
 
