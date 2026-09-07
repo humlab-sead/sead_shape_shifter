@@ -70,7 +70,7 @@ async def execute_workflow(
 
     logger.info(f"Executing workflow for project '{name}' with dispatcher '{request.dispatcher_key}' to target '{request.target}'")
 
-    result = await execute_service.execute_workflow(authorized_project.resource.locator, request)
+    result = await execute_service.execute_workflow(authorized_project, request)
 
     if result.success:
         logger.info(f"Workflow execution completed successfully: {result.message}")
