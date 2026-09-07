@@ -1,10 +1,12 @@
 """API endpoints for entity data preview."""
 
-from typing import Any, NoReturn, Optional
+from typing import Annotated, Any, NoReturn, Optional
 
 from fastapi import APIRouter, Body, Depends, Path, Query
 from loguru import logger
 
+from backend.app.authorization.dependencies import require_project
+from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.exceptions import ConstraintViolationError, ValidationError
 from backend.app.models.join_test import JoinTestResult
 from backend.app.models.shapeshift import PreviewResult
@@ -116,6 +118,7 @@ def get_validate_fk_service(
 )
 @handle_endpoint_errors
 async def preview_entity(
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     project_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity to preview"),
     body: Optional[dict[str, Any]] = Body(None, description="Request body with optional entity_config"),
@@ -145,7 +148,9 @@ async def preview_entity(
         # Frontend sends: {"entity_config": {...}}
         entity_config = body.get("entity_config") if body else None
 
-        result: PreviewResult = await preview_service.preview_entity(project_name, entity_name, limit, override_config=entity_config)
+        result: PreviewResult = await preview_service.preview_entity(
+            authorized_project.resource.locator, entity_name, limit, override_config=entity_config
+        )
         return result
     except FunctionalDependencyError as e:
         _raise_fd_validation_error(e, entity_name)
@@ -169,6 +174,7 @@ async def preview_entity(
 )
 @handle_endpoint_errors
 async def get_entity_sample(
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     project_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of rows (default 100)"),
@@ -183,7 +189,7 @@ async def get_entity_sample(
     - Statistical analysis
     """
     try:
-        result = await preview_service.get_entity_sample(project_name, entity_name, limit)
+        result = await preview_service.get_entity_sample(authorized_project.resource.locator, entity_name, limit)
         return result
     except FunctionalDependencyError as e:
         _raise_fd_validation_error(e, entity_name)
@@ -204,6 +210,7 @@ async def get_entity_sample(
 )
 @handle_endpoint_errors
 async def invalidate_preview_cache(
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     project_name: str = Path(..., description="Name of the configuration"),
     entity_name: Optional[str] = Query(None, description="Optional entity name to clear specific cache"),
     preview_service: ShapeShiftService = Depends(get_preview_service),
@@ -216,7 +223,7 @@ async def invalidate_preview_cache(
     - Changing data source data
     - Updating transformations
     """
-    preview_service.invalidate_cache(project_name, entity_name)
+    preview_service.invalidate_cache(authorized_project.resource.locator, entity_name)
     message = f"Cache cleared for {project_name}"
     if entity_name:
         message += f":{entity_name}"
@@ -236,6 +243,7 @@ async def invalidate_preview_cache(
 )
 @handle_endpoint_errors
 async def test_foreign_key_join(
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     project_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity with the foreign key"),
     fk_index: int = Path(..., description="Index of the foreign key to test", ge=0),
@@ -260,7 +268,10 @@ async def test_foreign_key_join(
     """
     try:
         result = await validate_fk_service.test_foreign_key(
-            project_name=project_name, entity_name=entity_name, foreign_key_index=fk_index, sample_size=sample_size
+            project_name=authorized_project.resource.locator,
+            entity_name=entity_name,
+            foreign_key_index=fk_index,
+            sample_size=sample_size,
         )
         return result
     except FunctionalDependencyError as e:

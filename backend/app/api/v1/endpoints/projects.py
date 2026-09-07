@@ -2,13 +2,16 @@
 
 from io import StringIO
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, File, Query, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status
 from fastapi.responses import Response
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from backend.app.authorization.dependencies import get_authorization_service, get_principal, require_application_action, require_project
+from backend.app.authorization.models import Action, AuthorizedResource, Principal
+from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
@@ -47,7 +50,6 @@ class BackupInfo(BaseModel):
     """Backup file information."""
 
     file_name: str = Field(..., description="Backup file name")
-    file_path: str = Field(..., description="Full backup file path")
     created_at: float = Field(..., description="Creation timestamp")
 
 
@@ -60,7 +62,7 @@ class RawYamlUpdateRequest(BaseModel):
 class RestoreBackupRequest(BaseModel):
     """Request to restore from backup."""
 
-    backup_path: str = Field(..., description="Path to backup file to restore")
+    backup_name: str = Field(..., description="Server-issued backup file name")
 
 
 class MetadataUpdateRequest(BaseModel):
@@ -78,7 +80,10 @@ class MetadataUpdateRequest(BaseModel):
 # Endpoints
 @router.get("/projects", response_model=list[ProjectMetadata])
 @handle_endpoint_errors
-async def list_projects() -> list[ProjectMetadata]:
+async def list_projects(
+    principal: Annotated[Principal, Depends(get_principal())],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+) -> list[ProjectMetadata]:
     """
     List all available project files.
 
@@ -89,14 +94,17 @@ async def list_projects() -> list[ProjectMetadata]:
     - Validation status
     """
     project_service: ProjectService = get_project_service()
-    configs: list[ProjectMetadata] = project_service.list_projects()
+    configs: list[ProjectMetadata] = project_service.list_authorized_projects(principal, authorization_service)
     logger.debug(f"Listed {len(configs)} project(s)")
     return configs
 
 
 @router.get("/projects/{name}", response_model=Project)
 @handle_endpoint_errors
-async def get_project(name: str) -> Project:
+async def get_project(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> Project:
     """
     Get specific project by name.
     Args:
@@ -106,14 +114,17 @@ async def get_project(name: str) -> Project:
         Complete project with entities, options, and metadata
     """
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.load_project(name)
+    project: Project = project_service.load_project(authorized_project.resource.locator)
     logger.info(f"Retrieved project '{name}'")
     return project
 
 
 @router.post("/projects/{name}/refresh", response_model=Project)
 @handle_endpoint_errors
-async def refresh_project(name: str) -> Project:
+async def refresh_project(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> Project:
     """
     Force reload a project from disk, invalidating the server-side cache.
 
@@ -127,14 +138,18 @@ async def refresh_project(name: str) -> Project:
         Reloaded project with fresh data from disk
     """
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.load_project(name, force_reload=True)
+    project: Project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
     logger.info(f"Force reloaded project '{name}' from disk")
     return project
 
 
 @router.post("/projects", response_model=Project, status_code=status.HTTP_201_CREATED)
 @handle_endpoint_errors
-async def create_project(request: ProjectCreateRequest) -> Project:
+async def create_project(
+    request: ProjectCreateRequest,
+    principal: Annotated[Principal, Depends(require_application_action(Action.CREATE_PROJECT))],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+) -> Project:
     """
     Create new project.
 
@@ -145,14 +160,26 @@ async def create_project(request: ProjectCreateRequest) -> Project:
         Created project with metadata
     """
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.create_project(request.name, entities=request.entities, task_list=request.task_list)
+    project: Project | None = None
+    try:
+        project = project_service.create_project(request.name, entities=request.entities, task_list=request.task_list)
+        project_service.assign_project_owner(request.name, principal, authorization_service)
+    except Exception:
+        if project is not None:
+            project_service.delete_project(request.name)
+        raise
     logger.info(f"Created project '{request.name}'")
+    assert project is not None
     return project
 
 
 @router.put("/projects/{name}", response_model=Project)
 @handle_endpoint_errors
-async def update_project(name: str, request: ProjectUpdateRequest) -> Project:
+async def update_project(
+    name: str,
+    request: ProjectUpdateRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> Project:
     """
     Update existing project.
 
@@ -169,15 +196,19 @@ async def update_project(name: str, request: ProjectUpdateRequest) -> Project:
     project_service: ProjectService = get_project_service()
     # Boundary save: replaces only the options section on disk, leaving entities
     # and metadata (and all YAML comments) untouched.  No full-file reload needed.
-    project_service.save_options_boundary(name, request.options or {})
-    updated_project: Project = project_service.load_project(name, force_reload=True)
+    project_service.save_options_boundary(authorized_project.resource.locator, request.options or {})
+    updated_project: Project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
     logger.info(f"Updated project '{name}' options via boundary save")
     return updated_project
 
 
 @router.patch("/projects/{name}/metadata", response_model=Project)
 @handle_endpoint_errors
-async def update_project_metadata(name: str, request: MetadataUpdateRequest) -> Project:
+async def update_project_metadata(
+    name: str,
+    request: MetadataUpdateRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> Project:
     """
     Update project metadata.
 
@@ -193,7 +224,7 @@ async def update_project_metadata(name: str, request: MetadataUpdateRequest) -> 
     """
     project_service: ProjectService = get_project_service()
     project: Project = project_service.update_metadata(
-        name=name,
+        name=authorized_project.resource.locator,
         new_name=request.name,
         description=request.description,
         version=request.version,
@@ -207,7 +238,11 @@ async def update_project_metadata(name: str, request: MetadataUpdateRequest) -> 
 
 @router.delete("/projects/{name}", status_code=status.HTTP_204_NO_CONTENT)
 @handle_endpoint_errors
-async def delete_project(name: str) -> None:
+async def delete_project(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.DELETE))],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+) -> None:
     """
     Delete project file.
 
@@ -217,13 +252,26 @@ async def delete_project(name: str) -> None:
         name: Project name to delete
     """
     project_service: ProjectService = get_project_service()
-    project_service.delete_project(name)
+    resource = authorized_project.resource
+    authorization_service.transition_resource(resource, "deleting")
+    try:
+        project_service.delete_project(resource.locator)
+    except Exception:
+        authorization_service.transition_resource(resource, "active")
+        raise
+    authorization_service.transition_resource(resource, "deleted")
     logger.info(f"Deleted project '{name}'")
 
 
 @router.post("/projects/{name}/copy", response_model=Project, status_code=status.HTTP_201_CREATED)
 @handle_endpoint_errors
-async def copy_project(name: str, target_name: str = Body(..., embed=True)) -> Project:
+async def copy_project(
+    name: str,
+    source_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    principal: Annotated[Principal, Depends(require_application_action(Action.CREATE_PROJECT))],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+    target_name: str = Body(..., embed=True),
+) -> Project:
     """
     Copy project and its associated files to a new name.
 
@@ -243,14 +291,25 @@ async def copy_project(name: str, target_name: str = Body(..., embed=True)) -> P
         HTTPException: If source not found or target already exists
     """
     project_service: ProjectService = get_project_service()
-    new_project: Project = project_service.copy_project(name, target_name)
+    new_project: Project | None = None
+    try:
+        new_project = project_service.copy_project(source_project.resource.locator, target_name)
+        project_service.assign_project_owner(target_name, principal, authorization_service)
+    except Exception:
+        if new_project is not None:
+            project_service.delete_project(target_name)
+        raise
     logger.info(f"Copied project '{name}' to '{target_name}'")
+    assert new_project is not None
     return new_project
 
 
 @router.post("/projects/{name}/validate", response_model=ValidationResult)
 @handle_endpoint_errors
-async def validate_project(name: str) -> ValidationResult:
+async def validate_project(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> ValidationResult:
     """
     Validate project against specifications.
 
@@ -269,14 +328,16 @@ async def validate_project(name: str) -> ValidationResult:
     """
     project_service: ProjectService = get_project_service()
     validation_service: ValidationService = get_validation_service()
-    project: Project = project_service.load_project(name)
+    project: Project = project_service.load_project(authorized_project.resource.locator)
     config_data: dict[str, Any] = {
         "metadata": project.metadata.model_dump() if project.metadata else {},
         "entities": project.entities,
         "options": project.options,
     }
     source_path: str = (
-        project.metadata.file_path if project.metadata and project.metadata.file_path else str(settings.PROJECTS_DIR / f"{name}.yml")
+        project.metadata.file_path
+        if project.metadata and project.metadata.file_path
+        else str(settings.PROJECTS_DIR / f"{authorized_project.resource.locator}.yml")
     )
     result: ValidationResult = validation_service.validate_project(config_data, source_path=source_path)
     logger.info(f"Validated project '{name}': {'valid' if result.is_valid else 'invalid'}")
@@ -285,7 +346,10 @@ async def validate_project(name: str) -> ValidationResult:
 
 @router.get("/projects/{name}/backups", response_model=list[BackupInfo])
 @handle_endpoint_errors
-async def list_backups(name: str) -> list[BackupInfo]:
+async def list_backups(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> list[BackupInfo]:
     """
     List all backup files for a project.
 
@@ -298,12 +362,11 @@ async def list_backups(name: str) -> list[BackupInfo]:
         List of backup file information
     """
     yaml_service: YamlService = get_yaml_service()
-    project_dir = settings.PROJECTS_DIR / ProjectNameMapper.to_path(name)
+    project_dir = settings.PROJECTS_DIR / ProjectNameMapper.to_path(authorized_project.resource.locator)
     backups: list[Path] = yaml_service.list_backups(project_dir=project_dir)
     backup_infos: list[BackupInfo] = [
         BackupInfo(
             file_name=backup.name,
-            file_path=str(backup),
             created_at=backup.stat().st_mtime,
         )
         for backup in backups
@@ -314,7 +377,11 @@ async def list_backups(name: str) -> list[BackupInfo]:
 
 @router.post("/projects/{name}/restore", response_model=Project)
 @handle_endpoint_errors
-async def restore_backup(name: str, request: RestoreBackupRequest) -> Project:
+async def restore_backup(
+    name: str,
+    request: RestoreBackupRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> Project:
     """
     Restore project from backup file.
 
@@ -322,14 +389,20 @@ async def restore_backup(name: str, request: RestoreBackupRequest) -> Project:
 
     Args:
         name: Project name
-        request: Backup file path to restore from
+        request: Server-issued backup file name to restore from
 
     Returns:
         Restored project
     """
     yaml_service: YamlService = get_yaml_service()
-    target_path: Path = settings.PROJECTS_DIR / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
-    yaml_service.restore_backup(request.backup_path, str(target_path), create_backup=True)
+    project_dir: Path = settings.PROJECTS_DIR / ProjectNameMapper.to_path(authorized_project.resource.locator)
+    backups: list[Path] = yaml_service.list_backups(project_dir=project_dir)
+    backup_path: Path | None = next((backup for backup in backups if backup.name == request.backup_name), None)
+    if backup_path is None:
+        raise NotFoundError(f"Backup '{request.backup_name}' not found for project '{name}'")
+
+    target_path: Path = project_dir / "shapeshifter.yml"
+    yaml_service.restore_backup(backup_path, str(target_path), create_backup=True)
     restored_data: dict[str, Any] = yaml_service.load(target_path)
     stat = target_path.stat()
     project = Project(
@@ -368,7 +441,10 @@ async def get_active_project_name() -> dict[str, str | None]:
 
 @router.post("/projects/{name}/activate", response_model=Project)
 @handle_endpoint_errors
-async def activate_project(name: str) -> Project:
+async def activate_project(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> Project:
     """
     Activate (load) a project into the backend context.
 
@@ -381,7 +457,7 @@ async def activate_project(name: str) -> Project:
     Returns:
         The activated project
     """
-    project: Project = get_project_service().activate_project(name)
+    project: Project = get_project_service().activate_project(authorized_project.resource.locator)
     logger.info(f"Activated project '{name}'")
     return project
 
@@ -398,7 +474,10 @@ class DataSourceConnectionRequest(BaseModel):
 
 @router.get("/projects/{name}/data-sources", response_model=dict[str, str | dict[str, Any]])
 @handle_endpoint_errors
-async def get_project_data_sources(name: str) -> dict[str, str | dict[str, Any]]:
+async def get_project_data_sources(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> dict[str, str | dict[str, Any]]:
     """
     Get all data sources connected to a project.
 
@@ -413,14 +492,18 @@ async def get_project_data_sources(name: str) -> dict[str, str | dict[str, Any]]
     Returns:
         Dict of source_name -> "@include: filename.yml" or inline configuration object
     """
-    project: Project = get_project_service().load_project(name)
+    project: Project = get_project_service().load_project(authorized_project.resource.locator)
     data_sources = project.options.get("data_sources", {})
     return data_sources
 
 
 @router.post("/projects/{name}/data-sources", response_model=Project)
 @handle_endpoint_errors
-async def connect_data_source_to_project(name: str, request: DataSourceConnectionRequest) -> Project:
+async def connect_data_source_to_project(
+    name: str,
+    request: DataSourceConnectionRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> Project:
     """
     Connect a data source to a project.
 
@@ -436,7 +519,7 @@ async def connect_data_source_to_project(name: str, request: DataSourceConnectio
 
     # Load project
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.load_project(name)
+    project: Project = project_service.load_project(authorized_project.resource.locator)
 
     # Check if source name already exists
     data_sources = project.options.get("data_sources", {})
@@ -448,8 +531,8 @@ async def connect_data_source_to_project(name: str, request: DataSourceConnectio
     project.options["data_sources"] = data_sources
 
     # Boundary save: replaces only the options section, leaving entities and YAML comments untouched.
-    project_service.save_options_boundary(name, project.options)
-    updated_config: Project = project_service.load_project(name, force_reload=True)
+    project_service.save_options_boundary(authorized_project.resource.locator, project.options)
+    updated_config: Project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
 
     logger.info(f"Connected data source '{request.source_name}' (@include: {request.source_filename}) " f"to project '{name}'")
 
@@ -458,7 +541,11 @@ async def connect_data_source_to_project(name: str, request: DataSourceConnectio
 
 @router.delete("/projects/{name}/data-sources/{source_name}", response_model=Project)
 @handle_endpoint_errors
-async def disconnect_data_source_from_project(name: str, source_name: str) -> Project:
+async def disconnect_data_source_from_project(
+    name: str,
+    source_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> Project:
     """
     Disconnect a data source from a project.
 
@@ -473,7 +560,7 @@ async def disconnect_data_source_from_project(name: str, source_name: str) -> Pr
     """
 
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.load_project(name)
+    project: Project = project_service.load_project(authorized_project.resource.locator)
 
     data_sources: dict[str, str] = project.options.get("data_sources", {})
     if source_name not in data_sources:
@@ -483,8 +570,8 @@ async def disconnect_data_source_from_project(name: str, source_name: str) -> Pr
     project.options["data_sources"] = data_sources
 
     # Boundary save: replaces only the options section, leaving entities and YAML comments untouched.
-    project_service.save_options_boundary(name, project.options)
-    updated_config: Project = project_service.load_project(name, force_reload=True)
+    project_service.save_options_boundary(authorized_project.resource.locator, project.options)
+    updated_config: Project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
 
     logger.info(f"Disconnected data source '{source_name}' from project '{name}'")
 
@@ -493,7 +580,10 @@ async def disconnect_data_source_from_project(name: str, source_name: str) -> Pr
 
 @router.get("/projects/{name}/raw-yaml", response_model=dict[str, str])
 @handle_endpoint_errors
-async def get_project_raw_yaml(name: str) -> dict[str, str]:
+async def get_project_raw_yaml(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> dict[str, str]:
     """
     Get project as raw YAML string.
 
@@ -506,10 +596,10 @@ async def get_project_raw_yaml(name: str) -> dict[str, str]:
 
     project_service: ProjectService = get_project_service()
 
-    project_service.load_project(name)
+    project_service.load_project(authorized_project.resource.locator)
 
     # Convert API name to filesystem path (: -> /)
-    path_name = ProjectNameMapper.to_path(name)
+    path_name = ProjectNameMapper.to_path(authorized_project.resource.locator)
     project_path = settings.PROJECTS_DIR / path_name / "shapeshifter.yml"
     if not project_path.exists():
         raise NotFoundError(f"Project file not found: {project_path}")
@@ -523,7 +613,11 @@ async def get_project_raw_yaml(name: str) -> dict[str, str]:
 
 @router.put("/projects/{name}/raw-yaml", response_model=Project)
 @handle_endpoint_errors
-async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> Project:
+async def update_project_raw_yaml(
+    name: str,
+    request: RawYamlUpdateRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> Project:
     """
     Update project with raw YAML content.
 
@@ -556,7 +650,7 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
         raise BadRequestError("YAML must be a dictionary")
 
     # Write to file (convert API name to filesystem path: : -> /)
-    path_name = ProjectNameMapper.to_path(name)
+    path_name = ProjectNameMapper.to_path(authorized_project.resource.locator)
     project_path = settings.PROJECTS_DIR / path_name / "shapeshifter.yml"
     if not project_path.exists():
         raise NotFoundError(f"Project file not found: {project_path}")
@@ -569,7 +663,7 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
 
     # Load and return updated project.
     # IMPORTANT: Force reload so ApplicationState cache cannot return stale data.
-    updated_project = project_service.load_project(name, force_reload=True)
+    updated_project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
 
     logger.info(f"Updated project '{name}' from raw YAML")
 
@@ -629,7 +723,10 @@ def _resolve_target_model_path(project: Project, project_name: str) -> Path:
 
 @router.get("/projects/{name}/target-model-yaml", response_model=dict[str, str])
 @handle_endpoint_errors
-async def get_project_target_model_yaml(name: str) -> dict[str, str]:
+async def get_project_target_model_yaml(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> dict[str, str]:
     """
     Get the project-local target model file as a raw YAML string.
 
@@ -643,8 +740,8 @@ async def get_project_target_model_yaml(name: str) -> dict[str, str]:
         Dictionary containing yaml_content
     """
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.load_project(name)
-    target_path: Path = _resolve_target_model_path(project, name)
+    project: Project = project_service.load_project(authorized_project.resource.locator)
+    target_path: Path = _resolve_target_model_path(project, authorized_project.resource.locator)
     yaml_content: str = target_path.read_text(encoding="utf-8")
     logger.info(f"Retrieved target model YAML for project '{name}'")
     return {"yaml_content": yaml_content}
@@ -652,7 +749,11 @@ async def get_project_target_model_yaml(name: str) -> dict[str, str]:
 
 @router.put("/projects/{name}/target-model-yaml", response_model=Project)
 @handle_endpoint_errors
-async def update_project_target_model_yaml(name: str, request: RawYamlUpdateRequest) -> Project:
+async def update_project_target_model_yaml(
+    name: str,
+    request: RawYamlUpdateRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> Project:
     """
     Update the project-local target model file with raw YAML content.
 
@@ -671,8 +772,8 @@ async def update_project_target_model_yaml(name: str, request: RawYamlUpdateRequ
     yaml_service: YamlService = get_yaml_service()
     project_service: ProjectService = get_project_service()
 
-    project: Project = project_service.load_project(name)
-    target_path: Path = _resolve_target_model_path(project, name)
+    project: Project = project_service.load_project(authorized_project.resource.locator)
+    target_path: Path = _resolve_target_model_path(project, authorized_project.resource.locator)
 
     # Validate YAML syntax only — never re-serialise; write verbatim to preserve comments
     is_valid, error_msg = yaml_service.validate_yaml(request.yaml_content)
@@ -682,7 +783,7 @@ async def update_project_target_model_yaml(name: str, request: RawYamlUpdateRequ
     yaml_service.create_backup(target_path)
     target_path.write_text(request.yaml_content, encoding="utf-8")
 
-    updated_project: Project = project_service.load_project(name, force_reload=True)
+    updated_project: Project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
     logger.info(f"Updated target model YAML for project '{name}'")
     return updated_project
 
@@ -691,6 +792,7 @@ async def update_project_target_model_yaml(name: str, request: RawYamlUpdateRequ
 @handle_endpoint_errors
 async def download_target_model_docs(
     name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     format: str = Query(  # pylint: disable=redefined-builtin
         "html", description="Documentation format: html, markdown, excel, sims, or schema-reference"
     ),
@@ -729,7 +831,7 @@ async def download_target_model_docs(
         raise BadRequestError(f"Invalid format '{format}'. Supported: html, markdown, excel, sims, schema-reference") from e
 
     # Generate documentation
-    content: bytes = documentation_service.generate_target_model_docs(name, doc_format)
+    content: bytes = documentation_service.generate_target_model_docs(authorized_project.resource.locator, doc_format)
 
     # Determine content type and file extension
     content_types: dict[DocumentFormat, str] = {
@@ -791,7 +893,10 @@ class SaveLayoutResponse(BaseModel):
 # Layout Management Endpoints
 @router.get("/projects/{name}/layout", response_model=CustomLayoutResponse)
 @handle_endpoint_errors
-async def get_custom_layout(name: str) -> CustomLayoutResponse:
+async def get_custom_layout(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> CustomLayoutResponse:
     """
     Get custom graph layout for project.
 
@@ -805,9 +910,9 @@ async def get_custom_layout(name: str) -> CustomLayoutResponse:
         Custom layout with entity positions
     """
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.load_project(name)
+    project: Project = project_service.load_project(authorized_project.resource.locator)
     layout_sidecar_manager: LayoutSidecarManager = get_layout_sidecar_manager()
-    project_file = project_service.projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
+    project_file = project_service.projects_dir / ProjectNameMapper.to_path(authorized_project.resource.locator) / "shapeshifter.yml"
 
     # Primary source: sidecar file
     layout_data = layout_sidecar_manager.load_layout(project_file)
@@ -834,7 +939,11 @@ async def get_custom_layout(name: str) -> CustomLayoutResponse:
 
 @router.put("/projects/{name}/layout", response_model=SaveLayoutResponse)
 @handle_endpoint_errors
-async def save_custom_layout(name: str, request: SaveLayoutRequest) -> SaveLayoutResponse:
+async def save_custom_layout(
+    name: str,
+    request: SaveLayoutRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> SaveLayoutResponse:
     """
     Save custom graph layout for project.
 
@@ -849,9 +958,9 @@ async def save_custom_layout(name: str, request: SaveLayoutRequest) -> SaveLayou
         Success response with number of entities positioned
     """
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.load_project(name)
+    project: Project = project_service.load_project(authorized_project.resource.locator)
     layout_sidecar_manager: LayoutSidecarManager = get_layout_sidecar_manager()
-    project_file = project_service.projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
+    project_file = project_service.projects_dir / ProjectNameMapper.to_path(authorized_project.resource.locator) / "shapeshifter.yml"
 
     # Validate layout structure
     for entity_name, pos in request.layout.items():
@@ -888,7 +997,10 @@ async def save_custom_layout(name: str, request: SaveLayoutRequest) -> SaveLayou
 
 @router.delete("/projects/{name}/layout", response_model=dict[str, str])
 @handle_endpoint_errors
-async def clear_custom_layout(name: str) -> dict[str, str]:
+async def clear_custom_layout(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> dict[str, str]:
     """
     Clear custom graph layout for project.
 
@@ -902,9 +1014,9 @@ async def clear_custom_layout(name: str) -> dict[str, str]:
         Success message
     """
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.load_project(name)
+    project: Project = project_service.load_project(authorized_project.resource.locator)
     layout_sidecar_manager: LayoutSidecarManager = get_layout_sidecar_manager()
-    project_file = project_service.projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
+    project_file = project_service.projects_dir / ProjectNameMapper.to_path(authorized_project.resource.locator) / "shapeshifter.yml"
 
     deleted_sidecar = layout_sidecar_manager.delete_sidecar(project_file)
 
@@ -939,6 +1051,7 @@ async def clear_custom_layout(name: str) -> dict[str, str]:
 @handle_endpoint_errors
 async def upload_project_file(
     name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     file: UploadFile = File(...),
 ) -> ProjectFileInfo:
     """Upload data file (Excel, CSV) to project's directory.
@@ -948,7 +1061,7 @@ async def upload_project_file(
     """
     project_service: ProjectService = get_project_service()
     return project_service.save_project_file(
-        project_name=name,
+        project_name=authorized_project.resource.locator,
         upload=file,
         allowed_extensions={".xlsx", ".xls", ".csv"},
     )
@@ -962,6 +1075,7 @@ async def upload_project_file(
 @handle_endpoint_errors
 async def list_project_files(
     name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     ext: list[str] | None = Query(default=None, description="Filter by extension(s), e.g. ext=yml&ext=yaml"),
 ) -> list[ProjectFileInfo]:
     """List files in project directory.
@@ -976,6 +1090,6 @@ async def list_project_files(
     else:
         extensions = [".xlsx", ".xls", ".csv"]
     return project_service.list_project_files(
-        project_name=name,
+        project_name=authorized_project.resource.locator,
         extensions=extensions,
     )

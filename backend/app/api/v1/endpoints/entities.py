@@ -1,12 +1,14 @@
 """API endpoints for entity management within configurations."""
 
-from typing import Any
+from typing import Annotated, Any
 
 import pandas as pd
-from fastapi import APIRouter, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from loguru import logger
 from pydantic import BaseModel, Field, field_validator
 
+from backend.app.authorization.dependencies import require_project
+from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.models.project import Project
 from backend.app.services.entity_generator_service import EntityGeneratorService, get_entity_generator_service
 from backend.app.services.entity_values_service import EntityValuesData, EntityValuesService, get_entity_values_service
@@ -139,7 +141,10 @@ class EntityValuesUpdateRequest(BaseModel):
 # Endpoints
 @router.get("/projects/{project_name}/entities", response_model=list[EntityResponse])
 @handle_endpoint_errors
-async def list_entities(project_name: str) -> list[EntityResponse]:
+async def list_entities(
+    project_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> list[EntityResponse]:
     """
     List all entities in configuration.
 
@@ -150,7 +155,7 @@ async def list_entities(project_name: str) -> list[EntityResponse]:
         List of entities with their data
     """
     project_service: ProjectService = get_project_service()
-    config: Project = project_service.load_project(project_name)
+    config: Project = project_service.load_project(authorized_project.resource.locator)
     entities = [_build_entity_response(name, data) for name, data in config.entities.items()]
     logger.debug(f"Listed {len(entities)} entities in '{project_name}'")
     return entities
@@ -158,7 +163,11 @@ async def list_entities(project_name: str) -> list[EntityResponse]:
 
 @router.get("/projects/{project_name}/entities/{entity_name}", response_model=EntityResponse)
 @handle_endpoint_errors
-async def get_entity(project_name: str, entity_name: str) -> EntityResponse:
+async def get_entity(
+    project_name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> EntityResponse:
     """
     Get specific entity from configuration.
 
@@ -170,7 +179,7 @@ async def get_entity(project_name: str, entity_name: str) -> EntityResponse:
         Entity data
     """
     project_service: ProjectService = get_project_service()
-    entity_data: dict[str, Any] = project_service.get_entity_by_name(project_name, entity_name)
+    entity_data: dict[str, Any] = project_service.get_entity_by_name(authorized_project.resource.locator, entity_name)
     logger.info(f"Retrieved entity '{entity_name}' from '{project_name}'")
     return _build_entity_response(entity_name, entity_data)
 
@@ -181,7 +190,11 @@ async def get_entity(project_name: str, entity_name: str) -> EntityResponse:
     status_code=status.HTTP_201_CREATED,
 )
 @handle_endpoint_errors
-async def create_entity(project_name: str, request: EntityCreateRequest) -> EntityResponse:
+async def create_entity(
+    project_name: str,
+    request: EntityCreateRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> EntityResponse:
     """
     Add new entity to configuration.
 
@@ -193,8 +206,8 @@ async def create_entity(project_name: str, request: EntityCreateRequest) -> Enti
         Created entity data
     """
     project_service: ProjectService = get_project_service()
-    project_service.add_entity_by_name(project_name, request.name, request.entity_data)
-    entity_data: dict[str, Any] = project_service.get_entity_by_name(project_name, request.name)
+    project_service.add_entity_by_name(authorized_project.resource.locator, request.name, request.entity_data)
+    entity_data: dict[str, Any] = project_service.get_entity_by_name(authorized_project.resource.locator, request.name)
     logger.info(f"Added entity '{request.name}' to '{project_name}'")
     return _build_entity_response(request.name, entity_data)
 
@@ -205,6 +218,7 @@ async def update_entity(
     project_name: str,
     entity_name: str,
     request: EntityUpdateRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     if_match: str | None = Header(None, alias="If-Match"),
 ) -> EntityResponse:
     """
@@ -225,8 +239,8 @@ async def update_entity(
         Updated entity data with a fresh ETag
     """
     project_service: ProjectService = get_project_service()
-    project_service.update_entity_by_name(project_name, entity_name, request.entity_data, expected_etag=if_match)
-    entity_data: dict[str, Any] = project_service.get_entity_by_name(project_name, entity_name)
+    project_service.update_entity_by_name(authorized_project.resource.locator, entity_name, request.entity_data, expected_etag=if_match)
+    entity_data: dict[str, Any] = project_service.get_entity_by_name(authorized_project.resource.locator, entity_name)
     logger.info(f"Updated entity '{entity_name}' in '{project_name}'")
     return _build_entity_response(entity_name, entity_data)
 
@@ -236,7 +250,11 @@ async def update_entity(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 @handle_endpoint_errors
-async def delete_entity(project_name: str, entity_name: str) -> None:
+async def delete_entity(
+    project_name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> None:
     """
     Delete entity from configuration.
 
@@ -245,7 +263,7 @@ async def delete_entity(project_name: str, entity_name: str) -> None:
         entity_name: Entity name
     """
     project_service: ProjectService = get_project_service()
-    project_service.delete_entity_by_name(project_name, entity_name)
+    project_service.delete_entity_by_name(authorized_project.resource.locator, entity_name)
     logger.info(f"Deleted entity '{entity_name}' from '{project_name}'")
 
 
@@ -255,7 +273,11 @@ async def delete_entity(project_name: str, entity_name: str) -> None:
     status_code=status.HTTP_201_CREATED,
 )
 @handle_endpoint_errors
-async def generate_entity_from_table(project_name: str, request: GenerateFromTableRequest) -> EntityResponse:
+async def generate_entity_from_table(
+    project_name: str,
+    request: GenerateFromTableRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> EntityResponse:
     """
     Generate a new entity configuration from a database table.
 
@@ -274,7 +296,7 @@ async def generate_entity_from_table(project_name: str, request: GenerateFromTab
     """
     generator_service: EntityGeneratorService = get_entity_generator_service()
     entity_config = await generator_service.generate_from_table(
-        project_name=project_name,
+        project_name=authorized_project.resource.locator,
         data_source_key=request.data_source,
         table_name=request.table_name,
         entity_name=request.entity_name,
@@ -291,6 +313,7 @@ async def generate_entity_from_table(project_name: str, request: GenerateFromTab
 async def get_entity_values(
     project_name: str,
     entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     format: str | None = Query(None, description="Preferred format (parquet/csv) for format conversion"),
 ) -> EntityValuesResponse:
     """
@@ -316,7 +339,7 @@ async def get_entity_values(
 
     values_service: EntityValuesService = get_entity_values_service()
     try:
-        result: EntityValuesData = values_service.get_values(project_name, entity_name)
+        result: EntityValuesData = values_service.get_values(authorized_project.resource.locator, entity_name)
     except ValueError as e:
         # Entity doesn't have @load: directive - return 422 Unprocessable Entity
         raise HTTPException(status_code=422, detail=str(e)) from e
@@ -343,6 +366,7 @@ async def update_entity_values(
     project_name: str,
     entity_name: str,
     request: EntityValuesUpdateRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     if_match: str | None = Header(None, description="Etag for optimistic locking"),
 ) -> EntityValuesResponse:
     """
@@ -371,7 +395,7 @@ async def update_entity_values(
     values_service: EntityValuesService = get_entity_values_service()
     try:
         result = values_service.update_values(
-            project_name=project_name,
+            project_name=authorized_project.resource.locator,
             entity_name=entity_name,
             columns=request.columns,
             values=request.values,
@@ -387,7 +411,7 @@ async def update_entity_values(
     logger.info(f"Updated {result.row_count} rows for entity '{entity_name}' in '{project_name}'")
 
     sync_result = get_materialization_service().sync_materialized_entity_mappings(
-        project_name=project_name,
+        project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         columns=request.columns,
         values=request.values,

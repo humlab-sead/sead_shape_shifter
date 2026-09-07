@@ -1,10 +1,12 @@
 """API endpoints for validation and dependency analysis."""
 
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from loguru import logger
 
+from backend.app.authorization.dependencies import require_project
+from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.models.fix import FixResult, FixSuggestion
 from backend.app.models.project import Project
 from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
@@ -21,6 +23,7 @@ router = APIRouter()
 @handle_endpoint_errors
 async def validate_project_data(
     name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     entity_names: list[str] | None = None,
     validation_mode: DataValidationMode = DataValidationMode.SAMPLE,
 ) -> ValidationResult:
@@ -45,7 +48,7 @@ async def validate_project_data(
     """
     validation_service: ValidationService = get_validation_service()
     result: ValidationResult = await validation_service.validate_project_data(
-        name,
+        authorized_project.resource.locator,
         entity_names,
         validation_mode=validation_mode,
     )
@@ -59,7 +62,11 @@ async def validate_project_data(
 
 @router.post("/projects/{name}/entities/{entity_name}/validate", response_model=ValidationResult)
 @handle_endpoint_errors
-async def validate_entity(name: str, entity_name: str) -> ValidationResult:
+async def validate_entity(
+    name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> ValidationResult:
     """
     Validate specific entity within a project (structural validation only).
 
@@ -74,7 +81,7 @@ async def validate_entity(name: str, entity_name: str) -> ValidationResult:
     project_service: ProjectService = get_project_service()
     validation_service: ValidationService = get_validation_service()
 
-    project: Project = project_service.load_project(name)
+    project: Project = project_service.load_project(authorized_project.resource.locator)
     result: ValidationResult = validation_service.validate_entity(project, entity_name)
 
     logger.info(f"Validated entity '{entity_name}' in project '{name}': " f"valid={result.is_valid}, errors={result.error_count}")
@@ -84,7 +91,10 @@ async def validate_entity(name: str, entity_name: str) -> ValidationResult:
 
 @router.post("/projects/{name}/validate/target-model", response_model=ValidationResult)
 @handle_endpoint_errors
-async def validate_target_model(name: str) -> ValidationResult:
+async def validate_target_model(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> ValidationResult:
     """
     Run target-model conformance validation for a project.
 
@@ -100,7 +110,7 @@ async def validate_target_model(name: str) -> ValidationResult:
         ``is_valid`` is True when there are zero conformance issues.
     """
     validation_service: ValidationService = get_validation_service()
-    result: ValidationResult = validation_service.validate_target_model(name)
+    result: ValidationResult = validation_service.validate_target_model(authorized_project.resource.locator)
 
     logger.info(f"Target-model conformance for '{name}': valid={result.is_valid}, errors={result.error_count}")
     return result
@@ -108,7 +118,10 @@ async def validate_target_model(name: str) -> ValidationResult:
 
 @router.get("/projects/{name}/dependencies")
 @handle_endpoint_errors
-async def get_dependencies(name: str) -> dict[str, Any]:
+async def get_dependencies(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> dict[str, Any]:
     """
     Get dependency graph for configuration.
 
@@ -126,7 +139,7 @@ async def get_dependencies(name: str) -> dict[str, Any]:
     project_service: ProjectService = get_project_service()
     dependency_service: DependencyService = get_dependency_service()
 
-    project: Project = project_service.load_project(name)
+    project: Project = project_service.load_project(authorized_project.resource.locator)
     graph: DependencyGraph = dependency_service.analyze_dependencies(project)
     logger.debug(f"Retrieved dependency graph for '{name}': " f"{len(graph['nodes'])} nodes, {len(graph['edges'])} edges")
 
@@ -135,7 +148,10 @@ async def get_dependencies(name: str) -> dict[str, Any]:
 
 @router.post("/projects/{name}/dependencies/check")
 @handle_endpoint_errors
-async def check_dependencies(name: str) -> dict[str, Any]:
+async def check_dependencies(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> dict[str, Any]:
     """
     Check for circular dependencies in project.
 
@@ -148,7 +164,7 @@ async def check_dependencies(name: str) -> dict[str, Any]:
     project_service: ProjectService = get_project_service()
     dependency_service: DependencyService = get_dependency_service()
 
-    project: Project = project_service.load_project(name)
+    project: Project = project_service.load_project(authorized_project.resource.locator)
     result = dependency_service.check_circular_dependencies(project)
 
     logger.info(f"Checked circular dependencies for '{name}': " f"has_cycles={result['has_cycles']}, cycles={result['cycle_count']}")
@@ -158,7 +174,11 @@ async def check_dependencies(name: str) -> dict[str, Any]:
 
 @router.post("/projects/{name}/fixes/preview")
 @handle_endpoint_errors
-async def preview_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]:
+async def preview_fixes(
+    name: str,
+    errors: list[dict[str, Any]],
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> dict[str, Any]:
     """
     Preview automatic fixes for validation errors.
 
@@ -175,14 +195,18 @@ async def preview_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, An
 
     validation_errors: list[ValidationError] = [ValidationError(**error) for error in errors]
     suggestions: list[FixSuggestion] = auto_fix_service.generate_fix_suggestions(validation_errors)
-    preview: dict[str, Any] = await auto_fix_service.preview_fixes(name, suggestions)
+    preview: dict[str, Any] = await auto_fix_service.preview_fixes(authorized_project.resource.locator, suggestions)
 
     return preview
 
 
 @router.post("/projects/{name}/fixes/apply")
 @handle_endpoint_errors
-async def apply_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]:
+async def apply_fixes(
+    name: str,
+    errors: list[dict[str, Any]],
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> dict[str, Any]:
     """
     Apply automatic fixes to project.
 
@@ -205,7 +229,7 @@ async def apply_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]
 
     validation_errors: list[ValidationError] = [ValidationError(**error) for error in errors]
     suggestions: list[FixSuggestion] = auto_fix_service.generate_fix_suggestions(validation_errors)
-    result: FixResult = await auto_fix_service.apply_fixes(name, suggestions)
+    result: FixResult = await auto_fix_service.apply_fixes(authorized_project.resource.locator, suggestions)
 
     if result.success:
         logger.info(f"Applied {result.fixes_applied} fixes to '{name}', backup at {result.backup_path}")

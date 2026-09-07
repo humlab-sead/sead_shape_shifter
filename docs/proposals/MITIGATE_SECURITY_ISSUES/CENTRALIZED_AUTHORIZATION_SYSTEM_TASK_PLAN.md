@@ -2,7 +2,7 @@
 
 ## Phase Summary
 
-- Status: Ready for implementation after proposal approval
+- Status: In progress
 - Proposal: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./CENTRALIZED_AUTHORIZATION_SYSTEM.md)
 - Parent phase: Phase 1 — Enforce Nginx Identity, Authorization, And CORS Controls
 - Goal: enforce one documented authorization policy for all Phase 1 protected resources while keeping authentication provider details replaceable
@@ -10,7 +10,7 @@
 **Acceptance Criteria**
 
 - [ ] The authorization policy, role model, principal contract, stable resource identity, and inheritance rules are approved and documented.
-- [ ] Resource records, grants, application roles, schema versions, and audit events are stored in a dedicated SQLite database outside user-editable directories.
+- [x] Resource records, grants, application roles, schema versions, and audit events are stored in a dedicated SQLite database outside user-editable directories.
 - [ ] Every sensitive route and background operation has an explicit authorization requirement.
 - [ ] Existing projects and shared resources have reviewed initial grants before enforcement cutover.
 - [ ] Cross-user, cross-project, cross-source, and role-matrix tests pass.
@@ -46,17 +46,17 @@ Provide one deny-by-default authorization decision path.
 
 **Tasks**
 
-- [ ] Add typed principal, action, resource-reference, role, grant, and authorized-resource models.
-- [ ] Add the `AuthorizationRepository` contract and SQLite implementation using foreign keys, WAL mode, a busy timeout, and short transactions.
-- [ ] Add schema-versioned migrations for resources, grants, application roles, and audit events.
-- [ ] Add generation-specific UUID resource records, lifecycle states, parent relationships, and unique active locator constraints.
-- [ ] Implement the central role-to-action policy and inherited resource rules.
-- [ ] Implement `AuthorizationService` checks and standard denial handling.
-- [ ] Add the authentication adapter that converts verified nginx identity into a stable principal.
-- [ ] Add atomic audit records for grant, application-role, and resource-lifecycle mutations.
-- [ ] Add bootstrap administration, last-owner protection, and last-admin protection.
-- [ ] Add dry-run, migration, backup, restore, integrity-check, and resource-reconciliation commands.
-- [ ] Reject missing production administrators, development principals outside development or test, and authorization database paths inside user-editable directories.
+- [x] Add typed principal, action, resource-reference, role, grant, and authorized-resource models.
+- [x] Add the `AuthorizationRepository` contract and SQLite implementation using foreign keys, WAL mode, a busy timeout, and short transactions.
+- [x] Add schema-versioned migrations for resources, grants, application roles, and audit events.
+- [x] Add generation-specific UUID resource records, lifecycle states, parent relationships, and unique active locator constraints.
+- [x] Implement the central role-to-action policy and inherited resource rules.
+- [x] Implement `AuthorizationService` checks and standard denial handling.
+- [x] Add the authentication adapter that converts verified nginx identity into a stable principal.
+- [x] Add atomic audit records for grant, application-role, and resource-lifecycle mutations.
+- [x] Add bootstrap administration, last-owner protection, and last-admin protection.
+- [x] Add dry-run, migration, backup, restore, integrity-check, and resource-reconciliation commands.
+- [x] Reject missing production administrators, development principals outside development or test, and authorization database paths inside user-editable directories.
 
 **Completion Criteria**
 
@@ -70,17 +70,17 @@ Protect projects and everything whose ownership derives from a project.
 
 **Tasks**
 
-- [ ] Add FastAPI dependencies for project viewer, editor, executor, and owner requirements.
-- [ ] Filter project listings by readable grants.
-- [ ] Assign the creator as owner when project creation is allowed.
-- [ ] Require source `viewer` and `project_creator` access when copying a project, and assign a new resource UUID and owner to the copy.
-- [ ] Require project authorization before creating or reusing an editing session.
-- [ ] Require both session ownership and current project authorization for later session use.
-- [ ] Apply project checks to configuration, entities, columns, directives, validation, preview, mapping, reconciliation, materialization, layout, and target-model routes.
-- [ ] Apply inherited checks to uploads, backups, task state, generated outputs, and project operations.
-- [ ] Replace client-supplied output and backup paths with server-resolved resource identifiers.
-- [ ] Record the principal and parent project on long-running operations and authorize progress, streaming, cancellation, and result access.
-- [ ] Route project creation, copying, deletion, and any future rename through the resource lifecycle service with compensation and reconciliation for filesystem failures.
+- [x] Add FastAPI dependencies for project viewer, editor, executor, and owner requirements.
+- [x] Filter project listings by readable grants.
+- [x] Assign the creator as owner when project creation is allowed.
+- [x] Require source `viewer` and `project_creator` access when copying a project, and assign a new resource UUID and owner to the copy.
+- [x] Require project authorization before creating or reusing an editing session.
+- [x] Require both session ownership and current project authorization for later session use.
+- [x] Apply project checks to the primary project management and project file lifecycle routes, including project reads, metadata updates, raw YAML updates, backup restore, project layout reads/writes, and project file uploads.
+- [x] Apply inherited checks to entities, columns, directives, validation, preview, mapping, reconciliation, materialization, task state, and execution routes. All project-scoped child-resource operations now require project authorization before accessing project data.
+- [x] Replace client-supplied output and backup paths with server-resolved resource identifiers.
+- [x] Record the principal and parent project on long-running operations and authorize progress, streaming, cancellation, and result access.
+- [x] Route project creation, copying, deletion, and any future rename through the resource lifecycle service with compensation and reconciliation for filesystem failures.
 
 **Completion Criteria**
 
@@ -165,23 +165,23 @@ All protected routes and operations pass the authorization matrix, the route inv
 | Area | Status | Notes |
 |---|---|---|
 | Inventories and migration inputs | Not started | Requires proposal approval and deployment resource review |
-| Authorization foundation | Not started | Depends on the reviewed inventories and migration manifest |
-| Project and child resources | Not started | Deliver before shared and administrative resources |
+| Authorization foundation | Done | Typed policy, SQLite repository, stable principal adapter, atomic mutation audit, bootstrap, final-assignment protections, schema initialization, manifest dry-run inspection and application, backup, restore, integrity checks, manifest reconciliation, and production startup guards are implemented |
+| Project and child resources | Done | Project and child-resource routes enforce current project authorization. Long-running operations record their principal and stable parent project resource and authorize progress, streaming, cancellation, and result access. Backup restore and execution downloads use server-managed identifiers resolved through project containment checks. Project create, copy, and delete operations register and transition authorization resource records with filesystem operation compensation. |
 | Shared and administrative resources | Not started | Ingester execution also depends on capability restrictions |
 | Authorization documentation | Not started | Starts with policy decisions and remains aligned through cutover |
 | Validation and cutover | Not started | Requires reviewed initial grants |
 
 ## Definition Of Done
 
-- [ ] One central policy denies unknown actions, roles, and resources by default.
-- [ ] Persistent resource records, grants, roles, and audit events cannot be changed through project YAML or project file endpoints.
+- [x] One central policy denies unknown actions, roles, and resources by default.
+- [x] Persistent resource records, grants, roles, and audit events cannot be changed through project YAML or project file endpoints.
 - [ ] Every Phase 1 protected route and background operation appears in the route inventory and enforces its declared requirement.
 - [ ] Project sessions do not grant project access.
 - [ ] Shared-source access is checked separately from project access.
 - [ ] Outputs, backups, uploads, and operations resolve through server-owned records rather than arbitrary client paths.
 - [ ] Existing projects have reviewed owners, and shared resources have reviewed access grants.
-- [ ] Resource deletion and name reuse cannot transfer grants to a new resource.
-- [ ] The final project owner and final application administrator cannot be removed.
+- [x] Resource deletion and name reuse cannot transfer grants to a new resource.
+- [x] The final project owner and final application administrator cannot be removed.
 - [ ] Focused authorization tests and the backend regression suite pass.
 - [ ] Operator, developer, deployment, API behavior, and policy documentation matches the delivered system.
 - [ ] The stable principal contract and native-authentication relationship are documented and tested independently of nginx-specific request fields.
@@ -189,13 +189,13 @@ All protected routes and operations pass the authorization matrix, the route inv
 
 ## Validation And Testing
 
-- Use unit tests for role expansion, inheritance, deny-by-default behavior, grant persistence, and application roles.
-- Use `TestClient` tests for authentication and authorization responses on every sensitive route.
+- Use unit tests for role expansion, inheritance, deny-by-default behavior, grant persistence, application roles, manifest migration, manifest reconciliation, and production authorization settings. The current focused authorization suite covers these implemented foundation paths.
+- Use `TestClient` tests for authentication and authorization responses on every sensitive route. Current focused tests cover project dependency binding, readable project filtering, project owner assignment helpers, and session ownership plus current project authorization.
 - Test list filtering separately from single-resource access.
 - Test service and background-operation entry points without relying on route dependencies.
 - Test grant creation, revocation, concurrent reads and writes, lifecycle compensation, migration, backup, restore, reconciliation, and integrity checks for SQLite.
 - Test that revocation blocks new operations and later operation access while an already-running operation retains its recorded authorization snapshot.
-- Run the backend test suite defined by the repository workflow after focused authorization tests pass.
+- Run the backend test suite defined by the repository workflow after focused authorization tests pass. The focused authorization, operations, and configuration tests pass; the full backend run did not produce a completion result in the current environment.
 - Review the maintained route inventory against the registered FastAPI routes.
 
 ## Deliverables
@@ -203,12 +203,12 @@ All protected routes and operations pass the authorization matrix, the route inv
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
 | Approved authorization policy | Roles, actions, resources, inheritance, and response rules | Not started | [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./CENTRALIZED_AUTHORIZATION_SYSTEM.md) |
-| Authorization repository | SQLite resource records, grants, application roles, audit events, and migrations outside project-managed data | Not started | TBD |
-| Authorization enforcement | Dependencies, service checks, operation ownership, and resource resolution | Not started | TBD |
+| Authorization repository | SQLite resource records, grants, application roles, audit events, migrations, manifest operations, backups, restore, integrity checks, and reconciliation outside project-managed data | Done | [authorization repository](../../../backend/app/authorization/repository.py) |
+| Authorization enforcement | Dependencies, service checks, operation ownership, and resource resolution | In progress | [authorization dependencies](../../../backend/app/authorization/dependencies.py) |
 | Route authorization inventory | Maintained list of sensitive routes and required actions | Not started | TBD |
 | Operator and deployment guide | Grants, initial ownership, cutover, rollback, backup, and recovery | Not started | TBD |
 | Developer guide | Protecting endpoints, services, and background operations | Not started | TBD |
-| Authorization regression suite | Policy, route, service, and cross-resource checks | Not started | TBD |
+| Authorization regression suite | Policy, route, service, and cross-resource checks | In progress | [authorization tests](../../../backend/tests/authorization/) |
 | Release verification record | Tested release commit, ownership inventory, cutover, and rollback results | Not started | TBD |
 
 ## Scope
