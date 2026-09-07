@@ -1,11 +1,14 @@
 """Tests for authorization database operations."""
 
 import json
+import sqlite3
+from datetime import UTC, datetime
+from uuid import uuid4
 
 import pytest
 from click.testing import CliRunner
 
-from backend.app.authorization.models import ResourceType
+from backend.app.authorization.models import Grant, GrantSubjectType, ResourceRecord, ResourceType
 from backend.app.authorization.operations import (
     apply_manifest,
     backup_database,
@@ -31,6 +34,62 @@ def test_backup_restore_and_integrity_check(tmp_path) -> None:
     assert integrity_check(database)
     assert integrity_check(backup)
     assert integrity_check(restored)
+
+
+def test_backup_and_restore_preserve_authorization_records(tmp_path) -> None:
+    database = tmp_path / "authorization.sqlite3"
+    backup = tmp_path / "backup.sqlite3"
+    restored = tmp_path / "restored.sqlite3"
+    repository = SQLiteAuthorizationRepository(database)
+    resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
+    repository.create_resource(resource)
+    repository.add_grant(Grant("alice", resource.resource_id, "owner", datetime.now(UTC), "admin"))
+    repository.close()
+
+    backup_database(database, backup)
+    restore_database(backup, restored)
+
+    restored_repository = SQLiteAuthorizationRepository(restored)
+    assert restored_repository.get_resource_by_locator(ResourceType.PROJECT, "project-a") == resource
+    assert restored_repository.list_grants("alice")[0].resource_id == resource.resource_id
+    restored_repository.close()
+
+
+def test_initialize_database_is_idempotent_and_preserves_schema(tmp_path) -> None:
+    database = tmp_path / "authorization.sqlite3"
+
+    initialize_database(database)
+    repository = SQLiteAuthorizationRepository(database)
+    repository.add_application_role("alice", "admin", "bootstrap")
+    repository.close()
+
+    initialize_database(database)
+
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == 2
+        assert connection.execute("SELECT role FROM application_role WHERE principal_id = 'alice'").fetchone()[0] == "admin"
+
+
+def test_failed_grant_insert_rolls_back_without_audit_event(tmp_path) -> None:
+    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
+    resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
+    grant = Grant("alice", resource.resource_id, "owner", datetime.now(UTC), "admin")
+    repository.create_resource(resource)
+    repository.add_grant(grant)
+
+    with pytest.raises(sqlite3.IntegrityError):
+        repository.add_grant(grant)
+
+    assert repository.list_grants("alice") == [grant]
+    assert len(repository.list_audit_events()) == 1
+    repository.close()
+
+
+def test_integrity_check_returns_false_for_invalid_sqlite_file(tmp_path) -> None:
+    database = tmp_path / "corrupt.sqlite3"
+    database.write_bytes(b"not a sqlite database")
+
+    assert integrity_check(database) is False
 
 
 def test_manifest_inspection_and_dry_run_do_not_create_database(tmp_path) -> None:
@@ -100,6 +159,112 @@ def test_apply_manifest_is_idempotent(tmp_path) -> None:
 
     assert apply_manifest(manifest, database) == {"administrators": 1, "resources": 1, "grants": 1}
     assert apply_manifest(manifest, database) == {"administrators": 0, "resources": 1, "grants": 0}
+
+
+def test_typed_manifest_applies_and_reconciles_broad_grants(tmp_path) -> None:
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "resources": [
+                    {
+                        "resource_type": "project",
+                        "locator": "project-a",
+                        "grants": [
+                            {"subject_type": "group", "subject_id": "editors", "role": "editor"},
+                            {"subject_type": "everyone", "subject_id": "authenticated", "role": "viewer"},
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    database = tmp_path / "authorization.sqlite3"
+
+    assert apply_manifest(manifest, database)["grants"] == 2
+    assert reconcile_manifest(manifest, database)["missing_grants"] == 0
+    repository = SQLiteAuthorizationRepository(database)
+    assert {grant.subject_type for grant in repository.list_matching_grants("alice", ["editors"])} == {
+        GrantSubjectType.GROUP,
+        GrantSubjectType.EVERYONE,
+    }
+    repository.close()
+
+
+def test_typed_grant_cli_supports_dry_run_and_revoke(tmp_path) -> None:
+    database = tmp_path / "authorization.sqlite3"
+    repository = SQLiteAuthorizationRepository(database)
+    resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
+    repository.create_resource(resource)
+    repository.close()
+
+    runner = CliRunner()
+    dry_run = runner.invoke(
+        cli,
+        [
+            "grant",
+            "--database",
+            str(database),
+            "--resource-type",
+            "project",
+            "--locator",
+            "project-a",
+            "--subject-type",
+            "group",
+            "--subject-id",
+            "editors",
+            "--role",
+            "editor",
+            "--actor",
+            "admin",
+            "--dry-run",
+        ],
+    )
+    assert dry_run.exit_code == 0
+
+    applied = runner.invoke(
+        cli,
+        [
+            "grant",
+            "--database",
+            str(database),
+            "--resource-type",
+            "project",
+            "--locator",
+            "project-a",
+            "--subject-type",
+            "group",
+            "--subject-id",
+            "editors",
+            "--role",
+            "editor",
+            "--actor",
+            "admin",
+        ],
+    )
+    assert applied.exit_code == 0
+    revoked = runner.invoke(
+        cli,
+        [
+            "revoke",
+            "--database",
+            str(database),
+            "--resource-type",
+            "project",
+            "--locator",
+            "project-a",
+            "--subject-type",
+            "group",
+            "--subject-id",
+            "editors",
+            "--role",
+            "editor",
+            "--actor",
+            "admin",
+        ],
+    )
+    assert revoked.exit_code == 0
 
 
 def test_reconcile_manifest_reports_missing_and_clean_records(tmp_path) -> None:
