@@ -166,17 +166,17 @@ Provide a supported command-line interface for operators to inspect and manage a
 
 **Tasks**
 
-- [ ] Add commands to list resources, grants, application roles, and authorization audit events.
-- [ ] Add commands to grant and revoke project and shared-data-source roles.
-- [ ] Add commands to assign and revoke application roles, including `operator` and `project_creator`.
-- [ ] Require an actor principal ID for every mutation and record it in the audit event.
-- [ ] Preserve final-project-owner and final-application-administrator protections.
-- [ ] Resolve resources by type and active locator, and reject unknown or deleted resources.
-- [ ] Provide machine-readable JSON output and human-readable table output.
-- [ ] Add `--dry-run` support for all mutation commands.
-- [ ] Add confirmation for destructive revocations, with a non-interactive override for controlled automation.
-- [ ] Document commands for adding users, granting project access, reviewing access, revoking access, backup, restore, and integrity checks.
-- [ ] Add unit and CLI integration tests for allowed mutations, rejected input, audit events, final-assignment protection, and JSON output.
+- [x] Add commands to list resources, grants, application roles, and authorization audit events.
+- [x] Add commands to grant and revoke project and shared-data-source roles.
+- [x] Add commands to assign and revoke application roles, including `operator` and `project_creator`.
+- [x] Require an actor principal ID for every mutation and record it in the audit event.
+- [x] Preserve final-project-owner and final-application-administrator protections.
+- [x] Resolve resources by type and active locator, and reject unknown or deleted resources.
+- [x] Provide machine-readable JSON output and human-readable table output.
+- [x] Add `--dry-run` support for all mutation commands.
+- [x] Add confirmation for destructive revocations, with a non-interactive override for controlled automation.
+- [x] Document commands for adding users, granting project access, reviewing access, revoking access, backup, restore, and integrity checks.
+- [x] Add unit and CLI integration tests for allowed mutations, rejected input, audit events, final-assignment protection, and JSON output.
 
 **Completion Criteria**
 

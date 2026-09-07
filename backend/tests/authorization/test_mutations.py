@@ -103,6 +103,18 @@ def test_bootstrap_admins_is_idempotent_and_records_events(tmp_path) -> None:
     repository.close()
 
 
+def test_repository_lists_resources_and_application_roles(tmp_path) -> None:
+    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
+    resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
+    repository.create_resource(resource)
+    repository.add_application_role("alice", "operator", "admin")
+
+    assert repository.list_resources() == [resource]
+    assert repository.list_all_application_roles()[0].principal_id == "alice"
+    assert repository.list_all_application_roles()[0].role.value == "operator"
+    repository.close()
+
+
 def test_concurrent_repository_connections_preserve_independent_grants(tmp_path) -> None:
     database = tmp_path / "authorization.sqlite3"
     repository = SQLiteAuthorizationRepository(database)

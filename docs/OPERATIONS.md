@@ -170,7 +170,7 @@ docker compose exec shape-shifter python -m backend.app.scripts.authorization gr
    --subject-type group --subject-id <verified-group-id> --role editor --actor <operator-principal-id>
 docker compose exec shape-shifter python -m backend.app.scripts.authorization revoke \
    --resource-type project --locator <project-locator> \
-   --subject-type group --subject-id <verified-group-id> --role editor --actor <operator-principal-id>
+   --subject-type group --subject-id <verified-group-id> --role editor --actor <operator-principal-id> --yes
 ```
 
 The application does not infer group membership from request fields. Group grants remain inert until `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED=true` and the proxy supplies the configured group header. Authenticated-`everyone` grants remain disabled until `SHAPE_SHIFTER_AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE=true`. Broad subjects cannot receive `owner`.
@@ -186,7 +186,24 @@ Use `--membership-url` for a one-off endpoint override. Use `--strict` when auto
 
 Do not edit the SQLite database directly. Direct changes bypass the authorization repository's audit records and final-owner and final-administrator protections.
 
-Application-role management remains outside these resource-grant commands. The authorization repository records grant mutations and prevents removal of the final project owner or application administrator.
+List resources, application roles, and audit events for review:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization list-resources --json
+docker compose exec shape-shifter python -m backend.app.scripts.authorization list-application-roles --json
+docker compose exec shape-shifter python -m backend.app.scripts.authorization list-audit-events --json
+```
+
+Assign or revoke deployment-wide roles with an explicit actor. Supported roles include `project_creator`, `operator`, and `admin`; use `--dry-run` before applying changes. Revocations require `--yes` or `--non-interactive`:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization grant-application-role \
+   --principal-id <principal-id> --role operator --actor <admin-principal-id>
+docker compose exec shape-shifter python -m backend.app.scripts.authorization revoke-application-role \
+   --principal-id <principal-id> --role operator --actor <admin-principal-id> --yes
+```
+
+The repository records every mutation and prevents removal of the final project owner or application administrator. Unknown and deleted resources cannot be selected by locator for grant mutations.
 
 #### Enforcement cutover
 

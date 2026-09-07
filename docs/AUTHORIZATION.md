@@ -98,10 +98,10 @@ A principal needs access to both a project and a shared source when an operation
 
 The authorization database records grant creation and revocation, application-role creation and revocation, resource lifecycle changes, bootstrap administrator creation, and membership review lookups. Each record contains an event ID, timestamp, actor principal ID, event type, optional resource UUID, action, outcome, optional correlation ID, optional typed subject (`subject_type` and `subject_id`), and optional provider/details fields. Broad grants and membership review results are therefore identifiable in the audit log.
 
-Audit records must not contain credentials, SQL text, sensitive filesystem paths, or secret configuration. They are written through the authorization repository with the associated mutation. The current application has no operator API or command for browsing audit records; do not query or alter the database directly to work around that missing interface.
+Audit records must not contain credentials, SQL text, sensitive filesystem paths, or secret configuration. They are written through the authorization repository with the associated mutation. Operators can review them with `sead-authorization list-audit-events`, using `--json` for automation; do not query or alter the database directly.
 
 ## Current Coverage
 
 Implemented controls cover project resources and project children, shared data-source access, project references to shared sources, and application-log access. The policy is intentionally deny-by-default.
 
-Ingester authorization remains proposed work and is tracked in [INGESTER_AUTHORIZATION_TASKS.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md). The route inventory and core operational procedures are published, but undeclared route classification and ongoing grant-management interfaces remain tracked in the centralized authorization task plan.
+Ingester authorization remains proposed work and is tracked in [INGESTER_AUTHORIZATION_TASKS.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md). The route inventory, administration CLI, and core operational procedures are published, but undeclared route classification remains tracked in the centralized authorization task plan.
