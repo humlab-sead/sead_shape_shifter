@@ -8,6 +8,7 @@ import pytest
 from fastapi import HTTPException, Request
 from fastapi.routing import APIRoute
 
+from backend.app.api.v1.api import api_router
 from backend.app.api.v1.endpoints.logs import router as logs_router
 from backend.app.api.v1.endpoints.projects import (
     _authorize_referenced_shared_data_sources,
@@ -190,6 +191,32 @@ def test_log_routes_require_administrator_access() -> None:
             if hasattr(dependency.call, "authorization_requirement")
         }
         assert requirements == {(("action", "read_logs"), ("resource_type", "application"))}
+
+
+def test_sensitive_locator_routes_declare_authorization_requirements() -> None:
+    """Report registered resource routes that can bypass authorization dependencies."""
+    missing_requirements: list[str] = []
+
+    for route in api_router.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        is_sensitive_locator = (
+            route.path.startswith("/projects/{")
+            or route.path.startswith("/operations/{")
+            or (route.path.startswith("/data-sources/{") and "/{" in route.path)
+        )
+        if not is_sensitive_locator:
+            continue
+        requirements = [
+            dependency.call.authorization_requirement
+            for dependency in route.dependant.dependencies
+            if hasattr(dependency.call, "authorization_requirement")
+        ]
+        if not requirements:
+            methods = ",".join(sorted(route.methods))
+            missing_requirements.append(f"{methods} {route.path}")
+
+    assert not missing_requirements, "Sensitive routes without authorization declarations:\n" + "\n".join(missing_requirements)
 
 
 @pytest.mark.asyncio

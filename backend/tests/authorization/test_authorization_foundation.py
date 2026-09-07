@@ -3,13 +3,55 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from backend.app.authorization.models import Action, Grant, Principal, ResourceRecord, ResourceType
+from backend.app.authorization.models import Action, ApplicationRole, Grant, Principal, ResourceRecord, ResourceType
+from backend.app.authorization.policy import AuthorizationPolicy
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
 from backend.app.authorization.service import AuthorizationService
 
 
 def _principal(principal_id: str = "alice") -> Principal:
     return Principal(principal_id, "trusted-proxy", datetime.now(UTC))
+
+
+def test_resource_role_policy_covers_every_action_and_resource_type() -> None:
+    policy = AuthorizationPolicy()
+    expected_permissions = {
+        ResourceType.PROJECT: {
+            "viewer": {Action.READ},
+            "editor": {Action.READ, Action.EDIT},
+            "executor": {Action.READ, Action.EXECUTE},
+            "owner": {Action.READ, Action.EDIT, Action.EXECUTE, Action.DELETE, Action.MANAGE_GRANTS},
+        },
+        ResourceType.PROJECT_CHILD: {
+            "viewer": {Action.READ},
+            "editor": {Action.READ, Action.EDIT},
+            "executor": {Action.READ, Action.EXECUTE},
+            "owner": {Action.READ, Action.EDIT, Action.EXECUTE, Action.DELETE, Action.MANAGE_GRANTS},
+        },
+        ResourceType.SHARED_DATA_SOURCE: {"reader": {Action.READ}},
+        ResourceType.SHARED_DATA_SOURCE_CHILD: {"reader": {Action.READ}},
+    }
+    all_resource_roles = {role for permissions in expected_permissions.values() for role in permissions}
+
+    for resource_type in ResourceType:
+        for role in all_resource_roles | {"unknown"}:
+            allowed_actions = expected_permissions[resource_type].get(role, set())
+            for action in Action:
+                assert policy.allows_resource_role(resource_type, role, action) is (action in allowed_actions)
+
+
+def test_application_role_policy_covers_every_action() -> None:
+    policy = AuthorizationPolicy()
+    expected_permissions = {
+        ApplicationRole.PROJECT_CREATOR: {Action.CREATE_PROJECT},
+        ApplicationRole.OPERATOR: {Action.READ_ALL_SHARED_SOURCES, Action.MANAGE_SHARED_SOURCES, Action.RUN_INGESTERS},
+        ApplicationRole.ADMIN: set(Action),
+    }
+
+    for role in (*ApplicationRole, "unknown"):
+        allowed_actions = expected_permissions.get(role, set())
+        for action in Action:
+            assert policy.allows_application_role(role, action) is (action in allowed_actions)
 
 
 def test_unknown_role_and_action_are_denied(tmp_path) -> None:
