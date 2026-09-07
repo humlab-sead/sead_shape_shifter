@@ -53,6 +53,8 @@ Runtime variables:
 | `SHAPE_SHIFTER_LOG_FILTER_FRAMEWORK_FRAMES`      | `true`                  | Filter framework frames from tracebacks                              |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED`        | `false`                 | Require an identity forwarded by nginx; enabled by Docker deployment  |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_HEADER`         | `X-Authenticated-User` | Header containing the nginx-authenticated username                    |
+| `SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH`       | `state/authorization.sqlite3` | SQLite authorization database, relative to `APPLICATION_ROOT` unless absolute |
+| `SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS` | `[]` | JSON array of initial administrator principal IDs; required but not automatically applied in production |
 | `SHAPE_SHIFTER_ALLOWED_ORIGINS`                  | _(localhost only)_      | CORS origin whitelist (JSON array); set explicitly for deployed UI    |
 | `SHAPE_SHIFTER_ALLOWED_ORIGIN_REGEX`             | `null`                  | Optional CORS regex; leave unset unless a controlled wildcard is required |
 | `SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL`       | `http://localhost:8000` | OpenRefine reconciliation service URL                                |
@@ -85,6 +87,111 @@ Format: `hostname:port:database:username:password`
 db.example.com:5432:sead_production:sead_user:password
 ```
 
+### Authorization SQLite store
+
+Configure the authorization database outside the project, log, and shared-data directories. The default value, `state/authorization.sqlite3`, resolves to `/app/state/authorization.sqlite3` in the Docker container and persists through the `docker/data/state/` bind mount.
+
+Set these values in `docker/data/backend.env` before the first production startup:
+
+```dotenv
+SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH=state/authorization.sqlite3
+SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS=["<administrator-principal-id>"]
+```
+
+The administrator principal ID must exactly match the case-sensitive identity forwarded by nginx. Production startup rejects an empty bootstrap-administrator setting, a development principal, or an authorization database path below a project, log, or shared-data directory.
+
+The SQLite repository enables foreign keys, WAL mode, and a 5-second busy timeout, and runs schema migrations when it opens the database. It is supported for one application host only. Do not place the database on a shared network filesystem or use it from multiple application hosts; replace the repository implementation before a multi-host deployment.
+
+The bootstrap setting is a production guard, not an automatic assignment. The repository can create bootstrap administrators only while no application roles exist, but the deployment does not invoke that method automatically. Initial administrators, resource records, and grants must be applied through the reviewed migration workflow. That procedure is documented separately before authorization enforcement cutover.
+
+### Authorization ownership and recovery
+
+Run authorization administration commands from the `docker/` directory. The commands operate on `/app/state/authorization.sqlite3` unless `--database` supplies another path.
+
+#### Initial ownership assignment
+
+Prepare a reviewed JSON manifest outside project YAML. Principal IDs must exactly match the identities supplied by nginx. Include each deployed project and shared data source, their current locators, and the required grants.
+
+```json
+{
+   "administrators": ["<administrator-principal-id>"],
+   "resources": [
+      {
+         "resource_type": "project",
+         "locator": "<project-locator>",
+         "grants": [{"principal_id": "<project-owner-principal-id>", "role": "owner"}]
+      },
+      {
+         "resource_type": "shared_data_source",
+         "locator": "<shared-source-locator>",
+         "grants": [{"principal_id": "<shared-source-reader-principal-id>", "role": "reader"}]
+      }
+   ]
+}
+```
+
+Copy the approved manifest to `docker/data/state/authorization-manifest.json`, then inspect it without changing the database:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization migrate \
+   --manifest /app/state/authorization-manifest.json --dry-run
+```
+
+After review, apply it and confirm the stored records match the manifest:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization migrate \
+   --manifest /app/state/authorization-manifest.json
+docker compose exec shape-shifter python -m backend.app.scripts.authorization reconcile \
+   /app/state/authorization-manifest.json
+```
+
+Manifest application is idempotent. It creates missing resource records, administrator roles, and grants without changing existing matching records.
+
+#### Grant review and revocation
+
+The reviewed manifest is the only supported operator workflow for assigning initial project ownership, shared-data-source access, and administrator access. Use `reconcile` to review whether the database contains every assignment required by that manifest.
+
+Do not edit the SQLite database directly. Direct changes bypass the authorization repository's audit records and final-owner and final-administrator protections.
+
+Ongoing grant review, grant assignment, grant revocation, and application-role management do not yet have a supported operator API or command. The authorization repository enforces audit events and prevents removal of the final project owner or application administrator, but the operator management interface remains pending. Do not claim authorization cutover is complete until that interface and its documentation are available.
+
+#### Enforcement cutover
+
+Authorization enforcement has no runtime toggle. A release containing protected routes enforces their requirements when the application starts. Do not cut over until all of these conditions are met:
+
+1. The route inventory has classified every sensitive route and no required resource is unowned.
+2. The reviewed manifest has been applied and `reconcile` reports no missing administrators, resources, or grants.
+3. A consistent authorization database backup has been created and copied to operator-controlled storage.
+4. The exact release commit, manifest revision, database backup location, and rollback decision owner are recorded in the deployment record.
+5. Post-deployment checks confirm allowed and denied access for an administrator, a project owner, and a principal without grants.
+
+#### Backup and recovery
+
+Create backups with SQLite's backup API; do not copy a live `.sqlite3` file directly. Store backups outside `docker/data/state/` and project-managed data.
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization backup \
+   /app/state/authorization-$(date +%Y%m%d-%H%M%S).sqlite3
+docker compose exec shape-shifter python -m backend.app.scripts.authorization integrity-check
+```
+
+Copy the backup to operator-controlled storage after the command completes. To restore a backup, stop the service first, run a one-off container that has the state bind mount, restart the service, and check integrity:
+
+```bash
+docker compose down
+docker compose run --rm shape-shifter python -m backend.app.scripts.authorization restore \
+   /app/state/<authorization-backup>.sqlite3
+docker compose up -d
+docker compose exec shape-shifter python -m backend.app.scripts.authorization integrity-check
+```
+
+Restore changes grants, application roles, resource records, and authorization audit history to the selected backup. Reconcile the reviewed manifest and repeat access smoke checks before considering recovery complete.
+
+#### Rollback
+
+For an application release rollback, deploy the previous image as described in [Rollback](#rollback). Keep the current authorization database unless the rollback also requires restoring its recorded grants and resource state. When restoring the database, use the recovery procedure above and record the chosen backup and reason.
+
 ### Build-time variables (baked into frontend bundle)
 
 These are set at image build time and require a rebuild to change:
@@ -110,6 +217,7 @@ Persistent data is mounted from `docker/data/` on the host into `/app/` in the c
 | `docker/data/output/`   | `/app/output/`    | Execution output files                                  |
 | `docker/data/backups/`  | `/app/backups/`   | Automatic pre-save YAML backups                         |
 | `docker/data/.pgpass/`  | `/app/.pgpass:ro` | PostgreSQL password file                                |
+| `docker/data/state/`    | `/app/state/`     | Authorization SQLite database                            |
 
 Create these directories before first startup:
 
