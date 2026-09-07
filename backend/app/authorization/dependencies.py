@@ -1,6 +1,7 @@
 """FastAPI dependencies for centralized authorization checks."""
 
 from collections.abc import Callable, Generator
+from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
@@ -64,6 +65,34 @@ def require_project(action: Action) -> Callable:
 
     dependency.authorization_requirement = {"resource_type": ResourceType.PROJECT.value, "action": action.value}
     return dependency
+
+
+def require_shared_data_source(action: Action) -> Callable:
+    """Create a dependency that authorizes a shared data source locator for an action."""
+
+    async def dependency(
+        principal: Annotated[Principal, Depends(get_principal())],
+        service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+        filename: str | None = None,
+        name: str | None = None,
+        data_source_name: str | None = None,
+    ) -> AuthorizedResource:
+        locator = _data_source_locator(filename or name or data_source_name)
+        resource = service.repository.get_resource_by_locator(ResourceType.SHARED_DATA_SOURCE, locator) if locator is not None else None
+        authorized = service.authorize(principal, action, resource) if resource is not None else None
+        if authorized is None:
+            raise HTTPException(status_code=404, detail="Resource not found")
+        return authorized
+
+    dependency.authorization_requirement = {"resource_type": ResourceType.SHARED_DATA_SOURCE.value, "action": action.value}
+    return dependency
+
+
+def _data_source_locator(value: str | None) -> str | None:
+    if value is None:
+        return None
+    path = Path(value)
+    return path.with_suffix(".yml").stem if path.suffix == ".yml" else path.stem
 
 
 def require_application_action(action: Action) -> Callable:

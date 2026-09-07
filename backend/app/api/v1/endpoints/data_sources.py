@@ -12,8 +12,13 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from loguru import logger
 
 from backend.app.api.dependencies import get_data_source_service
-from backend.app.authorization.dependencies import get_authorization_service, get_principal, require_application_action
-from backend.app.authorization.models import Action, Principal, ResourceRecord, ResourceType
+from backend.app.authorization.dependencies import (
+    get_authorization_service,
+    get_principal,
+    require_application_action,
+    require_shared_data_source,
+)
+from backend.app.authorization.models import Action, AuthorizedResource, Principal, ResourceRecord, ResourceType
 from backend.app.authorization.service import AuthorizationService
 from backend.app.models.data_source import (
     DataSourceConfig,
@@ -30,6 +35,7 @@ from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
 router = APIRouter(prefix="/data-sources", tags=["data-sources"])
 data_source_principal_dependency = get_principal()
 data_source_operator_dependency = require_application_action(Action.MANAGE_SHARED_SOURCES)
+data_source_reader_dependency = require_shared_data_source(Action.READ)
 
 ALLOWED_FILE_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 MAX_FILE_SIZE_MB = 50
@@ -225,6 +231,7 @@ async def upload_data_source_file(
 @router.get("/{filename}", response_model=DataSourceConfig, summary="Get data source by filename")
 async def get_data_source(
     filename: str,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(data_source_reader_dependency)],
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceConfig:
     """
@@ -240,7 +247,7 @@ async def get_data_source(
     """
     try:
         logger.info(f"Getting data source: {filename}")
-        data_source: DataSourceConfig | None = service.load_data_source(Path(filename))
+        data_source: DataSourceConfig | None = service.load_data_source(Path(authorized_data_source.resource.locator))
 
         if data_source is None:
             raise HTTPException(
@@ -422,6 +429,7 @@ async def delete_data_source(
 @router.post("/{filename}/test", response_model=DataSourceTestResult, summary="Test data source connection")
 async def test_data_source_connection(
     filename: str,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(data_source_reader_dependency)],
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceTestResult:
     """
@@ -450,7 +458,7 @@ async def test_data_source_connection(
         logger.info(f"Testing connection to data source: {filename}")
 
         # Get data source config
-        config: DataSourceConfig | None = service.load_data_source(Path(filename))
+        config: DataSourceConfig | None = service.load_data_source(Path(authorized_data_source.resource.locator))
         if config is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
