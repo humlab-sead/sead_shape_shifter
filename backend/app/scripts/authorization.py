@@ -84,3 +84,7 @@ def reconcile(manifest: Path, database: Path | None) -> None:
     )
     if any(result.values()):
         raise click.ClickException("Authorization resources do not match the reviewed manifest")
+
+
+if __name__ == "__main__":
+    cli()

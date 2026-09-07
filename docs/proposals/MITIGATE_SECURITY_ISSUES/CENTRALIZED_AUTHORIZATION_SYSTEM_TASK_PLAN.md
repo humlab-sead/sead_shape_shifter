@@ -114,18 +114,18 @@ Make policy, operations, endpoint protection, and authentication-provider separa
 
 **Tasks**
 
-- [ ] Document principals, roles, actions, resource types, inheritance, and deny-by-default behavior.
-- [ ] Publish and maintain the route authorization inventory with each route's required resource and action.
-- [ ] Document how to configure the SQLite authorization store.
-- [ ] Document initial ownership assignment, enforcement cutover, rollback, backup, and recovery.
-- [ ] Document how operators grant, review, and revoke project and application access.
-- [ ] Document how developers protect a new endpoint, service method, and background operation.
-- [ ] Document `401`, `403`, concealed `404`, and filtered-list API behavior.
-- [ ] Document audit events and prohibited sensitive audit content.
-- [ ] Document the nginx identity adapter and stable principal contract.
-- [ ] Document SQLite placement, single-host limits, migration, integrity checking, backup, restore, and resource reconciliation.
-- [ ] Document bootstrap, last-owner and last-admin protection, and the explicit development principal.
-- [ ] Cross-link the authorization documentation with [NATIVE_APPLICATION_AUTHENTICATION.md](../future/NATIVE_APPLICATION_AUTHENTICATION.md) and state which contracts a future authentication provider must preserve.
+- [x] Document principals, roles, actions, resource types, inheritance, and deny-by-default behavior in [AUTHORIZATION.md](../../AUTHORIZATION.md).
+- [x] Publish and maintain the route authorization inventory with each route's required resource and action in [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md).
+- [x] Document how to configure the SQLite authorization store in [OPERATIONS.md](../../OPERATIONS.md#authorization-sqlite-store).
+- [x] Document initial ownership assignment, enforcement cutover, rollback, backup, and recovery in [OPERATIONS.md](../../OPERATIONS.md#authorization-ownership-and-recovery).
+- [ ] Document how operators grant, review, and revoke project and application access. Initial manifest assignment and reconciliation are documented in [OPERATIONS.md](../../OPERATIONS.md#grant-review-and-revocation); ongoing grant-management interfaces remain unimplemented.
+- [x] Document how developers protect a new endpoint, service method, and background operation in [DEVELOPMENT.md](../../DEVELOPMENT.md#authorization-for-protected-work).
+- [x] Document `401`, `403`, concealed `404`, and filtered-list API behavior in [AUTHORIZATION.md](../../AUTHORIZATION.md#denial-behavior).
+- [x] Document audit events and prohibited sensitive audit content in [AUTHORIZATION.md](../../AUTHORIZATION.md#audit-records).
+- [x] Document the nginx identity adapter and stable principal contract in [AUTHORIZATION.md](../../AUTHORIZATION.md#principals).
+- [x] Document SQLite placement, single-host limits, migration, integrity checking, backup, restore, and resource reconciliation in [OPERATIONS.md](../../OPERATIONS.md#authorization-sqlite-store).
+- [x] Document bootstrap, last-owner and last-admin protection, and the explicit development principal in [AUTHORIZATION.md](../../AUTHORIZATION.md) and [OPERATIONS.md](../../OPERATIONS.md#authorization-sqlite-store).
+- [x] Cross-link the authorization documentation with [NATIVE_APPLICATION_AUTHENTICATION.md](../future/NATIVE_APPLICATION_AUTHENTICATION.md) and state which contracts a future authentication provider must preserve.
 
 **Completion Criteria**
 
@@ -166,7 +166,7 @@ All protected routes and operations pass the authorization matrix, the route inv
 | Authorization foundation | Done | Typed policy, SQLite repository, stable principal adapter, atomic mutation audit, bootstrap, final-assignment protections, schema initialization, manifest dry-run inspection and application, backup, restore, integrity checks, manifest reconciliation, and production startup guards are implemented |
 | Project and child resources | Done | Project and child-resource routes enforce current project authorization. Long-running operations record their principal and stable parent project resource and authorize progress, streaming, cancellation, and result access. Backup restore and execution downloads use server-managed identifiers resolved through project containment checks. Project create, copy, and delete operations register and transition authorization resource records with filesystem operation compensation. |
 | Shared and administrative resources | In progress | Shared data source listings now return only sources with readable grants. Shared data source creation, upload, update, deletion, and schema-cache invalidation now require operator access. Create and delete update authorization resource records. Shared source configuration reads, connection tests, named schema introspection, table previews, query execution, and query-column introspection now require shared-source read access. Project data-source connections and project configuration updates require both project edit access and read access to every referenced shared source. Viewing and downloading application logs require the administrator-only `read_logs` action. |
-| Authorization documentation | Not started | Starts with policy decisions and remains aligned through cutover |
+| Authorization documentation | In progress | The implemented principal, role, action, resource, inheritance, response, audit, stable-principal, and deny-by-default rules are documented in [AUTHORIZATION.md](../../AUTHORIZATION.md). Registered routes and their current authorization declarations are published in [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md). SQLite store configuration, ownership assignment, cutover, rollback, backup, and recovery are documented in [OPERATIONS.md](../../OPERATIONS.md#authorization-sqlite-store). Developer authorization guidance is documented in [DEVELOPMENT.md](../../DEVELOPMENT.md#authorization-for-protected-work). Ongoing grant-management interfaces and their operator documentation remain pending. |
 | Validation and cutover | Not started | Requires reviewed initial grants |
 
 ## Definition Of Done
@@ -203,9 +203,9 @@ All protected routes and operations pass the authorization matrix, the route inv
 | Approved authorization policy | Roles, actions, resources, inheritance, and response rules | Not started | [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./CENTRALIZED_AUTHORIZATION_SYSTEM.md) |
 | Authorization repository | SQLite resource records, grants, application roles, audit events, migrations, manifest operations, backups, restore, integrity checks, and reconciliation outside project-managed data | Done | [authorization repository](../../../backend/app/authorization/repository.py) |
 | Authorization enforcement | Dependencies, service checks, operation ownership, and resource resolution | In progress | [authorization dependencies](../../../backend/app/authorization/dependencies.py) |
-| Route authorization inventory | Maintained list of sensitive routes and required actions | Not started | TBD |
-| Operator and deployment guide | Grants, initial ownership, cutover, rollback, backup, and recovery | Not started | TBD |
-| Developer guide | Protecting endpoints, services, and background operations | Not started | TBD |
+| Route authorization inventory | Registered API routes and their declared authorization requirements | Done | [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) |
+| Operator and deployment guide | Initial ownership, cutover, rollback, backup, and recovery | In progress | [OPERATIONS.md](../../OPERATIONS.md#authorization-ownership-and-recovery) |
+| Developer guide | Protecting endpoints, services, and background operations | Done | [DEVELOPMENT.md](../../DEVELOPMENT.md#authorization-for-protected-work) |
 | Authorization regression suite | Policy, route, service, and cross-resource checks | In progress | [authorization tests](../../../backend/tests/authorization/) |
 | Release verification record | Tested release commit, ownership inventory, cutover, and rollback results | Not started | TBD |
 

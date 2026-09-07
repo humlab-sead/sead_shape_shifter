@@ -36,6 +36,14 @@ These are the primary system documentation files:
   - Security considerations
   - Deployment architecture
 
+- **[AUTHORIZATION.md](AUTHORIZATION.md)**
+  - Implemented authorization principals, resources, roles, actions, and denial behavior
+  - Current enforcement coverage and links to remaining authorization work
+
+- **[AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md)**
+  - Registered API routes and their declared authorization requirements
+  - Undeclared routes requiring classification before authorization cutover
+
 ### Project
 
 - **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** 

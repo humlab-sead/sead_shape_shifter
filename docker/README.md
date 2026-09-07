@@ -18,9 +18,9 @@ make docker-up
 
 **Manual setup (if needed):**
 ```bash
-mkdir -p data/{projects,logs,output,backups,tmp}
-sudo chown -R $(id -u):$(id -g) data/{projects,logs,output,backups,tmp}
-chmod -R 755 data/{projects,logs,output,backups,tmp}
+mkdir -p data/{projects,logs,output,backups,tmp,state}
+sudo chown -R $(id -u):$(id -g) data/{projects,logs,output,backups,tmp,state}
+chmod -R 755 data/{projects,logs,output,backups,tmp,state}
 ```
 
 **For specific user (e.g., UID 1002, GID 33):**
