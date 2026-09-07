@@ -2,43 +2,29 @@
 
 from pathlib import Path
 
-import pytest
 import yaml
-from fastapi.testclient import TestClient
 
 from backend.app.core.config import settings
-from backend.app.main import app
 from backend.app.services import project_service, validation_service, yaml_service
 
-
-@pytest.fixture(name="client")
-def client_fixture():
-    with TestClient(app) as client:
-        yield client
+# pylint: disable=redefined-outer-name, unused-argument
 
 
-def _write_project(tmp_path: Path) -> None:
-    project_dir = tmp_path / "test_project"
-    project_dir.mkdir(exist_ok=True)
-    project_data = {
-        "metadata": {
-            "type": "shapeshifter-project",
-            "name": "test_project",
-            "description": "A test project",
-            "version": "1.0.0",
-        },
-        "entities": {
-            "site": {
-                "type": "fixed",
-                "public_id": "site_id",
-                "keys": ["site_code"],
-                "columns": ["system_id", "site_id", "site_code"],
-                "values": [[1, 10, "A"], [2, 20, "B"]],
-            }
-        },
-    }
-    with open(project_dir / "shapeshifter.yml", "w", encoding="utf-8") as handle:
-        yaml.dump(project_data, handle)
+# Fixed entity used by the tests. Projects are created through the API so the
+# backend registers them as authorization resources (see authorized_client).
+_SITE_ENTITY = {
+    "type": "fixed",
+    "public_id": "site_id",
+    "keys": ["site_code"],
+    "columns": ["system_id", "site_id", "site_code"],
+    "values": [[1, 10, "A"], [2, 20, "B"]],
+}
+
+
+async def _create_project(client) -> None:
+    """Create the test project through the API (registers it as an authorized resource)."""
+    response = await client.post("/api/v1/projects", json={"name": "test_project", "entities": {"site": _SITE_ENTITY}})
+    assert response.status_code == 201, response.text
 
 
 def _write_mapping_sidecar(tmp_path: Path) -> None:
@@ -85,11 +71,13 @@ class TestMappingApi:
     def teardown_method(self) -> None:
         _reset_singletons()
 
-    def test_get_entity_mapping_returns_default_metadata_when_sidecar_missing(self, tmp_path: Path, monkeypatch, client) -> None:
+    async def test_get_entity_mapping_returns_default_metadata_when_sidecar_missing(
+        self, tmp_path: Path, monkeypatch, authorized_client
+    ) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        _write_project(tmp_path)
+        await _create_project(authorized_client)
 
-        response = client.get("/api/v1/projects/test_project/mapping/site")
+        response = await authorized_client.get("/api/v1/projects/test_project/mapping/site")
 
         assert response.status_code == 200
         body = response.json()
@@ -98,11 +86,11 @@ class TestMappingApi:
         assert body["public_id"] == "site_id"
         assert body["links"] == {}
 
-    def test_get_entity_mapping_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, client) -> None:
+    async def test_get_entity_mapping_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        _write_project(tmp_path)
+        await _create_project(authorized_client)
 
-        response = client.get("/api/v1/projects/test_project/mapping/missing")
+        response = await authorized_client.get("/api/v1/projects/test_project/mapping/missing")
 
         assert response.status_code == 404
         body = response.json()["detail"]
@@ -110,12 +98,12 @@ class TestMappingApi:
         assert body["context"]["resource_type"] == "entity"
         assert body["context"]["resource_id"] == "missing"
 
-    def test_get_single_mapping_link_returns_saved_link(self, tmp_path: Path, monkeypatch, client) -> None:
+    async def test_get_single_mapping_link_returns_saved_link(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        _write_project(tmp_path)
+        await _create_project(authorized_client)
         _write_mapping_sidecar(tmp_path)
 
-        response = client.get("/api/v1/projects/test_project/mapping/site/A")
+        response = await authorized_client.get("/api/v1/projects/test_project/mapping/site/A")
 
         assert response.status_code == 200
         body = response.json()
@@ -124,12 +112,12 @@ class TestMappingApi:
         assert body["link"]["target_id"] == 10
         assert body["link"]["source"] == "manual"
 
-    def test_get_single_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, client) -> None:
+    async def test_get_single_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        _write_project(tmp_path)
+        await _create_project(authorized_client)
         _write_mapping_sidecar(tmp_path)
 
-        response = client.get("/api/v1/projects/test_project/mapping/missing/A")
+        response = await authorized_client.get("/api/v1/projects/test_project/mapping/missing/A")
 
         assert response.status_code == 404
         body = response.json()["detail"]
@@ -137,11 +125,11 @@ class TestMappingApi:
         assert body["context"]["resource_type"] == "entity"
         assert body["context"]["resource_id"] == "missing"
 
-    def test_put_mapping_link_creates_or_updates_manual_link(self, tmp_path: Path, monkeypatch, client) -> None:
+    async def test_put_mapping_link_creates_or_updates_manual_link(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        _write_project(tmp_path)
+        await _create_project(authorized_client)
 
-        response = client.put(
+        response = await authorized_client.put(
             "/api/v1/projects/test_project/mapping/site/B",
             json={"target_id": 20, "confidence": 0.99, "notes": "Manual override"},
         )
@@ -158,11 +146,11 @@ class TestMappingApi:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"]["B"]["target_id"] == 20
 
-    def test_put_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, client) -> None:
+    async def test_put_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        _write_project(tmp_path)
+        await _create_project(authorized_client)
 
-        response = client.put(
+        response = await authorized_client.put(
             "/api/v1/projects/test_project/mapping/missing/B",
             json={"target_id": 20, "confidence": 0.99, "notes": "Manual override"},
         )
@@ -173,12 +161,12 @@ class TestMappingApi:
         assert body["context"]["resource_type"] == "entity"
         assert body["context"]["resource_id"] == "missing"
 
-    def test_delete_mapping_link_removes_saved_link(self, tmp_path: Path, monkeypatch, client) -> None:
+    async def test_delete_mapping_link_removes_saved_link(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        _write_project(tmp_path)
+        await _create_project(authorized_client)
         _write_mapping_sidecar(tmp_path)
 
-        response = client.delete("/api/v1/projects/test_project/mapping/site/A")
+        response = await authorized_client.delete("/api/v1/projects/test_project/mapping/site/A")
 
         assert response.status_code == 200
         assert response.json() == {"entity_name": "site", "local_key_value": "A", "deleted": True}
@@ -187,11 +175,11 @@ class TestMappingApi:
             sidecar = yaml.safe_load(handle)
         assert sidecar["entities"]["site"]["links"] == {}
 
-    def test_delete_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, client) -> None:
+    async def test_delete_mapping_link_returns_404_for_missing_entity(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        _write_project(tmp_path)
+        await _create_project(authorized_client)
 
-        response = client.delete("/api/v1/projects/test_project/mapping/missing/A")
+        response = await authorized_client.delete("/api/v1/projects/test_project/mapping/missing/A")
 
         assert response.status_code == 404
         body = response.json()["detail"]
