@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from backend.app.authorization.models import Action, AuthorizedResource, Grant, Principal, ResourceRecord, ResourceType
+from backend.app.authorization.models import Action, AuthorizedResource, Grant, GrantSubjectType, Principal, ResourceRecord, ResourceType
 from backend.app.authorization.policy import AuthorizationPolicy
 from backend.app.authorization.repository import AuthorizationRepository
 
@@ -11,9 +11,16 @@ from backend.app.authorization.repository import AuthorizationRepository
 class AuthorizationService:
     """Evaluate resource and application access using one policy and repository."""
 
-    def __init__(self, repository: AuthorizationRepository, policy: AuthorizationPolicy | None = None) -> None:
+    def __init__(
+        self,
+        repository: AuthorizationRepository,
+        policy: AuthorizationPolicy | None = None,
+        *,
+        allow_authenticated_everyone: bool = False,
+    ) -> None:
         self.repository = repository
         self.policy = policy or AuthorizationPolicy()
+        self.allow_authenticated_everyone = allow_authenticated_everyone
 
     def is_allowed(self, principal: Principal, action: Action, resource: ResourceRecord) -> bool:
         """Return whether the principal may perform an action on a resource."""
@@ -29,6 +36,7 @@ class AuthorizationService:
         return any(
             grant.resource_id in resource_ids and self.policy.allows_resource_role(resource.resource_type, grant.role, action)
             for grant in self.repository.list_matching_grants(principal.principal_id, tuple(principal.group_ids))
+            if self.allow_authenticated_everyone or grant.subject_type != GrantSubjectType.EVERYONE
         )
 
     def authorize(self, principal: Principal, action: Action, resource: ResourceRecord) -> AuthorizedResource | None:

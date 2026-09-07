@@ -125,6 +125,8 @@ app.add_middleware(
     ProxyAuthenticationMiddleware,
     enabled=settings.TRUSTED_PROXY_AUTH_ENABLED,
     header_name=settings.TRUSTED_PROXY_AUTH_HEADER,
+    groups_enabled=settings.TRUSTED_PROXY_GROUPS_ENABLED,
+    groups_header_name=settings.TRUSTED_PROXY_GROUPS_HEADER,
     public_paths={f"{settings.API_V1_PREFIX}/health"},
 )
 

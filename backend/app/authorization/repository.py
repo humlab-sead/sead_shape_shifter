@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Protocol
 from uuid import UUID, uuid4
 
+from backend.app.authorization.membership import MembershipSnapshot
 from backend.app.authorization.models import AuditEvent, Grant, GrantSubjectType, ResourceRecord, ResourceType
 
 
@@ -45,6 +46,8 @@ class AuthorizationRepository(Protocol):
     def remove_application_role(self, principal_id: str, role: str, actor_principal_id: str) -> None: ...
 
     def list_audit_events(self) -> list[AuditEvent]: ...
+
+    def record_membership_lookup(self, actor_principal_id: str, snapshot: MembershipSnapshot) -> None: ...
 
     def bootstrap_admins(self, principal_ids: Sequence[str]) -> bool: ...
 
@@ -131,6 +134,24 @@ class SQLiteAuthorizationRepository:
                     INSERT INTO schema_version(version, applied_at) VALUES (2, CURRENT_TIMESTAMP);
                     """
                 )
+                current = 2
+            if current < 3:
+                self._connection.executescript(
+                    """
+                    ALTER TABLE audit_event ADD COLUMN subject_type TEXT;
+                    ALTER TABLE audit_event ADD COLUMN subject_id TEXT;
+                    INSERT INTO schema_version(version, applied_at) VALUES (3, CURRENT_TIMESTAMP);
+                    """
+                )
+                current = 3
+            if current < 4:
+                self._connection.executescript(
+                    """
+                    ALTER TABLE audit_event ADD COLUMN provider TEXT;
+                    ALTER TABLE audit_event ADD COLUMN details TEXT;
+                    INSERT INTO schema_version(version, applied_at) VALUES (4, CURRENT_TIMESTAMP);
+                    """
+                )
 
     def create_resource(self, resource: ResourceRecord) -> None:
         """Persist a server-owned resource record."""
@@ -168,6 +189,8 @@ class SQLiteAuthorizationRepository:
                 resource_id=grant.resource_id,
                 action=grant.role,
                 outcome="allowed",
+                subject_type=grant.subject_type,
+                subject_id=grant.subject_id,
             )
 
     def add_application_role(self, principal_id: str, role: str, created_by: str) -> None:
@@ -228,6 +251,8 @@ class SQLiteAuthorizationRepository:
                 resource_id=resource_id,
                 action=role,
                 outcome="allowed",
+                subject_type=subject_type,
+                subject_id=principal_id,
             )
 
     def remove_application_role(self, principal_id: str, role: str, actor_principal_id: str) -> None:
@@ -331,6 +356,23 @@ class SQLiteAuthorizationRepository:
         rows = self._connection.execute("SELECT * FROM audit_event ORDER BY occurred_at, event_id").fetchall()
         return [_audit_event(row) for row in rows]
 
+    def record_membership_lookup(self, actor_principal_id: str, snapshot: MembershipSnapshot) -> None:
+        """Record a group-membership review lookup without changing grants."""
+        details = f"fetched_at={snapshot.fetched_at.isoformat()}"
+        if snapshot.error:
+            details = f"{details}; error={snapshot.error}"
+        with self._connection:
+            self._record_audit(
+                actor_principal_id=actor_principal_id,
+                event_type="membership_lookup",
+                action="review",
+                outcome=snapshot.status.value,
+                provider=snapshot.provider,
+                details=details,
+                subject_type=GrantSubjectType.GROUP,
+                subject_id=snapshot.group_id,
+            )
+
     def _record_audit(
         self,
         *,
@@ -340,10 +382,16 @@ class SQLiteAuthorizationRepository:
         action: str | None = None,
         outcome: str,
         correlation_id: str | None = None,
+        subject_type: GrantSubjectType | None = None,
+        subject_id: str | None = None,
+        provider: str | None = None,
+        details: str | None = None,
     ) -> None:
         self._connection.execute(
-            "INSERT INTO audit_event(event_id, occurred_at, actor_principal_id, event_type, resource_id, action, outcome, correlation_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO audit_event("
+            "event_id, occurred_at, actor_principal_id, event_type, resource_id, action, outcome, correlation_id, "
+            "subject_type, subject_id, provider, details) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 str(uuid4()),
                 datetime.now(UTC).isoformat(),
@@ -353,6 +401,10 @@ class SQLiteAuthorizationRepository:
                 action,
                 outcome,
                 correlation_id,
+                subject_type.value if subject_type else None,
+                subject_id,
+                provider,
+                details,
             ),
         )
 
@@ -392,4 +444,8 @@ def _audit_event(row: sqlite3.Row) -> AuditEvent:
         action=row["action"],
         outcome=row["outcome"],
         correlation_id=row["correlation_id"],
+        subject_type=GrantSubjectType(row["subject_type"]) if row["subject_type"] else None,
+        subject_id=row["subject_id"],
+        provider=row["provider"],
+        details=row["details"],
     )

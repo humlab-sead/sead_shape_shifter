@@ -66,7 +66,7 @@ def test_initialize_database_is_idempotent_and_preserves_schema(tmp_path) -> Non
     initialize_database(database)
 
     with sqlite3.connect(database) as connection:
-        assert connection.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == 2
+        assert connection.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == 4
         assert connection.execute("SELECT role FROM application_role WHERE principal_id = 'alice'").fetchone()[0] == "admin"
 
 
@@ -182,14 +182,35 @@ def test_typed_manifest_applies_and_reconciles_broad_grants(tmp_path) -> None:
     )
     database = tmp_path / "authorization.sqlite3"
 
-    assert apply_manifest(manifest, database)["grants"] == 2
-    assert reconcile_manifest(manifest, database)["missing_grants"] == 0
+    assert apply_manifest(manifest, database, allow_authenticated_everyone=True)["grants"] == 2
+    assert reconcile_manifest(manifest, database, allow_authenticated_everyone=True)["missing_grants"] == 0
     repository = SQLiteAuthorizationRepository(database)
     assert {grant.subject_type for grant in repository.list_matching_grants("alice", ["editors"])} == {
         GrantSubjectType.GROUP,
         GrantSubjectType.EVERYONE,
     }
     repository.close()
+
+
+def test_everyone_manifest_is_rejected_when_disabled(tmp_path) -> None:
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "resources": [
+                    {
+                        "resource_type": "project",
+                        "locator": "project-a",
+                        "grants": [{"subject_type": "everyone", "subject_id": "authenticated", "role": "viewer"}],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="disabled by deployment configuration"):
+        inspect_manifest(manifest)
 
 
 def test_typed_grant_cli_supports_dry_run_and_revoke(tmp_path) -> None:

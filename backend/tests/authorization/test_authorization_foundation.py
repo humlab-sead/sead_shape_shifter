@@ -91,12 +91,13 @@ def test_group_and_authenticated_everyone_grants_match_verified_subjects(tmp_pat
     repository.create_resource(project)
     repository.add_grant(Grant("editors", project.resource_id, "editor", datetime.now(UTC), "admin", GrantSubjectType.GROUP))
     repository.add_grant(Grant("authenticated", project.resource_id, "viewer", datetime.now(UTC), "admin", GrantSubjectType.EVERYONE))
-    service = AuthorizationService(repository)
+    service = AuthorizationService(repository, allow_authenticated_everyone=True)
 
     assert service.is_allowed(_principal("alice"), Action.READ, project)
     assert not service.is_allowed(_principal("alice"), Action.EDIT, project)
     member = Principal("alice", "trusted-proxy", datetime.now(UTC), frozenset({"editors"}))
     assert service.is_allowed(member, Action.EDIT, project)
+    assert not AuthorizationService(repository).is_allowed(_principal("alice"), Action.READ, project)
     repository.close()
 
 

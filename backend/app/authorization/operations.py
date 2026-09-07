@@ -37,17 +37,23 @@ def restore_database(source: Path, destination: Path) -> None:
         source_connection.backup(destination_connection)
 
 
-def inspect_manifest(path: Path) -> dict[str, int]:
+def inspect_manifest(path: Path, *, allow_authenticated_everyone: bool = False) -> dict[str, int]:
     """Validate and summarize a migration manifest without changing the database."""
-    manifest = _load_validated_manifest(path)
+    manifest = _load_validated_manifest(path, allow_authenticated_everyone=allow_authenticated_everyone)
     resources = manifest["resources"]
     administrators = manifest["administrators"]
     return {"resources": len(resources), "administrators": len(set(administrators))}
 
 
-def apply_manifest(path: Path, database: Path, actor_principal_id: str = "migration") -> dict[str, int]:
+def apply_manifest(
+    path: Path,
+    database: Path,
+    actor_principal_id: str = "migration",
+    *,
+    allow_authenticated_everyone: bool = False,
+) -> dict[str, int]:
     """Apply reviewed initial administrators, resources, and grants."""
-    manifest = _load_validated_manifest(path)
+    manifest = _load_validated_manifest(path, allow_authenticated_everyone=allow_authenticated_everyone)
     repository = SQLiteAuthorizationRepository(database)
     try:
         administrators_created = _apply_administrators(repository, manifest["administrators"], actor_principal_id)
@@ -62,9 +68,9 @@ def apply_manifest(path: Path, database: Path, actor_principal_id: str = "migrat
         repository.close()
 
 
-def reconcile_manifest(path: Path, database: Path) -> dict[str, int]:
+def reconcile_manifest(path: Path, database: Path, *, allow_authenticated_everyone: bool = False) -> dict[str, int]:
     """Compare a reviewed migration manifest with authorization storage."""
-    manifest = _load_validated_manifest(path)
+    manifest = _load_validated_manifest(path, allow_authenticated_everyone=allow_authenticated_everyone)
     repository = SQLiteAuthorizationRepository(database)
     try:
         missing_administrators = sum(
@@ -108,7 +114,7 @@ def _load_manifest(path: Path) -> dict[str, Any]:
     return value
 
 
-def _load_validated_manifest(path: Path) -> dict[str, Any]:
+def _load_validated_manifest(path: Path, *, allow_authenticated_everyone: bool = False) -> dict[str, Any]:
     manifest = _load_manifest(path)
     resources = manifest.get("resources", [])
     administrators = manifest.get("administrators", [])
@@ -116,7 +122,7 @@ def _load_validated_manifest(path: Path) -> dict[str, Any]:
         raise ValueError("Manifest resources and administrators must be lists")
     normalized_administrators = _validate_administrators(administrators)
     for resource in resources:
-        _validate_resource(resource)
+        _validate_resource(resource, allow_authenticated_everyone=allow_authenticated_everyone)
     return {"administrators": normalized_administrators, "resources": resources}
 
 
@@ -129,7 +135,7 @@ def _validate_administrators(administrators: list[Any]) -> list[str]:
     return list(dict.fromkeys(normalized))
 
 
-def _validate_resource(resource: Any) -> None:
+def _validate_resource(resource: Any, *, allow_authenticated_everyone: bool = False) -> None:
     if not isinstance(resource, dict) or not resource.get("resource_type") or not resource.get("locator"):
         raise ValueError("Each manifest resource needs resource_type and locator")
     if not isinstance(resource["resource_type"], str) or not isinstance(resource["locator"], str) or not resource["locator"].strip():
@@ -154,6 +160,8 @@ def _validate_resource(resource: Any) -> None:
             raise ValueError(str(exc)) from exc
         if subject_type == GrantSubjectType.EVERYONE and subject_id != "authenticated":
             raise ValueError("Everyone grants must use subject_id 'authenticated'")
+        if subject_type == GrantSubjectType.EVERYONE and not allow_authenticated_everyone:
+            raise ValueError("Authenticated everyone grants are disabled by deployment configuration")
         if not isinstance(grant.get("role"), str) or not grant["role"].strip():
             raise ValueError("Each manifest grant needs a non-empty role")
 
