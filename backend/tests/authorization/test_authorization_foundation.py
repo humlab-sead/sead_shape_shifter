@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from backend.app.authorization.models import Action, ApplicationRole, Grant, Principal, ResourceRecord, ResourceType
+from backend.app.authorization.models import Action, ApplicationRole, Grant, GrantSubjectType, Principal, ResourceRecord, ResourceType
 from backend.app.authorization.policy import AuthorizationPolicy
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
 from backend.app.authorization.service import AuthorizationService
@@ -85,12 +85,33 @@ def test_project_grant_is_inherited_by_child_and_persists(tmp_path) -> None:
     reopened.close()
 
 
+def test_group_and_authenticated_everyone_grants_match_verified_subjects(tmp_path) -> None:
+    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
+    project = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
+    repository.create_resource(project)
+    repository.add_grant(Grant("editors", project.resource_id, "editor", datetime.now(UTC), "admin", GrantSubjectType.GROUP))
+    repository.add_grant(Grant("authenticated", project.resource_id, "viewer", datetime.now(UTC), "admin", GrantSubjectType.EVERYONE))
+    service = AuthorizationService(repository)
+
+    assert service.is_allowed(_principal("alice"), Action.READ, project)
+    assert not service.is_allowed(_principal("alice"), Action.EDIT, project)
+    member = Principal("alice", "trusted-proxy", datetime.now(UTC), frozenset({"editors"}))
+    assert service.is_allowed(member, Action.EDIT, project)
+    repository.close()
+
+
 def test_deleted_resource_name_can_be_reused_without_inheriting_grants(tmp_path) -> None:
     repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
     deleted = ResourceRecord(uuid4(), ResourceType.PROJECT, "reused-name")
     repository.create_resource(deleted)
     repository.add_grant(Grant("alice", deleted.resource_id, "owner", datetime.now(UTC), "admin"))
     repository.update_resource_lifecycle(deleted.resource_id, "deleted")
+
+    assert repository.get_resource_by_locator(ResourceType.PROJECT, "reused-name") is None
+    deleted_record = repository.get_resource(deleted.resource_id)
+    assert deleted_record is not None
+    assert not AuthorizationService(repository).is_allowed(_principal(), Action.READ, deleted_record)
+
     replacement = ResourceRecord(uuid4(), ResourceType.PROJECT, "reused-name")
     repository.create_resource(replacement)
 

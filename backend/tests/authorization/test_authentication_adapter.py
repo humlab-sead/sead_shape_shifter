@@ -21,6 +21,15 @@ def test_adapter_preserves_trusted_proxy_identity() -> None:
     assert principal.authentication_provider == "trusted-proxy"
 
 
+def test_adapter_preserves_verified_groups_from_request_state() -> None:
+    request = _request("Alice")
+    request.state.authenticated_groups = [" editors ", "reviewers"]
+
+    principal = AuthenticationAdapter(enabled=True, environment="production").principal_from_request(request)
+
+    assert principal.group_ids == frozenset({"editors", "reviewers"})
+
+
 def test_adapter_allows_only_explicit_development_principal() -> None:
     adapter = AuthenticationAdapter(enabled=False, environment="development", development_principal_id="developer")
 

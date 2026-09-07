@@ -106,7 +106,7 @@ class TestProjectsCreate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         response = await authorized_client.post(
-            "/api/v1/projects", json={"name": "new_config", "entities": sample_project_data["entities"]}
+            "/api/v1/projects", json={"name": "new_project", "entities": sample_project_data["entities"]}
         )
 
         assert response.status_code == 201
