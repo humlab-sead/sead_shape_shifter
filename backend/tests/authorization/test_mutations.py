@@ -24,6 +24,8 @@ def test_grant_mutation_writes_audit_event_atomically(tmp_path) -> None:
 
     assert events[-1].event_type == "grant_created"
     assert events[-1].resource_id == resource.resource_id
+    assert events[-1].subject_type == GrantSubjectType.PRINCIPAL
+    assert events[-1].subject_id == "alice"
     repository.close()
 
 
@@ -61,7 +63,13 @@ def test_broad_subject_can_be_revoked(tmp_path) -> None:
     repository.create_resource(resource)
     repository.add_grant(Grant("editors", resource.resource_id, "editor", datetime.now(UTC), "admin", GrantSubjectType.GROUP))
 
+    assert repository.list_audit_events()[-1].subject_type == GrantSubjectType.GROUP
+    assert repository.list_audit_events()[-1].subject_id == "editors"
+
     repository.remove_grant("editors", resource.resource_id, "editor", "admin", GrantSubjectType.GROUP)
+
+    assert repository.list_audit_events()[-1].subject_type == GrantSubjectType.GROUP
+    assert repository.list_audit_events()[-1].subject_id == "editors"
 
     assert repository.list_all_grants() == []
     repository.close()

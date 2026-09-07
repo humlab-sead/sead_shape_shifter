@@ -32,6 +32,7 @@ def get_principal() -> Callable:
         enabled=settings.TRUSTED_PROXY_AUTH_ENABLED,
         environment=settings.ENVIRONMENT,
         development_principal_id=settings.DEVELOPMENT_PRINCIPAL_ID,
+        groups_enabled=settings.TRUSTED_PROXY_GROUPS_ENABLED,
     )
 
     async def dependency(request: Request) -> Principal:
@@ -44,7 +45,7 @@ async def get_authorization_service(
     repository: Annotated[AuthorizationRepository, Depends(get_authorization_repository)],
 ) -> AuthorizationService:
     """Build the central authorization service for one request."""
-    return AuthorizationService(repository)
+    return AuthorizationService(repository, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE)
 
 
 def require_project(action: Action) -> Callable:

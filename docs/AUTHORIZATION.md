@@ -39,7 +39,7 @@ Each protected resource has a server-owned UUID, resource type, current locator,
 
 A grant assigns a resource role to one typed subject and one resource UUID. Subjects are `principal`, `group`, or authenticated `everyone`. Project names and shared data-source filenames are locators, not authorization identities. Deleting a resource and reusing its locator creates a new UUID, so it cannot inherit old grants.
 
-Direct-principal grants use `principal_id` in legacy manifests or `subject_type: principal` and `subject_id` in typed manifests. Group grants use verified group IDs supplied by the authentication provider. `everyone` means every authenticated principal and uses the fixed subject ID `authenticated`; anonymous requests are still denied. Membership is never inferred from request fields supplied by the client.
+Direct-principal grants use `principal_id` in legacy manifests or `subject_type: principal` and `subject_id` in typed manifests. Group grants use verified group IDs supplied by the trusted authentication provider. In Phase 1, nginx supplies them through the configured trusted group header, and group matching is disabled unless that source is explicitly enabled. Membership is never inferred from client request fields. `everyone` means every authenticated principal and uses the fixed subject ID `authenticated`; anonymous requests are still denied. Authenticated-`everyone` matching is disabled unless explicitly enabled in deployment configuration.
 
 Resource access is denied unless the resource is active and a policy rule permits the action. A grant on a parent resource applies to its children. For example, a project grant can authorize work on a project child resource. Child grants do not grant access to a parent.
 
@@ -55,7 +55,9 @@ Resource access is denied unless the resource is active and a policy rule permit
 
 Roles are additive. A principal who needs project editing and execution without ownership receives both `editor` and `executor`.
 
-Broad subjects may receive `viewer`, `editor`, or `executor` as approved by operators. They may not receive `owner`: ownership includes deletion and grant management, and a broad owner grant would defeat final-owner protection. Group and everyone grants are evaluated centrally together with direct grants and inherited parent-resource grants. The supported review command is `sead-authorization list-grants`; changes use `sead-authorization grant --actor ...` and are recorded in the authorization audit log.
+Broad subjects may receive `viewer`, `editor`, or `executor` as approved by operators. They may not receive `owner`: ownership includes deletion and grant management, and a broad owner grant would defeat final-owner protection. Group and everyone grants are evaluated centrally together with direct grants and inherited parent-resource grants. The supported review command is `sead-authorization list-grants`; use `--effective --actor <principal>` to expand group subjects through the configured trusted membership provider. Review results include provider, timestamp, and resolution status. Review failures do not change runtime authorization decisions.
+
+Runtime group matching and operator membership review use separate interfaces. nginx may provide verified group IDs for the current request, but it cannot enumerate all members of a group. Effective review requires a trusted membership lookup URL containing `{group_id}`. The identity provider remains authoritative; SQLite stores grants and review audit events, not group membership. This phase queries the provider directly and does not cache membership snapshots.
 
 ## Application Roles
 
@@ -94,7 +96,7 @@ A principal needs access to both a project and a shared source when an operation
 
 ## Audit Records
 
-The authorization database records grant creation and revocation, application-role creation and revocation, resource lifecycle changes, and bootstrap administrator creation. Each record contains an event ID, timestamp, actor principal ID, event type, optional resource UUID, action, outcome, and optional correlation ID.
+The authorization database records grant creation and revocation, application-role creation and revocation, resource lifecycle changes, bootstrap administrator creation, and membership review lookups. Each record contains an event ID, timestamp, actor principal ID, event type, optional resource UUID, action, outcome, optional correlation ID, optional typed subject (`subject_type` and `subject_id`), and optional provider/details fields. Broad grants and membership review results are therefore identifiable in the audit log.
 
 Audit records must not contain credentials, SQL text, sensitive filesystem paths, or secret configuration. They are written through the authorization repository with the associated mutation. The current application has no operator API or command for browsing audit records; do not query or alter the database directly to work around that missing interface.
 

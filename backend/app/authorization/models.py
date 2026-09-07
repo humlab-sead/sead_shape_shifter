@@ -111,6 +111,10 @@ class AuditEvent:
     action: str | None
     outcome: str
     correlation_id: str | None
+    subject_type: GrantSubjectType | None = None
+    subject_id: str | None = None
+    provider: str | None = None
+    details: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

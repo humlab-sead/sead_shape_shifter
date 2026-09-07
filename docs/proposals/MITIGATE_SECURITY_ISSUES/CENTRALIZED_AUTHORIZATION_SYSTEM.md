@@ -2,7 +2,7 @@
 
 ## Status
 
-- Proposed sub-proposal / implementation-ready pending approval
+- Implemented Phase 1 authorization design; deployment cutover and broader Phase 1 work remain
 - Parent proposal: [Mitigate Security Issues](./MITIGATE_SECURITY_ISSUES.md)
 - Task plan: [Centralized Authorization System Task Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
 - Related future work: [Native Application Authentication](../future/NATIVE_APPLICATION_AUTHENTICATION.md)
@@ -10,9 +10,9 @@
 
 ## Summary
 
-Shape Shifter should use one application authorization system to decide whether an authenticated identity may perform an action on a resource. FastAPI dependencies should enforce the decision before endpoint work begins, and sensitive services and background operations should receive an authorized resource rather than relying only on route checks.
+Shape Shifter uses one application authorization system to decide whether an authenticated identity may perform an action on a resource. FastAPI dependencies enforce the decision before endpoint work begins, and sensitive services and background operations receive an authorized resource rather than relying only on route checks.
 
-The system should start with project roles, application roles, and explicit grants for shared data sources. Project-owned resources such as uploads, generated outputs, backups, tasks, and project queries inherit project access. Schema and shared-query access inherit shared-data-source access. Application logs and ingester administration require application roles. A dedicated SQLite database should store resource identities, grants, application roles, schema versions, and authorization audit events outside all project-managed directories.
+The system provides project roles, application roles, and explicit grants for shared data sources. Project-owned resources such as uploads, generated outputs, backups, tasks, and project queries inherit project access. Schema and shared-query access inherit shared-data-source access. Application logs and ingester administration require application roles. Resource grants support typed `principal`, `group`, and authenticated `everyone` subjects. A dedicated SQLite database stores resource identities, typed grants, application roles, schema versions, and authorization audit events outside all project-managed directories.
 
 Authentication and authorization remain separate. Phase 1 continues to trust the verified identity supplied by nginx. A future native authentication mechanism may replace that identity provider without changing authorization rules, grants, or resource ownership.
 
@@ -28,6 +28,8 @@ This proposal covers:
 
 - a stable principal derived from the authenticated identity,
 - project roles, application roles, and shared-data-source grants,
+- typed principal, group, and authenticated-`everyone` grant subjects,
+- trusted group membership review for operator access reports,
 - centralized authorization decisions for resource and action pairs,
 - FastAPI dependencies for early enforcement,
 - service and background-operation enforcement for sensitive work,
@@ -49,16 +51,18 @@ This proposal covers:
 - Nginx supplies a verified identity to FastAPI through the trusted proxy contract.
 - FastAPI rejects protected requests without that identity when proxy authentication is enabled.
 - Project sessions record the authenticated identity and reject use by a different identity.
-- Project metadata has no owner, team, role, or grant model.
-- Shared data-source, schema, query, task, output, backup, log, and ingester endpoints do not share a resource authorization policy.
-- Long-running operation records do not have required principal and project ownership fields.
+- Projects and shared data sources use server-owned resource records, typed grants, and centralized role checks.
+- Group matching is opt-in and uses verified group IDs from the trusted nginx group source. Authenticated-`everyone` matching is separately opt-in.
+- Operators can expand group grants through a configured trusted membership provider. The provider remains authoritative; membership is queried directly and is not cached in SQLite in this phase.
+- Remaining work includes route inventory completion, deployment resource review, full regression validation, and enforcement cutover.
 
 ## Terms
 
 - **Principal:** the stable application identity used for authorization. In Phase 1 this is derived from the verified nginx identity.
 - **Action:** a policy operation such as `read`, `edit`, `execute`, `delete`, `manage_grants`, or `read_logs`.
 - **Resource:** the protected object identified by a type and stable ID, such as a project or shared data source.
-- **Grant:** a persistent assignment of a role to a principal for a resource.
+- **Grant:** a persistent assignment of a role to a typed subject for a resource. Subjects are `principal`, `group`, or authenticated `everyone`.
+- **Membership review:** an operator-only lookup that expands a group subject into effective principal IDs for reporting. It does not create grants or change runtime authorization.
 - **Application role:** a role whose scope is the complete deployment, such as `operator` or `admin`.
 - **Authorized resource:** a value returned after a successful authorization decision and passed to endpoint or service code.
 - **Resource record:** a server-owned record that assigns a stable UUID to a protected resource and maps it to its current internal locator, such as a project name or shared-data-source filename.
@@ -86,7 +90,7 @@ Use these initial application roles:
 
 Project roles are additive except that `owner` contains all project actions. A principal who must edit and execute without owning the project receives both `editor` and `executor`. Shared data sources have one resource role, `reader`, which permits configuration reads, connection tests, schema inspection, previews, and read-only queries. Separating shared-source query from read access is deferred until the application has a concrete use case that requires the distinction.
 
-The policy must be declared in one module as explicit role-to-action mappings. Endpoints and services must not reproduce those mappings. Unknown resource types, actions, and roles are denied. Direct user grants are the Phase 1 model; team and group grants are deferred because the current trusted-proxy contract supplies no verified group membership.
+The policy is declared in one module as explicit role-to-action mappings. Endpoints and services must not reproduce those mappings. Unknown resource types, actions, and roles are denied. Group matching is disabled until a trusted nginx group source is explicitly configured; authenticated-`everyone` matching is also disabled by default and requires explicit deployment approval. Anonymous requests remain denied, and broad subjects cannot receive `owner`. Group and `everyone` grants are evaluated centrally with direct grants and inherited parent-resource grants.
 
 ### 2. Principal contract
 
@@ -96,6 +100,7 @@ The authentication adapter produces a principal with:
 principal_id
 authentication_provider
 authenticated_at
+group_ids
 ```
 
 For trusted-proxy authentication, `principal_id` is the exact trimmed, validated header value. It is case-sensitive and limited to 255 characters. The provider value is audit context and is not part of grant lookup. A future authentication provider must emit the same `principal_id` values or provide an explicit, reviewed grant migration before cutover. The API must not accept a principal ID from request bodies, query parameters, or untrusted headers.
@@ -110,9 +115,9 @@ The database contains these logical records:
 
 ```text
 resource: resource_id, resource_type, locator, parent_resource_id, lifecycle_state
-grant: principal_id, resource_id, role, created_at, created_by
+grant: subject_type, subject_id, resource_id, role, created_at, created_by
 application_role: principal_id, role, created_at, created_by
-audit_event: event_id, occurred_at, actor_principal_id, event_type, resource_id, action, outcome, correlation_id
+audit_event: event_id, occurred_at, actor_principal_id, event_type, resource_id, action, outcome, correlation_id, subject_type, subject_id, provider, details
 schema_version: version, applied_at
 ```
 
@@ -123,12 +128,15 @@ Create, copy, delete, and any future rename operation must update resource lifec
 The grant record contains:
 
 ```text
-principal_id
+subject_type
+subject_id
 resource_id
 role
 created_at
 created_by
 ```
+
+The repository does not store authoritative group membership. Effective membership review uses a provider-neutral resolver and a configured trusted identity authority. The resolver returns the group ID, effective principal IDs, provider, lookup time, and a `resolved`, `unavailable`, or `not_found` status. The initial implementation queries the provider directly; it does not use a SQLite membership snapshot cache. A future cache would be optional, expiring, non-authoritative, and review-only.
 
 Grant changes, resource lifecycle changes, and their audit events are committed atomically when they affect only the authorization database. The implementation accesses storage through an `AuthorizationRepository` contract so policy and endpoint dependencies do not depend on SQLite.
 
@@ -214,16 +222,16 @@ Authorization happens before file, connection, or other sensitive configuration 
 - Return `403` when the principal is known but lacks an application-scoped action, such as project creation, log access, shared-source administration, or ingester administration.
 - Return `404` for an absent or unauthorized project, shared source, session, operation, output, backup, or upload addressed by identifier. This conceals resource existence and applies to all actions on that resource.
 - Filter list responses instead of returning entries that the principal cannot read.
-- Record grant changes, project ownership changes, administrative operations, denied sensitive actions, and high-impact allowed actions.
+- Record grant changes, project ownership changes, administrative operations, membership review lookups, denied sensitive actions, and high-impact allowed actions.
 - Do not place credentials, SQL text, sensitive paths, or secret configuration in authorization audit records.
 
-Audit records are append-only through the application interface. Grant and application-role changes record the actor and correlation ID. Grant, application-role, resource-lifecycle, administrative, and execution actions fail closed when their required audit event cannot be committed. A failed denial-audit write does not turn a denial into an error or an allowed result. High-volume allowed reads and denied reads are logged through bounded normal request logging rather than the durable authorization audit table.
+Audit records are append-only through the application interface. Grant and application-role changes record the actor and correlation ID. Membership review records the actor, group subject, provider, lookup time, result, and error or freshness details without storing credentials or unnecessary directory data. Grant, application-role, resource-lifecycle, administrative, and execution actions fail closed when their required audit event cannot be committed. A failed denial-audit write does not turn a denial into an error or an allowed result. High-volume allowed reads and denied reads are logged through bounded normal request logging rather than the durable authorization audit table.
 
 ### 10. Bootstrap and administration
 
 Initial administration uses the deployment-only `AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS` setting (`SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS` in the environment). It is accepted only while the application-role table is empty, creates the listed `admin` assignments transactionally, records bootstrap audit events, and is ignored with a warning after any application role exists. Production startup fails when no administrator exists.
 
-Initial resource registration and grants use an offline administrative command that supports a reviewable manifest and dry-run mode. Runtime APIs allow owners to manage grants for their projects and administrators to manage all grants and application roles. Every mutation enforces last-owner and last-admin protection.
+Initial resource registration and grants use an offline administrative command that supports a reviewable manifest and dry-run mode. The administration CLI lists typed grants, grants and revokes project access, and supports explicit effective group review with human-readable or JSON output. Effective review requires an actor and a trusted membership lookup URL; `--strict` reports unresolved groups as a command failure. Runtime APIs allow owners to manage grants for their projects and administrators to manage all grants and application roles. Every mutation enforces last-owner and last-admin protection.
 
 ## Existing Project Migration
 
@@ -250,8 +258,9 @@ Implementation is incomplete until these documents are maintained:
 4. operator instructions for granting, reviewing, and revoking access,
 5. developer instructions for protecting a new endpoint or background operation,
 6. API behavior for `401`, `403`, concealed `404`, and filtered lists,
-7. the authentication-provider contract that explains how nginx identity becomes an authorization principal.
-8. SQLite backup, restore, integrity-check, migration, and unsupported multi-host deployment procedures.
+7. the authentication-provider contract that explains how nginx identity becomes an authorization principal,
+8. trusted membership review, including provider configuration, lookup failure behavior, and the decision not to cache memberships in SQLite for the initial deployment,
+9. SQLite backup, restore, integrity-check, migration, and unsupported multi-host deployment procedures.
 
 The route inventory should be reviewable against the registered FastAPI routes and should be covered by an automated completeness check.
 
@@ -278,6 +287,7 @@ Native authentication is not a dependency for this proposal or for Phase 1. Conv
 - **SQLite is used beyond its deployment limits:** document single-host support, use WAL and short transactions, and replace only the repository implementation before adding multiple application hosts.
 - **Name reuse inherits access:** assign generation-specific UUIDs and never attach grants to project names or filenames.
 - **Last administrator or owner is removed:** reject mutations that would remove the final active assignment.
+- **Membership provider is unavailable during review:** report the lookup status and error, keep the provider authoritative, and do not use review results for runtime authorization. Reconsider a review-only cache only if provider availability or review latency becomes an operational problem.
 
 ## Testing And Validation
 
@@ -287,6 +297,7 @@ Native authentication is not a dependency for this proposal or for Phase 1. Conv
 - Test each registered route as unauthenticated, unauthorized, and allowed, with filtered lists and the defined `403`/concealed-`404` behavior.
 - Test multi-resource operations with each required grant missing in turn.
 - Test service entry points without route dependencies and operation access before and after revocation.
+- Test typed principal, group, and authenticated-`everyone` grants, including anonymous denial, broad-role safeguards, membership review success and failure states, strict CLI behavior, JSON output, and membership lookup audit records.
 - Compare the generated route inventory with registered FastAPI routes and fail on undeclared non-health routes.
 - Run focused authorization tests, the complete backend suite, and deployment backup, restore, cutover, rollback, and database integrity checks.
 
@@ -304,6 +315,7 @@ Native authentication is not a dependency for this proposal or for Phase 1. Conv
 - [ ] Replacing nginx authentication does not require changing authorization policy or stored grants.
 - [ ] Deleting and recreating a project or shared-source name does not transfer grants from the deleted resource.
 - [ ] Production startup rejects missing administrators, development-only identities, and an authorization database inside a user-editable directory.
+- [ ] Operators can review group grants with effective principals without changing grants or runtime authorization decisions.
 
 ## Resolved Decisions
 
@@ -313,9 +325,11 @@ Native authentication is not a dependency for this proposal or for Phase 1. Conv
 4. Shared-source read, connection test, schema inspection, preview, and read-only query use one `reader` grant in Phase 1.
 5. Resource-addressed denial returns concealed `404`; application-scoped denial returns `403`; lists are filtered.
 6. Revocation blocks new work and later operation access but does not automatically cancel work already executing.
-7. Direct principal grants are implemented first; team and group grants are deferred until authentication supplies verified membership.
+7. Grants use typed `principal`, `group`, and authenticated-`everyone` subjects. Group IDs are accepted only from an explicitly enabled trusted nginx group source; authenticated-`everyone` matching is disabled by default and requires explicit deployment configuration. Broad subjects cannot receive `owner`.
 8. Project and shared-source names remain API locators, while generation-specific UUID resource records hold grants and prevent name-reuse inheritance.
+9. Operator membership review uses a trusted provider resolver and does not materialize group memberships as individual grants.
+10. Membership review queries the trusted provider directly in the initial deployment; SQLite does not cache membership snapshots. A future cache requires a separate decision and must be expiring, non-authoritative, and review-only.
 
 ## Recommendation
 
-Approve this sub-proposal as the Phase 1 authorization design. Implement the principal contract, SQLite repository, resource lifecycle records, and policy tests before endpoint checks. Then deliver project authorization, project child resources, shared data sources with schema and query access, administrative resources, and constrained ingester operations in that order.
+Treat this sub-proposal as the Phase 1 authorization design for the implemented work. The principal contract, SQLite repository, resource lifecycle records, centralized policy, typed broad-access subjects, trusted membership review, and focused tests are implemented. Complete route and deployment inventories, full regression validation, and cutover verification before enabling the remaining protected Phase 1 surface in production.

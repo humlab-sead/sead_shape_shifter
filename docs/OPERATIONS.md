@@ -53,8 +53,14 @@ Runtime variables:
 | `SHAPE_SHIFTER_LOG_FILTER_FRAMEWORK_FRAMES`      | `true`                  | Filter framework frames from tracebacks                              |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED`        | `false`                 | Require an identity forwarded by nginx; enabled by Docker deployment  |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_HEADER`         | `X-Authenticated-User` | Header containing the nginx-authenticated username                    |
+| `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED`     | `false`                | Accept verified group IDs from the trusted proxy; disabled until a trusted group source is configured |
+| `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_HEADER`      | `X-Authenticated-Groups` | Comma-separated group IDs supplied by the trusted proxy              |
 | `SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH`       | `state/authorization.sqlite3` | SQLite authorization database, relative to `APPLICATION_ROOT` unless absolute |
 | `SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS` | `[]` | JSON array of initial administrator principal IDs; required but not automatically applied in production |
+| `SHAPE_SHIFTER_AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE` | `false` | Explicitly enable authenticated-`everyone` grants; keep disabled unless approved |
+| `SHAPE_SHIFTER_AUTHORIZATION_MEMBERSHIP_LOOKUP_URL` | `null` | Trusted membership endpoint template containing `{group_id}`; required for effective group review |
+| `SHAPE_SHIFTER_AUTHORIZATION_MEMBERSHIP_PROVIDER` | `trusted-membership-provider` | Provider name recorded in membership review output and audit events |
+| `SHAPE_SHIFTER_AUTHORIZATION_MEMBERSHIP_LOOKUP_TIMEOUT_SECONDS` | `5.0` | Timeout for each trusted membership lookup |
 | `SHAPE_SHIFTER_ALLOWED_ORIGINS`                  | _(localhost only)_      | CORS origin whitelist (JSON array); set explicitly for deployed UI    |
 | `SHAPE_SHIFTER_ALLOWED_ORIGIN_REGEX`             | `null`                  | Optional CORS regex; leave unset unless a controlled wildcard is required |
 | `SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL`       | `http://localhost:8000` | OpenRefine reconciliation service URL                                |
@@ -167,7 +173,16 @@ docker compose exec shape-shifter python -m backend.app.scripts.authorization re
    --subject-type group --subject-id <verified-group-id> --role editor --actor <operator-principal-id>
 ```
 
-The application displays typed subjects but does not infer group membership. Effective group members must be reviewed in the trusted authentication provider. Broad subjects cannot receive `owner`.
+The application does not infer group membership from request fields. Group grants remain inert until `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED=true` and the proxy supplies the configured group header. Authenticated-`everyone` grants remain disabled until `SHAPE_SHIFTER_AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE=true`. Broad subjects cannot receive `owner`.
+
+For operator review, configure a trusted membership endpoint and use an explicit actor. The endpoint must return a JSON object with a `members` array of principal IDs:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization list-grants \
+   --effective --actor <operator-principal-id> --json
+```
+
+Use `--membership-url` for a one-off endpoint override. Use `--strict` when automation must fail if any group is unavailable or not found. Human-readable output reports resolved principals, provider, fetch time, and lookup errors; JSON output reports the same status fields. Lookup results are recorded as audit events. The trusted provider remains authoritative, and the application does not expand memberships into grant rows or use review results for runtime authorization. This phase queries the provider directly and does not cache membership snapshots; reconsider a review-only cache if provider availability or review latency becomes an operational problem.
 
 Do not edit the SQLite database directly. Direct changes bypass the authorization repository's audit records and final-owner and final-administrator protections.
 

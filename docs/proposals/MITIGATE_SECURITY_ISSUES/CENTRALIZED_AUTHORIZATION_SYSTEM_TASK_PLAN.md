@@ -192,6 +192,9 @@ Allow a project to grant access to a set of users without creating one grant row
 
 - Represent broad access with typed grant subjects such as `principal`, `group`, and authenticated `everyone`; do not use a literal principal ID such as `*`.
 - Resolve group membership from the trusted authentication provider or another verified membership source. Do not infer group membership from client request fields.
+- Separate runtime group matching from operator membership review. The nginx group header may supply groups for the current request, but it cannot enumerate all members of a group.
+- Add a provider-neutral membership resolver that queries the configured trusted identity authority for review. The resolver must return the group, effective principal IDs, provider, lookup time, and a resolved, unavailable, or not-found status.
+- Keep the trusted provider authoritative for membership. SQLite stores group grants, not membership rows. This phase does not cache membership snapshots; reconsider a non-authoritative, expiring review cache only if provider availability or review latency creates an operational need.
 - Evaluate matching principal, group, and `everyone` subjects in the central authorization service before applying the role-to-action policy.
 - Treat `everyone` as authenticated users only unless an explicit public-access policy is approved. Anonymous requests remain denied by default.
 - Do not grant `owner` to `everyone` by default. The current owner role includes deletion and grant management; broad access should normally use `viewer`, `editor`, `executor`, or a separately defined limited role.
@@ -199,18 +202,22 @@ Allow a project to grant access to a set of users without creating one grant row
 
 **Tasks**
 
-- [ ] Approve the subject model, supported membership sources, and whether authenticated `everyone` access is required.
-- [x] Extend grant models, SQLite schema, migrations, manifests, reconciliation, backup, restore, and audit records for typed subjects.
+- [x] Approve the subject model, trusted nginx group-header source, and authenticated `everyone` as an opt-in subject.
+- [x] Extend grant models, SQLite schema, migrations, manifests, reconciliation, backup, restore, and audit records for typed subjects, including typed subject identity in audit events.
 - [x] Update authorization policy evaluation and service-level authorization checks to include verified group membership and broad subjects.
 - [x] Define which roles may be assigned to groups or `everyone`, with explicit safeguards for `owner`, `delete`, and `manage_grants` actions.
 - [x] Add administration commands and review output for typed broad grants.
 - [x] Add tests for principal, group, and `everyone` matching; membership changes; denied anonymous access; deleted and reused resources; revocation; inheritance; and final-owner protection.
 - [x] Document broad-access grants, their security implications, membership source, audit behavior, and migration or rollback procedure.
-- [ ] Integrate a trusted membership lookup so operator review can expand group subjects into effective principals.
+- [x] Add a provider-neutral trusted membership resolver and an adapter for the configured identity authority. Do not treat the nginx request header as a directory or membership enumeration API.
+- [x] Extend the administration CLI with an explicit effective-access review mode, including group expansion, provider and freshness metadata, unresolved-group reporting, strict failure handling, and machine-readable JSON output.
+- [x] Audit membership lookup attempts and results without storing credentials or unnecessary directory data. Record the actor, provider, group, timestamp, result, and freshness or error status.
+- [x] Decide and document membership caching for review availability. Do not add a SQLite membership snapshot cache in this phase. Reconsider only if provider availability or review latency creates an operational need; any future cache must be non-authoritative, expiring, and must never materialize group membership as individual grant rows.
+- [x] Add focused resolver and CLI tests for successful expansion, unavailable and not-found groups, strict mode, JSON output, audit records, and the separation between review lookup and runtime authorization.
 
 **Completion Criteria**
 
-Approved broad-access grants are evaluated centrally, recorded against generation-specific resource UUIDs, auditable, manageable through supported operator workflows, and covered by tests that prevent anonymous access and unsafe wildcard ownership.
+Approved broad-access grants are evaluated centrally, recorded against generation-specific resource UUIDs, auditable, manageable through supported operator workflows, and covered by tests that prevent anonymous access and unsafe wildcard ownership. Operators can review group grants with effective principals and can distinguish current provider results from unavailable or not-found membership data.
 
 
 ## Progress Tracker
@@ -223,7 +230,7 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 | Shared and administrative resources | In progress | Shared data source listings now return only sources with readable grants. Shared data source creation, upload, update, deletion, and schema-cache invalidation now require operator access. Create and delete update authorization resource records. Shared source configuration reads, connection tests, named schema introspection, table previews, query execution, and query-column introspection now require shared-source read access. Project data-source connections and project configuration updates require both project edit access and read access to every referenced shared source. Viewing and downloading application logs require the administrator-only `read_logs` action. |
 | Authorization documentation | In progress | The implemented principal, role, action, resource, inheritance, response, audit, stable-principal, and deny-by-default rules are documented in [AUTHORIZATION.md](../../AUTHORIZATION.md). Registered routes and their current authorization declarations are published in [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md). SQLite store configuration, ownership assignment, cutover, rollback, backup, and recovery are documented in [OPERATIONS.md](../../OPERATIONS.md#authorization-sqlite-store). Developer authorization guidance is documented in [DEVELOPMENT.md](../../DEVELOPMENT.md#authorization-for-protected-work). Ongoing grant-management interfaces and their operator documentation remain pending. |
 | Validation and cutover | In progress | Policy and dependency matrices cover allowed and denied outcomes for each declared requirement class. Route-wide unauthenticated checks cover every declared protected endpoint; query, administrator log, and operation endpoint matrices exercise concrete protected routes. Cross-user isolation covers projects, project-child outputs and backups, and shared sources; sessions and operations require ownership plus current project access. Concurrent SQLite grant writes, project-creation lifecycle compensation, and an automated sensitive-locator route check are implemented. Remaining storage tests, service checks, deployment inventory, and cutover verification remain. |
-| Group and wildcard-style project access | In progress | Typed subjects, SQLite migration, central matching, manifest support, safeguards, operator grant/review/revoke commands, documentation, and focused tests are implemented. Trusted membership lookup for effective-principal review remains. |
+| Group and wildcard-style project access | In progress | Typed subjects, SQLite migration, central matching, safeguards, membership resolver, effective-access CLI review, audit records, documentation, focused tests, and the no-cache decision are implemented. |
 
 ## Definition Of Done
 
@@ -251,6 +258,7 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 - Test grant creation, revocation, concurrent reads and writes, lifecycle compensation, migration, backup, restore, reconciliation, and integrity checks for SQLite.
 - Test that revocation blocks new operations and later operation access while an already-running operation retains its recorded authorization snapshot.
 - Test typed principal, group, and authenticated-`everyone` subjects, including membership changes, anonymous denial, broad-grant revocation, inheritance, and final-owner protection.
+- Test membership review separately from runtime authorization: successful provider expansion, unavailable and not-found groups, freshness reporting, strict CLI failure behavior, JSON output, and the rule that review failures do not silently change authorization decisions.
 - Run the backend test suite defined by the repository workflow after focused authorization tests pass. The focused authorization, operations, and configuration tests pass; the full backend run did not produce a completion result in the current environment.
 - Review the maintained route inventory against the registered FastAPI routes.
 
@@ -291,6 +299,7 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 - **Filesystem and authorization records diverge:** use lifecycle states, compensation, and an explicit reconciliation command.
 - **Deleted names inherit old grants:** attach grants to generation-specific UUIDs, not project names or filenames.
 - **SQLite is deployed beyond its limits:** support one application host and replace the repository before multi-host deployment.
+- **Membership provider is unavailable during review:** report the lookup status and error, keep the provider authoritative, and reconsider caching only if availability or review latency becomes an operational problem.
 
 ## Resolved Decisions
 
@@ -299,11 +308,15 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 - Shared-source read, connection test, schema inspection, preview, and read-only query use one `reader` grant.
 - Resource-addressed denial returns concealed `404`; application-scoped denial returns `403`; lists are filtered.
 - Revocation blocks new work and later operation access but does not automatically cancel work already executing.
-- Direct principal grants are in scope; team and group grants are deferred until authentication supplies verified membership.
+- Typed principal, group, and authenticated-`everyone` subjects are approved. Group matching is disabled until the trusted nginx group source is explicitly enabled. Authenticated-`everyone` matching is disabled by default and requires explicit deployment configuration; anonymous requests remain denied.
+- Runtime group matching and operator membership review are separate concerns. Runtime matching may use verified groups from nginx; effective-principal review requires a trusted membership resolver backed by an identity authority that can enumerate group members.
+- SQLite remains authoritative for grants, resources, roles, and authorization audit events. It does not store group membership in this phase. Effective review queries the trusted provider directly; a future cache would be optional, expiring, non-authoritative, and review-only.
 
 ## Assumptions
 
 - Phase 1 continues to receive authenticated identity from nginx.
+- The configured identity authority exposes a trusted membership lookup for operator review, or an adapter can be added to the authority service that does so. The nginx group header alone cannot provide this capability.
+- Membership review queries the trusted provider directly in this phase; no SQLite membership snapshot cache is required for the initial deployment.
 - Work is ordered by technical dependency, not staffing or release dates.
 - The Phase 1 deployment uses one application host; the current in-memory session and operation managers already require a single worker.
 - Native application authentication remains future work and will adopt the stable principal contract rather than replace authorization policy.

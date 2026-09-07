@@ -25,7 +25,7 @@ def test_adapter_preserves_verified_groups_from_request_state() -> None:
     request = _request("Alice")
     request.state.authenticated_groups = [" editors ", "reviewers"]
 
-    principal = AuthenticationAdapter(enabled=True, environment="production").principal_from_request(request)
+    principal = AuthenticationAdapter(enabled=True, environment="production", groups_enabled=True).principal_from_request(request)
 
     assert principal.group_ids == frozenset({"editors", "reviewers"})
 
