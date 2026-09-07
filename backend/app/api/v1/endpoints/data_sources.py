@@ -487,6 +487,7 @@ async def test_data_source_connection(
 @router.get("/{name}/status", response_model=DataSourceStatus, summary="Get data source status")
 async def get_data_source_status(
     name: str,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(data_source_reader_dependency)],
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceStatus:
     """
@@ -508,14 +509,15 @@ async def get_data_source_status(
         logger.info(f"Getting status for data source: {name}")
 
         # Check if exists
-        config: DataSourceConfig | None = service.load_data_source(Path(name))
+        locator = authorized_data_source.resource.locator
+        config: DataSourceConfig | None = service.load_data_source(Path(locator))
         if config is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Data source '{name}' not found",
             )
 
-        status_info = service.get_status(Path(name))
+        status_info = service.get_status(Path(locator))
         return status_info
     except HTTPException:
         raise
