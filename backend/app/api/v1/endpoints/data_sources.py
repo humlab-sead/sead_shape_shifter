@@ -6,11 +6,15 @@ Supports CRUD operations, connection testing, and status checking.
 """
 
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from loguru import logger
 
 from backend.app.api.dependencies import get_data_source_service
+from backend.app.authorization.dependencies import get_authorization_service, get_principal
+from backend.app.authorization.models import Principal
+from backend.app.authorization.service import AuthorizationService
 from backend.app.models.data_source import (
     DataSourceConfig,
     DataSourceStatus,
@@ -24,6 +28,7 @@ from backend.app.utils.error_handlers import handle_endpoint_errors
 from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
 
 router = APIRouter(prefix="/data-sources", tags=["data-sources"])
+data_source_principal_dependency = get_principal()
 
 ALLOWED_FILE_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 MAX_FILE_SIZE_MB = 50
@@ -127,6 +132,8 @@ async def list_entity_types() -> list[EntityTypeInfo]:
 
 @router.get("", response_model=list[DataSourceConfig], summary="List all global data sources")
 async def list_data_sources(
+    principal: Annotated[Principal, Depends(data_source_principal_dependency)],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     service: DataSourceService = Depends(get_data_source_service),
 ) -> list[DataSourceConfig]:
     """
@@ -144,7 +151,7 @@ async def list_data_sources(
     """
     try:
         logger.info("Listing all global data source files")
-        data_sources: list[DataSourceConfig] = service.list_data_sources()
+        data_sources: list[DataSourceConfig] = service.list_authorized_data_sources(principal, authorization_service)
         logger.info(f"Found {len(data_sources)} data source files")
         return data_sources
     except Exception as e:
