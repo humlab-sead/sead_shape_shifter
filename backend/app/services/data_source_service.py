@@ -7,6 +7,8 @@ from typing import Any
 import yaml
 from loguru import logger
 
+from backend.app.authorization.models import Action, Principal, ResourceType
+from backend.app.authorization.service import AuthorizationService
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig, DataSourceStatus, DataSourceTestResult
 from src.loaders.base_loader import ConnectTestResult, DataLoader, DataLoaders
@@ -127,6 +129,15 @@ class DataSourceService:
                 continue
 
         return result
+
+    def list_authorized_data_sources(self, principal: Principal, authorization_service: AuthorizationService) -> list[DataSourceConfig]:
+        """Return shared data sources readable by a principal."""
+        authorized_sources: list[DataSourceConfig] = []
+        for data_source in self.list_data_sources():
+            resource = authorization_service.repository.get_resource_by_locator(ResourceType.SHARED_DATA_SOURCE, data_source.name)
+            if resource is not None and authorization_service.is_allowed(principal, Action.READ, resource):
+                authorized_sources.append(data_source)
+        return authorized_sources
 
     def load_data_source(
         self,

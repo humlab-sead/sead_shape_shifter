@@ -4,6 +4,7 @@ Integration tests for Data Source API endpoints
 Tests the complete REST API including request/response handling, validation, and error cases.
 """
 
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -11,6 +12,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.api.dependencies import get_data_source_service
+from backend.app.api.v1.endpoints.data_sources import data_source_principal_dependency
+from backend.app.authorization.dependencies import get_authorization_service
+from backend.app.authorization.models import Principal
 from backend.app.main import app
 from backend.app.models.data_source import (
     DataSourceConfig,
@@ -36,7 +40,15 @@ def client(mock_service):
     def override_get_data_source_service():
         return mock_service
 
+    def override_get_principal():
+        return Principal("alice", "test", datetime.now(UTC))
+
+    def override_get_authorization_service():
+        return MagicMock()
+
     app.dependency_overrides[get_data_source_service] = override_get_data_source_service
+    app.dependency_overrides[data_source_principal_dependency] = override_get_principal
+    app.dependency_overrides[get_authorization_service] = override_get_authorization_service
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -46,7 +58,7 @@ class TestListDataSources:
 
     def test_list_data_sources_success(self, client, mock_service):
         """Should return list of data sources."""
-        mock_service.list_data_sources.return_value = [
+        mock_service.list_authorized_data_sources.return_value = [
             DataSourceConfig(name="sead", driver="postgresql", host="localhost", port=5432, database="sead", username="user", **{}),
             DataSourceConfig(name="arbodat", driver="access", options={"filename": "arbodat.mdb"}, **{}),
         ]
@@ -63,7 +75,7 @@ class TestListDataSources:
 
     def test_list_data_sources_empty(self, client, mock_service):
         """Should return empty list when no data sources configured."""
-        mock_service.list_data_sources.return_value = []
+        mock_service.list_authorized_data_sources.return_value = []
 
         response = client.get("/api/v1/data-sources")
 
@@ -72,7 +84,7 @@ class TestListDataSources:
 
     def test_list_data_sources_error(self, client, mock_service):
         """Should return 500 on service error."""
-        mock_service.list_data_sources.side_effect = Exception("Database error")
+        mock_service.list_authorized_data_sources.side_effect = Exception("Database error")
 
         response = client.get("/api/v1/data-sources")
 
