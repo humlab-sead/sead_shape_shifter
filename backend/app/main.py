@@ -24,17 +24,19 @@ from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-argument, redefined-outer-name
     """Application lifespan events."""
-    # Configure logging first
-    configure_logging(
-        log_dir=settings.LOG_DIR,
-        log_level=settings.LOG_LEVEL,
-        enable_file_logging=settings.LOG_FILE_ENABLED,
-        enable_console_logging=settings.LOG_CONSOLE_ENABLED,
-        rotation=settings.LOG_ROTATION,
-        retention=settings.LOG_RETENTION,
-        compression=settings.LOG_COMPRESSION,
-        filter_framework_frames=settings.LOG_FILTER_FRAMEWORK_FRAMES,
-    )
+    # TestClient runs lifespan in a portal thread. Tests keep the existing
+    # pytest logging sinks because replacing queued Loguru sinks there can hang.
+    if settings.LOG_CONFIGURE_ON_STARTUP_ENABLED:
+        configure_logging(
+            log_dir=settings.LOG_DIR,
+            log_level=settings.LOG_LEVEL,
+            enable_file_logging=settings.LOG_FILE_ENABLED,
+            enable_console_logging=settings.LOG_CONSOLE_ENABLED,
+            rotation=settings.LOG_ROTATION,
+            retention=settings.LOG_RETENTION,
+            compression=settings.LOG_COMPRESSION,
+            filter_framework_frames=settings.LOG_FILTER_FRAMEWORK_FRAMES,
+        )
 
     logger.info("")
     logger.info("Starting Shape Shifter Project Editor API")
@@ -48,8 +50,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
 
     # Initialize JVM for UCanAccess (MS Access database support)
     # Must be done once at startup, as JPype doesn't allow JVM restart
-    logger.info("Initializing JVM for MS Access database support...")
-    init_jvm_for_ucanaccess()
+    if settings.UCANACCESS_JVM_STARTUP_ENABLED:
+        logger.info("Initializing JVM for MS Access database support...")
+        init_jvm_for_ucanaccess()
+    else:
+        logger.info("Skipping JVM initialization for MS Access database support")
 
     ingester_registry: IngesterRegistry = get_ingester_registry()
     ingester_registry.discover(search_paths=settings.INGESTER_PATHS, enabled_only=settings.ENABLED_INGESTERS)
