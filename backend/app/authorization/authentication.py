@@ -24,8 +24,14 @@ class AuthenticationAdapter:
             provider = "development"
         if not principal_id:
             raise HTTPException(status_code=401, detail="Authentication required")
+        group_ids = getattr(request.state, "authenticated_groups", ())
+        if not isinstance(group_ids, (tuple, list, set, frozenset)) or any(
+            not isinstance(group, str) or not group.strip() for group in group_ids
+        ):
+            raise HTTPException(status_code=401, detail="Invalid authenticated groups")
         return Principal(
             principal_id=principal_id,
             authentication_provider=provider,
             authenticated_at=datetime.now(UTC),
+            group_ids=frozenset(group.strip() for group in group_ids),
         )

@@ -7,14 +7,17 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from backend.app.authorization.models import Grant, ResourceRecord, ResourceType
+from backend.app.authorization.models import Grant, GrantSubjectType, ResourceRecord, ResourceType
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
 
 
 def integrity_check(path: Path) -> bool:
     """Return whether SQLite reports an intact authorization database."""
-    with sqlite3.connect(path) as connection:
-        result = connection.execute("PRAGMA integrity_check").fetchone()
+    try:
+        with sqlite3.connect(path) as connection:
+            result = connection.execute("PRAGMA integrity_check").fetchone()
+    except sqlite3.DatabaseError:
+        return False
     return bool(result and result[0] == "ok")
 
 
@@ -77,7 +80,8 @@ def reconcile_manifest(path: Path, database: Path) -> dict[str, int]:
                 missing_grants += len(resource.get("grants", []))
                 continue
             for grant in resource.get("grants", []):
-                if not _grant_exists(repository, grant["principal_id"].strip(), record, grant["role"].strip()):
+                subject_type, subject_id = _manifest_subject(grant)
+                if not repository.grant_exists(subject_type, subject_id, record.resource_id, grant["role"].strip()):
                     missing_grants += 1
         return {
             "missing_administrators": missing_administrators,
@@ -138,8 +142,18 @@ def _validate_resource(resource: Any) -> None:
     if not isinstance(grants, list):
         raise ValueError("Manifest resource grants must be a list")
     for grant in grants:
-        if not isinstance(grant, dict) or not isinstance(grant.get("principal_id"), str) or not grant["principal_id"].strip():
-            raise ValueError("Each manifest grant needs a non-empty principal_id")
+        if not isinstance(grant, dict):
+            raise ValueError("Each manifest grant must be an object")
+        if "principal_id" in grant and (not isinstance(grant["principal_id"], str) or not grant["principal_id"].strip()):
+            raise ValueError("Manifest principal_id must be a non-empty string")
+        if "principal_id" not in grant and (not isinstance(grant.get("subject_id"), str) or not grant["subject_id"].strip()):
+            raise ValueError("Each typed manifest grant needs a non-empty subject_id")
+        try:
+            subject_type, subject_id = _manifest_subject(grant)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
+        if subject_type == GrantSubjectType.EVERYONE and subject_id != "authenticated":
+            raise ValueError("Everyone grants must use subject_id 'authenticated'")
         if not isinstance(grant.get("role"), str) or not grant["role"].strip():
             raise ValueError("Each manifest grant needs a non-empty role")
 
@@ -185,14 +199,23 @@ def _apply_grants(
         resource_type = ResourceType(resource["resource_type"])
         record = resources_by_locator[(resource_type, resource["locator"].strip())]
         for grant in resource.get("grants", []):
-            principal_id = grant["principal_id"].strip()
+            subject_type, subject_id = _manifest_subject(grant)
             role = grant["role"].strip()
-            if _grant_exists(repository, principal_id, record, role):
+            if repository.grant_exists(subject_type, subject_id, record.resource_id, role):
                 continue
-            repository.add_grant(Grant(principal_id, record.resource_id, role, created_at, actor_principal_id))
+            repository.add_grant(Grant(subject_id, record.resource_id, role, created_at, actor_principal_id, subject_type=subject_type))
             created += 1
     return created
 
 
-def _grant_exists(repository: SQLiteAuthorizationRepository, principal_id: str, resource: ResourceRecord, role: str) -> bool:
-    return any(grant.resource_id == resource.resource_id and grant.role == role for grant in repository.list_grants(principal_id))
+def _manifest_subject(grant: dict[str, Any]) -> tuple[GrantSubjectType, str]:
+    """Normalize legacy principal and typed manifest subject fields."""
+    if "principal_id" in grant:
+        if "subject_type" in grant and grant["subject_type"] != GrantSubjectType.PRINCIPAL.value:
+            raise ValueError("principal_id grants must use subject_type 'principal'")
+        return GrantSubjectType.PRINCIPAL, grant["principal_id"].strip()
+    try:
+        subject_type = GrantSubjectType(grant.get("subject_type"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Unknown manifest subject_type: {grant.get('subject_type')}") from exc
+    return subject_type, grant["subject_id"].strip()

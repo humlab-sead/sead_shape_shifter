@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Protocol
 from uuid import UUID, uuid4
 
-from backend.app.authorization.models import AuditEvent, Grant, ResourceRecord, ResourceType
+from backend.app.authorization.models import AuditEvent, Grant, GrantSubjectType, ResourceRecord, ResourceType
 
 
 class AuthorizationRepository(Protocol):
@@ -23,11 +23,24 @@ class AuthorizationRepository(Protocol):
 
     def list_grants(self, principal_id: str) -> list[Grant]: ...
 
+    def list_all_grants(self) -> list[Grant]: ...
+
+    def list_matching_grants(self, principal_id: str, group_ids: Sequence[str]) -> list[Grant]: ...
+
+    def grant_exists(self, subject_type: GrantSubjectType, subject_id: str, resource_id: UUID, role: str) -> bool: ...
+
     def list_application_roles(self, principal_id: str) -> list[str]: ...
 
     def update_resource_lifecycle(self, resource_id: UUID, lifecycle_state: str) -> None: ...
 
-    def remove_grant(self, principal_id: str, resource_id: UUID, role: str, actor_principal_id: str) -> None: ...
+    def remove_grant(
+        self,
+        principal_id: str,
+        resource_id: UUID,
+        role: str,
+        actor_principal_id: str,
+        subject_type: GrantSubjectType = GrantSubjectType.PRINCIPAL,
+    ) -> None: ...
 
     def remove_application_role(self, principal_id: str, role: str, actor_principal_id: str) -> None: ...
 
@@ -98,6 +111,26 @@ class SQLiteAuthorizationRepository:
                     INSERT INTO schema_version(version, applied_at) VALUES (1, CURRENT_TIMESTAMP);
                     """
                 )
+                current = 1
+            if current < 2:
+                self._connection.executescript(
+                    """
+                    ALTER TABLE grant_record RENAME TO grant_record_v1;
+                    CREATE TABLE grant_record (
+                        subject_type TEXT NOT NULL,
+                        subject_id TEXT NOT NULL,
+                        resource_id TEXT NOT NULL REFERENCES resource(resource_id),
+                        role TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        created_by TEXT NOT NULL,
+                        PRIMARY KEY(subject_type, subject_id, resource_id, role)
+                    );
+                    INSERT INTO grant_record(subject_type, subject_id, resource_id, role, created_at, created_by)
+                        SELECT 'principal', principal_id, resource_id, role, created_at, created_by FROM grant_record_v1;
+                    DROP TABLE grant_record_v1;
+                    INSERT INTO schema_version(version, applied_at) VALUES (2, CURRENT_TIMESTAMP);
+                    """
+                )
 
     def create_resource(self, resource: ResourceRecord) -> None:
         """Persist a server-owned resource record."""
@@ -115,10 +148,19 @@ class SQLiteAuthorizationRepository:
 
     def add_grant(self, grant: Grant) -> None:
         """Persist a resource grant."""
+        if grant.subject_type != GrantSubjectType.PRINCIPAL and grant.role == "owner":
+            raise ValueError("Only a principal may receive the owner role")
         with self._connection:
             self._connection.execute(
-                "INSERT INTO grant_record(principal_id, resource_id, role, created_at, created_by) VALUES (?, ?, ?, ?, ?)",
-                (grant.principal_id, str(grant.resource_id), grant.role, grant.created_at.isoformat(), grant.created_by),
+                "INSERT INTO grant_record(subject_type, subject_id, resource_id, role, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    grant.subject_type.value,
+                    grant.subject_id,
+                    str(grant.resource_id),
+                    grant.role,
+                    grant.created_at.isoformat(),
+                    grant.created_by,
+                ),
             )
             self._record_audit(
                 actor_principal_id=grant.created_by,
@@ -157,8 +199,15 @@ class SQLiteAuthorizationRepository:
                 outcome="allowed",
             )
 
-    def remove_grant(self, principal_id: str, resource_id: UUID, role: str, actor_principal_id: str) -> None:
-        """Remove a grant unless it would leave a project without an owner."""
+    def remove_grant(
+        self,
+        principal_id: str,
+        resource_id: UUID,
+        role: str,
+        actor_principal_id: str,
+        subject_type: GrantSubjectType = GrantSubjectType.PRINCIPAL,
+    ) -> None:
+        """Remove a typed grant unless it would leave a project without an owner."""
         with self._connection:
             if role == "owner":
                 owner_count = self._connection.execute(
@@ -168,8 +217,8 @@ class SQLiteAuthorizationRepository:
                 if owner_count <= 1:
                     raise ValueError("The final project owner cannot be removed")
             deleted = self._connection.execute(
-                "DELETE FROM grant_record WHERE principal_id = ? AND resource_id = ? AND role = ?",
-                (principal_id, str(resource_id), role),
+                "DELETE FROM grant_record WHERE subject_type = ? AND subject_id = ? AND resource_id = ? AND role = ?",
+                (subject_type.value, principal_id, str(resource_id), role),
             ).rowcount
             if deleted != 1:
                 raise ValueError("Grant does not exist")
@@ -241,8 +290,36 @@ class SQLiteAuthorizationRepository:
 
     def list_grants(self, principal_id: str) -> list[Grant]:
         """Load all resource grants for a principal."""
-        rows = self._connection.execute("SELECT * FROM grant_record WHERE principal_id = ?", (principal_id,)).fetchall()
+        rows = self._connection.execute(
+            "SELECT * FROM grant_record WHERE subject_type = 'principal' AND subject_id = ?", (principal_id,)
+        ).fetchall()
         return [_grant(row) for row in rows]
+
+    def list_all_grants(self) -> list[Grant]:
+        """Load all resource grants for operator review."""
+        rows = self._connection.execute("SELECT * FROM grant_record ORDER BY resource_id, subject_type, subject_id, role").fetchall()
+        return [_grant(row) for row in rows]
+
+    def list_matching_grants(self, principal_id: str, group_ids: Sequence[str]) -> list[Grant]:
+        """Load direct, verified-group, and authenticated-everyone grants."""
+        placeholders = ", ".join("?" for _ in group_ids)
+        group_clause = f"OR (subject_type = 'group' AND subject_id IN ({placeholders}))" if group_ids else ""
+        rows = self._connection.execute(
+            "SELECT * FROM grant_record WHERE (subject_type = 'principal' AND subject_id = ?) "
+            f"{group_clause} OR subject_type = 'everyone'",
+            (principal_id, *group_ids),
+        ).fetchall()
+        return [_grant(row) for row in rows]
+
+    def grant_exists(self, subject_type: GrantSubjectType, subject_id: str, resource_id: UUID, role: str) -> bool:
+        """Return whether an exact typed grant exists."""
+        return (
+            self._connection.execute(
+                "SELECT 1 FROM grant_record WHERE subject_type = ? AND subject_id = ? AND resource_id = ? AND role = ?",
+                (subject_type.value, subject_id, str(resource_id), role),
+            ).fetchone()
+            is not None
+        )
 
     def list_application_roles(self, principal_id: str) -> list[str]:
         """Load all application roles for a principal."""
@@ -296,11 +373,12 @@ def _resource(row: sqlite3.Row) -> ResourceRecord:
 
 def _grant(row: sqlite3.Row) -> Grant:
     return Grant(
-        principal_id=row["principal_id"],
+        subject_id=row["subject_id"],
         resource_id=UUID(row["resource_id"]),
         role=row["role"],
         created_at=datetime.fromisoformat(row["created_at"]),
         created_by=row["created_by"],
+        subject_type=GrantSubjectType(row["subject_type"]),
     )
 
 

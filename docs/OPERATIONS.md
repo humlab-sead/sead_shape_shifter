@@ -146,15 +146,32 @@ docker compose exec shape-shifter python -m backend.app.scripts.authorization re
    /app/state/authorization-manifest.json
 ```
 
-Manifest application is idempotent. It creates missing resource records, administrator roles, and grants without changing existing matching records.
+Manifest application is idempotent. It creates missing resource records, administrator roles, and grants without changing existing matching records. Typed grants may use `subject_type` and `subject_id`; supported types are `principal`, `group`, and authenticated `everyone` with subject ID `authenticated`. The legacy `principal_id` form remains supported for direct-principal grants.
 
 #### Grant review and revocation
 
-The reviewed manifest is the only supported operator workflow for assigning initial project ownership, shared-data-source access, and administrator access. Use `reconcile` to review whether the database contains every assignment required by that manifest.
+The reviewed manifest is the supported workflow for initial project ownership, shared-data-source access, and administrator access. Use `reconcile` to review whether the database contains every assignment required by that manifest. Review current typed resource grants with:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization list-grants
+```
+
+Assign or revoke a grant with an explicit actor and typed subject. Both commands support `--dry-run`:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization grant \
+   --resource-type project --locator <project-locator> \
+   --subject-type group --subject-id <verified-group-id> --role editor --actor <operator-principal-id>
+docker compose exec shape-shifter python -m backend.app.scripts.authorization revoke \
+   --resource-type project --locator <project-locator> \
+   --subject-type group --subject-id <verified-group-id> --role editor --actor <operator-principal-id>
+```
+
+The application displays typed subjects but does not infer group membership. Effective group members must be reviewed in the trusted authentication provider. Broad subjects cannot receive `owner`.
 
 Do not edit the SQLite database directly. Direct changes bypass the authorization repository's audit records and final-owner and final-administrator protections.
 
-Ongoing grant review, grant assignment, grant revocation, and application-role management do not yet have a supported operator API or command. The authorization repository enforces audit events and prevents removal of the final project owner or application administrator, but the operator management interface remains pending. Do not claim authorization cutover is complete until that interface and its documentation are available.
+Application-role management remains outside these resource-grant commands. The authorization repository records grant mutations and prevents removal of the final project owner or application administrator.
 
 #### Enforcement cutover
 

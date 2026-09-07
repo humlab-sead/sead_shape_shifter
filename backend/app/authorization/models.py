@@ -41,6 +41,14 @@ class ApplicationRole(StrEnum):
     ADMIN = "admin"
 
 
+class GrantSubjectType(StrEnum):
+    """Kinds of subjects that can receive a resource grant."""
+
+    PRINCIPAL = "principal"
+    GROUP = "group"
+    EVERYONE = "everyone"
+
+
 @dataclass(frozen=True, slots=True)
 class Principal:
     """Stable identity used for grant lookup."""
@@ -48,6 +56,7 @@ class Principal:
     principal_id: str
     authentication_provider: str
     authenticated_at: datetime
+    group_ids: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,13 +84,19 @@ class ResourceRecord:
 
 @dataclass(frozen=True, slots=True)
 class Grant:
-    """Role assigned to a principal for a resource."""
+    """Role assigned to a typed subject for a resource."""
 
-    principal_id: str
+    subject_id: str
     resource_id: UUID
     role: str
     created_at: datetime
     created_by: str
+    subject_type: GrantSubjectType = GrantSubjectType.PRINCIPAL
+
+    @property
+    def principal_id(self) -> str:
+        """Return the subject ID for compatibility with direct-principal callers."""
+        return self.subject_id
 
 
 @dataclass(frozen=True, slots=True)
