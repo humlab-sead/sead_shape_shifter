@@ -1,11 +1,13 @@
 """API endpoints for entity task management and progress tracking."""
 
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 
+from backend.app.authorization.dependencies import require_project
+from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.task import ProjectTaskStatus, TaskNoteRequest, TaskNoteResponse, TaskUpdateResponse
@@ -20,7 +22,10 @@ router = APIRouter()
 
 @router.get("/projects/{name}/tasks", response_model=ProjectTaskStatus)
 @handle_endpoint_errors
-async def get_project_task_status(name: str) -> ProjectTaskStatus:
+async def get_project_task_status(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> ProjectTaskStatus:
     """
     Get task status for all entities in project.
 
@@ -77,7 +82,7 @@ async def get_project_task_status(name: str) -> ProjectTaskStatus:
         }
     """
     task_service = get_task_service()
-    result = await task_service.compute_status(name)
+    result = await task_service.compute_status(authorized_project.resource.locator)
 
     logger.info(
         f"Task status for '{name}': "
@@ -92,6 +97,7 @@ async def get_project_task_status(name: str) -> ProjectTaskStatus:
 @handle_endpoint_errors
 async def initialize_task_list(
     name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     strategy: str = "dependency-order",
 ) -> dict[str, Any]:
     """
@@ -122,7 +128,7 @@ async def initialize_task_list(
     """
     task_service = get_task_service()
 
-    result = await task_service.initialize_task_list(name, strategy)
+    result = await task_service.initialize_task_list(authorized_project.resource.locator, strategy)
 
     logger.info(f"Initialized task list for '{name}' with strategy '{strategy}'")
 
@@ -131,7 +137,11 @@ async def initialize_task_list(
 
 @router.post("/projects/{name}/tasks/{entity_name}/complete", response_model=TaskUpdateResponse)
 @handle_endpoint_errors
-async def mark_task_complete(name: str, entity_name: str) -> TaskUpdateResponse:
+async def mark_task_complete(
+    name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> TaskUpdateResponse:
     """
     Mark entity task as complete.
 
@@ -167,7 +177,7 @@ async def mark_task_complete(name: str, entity_name: str) -> TaskUpdateResponse:
     task_service = get_task_service()
 
     try:
-        result = await task_service.mark_complete(name, entity_name)
+        result = await task_service.mark_complete(authorized_project.resource.locator, entity_name)
 
         logger.info(f"Marked '{entity_name}' as done in project '{name}'")
 
@@ -185,7 +195,11 @@ async def mark_task_complete(name: str, entity_name: str) -> TaskUpdateResponse:
 
 @router.post("/projects/{name}/tasks/{entity_name}/ignore", response_model=TaskUpdateResponse)
 @handle_endpoint_errors
-async def mark_task_ignored(name: str, entity_name: str) -> TaskUpdateResponse:
+async def mark_task_ignored(
+    name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> TaskUpdateResponse:
     """
     Mark entity task as ignored.
 
@@ -211,7 +225,7 @@ async def mark_task_ignored(name: str, entity_name: str) -> TaskUpdateResponse:
         }
     """
     task_service = get_task_service()
-    result = await task_service.mark_ignored(name, entity_name)
+    result = await task_service.mark_ignored(authorized_project.resource.locator, entity_name)
 
     logger.info(f"Marked '{entity_name}' as ignored in project '{name}'")
 
@@ -225,7 +239,11 @@ async def mark_task_ignored(name: str, entity_name: str) -> TaskUpdateResponse:
 
 @router.delete("/projects/{name}/tasks/{entity_name}", response_model=TaskUpdateResponse)
 @handle_endpoint_errors
-async def reset_task_status(name: str, entity_name: str) -> TaskUpdateResponse:
+async def reset_task_status(
+    name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> TaskUpdateResponse:
     """
     Reset entity task status to todo.
 
@@ -250,7 +268,7 @@ async def reset_task_status(name: str, entity_name: str) -> TaskUpdateResponse:
         }
     """
     task_service = get_task_service()
-    result = await task_service.reset_status(name, entity_name)
+    result = await task_service.reset_status(authorized_project.resource.locator, entity_name)
 
     logger.info(f"Reset '{entity_name}' status in project '{name}'")
 
@@ -264,7 +282,11 @@ async def reset_task_status(name: str, entity_name: str) -> TaskUpdateResponse:
 
 @router.post("/projects/{name}/tasks/{entity_name}/todo", response_model=TaskUpdateResponse)
 @handle_endpoint_errors
-async def mark_task_todo(name: str, entity_name: str) -> TaskUpdateResponse:
+async def mark_task_todo(
+    name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> TaskUpdateResponse:
     """
     Mark entity task as todo (planned but not yet created).
 
@@ -290,7 +312,7 @@ async def mark_task_todo(name: str, entity_name: str) -> TaskUpdateResponse:
         }
     """
     task_service: TaskService = get_task_service()
-    result: dict[str, Any] = await task_service.mark_todo(name, entity_name)
+    result: dict[str, Any] = await task_service.mark_todo(authorized_project.resource.locator, entity_name)
 
     logger.info(f"Marked '{entity_name}' as todo in project '{name}'")
 
@@ -304,7 +326,11 @@ async def mark_task_todo(name: str, entity_name: str) -> TaskUpdateResponse:
 
 @router.post("/projects/{name}/tasks/{entity_name}/ongoing", response_model=TaskUpdateResponse)
 @handle_endpoint_errors
-async def mark_task_ongoing(name: str, entity_name: str) -> TaskUpdateResponse:
+async def mark_task_ongoing(
+    name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> TaskUpdateResponse:
     """
     Mark entity task as ongoing (in progress).
 
@@ -330,7 +356,7 @@ async def mark_task_ongoing(name: str, entity_name: str) -> TaskUpdateResponse:
         }
     """
     task_service: TaskService = get_task_service()
-    result = await task_service.mark_ongoing(name, entity_name)
+    result = await task_service.mark_ongoing(authorized_project.resource.locator, entity_name)
 
     logger.info(f"Marked '{entity_name}' as ongoing in project '{name}'")
 
@@ -344,7 +370,11 @@ async def mark_task_ongoing(name: str, entity_name: str) -> TaskUpdateResponse:
 
 @router.post("/projects/{name}/tasks/{entity_name}/flag", response_model=dict[str, Any])
 @handle_endpoint_errors
-async def toggle_task_flagged(name: str, entity_name: str) -> dict[str, Any]:
+async def toggle_task_flagged(
+    name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> dict[str, Any]:
     """
     Toggle flagged status for an entity task.
 
@@ -370,7 +400,7 @@ async def toggle_task_flagged(name: str, entity_name: str) -> dict[str, Any]:
         }
     """
     task_service: TaskService = get_task_service()
-    result = await task_service.toggle_flagged(name, entity_name)
+    result = await task_service.toggle_flagged(authorized_project.resource.locator, entity_name)
 
     logger.info(f"Toggled flag for '{entity_name}' in project '{name}': {result['flagged']}")
 
@@ -379,10 +409,14 @@ async def toggle_task_flagged(name: str, entity_name: str) -> dict[str, Any]:
 
 @router.get("/projects/{name}/tasks/{entity_name}/note", response_model=TaskNoteResponse)
 @handle_endpoint_errors
-async def get_task_note(name: str, entity_name: str) -> TaskNoteResponse:
+async def get_task_note(
+    name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> TaskNoteResponse:
     """Get the current note for an entity task."""
     task_service: TaskService = get_task_service()
-    result = await task_service.get_note(name, entity_name)
+    result = await task_service.get_note(authorized_project.resource.locator, entity_name)
 
     return TaskNoteResponse(
         success=result["success"],
@@ -395,10 +429,15 @@ async def get_task_note(name: str, entity_name: str) -> TaskNoteResponse:
 
 @router.put("/projects/{name}/tasks/{entity_name}/note", response_model=TaskNoteResponse)
 @handle_endpoint_errors
-async def set_task_note(name: str, entity_name: str, request: TaskNoteRequest) -> TaskNoteResponse:
+async def set_task_note(
+    name: str,
+    entity_name: str,
+    request: TaskNoteRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> TaskNoteResponse:
     """Create or update a note for an entity task."""
     task_service: TaskService = get_task_service()
-    result = await task_service.set_note(name, entity_name, request.note)
+    result = await task_service.set_note(authorized_project.resource.locator, entity_name, request.note)
 
     logger.info(f"Updated note for '{entity_name}' in project '{name}'")
 
@@ -413,10 +452,14 @@ async def set_task_note(name: str, entity_name: str, request: TaskNoteRequest) -
 
 @router.delete("/projects/{name}/tasks/{entity_name}/note", response_model=TaskNoteResponse)
 @handle_endpoint_errors
-async def delete_task_note(name: str, entity_name: str) -> TaskNoteResponse:
+async def delete_task_note(
+    name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> TaskNoteResponse:
     """Remove the current note for an entity task."""
     task_service: TaskService = get_task_service()
-    result = await task_service.remove_note(name, entity_name)
+    result = await task_service.remove_note(authorized_project.resource.locator, entity_name)
 
     logger.info(f"Removed note for '{entity_name}' in project '{name}'")
 
@@ -431,7 +474,10 @@ async def delete_task_note(name: str, entity_name: str) -> TaskNoteResponse:
 
 @router.post("/projects/{name}/tasks/migrate-to-sidecar", response_model=dict[str, Any])
 @handle_endpoint_errors
-async def migrate_tasks_to_sidecar(name: str) -> dict[str, Any]:
+async def migrate_tasks_to_sidecar(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> dict[str, Any]:
     """
     Migrate task list from main project file to sidecar file.
 
@@ -463,7 +509,7 @@ async def migrate_tasks_to_sidecar(name: str) -> dict[str, Any]:
     try:
         # Get project file path
         projects_dir = Path(settings.PROJECTS_DIR)
-        filename = projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
+        filename = projects_dir / ProjectNameMapper.to_path(authorized_project.resource.locator) / "shapeshifter.yml"
 
         if not filename.exists():
             raise HTTPException(status_code=404, detail=f"Project not found: {name}")
@@ -508,7 +554,7 @@ async def migrate_tasks_to_sidecar(name: str) -> dict[str, Any]:
 
         # Invalidate cache to force reload
         project_service = get_project_service()
-        project_service.state.invalidate(name)
+        project_service.state.invalidate(authorized_project.resource.locator)
 
         logger.info(f"Successfully migrated task_list to sidecar for '{name}'")
 
@@ -529,7 +575,10 @@ async def migrate_tasks_to_sidecar(name: str) -> dict[str, Any]:
 
 @router.get("/projects/{name}/tasks/sidecar/status", response_model=dict[str, Any])
 @handle_endpoint_errors
-async def get_sidecar_status(name: str) -> dict[str, Any]:
+async def get_sidecar_status(
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> dict[str, Any]:
     """
     Get current sidecar status for task list.
 
@@ -568,7 +617,7 @@ async def get_sidecar_status(name: str) -> dict[str, Any]:
     try:
         # Get project file path
         projects_dir = Path(settings.PROJECTS_DIR)
-        filename: Path = projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
+        filename: Path = projects_dir / ProjectNameMapper.to_path(authorized_project.resource.locator) / "shapeshifter.yml"
 
         if not filename.exists():
             raise HTTPException(status_code=404, detail=f"Project not found: {name}")

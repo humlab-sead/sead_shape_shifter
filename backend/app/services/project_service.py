@@ -7,6 +7,8 @@ from typing import Any, Iterable
 from fastapi import UploadFile
 from loguru import logger
 
+from backend.app.authorization.models import Action, Principal, ResourceRecord, ResourceType
+from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings
 from backend.app.core.state_manager import ApplicationStateManager, get_app_state_manager
 from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError
@@ -152,6 +154,31 @@ class ProjectService:
 
         logger.debug(f"Found {len(configs)} project(s) satisfying specification")
         return configs
+
+    def list_authorized_projects(self, principal: Principal, authorization_service: AuthorizationService) -> list[ProjectMetadata]:
+        """Return project metadata entries readable by a principal."""
+        authorized_projects: list[ProjectMetadata] = []
+        for metadata in self.list_projects():
+            resource = authorization_service.repository.get_resource_by_locator(ResourceType.PROJECT, metadata.name)
+            if resource is not None and authorization_service.is_allowed(principal, Action.READ, resource):
+                authorized_projects.append(metadata)
+        return authorized_projects
+
+    def assign_project_owner(
+        self,
+        project_name: str,
+        principal: Principal,
+        authorization_service: AuthorizationService,
+    ) -> ResourceRecord:
+        """Create a project authorization record and assign the principal as owner."""
+        try:
+            return authorization_service.register_project(principal, project_name)
+        except ValueError as error:
+            raise ResourceConflictError(
+                message=str(error),
+                resource_type="project",
+                resource_id=project_name,
+            ) from error
 
     def load_project(self, name: str, force_reload: bool = False) -> Project:
         """

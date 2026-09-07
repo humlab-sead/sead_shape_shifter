@@ -405,10 +405,10 @@ class TestConfigurationsBackups:
         # Get backup path
         backups_response = client.get("/api/v1/projects/test_project/backups")
         backups = backups_response.json()
-        backup_path = backups[0]["file_path"]
+        backup_name = backups[0]["file_name"]
 
         # Restore
-        response = client.post("/api/v1/projects/test_project/restore", json={"backup_path": backup_path})
+        response = client.post("/api/v1/projects/test_project/restore", json={"backup_name": backup_name})
         assert response.status_code == 200
         restored_data = response.json()
 
