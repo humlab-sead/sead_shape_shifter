@@ -47,6 +47,16 @@ class AuthorizationService:
         self.repository.add_grant(Grant(principal.principal_id, resource.resource_id, "owner", datetime.now(UTC), principal.principal_id))
         return resource
 
+    def register_shared_data_source(self, principal: Principal, locator: str) -> ResourceRecord:
+        """Create a shared data source resource and assign the creator read access."""
+        if self.repository.get_resource_by_locator(ResourceType.SHARED_DATA_SOURCE, locator) is not None:
+            raise ValueError(f"Authorization resource already exists for shared data source: {locator}")
+
+        resource = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, locator)
+        self.repository.create_resource(resource)
+        self.repository.add_grant(Grant(principal.principal_id, resource.resource_id, "reader", datetime.now(UTC), principal.principal_id))
+        return resource
+
     def transition_resource(self, resource: ResourceRecord, lifecycle_state: str) -> None:
         """Set the lifecycle state of a server-owned resource."""
         self.repository.update_resource_lifecycle(resource.resource_id, lifecycle_state)
