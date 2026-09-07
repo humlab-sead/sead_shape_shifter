@@ -1,11 +1,17 @@
 """Tests for FastAPI authorization dependencies."""
 
+import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
+from fastapi.routing import APIRoute
 
+from backend.app.api.v1.endpoints.projects import (
+    _authorize_referenced_shared_data_sources,
+)
+from backend.app.api.v1.endpoints.projects import router as projects_router
 from backend.app.authorization.dependencies import (
     require_application_action,
     require_operation,
@@ -20,6 +26,13 @@ from backend.app.core.operation_manager import operation_manager
 
 def _principal(principal_id: str = "alice") -> Principal:
     return Principal(principal_id, "test", datetime.now(UTC))
+
+
+def _json_request(payload: dict[str, str]) -> Request:
+    async def receive() -> dict[str, object]:
+        return {"type": "http.request", "body": json.dumps(payload).encode(), "more_body": False}
+
+    return Request({"type": "http", "method": "POST", "headers": []}, receive=receive)
 
 
 @pytest.mark.asyncio
@@ -85,10 +98,24 @@ async def test_shared_data_source_dependency_returns_authorized_resource(tmp_pat
     repository.add_grant(Grant("alice", resource.resource_id, "reader", datetime.now(UTC), "admin"))
     dependency = require_shared_data_source(Action.READ)
 
-    result = await dependency(_principal(), AuthorizationService(repository), filename="source-a.yml")
+    result = await dependency(_json_request({}), _principal(), AuthorizationService(repository), filename="source-a.yml")
 
     assert result.resource.resource_id == resource.resource_id
     assert dependency.authorization_requirement == {"resource_type": "shared_data_source", "action": "read"}
+    repository.close()
+
+
+@pytest.mark.asyncio
+async def test_shared_data_source_dependency_authorizes_source_filename_from_request_body(tmp_path) -> None:
+    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
+    resource = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "source-a")
+    repository.create_resource(resource)
+    repository.add_grant(Grant("alice", resource.resource_id, "reader", datetime.now(UTC), "admin"))
+    dependency = require_shared_data_source(Action.READ)
+
+    result = await dependency(_json_request({"source_filename": "source-a.yml"}), _principal(), AuthorizationService(repository))
+
+    assert result.resource.resource_id == resource.resource_id
     repository.close()
 
 
@@ -100,10 +127,51 @@ async def test_shared_data_source_dependency_conceals_unknown_or_unauthorized_re
     dependency = require_shared_data_source(Action.READ)
 
     with pytest.raises(HTTPException) as error:
-        await dependency(_principal("bob"), AuthorizationService(repository), name="source-a")
+        await dependency(_json_request({}), _principal("bob"), AuthorizationService(repository), name="source-a")
 
     assert error.value.status_code == 404
     repository.close()
+
+
+def test_project_source_references_require_access_to_every_shared_source(tmp_path) -> None:
+    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
+    readable_resource = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "readable-source")
+    unavailable_resource = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "unavailable-source")
+    repository.create_resource(readable_resource)
+    repository.create_resource(unavailable_resource)
+    repository.add_grant(Grant("alice", readable_resource.resource_id, "reader", datetime.now(UTC), "admin"))
+    service = AuthorizationService(repository)
+
+    _authorize_referenced_shared_data_sources({"readable": "@include: readable-source.yml"}, _principal(), service)
+
+    with pytest.raises(HTTPException) as error:
+        _authorize_referenced_shared_data_sources(
+            {"readable": "@include: readable-source.yml", "unavailable": "@include: unavailable-source.yml"},
+            _principal(),
+            service,
+        )
+
+    assert error.value.status_code == 404
+    repository.close()
+
+
+def test_project_data_source_connection_requires_project_and_shared_source_access() -> None:
+    route = next(
+        route
+        for route in projects_router.routes
+        if isinstance(route, APIRoute) and route.path == "/projects/{name}/data-sources" and "POST" in route.methods
+    )
+
+    requirements = {
+        tuple(sorted(dependency.call.authorization_requirement.items()))
+        for dependency in route.dependant.dependencies
+        if hasattr(dependency.call, "authorization_requirement")
+    }
+
+    assert requirements == {
+        (("action", "edit"), ("resource_type", "project")),
+        (("action", "read"), ("resource_type", "shared_data_source")),
+    }
 
 
 @pytest.mark.asyncio

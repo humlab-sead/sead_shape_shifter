@@ -9,7 +9,14 @@ from fastapi.responses import Response
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from backend.app.authorization.dependencies import get_authorization_service, get_principal, require_application_action, require_project
+from backend.app.authorization.dependencies import (
+    authorize_shared_data_source_reference,
+    get_authorization_service,
+    get_principal,
+    require_application_action,
+    require_project,
+    require_shared_data_source,
+)
 from backend.app.authorization.models import Action, AuthorizedResource, Principal
 from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings
@@ -26,8 +33,24 @@ from backend.app.utils.exceptions import BadRequestError, BaseAPIException, NotF
 from src.target_model import DocumentFormat
 
 router = APIRouter()
+shared_data_source_reader_dependency = require_shared_data_source(Action.READ)
 
 # pylint: disable=no-member
+
+
+def _authorize_referenced_shared_data_sources(
+    data_sources: object,
+    principal: Principal,
+    authorization_service: AuthorizationService,
+) -> None:
+    """Require read access to every shared source included in project options."""
+    if not isinstance(data_sources, dict):
+        return
+
+    for source_config in data_sources.values():
+        if isinstance(source_config, str) and source_config.startswith("@include:"):
+            source_filename = source_config.removeprefix("@include:").strip()
+            authorize_shared_data_source_reference(principal, authorization_service, source_filename)
 
 
 # Request/Response Models
@@ -179,6 +202,8 @@ async def update_project(
     name: str,
     request: ProjectUpdateRequest,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+    principal: Annotated[Principal, Depends(get_principal())],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
 ) -> Project:
     """
     Update existing project.
@@ -194,6 +219,7 @@ async def update_project(
         Updated project with new metadata
     """
     project_service: ProjectService = get_project_service()
+    _authorize_referenced_shared_data_sources(request.options.get("data_sources"), principal, authorization_service)
     # Boundary save: replaces only the options section on disk, leaving entities
     # and metadata (and all YAML comments) untouched.  No full-file reload needed.
     project_service.save_options_boundary(authorized_project.resource.locator, request.options or {})
@@ -503,6 +529,7 @@ async def connect_data_source_to_project(
     name: str,
     request: DataSourceConnectionRequest,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+    authorized_data_source: Annotated[AuthorizedResource, Depends(shared_data_source_reader_dependency)],
 ) -> Project:
     """
     Connect a data source to a project.
@@ -534,7 +561,9 @@ async def connect_data_source_to_project(
     project_service.save_options_boundary(authorized_project.resource.locator, project.options)
     updated_config: Project = project_service.load_project(authorized_project.resource.locator, force_reload=True)
 
-    logger.info(f"Connected data source '{request.source_name}' (@include: {request.source_filename}) " f"to project '{name}'")
+    logger.info(
+        f"Connected data source '{request.source_name}' (@include: {authorized_data_source.resource.locator}.yml) " f"to project '{name}'"
+    )
 
     return updated_config
 
@@ -617,6 +646,8 @@ async def update_project_raw_yaml(
     name: str,
     request: RawYamlUpdateRequest,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+    principal: Annotated[Principal, Depends(get_principal())],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
 ) -> Project:
     """
     Update project with raw YAML content.
@@ -648,6 +679,10 @@ async def update_project_raw_yaml(
     # Ensure it's a valid project structure
     if not isinstance(parsed_yaml, dict):
         raise BadRequestError("YAML must be a dictionary")
+
+    options = parsed_yaml.get("options")
+    if isinstance(options, dict):
+        _authorize_referenced_shared_data_sources(options.get("data_sources"), principal, authorization_service)
 
     # Write to file (convert API name to filesystem path: : -> /)
     path_name = ProjectNameMapper.to_path(authorized_project.resource.locator)

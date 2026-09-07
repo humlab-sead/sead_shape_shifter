@@ -71,18 +71,23 @@ def require_shared_data_source(action: Action) -> Callable:
     """Create a dependency that authorizes a shared data source locator for an action."""
 
     async def dependency(
+        request: Request,
         principal: Annotated[Principal, Depends(get_principal())],
         service: Annotated[AuthorizationService, Depends(get_authorization_service)],
         filename: str | None = None,
         name: str | None = None,
         data_source_name: str | None = None,
     ) -> AuthorizedResource:
-        locator = _data_source_locator(filename or name or data_source_name)
-        resource = service.repository.get_resource_by_locator(ResourceType.SHARED_DATA_SOURCE, locator) if locator is not None else None
-        authorized = service.authorize(principal, action, resource) if resource is not None else None
-        if authorized is None:
-            raise HTTPException(status_code=404, detail="Resource not found")
-        return authorized
+        source_reference = filename or name or data_source_name
+        if source_reference is None:
+            try:
+                body = await request.json()
+            except (RuntimeError, ValueError):
+                body = None
+            if isinstance(body, dict):
+                source_reference = body.get("source_filename")
+
+        return authorize_shared_data_source_reference(principal, service, source_reference, action)
 
     dependency.authorization_requirement = {"resource_type": ResourceType.SHARED_DATA_SOURCE.value, "action": action.value}
     return dependency
@@ -93,6 +98,21 @@ def _data_source_locator(value: str | None) -> str | None:
         return None
     path = Path(value)
     return path.with_suffix(".yml").stem if path.suffix == ".yml" else path.stem
+
+
+def authorize_shared_data_source_reference(
+    principal: Principal,
+    service: AuthorizationService,
+    source_reference: str | None,
+    action: Action = Action.READ,
+) -> AuthorizedResource:
+    """Authorize an action on a shared data source referenced by filename."""
+    locator = _data_source_locator(source_reference)
+    resource = service.repository.get_resource_by_locator(ResourceType.SHARED_DATA_SOURCE, locator) if locator is not None else None
+    authorized = service.authorize(principal, action, resource) if resource is not None else None
+    if authorized is None:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    return authorized
 
 
 def require_application_action(action: Action) -> Callable:

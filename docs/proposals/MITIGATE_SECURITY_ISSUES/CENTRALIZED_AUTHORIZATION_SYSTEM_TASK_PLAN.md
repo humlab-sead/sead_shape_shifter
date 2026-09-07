@@ -97,7 +97,7 @@ Protect shared data, database operations, logs, and ingester capabilities.
 - [x] Filter shared-data-source listings by readable grants.
 - [x] Require operator access for shared-data-source creation, upload, update, deletion, and cache administration, using the resource lifecycle service for create and delete.
 - [x] Require shared-data-source access before returning configuration, testing connections, introspecting schemas, previewing tables, or executing queries.
-- [ ] Require both project and shared-source access when a project references a shared source.
+- [x] Require both project and shared-source access when a project references a shared source.
 - [ ] Require administrator access for viewing or downloading application logs.
 - [ ] Require explicit authenticated access for nonsensitive ingester metadata and `operator` for ingester validation and execution.
 - [ ] Require `admin` for ingester configuration and registration.
@@ -167,7 +167,7 @@ All protected routes and operations pass the authorization matrix, the route inv
 | Inventories and migration inputs | Not started | Requires proposal approval and deployment resource review |
 | Authorization foundation | Done | Typed policy, SQLite repository, stable principal adapter, atomic mutation audit, bootstrap, final-assignment protections, schema initialization, manifest dry-run inspection and application, backup, restore, integrity checks, manifest reconciliation, and production startup guards are implemented |
 | Project and child resources | Done | Project and child-resource routes enforce current project authorization. Long-running operations record their principal and stable parent project resource and authorize progress, streaming, cancellation, and result access. Backup restore and execution downloads use server-managed identifiers resolved through project containment checks. Project create, copy, and delete operations register and transition authorization resource records with filesystem operation compensation. |
-| Shared and administrative resources | In progress | Shared data source listings now return only sources with readable grants. Shared data source creation, upload, update, deletion, and schema-cache invalidation now require operator access. Create and delete update authorization resource records. Shared source configuration reads, connection tests, named schema introspection, table previews, query execution, and query-column introspection now require shared-source read access. Ingester execution also depends on capability restrictions |
+| Shared and administrative resources | In progress | Shared data source listings now return only sources with readable grants. Shared data source creation, upload, update, deletion, and schema-cache invalidation now require operator access. Create and delete update authorization resource records. Shared source configuration reads, connection tests, named schema introspection, table previews, query execution, and query-column introspection now require shared-source read access. Project data-source connections and project configuration updates require both project edit access and read access to every referenced shared source. Ingester execution also depends on capability restrictions |
 | Authorization documentation | Not started | Starts with policy decisions and remains aligned through cutover |
 | Validation and cutover | Not started | Requires reviewed initial grants |
 
