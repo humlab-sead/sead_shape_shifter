@@ -9,8 +9,8 @@ from backend.app.services import project_service, validation_service, yaml_servi
 
 
 @pytest.fixture
-def sample_config_data():
-    """Sample configuration data for tests."""
+def sample_project_data():
+    """Sample project data for tests."""
     return {
         "entities": {
             "sample": {
@@ -38,11 +38,11 @@ def reset_services():
     yaml_service._yaml_service = None
 
 
-class TestConfigurationsList:
-    """Tests for listing configurations."""
+class TestProjectsList:
+    """Tests for listing projects."""
 
-    async def test_list_configurations_empty(self, tmp_path, monkeypatch, reset_services, authorized_client):
-        """Test listing when no configurations exist."""
+    async def test_list_projects_empty(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """Test listing when no projects exist."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -50,18 +50,18 @@ class TestConfigurationsList:
         assert response.status_code == 200
         assert response.json() == []
 
-    async def test_list_configurations(self, tmp_path, monkeypatch, reset_services, sample_config_data, authorized_client):
-        """Test listing configurations."""
+    async def test_list_projects(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
+        """Test listing projects."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create test config via API
+        # Create test project via API
         create_response = await authorized_client.post(
-            "/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]}
+            "/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]}
         )
         assert create_response.status_code == 201
 
-        # List configs
+        # List projects
         response = await authorized_client.get("/api/v1/projects")
         assert response.status_code == 200
         configs = response.json()
@@ -70,26 +70,26 @@ class TestConfigurationsList:
         assert configs[0]["entity_count"] == 1
 
 
-class TestConfigurationsGet:
-    """Tests for getting configuration."""
+class TestProjectsGet:
+    """Tests for getting projects."""
 
-    async def test_get_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data, authorized_client):
-        """Test getting existing configuration."""
+    async def test_get_project(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
+        """Test getting existing project."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create config
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]})
+        # Create project
+        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]})
 
-        # Get config
+        # Get project
         response = await authorized_client.get("/api/v1/projects/test_project")
         assert response.status_code == 200
         data = response.json()
         assert data["metadata"]["name"] == "test_project"
         assert "sample" in data["entities"]
 
-    async def test_get_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services, authorized_client):
-        """Test getting non-existent configuration returns 404."""
+    async def test_get_nonexistent_project(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """Test getting non-existent project returns 404."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -97,62 +97,64 @@ class TestConfigurationsGet:
         assert response.status_code == 404
 
 
-class TestConfigurationsCreate:
-    """Tests for creating configurations."""
+class TestProjectsCreate:
+    """Tests for creating projects."""
 
-    async def test_create_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data, authorized_client):
-        """Test creating new configuration."""
+    async def test_create_project(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
+        """Test creating a new project."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = await authorized_client.post("/api/v1/projects", json={"name": "new_config", "entities": sample_config_data["entities"]})
+        response = await authorized_client.post(
+            "/api/v1/projects", json={"name": "new_config", "entities": sample_project_data["entities"]}
+        )
 
         assert response.status_code == 201
         data = response.json()
-        assert data["metadata"]["name"] == "new_config"
+        assert data["metadata"]["name"] == "new_project"
         assert data["metadata"]["entity_count"] == 1
 
-    async def test_create_duplicate_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data, authorized_client):
-        """Test creating duplicate configuration returns 409 Conflict."""
+    async def test_create_duplicate_project(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
+        """Test creating duplicate project returns 409 Conflict."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create first config
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]})
+        # Create first project
+        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]})
 
-        # Try to create duplicate
+        # Try to create duplicate project
         response = await authorized_client.post(
-            "/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]}
+            "/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]}
         )
         assert response.status_code == 409
 
 
-class TestConfigurationsUpdate:
-    """Tests for updating configurations."""
+class TestProjectsUpdate:
+    """Tests for updating projects."""
 
-    async def test_update_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data, authorized_client):
-        """Test updating existing configuration (options only, not entities)."""
+    async def test_update_project(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
+        """Test updating existing project (options only, not entities)."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create config
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]})
+        # Create project
+        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]})
 
-        # Update config options (entities are ignored by update endpoint)
+        # Update project options (entities are ignored by update endpoint)
         updated_options = {"some_option": "value", "another_option": 123}
         response = await authorized_client.put("/api/v1/projects/test_project", json={"entities": {}, "options": updated_options})
 
         assert response.status_code == 200
         data = response.json()
-        # Verify entities are preserved from disk
+        # Verify project entities are preserved from disk
         assert "sample" in data["entities"]
         assert data["entities"]["sample"]["columns"] == ["name", "value"]
         # Verify options were updated
         assert data["options"]["some_option"] == "value"
         assert data["options"]["another_option"] == 123
 
-    async def test_update_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services, authorized_client):
-        """Test updating non-existent configuration returns 404."""
+    async def test_update_nonexistent_project(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """Test updating non-existent project returns 404."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -162,13 +164,13 @@ class TestConfigurationsUpdate:
         )
         assert response.status_code == 404
 
-    async def test_update_metadata(self, tmp_path, monkeypatch, reset_services, sample_config_data, authorized_client):
-        """Test updating configuration metadata."""
+    async def test_update_metadata(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
+        """Test updating existing project metadata."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create config
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]})
+        # Create project
+        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]})
 
         # Update metadata
         metadata_update = {
@@ -186,13 +188,13 @@ class TestConfigurationsUpdate:
         # Verify entities are preserved
         assert "sample" in data["entities"]
 
-    async def test_update_metadata_rename(self, tmp_path, monkeypatch, reset_services, sample_config_data, authorized_client):
-        """Test that renaming via metadata update is ignored (filename is source of truth)."""
+    async def test_update_metadata_rename(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
+        """Test that renaming a project via metadata update is ignored (filename is source of truth)."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create config
-        await authorized_client.post("/api/v1/projects", json={"name": "old_name", "entities": sample_config_data["entities"]})
+        # Create project
+        await authorized_client.post("/api/v1/projects", json={"name": "old_name", "entities": sample_project_data["entities"]})
 
         # Attempt rename via metadata (should be ignored)
         metadata_update = {"name": "new_name"}
@@ -211,14 +213,14 @@ class TestConfigurationsUpdate:
         get_new = await authorized_client.get("/api/v1/projects/new_name")
         assert get_new.status_code == 404
 
-    async def test_update_metadata_rename_conflict(self, tmp_path, monkeypatch, reset_services, sample_config_data, authorized_client):
-        """Test that attempting to rename via metadata doesn't cause conflicts (ignored)."""
+    async def test_update_metadata_rename_conflict(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
+        """Test that attempting to rename a project via metadata doesn't cause conflicts (ignored)."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create two configs
-        await authorized_client.post("/api/v1/projects", json={"name": "config1", "entities": sample_config_data["entities"]})
-        await authorized_client.post("/api/v1/projects", json={"name": "config2", "entities": sample_config_data["entities"]})
+        # Create two projects
+        await authorized_client.post("/api/v1/projects", json={"name": "config1", "entities": sample_project_data["entities"]})
+        await authorized_client.post("/api/v1/projects", json={"name": "config2", "entities": sample_project_data["entities"]})
 
         # Try to rename config1 to config2 (should be ignored, no conflict)
         metadata_update = {"name": "config2"}
@@ -231,18 +233,18 @@ class TestConfigurationsUpdate:
         assert data["metadata"]["name"] == "config1"
 
 
-class TestConfigurationsDelete:
-    """Tests for deleting configurations."""
+class TestProjectsDelete:
+    """Tests for deleting projects."""
 
-    async def test_delete_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data, authorized_client):
-        """Test deleting configuration."""
+    async def test_delete_configuration(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
+        """Test deleting existing project."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create config
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]})
+        # Create project
+        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]})
 
-        # Delete config
+        # Delete project
         response = await authorized_client.delete("/api/v1/projects/test_project")
         assert response.status_code == 204
 
@@ -250,8 +252,8 @@ class TestConfigurationsDelete:
         get_response = await authorized_client.get("/api/v1/projects/test_project")
         assert get_response.status_code == 404
 
-    async def test_delete_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services, authorized_client):
-        """Test deleting non-existent configuration returns 404."""
+    async def test_delete_nonexistent_project(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """Test deleting non-existent project returns 404."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -259,11 +261,11 @@ class TestConfigurationsDelete:
         assert response.status_code == 404
 
 
-class TestConfigurationsValidate:
-    """Tests for configuration validation."""
+class TestProjectsValidate:
+    """Tests for project validation."""
 
     async def test_validate_valid_configuration(self, tmp_path, monkeypatch, reset_services, authorized_client):
-        """Test validating valid configuration."""
+        """Test validating a valid project."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -274,7 +276,7 @@ class TestConfigurationsValidate:
 
         payload = {"name": "test_project", "entities": valid_entities}
 
-        # Create config
+        # Create project
         await authorized_client.post("/api/v1/projects", json=payload)
 
         # Validate
@@ -285,13 +287,13 @@ class TestConfigurationsValidate:
         assert data["error_count"] == 0
 
     async def test_validate_invalid_configuration(self, tmp_path, monkeypatch, reset_services, authorized_client):
-        """Test validating invalid configuration."""
+        """Test validating an invalid project."""
 
         # Use unique name to avoid collision with valid test
         project_name = "invalid_test_project"
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create config with invalid entity (missing keys)
+        # Create project with invalid entity (missing keys)
         invalid_entities = {"sample": {"type": "entity"}}
         await authorized_client.post("/api/v1/projects", json={"name": project_name, "entities": invalid_entities})
 
@@ -302,10 +304,8 @@ class TestConfigurationsValidate:
         assert data["is_valid"] is False
         assert data["error_count"] > 0
 
-    async def test_validate_configuration_resolves_include_relative_to_project(
-        self, tmp_path, monkeypatch, reset_services, authorized_client
-    ):
-        """Test @include resolves relative to the project YAML file path."""
+    async def test_validate_project_resolves_include_relative_to_project(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """Test @include in project resolves relative to the project file path."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -323,7 +323,7 @@ class TestConfigurationsValidate:
 
         await authorized_client.post("/api/v1/projects", json=payload)
 
-        # Create the included file next to the project YAML.
+        # Create the included file next to the project YAML file.
         (tmp_path / "digidiggie-options.yml").write_text(
             "driver: ucanaccess\noptions:\n  filename: ./projects/digidiggie_dev.accdb\n  ucanaccess_dir: lib/ucanaccess\n",
             encoding="utf-8",
@@ -336,10 +336,8 @@ class TestConfigurationsValidate:
         # Ensure validation did not fail due to missing include file.
         assert not any("configuration file not found" in e["message"].lower() for e in data.get("errors", []))
 
-    async def test_validate_configuration_missing_include_returns_error_result(
-        self, tmp_path, monkeypatch, reset_services, authorized_client
-    ):
-        """Test missing @include file returns ValidationResult (not HTTP 500)."""
+    async def test_validate_project_missing_include_returns_error_result(self, tmp_path, monkeypatch, reset_services, authorized_client):
+        """Test missing @include file in project returns project validation result (not HTTP 500)."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -366,16 +364,16 @@ class TestConfigurationsValidate:
         assert any("YAML file not found" in e["message"] for e in data.get("errors", []))
 
 
-class TestConfigurationsBackups:
-    """Tests for backup operations."""
+class TestProjectsBackups:
+    """Tests for project backup operations."""
 
-    async def test_list_backups(self, tmp_path, monkeypatch, reset_services, sample_config_data, authorized_client):
+    async def test_list_backups(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
         """Test listing backups."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create config
-        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]})
+        # Create project
+        await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]})
 
         # Update to create backup
         updated_entities = {"sample": {"type": "entity", "keys": ["id"], "columns": ["name"]}}
@@ -388,16 +386,16 @@ class TestConfigurationsBackups:
         assert len(backups) >= 1
         assert "shapeshifter" in backups[0]["file_name"]
 
-    async def test_restore_backup(self, reset_services, tmp_path, monkeypatch, sample_config_data, authorized_client):
+    async def test_restore_backup(self, reset_services, tmp_path, monkeypatch, sample_project_data, authorized_client):
         """Test restoring from backup."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create config
+        # Create project
         create_response = await authorized_client.post(
-            "/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]}
+            "/api/v1/projects", json={"name": "test_project", "entities": sample_project_data["entities"]}
         )
-        assert create_response.status_code == 201, f"Failed to create config: {create_response.json()}"
+        assert create_response.status_code == 201, f"Failed to create project: {create_response.json()}"
         original_data = create_response.json()
 
         # Update to create backup
