@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     AUTHORIZATION_DATABASE_PATH: Path = Path("state/authorization.sqlite3")
     AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS: list[str] = []
 
+    # Optional database driver startup
+    UCANACCESS_JVM_STARTUP_ENABLED: bool = True
+
     # CORS
     ALLOWED_ORIGINS: list[str] = [
         "http://localhost:5173",  # Vite dev server
@@ -71,6 +74,7 @@ class Settings(BaseSettings):
     LOG_RETENTION: str = "30 days"
     LOG_COMPRESSION: str = "zip"
     LOG_FILTER_FRAMEWORK_FRAMES: bool = True
+    LOG_CONFIGURE_ON_STARTUP_ENABLED: bool = True
 
     # Services
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
