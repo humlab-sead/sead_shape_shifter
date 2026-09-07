@@ -129,7 +129,7 @@ This inventory records the authorization requirement declared by every registere
 | `PUT`    | `/api/v1/data-sources/{filename}`                               | `application:manage_shared_sources` |
 | `DELETE` | `/api/v1/data-sources/{filename}`                               | `application:manage_shared_sources` |
 | `POST`   | `/api/v1/data-sources/{filename}/test`                          | `shared_data_source:read`           |
-| `GET`    | `/api/v1/data-sources/{name}/status`                            | `UNDECLARED`                        |
+| `GET`    | `/api/v1/data-sources/{name}/status`                            | `shared_data_source:read`           |
 | `GET`    | `/api/v1/data-sources/{name}/tables`                            | `shared_data_source:read`           |
 | `POST`   | `/api/v1/data-sources/tables`                                   | `UNDECLARED`                        |
 | `GET`    | `/api/v1/data-sources/{name}/tables/{table_name}/schema`        | `shared_data_source:read`           |
@@ -139,7 +139,7 @@ This inventory records the authorization requirement declared by every registere
 | `POST`   | `/api/v1/data-sources/{name}/tables/{table_name}/import`        | `shared_data_source:read`           |
 | `POST`   | `/api/v1/data-sources/{name}/cache/invalidate`                  | `application:manage_shared_sources` |
 | `POST`   | `/api/v1/data-sources/{data_source_name}/query/execute`         | `shared_data_source:read`           |
-| `POST`   | `/api/v1/data-sources/{data_source_name}/query/validate`        | `UNDECLARED`                        |
+| `POST`   | `/api/v1/data-sources/{data_source_name}/query/validate`        | `shared_data_source:read`           |
 | `POST`   | `/api/v1/data-sources/{data_source_name}/query/columns`         | `shared_data_source:read`           |
 
 ### Suggestions, Preview, And Reconciliation
