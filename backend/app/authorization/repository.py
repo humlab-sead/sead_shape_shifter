@@ -8,7 +8,15 @@ from typing import Protocol
 from uuid import UUID, uuid4
 
 from backend.app.authorization.membership import MembershipSnapshot
-from backend.app.authorization.models import AuditEvent, Grant, GrantSubjectType, ResourceRecord, ResourceType
+from backend.app.authorization.models import (
+    ApplicationRole,
+    ApplicationRoleAssignment,
+    AuditEvent,
+    Grant,
+    GrantSubjectType,
+    ResourceRecord,
+    ResourceType,
+)
 
 
 class AuthorizationRepository(Protocol):
@@ -19,6 +27,8 @@ class AuthorizationRepository(Protocol):
     def get_resource_by_locator(self, resource_type: ResourceType, locator: str) -> ResourceRecord | None: ...
 
     def create_resource(self, resource: ResourceRecord) -> None: ...
+
+    def list_resources(self) -> list[ResourceRecord]: ...
 
     def add_grant(self, grant: Grant) -> None: ...
 
@@ -31,6 +41,8 @@ class AuthorizationRepository(Protocol):
     def grant_exists(self, subject_type: GrantSubjectType, subject_id: str, resource_id: UUID, role: str) -> bool: ...
 
     def list_application_roles(self, principal_id: str) -> list[str]: ...
+
+    def list_all_application_roles(self) -> list[ApplicationRoleAssignment]: ...
 
     def update_resource_lifecycle(self, resource_id: UUID, lifecycle_state: str) -> None: ...
 
@@ -195,15 +207,16 @@ class SQLiteAuthorizationRepository:
 
     def add_application_role(self, principal_id: str, role: str, created_by: str) -> None:
         """Persist an application role assignment."""
+        application_role = ApplicationRole(role)
         with self._connection:
             self._connection.execute(
                 "INSERT INTO application_role(principal_id, role, created_at, created_by) VALUES (?, ?, ?, ?)",
-                (principal_id, role, datetime.now(UTC).isoformat(), created_by),
+                (principal_id, application_role.value, datetime.now(UTC).isoformat(), created_by),
             )
             self._record_audit(
                 actor_principal_id=created_by,
                 event_type="application_role_created",
-                action=role,
+                action=application_role.value,
                 outcome="allowed",
             )
 
@@ -257,8 +270,9 @@ class SQLiteAuthorizationRepository:
 
     def remove_application_role(self, principal_id: str, role: str, actor_principal_id: str) -> None:
         """Remove an application role unless it is the final administrator."""
+        application_role = ApplicationRole(role)
         with self._connection:
-            if role == "admin":
+            if application_role == ApplicationRole.ADMIN:
                 admin_count = self._connection.execute(
                     "SELECT COUNT(*) FROM application_role WHERE role = 'admin'",
                 ).fetchone()[0]
@@ -266,14 +280,14 @@ class SQLiteAuthorizationRepository:
                     raise ValueError("The final application administrator cannot be removed")
             deleted = self._connection.execute(
                 "DELETE FROM application_role WHERE principal_id = ? AND role = ?",
-                (principal_id, role),
+                (principal_id, application_role.value),
             ).rowcount
             if deleted != 1:
                 raise ValueError("Application role does not exist")
             self._record_audit(
                 actor_principal_id=actor_principal_id,
                 event_type="application_role_revoked",
-                action=role,
+                action=application_role.value,
                 outcome="allowed",
             )
 
@@ -313,6 +327,11 @@ class SQLiteAuthorizationRepository:
         ).fetchone()
         return _resource(row) if row else None
 
+    def list_resources(self) -> list[ResourceRecord]:
+        """Load all resource generations, including deleted resources."""
+        rows = self._connection.execute("SELECT * FROM resource ORDER BY resource_type, locator, resource_id").fetchall()
+        return [_resource(row) for row in rows]
+
     def list_grants(self, principal_id: str) -> list[Grant]:
         """Load all resource grants for a principal."""
         rows = self._connection.execute(
@@ -350,6 +369,11 @@ class SQLiteAuthorizationRepository:
         """Load all application roles for a principal."""
         rows = self._connection.execute("SELECT role FROM application_role WHERE principal_id = ?", (principal_id,)).fetchall()
         return [row["role"] for row in rows]
+
+    def list_all_application_roles(self) -> list[ApplicationRoleAssignment]:
+        """Load all application role assignments for operator review."""
+        rows = self._connection.execute("SELECT * FROM application_role ORDER BY principal_id, role").fetchall()
+        return [_application_role_assignment(row) for row in rows]
 
     def list_audit_events(self) -> list[AuditEvent]:
         """Load durable authorization mutation events in occurrence order."""
@@ -431,6 +455,15 @@ def _grant(row: sqlite3.Row) -> Grant:
         created_at=datetime.fromisoformat(row["created_at"]),
         created_by=row["created_by"],
         subject_type=GrantSubjectType(row["subject_type"]),
+    )
+
+
+def _application_role_assignment(row: sqlite3.Row) -> ApplicationRoleAssignment:
+    return ApplicationRoleAssignment(
+        principal_id=row["principal_id"],
+        role=ApplicationRole(row["role"]),
+        created_at=datetime.fromisoformat(row["created_at"]),
+        created_by=row["created_by"],
     )
 
 

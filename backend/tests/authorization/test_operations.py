@@ -283,9 +283,102 @@ def test_typed_grant_cli_supports_dry_run_and_revoke(tmp_path) -> None:
             "editor",
             "--actor",
             "admin",
+            "--yes",
         ],
     )
     assert revoked.exit_code == 0
+
+
+def test_authorization_inventory_and_application_role_cli(tmp_path) -> None:
+    database = tmp_path / "authorization.sqlite3"
+    repository = SQLiteAuthorizationRepository(database)
+    resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
+    repository.create_resource(resource)
+    repository.add_application_role("alice", "admin", "bootstrap")
+    repository.close()
+
+    runner = CliRunner()
+    resources = runner.invoke(cli, ["list-resources", "--database", str(database), "--json"])
+    roles = runner.invoke(cli, ["list-application-roles", "--database", str(database), "--json"])
+    events = runner.invoke(cli, ["list-audit-events", "--database", str(database), "--json"])
+
+    assert resources.exit_code == 0
+    assert json.loads(resources.output)[0]["locator"] == "project-a"
+    assert roles.exit_code == 0
+    assert json.loads(roles.output)[0]["role"] == "admin"
+    assert events.exit_code == 0
+    assert json.loads(events.output)[0]["actor_principal_id"] == "bootstrap"
+
+    dry_run = runner.invoke(
+        cli,
+        [
+            "grant-application-role",
+            "--database",
+            str(database),
+            "--principal-id",
+            "bob",
+            "--role",
+            "operator",
+            "--actor",
+            "alice",
+            "--dry-run",
+        ],
+    )
+    assert dry_run.exit_code == 0
+    check_repository = SQLiteAuthorizationRepository(database)
+    assert check_repository.list_application_roles("bob") == []
+    check_repository.close()
+
+    granted = runner.invoke(
+        cli,
+        [
+            "grant-application-role",
+            "--database",
+            str(database),
+            "--principal-id",
+            "bob",
+            "--role",
+            "operator",
+            "--actor",
+            "alice",
+        ],
+    )
+    assert granted.exit_code == 0
+
+    revoked = runner.invoke(
+        cli,
+        [
+            "revoke-application-role",
+            "--database",
+            str(database),
+            "--principal-id",
+            "bob",
+            "--role",
+            "operator",
+            "--actor",
+            "alice",
+            "--yes",
+        ],
+    )
+    assert revoked.exit_code == 0
+
+    final_admin = runner.invoke(
+        cli,
+        [
+            "revoke-application-role",
+            "--database",
+            str(database),
+            "--principal-id",
+            "alice",
+            "--role",
+            "admin",
+            "--actor",
+            "alice",
+            "--yes",
+        ],
+    )
+    assert final_admin.exit_code != 0
+    assert "final application administrator" in final_admin.output
 
 
 def test_reconcile_manifest_reports_missing_and_clean_records(tmp_path) -> None:

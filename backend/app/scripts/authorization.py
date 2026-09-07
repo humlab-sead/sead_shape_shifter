@@ -7,7 +7,7 @@ from pathlib import Path
 import click
 
 from backend.app.authorization.membership import HttpGroupMembershipResolver, MembershipLookupStatus
-from backend.app.authorization.models import Grant, GrantSubjectType, ResourceType
+from backend.app.authorization.models import ApplicationRole, Grant, GrantSubjectType, ResourceType
 from backend.app.authorization.operations import (
     apply_manifest,
     backup_database,
@@ -146,6 +146,8 @@ def grant(
 @click.option("--role", required=True)
 @click.option("--actor", required=True)
 @click.option("--dry-run", is_flag=True)
+@click.option("--yes", is_flag=True, help="Confirm the destructive operation.")
+@click.option("--non-interactive", is_flag=True, help="Skip confirmation for controlled automation.")
 def revoke(
     database: Path | None,
     resource_type: str,
@@ -155,6 +157,8 @@ def revoke(
     role: str,
     actor: str,
     dry_run: bool,
+    yes: bool,
+    non_interactive: bool,
 ) -> None:
     """Revoke a typed resource grant with final-owner protection."""
     path = database or settings.AUTHORIZATION_DATABASE_PATH
@@ -169,7 +173,15 @@ def revoke(
         if dry_run:
             click.echo(f"Dry run: would revoke {role} from {subject_type}:{subject_id} on {resource_type}:{locator}")
             return
-        repository.remove_grant(subject_id, resource.resource_id, role, actor, typed_subject)
+        _confirm_destructive(
+            f"Revoke {role} from {subject_type}:{subject_id} on {resource_type}:{locator}?",
+            yes,
+            non_interactive,
+        )
+        try:
+            repository.remove_grant(subject_id, resource.resource_id, role, actor, typed_subject)
+        except ValueError as error:
+            raise click.ClickException(str(error)) from error
         click.echo(f"Revoked {role} from {subject_type}:{subject_id} on {resource_type}:{locator}")
     finally:
         repository.close()
@@ -253,6 +265,157 @@ def list_grants(
             raise click.ClickException("One or more group membership lookups did not resolve")
     finally:
         repository.close()
+
+
+@cli.command("list-resources")
+@click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
+@click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
+def list_resources(database: Path | None, as_json: bool) -> None:
+    """List all authorization resources and lifecycle generations."""
+    repository = SQLiteAuthorizationRepository(database or settings.AUTHORIZATION_DATABASE_PATH)
+    try:
+        resources = repository.list_resources()
+        records = [
+            {
+                "resource_id": str(resource.resource_id),
+                "resource_type": resource.resource_type.value,
+                "locator": resource.locator,
+                "lifecycle_state": resource.lifecycle_state,
+                "parent_resource_id": str(resource.parent_resource_id) if resource.parent_resource_id else None,
+            }
+            for resource in resources
+        ]
+        if as_json:
+            click.echo(json.dumps(records, indent=2, sort_keys=True))
+        else:
+            for record in records:
+                click.echo(f"{record['resource_type']}:{record['locator']} " f"{record['lifecycle_state']} {record['resource_id']}")
+    finally:
+        repository.close()
+
+
+@cli.command("list-application-roles")
+@click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
+@click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
+def list_application_roles(database: Path | None, as_json: bool) -> None:
+    """List deployment-wide application role assignments."""
+    repository = SQLiteAuthorizationRepository(database or settings.AUTHORIZATION_DATABASE_PATH)
+    try:
+        assignments = repository.list_all_application_roles()
+        records = [
+            {
+                "principal_id": assignment.principal_id,
+                "role": assignment.role.value,
+                "created_at": assignment.created_at.isoformat(),
+                "created_by": assignment.created_by,
+            }
+            for assignment in assignments
+        ]
+        if as_json:
+            click.echo(json.dumps(records, indent=2, sort_keys=True))
+        else:
+            for record in records:
+                click.echo(f"{record['principal_id']} {record['role']} {record['created_at']} by {record['created_by']}")
+    finally:
+        repository.close()
+
+
+@cli.command("list-audit-events")
+@click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
+@click.option("--json", "as_json", is_flag=True, help="Emit machine-readable JSON.")
+def list_audit_events(database: Path | None, as_json: bool) -> None:
+    """List authorization audit events in occurrence order."""
+    repository = SQLiteAuthorizationRepository(database or settings.AUTHORIZATION_DATABASE_PATH)
+    try:
+        events = repository.list_audit_events()
+        records = [
+            {
+                "event_id": str(event.event_id),
+                "occurred_at": event.occurred_at.isoformat(),
+                "actor_principal_id": event.actor_principal_id,
+                "event_type": event.event_type,
+                "resource_id": str(event.resource_id) if event.resource_id else None,
+                "action": event.action,
+                "outcome": event.outcome,
+                "correlation_id": event.correlation_id,
+                "subject_type": event.subject_type.value if event.subject_type else None,
+                "subject_id": event.subject_id,
+                "provider": event.provider,
+                "details": event.details,
+            }
+            for event in events
+        ]
+        if as_json:
+            click.echo(json.dumps(records, indent=2, sort_keys=True))
+        else:
+            for record in records:
+                click.echo(f"{record['occurred_at']} {record['event_type']} " f"{record['outcome']} actor={record['actor_principal_id']}")
+    finally:
+        repository.close()
+
+
+@cli.command("grant-application-role")
+@click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
+@click.option("--principal-id", required=True)
+@click.option("--role", required=True, type=click.Choice([role.value for role in ApplicationRole]))
+@click.option("--actor", required=True)
+@click.option("--dry-run", is_flag=True)
+def grant_application_role(database: Path | None, principal_id: str, role: str, actor: str, dry_run: bool) -> None:
+    """Assign a deployment-wide application role."""
+    repository = SQLiteAuthorizationRepository(database or settings.AUTHORIZATION_DATABASE_PATH)
+    try:
+        if role in repository.list_application_roles(principal_id):
+            click.echo("Application role already exists")
+            return
+        if dry_run:
+            click.echo(f"Dry run: would grant {role} to {principal_id}")
+            return
+        repository.add_application_role(principal_id, role, actor)
+        click.echo(f"Granted application role {role} to {principal_id}")
+    finally:
+        repository.close()
+
+
+@cli.command("revoke-application-role")
+@click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
+@click.option("--principal-id", required=True)
+@click.option("--role", required=True, type=click.Choice([role.value for role in ApplicationRole]))
+@click.option("--actor", required=True)
+@click.option("--dry-run", is_flag=True)
+@click.option("--yes", is_flag=True, help="Confirm the destructive operation.")
+@click.option("--non-interactive", is_flag=True, help="Skip confirmation for controlled automation.")
+def revoke_application_role(
+    database: Path | None,
+    principal_id: str,
+    role: str,
+    actor: str,
+    dry_run: bool,
+    yes: bool,
+    non_interactive: bool,
+) -> None:
+    """Revoke a deployment-wide application role with final-admin protection."""
+    repository = SQLiteAuthorizationRepository(database or settings.AUTHORIZATION_DATABASE_PATH)
+    try:
+        if role not in repository.list_application_roles(principal_id):
+            raise click.ClickException("Application role does not exist")
+        if dry_run:
+            click.echo(f"Dry run: would revoke {role} from {principal_id}")
+            return
+        _confirm_destructive(f"Revoke application role {role} from {principal_id}?", yes, non_interactive)
+        try:
+            repository.remove_application_role(principal_id, role, actor)
+        except ValueError as error:
+            raise click.ClickException(str(error)) from error
+        click.echo(f"Revoked application role {role} from {principal_id}")
+    finally:
+        repository.close()
+
+
+def _confirm_destructive(message: str, yes: bool, non_interactive: bool) -> None:
+    if yes or non_interactive:
+        return
+    if not click.confirm(message):
+        raise click.Abort()
 
 
 if __name__ == "__main__":

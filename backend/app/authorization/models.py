@@ -83,6 +83,16 @@ class ResourceRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class ApplicationRoleAssignment:
+    """Application role assigned to a principal."""
+
+    principal_id: str
+    role: ApplicationRole
+    created_at: datetime
+    created_by: str
+
+
+@dataclass(frozen=True, slots=True)
 class Grant:
     """Role assigned to a typed subject for a resource."""
 
