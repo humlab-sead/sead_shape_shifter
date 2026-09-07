@@ -90,7 +90,7 @@ A principal cannot list, read, edit, execute, delete, restore, download, or moni
 
 **Objective**
 
-Protect shared data, database operations, logs, and ingester capabilities.
+Protect shared data, database operations, and logs.
 
 **Tasks**
 
@@ -99,14 +99,12 @@ Protect shared data, database operations, logs, and ingester capabilities.
 - [x] Require shared-data-source access before returning configuration, testing connections, introspecting schemas, previewing tables, or executing queries.
 - [x] Require both project and shared-source access when a project references a shared source.
 - [x] Require administrator access for viewing or downloading application logs.
-- [ ] Require explicit authenticated access for nonsensitive ingester metadata and `operator` for ingester validation and execution.
-- [ ] Require `admin` for ingester configuration and registration.
-- [ ] Keep unsafe ingester operations disabled until source, project, database, and destination authorization and containment checks are implemented.
-- [ ] Require explicit authorization for every source and destination used by an approved ingester operation.
+
+Ingester authorization tasks are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md).
 
 **Completion Criteria**
 
-Shared sources, schemas, queries, logs, and ingester operations enforce their documented application and resource roles without disclosing unauthorized resource details.
+Shared sources, schemas, queries, and logs enforce their documented application and resource roles without disclosing unauthorized resource details.
 
 ### 5. Document The Authorization System
 
@@ -143,7 +141,7 @@ Prove policy behavior and enable enforcement without unowned resources or hidden
 
 - [ ] Add policy unit tests for every role, action, and protected resource type.
 - [ ] Add unauthenticated, unauthorized, and allowed endpoint tests for each sensitive router.
-- [ ] Add cross-user, cross-project, cross-source, session, output, backup, operation, and ingester tests.
+- [ ] Add cross-user, cross-project, cross-source, session, output, backup, and operation tests.
 - [ ] Add tests showing that project access does not imply access to referenced shared sources.
 - [ ] Add tests for filtered list responses and the approved `403`/`404` behavior.
 - [ ] Add tests for bootstrap idempotence, last-owner and last-admin protection, deletion and name reuse, and lifecycle compensation.
@@ -167,7 +165,7 @@ All protected routes and operations pass the authorization matrix, the route inv
 | Inventories and migration inputs | Not started | Requires proposal approval and deployment resource review |
 | Authorization foundation | Done | Typed policy, SQLite repository, stable principal adapter, atomic mutation audit, bootstrap, final-assignment protections, schema initialization, manifest dry-run inspection and application, backup, restore, integrity checks, manifest reconciliation, and production startup guards are implemented |
 | Project and child resources | Done | Project and child-resource routes enforce current project authorization. Long-running operations record their principal and stable parent project resource and authorize progress, streaming, cancellation, and result access. Backup restore and execution downloads use server-managed identifiers resolved through project containment checks. Project create, copy, and delete operations register and transition authorization resource records with filesystem operation compensation. |
-| Shared and administrative resources | In progress | Shared data source listings now return only sources with readable grants. Shared data source creation, upload, update, deletion, and schema-cache invalidation now require operator access. Create and delete update authorization resource records. Shared source configuration reads, connection tests, named schema introspection, table previews, query execution, and query-column introspection now require shared-source read access. Project data-source connections and project configuration updates require both project edit access and read access to every referenced shared source. Viewing and downloading application logs require the administrator-only `read_logs` action. Ingester execution also depends on capability restrictions |
+| Shared and administrative resources | In progress | Shared data source listings now return only sources with readable grants. Shared data source creation, upload, update, deletion, and schema-cache invalidation now require operator access. Create and delete update authorization resource records. Shared source configuration reads, connection tests, named schema introspection, table previews, query execution, and query-column introspection now require shared-source read access. Project data-source connections and project configuration updates require both project edit access and read access to every referenced shared source. Viewing and downloading application logs require the administrator-only `read_logs` action. |
 | Authorization documentation | Not started | Starts with policy decisions and remains aligned through cutover |
 | Validation and cutover | Not started | Requires reviewed initial grants |
 
@@ -223,7 +221,7 @@ All protected routes and operations pass the authorization matrix, the route inv
 
 - Native application login, credential storage, token issuance, account recovery, and multi-factor authentication.
 - Filesystem containment, SQL safety, secret redaction, and network restrictions except where authorization must compose with those controls.
-- Enabling an ingester capability that remains unsafe after authorization succeeds.
+- Ingester authorization and capability enablement, which are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md).
 
 ## Risks And Mitigations
 
