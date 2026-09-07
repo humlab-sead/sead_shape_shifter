@@ -167,7 +167,10 @@ async def execute_query(
     },
 )
 async def validate_query(
-    data_source_name: str, execution: QueryExecution, query_service: QueryService = Depends(get_query_service)
+    data_source_name: str,
+    execution: QueryExecution,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(query_reader_dependency)],
+    query_service: QueryService = Depends(get_query_service),
 ) -> QueryValidation:
     """
     Validate a SQL query without executing it.
@@ -180,7 +183,7 @@ async def validate_query(
     Returns:
         QueryValidation with validation results
     """
-    return query_service.validate_query(execution.query, data_source_name)
+    return query_service.validate_query(execution.query, authorized_data_source.resource.locator)
 
 
 @router.post(
