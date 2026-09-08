@@ -385,7 +385,7 @@ class SqlLoader(DataLoader):
         except Exception as e:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
             result.success = False
-            result.message = f"Connection failed: {str(e)}"
+            result.message = "Connection failed"
             result.connection_time_ms = elapsed_ms
             result.metadata = {}
 

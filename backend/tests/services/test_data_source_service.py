@@ -402,6 +402,8 @@ class TestDataSourceService:
 
             assert result.success is False
             assert "Connection failed" in result.message
+            assert "Correlation ID:" in result.message
+            assert "Connection refused" not in result.message
 
     @pytest.mark.asyncio
     async def test_test_connection_uses_mapper(self, service: DataSourceService, sample_config: DataSourceConfig):

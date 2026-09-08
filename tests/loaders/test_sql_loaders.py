@@ -704,7 +704,7 @@ class TestUCanAccessLoader:
 
             assert result.success is False
             assert "failed" in result.message.lower()
-            assert "Cannot open database file" in result.message
+            assert result.message == "Connection failed"
 
 
 class DummySqlLoader(SqlLoader):
