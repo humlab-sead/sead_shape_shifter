@@ -302,7 +302,12 @@ class SchemaIntrospectionService:
         else:
             columns = [col.name for col in schema.columns]
 
-        query: str = f'SELECT {", ".join(f'"{col}"' for col in columns)} FROM {table_name}'
+        loader: SqlLoader = self.create_loader_for_data_source(
+            self.data_source_service.load_data_source(data_source_name)  # type: ignore[arg-type]
+        )
+        selected_column_sql: str = ", ".join(loader.quote_name(col) for col in columns)
+        qualified_table: str = loader.qualify_name(schema=None, table=table_name)
+        query: str = f"SELECT {selected_column_sql} FROM {qualified_table}"
 
         public_id_suggestion: KeySuggestion | None = None
         for col in schema.columns:

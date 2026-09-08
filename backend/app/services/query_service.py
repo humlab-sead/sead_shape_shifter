@@ -3,6 +3,7 @@ SQL Query execution service for the Shape Shifter Configuration Editor.
 """
 
 import asyncio
+import json
 import time
 
 import pandas as pd
@@ -25,6 +26,7 @@ from src.loaders.base_loader import DataLoaders
 from src.loaders.sql_loaders import SqlLoader
 
 INTERNAL_DATA_SOURCE = "@internal"
+MAX_QUERY_RESPONSE_BYTES = 5 * 1024 * 1024
 
 
 def is_internal_data_source(name: str) -> bool:
@@ -115,16 +117,28 @@ class QueryService:
 
             execution_time_ms: int = max(1, int((time.time() - start_time) * 1000))
 
+            row_limit = limit if limit is not None else len(df)
             is_truncated: bool = limit is not None and len(df) >= limit
-            rows: list[dict] = df.to_dict("records")
+            rows: list[dict] = []
             columns: list[str] = df.columns.tolist()
 
-            for row in rows:
+            serialized_size = 0
+            for row in df.to_dict("records"):
                 for key, value in row.items():
                     if pd.isna(value):
                         row[key] = None
                     elif isinstance(value, pd.Timestamp):
                         row[key] = value.isoformat()
+
+                row_size = len(json.dumps(row, default=str, separators=(",", ":")).encode("utf-8"))
+                if serialized_size + row_size > MAX_QUERY_RESPONSE_BYTES:
+                    is_truncated = True
+                    break
+                rows.append(row)
+                serialized_size += row_size
+
+                if len(rows) >= row_limit:
+                    break
 
             return QueryResult(
                 rows=rows,
