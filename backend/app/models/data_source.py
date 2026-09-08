@@ -87,9 +87,17 @@ class DataSourceTestResult(BaseModel):
 
     @staticmethod
     def from_core_result(core_result: ConnectTestResult) -> "DataSourceTestResult":
+        if core_result.success:
+            return DataSourceTestResult(
+                success=True,
+                message=core_result.message,
+                connection_time_ms=core_result.connection_time_ms,
+                metadata=core_result.metadata,
+            )
+
         return DataSourceTestResult(
-            success=core_result.success,
-            message=core_result.message,
+            success=False,
+            message=public_error_detail("Connection failed"),
             connection_time_ms=core_result.connection_time_ms,
             metadata=core_result.metadata,
         )

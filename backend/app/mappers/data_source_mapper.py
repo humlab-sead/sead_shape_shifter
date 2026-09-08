@@ -4,6 +4,7 @@ from typing import Any
 
 import backend.app.models.data_source as api
 import src.model as core
+from backend.app.services.data_source_policy import validate_server_managed_data_source
 from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
 
 
@@ -34,65 +35,18 @@ class DataSourceMapper:
         Raises:
             ValueError: If driver schema not found or required fields missing
         """
-        # Resolve environment variables at the boundary between API and Core layers
-        ds_config = ds_config.resolve_config_env_vars()
-
-        # Get schema for driver
-        schema: DriverSchema | None = DriverSchemaRegistry.get(ds_config.driver)
+        validated = validate_server_managed_data_source(ds_config)
+        schema: DriverSchema | None = validated.schema
         if not schema:
-            raise ValueError(f"Unknown driver: {ds_config.driver}")
+            raise ValueError(f"Unknown driver: {validated.config.driver}")
 
-        # Build options dict based on schema
-        options: dict[str, Any] = {}
-
-        # Map fields according to schema
-        for field in schema.fields:
-            value = None
-
-            # File paths should come from options (actual DB/CSV path), not YAML config metadata.
-            if field.type == "file_path" and ds_config.options:
-                value = ds_config.options.get(field.name)
-
-            # Try to get value from top-level API model field next
-            if value is None:
-                value = getattr(ds_config, field.name, None)
-
-            # If still not found, check options and aliases
-            if value is None and ds_config.options:
-                value = ds_config.options.get(field.name)
-
-                if value is None and field.aliases:
-                    for alias in field.aliases:
-                        value = ds_config.options.get(alias)
-                        if value is not None:
-                            break
-
-            # if field.type == "password" and value is not None:
-            #     if hasattr(value, "get_secret_value"):
-            #         value = value.get_secret_value()
-
-            # Skip None/empty values unless field has default
-            if value is None or value == "":
-                if field.default is not None:
-                    value = field.default
-                elif field.required:
-                    raise ValueError(f"Required field missing: {field.name}")
-                else:
-                    continue
-
-            options[field.name] = value
-
-        # Add any additional options not in schema
-        if ds_config.options:
-            for key, value in ds_config.options.items():
-                if key not in options and value is not None:
-                    options[key] = value
+        options: dict[str, Any] = validated.options
 
         # Create core config
         core_config = core.DataSourceConfig(
-            name=ds_config.name,
+            name=validated.config.name,
             cfg={
-                "driver": ds_config.driver,
+                "driver": validated.config.driver,
                 "options": options,
             },
         )

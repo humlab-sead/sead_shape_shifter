@@ -109,7 +109,10 @@ class TestListDataSources:
         response = client.get("/api/v1/data-sources")
 
         assert response.status_code == 500
-        assert "Failed to list data sources" in response.json()["detail"]
+        detail = response.json()["detail"]
+        assert "Failed to list data sources" in detail
+        assert "Correlation ID:" in detail
+        assert "Database error" not in detail
 
 
 class TestGetDataSource:
@@ -312,7 +315,10 @@ class TestUpdateDataSource:
         response = client.put("/api/v1/data-sources/sead-options.yml", json=payload)
 
         assert response.status_code == 400
-        assert "Failed to update data source" in response.json()["detail"]
+        detail = response.json()["detail"]
+        assert "Failed to update data source" in detail
+        assert "Correlation ID:" in detail
+        assert "Invalid configuration" not in detail
 
 
 class TestDeleteDataSource:
@@ -362,7 +368,10 @@ class TestDeleteDataSource:
         response = client.delete("/api/v1/data-sources/error_case-options.yml")
 
         assert response.status_code == 500
-        assert "Failed to delete data source" in response.json()["detail"]
+        detail = response.json()["detail"]
+        assert "Failed to delete data source" in detail
+        assert "Correlation ID:" in detail
+        assert "Failed to delete file" not in detail
         mock_authorization_service.transition_resource.assert_has_calls([call(resource, "deleting"), call(resource, "active")])
 
 

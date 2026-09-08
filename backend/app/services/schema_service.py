@@ -18,6 +18,7 @@ import backend.app.models.data_source as api
 from backend.app.exceptions import SchemaIntrospectionError
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.mappers.table_schema_mapper import TableSchemaMapper
+from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity_import import KeySuggestion
 from backend.app.services.data_source_service import DataSourceService
 from src.loaders.base_loader import DataLoaders
@@ -159,7 +160,7 @@ class SchemaIntrospectionService:
         except SchemaIntrospectionError:
             raise
         except Exception as e:
-            logger.error(f"Error getting tables: {e}")
+            logger.error(f"Error getting tables [corr={get_correlation_id()}] [{e.__class__.__name__}]")
             raise SchemaIntrospectionError(message="Failed to get tables from data source", operation="get_tables") from e
 
     async def get_table_schema(self, data_source: str | dict[str, Any], table_name: str, schema: Optional[str] = None) -> api.TableSchema:
@@ -198,7 +199,7 @@ class SchemaIntrospectionService:
         except SchemaIntrospectionError:
             raise
         except Exception as e:
-            logger.error(f"Error getting schema for {table_name}: {e}")
+            logger.error(f"Error getting schema for {table_name} [corr={get_correlation_id()}] [{e.__class__.__name__}]")
             ds_name = data_source if isinstance(data_source, str) else data_source.get("name", "unknown")
             raise SchemaIntrospectionError(
                 message=f"Failed to get schema for table '{table_name}'", data_source=ds_name, operation="get_columns"
@@ -264,10 +265,8 @@ class SchemaIntrospectionService:
                 message="Query execution timed out after 30 seconds", data_source=ds_name, operation="preview_table"
             ) from e
         except Exception as e:
-            logger.error(f"Error previewing table {table_name}: {e}")
-            raise SchemaIntrospectionError(
-                message=f"Failed to preview table data: {str(e)}", data_source=ds_name, operation="preview_table"
-            ) from e
+            logger.error(f"Error previewing table {table_name} [corr={get_correlation_id()}] [{e.__class__.__name__}]")
+            raise SchemaIntrospectionError(message="Failed to preview table data.", data_source=ds_name, operation="preview_table") from e
 
     def invalidate_cache(self, data_source_name: str) -> None:
         """Invalidate all cached data for a data source."""

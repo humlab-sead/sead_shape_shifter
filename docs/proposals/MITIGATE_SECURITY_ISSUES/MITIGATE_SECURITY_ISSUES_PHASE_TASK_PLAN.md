@@ -105,23 +105,23 @@ Stacked statements and destructive SQL fail on every execution path. The applica
 **Objective**
 
 Prevent server-side network access and remove secrets from API responses.
+Detailed phase-4 work is archived in [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md).
+Ingester-specific route and destination work is tracked in [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md).
 
 **Tasks**
 
-- [ ] Replace arbitrary client-supplied database connection settings with named, server-managed data sources.
-- [ ] Allow only approved drivers, hosts, ports, schemas, and connection destinations.
-- [ ] Add DNS/IP validation and network egress controls for localhost, private ranges, metadata services, and unrelated internal services.
-- [ ] Resolve only approved environment-variable names and prevent client-controlled configuration from selecting arbitrary server variables.
-- [ ] Decide whether the ingester API remains disabled, is removed, or is redesigned around uploaded content and server-managed destinations.
-- [ ] If ingesters remain enabled, constrain source files, output folders, database destinations, and registration/write operations.
-- [ ] Preserve database passwords correctly and prevent passwordless fallback where authentication is required.
-- [ ] Replace raw exception responses with stable public messages and correlation IDs.
-- [ ] Redact credentials, environment values, connection strings, SQL, and sensitive paths from logs and error details.
-- [ ] Prevent user-controlled newlines from forging log records.
+- [x] Replace arbitrary client-supplied database connection settings with named, server-managed data sources.
+- [x] Allow only approved drivers, hosts, ports, schemas, and connection destinations.
+- [x] Add DNS/IP validation and network egress controls for localhost, private ranges, metadata services, and unrelated internal services.
+- [x] Resolve only approved environment-variable names and prevent client-controlled configuration from selecting arbitrary server variables.
+- [x] Preserve database passwords correctly and prevent passwordless fallback where authentication is required.
+- [x] Replace raw exception responses with stable public messages and correlation IDs.
+- [x] Redact credentials, environment values, connection strings, SQL, and sensitive paths from logs and error details.
+- [x] Prevent user-controlled newlines from forging log records.
 
 **Completion Criteria**
 
-Data-source and ingester requests cannot probe or connect to unapproved destinations. Error responses and logs do not expose secrets or sensitive implementation details. The selected ingester disposition is documented and tested.
+Data-source requests cannot probe or connect to unapproved destinations. Error responses and logs do not expose secrets or sensitive implementation details. Ingester disposition and destination-gating work are documented in the dedicated ingester authorization plan.
 
 ### Phase 5: Security Regression And Release Verification
 
@@ -153,7 +153,7 @@ Focused security tests, regression tests, and deployment checks pass on the exac
 | Authentication, authorization, and CORS | In progress | Proxy identity, session ownership, loopback binding, and CORS defaults implemented; resource ACLs remain |
 | Filesystem and project configuration boundaries | Not started |  |
 | SQL, PostgreSQL, and DuckDB restrictions | Not started |  |
-| Data-source, ingester, and error handling controls | Not started |  |
+| Data-source and error handling controls | Done | Data-source inventory, server-managed destinations, and public error redaction are complete; detailed work is archived in [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md) |
 | Security regression and release verification | Not started |  |
 
 ## Definition Of Done
@@ -163,7 +163,7 @@ Focused security tests, regression tests, and deployment checks pass on the exac
 - [ ] Project, upload, output, backup, temporary, directive, and ingester paths are confined to approved roots.
 - [ ] Query validation and execution use the same safe policy on all database and DuckDB paths.
 - [ ] Production database access uses a least-privilege role and has been verified against the actual grants.
-- [ ] Data-source and ingester network destinations are server-managed or explicitly allowlisted.
+- [ ] Data-source network destinations are server-managed or explicitly allowlisted.
 - [ ] Responses and logs redact secrets, SQL, connection details, and sensitive paths.
 - [ ] The original verified reproduction cases fail for the intended security reason.
 - [ ] Focused tests and the relevant full test suites pass, with unrelated failures recorded.
@@ -186,7 +186,7 @@ Focused security tests, regression tests, and deployment checks pass on the exac
 | Access-control implementation | Authentication, authorization, session ownership, CSRF, and CORS controls | In progress | Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md); follow-up resource identifiers: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](./SERVER_OWNED_RESOURCE_IDENTIFIERS.md); CSRF and broader controls remain |
 | Boundary-control implementation | Filesystem, YAML directive, upload, download, and execution-target restrictions | Not started | TBD |
 | Query safety implementation | SQL policy, database role controls, DuckDB restrictions, and resource limits | Not started | TBD |
-| Data-source and ingester decision | Server-managed destinations and ingester disposition | Not started | TBD |
+| Data-source and error handling controls | Server-managed destinations, approved environment-variable resolution, and public error redaction | Not started | TBD |
 | Security regression suite | Tests for the verified review cases and bypass paths | Not started | TBD |
 | Release verification record | Results for the exact image, commit, and deployed configuration | Not started | TBD |
 
