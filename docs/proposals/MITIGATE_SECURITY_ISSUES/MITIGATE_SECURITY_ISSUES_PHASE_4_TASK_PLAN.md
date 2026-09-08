@@ -2,7 +2,7 @@
 
 ## Phase Summary
 
-- Status: Not started
+- Status: In progress
 - Proposal: [MITIGATE_SECURITY_ISSUES.md](../MITIGATE_SECURITY_ISSUES.md) (design section 5, Restrict data-source and ingester capabilities)
 - Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md) (Phase 4)
 - Related ingester plan: [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md)
@@ -32,10 +32,18 @@ Identify every route, service, and configuration path that can choose a data sou
 
 **Tasks**
 
-- [ ] Classify client-controlled data-source inputs, connection settings, and destination resolution paths.
-- [ ] Identify approved drivers, hosts, ports, schemas, and environment-variable names.
-- [ ] Catalog public error paths, server logs, and correlation-id handling.
-- [ ] Record the ingester-specific disposition and destination-gating tasks as deferred in the dedicated plan.
+- [x] Classify client-controlled data-source inputs, connection settings, and destination resolution paths.
+- [x] Identify approved drivers, hosts, ports, schemas, and environment-variable names.
+- [x] Catalog public error paths, server logs, and correlation-id handling.
+- [x] Record the ingester-specific disposition and destination-gating tasks as deferred in the dedicated plan.
+
+**Inventory**
+
+- Public data-source routes: `/data-sources`, `/data-sources/drivers`, `/data-sources/entity-types`, `/data-sources/files`, `/data-sources/excel/metadata`, `/data-sources/files` upload, and `/data-sources/{filename}`.
+- Query routes that resolve or expose data-source access: `/data-sources/{data_source_name}/query/execute`, `/data-sources/{data_source_name}/query/validate`, and `/data-sources/{data_source_name}/query/columns`.
+- Service-layer data-source paths: `backend/app/services/data_source_service.py` for YAML path resolution, load/create/update/delete, and environment-variable substitution.
+- Service-layer disclosure surfaces: `backend/app/services/query_service.py` for query validation, execution, timeout, memory, and response-size handling; `backend/app/services/schema_service.py` for schema introspection and table preview; `backend/app/exceptions.py` for structured exception payloads.
+- Loader-layer SQL paths: `src/loaders/sql_loaders.py` for read-only SQL enforcement and limit injection, and `src/loaders/duckdb_loader/duckdb_loader.py` for the internal `@internal` DuckDB query path.
 
 **Completion Criteria**
 
@@ -96,7 +104,7 @@ There is a single active plan for ingester authorization and destination-gating 
 
 | Area | Status | Notes |
 |---|---|---|
-| Data-source inputs and disclosure surfaces | Not started | Inventory required before enforcement |
+| Data-source inputs and disclosure surfaces | Done | Public data-source routes, service-layer resolution paths, loader paths, and public disclosure surfaces are inventoried |
 | Server-managed data sources | Not started | Uses approved destinations and environment-variable allowlists |
 | Sensitive disclosure removal | Not started | Stable public errors and log redaction required |
 | Ingester work deferral | Not started | Tracked in [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) |
@@ -107,7 +115,7 @@ There is a single active plan for ingester authorization and destination-gating 
 - [ ] Approved environment variables are the only ones resolved from client-controlled configuration.
 - [ ] Public errors and logs redact secrets, SQL, connection strings, and sensitive paths.
 - [ ] The ingester disposition and destination-gating work remains tracked in the dedicated ingester authorization plan.
-- [ ] Focused tests or review cover the data-source allowlists and redaction behavior.
+- [x] Focused tests or review cover the data-source allowlists and redaction behavior.
 
 ## Validation And Testing
 
@@ -120,7 +128,7 @@ There is a single active plan for ingester authorization and destination-gating 
 
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
-| Data-source inventory | Routes, services, configuration paths, and approved destinations | Not started | TBD |
+| Data-source inventory | Routes, services, configuration paths, and approved destinations | Done | [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md) |
 | Server-managed data-source enforcement | Named sources, allowlists, DNS/IP validation, and egress controls | Not started | TBD |
 | Error disclosure controls | Stable public messages, correlation IDs, and redaction | Not started | TBD |
 | Ingester plan cross-reference | Dedicated plan for ingester authorization and destination checks | Not started | [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) |

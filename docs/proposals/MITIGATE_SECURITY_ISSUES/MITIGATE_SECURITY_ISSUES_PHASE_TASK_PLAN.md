@@ -153,7 +153,7 @@ Focused security tests, regression tests, and deployment checks pass on the exac
 | Authentication, authorization, and CORS | In progress | Proxy identity, session ownership, loopback binding, and CORS defaults implemented; resource ACLs remain |
 | Filesystem and project configuration boundaries | Not started |  |
 | SQL, PostgreSQL, and DuckDB restrictions | Not started |  |
-| Data-source and error handling controls | Not started | Ingester-specific disposition and destination gating are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) |
+| Data-source and error handling controls | In progress | Data-source inventory is complete; server-managed destinations and redaction remain |
 | Security regression and release verification | Not started |  |
 
 ## Definition Of Done
