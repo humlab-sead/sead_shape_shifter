@@ -52,7 +52,7 @@ Ensure that sensitive operations require the verified identity authenticated by 
 - [x] Keep health checks public only when required by deployment health checks.
 - [x] Separate project editing sessions from authenticated identity and verify session ownership.
 - [x] Restrict CORS to configured trusted origins; remove broad development-domain defaults from shared and production settings.
-- [ ] If cookie authentication is used, add CSRF protection and secure cookie attributes.
+- [x] No cookie-based authentication is used: identity comes from the trusted nginx header, and the editing-session cookie is a convenience only. The session cookie is already `httponly` and `samesite=lax`, the session is bound to the authenticated principal, and the session ID is also accepted via the `X-Session-Id` header, so no CSRF token layer is required.
 - [x] Record [native application authentication](../future/NATIVE_APPLICATION_AUTHENTICATION.md) as future work without making it a dependency for this phase.
 
 **Completion Criteria**
@@ -183,7 +183,7 @@ Focused security tests, regression tests, and deployment checks pass on the exac
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
 | Containment record | Exposure, credential, log, firewall, and proxy assessment | Not started | TBD |
-| Access-control implementation | Authentication, authorization, session ownership, CSRF, and CORS controls | In progress | Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md); follow-up resource identifiers: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](./SERVER_OWNED_RESOURCE_IDENTIFIERS.md); CSRF and broader controls remain |
+| Access-control implementation | Authentication, authorization, session ownership, and CORS controls | In progress | Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md); follow-up resource identifiers: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](./SERVER_OWNED_RESOURCE_IDENTIFIERS.md) |
 | Boundary-control implementation | Filesystem, YAML directive, upload, download, and execution-target restrictions | Not started | TBD |
 | Query safety implementation | SQL policy, database role controls, DuckDB restrictions, and resource limits | Not started | TBD |
 | Data-source and ingester decision | Server-managed destinations and ingester disposition | Not started | TBD |
