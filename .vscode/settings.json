@@ -6,7 +6,7 @@
         "editor.defaultFormatter": "darkriszty.markdown-table-prettify"
     },
     "[sql]": {
-        "editor.defaultFormatter": "sqlfluff.vscode-sqlfluff"
+        "editor.defaultFormatter": "ms-ossdata.vscode-pgsql"
     },
     "[yaml]": {
         "editor.defaultFormatter": "redhat.vscode-yaml",

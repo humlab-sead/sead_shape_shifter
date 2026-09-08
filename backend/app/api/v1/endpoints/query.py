@@ -122,17 +122,21 @@ async def execute_query(
         if ds_cfg is None:
             raise HTTPException(status_code=400, detail=f"Data source '{data_source_name}' cannot be queried directly")
         result: QueryResult = await query_service.execute_query(
-            ds_cfg=ds_cfg, query=execution.query, limit=execution.limit, timeout=execution.timeout
+            ds_cfg=ds_cfg,
+            query=execution.query,
+            limit=execution.limit,
+            timeout=execution.timeout,
+            memory_limit_mb=execution.memory_limit_mb,
         )
         return result
     except QuerySecurityError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Query rejected by the SQL safety policy.") from e
     except QueryExecutionError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail="Query execution failed. Use the correlation ID when reporting the problem.") from e
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e
+        raise HTTPException(status_code=500, detail="Query execution failed. Use the correlation ID when reporting the problem.") from e
 
 
 @router.post(
@@ -246,10 +250,14 @@ async def introspect_query_columns(
         columns: list[str] = await query_service.introspect_query_columns(ds_cfg=ds_cfg, query=introspection.query)
         return {"columns": columns}
     except QuerySecurityError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Query rejected by the SQL safety policy.") from e
     except QueryExecutionError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(
+            status_code=500, detail="Column introspection failed. Use the correlation ID when reporting the problem."
+        ) from e
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail="Column introspection failed. Use the correlation ID when reporting the problem."
+        ) from e

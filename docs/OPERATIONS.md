@@ -51,9 +51,9 @@ Runtime variables:
 | `SHAPE_SHIFTER_LOG_RETENTION`                    | `30 days`               | Log file retention period                                            |
 | `SHAPE_SHIFTER_LOG_COMPRESSION`                  | `zip`                   | Log file compression format                                          |
 | `SHAPE_SHIFTER_LOG_FILTER_FRAMEWORK_FRAMES`      | `true`                  | Filter framework frames from tracebacks                              |
-| `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED`        | `false`                 | Require an identity forwarded by nginx; enabled by Docker deployment  |
-| `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_HEADER`         | `X-Authenticated-User` | Header containing the nginx-authenticated username                    |
-| `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED`     | `false`                | Accept verified group IDs from the trusted proxy; disabled until a trusted group source is configured |
+| `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED`       | `false`                 | Require an identity forwarded by nginx; enabled by Docker deployment  |
+| `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_HEADER`        | `X-Authenticated-User`   | Header containing the nginx-authenticated username                    |
+| `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED`     | `false`                  | Accept verified group IDs from the trusted proxy; disabled until a trusted group source is configured |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_HEADER`      | `X-Authenticated-Groups` | Comma-separated group IDs supplied by the trusted proxy              |
 | `SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH`       | `state/authorization.sqlite3` | SQLite authorization database, relative to `APPLICATION_ROOT` unless absolute |
 | `SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS` | `[]` | JSON array of initial administrator principal IDs; required but not automatically applied in production |
@@ -74,13 +74,13 @@ Runtime variables:
 
 The backend treats these directories as the complete set of server-owned file roots:
 
-| Root | Configuration | Contents |
-|------|---------------|----------|
-| Projects | `SHAPE_SHIFTER_PROJECTS_DIR` | Project YAML, project uploads, backups, generated outputs, and project-local data |
-| Shared data | `SHAPE_SHIFTER_GLOBAL_DATA_DIR` | Shared reference files used by project configuration |
-| Shared data sources | `SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR` | Shared uploaded data-source files |
-| Logs | `SHAPE_SHIFTER_LOG_DIR` | Application logs; not a user-selectable data path |
-| Temporary files | `APPLICATION_ROOT/tmp` | Disposable processing files when a feature requires a temporary path |
+| Root                | Configuration                          | Contents                                                                          |
+|---------------------|----------------------------------------|-----------------------------------------------------------------------------------|
+| Projects            | `SHAPE_SHIFTER_PROJECTS_DIR`           | Project YAML, project uploads, backups, generated outputs, and project-local data |
+| Shared data         | `SHAPE_SHIFTER_GLOBAL_DATA_DIR`        | Shared reference files used by project configuration                              |
+| Shared data sources | `SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR` | Shared uploaded data-source files                                                 |
+| Logs                | `SHAPE_SHIFTER_LOG_DIR`                | Application logs; not a user-selectable data path                                 |
+| Temporary files     | `APPLICATION_ROOT/tmp`                 | Disposable processing files when a feature requires a temporary path              |
 
 Project subdirectories such as `backups` and `outputs` remain below the selected project directory. File names supplied by API clients are always interpreted relative to their assigned root; absolute paths, parent traversal, and symlink paths that resolve outside the root are rejected.
 
@@ -106,6 +106,53 @@ Format: `hostname:port:database:username:password`
 ```
 db.example.com:5432:sead_production:sead_user:password
 ```
+
+### PostgreSQL application role
+
+Use a dedicated read-only role for Shape Shifter SQL data sources. Do not use a database owner, superuser, schema owner, or a role that inherits membership in a write-capable role. The role name must be new and unused in the target database. Run the setup as a database administrator against the target database. If the application tables are owned by the `public` schema owner, omit `--owner` and let the script detect it automatically. Otherwise, pass the table-owning role with `--owner`:
+
+```bash
+scripts/postgres/create-readonly-role.sh \
+   --role shape_shifter_reader \
+   --database sead_production \
+   --schema public
+```
+
+To override the detected owner, pass `--owner` explicitly:
+
+```bash
+scripts/postgres/create-readonly-role.sh \
+   --role shape_shifter_reader \
+   --database sead_production \
+   --schema public \
+   --owner sead_owner
+```
+
+Set the role password through PostgreSQL administration or a secret manager; do not put it in the script or project YAML. Configure the Shape Shifter data source to use this role, then verify the effective privileges from an administrative connection:
+
+```bash
+psql --dbname=sead_production \
+   --set=app_role=shape_shifter_reader \
+   --set=app_schema=public \
+   --file=scripts/postgres/verify_readonly_role.sql
+```
+
+The setup grants `CONNECT`, schema `USAGE`, and `SELECT` on current and future tables. It removes schema creation, sequence, function, and table write privileges for the application role. The verification fails if the role is privileged, inherits another role, owns database objects, cannot read a table in the schema, or has effective write privileges.
+
+This script does not change `PUBLIC` grants, transfer ownership, or revoke memberships from other roles. Resolve any broader schema grants explicitly with the database owner and rerun verification. If the chosen role name already exists, the script stops instead of reusing it. Repeat the setup for each database/schema used by Shape Shifter, and retain the verification output with the deployment record.
+
+To capture behavior evidence, run `scripts/postgres/test-readonly-role.sh` after the role exists and point it at a table in the target schema:
+
+```bash
+scripts/postgres/test-readonly-role.sh \
+   --role shape_shifter_reader \
+   --database sead_production \
+   --schema public \
+   --table role_test \
+   --column value
+```
+
+The script switches the session to the application role, confirms a read succeeds, and checks representative INSERT, UPDATE, DELETE, CREATE TABLE, CREATE SCHEMA, ALTER ROLE, SET ROLE, COPY TO PROGRAM, and transactional write attempts fail. Keep the command output with the release or operations record used for the deployment.
 
 ### Authorization SQLite store
 

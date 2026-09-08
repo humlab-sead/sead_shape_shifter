@@ -10,6 +10,7 @@ from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.loaders.duckdb_loader.duckdb_workspace import DuckDbWorkspace
 from src.loaders.sql_loaders import CoreSchema, SqlLoader
 from src.model import DataSourceConfig, TableConfig
+from src.sql_policy import ensure_read_only_sql
 from src.table_store import TableStore
 from src.transforms.utility import add_system_id
 
@@ -19,7 +20,7 @@ class DuckDbLoader(SqlLoader):
     """SQL loader over Shape Shifter's internal table_store.
 
     This loader does not connect to an external database. Instead, it queries
-    already-resolved entities registered in a persistent DuckDB workspace.
+    already-resolved entities registered in a transient in-memory DuckDB workspace.
     """
 
     driver: str = "duckdb"
@@ -35,7 +36,7 @@ class DuckDbLoader(SqlLoader):
                 type="string",
                 required=False,
                 default=":memory:",
-                description="DuckDB database path. Defaults to in-memory.",
+                description="DuckDB database path. The internal workspace is transient and must remain in-memory.",
                 placeholder=":memory:",
             ),
         ],
@@ -84,10 +85,12 @@ class DuckDbLoader(SqlLoader):
         return data
 
     async def read_sql(self, sql: str) -> pd.DataFrame:
+        ensure_read_only_sql(sql)
         self.workspace.register_many(self.table_store)
         return self.workspace.query_df(sql)
 
     async def execute_scalar_sql(self, sql: str) -> Any:
+        ensure_read_only_sql(sql)
         return self.workspace.query_scalar(sql)
 
     async def get_tables(self, **kwargs: Any) -> dict[str, CoreSchema.TableMetadata]:

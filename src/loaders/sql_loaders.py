@@ -8,16 +8,21 @@ from typing import Any, ClassVar, Generator, Optional
 import jaydebeapi
 import jpype
 import pandas as pd
+import sqlparse
 from loguru import logger
 from sqlalchemy import create_engine
+from sqlparse.tokens import Comment, Keyword, Literal
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.model import DataSourceConfig, TableConfig
+from src.sql_policy import ensure_read_only_sql, validate_read_only_sql
 from src.transforms.utility import add_system_id
 from src.utility import create_db_uri as create_pg_uri
 from src.utility import dotget
 
 from .base_loader import ConnectTestResult, DataLoader, DataLoaders, LoaderType
+
+MAX_RESULT_LIMIT = 10_000
 
 
 def init_jvm_for_ucanaccess(ucanaccess_dir: str = "lib/ucanaccess") -> None:
@@ -226,34 +231,71 @@ class SqlLoader(DataLoader):
         return self.quote_name(table)
 
     def quote_name(self, name: str) -> str:
-        """Return quoted identifier."""
-        return f'"{name}"'
+        """Return a safely quoted SQL identifier."""
+        if not isinstance(name, str) or not name or "\x00" in name:
+            raise ValueError("SQL identifiers must be non-empty strings without NUL characters")
+        return f'"{name.replace(chr(34), chr(34) * 2)}"'
 
     async def load_table(
         self, *, table_name: str, limit: int | None = None, offset: int | None = None, **kwargs  # pylint: disable=unused-argument
     ) -> pd.DataFrame:
         """Load entire table as DataFrame."""
         qualified_table_name: str = self.qualify_name(schema=kwargs.get("schema"), table=table_name)
-        limit_clause: str = f"LIMIT {limit}" if limit else ""
+        if limit is not None and limit < 0:
+            raise ValueError("Query result limit cannot be negative")
+        effective_limit = min(limit, MAX_RESULT_LIMIT) if limit is not None else None
+        limit_clause: str = f"LIMIT {effective_limit}" if effective_limit else ""
         offset_clause: str = f"OFFSET {offset}" if offset else ""
         sql: str = f"select * from {qualified_table_name} {limit_clause} {offset_clause} ;"
         data: pd.DataFrame = await self.read_sql(sql=sql)
         return data
 
-    async def read_sql(self, sql: str) -> pd.DataFrame:
+    async def read_sql(self, sql: str, params: dict[str, Any] | tuple[Any, ...] | None = None) -> pd.DataFrame:
         """Read SQL query into a DataFrame using the provided connection."""
+        ensure_read_only_sql(sql)
         with create_engine(url=self.db_uri).begin() as connection:
-            data: pd.DataFrame = pd.read_sql_query(sql=sql, con=connection)  # type: ignore[arg-type]
+            data: pd.DataFrame = pd.read_sql_query(sql=sql, con=connection, params=params)  # type: ignore[arg-type]
         return data
 
     def inject_limit(self, sql: str, limit: int) -> str:
-        """Add LIMIT clause to SQL query if not already present."""
-        sql_lower: str = sql.lower()
-        if "limit" in sql_lower:
+        """Apply the server result cap while preserving a lower user limit."""
+        if limit < 0:
+            raise ValueError("Query result limit cannot be negative")
+
+        effective_limit = min(limit, MAX_RESULT_LIMIT)
+        if not validate_read_only_sql(sql).is_valid:
             return sql
-        if "select" not in sql_lower:
+        parsed = sqlparse.parse(sql)
+        if not parsed or len(parsed) != 1:
             return sql
-        return f"{sql.strip().rstrip(';')} limit {limit};"
+
+        statement = parsed[0]
+        tokens = statement.tokens
+        position = 0
+        for index, token in enumerate(tokens):
+            token_start = position
+            position += len(token.value)
+            if token.ttype is not Keyword or token.value.upper() != "LIMIT":
+                continue
+
+            value_index = index + 1
+            while value_index < len(tokens) and (tokens[value_index].is_whitespace or tokens[value_index].ttype in Comment):
+                value_index += 1
+            if value_index >= len(tokens):
+                break
+
+            value_token = tokens[value_index]
+            if value_token.ttype is Literal.Number.Integer:
+                existing_limit = int(value_token.value)
+                if existing_limit <= effective_limit:
+                    return sql
+                value_start = token_start + len(token.value) + sum(len(item.value) for item in tokens[index + 1 : value_index])
+                value_end = value_start + len(value_token.value)
+                return f"{sql[:value_start]}{effective_limit}{sql[value_end:]}"
+            break
+
+        query_without_terminator = sql.strip().rstrip(";").rstrip()
+        return f"SELECT * FROM ({query_without_terminator}) AS __shape_shifter_limited LIMIT {effective_limit};"
 
     @abc.abstractmethod
     async def get_tables(self, **kwargs) -> dict[str, "CoreSchema.TableMetadata"]:
@@ -390,7 +432,7 @@ class SqliteLoader(SqlLoader):
     async def get_table_schema(self, table_name: str, **kwargs) -> CoreSchema.TableSchema:
         """Get detailed schema for MS Access table."""
         # Get columns using information schema
-        columns_query = f"""
+        columns_query = """
             SELECT
                 COLUMN_NAME,
                 DATA_TYPE,
@@ -398,15 +440,15 @@ class SqliteLoader(SqlLoader):
                 COLUMN_DEFAULT,
                 CHARACTER_MAXIMUM_LENGTH
             FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = '{table_name}'
+            WHERE TABLE_NAME = ?
             ORDER BY ORDINAL_POSITION
         """
 
-        columns_data = await self.read_sql(columns_query)
+        columns_data = await self.read_sql(columns_query, params=(table_name,))
 
         try:
-            pk_query: str = f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_NAME = '{table_name}'"
-            pk_data: pd.DataFrame = await self.read_sql(pk_query)
+            pk_query: str = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_NAME = ?"
+            pk_data: pd.DataFrame = await self.read_sql(pk_query, params=(table_name,))
             primary_keys: list[str] = pk_data["COLUMN_NAME"].tolist() if not pk_data.empty else []
         except Exception:  # pylint: disable=broad-except
             logger.warning(f"Could not determine primary keys for {table_name}")
@@ -458,6 +500,7 @@ class SqliteLoader(SqlLoader):
 
     async def execute_scalar_sql(self, sql: str) -> Any:
         """Read SQL query that returns a single scalar value."""
+        ensure_read_only_sql(sql)
         with create_engine(url=self.db_uri).begin() as connection:
             result = connection.execute(sql)  # type: ignore[attr-defined]
             scalar_value = result.scalar()
@@ -527,14 +570,16 @@ class PostgresSqlLoader(SqlLoader):
             raise ValueError("Data source configuration is required for PostgresSqlLoader")
         return create_pg_uri(**self.db_opts, driver="postgresql+psycopg")
 
-    async def read_sql(self, sql: str) -> pd.DataFrame:
+    async def read_sql(self, sql: str, params: dict[str, Any] | tuple[Any, ...] | None = None) -> pd.DataFrame:
         """Read SQL query into a DataFrame using the provided connection."""
+        ensure_read_only_sql(sql)
         with create_engine(url=self.db_uri).begin() as connection:
-            data: pd.DataFrame = pd.read_sql_query(sql=sql, con=connection)  # type: ignore[arg-type]
+            data: pd.DataFrame = pd.read_sql_query(sql=sql, con=connection, params=params)  # type: ignore[arg-type]
         return data
 
     async def execute_scalar_sql(self, sql: str) -> Any:
         """Read SQL query that returns a single scalar value."""
+        ensure_read_only_sql(sql)
         with create_engine(url=self.db_uri).begin() as connection:
             result = connection.execute(sql)  # type: ignore[attr-defined]
             scalar_value = result.scalar()
@@ -544,18 +589,18 @@ class PostgresSqlLoader(SqlLoader):
         """Get tables from PostgreSQL database."""
         schema: str = kwargs.get("schema", "public")
 
-        query: str = f"""
+        query: str = """
             select
                 table_name,
                 table_schema as schema,
                 obj_description((quote_ident(table_schema) || '.' || quote_ident(table_name))::regclass) as comment
             from information_schema.tables
-            where table_schema = '{schema}'
+            where table_schema = :schema
               and table_type = 'BASE TABLE'
             order by table_name
         """
 
-        data: pd.DataFrame = await self.read_sql(query)
+        data: pd.DataFrame = await self.read_sql(query, params={"schema": schema})
 
         return CoreSchema.TableMetadata.from_dataframe(data)
 
@@ -564,30 +609,31 @@ class PostgresSqlLoader(SqlLoader):
         schema: str = kwargs.get("schema", "public")
 
         # Get columns
-        columns_query: str = f"""
+        columns_query: str = """
             select column_name, data_type, is_nullable, column_default, character_maximum_length
             from information_schema.columns
-            where table_schema = '{schema}'
-              and table_name = '{table_name}'
+                        where table_schema = :schema
+                            and table_name = :table_name
             order by ordinal_position
         """
 
-        columns_data: pd.DataFrame = await self.read_sql(columns_query)
+        metadata_params = {"schema": schema, "table_name": table_name}
+        columns_data: pd.DataFrame = await self.read_sql(columns_query, params=metadata_params)
 
         # Get primary keys
-        pk_query: str = f"""
+        pk_query: str = """
             select a.attname as column_name
             from pg_index i
             join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any(i.indkey)
             where i.indrelid = (
                 select oid from pg_class
-                where relname = '{table_name}'
-                and relnamespace = (select oid from pg_namespace where nspname = '{schema}')
+                where relname = :table_name
+                and relnamespace = (select oid from pg_namespace where nspname = :schema)
             )
             and i.indisprimary
         """
 
-        pk_data: pd.DataFrame = await self.read_sql(pk_query)
+        pk_data: pd.DataFrame = await self.read_sql(pk_query, params=metadata_params)
         primary_keys = pk_data["column_name"].tolist() if not pk_data.empty else []
 
         # Build columns list
@@ -610,7 +656,7 @@ class PostgresSqlLoader(SqlLoader):
             )
 
         # Get foreign keys
-        fk_query = f"""
+        fk_query = """
             select
                 kcu.column_name,
                 ccu.table_name AS referenced_table,
@@ -627,11 +673,11 @@ class PostgresSqlLoader(SqlLoader):
             join information_schema.referential_constraints AS rc
               on rc.constraint_name = tc.constraint_name
             where tc.constraint_type = 'FOREIGN KEY'
-              and tc.table_schema = '{schema}'
-              and tc.table_name = '{table_name}'
+              and tc.table_schema = :schema
+              and tc.table_name = :table_name
         """
 
-        fk_data: pd.DataFrame = await self.read_sql(fk_query)
+        fk_data: pd.DataFrame = await self.read_sql(fk_query, params=metadata_params)
 
         foreign_keys = []
         if not fk_data.empty:
@@ -741,8 +787,8 @@ class UCanAccessSqlLoader(SqlLoader):
 
         return self._canonicalize_access_column_names(table_cfg, data)
 
-    async def read_sql(self, sql: str) -> pd.DataFrame:
-        return self.read_sql_sync(sql)
+    async def read_sql(self, sql: str, params: dict[str, Any] | tuple[Any, ...] | None = None) -> pd.DataFrame:
+        return self.read_sql_sync(sql, params=params)
 
     def inject_limit(self, sql: str, limit: int) -> str:
         """Add top clause to SQL query if not already present."""
@@ -767,10 +813,14 @@ class UCanAccessSqlLoader(SqlLoader):
 
         return [str(desc[0]).strip("[]") for desc in cursor.description] if cursor.description else []
 
-    def read_sql_sync(self, sql: str) -> pd.DataFrame:
+    def read_sql_sync(self, sql: str, params: dict[str, Any] | tuple[Any, ...] | None = None) -> pd.DataFrame:
+        ensure_read_only_sql(sql)
         with self.connection() as conn:
             with self._cursor(conn) as cursor:
-                cursor.execute(sql)
+                if params is None:
+                    cursor.execute(sql)
+                else:
+                    cursor.execute(sql, params)
                 columns: list[str] = self._result_columns_from_cursor(cursor)
                 rows = cursor.fetchall()
                 df = pd.DataFrame(rows, columns=columns)
@@ -785,6 +835,7 @@ class UCanAccessSqlLoader(SqlLoader):
                 return df
 
     async def execute_scalar_sql(self, sql: str) -> Any:
+        ensure_read_only_sql(sql)
         with self.connection() as conn:
             with self._cursor(conn) as cursor:
                 cursor.execute(sql)
@@ -802,7 +853,10 @@ class UCanAccessSqlLoader(SqlLoader):
         **kwargs,  # pylint: disable=unused-argument
     ) -> pd.DataFrame:
         """Load entire table as DataFrame."""
-        sql: str = f"select {f'top {limit}' if limit else ''} * from {self.quote_name(table_name)};"
+        if limit is not None and limit < 0:
+            raise ValueError("Query result limit cannot be negative")
+        effective_limit = min(limit, MAX_RESULT_LIMIT) if limit is not None else None
+        sql: str = f"select {f'top {effective_limit}' if effective_limit else ''} * from {self.quote_name(table_name)};"
         data: pd.DataFrame = await self.read_sql(sql=sql)
         return data
 
@@ -810,7 +864,9 @@ class UCanAccessSqlLoader(SqlLoader):
         return f"[{table}]"
 
     def quote_name(self, name: str) -> str:
-        return f"[{name}]"
+        if not isinstance(name, str) or not name or "\x00" in name:
+            raise ValueError("SQL identifiers must be non-empty strings without NUL characters")
+        return f"[{name.replace(']', ']]')}]"
 
     @contextmanager
     def _cursor(self, conn: jaydebeapi.Connection) -> Generator[Any, Any, None]:
