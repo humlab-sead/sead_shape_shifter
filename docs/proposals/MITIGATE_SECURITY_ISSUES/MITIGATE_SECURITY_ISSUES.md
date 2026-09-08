@@ -7,7 +7,7 @@
 - Goal: Prevent unauthenticated or insufficiently authorized users from reading or writing server files, accessing databases, exposing secrets, or executing unsafe operations
 - Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
 - Follow-up sub-proposal: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](./SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
-- Authorization task plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
+- Authorization task plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
 
 ## Summary
 
@@ -84,7 +84,7 @@ The review's practical verification reported these results:
 
 ### 2. Enforce nginx identity and application authorization
 
-The implemented resource authorization model is documented in [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md) and its [task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md). The remaining server-owned identifier work is defined in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](./SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
+The implemented resource authorization model is documented in [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md) and its [task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md). The remaining server-owned identifier work is defined in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](./SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
 
 - Keep nginx as the current authentication provider. Define how it passes a verified identity to FastAPI, using a trusted header or validated token.
 - Add FastAPI middleware or dependencies that reject requests without a verified identity. Strip or reject client-supplied identity headers and trust them only on requests that can come from nginx.

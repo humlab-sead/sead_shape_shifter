@@ -418,3 +418,49 @@ class TestProjectsBackups:
         assert "sample" in original_data["entities"]
         assert "sample" in restored_data["entities"]
         assert restored_data["entities"]["sample"]["columns"] == original_data["entities"]["sample"]["columns"]
+
+    async def test_restore_rejects_backup_from_another_project(
+        self, reset_services, tmp_path, monkeypatch, sample_project_data, authorized_client
+    ):
+        """Restore accepts only a backup name returned for the authorized project."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+
+        for project_name in ("project_a", "project_b"):
+            response = await authorized_client.post(
+                "/api/v1/projects",
+                json={"name": project_name, "entities": sample_project_data["entities"]},
+            )
+            assert response.status_code == 201
+
+        project_b_backup = tmp_path / "project_b" / "backups" / "cross-project.yml"
+        project_b_backup.parent.mkdir()
+        project_b_backup.write_text("entities: {}\n", encoding="utf-8")
+
+        response = await authorized_client.post(
+            "/api/v1/projects/project_a/restore",
+            json={"backup_name": "../project_b/backups/cross-project.yml"},
+        )
+
+        assert response.status_code == 404
+
+    async def test_list_backups_skips_symlink_outside_project(
+        self, reset_services, tmp_path, monkeypatch, sample_project_data, authorized_client
+    ):
+        """Backup listings do not expose backups through an outside symlink."""
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        response = await authorized_client.post(
+            "/api/v1/projects",
+            json={"name": "project_a", "entities": sample_project_data["entities"]},
+        )
+        assert response.status_code == 201
+
+        outside_backup = tmp_path / "outside.yml"
+        outside_backup.write_text("entities: {}\n", encoding="utf-8")
+        backup_dir = tmp_path / "project_a" / "backups"
+        backup_dir.mkdir()
+        (backup_dir / "outside.yml").symlink_to(outside_backup)
+
+        response = await authorized_client.get("/api/v1/projects/project_a/backups")
+
+        assert response.status_code == 200
+        assert response.json() == []

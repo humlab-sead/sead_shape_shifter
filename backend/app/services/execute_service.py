@@ -17,6 +17,7 @@ from backend.app.services.project_service import ProjectService
 from backend.app.services.validation_service import ValidationService
 from src.dispatch import Dispatchers
 from src.model import ShapeShiftProject
+from src.path_resolution import resolve_contained_path
 from src.specifications import CompositeProjectSpecification
 from src.workflow import workflow
 
@@ -204,10 +205,9 @@ class ExecuteService:
         if not target or Path(target).is_absolute():
             raise ValueError("File and folder outputs must use a non-empty relative output name")
 
-        output_root = (self.project_service.projects_dir / ProjectNameMapper.to_path(project_name) / "outputs").resolve()
-        target_path: Path = (output_root / target).resolve()
-        if output_root not in target_path.parents:
-            raise ValueError("Output target must remain inside the project's managed output directory")
+        project_root = resolve_contained_path(ProjectNameMapper.to_path(project_name), self.project_service.projects_dir)
+        output_root = resolve_contained_path("outputs", project_root)
+        target_path: Path = resolve_contained_path(target, output_root)
 
         if target_type == "folder":
             # Ensure parent directory exists for folder targets
@@ -216,6 +216,8 @@ class ExecuteService:
             # Ensure parent directory exists for file targets
             target_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # Re-resolve after directory creation to detect a symlink swap during setup.
+        target_path = resolve_contained_path(target, output_root)
         return str(target_path)
 
     def _output_identifier(self, project_name: str, target: str, target_type: str) -> str:
