@@ -6,6 +6,8 @@ import duckdb
 import pandas as pd
 from loguru import logger
 
+from src.sql_policy import ensure_read_only_sql
+
 
 class DuckDbWorkspace:
     """Persistent DuckDB workspace over Shape Shifter's TableStore.
@@ -87,14 +89,17 @@ class DuckDbWorkspace:
             self.register_entity(name, tables[name])
 
     def execute(self, sql: str) -> duckdb.DuckDBPyConnection:
+        ensure_read_only_sql(sql)
         self.flush()
         return self.connection.execute(sql)
 
     def query_df(self, sql: str) -> pd.DataFrame:
+        ensure_read_only_sql(sql)
         self.flush()
         return self.connection.execute(sql).df()
 
     def query_scalar(self, sql: str) -> Any:
+        ensure_read_only_sql(sql)
         self.flush()
         row: tuple[Any, ...] | None = self.connection.execute(sql).fetchone()
 
@@ -104,6 +109,7 @@ class DuckDbWorkspace:
         return row[0]
 
     def explain(self, sql: str) -> pd.DataFrame:
+        ensure_read_only_sql(sql)
         return self.connection.execute(f"EXPLAIN {sql}").df()
 
     def list_registered(self) -> list[str]:

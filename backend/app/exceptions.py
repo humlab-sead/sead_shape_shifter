@@ -543,9 +543,6 @@ class QueryExecutionError(DomainException):
         context = kwargs.pop("context", {})
         if data_source:
             context["data_source"] = data_source
-        if query:
-            # Truncate long queries for context
-            context["query"] = query[:500] + "..." if len(query) > 500 else query
 
         super().__init__(message, recoverable=True, context=context, **kwargs)
 
@@ -576,8 +573,6 @@ class QuerySecurityError(DomainException):
             **kwargs: Additional DomainException arguments
         """
         context = kwargs.pop("context", {})
-        if query:
-            context["query"] = query[:500] + "..." if len(query) > 500 else query
         if violations:
             context["violations"] = violations
 

@@ -14,7 +14,13 @@ import src.model as core
 from backend.app.exceptions import QueryExecutionError, QuerySecurityError
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.query import QueryResult, QueryValidation
-from backend.app.utils.sql import extract_select_columns, extract_tables, get_statement_type, has_where_clause, has_wildcard_select
+from backend.app.utils.sql import (
+    extract_select_columns,
+    extract_tables,
+    has_where_clause,
+    has_wildcard_select,
+    validate_read_only_sql,
+)
 from src.loaders.base_loader import DataLoaders
 from src.loaders.sql_loaders import SqlLoader
 
@@ -29,19 +35,7 @@ def is_internal_data_source(name: str) -> bool:
 class QueryService:
     """Service for executing and validating SQL queries."""
 
-    FORBIDDEN_KEYWORDS: set[str] = {
-        "INSERT",
-        "UPDATE",
-        "DELETE",
-        "DROP",
-        "CREATE",
-        "ALTER",
-        "TRUNCATE",
-        "REPLACE",
-        "MERGE",
-        "GRANT",
-        "REVOKE",
-    }
+    FORBIDDEN_KEYWORDS: set[str] = set()
 
     def validate_query(self, query: str, data_source_name: str | None = None) -> QueryValidation:  #  pylint: disable=unused-argument
         """
@@ -54,34 +48,20 @@ class QueryService:
         Returns:
             QueryValidation with validation results
         """
-        errors: list[str] = []
-        warnings: list[str] = []
+        policy = validate_read_only_sql(query)
+        errors = list(policy.errors)
+        warnings = list(policy.warnings)
+        statement_type = policy.statement_type
 
-        try:
-            parsed = sqlparse.parse(query)
-            if not parsed:
-                return QueryValidation(is_valid=False, errors=["Empty or invalid SQL query"], warnings=[], statement_type=None)
-        except Exception as e:  # pylint: disable=broad-except
-            return QueryValidation(is_valid=False, errors=[f"SQL syntax error: {str(e)}"], warnings=[], statement_type=None)
-
+        parsed = [statement for statement in sqlparse.parse(query) if statement.value.strip()]
+        if not parsed:
+            return QueryValidation(is_valid=False, errors=errors, warnings=warnings, statement_type=statement_type)
         statement: Statement = parsed[0]
-        statement_type: str | None = get_statement_type(statement, self.FORBIDDEN_KEYWORDS)
-
-        if statement_type and statement_type.upper() in self.FORBIDDEN_KEYWORDS:
-            errors.append(f"Destructive SQL operation '{statement_type}' is not allowed. " f"Only SELECT queries are permitted.")
 
         tables: list[str] = extract_tables(query)
 
         # if not statement_type:
         #     errors.append("Could not determine SQL statement type.")
-
-        # Block non-SELECT statements for now
-        if statement_type and statement_type.upper() != "SELECT":
-            errors.append(f"Only SELECT queries are allowed. Found '{statement_type}' statement.")
-
-        # Check for multiple statements
-        if len(parsed) > 1:
-            warnings.append("Query contains multiple statements. Only the first will be executed.")
 
         # Check for missing WHERE clause on large tables (heuristic warning)
         if statement_type == "SELECT" and not has_where_clause(statement):
@@ -154,16 +134,12 @@ class QueryService:
                 is_truncated=is_truncated,
                 total_rows=len(rows) if not is_truncated else None,
             )
-        except KeyError as e:
-            raise QueryExecutionError(
-                message=f"Query execution failed due to missing configuration: {str(e)}", data_source=ds_cfg.name, query=query
-            ) from e
-        except asyncio.TimeoutError as e:
-            raise QueryExecutionError(
-                message=f"Query execution timed out after {timeout} seconds", data_source=ds_cfg.name, query=query
-            ) from e
-        except Exception as e:
-            raise QueryExecutionError(message=f"Query execution failed: {str(e)}", data_source=ds_cfg.name, query=query) from e
+        except KeyError:
+            raise QueryExecutionError(message="Query execution failed due to missing configuration.", data_source=ds_cfg.name, query=query)
+        except asyncio.TimeoutError:
+            raise QueryExecutionError(message=f"Query execution timed out after {timeout} seconds", data_source=ds_cfg.name, query=query)
+        except Exception:
+            raise QueryExecutionError(message="Query execution failed.", data_source=ds_cfg.name, query=query)
 
     async def introspect_query_columns(self, ds_cfg: api.DataSourceConfig | None, query: str) -> list[str]:
         """
@@ -208,9 +184,7 @@ class QueryService:
             df: pd.DataFrame = await asyncio.wait_for(loader.read_sql(limited_query), timeout=10)
             return df.columns.tolist()
 
-        except asyncio.TimeoutError as e:
-            raise QueryExecutionError(
-                message="Column introspection timed out after 10 seconds", data_source=ds_cfg.name, query=query
-            ) from e
-        except Exception as e:
-            raise QueryExecutionError(message=f"Column introspection failed: {str(e)}", data_source=ds_cfg.name, query=query) from e
+        except asyncio.TimeoutError:
+            raise QueryExecutionError(message="Column introspection timed out after 10 seconds", data_source=ds_cfg.name, query=query)
+        except Exception:
+            raise QueryExecutionError(message="Column introspection failed.", data_source=ds_cfg.name, query=query)

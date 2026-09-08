@@ -87,12 +87,12 @@ class TestQueryValidation:
         assert result.is_valid is True or len(result.errors) > 0
 
     def test_validate_multiple_statements(self):
-        """Should warn about multiple statements."""
+        """Should reject multiple statements before execution."""
         query: str = "SELECT * FROM users; SELECT * FROM orders;"
         result: QueryValidation = self.service.validate_query(query)
 
-        assert len(result.warnings) > 0
-        assert "multiple statements" in result.warnings[0].lower()
+        assert result.is_valid is False
+        assert any("multiple statements" in error.lower() for error in result.errors)
 
     def test_validate_no_where_clause(self):
         """Should warn about queries without WHERE clause."""
@@ -226,6 +226,17 @@ class TestQueryExecution:
         assert len(error.tips) > 0
 
     @pytest.mark.asyncio
+    async def test_execute_multiple_statements_does_not_reach_loader(self, mock_ds_config):
+        """Should reject stacked statements before constructing or calling a loader."""
+        with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
+            service: QueryService = QueryService()
+
+            with pytest.raises(QuerySecurityError, match="prohibited operations"):
+                await service.execute_query(ds_cfg=mock_ds_config, query="SELECT 1; SELECT 2")
+
+            mock_get_loader.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_execute_connection_error(self, mock_ds_config):
         """Should handle connection errors."""
 
@@ -240,7 +251,8 @@ class TestQueryExecution:
 
                 await service.execute_query(ds_cfg=mock_ds_config, query=query)
 
-        assert "connection failed" in str(exc_info.value).lower()
+        assert str(exc_info.value) == "Query execution failed."
+        assert "connection failed" not in exc_info.value.context
 
     @pytest.mark.asyncio
     async def test_execute_query_error(self, mock_ds_config):
@@ -258,6 +270,8 @@ class TestQueryExecution:
             with pytest.raises(QueryExecutionError) as exc_info:
                 await service.execute_query(ds_cfg=mock_ds_config, query=query)
             assert "query execution failed" in str(exc_info.value).lower()
+            assert "table not found" not in str(exc_info.value).lower()
+            assert "query" not in exc_info.value.context
 
     @pytest.mark.asyncio
     async def test_execute_with_null_values(self, mock_ds_config):
@@ -837,7 +851,8 @@ class TestColumnIntrospection:
 
             error = exc_info.value
             assert "introspection failed" in error.message.lower()
-            assert "doesn't exist" in error.message.lower()
+            assert "doesn't exist" not in error.message.lower()
+            assert "query" not in error.context
 
     @pytest.mark.asyncio
     async def test_introspect_query_columns_timeout(self, mock_ds_config):
