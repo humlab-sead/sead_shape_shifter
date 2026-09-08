@@ -55,10 +55,10 @@ Close the arbitrary file read and write paths through execution and download.
 
 **Tasks**
 
-- [ ] Review `resolve_output_target` in `backend/app/services/execute_service.py` and the download resolution in `backend/app/api/v1/endpoints/execute.py`; confirm every read and write resolves beneath the project's managed output directory.
-- [ ] Close the arbitrary file download finding so no endpoint returns any readable file selected by a client-supplied path.
-- [ ] Keep or extend server-generated output naming and identifiers (for example timestamped file targets) so clients cannot choose output destinations.
-- [ ] Add tests for traversal, absolute paths, symlinks, cross-project output references, and time-of-check/time-of-use changes.
+- [x] Review `resolve_output_target` in `backend/app/services/execute_service.py` and the download resolution in `backend/app/api/v1/endpoints/execute.py`; confirm every read and write resolves beneath the project's managed output directory.
+- [x] Close the arbitrary file download finding so no endpoint returns any readable file selected by a client-supplied path.
+- [x] Keep or extend server-generated output naming and identifiers (for example timestamped file targets) so clients cannot choose output destinations.
+- [x] Add tests for traversal, absolute paths, symlinks, cross-project output references, and time-of-check/time-of-use changes.
 
 **Completion Criteria**
 
@@ -103,7 +103,7 @@ Ingester operations cannot create or overwrite files outside their assigned root
 | Area                                            | Status      | Notes                                        |
 |-------------------------------------------------|-------------|----------------------------------------------|
 | Approved roots and shared containment guard     | Done | Root documentation, shared guard, resolver integration, and escape-case tests are complete |
-| Execution outputs and downloads                 | Not started | Closes the arbitrary file download finding   |
+| Execution outputs and downloads                 | Done | Output and download paths are confined and escape-case tests pass |
 | Project files, uploads, backups, and directives | Not started | Includes the raw YAML disposition decision   |
 | Ingester boundaries                             | Not started | Ingester remains disabled during this phase  |
 
@@ -131,7 +131,7 @@ Ingester operations cannot create or overwrite files outside their assigned root
 |---|---|---|---|
 | Approved-roots registry            | Documented server-owned roots and per-environment values    | Done | [`docs/OPERATIONS.md`](../../OPERATIONS.md) |
 | Containment guard and tests        | Shared path-resolution guard plus unit tests | Done   | `src/path_resolution.py`, `backend/app/utils/file_path_resolver.py` |
-| Execution and download confinement | Confined outputs and closed arbitrary download | Not started         | `backend/app/services/execute_service.py` |
+| Execution and download confinement | Confined outputs and closed arbitrary download | Done         | `backend/app/services/execute_service.py`, `backend/tests/services/test_execute_service_output_paths.py` |
 | Project-file, upload, backup, and directive confinement | Root checks across file endpoints and YAML directives | Not started | `backend/app/services/project/file_manager.py`, `backend/app/api/v1/endpoints/projects.py` |
 | Raw YAML disposition record        | Decision on restricting or removing raw YAML mutation  | Not started | TBD                                       |
 | Ingester boundary record           | Disablement or containment evidence for ingester paths | Not started | `docs/proposals/CHANGE_REQUEST_INGESTER/` |
