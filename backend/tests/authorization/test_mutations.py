@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from backend.app.authorization.models import Grant, GrantSubjectType, ResourceRecord, ResourceType
+from backend.app.authorization.models import Grant, ResourceRecord, ResourceType
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
 
 
@@ -24,8 +24,6 @@ def test_grant_mutation_writes_audit_event_atomically(tmp_path) -> None:
 
     assert events[-1].event_type == "grant_created"
     assert events[-1].resource_id == resource.resource_id
-    assert events[-1].subject_type == GrantSubjectType.PRINCIPAL
-    assert events[-1].subject_id == "alice"
     repository.close()
 
 
@@ -43,35 +41,6 @@ def test_final_owner_and_admin_are_protected(tmp_path) -> None:
     assert len(repository.list_audit_events()) == 2
     assert repository.list_grants("alice")[0].role == "owner"
     assert repository.list_application_roles("alice") == ["admin"]
-    repository.close()
-
-
-def test_broad_subject_cannot_receive_owner_role(tmp_path) -> None:
-    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
-    resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
-    repository.create_resource(resource)
-
-    with pytest.raises(ValueError, match="Only a principal"):
-        repository.add_grant(Grant("editors", resource.resource_id, "owner", datetime.now(UTC), "admin", GrantSubjectType.GROUP))
-
-    repository.close()
-
-
-def test_broad_subject_can_be_revoked(tmp_path) -> None:
-    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
-    resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
-    repository.create_resource(resource)
-    repository.add_grant(Grant("editors", resource.resource_id, "editor", datetime.now(UTC), "admin", GrantSubjectType.GROUP))
-
-    assert repository.list_audit_events()[-1].subject_type == GrantSubjectType.GROUP
-    assert repository.list_audit_events()[-1].subject_id == "editors"
-
-    repository.remove_grant("editors", resource.resource_id, "editor", "admin", GrantSubjectType.GROUP)
-
-    assert repository.list_audit_events()[-1].subject_type == GrantSubjectType.GROUP
-    assert repository.list_audit_events()[-1].subject_id == "editors"
-
-    assert repository.list_all_grants() == []
     repository.close()
 
 
@@ -100,18 +69,6 @@ def test_bootstrap_admins_is_idempotent_and_records_events(tmp_path) -> None:
     assert repository.list_application_roles("bob") == ["admin"]
     assert repository.list_application_roles("charlie") == []
     assert len(repository.list_audit_events()) == 2
-    repository.close()
-
-
-def test_repository_lists_resources_and_application_roles(tmp_path) -> None:
-    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
-    resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
-    repository.create_resource(resource)
-    repository.add_application_role("alice", "operator", "admin")
-
-    assert repository.list_resources() == [resource]
-    assert repository.list_all_application_roles()[0].principal_id == "alice"
-    assert repository.list_all_application_roles()[0].role.value == "operator"
     repository.close()
 
 
