@@ -70,6 +70,20 @@ Runtime variables:
 | `SHAPE_SHIFTER_ENABLED_INGESTERS`                | `null` (all)            | Comma-separated list of ingester keys to enable (filters ingesters)  |
 | `SHAPE_SHIFTER_MATERIALIZATION_INLINE_THRESHOLD` | `20`                    | Row count below which materialized data is stored inline in YAML     |
 
+### Approved file roots
+
+The backend treats these directories as the complete set of server-owned file roots:
+
+| Root | Configuration | Contents |
+|------|---------------|----------|
+| Projects | `SHAPE_SHIFTER_PROJECTS_DIR` | Project YAML, project uploads, backups, generated outputs, and project-local data |
+| Shared data | `SHAPE_SHIFTER_GLOBAL_DATA_DIR` | Shared reference files used by project configuration |
+| Shared data sources | `SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR` | Shared uploaded data-source files |
+| Logs | `SHAPE_SHIFTER_LOG_DIR` | Application logs; not a user-selectable data path |
+| Temporary files | `APPLICATION_ROOT/tmp` | Disposable processing files when a feature requires a temporary path |
+
+Project subdirectories such as `backups` and `outputs` remain below the selected project directory. File names supplied by API clients are always interpreted relative to their assigned root; absolute paths, parent traversal, and symlink paths that resolve outside the root are rejected.
+
 Database connection variables (used in project YAML via `${VAR}` syntax, not prefixed with `SHAPE_SHIFTER_`):
 
 | Variable      | Default  | Purpose            |
