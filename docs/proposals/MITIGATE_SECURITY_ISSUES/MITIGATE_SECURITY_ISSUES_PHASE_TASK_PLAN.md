@@ -5,6 +5,7 @@
 - Status: In progress
 - Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md)
 - Review record: [SECURITY_CHECK.md](./SECURITY_CHECK.md)
+- Per-phase task plans: one task plan per phase, linked under each phase section below (Phase 2: [MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md))
 - Goal: Enforce nginx-authenticated identity in FastAPI and remove the highest-severity file, database, configuration, and secret-access paths before restoring shared or production use
 
 **Acceptance Criteria**
@@ -60,6 +61,8 @@ Ensure that sensitive operations require the verified identity authenticated by 
 Requests without a verified nginx identity receive `401` or `403` for every sensitive route. Authenticated users cannot access another user or team's resources. Direct backend access is blocked. Unapproved origins cannot make credentialed requests.
 
 ### Phase 2: Constrain Filesystem And Project Configuration Access
+
+Task plan: [MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md)
 
 **Objective**
 
