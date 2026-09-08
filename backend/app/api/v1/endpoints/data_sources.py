@@ -172,22 +172,31 @@ async def list_data_sources(
 @router.get("/files", response_model=list[ProjectFileInfo], summary="List available data source files")
 @handle_endpoint_errors
 async def list_data_source_files(
+    principal: Annotated[Principal, Depends(data_source_principal_dependency)],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     ext: list[str] | None = Query(default=None, description="Filter by extension"),
     project_name: str | None = Query(default=None, description="Project name to include project-specific files"),
 ) -> list[ProjectFileInfo]:
-    """List Excel/CSV files available for data source configuration.
+    """List Excel/CSV files the principal is allowed to read.
 
-    Returns files from global shared-data directory. If project_name is provided,
-    also includes files from that project's upload directory.
+    Global shared-data files are returned only to operators. When project_name
+    is provided, files from that project's upload directory are returned only
+    when the principal has read access to the project.
+
+    Returns:
+        List of files from the shared-data directory and, when authorized,
+        the named project's upload directory.
     """
 
     project_service: ProjectService = get_project_service()
-    return project_service.list_data_source_files(extensions=ext, project_name=project_name)
+    return project_service.list_authorized_data_source_files(principal, authorization_service, extensions=ext, project_name=project_name)
 
 
 @router.get("/excel/metadata", response_model=ExcelMetadataResponse, summary="Get Excel sheets and columns")
 @handle_endpoint_errors
 async def get_excel_metadata(
+    principal: Annotated[Principal, Depends(data_source_principal_dependency)],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     file: str = Query(..., description="Filename or relative path to Excel file"),
     location: str = Query(default="global", description="File location: 'global' (shared) or 'local' (project-specific)"),
     sheet_name: str | None = Query(default=None, description="Optional sheet name to inspect for columns"),
@@ -198,7 +207,23 @@ async def get_excel_metadata(
         default=None, description="Project name (required when location='local' and file is in project directory)"
     ),
 ) -> ExcelMetadataResponse:
-    """Return available sheets and columns for a given Excel file."""
+    """Return available sheets and columns for an Excel file the principal may read.
+
+    Reading a global shared-data file requires the operator role. Reading a
+    file in a project's upload directory requires read access to that project;
+    an unauthorized project returns a concealed 404.
+    """
+    if location == "local":
+        if not project_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="project_name is required when location is 'local'",
+            )
+        resource = authorization_service.repository.get_resource_by_locator(ResourceType.PROJECT, project_name)
+        if resource is None or not authorization_service.is_allowed(principal, Action.READ, resource):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    elif not authorization_service.can_perform_application_action(principal, Action.MANAGE_SHARED_SOURCES):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient authorization")
 
     project_service: ProjectService = get_project_service()
     sheets, columns = project_service.get_excel_metadata(

@@ -45,6 +45,12 @@ class AuthorizationService:
             return None
         return AuthorizedResource(principal=principal, action=action, resource=resource)
 
+    def can_perform_application_action(self, principal: Principal, action: Action) -> bool:
+        """Return whether a principal holds an application role that allows an action."""
+        return any(
+            self.policy.allows_application_role(role, action) for role in self.repository.list_application_roles(principal.principal_id)
+        )
+
     def register_project(self, principal: Principal, locator: str) -> ResourceRecord:
         """Create a project resource and assign its initial owner."""
         if self.repository.get_resource_by_locator(ResourceType.PROJECT, locator) is not None:

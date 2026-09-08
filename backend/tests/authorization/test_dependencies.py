@@ -229,6 +229,47 @@ def test_sensitive_locator_routes_declare_authorization_requirements() -> None:
     assert not missing_requirements, "Sensitive routes without authorization declarations:\n" + "\n".join(missing_requirements)
 
 
+# Static data-source sub-routes that carry no dependency authorization_requirement and
+# are intentionally classified as authenticated-only. Keep this set in sync with
+# AUTHORIZATION_ROUTE_INVENTORY.md "Shared Data Sources, Schema, And Queries".
+# GET /data-sources/files and /data-sources/excel/metadata are context-filtered in the
+# handler: global reads require operator access and project-local scope requires project
+# read access. POST /data-sources/tables and /data-sources/tables/schema introspect a
+# client-supplied config and are authenticated-only pending a server-resolved design.
+AUTHENTICATED_STATIC_DATA_SOURCE_PATHS: frozenset[str] = frozenset(
+    {
+        "/data-sources",
+        "/data-sources/drivers",
+        "/data-sources/entity-types",
+        "/data-sources/files",
+        "/data-sources/excel/metadata",
+        "/data-sources/tables",
+        "/data-sources/tables/schema",
+    }
+)
+
+
+def test_static_data_source_subroutes_are_classified() -> None:
+    """Require every static data-source sub-route to declare a requirement or an explicit authenticated-only classification."""
+    missing_classification: list[str] = []
+
+    for route in api_router.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        if not (route.path == "/data-sources" or route.path.startswith("/data-sources/")):
+            continue
+        if route.path.startswith("/data-sources/{"):
+            # Locator routes are covered by the sensitive-locator check or declare
+            # their own requirement through dependencies.
+            continue
+        declared = any(_authorization_requirement(dependency.call) is not None for dependency in route.dependant.dependencies)
+        if not declared and route.path not in AUTHENTICATED_STATIC_DATA_SOURCE_PATHS:
+            methods = ",".join(sorted(route.methods))
+            missing_classification.append(f"{methods} {route.path}")
+
+    assert not missing_classification, "Unclassified static data-source routes:\n" + "\n".join(missing_classification)
+
+
 def _declared_authorization_route_paths() -> list[str]:
     """Return concrete URLs for every route that declares authorization metadata."""
     paths: list[str] = []

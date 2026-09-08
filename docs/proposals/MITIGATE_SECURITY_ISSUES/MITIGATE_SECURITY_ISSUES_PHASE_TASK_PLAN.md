@@ -47,7 +47,7 @@ Ensure that sensitive operations require the verified identity authenticated by 
 - [x] Document the nginx-to-FastAPI identity contract, including the trusted header or token, failure behavior, and key or header verification.
 - [x] Configure nginx to strip client-supplied identity values and pass only the verified identity to FastAPI.
 - [x] Enforce the verified identity at the FastAPI application boundary, including routes outside `api_router`.
-- [ ] Implement the [centralized authorization system](./CENTRALIZED_AUTHORIZATION_SYSTEM.md) for projects, shared data sources, uploads, generated outputs, backups, logs, schemas, queries, tasks, and ingesters by following its [task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md).
+- [x] Implement the [centralized authorization system](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md) for projects, shared data sources, logs, schemas, queries, and tasks by following its [completed task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md). Track the remaining upload, output, backup, and operation identifier work in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](./SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
 - [x] Reject direct requests that do not come through the trusted nginx path; enforce this with Docker and network controls as well as application checks.
 - [x] Keep health checks public only when required by deployment health checks.
 - [x] Separate project editing sessions from authenticated identity and verify session ownership.
@@ -183,7 +183,7 @@ Focused security tests, regression tests, and deployment checks pass on the exac
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
 | Containment record | Exposure, credential, log, firewall, and proxy assessment | Not started | TBD |
-| Access-control implementation | Authentication, authorization, session ownership, CSRF, and CORS controls | In progress | [Centralized authorization proposal](./CENTRALIZED_AUTHORIZATION_SYSTEM.md) and [task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md); resource authorization and CSRF remain |
+| Access-control implementation | Authentication, authorization, session ownership, CSRF, and CORS controls | In progress | Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md); follow-up resource identifiers: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](./SERVER_OWNED_RESOURCE_IDENTIFIERS.md); CSRF and broader controls remain |
 | Boundary-control implementation | Filesystem, YAML directive, upload, download, and execution-target restrictions | Not started | TBD |
 | Query safety implementation | SQL policy, database role controls, DuckDB restrictions, and resource limits | Not started | TBD |
 | Data-source and ingester decision | Server-managed destinations and ingester disposition | Not started | TBD |

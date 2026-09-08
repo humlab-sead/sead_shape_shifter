@@ -18,6 +18,7 @@ This inventory records the authorization requirement declared by every registere
 | `application:create_project`        | Create a project                                           |
 | `application:manage_shared_sources` | Manage shared data sources or schema cache                 |
 | `application:read_logs`             | View or download application logs                          |
+| `authenticated`                     | Any authenticated principal may call; no additional resource or application requirement is declared on the route. Trusted-proxy authentication still applies and any response-scoping behavior is described in the route notes |
 | `UNDECLARED`                        | No route authorization metadata; classification is pending |
 
 ## Public And Static Paths
@@ -116,31 +117,31 @@ This inventory records the authorization requirement declared by every registere
 
 ### Shared Data Sources, Schema, And Queries
 
-| Method   | Path                                                            | Requirement                         |
-|----------|-----------------------------------------------------------------|-------------------------------------|
-| `GET`    | `/api/v1/data-sources/drivers`                                  | `UNDECLARED`                        |
-| `GET`    | `/api/v1/data-sources/entity-types`                             | `UNDECLARED`                        |
-| `GET`    | `/api/v1/data-sources`                                          | `UNDECLARED`                        |
-| `GET`    | `/api/v1/data-sources/files`                                    | `UNDECLARED`                        |
-| `GET`    | `/api/v1/data-sources/excel/metadata`                           | `UNDECLARED`                        |
-| `POST`   | `/api/v1/data-sources/files`                                    | `application:manage_shared_sources` |
-| `GET`    | `/api/v1/data-sources/{filename}`                               | `shared_data_source:read`           |
-| `POST`   | `/api/v1/data-sources`                                          | `application:manage_shared_sources` |
-| `PUT`    | `/api/v1/data-sources/{filename}`                               | `application:manage_shared_sources` |
-| `DELETE` | `/api/v1/data-sources/{filename}`                               | `application:manage_shared_sources` |
-| `POST`   | `/api/v1/data-sources/{filename}/test`                          | `shared_data_source:read`           |
-| `GET`    | `/api/v1/data-sources/{name}/status`                            | `shared_data_source:read`           |
-| `GET`    | `/api/v1/data-sources/{name}/tables`                            | `shared_data_source:read`           |
-| `POST`   | `/api/v1/data-sources/tables`                                   | `UNDECLARED`                        |
-| `GET`    | `/api/v1/data-sources/{name}/tables/{table_name}/schema`        | `shared_data_source:read`           |
-| `POST`   | `/api/v1/data-sources/tables/schema`                            | `UNDECLARED`                        |
-| `GET`    | `/api/v1/data-sources/{name}/tables/{table_name}/preview`       | `shared_data_source:read`           |
-| `GET`    | `/api/v1/data-sources/{name}/tables/{table_name}/type-mappings` | `shared_data_source:read`           |
-| `POST`   | `/api/v1/data-sources/{name}/tables/{table_name}/import`        | `shared_data_source:read`           |
-| `POST`   | `/api/v1/data-sources/{name}/cache/invalidate`                  | `application:manage_shared_sources` |
-| `POST`   | `/api/v1/data-sources/{data_source_name}/query/execute`         | `shared_data_source:read`           |
-| `POST`   | `/api/v1/data-sources/{data_source_name}/query/validate`        | `shared_data_source:read`           |
-| `POST`   | `/api/v1/data-sources/{data_source_name}/query/columns`         | `shared_data_source:read`           |
+| Method   | Path                                                            | Requirement                         | Notes                                                                                                               |
+|----------|-----------------------------------------------------------------|-------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `GET`    | `/api/v1/data-sources/drivers`                                  | `authenticated`                     | Non-sensitive driver metadata                                                                                       |
+| `GET`    | `/api/v1/data-sources/entity-types`                             | `authenticated`                     | Non-sensitive entity-type metadata                                                                                  |
+| `GET`    | `/api/v1/data-sources`                                          | `authenticated`                     | Returns only shared data sources the principal can read (`shared_data_source:read`)                                 |
+| `GET`    | `/api/v1/data-sources/files`                                    | `authenticated`                     | Global shared-data files returned only to operators (`application:manage_shared_sources`); project-local files returned only with `project:read` for the named project |
+| `GET`    | `/api/v1/data-sources/excel/metadata`                           | `authenticated`                     | Global reads require `application:manage_shared_sources`; project-local reads require `project:read`; `location=local` requires `project_name` |
+| `POST`   | `/api/v1/data-sources/files`                                    | `application:manage_shared_sources` |                                                                                                                     |
+| `GET`    | `/api/v1/data-sources/{filename}`                               | `shared_data_source:read`           |                                                                                                                     |
+| `POST`   | `/api/v1/data-sources`                                          | `application:manage_shared_sources` |                                                                                                                     |
+| `PUT`    | `/api/v1/data-sources/{filename}`                               | `application:manage_shared_sources` |                                                                                                                     |
+| `DELETE` | `/api/v1/data-sources/{filename}`                               | `application:manage_shared_sources` |                                                                                                                     |
+| `POST`   | `/api/v1/data-sources/{filename}/test`                          | `shared_data_source:read`           |                                                                                                                     |
+| `GET`    | `/api/v1/data-sources/{name}/status`                            | `shared_data_source:read`           |                                                                                                                     |
+| `GET`    | `/api/v1/data-sources/{name}/tables`                            | `shared_data_source:read`           |                                                                                                                     |
+| `POST`   | `/api/v1/data-sources/tables`                                   | `authenticated`                     | Client-supplied config introspection; follow-up to resolve config server-side from a registered source               |
+| `GET`    | `/api/v1/data-sources/{name}/tables/{table_name}/schema`        | `shared_data_source:read`           |                                                                                                                     |
+| `POST`   | `/api/v1/data-sources/tables/schema`                            | `authenticated`                     | Client-supplied config introspection; follow-up to resolve config server-side from a registered source               |
+| `GET`    | `/api/v1/data-sources/{name}/tables/{table_name}/preview`       | `shared_data_source:read`           |                                                                                                                     |
+| `GET`    | `/api/v1/data-sources/{name}/tables/{table_name}/type-mappings` | `shared_data_source:read`           |                                                                                                                     |
+| `POST`   | `/api/v1/data-sources/{name}/tables/{table_name}/import`        | `shared_data_source:read`           |                                                                                                                     |
+| `POST`   | `/api/v1/data-sources/{name}/cache/invalidate`                  | `application:manage_shared_sources` |                                                                                                                     |
+| `POST`   | `/api/v1/data-sources/{data_source_name}/query/execute`         | `shared_data_source:read`           |                                                                                                                     |
+| `POST`   | `/api/v1/data-sources/{data_source_name}/query/validate`        | `shared_data_source:read`           |                                                                                                                     |
+| `POST`   | `/api/v1/data-sources/{data_source_name}/query/columns`         | `shared_data_source:read`           |                                                                                                                     |
 
 ### Suggestions, Preview, And Reconciliation
 
@@ -213,4 +214,4 @@ Before merging a route change:
 3. Update [AUTHORIZATION.md](AUTHORIZATION.md) if the policy, principal contract, or denial behavior changes.
 4. Add regression coverage for the route requirement.
 
-The planned automated completeness check remains tracked in [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](proposals/MITIGATE_SECURITY_ISSUES/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md).
+The planned automated completeness check remains tracked in [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](proposals/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md).
