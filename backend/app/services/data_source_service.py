@@ -11,6 +11,7 @@ from backend.app.authorization.models import Action, Principal, ResourceType
 from backend.app.authorization.service import AuthorizationService
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig, DataSourceStatus, DataSourceTestResult
+from backend.app.services.data_source_policy import validate_server_managed_data_source
 from src.loaders.base_loader import ConnectTestResult, DataLoader, DataLoaders
 from src.model import DataSourceConfig as CoreDataSourceConfig
 
@@ -199,6 +200,8 @@ class DataSourceService:
         if file_path.exists():
             raise ValueError(f"Data source file '{filename}' already exists")
 
+        validate_server_managed_data_source(config)
+
         config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name"})
 
         if config.password:
@@ -227,6 +230,8 @@ class DataSourceService:
 
         if not file_path.exists():
             raise ValueError(f"Data source file '{filename}' not found")
+
+        validate_server_managed_data_source(config)
 
         config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name"})
 

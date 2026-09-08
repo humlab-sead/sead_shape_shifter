@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Import version from package
@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     # Services
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
     SIMS_SERVICE_URL: str = "http://localhost:8000"  # sead_authority_service base URL for /identity endpoints
+
+    # Data source policy
+    DATA_SOURCE_ALLOWED_ENV_VAR_PREFIXES: str = Field(default="SEAD_,SHAPE_SHIFTER_")
 
     # Suggestions
     ENABLE_FK_SUGGESTIONS: bool = False

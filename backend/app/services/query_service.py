@@ -175,6 +175,8 @@ class QueryService:
             )
         except QueryExecutionError:
             raise
+        except ValueError as exc:
+            raise QuerySecurityError(message=str(exc), query=query, violations=[str(exc)]) from exc
         except KeyError:
             raise QueryExecutionError(message="Query execution failed due to missing configuration.", data_source=ds_cfg.name, query=query)
         except asyncio.TimeoutError:
@@ -227,5 +229,7 @@ class QueryService:
 
         except asyncio.TimeoutError:
             raise QueryExecutionError(message="Column introspection timed out after 10 seconds", data_source=ds_cfg.name, query=query)
+        except ValueError as exc:
+            raise QuerySecurityError(message=str(exc), query=query, violations=[str(exc)]) from exc
         except Exception:
             raise QueryExecutionError(message="Column introspection failed.", data_source=ds_cfg.name, query=query)

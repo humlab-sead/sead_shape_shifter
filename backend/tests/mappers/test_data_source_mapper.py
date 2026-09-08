@@ -149,3 +149,35 @@ def test_additional_options_preserved():
     options = core_config.data_source_cfg["options"]
     assert options["custom_option"] == "custom_value"
     assert options["another_option"] == 123
+
+
+def test_rejects_custom_connection_string():
+    """Test server-managed policy rejects custom connection strings."""
+    api_config = DataSourceConfig(
+        name="test_pg",
+        driver="postgresql",  # type: ignore
+        host="localhost",
+        database="testdb",
+        username="testuser",
+        connection_string="postgresql://example.com/testdb",
+        **{},
+    )
+
+    with pytest.raises(ValueError, match="connection strings are not allowed"):
+        DataSourceMapper.to_core_config(api_config)
+
+
+def test_rejects_unapproved_env_var_names(monkeypatch):
+    """Test server-managed policy rejects disallowed environment variable names."""
+    monkeypatch.setenv("UNAPPROVED_HOST", "example.com")
+    api_config = DataSourceConfig(
+        name="test_pg",
+        driver="postgresql",  # type: ignore
+        host="${UNAPPROVED_HOST}",
+        database="testdb",
+        username="testuser",
+        **{},
+    )
+
+    with pytest.raises(ValueError, match="unapproved environment variables"):
+        DataSourceMapper.to_core_config(api_config)
