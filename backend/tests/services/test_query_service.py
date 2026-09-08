@@ -647,6 +647,25 @@ class TestQueryService:
             assert result.is_truncated is True
 
     @pytest.mark.asyncio
+    async def test_execute_query_limits_serialized_response_size(self, service: QueryService, mock_ds_config: DataSourceConfig):
+        """Test execution truncates rows when the serialized response exceeds the server limit."""
+        large_loader = AsyncMock()
+        large_loader.read_sql = AsyncMock(return_value=pd.DataFrame({"value": ["x" * (1024 * 1024)] * 10}))
+        large_loader.inject_limit = MagicMock(side_effect=lambda q, p: q)
+
+        with (
+            patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
+            patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
+        ):
+            mock_get_loader.return_value = lambda data_source: large_loader
+            mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
+
+            result = await service.execute_query(ds_cfg=mock_ds_config, query="SELECT * FROM large_table", limit=100)
+
+            assert result.is_truncated is True
+            assert result.row_count < 10
+
+    @pytest.mark.asyncio
     async def test_execute_query_tracks_execution_time(self, service: QueryService, mock_ds_config: DataSourceConfig):
         """Test execution tracks query time."""
         # Create loader with read_sql method

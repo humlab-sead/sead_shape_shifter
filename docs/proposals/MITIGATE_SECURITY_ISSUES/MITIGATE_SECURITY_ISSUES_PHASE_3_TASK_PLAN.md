@@ -54,12 +54,12 @@ Prevent query construction from changing SQL structure and enforce server-owned 
 
 **Tasks**
 
-- [ ] Review query construction and metadata filtering for interpolated identifiers, table names, column names, sort fields, and filter values.
-- [ ] Add one validated, dialect-aware identifier helper for supported database engines and reject invalid or unsupported identifiers.
-- [ ] Use bound parameters for values and preserve the distinction between identifiers and values in every query path.
-- [ ] Correct result-limit enforcement so an existing user `LIMIT` cannot bypass the server limit; define behavior for absent, lower, and higher user limits.
-- [ ] Enforce result-size limits on rows, serialized response size, or another documented server-owned measure where applicable.
-- [ ] Add focused tests for quoted identifiers, malformed identifiers, comments, nested queries, existing `LIMIT` clauses, and filter values containing SQL metacharacters.
+- [x] Review query construction and metadata filtering for interpolated identifiers, table names, column names, sort fields, and filter values.
+- [x] Add one validated, dialect-aware identifier helper for supported database engines and reject invalid or unsupported identifiers.
+- [x] Use bound parameters for values and preserve the distinction between identifiers and values in every query path.
+- [x] Correct result-limit enforcement so an existing user `LIMIT` cannot bypass the server limit; define behavior for absent, lower, and higher user limits.
+- [x] Enforce result-size limits on rows, serialized response size, or another documented server-owned measure where applicable.
+- [x] Add focused tests for quoted identifiers, malformed identifiers, comments, nested queries, existing `LIMIT` clauses, and filter values containing SQL metacharacters.
 
 **Completion Criteria**
 
@@ -127,7 +127,7 @@ Supported execution paths enforce resource limits, clean up after cancellation o
 | Area | Status | Notes |
 |---|---|---|
 | Shared SQL safety policy | Done | Shared statement and read-only checks cover the inventoried query, introspection, loader, workflow, and DuckDB workspace paths; public query errors no longer expose SQL or raw backend details |
-| Query construction and result limits | Not started | Identifier handling and user `LIMIT` enforcement are open |
+| Query construction and result limits | Done | Validated identifier quoting, bound metadata values, server-capped `LIMIT` handling, direct table-load caps, and a 5 MiB serialized response budget are covered by focused tests |
 | PostgreSQL least-privilege role | Not started | Effective production grants require deployment verification |
 | DuckDB external access and extensions | Not started | Controlled file access, if retained, depends on Phase 2 roots |
 | Resource controls and regression evidence | Not started | Disposable database and file tests are required |
@@ -160,7 +160,7 @@ Supported execution paths enforce resource limits, clean up after cancellation o
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
 | SQL safety policy | Documented statement and operation policy shared by PostgreSQL and DuckDB execution paths | Done | [docs/SQL_SAFETY_POLICY.md](../../../SQL_SAFETY_POLICY.md) |
-| Shared validation and query-construction controls | Central validation, identifier handling, parameter binding, and result-limit enforcement | Not started | TBD |
+| Shared validation and query-construction controls | Central validation, identifier handling, parameter binding, and result-limit enforcement | Done | [src/loaders/sql_loaders.py](../../../src/loaders/sql_loaders.py), [backend/app/services/query_service.py](../../../backend/app/services/query_service.py) |
 | PostgreSQL role controls | Least-privilege role setup, grant verification, and disposable-database evidence | Not started | TBD |
 | DuckDB restrictions | External-access, extension, network, and controlled-file restrictions with regression tests | Not started | TBD |
 | Query resource controls | Duration, result-size, memory, concurrency, cancellation, and cleanup controls | Not started | TBD |
