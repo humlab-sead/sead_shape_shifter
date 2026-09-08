@@ -105,19 +105,19 @@ Stacked statements and destructive SQL fail on every execution path. The applica
 **Objective**
 
 Prevent server-side network access and remove secrets from API responses.
-Detailed phase-4 work is tracked in [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md).
+Detailed phase-4 work is archived in [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md).
 Ingester-specific route and destination work is tracked in [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md).
 
 **Tasks**
 
-- [ ] Replace arbitrary client-supplied database connection settings with named, server-managed data sources.
-- [ ] Allow only approved drivers, hosts, ports, schemas, and connection destinations.
-- [ ] Add DNS/IP validation and network egress controls for localhost, private ranges, metadata services, and unrelated internal services.
-- [ ] Resolve only approved environment-variable names and prevent client-controlled configuration from selecting arbitrary server variables.
-- [ ] Preserve database passwords correctly and prevent passwordless fallback where authentication is required.
-- [ ] Replace raw exception responses with stable public messages and correlation IDs.
-- [ ] Redact credentials, environment values, connection strings, SQL, and sensitive paths from logs and error details.
-- [ ] Prevent user-controlled newlines from forging log records.
+- [x] Replace arbitrary client-supplied database connection settings with named, server-managed data sources.
+- [x] Allow only approved drivers, hosts, ports, schemas, and connection destinations.
+- [x] Add DNS/IP validation and network egress controls for localhost, private ranges, metadata services, and unrelated internal services.
+- [x] Resolve only approved environment-variable names and prevent client-controlled configuration from selecting arbitrary server variables.
+- [x] Preserve database passwords correctly and prevent passwordless fallback where authentication is required.
+- [x] Replace raw exception responses with stable public messages and correlation IDs.
+- [x] Redact credentials, environment values, connection strings, SQL, and sensitive paths from logs and error details.
+- [x] Prevent user-controlled newlines from forging log records.
 
 **Completion Criteria**
 
@@ -153,7 +153,7 @@ Focused security tests, regression tests, and deployment checks pass on the exac
 | Authentication, authorization, and CORS | In progress | Proxy identity, session ownership, loopback binding, and CORS defaults implemented; resource ACLs remain |
 | Filesystem and project configuration boundaries | Not started |  |
 | SQL, PostgreSQL, and DuckDB restrictions | Not started |  |
-| Data-source and error handling controls | In progress | Data-source inventory is complete; server-managed destinations and redaction remain |
+| Data-source and error handling controls | Done | Data-source inventory, server-managed destinations, and public error redaction are complete; detailed work is archived in [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md) |
 | Security regression and release verification | Not started |  |
 
 ## Definition Of Done
