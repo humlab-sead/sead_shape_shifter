@@ -57,11 +57,17 @@ Limit data-source selection and resolution to approved server-managed settings.
 
 **Tasks**
 
-- [ ] Replace arbitrary client-supplied connection settings with named server-managed sources.
-- [ ] Allow only approved drivers, hosts, ports, schemas, and destinations.
-- [ ] Add DNS/IP validation and network egress controls for localhost, private ranges, metadata services, and unrelated internal services.
-- [ ] Resolve only approved environment-variable names.
-- [ ] Preserve required database passwords without passwordless fallback.
+- [x] Replace arbitrary client-supplied connection settings with named server-managed sources.
+- [x] Allow only approved drivers, hosts, ports, schemas, and destinations.
+- [x] Add DNS/IP validation and network egress controls for localhost, private ranges, metadata services, and unrelated internal services.
+- [x] Resolve only approved environment-variable names.
+- [x] Preserve required database passwords without passwordless fallback.
+
+**Implementation Notes**
+
+- Server-managed validation is centralized in `backend/app/services/data_source_policy.py` and used by the data-source mapper and service.
+- Disallowed connection strings, environment-variable names, hosts, and ports fail before a config is persisted or converted to a core data source.
+- File-backed sources continue to be resolved through the managed application root, while file containment remains owned by the filesystem-boundary phase.
 
 **Completion Criteria**
 
@@ -105,14 +111,14 @@ There is a single active plan for ingester authorization and destination-gating 
 | Area | Status | Notes |
 |---|---|---|
 | Data-source inputs and disclosure surfaces | Done | Public data-source routes, service-layer resolution paths, loader paths, and public disclosure surfaces are inventoried |
-| Server-managed data sources | Not started | Uses approved destinations and environment-variable allowlists |
+| Server-managed data sources | Done | Mapper and service validation reject unapproved destinations, environment variables, and custom connection strings |
 | Sensitive disclosure removal | Not started | Stable public errors and log redaction required |
 | Ingester work deferral | Not started | Tracked in [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) |
 
 ## Definition Of Done
 
-- [ ] Named server-managed data sources replace arbitrary connection settings and reject unapproved destinations.
-- [ ] Approved environment variables are the only ones resolved from client-controlled configuration.
+- [x] Named server-managed data sources replace arbitrary connection settings and reject unapproved destinations.
+- [x] Approved environment variables are the only ones resolved from client-controlled configuration.
 - [ ] Public errors and logs redact secrets, SQL, connection strings, and sensitive paths.
 - [ ] The ingester disposition and destination-gating work remains tracked in the dedicated ingester authorization plan.
 - [x] Focused tests or review cover the data-source allowlists and redaction behavior.
@@ -129,7 +135,7 @@ There is a single active plan for ingester authorization and destination-gating 
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
 | Data-source inventory | Routes, services, configuration paths, and approved destinations | Done | [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md) |
-| Server-managed data-source enforcement | Named sources, allowlists, DNS/IP validation, and egress controls | Not started | TBD |
+| Server-managed data-source enforcement | Named sources, allowlists, DNS/IP validation, and egress controls | Done | [backend/app/services/data_source_policy.py](../../../backend/app/services/data_source_policy.py), [backend/app/mappers/data_source_mapper.py](../../../backend/app/mappers/data_source_mapper.py), [backend/app/services/data_source_service.py](../../../backend/app/services/data_source_service.py), [backend/tests/mappers/test_data_source_mapper.py](../../../backend/tests/mappers/test_data_source_mapper.py), [backend/tests/services/test_data_source_service.py](../../../backend/tests/services/test_data_source_service.py) |
 | Error disclosure controls | Stable public messages, correlation IDs, and redaction | Not started | TBD |
 | Ingester plan cross-reference | Dedicated plan for ingester authorization and destination checks | Not started | [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) |
 
