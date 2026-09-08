@@ -1,8 +1,10 @@
 """Tests for the backend CORS configuration."""
 
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from backend.app.core.config import Settings
+from backend.app.main import app
 
 
 def test_cors_defaults_are_local_only() -> None:
@@ -38,3 +40,34 @@ def test_production_requires_trusted_proxy_authentication() -> None:
         assert "TRUSTED_PROXY_AUTH_ENABLED must be true in production" in str(exc)
     else:
         raise AssertionError("Production settings must require trusted-proxy authentication")
+
+
+def test_unapproved_origin_does_not_receive_credentialed_cors_access() -> None:
+    """Reject preflight requests from origins outside the configured allowlist."""
+    with TestClient(app) as client:
+        response = client.options(
+            "/api/v1/health",
+            headers={
+                "Origin": "https://unapproved.example",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_approved_origin_receives_credentialed_cors_access() -> None:
+    """Allow preflight requests from a configured local development origin."""
+    with TestClient(app) as client:
+        response = client.options(
+            "/api/v1/health",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert response.headers["access-control-allow-credentials"] == "true"

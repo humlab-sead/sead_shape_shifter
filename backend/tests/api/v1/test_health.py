@@ -22,7 +22,7 @@ def test_health_check(client):
     assert "version" in data
     assert "environment" in data
     assert "timestamp" in data
-    assert "projects_dir" in data
+    assert "projects_dir" not in data
 
 
 def test_root_endpoint(client):

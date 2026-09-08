@@ -128,6 +128,7 @@ Data-source requests cannot probe or connect to unapproved destinations. Error r
 **Objective**
 
 Prove that the mitigations hold on the release candidate and in the deployed environment.
+Detailed phase-5 work is tracked in [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md).
 
 **Tasks**
 
@@ -150,7 +151,7 @@ Focused security tests, regression tests, and deployment checks pass on the exac
 | Area | Status | Notes |
 |---|---|---|
 | Exposure containment and impact assessment | Not started |  |
-| Authentication, authorization, and CORS | In progress | Proxy identity, session ownership, loopback binding, and CORS defaults implemented; resource ACLs remain |
+| Authentication, authorization, and CORS | Done | Proxy identity, direct-route protection, session ownership, CORS, health disclosure, cross-resource HTTP, and team-grant regressions are covered |
 | Filesystem and project configuration boundaries | Not started |  |
 | SQL, PostgreSQL, and DuckDB restrictions | Not started |  |
 | Data-source and error handling controls | Done | Data-source inventory, server-managed destinations, and public error redaction are complete; detailed work is archived in [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md) |

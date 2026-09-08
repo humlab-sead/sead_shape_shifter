@@ -17,7 +17,6 @@ class HealthResponse(BaseModel):
     version: str
     environment: str
     timestamp: datetime
-    projects_dir: str
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -32,5 +31,4 @@ async def health_check() -> HealthResponse:
         version=settings.VERSION,
         environment=settings.ENVIRONMENT,
         timestamp=datetime.now(UTC),
-        projects_dir=str(settings.PROJECTS_DIR),
     )

@@ -2,7 +2,9 @@
 
 ## Purpose
 
-This inventory records the authorization requirement declared by every registered API route. It is derived from FastAPI dependency metadata on the current branch. Update this document when adding, removing, or changing a route or its authorization dependency.
+This inventory records the authorization requirement declared by every registered API route and the direct application routes mounted outside `api_router`. It is derived from the assembled FastAPI route table, `backend/app/api/v1/api.py`, and `backend/app/main.py` on the current branch. Update this document when adding, removing, or changing a route, mount, or authorization dependency.
+
+The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, including the generated OpenAPI, Swagger UI, and ReDoc routes. It also exposes the Swagger OAuth redirect helper at `/docs/oauth2-redirect` and the repository documentation mount at `/docs/*`. The `/assets/*`, frontend SPA catch-all, and API-only `/` route are conditional on the frontend build state described below.
 
 `UNDECLARED` means the route has no `authorization_requirement` metadata. It does not mean the route is anonymously accessible: trusted-proxy middleware requires authentication for all paths except `/api/v1/health` when enabled. Each undeclared route still needs classification before authorization cutover.
 
@@ -26,6 +28,10 @@ This inventory records the authorization requirement declared by every registere
 | Method       | Path                | Requirement  | Notes                                                                           |
 |--------------|---------------------|--------------|---------------------------------------------------------------------------------|
 | `GET`        | `/api/v1/health`    | Public       | Explicit trusted-proxy middleware exception for container health checks         |
+| `GET, HEAD`  | `/api/v1/openapi.json` | `UNDECLARED` | FastAPI-generated OpenAPI schema; configured application path, not an unprefixed `/openapi.json` route |
+| `GET, HEAD`  | `/api/v1/docs`      | `UNDECLARED` | FastAPI-generated Swagger UI; direct application route outside `api_router`    |
+| `GET, HEAD`  | `/docs/oauth2-redirect` | `UNDECLARED` | FastAPI-generated Swagger OAuth redirect helper; direct application route outside `api_router` |
+| `GET, HEAD`  | `/api/v1/redoc`      | `UNDECLARED` | FastAPI-generated ReDoc UI; direct application route outside `api_router`      |
 | Static mount | `/docs/*`           | `UNDECLARED` | Repository documentation static mount; classify before cutover                  |
 | Static mount | `/assets/*`         | `UNDECLARED` | Present only when the production frontend build exists; classify before cutover |
 | `GET`        | `/{full_path:path}` | `UNDECLARED` | Frontend SPA catch-all when the production frontend build exists                |
