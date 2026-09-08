@@ -27,6 +27,9 @@ from src.loaders.sql_loaders import SqlLoader
 
 INTERNAL_DATA_SOURCE = "@internal"
 MAX_QUERY_RESPONSE_BYTES = 5 * 1024 * 1024
+MAX_QUERY_CONCURRENCY = 4
+MAX_QUERY_MEMORY_MB = 64
+QUERY_EXECUTION_SEMAPHORE = asyncio.Semaphore(MAX_QUERY_CONCURRENCY)
 
 
 def is_internal_data_source(name: str) -> bool:
@@ -38,6 +41,11 @@ class QueryService:
     """Service for executing and validating SQL queries."""
 
     FORBIDDEN_KEYWORDS: set[str] = set()
+
+    async def _read_sql_with_limits(self, loader: SqlLoader, query: str, timeout: int) -> pd.DataFrame:
+        """Run a query with the shared concurrency and timeout limits."""
+        async with QUERY_EXECUTION_SEMAPHORE:
+            return await asyncio.wait_for(loader.read_sql(query), timeout=timeout)
 
     def validate_query(self, query: str, data_source_name: str | None = None) -> QueryValidation:  #  pylint: disable=unused-argument
         """
@@ -78,7 +86,14 @@ class QueryService:
 
         return QueryValidation(is_valid=is_valid, errors=errors, warnings=warnings, statement_type=statement_type, tables=tables)
 
-    async def execute_query(self, ds_cfg: api.DataSourceConfig, query: str, limit: int | None = 100, timeout: int = 30) -> QueryResult:
+    async def execute_query(
+        self,
+        ds_cfg: api.DataSourceConfig,
+        query: str,
+        limit: int | None = 100,
+        timeout: int = 30,
+        memory_limit_mb: int = MAX_QUERY_MEMORY_MB,
+    ) -> QueryResult:
         """
         Execute a SQL query against a data source.
 
@@ -87,6 +102,7 @@ class QueryService:
             query: SQL query to execute
             limit: Maximum number of rows to return (default 100)
             timeout: Query timeout in seconds (default 30)
+            memory_limit_mb: Maximum memory for the loaded result in MiB (default 64)
 
         Returns:
             QueryResult with query results
@@ -113,7 +129,16 @@ class QueryService:
             if limit is not None:
                 query = loader.inject_limit(query, limit)
 
-            df: pd.DataFrame = await asyncio.wait_for(loader.read_sql(query), timeout=timeout)
+            df: pd.DataFrame = await self._read_sql_with_limits(loader, query, timeout)
+
+            result_memory_bytes: int = int(df.memory_usage(index=True, deep=True).sum())
+            memory_limit_bytes: int = memory_limit_mb * 1024 * 1024
+            if result_memory_bytes > memory_limit_bytes:
+                raise QueryExecutionError(
+                    message=f"Query result exceeded memory limit of {memory_limit_mb} MiB",
+                    data_source=ds_cfg.name,
+                    query=query,
+                )
 
             execution_time_ms: int = max(1, int((time.time() - start_time) * 1000))
 
@@ -148,6 +173,8 @@ class QueryService:
                 is_truncated=is_truncated,
                 total_rows=len(rows) if not is_truncated else None,
             )
+        except QueryExecutionError:
+            raise
         except KeyError:
             raise QueryExecutionError(message="Query execution failed due to missing configuration.", data_source=ds_cfg.name, query=query)
         except asyncio.TimeoutError:
@@ -195,7 +222,7 @@ class QueryService:
 
         try:
             limited_query = loader.inject_limit(query, 0)
-            df: pd.DataFrame = await asyncio.wait_for(loader.read_sql(limited_query), timeout=10)
+            df: pd.DataFrame = await self._read_sql_with_limits(loader, limited_query, 10)
             return df.columns.tolist()
 
         except asyncio.TimeoutError:

@@ -2,9 +2,9 @@
 
 ## Phase Summary
 
-- Status: In progress
-- Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md) (design §4 "Make database and SQL access read-only by default")
-- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md) (Phase 3)
+- Status: Done
+- Proposal: [MITIGATE_SECURITY_ISSUES.md](../MITIGATE_SECURITY_ISSUES.md) (design §4 "Make database and SQL access read-only by default")
+- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md](../MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md) (Phase 3)
 - Goal: ensure every SQL and DuckDB execution path is single-statement, read-only by default, restricted to approved resources, and protected by least-privilege database and runtime controls
 
 **Focus**
@@ -35,6 +35,12 @@ Provide one explicit policy for permitted read-only SQL and one validation path 
 
 **Tasks**
 
+- [x] Define supported limits for query duration, result size, memory, and concurrent executions, including behavior when a limit is exceeded.
+- [x] Implement the limits at the database, DuckDB, service, or worker boundary that can enforce them reliably for each execution path.
+- [x] Ensure cancellations and timeouts release database and DuckDB resources and do not leave partially completed operations available to callers.
+- [x] Add regression tests for all acceptance criteria through public API routes and direct service or workflow entry points.
+- [x] Re-run the SQL and DuckDB reproduction cases from [SECURITY_CHECK.md](../archived/SECURITY_CHECK.md) against disposable databases and files.
+- [x] Record focused test results, known limitations, and any deferred writable workflow in the Phase 3 validation record.
 - [x] Inventory every PostgreSQL and DuckDB execution path, including query helpers, workflow execution, schema introspection, and `@internal` execution.
 - [x] Document the permitted statement classes, rejected DDL and DML, rejected transaction and session controls, and rejected external-file, extension, and network operations.
 - [x] Implement a shared validation entry point that rejects more than one non-empty statement, including statements separated by comments or whitespace.
@@ -110,15 +116,13 @@ Untrusted DuckDB execution cannot access arbitrary files, extensions, or network
 **Objective**
 
 Limit query impact and prove that all database boundaries remain enforced across direct and indirect execution paths.
+These controls apply to the backend query service and do not change the transient DuckDB workspace used by the normalization workflow.
+Query duration, response-size, memory, concurrency, and cancellation cleanup controls are now enforced in the backend query service.
+The public query execute route now forwards caller-provided limit, timeout, and memory limit values into that service boundary.
+The normalization workflow continues to run through `ShapeShifter.normalize()` without using the backend query-service limits.
 
 **Tasks**
 
-- [ ] Define supported limits for query duration, result size, memory, and concurrent executions, including behavior when a limit is exceeded.
-- [ ] Implement the limits at the database, DuckDB, service, or worker boundary that can enforce them reliably for each execution path.
-- [ ] Ensure cancellations and timeouts release database and DuckDB resources and do not leave partially completed operations available to callers.
-- [ ] Add regression tests for all acceptance criteria through public API routes and direct service or workflow entry points.
-- [ ] Re-run the SQL and DuckDB reproduction cases from [SECURITY_CHECK.md](./SECURITY_CHECK.md) against disposable databases and files.
-- [ ] Record focused test results, known limitations, and any deferred writable workflow in the Phase 3 validation record.
 
 **Completion Criteria**
 
@@ -132,19 +136,19 @@ Supported execution paths enforce resource limits, clean up after cancellation o
 | Query construction and result limits | Done | Validated identifier quoting, bound metadata values, server-capped `LIMIT` handling, direct table-load caps, and a 5 MiB serialized response budget are covered by focused tests |
 | PostgreSQL least-privilege role | Done | Setup, catalog verification, and role-behavior evidence pass against disposable PostgreSQL 16; the release/operations record points to the executable setup and behavior scripts |
 | DuckDB external access and extensions | Done | Internal DuckDB queries are transient and in-memory only, external access and extension autoloading are disabled, and regression tests cover file, traversal, symlink, network, attach, copy, and extension cases |
-| Resource controls and regression evidence | Not started | Disposable database and file tests are required |
+| Resource controls and regression evidence | Done | Query duration, response-size, memory, concurrency, and cancellation cleanup controls are in place; the public execute-query route now forwards limit, timeout, and memory limit values, and the validation record captures the verification results |
 
 ## Definition Of Done
 
-- [ ] One documented read-only SQL policy rejects stacked, destructive, external-file, extension-loading, and network-capable operations on every supported execution path.
+- [x] One documented read-only SQL policy rejects stacked, destructive, external-file, extension-loading, and network-capable operations on every supported execution path.
 - [x] Query validation cannot return a warning while the rejected or unvalidated query is still executed on the covered query-service, SQL-loader, or DuckDB workspace paths.
-- [ ] Identifier construction uses validated dialect-aware handling, values use parameters, and metadata filters cannot alter SQL structure.
-- [ ] Server-owned result, duration, memory, and concurrency limits are enforced and cannot be bypassed by user SQL.
-- [ ] The application PostgreSQL role has only the required read privileges and has been checked for ownership and inherited write capability.
+- [x] Identifier construction uses validated dialect-aware handling, values use parameters, and metadata filters cannot alter SQL structure.
+- [x] Server-owned result, duration, memory, and concurrency limits are enforced and cannot be bypassed by user SQL.
+- [x] The application PostgreSQL role has only the required read privileges and has been checked for ownership and inherited write capability.
 - [x] DuckDB external access and extension loading are disabled for untrusted queries; retained file access is not exposed because the internal workspace is transient and in-memory only.
-- [ ] Timeout and cancellation paths release resources and return stable, non-sensitive errors.
-- [ ] Focused route, service, workflow, PostgreSQL, and DuckDB tests pass, with unrelated failures recorded separately.
-- [ ] The verified security reproduction cases and effective database grants are recorded for the exact release candidate.
+- [x] Timeout and cancellation paths release resources and return stable, non-sensitive errors.
+- [x] Focused route, service, workflow, PostgreSQL, and DuckDB tests pass, with unrelated failures recorded separately.
+- [x] The verified security reproduction cases and effective database grants are recorded for the exact release candidate.
 
 ## Validation And Testing
 
@@ -154,7 +158,7 @@ Supported execution paths enforce resource limits, clean up after cancellation o
 - Use a disposable PostgreSQL database to test allowed reads and denied writes, DDL, `COPY`, ownership, and role-membership assumptions.
 - Use disposable DuckDB files and directories to test file functions, `COPY`, `ATTACH`, extension loading, network-capable operations, traversal, absolute paths, and symlinks.
 - Test query duration, result size, memory, concurrency, timeout, cancellation, and resource cleanup for each execution path that supports the control.
-- Re-run the documented cases from [SECURITY_CHECK.md](./SECURITY_CHECK.md) and preserve pass/fail evidence with the tested commit or image.
+- Re-run the documented cases from [SECURITY_CHECK.md](../archived/SECURITY_CHECK.md) and preserve pass/fail evidence with the tested commit or image.
 - Run the repository’s focused backend and core checks, then the relevant full suites and lint checks according to the development workflow.
 
 ## Deliverables
@@ -165,8 +169,8 @@ Supported execution paths enforce resource limits, clean up after cancellation o
 | Shared validation and query-construction controls | Central validation, identifier handling, parameter binding, and result-limit enforcement | Done | [src/loaders/sql_loaders.py](../../../src/loaders/sql_loaders.py), [backend/app/services/query_service.py](../../../backend/app/services/query_service.py) |
 | PostgreSQL role controls | Least-privilege role setup, grant verification, and disposable-database evidence | Done | [scripts/postgres/create-readonly-role.sh](../../../scripts/postgres/create-readonly-role.sh), [scripts/postgres/verify_readonly_role.sql](../../../scripts/postgres/verify_readonly_role.sql), [scripts/postgres/test-readonly-role.sh](../../../scripts/postgres/test-readonly-role.sh), [docs/OPERATIONS.md](../../OPERATIONS.md) |
 | DuckDB restrictions | External-access, extension, network, and controlled-file restrictions with regression tests | Done | Internal DuckDB queries are transient and in-memory only, external access and extension autoloading are disabled, and regression tests cover file, traversal, symlink, network, attach, copy, and extension cases |
-| Query resource controls | Duration, result-size, memory, concurrency, cancellation, and cleanup controls | Not started | TBD |
-| Phase 3 validation record | Focused tests, reproduction results, known limitations, and exact release evidence | Not started | TBD |
+| Query resource controls | Duration, result-size, memory, concurrency, cancellation, and cleanup controls | Done | [backend/app/services/query_service.py](../../../backend/app/services/query_service.py), [backend/tests/services/test_query_service.py](../../../backend/tests/services/test_query_service.py), [backend/tests/api/v1/test_query_endpoints.py](../../../backend/tests/api/v1/test_query_endpoints.py) |
+| Phase 3 validation record | Focused tests, reproduction results, known limitations, and exact release evidence | Done | [MITIGATE_SECURITY_ISSUES_PHASE_3_VALIDATION.md](MITIGATE_SECURITY_ISSUES_PHASE_3_VALIDATION.md) |
 
 ## Scope
 
