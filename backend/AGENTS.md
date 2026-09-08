@@ -53,7 +53,10 @@ When adding a new backend feature, update all four layers:
 
 ## Testing
 
-- `TestClient` for route/endpoint tests; mock `ProjectService` and `ShapeShifter` in unit tests.
+- Route/endpoint tests on protected `/projects/...` routes use the async `authorized_client` fixture from `backend/tests/conftest.py` (tests are `async def` and `await` every request). A plain `TestClient` is only for unprotected routes.
+- Register projects as authorization resources by creating them via `POST /api/v1/projects` — do not write `shapeshifter.yml` directly to disk. Extra on-disk files (reconciliation catalogs, mapping sidecars, `materialized/*.parquet`) are still written directly after the API-created project directory exists.
+- Recognize auth regressions: `401` means the test is unauthenticated; `404 "Resource not found"` means a disk-written project was never registered as a resource.
+- Mock `ProjectService` and `ShapeShifter` in unit tests.
 - `@pytest.mark.asyncio` for all async service and orchestrator tests.
 - Test each fetch strategy independently (mock the underlying service).
 - Test `CanMaterializeSpecification` preconditions: fixed entity (fail), already-materialized (fail), non-materialized dep (fail).

@@ -7,6 +7,8 @@ from typing import Any
 import yaml
 from loguru import logger
 
+from backend.app.authorization.models import Action, Principal, ResourceType
+from backend.app.authorization.service import AuthorizationService
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig, DataSourceStatus, DataSourceTestResult
 from src.loaders.base_loader import ConnectTestResult, DataLoader, DataLoaders
@@ -37,6 +39,10 @@ class DataSourceService:
         if raise_if_not_found and not path.exists():
             raise ValueError(f"Data source file '{filename}' not found")
         return path
+
+    def data_source_locator(self, filename: str | Path) -> str:
+        """Return the authorization locator for a data source filename."""
+        return self._resolve_data_source_path(filename).stem
 
     def _list_data_source_files(self) -> list[Path]:
         """List all data source YAML files in the projects directory.
@@ -127,6 +133,15 @@ class DataSourceService:
                 continue
 
         return result
+
+    def list_authorized_data_sources(self, principal: Principal, authorization_service: AuthorizationService) -> list[DataSourceConfig]:
+        """Return shared data sources readable by a principal."""
+        authorized_sources: list[DataSourceConfig] = []
+        for data_source in self.list_data_sources():
+            resource = authorization_service.repository.get_resource_by_locator(ResourceType.SHARED_DATA_SOURCE, data_source.name)
+            if resource is not None and authorization_service.is_allowed(principal, Action.READ, resource):
+                authorized_sources.append(data_source)
+        return authorized_sources
 
     def load_data_source(
         self,

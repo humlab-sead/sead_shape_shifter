@@ -57,6 +57,7 @@ all = [
 [project.scripts]
 # CLI entry points for easy command-line access
 sead-ingest = "backend.app.scripts.ingest:cli"
+sead-authorization = "backend.app.scripts.authorization:cli"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -53,6 +53,14 @@ Runtime variables:
 | `SHAPE_SHIFTER_LOG_FILTER_FRAMEWORK_FRAMES`      | `true`                  | Filter framework frames from tracebacks                              |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED`        | `false`                 | Require an identity forwarded by nginx; enabled by Docker deployment  |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_HEADER`         | `X-Authenticated-User` | Header containing the nginx-authenticated username                    |
+| `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED`     | `false`                | Accept verified group IDs from the trusted proxy; disabled until a trusted group source is configured |
+| `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_HEADER`      | `X-Authenticated-Groups` | Comma-separated group IDs supplied by the trusted proxy              |
+| `SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH`       | `state/authorization.sqlite3` | SQLite authorization database, relative to `APPLICATION_ROOT` unless absolute |
+| `SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS` | `[]` | JSON array of initial administrator principal IDs; required but not automatically applied in production |
+| `SHAPE_SHIFTER_AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE` | `false` | Explicitly enable authenticated-`everyone` grants; keep disabled unless approved |
+| `SHAPE_SHIFTER_AUTHORIZATION_MEMBERSHIP_LOOKUP_URL` | `null` | Trusted membership endpoint template containing `{group_id}`; required for effective group review |
+| `SHAPE_SHIFTER_AUTHORIZATION_MEMBERSHIP_PROVIDER` | `trusted-membership-provider` | Provider name recorded in membership review output and audit events |
+| `SHAPE_SHIFTER_AUTHORIZATION_MEMBERSHIP_LOOKUP_TIMEOUT_SECONDS` | `5.0` | Timeout for each trusted membership lookup |
 | `SHAPE_SHIFTER_ALLOWED_ORIGINS`                  | _(localhost only)_      | CORS origin whitelist (JSON array); set explicitly for deployed UI    |
 | `SHAPE_SHIFTER_ALLOWED_ORIGIN_REGEX`             | `null`                  | Optional CORS regex; leave unset unless a controlled wildcard is required |
 | `SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL`       | `http://localhost:8000` | OpenRefine reconciliation service URL                                |
@@ -85,6 +93,154 @@ Format: `hostname:port:database:username:password`
 db.example.com:5432:sead_production:sead_user:password
 ```
 
+### Authorization SQLite store
+
+Configure the authorization database outside the project, log, and shared-data directories. The default value, `state/authorization.sqlite3`, resolves to `/app/state/authorization.sqlite3` in the Docker container and persists through the `docker/data/state/` bind mount.
+
+Set these values in `docker/data/backend.env` before the first production startup:
+
+```dotenv
+SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH=state/authorization.sqlite3
+SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS=["<administrator-principal-id>"]
+```
+
+The administrator principal ID must exactly match the case-sensitive identity forwarded by nginx. Production startup rejects an empty bootstrap-administrator setting, a development principal, or an authorization database path below a project, log, or shared-data directory.
+
+The SQLite repository enables foreign keys, WAL mode, and a 5-second busy timeout, and runs schema migrations when it opens the database. It is supported for one application host only. Do not place the database on a shared network filesystem or use it from multiple application hosts; replace the repository implementation before a multi-host deployment.
+
+The bootstrap setting is a production guard, not an automatic assignment. The repository can create bootstrap administrators only while no application roles exist, but the deployment does not invoke that method automatically. Initial administrators, resource records, and grants must be applied through the reviewed migration workflow. That procedure is documented separately before authorization enforcement cutover.
+
+### Authorization ownership and recovery
+
+Run authorization administration commands from the `docker/` directory. The commands operate on `/app/state/authorization.sqlite3` unless `--database` supplies another path.
+
+#### Initial ownership assignment
+
+Prepare a reviewed JSON manifest outside project YAML. Principal IDs must exactly match the identities supplied by nginx. Include each deployed project and shared data source, their current locators, and the required grants.
+
+```json
+{
+   "administrators": ["<administrator-principal-id>"],
+   "resources": [
+      {
+         "resource_type": "project",
+         "locator": "<project-locator>",
+         "grants": [{"principal_id": "<project-owner-principal-id>", "role": "owner"}]
+      },
+      {
+         "resource_type": "shared_data_source",
+         "locator": "<shared-source-locator>",
+         "grants": [{"principal_id": "<shared-source-reader-principal-id>", "role": "reader"}]
+      }
+   ]
+}
+```
+
+Copy the approved manifest to `docker/data/state/authorization-manifest.json`, then inspect it without changing the database:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization migrate \
+   --manifest /app/state/authorization-manifest.json --dry-run
+```
+
+After review, apply it and confirm the stored records match the manifest:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization migrate \
+   --manifest /app/state/authorization-manifest.json
+docker compose exec shape-shifter python -m backend.app.scripts.authorization reconcile \
+   /app/state/authorization-manifest.json
+```
+
+Manifest application is idempotent. It creates missing resource records, administrator roles, and grants without changing existing matching records. Typed grants may use `subject_type` and `subject_id`; supported types are `principal`, `group`, and authenticated `everyone` with subject ID `authenticated`. The legacy `principal_id` form remains supported for direct-principal grants.
+
+#### Grant review and revocation
+
+The reviewed manifest is the supported workflow for initial project ownership, shared-data-source access, and administrator access. Use `reconcile` to review whether the database contains every assignment required by that manifest. Review current typed resource grants with:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization list-grants
+```
+
+Assign or revoke a grant with an explicit actor and typed subject. Both commands support `--dry-run`:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization grant \
+   --resource-type project --locator <project-locator> \
+   --subject-type group --subject-id <verified-group-id> --role editor --actor <operator-principal-id>
+docker compose exec shape-shifter python -m backend.app.scripts.authorization revoke \
+   --resource-type project --locator <project-locator> \
+   --subject-type group --subject-id <verified-group-id> --role editor --actor <operator-principal-id> --yes
+```
+
+The application does not infer group membership from request fields. Group grants remain inert until `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED=true` and the proxy supplies the configured group header. Authenticated-`everyone` grants remain disabled until `SHAPE_SHIFTER_AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE=true`. Broad subjects cannot receive `owner`.
+
+For operator review, configure a trusted membership endpoint and use an explicit actor. The endpoint must return a JSON object with a `members` array of principal IDs:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization list-grants \
+   --effective --actor <operator-principal-id> --json
+```
+
+Use `--membership-url` for a one-off endpoint override. Use `--strict` when automation must fail if any group is unavailable or not found. Human-readable output reports resolved principals, provider, fetch time, and lookup errors; JSON output reports the same status fields. Lookup results are recorded as audit events. The trusted provider remains authoritative, and the application does not expand memberships into grant rows or use review results for runtime authorization. This phase queries the provider directly and does not cache membership snapshots; reconsider a review-only cache if provider availability or review latency becomes an operational problem.
+
+Do not edit the SQLite database directly. Direct changes bypass the authorization repository's audit records and final-owner and final-administrator protections.
+
+List resources, application roles, and audit events for review:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization list-resources --json
+docker compose exec shape-shifter python -m backend.app.scripts.authorization list-application-roles --json
+docker compose exec shape-shifter python -m backend.app.scripts.authorization list-audit-events --json
+```
+
+Assign or revoke deployment-wide roles with an explicit actor. Supported roles include `project_creator`, `operator`, and `admin`; use `--dry-run` before applying changes. Revocations require `--yes` or `--non-interactive`:
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization grant-application-role \
+   --principal-id <principal-id> --role operator --actor <admin-principal-id>
+docker compose exec shape-shifter python -m backend.app.scripts.authorization revoke-application-role \
+   --principal-id <principal-id> --role operator --actor <admin-principal-id> --yes
+```
+
+The repository records every mutation and prevents removal of the final project owner or application administrator. Unknown and deleted resources cannot be selected by locator for grant mutations.
+
+#### Enforcement cutover
+
+Authorization enforcement has no runtime toggle. A release containing protected routes enforces their requirements when the application starts. Do not cut over until all of these conditions are met:
+
+1. The route inventory has classified every sensitive route and no required resource is unowned.
+2. The reviewed manifest has been applied and `reconcile` reports no missing administrators, resources, or grants.
+3. A consistent authorization database backup has been created and copied to operator-controlled storage.
+4. The exact release commit, manifest revision, database backup location, and rollback decision owner are recorded in the deployment record.
+5. Post-deployment checks confirm allowed and denied access for an administrator, a project owner, and a principal without grants.
+
+#### Backup and recovery
+
+Create backups with SQLite's backup API; do not copy a live `.sqlite3` file directly. Store backups outside `docker/data/state/` and project-managed data.
+
+```bash
+docker compose exec shape-shifter python -m backend.app.scripts.authorization backup \
+   /app/state/authorization-$(date +%Y%m%d-%H%M%S).sqlite3
+docker compose exec shape-shifter python -m backend.app.scripts.authorization integrity-check
+```
+
+Copy the backup to operator-controlled storage after the command completes. To restore a backup, stop the service first, run a one-off container that has the state bind mount, restart the service, and check integrity:
+
+```bash
+docker compose down
+docker compose run --rm shape-shifter python -m backend.app.scripts.authorization restore \
+   /app/state/<authorization-backup>.sqlite3
+docker compose up -d
+docker compose exec shape-shifter python -m backend.app.scripts.authorization integrity-check
+```
+
+Restore changes grants, application roles, resource records, and authorization audit history to the selected backup. Reconcile the reviewed manifest and repeat access smoke checks before considering recovery complete.
+
+#### Rollback
+
+For an application release rollback, deploy the previous image as described in [Rollback](#rollback). Keep the current authorization database unless the rollback also requires restoring its recorded grants and resource state. When restoring the database, use the recovery procedure above and record the chosen backup and reason.
+
 ### Build-time variables (baked into frontend bundle)
 
 These are set at image build time and require a rebuild to change:
@@ -110,6 +266,7 @@ Persistent data is mounted from `docker/data/` on the host into `/app/` in the c
 | `docker/data/output/`   | `/app/output/`    | Execution output files                                  |
 | `docker/data/backups/`  | `/app/backups/`   | Automatic pre-save YAML backups                         |
 | `docker/data/.pgpass/`  | `/app/.pgpass:ro` | PostgreSQL password file                                |
+| `docker/data/state/`    | `/app/state/`     | Authorization SQLite database                            |
 
 Create these directories before first startup:
 

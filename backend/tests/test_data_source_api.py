@@ -4,13 +4,22 @@ Integration tests for Data Source API endpoints
 Tests the complete REST API including request/response handling, validation, and error cases.
 """
 
+from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.api.dependencies import get_data_source_service
+from backend.app.api.v1.endpoints.data_sources import (
+    data_source_operator_dependency,
+    data_source_principal_dependency,
+    data_source_reader_dependency,
+)
+from backend.app.authorization.dependencies import get_authorization_service
+from backend.app.authorization.models import Action, AuthorizedResource, Principal, ResourceRecord, ResourceType
 from backend.app.main import app
 from backend.app.models.data_source import (
     DataSourceConfig,
@@ -26,17 +35,40 @@ from backend.app.services.data_source_service import DataSourceService
 def mock_service() -> MagicMock:
     """Create mock schema service."""
     service = MagicMock(spec=DataSourceService)
+    service.data_source_locator.side_effect = lambda filename: Path(filename).with_suffix(".yml").stem
     return service
 
 
 @pytest.fixture
-def client(mock_service):
+def mock_authorization_service() -> MagicMock:
+    """Create mock authorization service."""
+    service = MagicMock()
+    service.repository.get_resource_by_locator.return_value = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "unused-datasource")
+    return service
+
+
+@pytest.fixture
+def client(mock_service, mock_authorization_service):
     """Create test client with mocked data source service."""
 
     def override_get_data_source_service():
         return mock_service
 
+    def override_get_principal():
+        return Principal("alice", "test", datetime.now(UTC))
+
+    def override_get_readable_source():
+        principal = override_get_principal()
+        return AuthorizedResource(principal, Action.READ, ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "sead-options"))
+
+    def override_get_authorization_service():
+        return mock_authorization_service
+
     app.dependency_overrides[get_data_source_service] = override_get_data_source_service
+    app.dependency_overrides[data_source_principal_dependency] = override_get_principal
+    app.dependency_overrides[data_source_operator_dependency] = override_get_principal
+    app.dependency_overrides[data_source_reader_dependency] = override_get_readable_source
+    app.dependency_overrides[get_authorization_service] = override_get_authorization_service
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -46,7 +78,7 @@ class TestListDataSources:
 
     def test_list_data_sources_success(self, client, mock_service):
         """Should return list of data sources."""
-        mock_service.list_data_sources.return_value = [
+        mock_service.list_authorized_data_sources.return_value = [
             DataSourceConfig(name="sead", driver="postgresql", host="localhost", port=5432, database="sead", username="user", **{}),
             DataSourceConfig(name="arbodat", driver="access", options={"filename": "arbodat.mdb"}, **{}),
         ]
@@ -63,7 +95,7 @@ class TestListDataSources:
 
     def test_list_data_sources_empty(self, client, mock_service):
         """Should return empty list when no data sources configured."""
-        mock_service.list_data_sources.return_value = []
+        mock_service.list_authorized_data_sources.return_value = []
 
         response = client.get("/api/v1/data-sources")
 
@@ -72,7 +104,7 @@ class TestListDataSources:
 
     def test_list_data_sources_error(self, client, mock_service):
         """Should return 500 on service error."""
-        mock_service.list_data_sources.side_effect = Exception("Database error")
+        mock_service.list_authorized_data_sources.side_effect = Exception("Database error")
 
         response = client.get("/api/v1/data-sources")
 
@@ -115,7 +147,7 @@ class TestGetDataSource:
 class TestCreateDataSource:
     """Tests for POST /api/v1/data-sources endpoint."""
 
-    def test_create_data_source_success(self, client, mock_service):
+    def test_create_data_source_success(self, client, mock_service, mock_authorization_service):
         """Should create new data source."""
         mock_service.load_data_source.return_value = None  # Doesn't exist yet
 
@@ -146,6 +178,9 @@ class TestCreateDataSource:
         data = response.json()
         assert data["name"] == "new_db"
         mock_service.create_data_source.assert_called_once()
+        mock_authorization_service.register_shared_data_source.assert_called_once()
+        _, locator = mock_authorization_service.register_shared_data_source.call_args[0]
+        assert locator == "new_db-options"
 
     def test_create_data_source_already_exists(self, client, mock_service):
         """Should return 400 when data source already exists."""
@@ -283,9 +318,11 @@ class TestUpdateDataSource:
 class TestDeleteDataSource:
     """Tests for DELETE /api/v1/data-sources/{name} endpoint."""
 
-    def test_delete_data_source_success(self, client, mock_service):
+    def test_delete_data_source_success(self, client, mock_service, mock_authorization_service):
         """Should delete data source."""
 
+        resource = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "unused-datasource")
+        mock_authorization_service.repository.get_resource_by_locator.return_value = resource
         mock_service.load_data_source.return_value = DataSourceConfig(name="unused", driver="csv", options={"filename": "unused.csv"}, **{})
         mock_service.delete_data_source.return_value = None
 
@@ -297,6 +334,7 @@ class TestDeleteDataSource:
         call_args = mock_service.delete_data_source.call_args[0]
         assert isinstance(call_args[0], Path)
         assert str(call_args[0]) == "unused-datasource.yml"
+        mock_authorization_service.transition_resource.assert_has_calls([call(resource, "deleting"), call(resource, "deleted")])
 
     def test_delete_data_source_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
@@ -306,8 +344,10 @@ class TestDeleteDataSource:
 
         assert response.status_code == 404
 
-    def test_delete_data_source_service_error(self, client, mock_service):
+    def test_delete_data_source_service_error(self, client, mock_service, mock_authorization_service):
         """Should return 500 when service fails to delete."""
+        resource = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "error_case-options")
+        mock_authorization_service.repository.get_resource_by_locator.return_value = resource
         mock_service.load_data_source.return_value = DataSourceConfig(
             name="error_case",
             driver="postgresql",
@@ -323,6 +363,7 @@ class TestDeleteDataSource:
 
         assert response.status_code == 500
         assert "Failed to delete data source" in response.json()["detail"]
+        mock_authorization_service.transition_resource.assert_has_calls([call(resource, "deleting"), call(resource, "active")])
 
 
 class TestTestConnection:

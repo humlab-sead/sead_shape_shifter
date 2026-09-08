@@ -1,7 +1,11 @@
 """API endpoints for mapping sidecar CRUD operations."""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 
+from backend.app.authorization.dependencies import require_project
+from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.models import mapping as api
 from backend.app.services.mapping_service import MappingService
 from backend.app.services.project_service import get_project_service
@@ -48,9 +52,10 @@ async def get_entity_mapping(
     project_name: str,
     entity_name: str,
     service: MappingService = Depends(get_mapping_service),
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))] = None,
 ) -> api.MappingEntityResponse:
     """Return all mapping links and sidecar metadata for one entity."""
-    entity_mapping = service.get_entity_mapping(project_name, entity_name)
+    entity_mapping = service.get_entity_mapping(authorized_project.resource.locator, entity_name)
     return _to_entity_response(entity_name, entity_mapping)
 
 
@@ -61,9 +66,10 @@ async def get_mapping_link(
     entity_name: str,
     local_key_value: str,
     service: MappingService = Depends(get_mapping_service),
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))] = None,
 ) -> api.MappingLinkRecordResponse:
     """Return one mapping link for an entity and local-key pair."""
-    entity_mapping, link = service.get_link(project_name, entity_name, local_key_value)
+    entity_mapping, link = service.get_link(authorized_project.resource.locator, entity_name, local_key_value)
     return api.MappingLinkRecordResponse(
         entity_name=entity_name,
         local_key_value=local_key_value,
@@ -81,10 +87,11 @@ async def put_mapping_link(
     local_key_value: str,
     request: api.MappingLinkUpsertRequest,
     service: MappingService = Depends(get_mapping_service),
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))] = None,
 ) -> api.MappingLinkRecordResponse:
     """Create or update one manual mapping link."""
     entity_mapping, link = service.put_link(
-        project_name,
+        authorized_project.resource.locator,
         entity_name,
         local_key_value,
         target_id=request.target_id,
@@ -107,7 +114,8 @@ async def delete_mapping_link(
     entity_name: str,
     local_key_value: str,
     service: MappingService = Depends(get_mapping_service),
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))] = None,
 ) -> api.MappingDeleteResponse:
     """Delete one mapping link for an entity and local-key pair."""
-    service.delete_link(project_name, entity_name, local_key_value)
+    service.delete_link(authorized_project.resource.locator, entity_name, local_key_value)
     return api.MappingDeleteResponse(entity_name=entity_name, local_key_value=local_key_value, deleted=True)

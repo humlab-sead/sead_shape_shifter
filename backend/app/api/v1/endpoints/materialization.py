@@ -1,7 +1,11 @@
 """API endpoints for entity materialization."""
 
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException
+
+from backend.app.authorization.dependencies import require_project
+from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.materialization import (
     CanMaterializeResponse,
@@ -26,14 +30,18 @@ def get_materialization_service() -> MaterializationService:
 
 
 @router.get("/projects/{project_name}/entities/{entity_name}/can-materialize", response_model=CanMaterializeResponse)
-async def can_materialize(project_name: str, entity_name: str) -> CanMaterializeResponse:
+async def can_materialize(
+    project_name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+) -> CanMaterializeResponse:
     """
     Check if an entity can be materialized.
 
     Returns validation errors and estimated row count.
     """
     try:
-        api_project: Project = get_project_service().load_project(project_name)
+        api_project: Project = get_project_service().load_project(authorized_project.resource.locator)
         core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
 
         try:
@@ -53,7 +61,12 @@ async def can_materialize(project_name: str, entity_name: str) -> CanMaterialize
 
 
 @router.post("/projects/{project_name}/entities/{entity_name}/materialize", response_model=MaterializationResult)
-async def materialize_entity(project_name: str, entity_name: str, request: MaterializeRequest) -> MaterializationResult:
+async def materialize_entity(
+    project_name: str,
+    entity_name: str,
+    request: MaterializeRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> MaterializationResult:
     """
     Materialize an entity to fixed values.
 
@@ -65,7 +78,7 @@ async def materialize_entity(project_name: str, entity_name: str, request: Mater
     5. Saves project
     """
     result: MaterializationResult = await get_materialization_service().materialize_entity(
-        project_name=project_name,
+        project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         storage_format=request.storage_format,
     )
@@ -77,7 +90,12 @@ async def materialize_entity(project_name: str, entity_name: str, request: Mater
 
 
 @router.post("/projects/{project_name}/entities/{entity_name}/unmaterialize", response_model=UnmaterializationResult)
-async def unmaterialize_entity(project_name: str, entity_name: str, request: UnmaterializeRequest) -> UnmaterializationResult:
+async def unmaterialize_entity(
+    project_name: str,
+    entity_name: str,
+    request: UnmaterializeRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> UnmaterializationResult:
     """
     Restore entity to dynamic state.
 
@@ -89,7 +107,7 @@ async def unmaterialize_entity(project_name: str, entity_name: str, request: Unm
     5. Saves project
     """
     result: UnmaterializationResult = await get_materialization_service().unmaterialize_entity(
-        project_name=project_name, entity_name=entity_name, cascade=request.cascade
+        project_name=authorized_project.resource.locator, entity_name=entity_name, cascade=request.cascade
     )
 
     if not result.success:
@@ -110,9 +128,15 @@ async def unmaterialize_entity(project_name: str, entity_name: str, request: Unm
 
 
 @router.patch("/projects/{project_name}/mapping/from-materialized/{entity_name}", response_model=MaterializedMappingSyncResult)
-async def sync_mapping_from_materialized(project_name: str, entity_name: str) -> MaterializedMappingSyncResult:
+async def sync_mapping_from_materialized(
+    project_name: str,
+    entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
+) -> MaterializedMappingSyncResult:
     """Replace manual sidecar links for an entity from its saved materialized rows."""
-    result = get_materialization_service().sync_materialized_entity_mappings(project_name=project_name, entity_name=entity_name)
+    result = get_materialization_service().sync_materialized_entity_mappings(
+        project_name=authorized_project.resource.locator, entity_name=entity_name
+    )
 
     if not result.success:
         raise HTTPException(status_code=400, detail=result.errors[0] if result.errors else "Materialized mapping sync failed")
