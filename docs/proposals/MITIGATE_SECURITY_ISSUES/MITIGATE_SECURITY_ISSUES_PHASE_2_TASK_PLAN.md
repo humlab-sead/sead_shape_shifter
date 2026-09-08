@@ -2,7 +2,7 @@
 
 ## Phase Summary
 
-- Status: Not started
+- Status: In progress
 - Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md) (design §3 "Enforce filesystem boundaries")
 - Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md) (Phase 2)
 - Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
@@ -29,7 +29,7 @@
 
 ## Work Breakdown
 
-### 1. Define Approved Roots And A Shared Containment Guard
+### 1. define approved roots and a shared containment guard
 
 **Objective**
 
@@ -37,11 +37,11 @@ Provide one documented root set and one containment helper that every file acces
 
 **Tasks**
 
-- [ ] Document the approved root set (projects, global shared data, uploads, backups, temporary files, generated output) and per-environment values in the configuration and operations documentation.
-- [ ] Implement a shared path guard that resolves a path, requires it to remain inside the intended approved root (for example `resolve().is_relative_to(root)`), and rejects absolute inputs and traversal before any open or create.
-- [ ] Resolve symlinks before authorization or access and reject paths whose resolved target escapes the approved root.
-- [ ] Route existing file access through the guard: entity and data-source file resolution (`FilePathResolver` in `backend/app/utils/file_path_resolver.py`), project file browsing (`FileManager` in `backend/app/services/project/file_manager.py`), and upload/metadata paths.
-- [ ] Add unit tests for traversal, absolute paths, symlinks, missing parents, and project-name variants.
+- [x] Document the approved root set (projects, global shared data, uploads, backups, temporary files, generated output) and per-environment values in the configuration and operations documentation.
+- [x] Implement a shared path guard that resolves a path, requires it to remain inside the intended approved root (for example `resolve().is_relative_to(root)`), and rejects absolute inputs and traversal before any open or create.
+- [x] Resolve symlinks before authorization or access and reject paths whose resolved target escapes the approved root.
+- [x] Route existing file access through the guard: entity and data-source file resolution (`FilePathResolver` in `backend/app/utils/file_path_resolver.py`), project file browsing (`FileManager` in `backend/app/services/project/file_manager.py`), and upload/metadata paths.
+- [x] Add unit tests for traversal, absolute paths, symlinks, missing parents, and project-name variants.
 
 **Completion Criteria**
 
@@ -100,12 +100,12 @@ Ingester operations cannot create or overwrite files outside their assigned root
 
 ## Progress Tracker
 
-| Area | Status | Notes |
-|---|---|---|
-| Approved roots and shared containment guard | Not started | Depends on the per-environment root decision |
-| Execution outputs and downloads | Not started | Closes the arbitrary file download finding |
-| Project files, uploads, backups, and directives | Not started | Includes the raw YAML disposition decision |
-| Ingester boundaries | Not started | Ingester remains disabled during this phase |
+| Area                                            | Status      | Notes                                        |
+|-------------------------------------------------|-------------|----------------------------------------------|
+| Approved roots and shared containment guard     | Done | Root documentation, shared guard, resolver integration, and escape-case tests are complete |
+| Execution outputs and downloads                 | Not started | Closes the arbitrary file download finding   |
+| Project files, uploads, backups, and directives | Not started | Includes the raw YAML disposition decision   |
+| Ingester boundaries                             | Not started | Ingester remains disabled during this phase  |
 
 ## Definition Of Done
 
@@ -129,12 +129,12 @@ Ingester operations cannot create or overwrite files outside their assigned root
 
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
-| Approved-roots registry | Documented server-owned roots and per-environment values | Not started | TBD (configuration and operations docs) |
-| Containment guard and tests | Shared path-resolution guard plus unit tests | Not started | `backend/app/utils/` or shared path utility, TBD |
-| Execution and download confinement | Confined outputs and closed arbitrary download | Not started | `backend/app/services/execute_service.py` |
+| Approved-roots registry            | Documented server-owned roots and per-environment values    | Done | [`docs/OPERATIONS.md`](../../OPERATIONS.md) |
+| Containment guard and tests        | Shared path-resolution guard plus unit tests | Done   | `src/path_resolution.py`, `backend/app/utils/file_path_resolver.py` |
+| Execution and download confinement | Confined outputs and closed arbitrary download | Not started         | `backend/app/services/execute_service.py` |
 | Project-file, upload, backup, and directive confinement | Root checks across file endpoints and YAML directives | Not started | `backend/app/services/project/file_manager.py`, `backend/app/api/v1/endpoints/projects.py` |
-| Raw YAML disposition record | Decision on restricting or removing raw YAML mutation | Not started | TBD |
-| Ingester boundary record | Disablement or containment evidence for ingester paths | Not started | `docs/proposals/CHANGE_REQUEST_INGESTER/` |
+| Raw YAML disposition record        | Decision on restricting or removing raw YAML mutation  | Not started | TBD                                       |
+| Ingester boundary record           | Disablement or containment evidence for ingester paths | Not started | `docs/proposals/CHANGE_REQUEST_INGESTER/` |
 
 ## Scope
 
