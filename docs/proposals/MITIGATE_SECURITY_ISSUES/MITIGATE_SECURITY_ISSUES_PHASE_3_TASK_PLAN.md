@@ -73,12 +73,12 @@ Ensure the application database identity can perform only the approved read oper
 
 **Tasks**
 
-- [ ] Identify the required database, schema, table, view, sequence, and function privileges for application reads and introspection.
-- [ ] Define the dedicated application role and revoke write, ownership, role-membership, schema-modification, and other unnecessary privileges.
-- [ ] Provide the deployment or database migration steps needed to create and maintain the role without embedding credentials in application configuration.
-- [ ] Verify the role is not an object owner and is not a member of any write-capable or administrative role.
-- [ ] Test representative allowed reads and representative denied DDL, DML, `COPY`, role, transaction-control, and schema-modification operations using the actual role.
-- [ ] Record the grants and verification evidence in the release or operations record used by the parent security plan.
+- [x] Identify the required database, schema, table, view, sequence, and function privileges for application reads and introspection.
+- [x] Define the dedicated application role and revoke write, ownership, role-membership, schema-modification, and other unnecessary privileges.
+- [x] Provide the deployment or database migration steps needed to create and maintain the role without embedding credentials in application configuration.
+- [x] Verify the role is not an object owner and is not a member of any write-capable or administrative role.
+- [x] Test representative allowed reads and representative denied DDL, DML, `COPY`, role, transaction-control, and schema-modification operations using the actual role.
+- [x] Record the grants and verification evidence in the release or operations record used by the parent security plan.
 
 **Completion Criteria**
 
@@ -128,7 +128,7 @@ Supported execution paths enforce resource limits, clean up after cancellation o
 |---|---|---|
 | Shared SQL safety policy | Done | Shared statement and read-only checks cover the inventoried query, introspection, loader, workflow, and DuckDB workspace paths; public query errors no longer expose SQL or raw backend details |
 | Query construction and result limits | Done | Validated identifier quoting, bound metadata values, server-capped `LIMIT` handling, direct table-load caps, and a 5 MiB serialized response budget are covered by focused tests |
-| PostgreSQL least-privilege role | Not started | Effective production grants require deployment verification |
+| PostgreSQL least-privilege role | Done | Setup, catalog verification, and role-behavior evidence pass against disposable PostgreSQL 16; the release/operations record points to the executable setup and behavior scripts |
 | DuckDB external access and extensions | Not started | Controlled file access, if retained, depends on Phase 2 roots |
 | Resource controls and regression evidence | Not started | Disposable database and file tests are required |
 
@@ -161,7 +161,7 @@ Supported execution paths enforce resource limits, clean up after cancellation o
 |---|---|---|---|
 | SQL safety policy | Documented statement and operation policy shared by PostgreSQL and DuckDB execution paths | Done | [docs/SQL_SAFETY_POLICY.md](../../../SQL_SAFETY_POLICY.md) |
 | Shared validation and query-construction controls | Central validation, identifier handling, parameter binding, and result-limit enforcement | Done | [src/loaders/sql_loaders.py](../../../src/loaders/sql_loaders.py), [backend/app/services/query_service.py](../../../backend/app/services/query_service.py) |
-| PostgreSQL role controls | Least-privilege role setup, grant verification, and disposable-database evidence | Not started | TBD |
+| PostgreSQL role controls | Least-privilege role setup, grant verification, and disposable-database evidence | Done | [scripts/postgres/create-readonly-role.sh](../../../scripts/postgres/create-readonly-role.sh), [scripts/postgres/verify_readonly_role.sql](../../../scripts/postgres/verify_readonly_role.sql), [scripts/postgres/test-readonly-role.sh](../../../scripts/postgres/test-readonly-role.sh), [docs/OPERATIONS.md](../../OPERATIONS.md) |
 | DuckDB restrictions | External-access, extension, network, and controlled-file restrictions with regression tests | Not started | TBD |
 | Query resource controls | Duration, result-size, memory, concurrency, cancellation, and cleanup controls | Not started | TBD |
 | Phase 3 validation record | Focused tests, reproduction results, known limitations, and exact release evidence | Not started | TBD |
