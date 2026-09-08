@@ -14,6 +14,7 @@ from backend.app.models.query import QueryExecution, QueryIntrospection, QueryRe
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService, is_internal_data_source
+from backend.app.utils.public_errors import public_error_detail
 from src.model import DataSourceConfig, ShapeShiftProject
 
 router = APIRouter()
@@ -57,7 +58,7 @@ def _resolve_data_source_config(
         return api.DataSourceConfig(name=data_source_name, **core_ds.data_source_cfg)
     except Exception as e:
         raise QueryExecutionError(
-            message=f"Failed to resolve data source '{data_source_name}': {str(e)}",
+            message=f"Failed to resolve data source '{data_source_name}'.",
             data_source=data_source_name,
         ) from e
 
@@ -132,11 +133,11 @@ async def execute_query(
     except QuerySecurityError as e:
         raise HTTPException(status_code=400, detail="Query rejected by the SQL safety policy.") from e
     except QueryExecutionError as e:
-        raise HTTPException(status_code=500, detail="Query execution failed. Use the correlation ID when reporting the problem.") from e
+        raise HTTPException(status_code=500, detail=public_error_detail("Query execution failed")) from e
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Query execution failed. Use the correlation ID when reporting the problem.") from e
+        raise HTTPException(status_code=500, detail=public_error_detail("Query execution failed")) from e
 
 
 @router.post(
@@ -252,12 +253,8 @@ async def introspect_query_columns(
     except QuerySecurityError as e:
         raise HTTPException(status_code=400, detail="Query rejected by the SQL safety policy.") from e
     except QueryExecutionError as e:
-        raise HTTPException(
-            status_code=500, detail="Column introspection failed. Use the correlation ID when reporting the problem."
-        ) from e
+        raise HTTPException(status_code=500, detail=public_error_detail("Column introspection failed")) from e
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail="Column introspection failed. Use the correlation ID when reporting the problem."
-        ) from e
+        raise HTTPException(status_code=500, detail=public_error_detail("Column introspection failed")) from e

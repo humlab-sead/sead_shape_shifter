@@ -43,7 +43,7 @@ class TestErrorHandlerDecorator:
             await not_found_endpoint()
 
         assert exc_info.value.status_code == 404
-        assert exc_info.value.detail == "Resource not found"
+        assert exc_info.value.detail == "Request failed. Correlation ID: no-corr"
 
     @pytest.mark.asyncio
     async def test_projecturation_not_found_returns_404(self):
@@ -91,7 +91,7 @@ class TestErrorHandlerDecorator:
             await bad_request_endpoint()
 
         assert exc_info.value.status_code == 400
-        assert exc_info.value.detail == "Invalid input"
+        assert exc_info.value.detail == "Request failed. Correlation ID: no-corr"
 
     @pytest.mark.asyncio
     async def test_entity_already_exists_returns_409(self):
@@ -143,7 +143,8 @@ class TestErrorHandlerDecorator:
         detail = cast(dict[str, Any], exc_info.value.detail)
         assert isinstance(detail, dict)
         assert detail["error_type"] == "InternalServerError"
-        assert "Unexpected error" in detail["message"]
+        assert detail["message"] == "An unexpected error occurred. Correlation ID: no-corr"
+        assert "Unexpected error" not in detail["message"]
 
     @pytest.mark.asyncio
     async def test_preserves_function_metadata(self):
@@ -353,7 +354,7 @@ class TestDomainExceptionHandling:
         # Verify structured response for unexpected errors
         assert isinstance(detail, dict)
         assert detail["error_type"] == "InternalServerError"
-        assert "Unexpected error" in detail["message"]
+        assert detail["message"] == "An unexpected error occurred. Correlation ID: no-corr"
         assert isinstance(detail["tips"], list)
         assert detail["recoverable"] is False
 

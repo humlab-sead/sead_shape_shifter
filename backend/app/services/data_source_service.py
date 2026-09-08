@@ -10,7 +10,9 @@ from loguru import logger
 from backend.app.authorization.models import Action, Principal, ResourceType
 from backend.app.authorization.service import AuthorizationService
 from backend.app.mappers.data_source_mapper import DataSourceMapper
+from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.data_source import DataSourceConfig, DataSourceStatus, DataSourceTestResult
+from backend.app.services.data_source_policy import validate_server_managed_data_source
 from src.loaders.base_loader import ConnectTestResult, DataLoader, DataLoaders
 from src.model import DataSourceConfig as CoreDataSourceConfig
 
@@ -199,6 +201,8 @@ class DataSourceService:
         if file_path.exists():
             raise ValueError(f"Data source file '{filename}' already exists")
 
+        validate_server_managed_data_source(config)
+
         config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name"})
 
         if config.password:
@@ -227,6 +231,8 @@ class DataSourceService:
 
         if not file_path.exists():
             raise ValueError(f"Data source file '{filename}' not found")
+
+        validate_server_managed_data_source(config)
 
         config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name"})
 
@@ -278,8 +284,10 @@ class DataSourceService:
             return DataSourceTestResult.from_core_result(result)
         except Exception as e:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
-            logger.error(f"Connection test failed for '{config.name}': {e}")
-            return DataSourceTestResult.create_failure(message=f"Connection failed: {str(e)}", connection_time_ms=elapsed_ms)
+            logger.error(f"Connection test failed for '{config.name}' [corr={get_correlation_id()}] [{e.__class__.__name__}]")
+            return DataSourceTestResult.create_failure(
+                message=f"Connection failed. Correlation ID: {get_correlation_id()}", connection_time_ms=elapsed_ms
+            )
 
     def get_status(self, filename: str | Path) -> DataSourceStatus:
         """Get current status of a data source.

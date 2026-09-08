@@ -293,6 +293,21 @@ class TestDataSourceService:
         assert "name" not in data
         assert "filename" not in data
 
+    def test_create_data_source_rejects_custom_connection_string(self, service: DataSourceService, sample_config: DataSourceConfig):
+        """Test server-managed policy rejects custom connection strings before save."""
+        sample_config.connection_string = "postgresql://example.com/testdb"
+
+        with pytest.raises(ValueError, match="connection strings are not allowed"):
+            service.create_data_source("test", sample_config)
+
+    def test_create_data_source_rejects_unapproved_env_vars(self, service: DataSourceService, sample_config: DataSourceConfig, monkeypatch):
+        """Test server-managed policy rejects unapproved environment variables before save."""
+        monkeypatch.setenv("UNAPPROVED_HOST", "example.com")
+        sample_config.host = "${UNAPPROVED_HOST}"
+
+        with pytest.raises(ValueError, match="unapproved environment variables"):
+            service.create_data_source("test", sample_config)
+
     # Update data source tests
 
     def test_update_data_source_success(
@@ -387,6 +402,8 @@ class TestDataSourceService:
 
             assert result.success is False
             assert "Connection failed" in result.message
+            assert "Correlation ID:" in result.message
+            assert "Connection refused" not in result.message
 
     @pytest.mark.asyncio
     async def test_test_connection_uses_mapper(self, service: DataSourceService, sample_config: DataSourceConfig):

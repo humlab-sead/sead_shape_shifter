@@ -30,6 +30,7 @@ from backend.app.models.project import ExcelMetadataResponse, ProjectFileInfo
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
+from backend.app.utils.public_errors import public_error_detail
 from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
 
 router = APIRouter(prefix="/data-sources", tags=["data-sources"])
@@ -124,10 +125,10 @@ async def list_drivers() -> dict[str, DriverSchemaResponse]:
             for driver, schema in schemas.items()
         }
     except Exception as e:
-        logger.error(f"Error fetching driver schemas: {e}")
+        logger.error(f"Error fetching driver schemas [{e.__class__.__name__}]")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch driver schemas: {str(e)}",
+            detail=public_error_detail("Failed to fetch driver schemas"),
         ) from e
 
 
@@ -162,10 +163,10 @@ async def list_data_sources(
         logger.info(f"Found {len(data_sources)} data source files")
         return data_sources
     except Exception as e:
-        logger.error(f"Error listing data sources: {e}")
+        logger.error(f"Error listing data sources [{e.__class__.__name__}]")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list data sources: {str(e)}",
+            detail=public_error_detail("Failed to list data sources"),
         ) from e
 
 
@@ -284,10 +285,10 @@ async def get_data_source(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting data source '{filename}': {e}")
+        logger.error(f"Error getting data source '{filename}' [{e.__class__.__name__}]")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get data source: {str(e)}",
+            detail=public_error_detail("Failed to get data source"),
         ) from e
 
 
@@ -341,10 +342,10 @@ async def create_data_source(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating data source '{config.name}': {e}")
+        logger.error(f"Error creating data source '{config.name}' [{e.__class__.__name__}]")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create data source: {str(e)}",
+            detail=public_error_detail("Failed to create data source"),
         ) from e
 
 
@@ -388,10 +389,10 @@ async def update_data_source(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating data source '{filename}': {e}")
+        logger.error(f"Error updating data source '{filename}' [{e.__class__.__name__}]")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to update data source: {str(e)}",
+            detail=public_error_detail("Failed to update data source"),
         ) from e
 
 
@@ -444,10 +445,10 @@ async def delete_data_source(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting data source '{filename}': {e}")
+        logger.error(f"Error deleting data source '{filename}' [{e.__class__.__name__}]")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete data source: {str(e)}",
+            detail=public_error_detail("Failed to delete data source"),
         ) from e
 
 
@@ -502,10 +503,10 @@ async def test_data_source_connection(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error testing connection to '{filename}': {e}")
+        logger.error(f"Error testing connection to '{filename}' [{e.__class__.__name__}]")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to test connection: {str(e)}",
+            detail=public_error_detail("Failed to test connection"),
         ) from e
 
 
@@ -547,8 +548,8 @@ async def get_data_source_status(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting status for '{name}': {e}")
+        logger.error(f"Error getting status for '{name}' [{e.__class__.__name__}]")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get data source status: {str(e)}",
+            detail=public_error_detail("Failed to get data source status"),
         ) from e

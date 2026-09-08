@@ -4,6 +4,7 @@
 
 - Status: Not started
 - Related authorization plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](../MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
+- Related security-hardening phase 4 work now tracked here: [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](../MITIGATE_SECURITY_ISSUES/MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md)
 - Goal: define and implement authorization for the ongoing `sead_change_request` ingester without enabling operations that still lack required containment and destination checks.
 
 **Acceptance Criteria**
@@ -11,6 +12,7 @@
 - [ ] Nonsensitive ingester metadata requires an authenticated principal.
 - [ ] Ingester validation and execution require the `operator` application role.
 - [ ] Ingester configuration and registration require the `admin` application role.
+- [ ] The ingester API disposition is documented here instead of in the security-hardening phase 4 plan.
 - [ ] Unsafe ingester operations remain unavailable until project, source, database, destination, and containment authorization checks exist.
 - [ ] Every approved ingester operation authorizes its source and destination.
 - [ ] Cross-user, cross-project, cross-source, and ingester authorization tests pass.
@@ -62,6 +64,7 @@ Authorize every source and destination before enabling an ingester operation.
 - [ ] Define authorization and containment checks for each source, project, database, and destination used by an approved operation.
 - [ ] Keep operations disabled when any required authorization or containment check is unavailable.
 - [ ] Pass authorized resources to the operation implementation before it reads or writes protected data.
+- [ ] Document whether the ingester API remains disabled, is removed, or is redesigned around uploaded content and server-managed destinations.
 
 **Completion Criteria**
 
