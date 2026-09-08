@@ -153,6 +153,23 @@ async def test_execute_query_uses_authorized_shared_source(
 
 
 @pytest.mark.asyncio
+async def test_execute_query_forwards_limit_and_timeout(query_dependencies, mock_query_service: MagicMock) -> None:
+    async with _client_for_principal("alice") as client:
+        response = await client.post(
+            "/api/v1/data-sources/authorized-source/query/execute",
+            json={"query": "SELECT id FROM table1", "limit": 7, "timeout": 12, "memory_limit_mb": 5},
+        )
+
+    assert response.status_code == 200
+    mock_query_service.execute_query.assert_awaited_once()
+    _, kwargs = mock_query_service.execute_query.call_args
+    assert kwargs["query"] == "SELECT id FROM table1"
+    assert kwargs["limit"] == 7
+    assert kwargs["timeout"] == 12
+    assert kwargs["memory_limit_mb"] == 5
+
+
+@pytest.mark.asyncio
 async def test_validate_query_uses_authorized_shared_source(query_dependencies, mock_query_service: MagicMock) -> None:
     async with _client_for_principal("alice") as client:
         response = await client.post("/api/v1/data-sources/authorized-source/query/validate", json={"query": "SELECT id FROM table1"})

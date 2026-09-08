@@ -122,7 +122,11 @@ async def execute_query(
         if ds_cfg is None:
             raise HTTPException(status_code=400, detail=f"Data source '{data_source_name}' cannot be queried directly")
         result: QueryResult = await query_service.execute_query(
-            ds_cfg=ds_cfg, query=execution.query, limit=execution.limit, timeout=execution.timeout
+            ds_cfg=ds_cfg,
+            query=execution.query,
+            limit=execution.limit,
+            timeout=execution.timeout,
+            memory_limit_mb=execution.memory_limit_mb,
         )
         return result
     except QuerySecurityError as e:
