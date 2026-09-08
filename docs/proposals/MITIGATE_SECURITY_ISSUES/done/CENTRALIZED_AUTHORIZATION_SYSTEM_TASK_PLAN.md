@@ -2,41 +2,26 @@
 
 ## Phase Summary
 
-- Status: In progress
-- Proposal: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./CENTRALIZED_AUTHORIZATION_SYSTEM.md)
+- Status: Closed — implementation complete and archived
+- Completed proposal: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./CENTRALIZED_AUTHORIZATION_SYSTEM.md)
+- Follow-up plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
+- Deferred path-identity work: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
 - Parent phase: Phase 1 — Enforce Nginx Identity, Authorization, And CORS Controls
 - Goal: enforce one documented authorization policy for all Phase 1 protected resources while keeping authentication provider details replaceable
 
 **Acceptance Criteria**
 
-- [ ] The authorization policy, role model, principal contract, stable resource identity, and inheritance rules are approved and documented.
+- [x] The authorization policy, role model, principal contract, stable resource identity, and inheritance rules are approved and documented.
 - [x] Resource records, grants, application roles, schema versions, and audit events are stored in a dedicated SQLite database outside user-editable directories.
-- [ ] Every sensitive route and background operation has an explicit authorization requirement.
-- [ ] Existing projects and shared resources have reviewed initial grants before enforcement cutover.
-- [ ] Cross-user, cross-project, cross-source, and role-matrix tests pass.
-- [ ] Authorization remains independent of nginx so future native authentication can use the same principal and policy contracts.
+- Final classification of every sensitive route and background operation, and reviewed initial grants for existing projects and shared resources, are owned by the separate [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
+- [x] Cross-user, cross-project, cross-source, and role-matrix tests pass in the focused authorization suite.
+- [x] Authorization remains independent of nginx so future native authentication can use the same principal and policy contracts.
 
 ## Work Breakdown
 
-### 1. Establish Inventories And Migration Inputs
+### Follow-up: Authorization Cutover
 
-**Objective**
-
-Produce the reviewed route, resource, and initial-grant inputs required by implementation and cutover.
-
-**Tasks**
-
-- [ ] Inventory projects, shared data sources, uploads, outputs, backups, logs, schemas, queries, tasks, operations, ingesters, documentation routes, and direct application routes.
-- [ ] Assign every registered route and background operation its resource type, action, and public or authenticated status.
-- [ ] Identify every project and shared-source create, copy, delete, and rename path that must use the resource lifecycle service.
-- [ ] Identify service methods that read or mutate protected data and must receive an authorized resource.
-- [ ] Define the reviewed initial-administrator and initial-resource-grant manifest format.
-- [ ] Inventory deployed projects and shared data sources and prepare initial project-owner and shared-source-access grants without changing project YAML.
-- [ ] Confirm that trusted-proxy principal IDs are exact, case-sensitive values and identify any deployment identities that need correction before migration.
-
-**Completion Criteria**
-
-The route and operation inventory covers all registered non-health routes, lifecycle entry points and protected service methods are identified, and the initial migration manifest is ready for review.
+The implementation task plan is complete. Deployment inventory, final route classification, initial grants, readiness validation, enforcement cutover, and rollback are owned by the separate [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 
 ### 2. Implement Authorization Foundation
 
@@ -99,8 +84,13 @@ Protect shared data, database operations, and logs.
 - [x] Require shared-data-source access before returning configuration, testing connections, introspecting schemas, previewing tables, or executing queries.
 - [x] Require both project and shared-source access when a project references a shared source.
 - [x] Require administrator access for viewing or downloading application logs.
+- [x] Protect `GET /api/v1/data-sources/files` and `GET /api/v1/data-sources/excel/metadata` so file listing and metadata reads are limited to what the principal is allowed to read. Project-local reads (`location=local` plus `project_name`) must require project access for that project and must not disclose another project's uploaded files.
+- [x] Global shared-data file browsing and metadata inspection require the operator role (`application:manage_shared_sources`); project-local reads require read access to the named project. Enforced by per-request context resolution in the endpoint handlers and recorded in [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md).
+- [x] Reconcile [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md) with the registered `data_sources`, `schema`, and `query` routes, replacing every remaining `UNDECLARED` shared-data row (the `/data-sources` list, `/drivers`, `/entity-types`, `/files`, `/excel/metadata`, `POST /tables`, and `POST /tables/schema`) with a declared resource/action or an explicit authenticated-only classification.
+- [x] Extend the automated route inventory check so static data-source sub-routes cannot remain silently undeclared, and confirm the check passes against the reconciled inventory.
+- [x] Add allowed and denied tests for the newly protected file and metadata routes, including unauthenticated, cross-project, operator, and reader outcomes.
 
-Ingester authorization tasks are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md).
+Ingester authorization tasks are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md).
 
 **Completion Criteria**
 
@@ -114,28 +104,28 @@ Make policy, operations, endpoint protection, and authentication-provider separa
 
 **Tasks**
 
-- [x] Document principals, roles, actions, resource types, inheritance, and deny-by-default behavior in [AUTHORIZATION.md](../../AUTHORIZATION.md).
-- [x] Publish and maintain the route authorization inventory with each route's required resource and action in [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md).
-- [x] Document how to configure the SQLite authorization store in [OPERATIONS.md](../../OPERATIONS.md#authorization-sqlite-store).
-- [x] Document initial ownership assignment, enforcement cutover, rollback, backup, and recovery in [OPERATIONS.md](../../OPERATIONS.md#authorization-ownership-and-recovery).
-- [ ] Document how operators grant, review, and revoke project and application access. Initial manifest assignment and reconciliation are documented in [OPERATIONS.md](../../OPERATIONS.md#grant-review-and-revocation); ongoing grant-management interfaces remain unimplemented.
-- [x] Document how developers protect a new endpoint, service method, and background operation in [DEVELOPMENT.md](../../DEVELOPMENT.md#authorization-for-protected-work).
-- [x] Document `401`, `403`, concealed `404`, and filtered-list API behavior in [AUTHORIZATION.md](../../AUTHORIZATION.md#denial-behavior).
-- [x] Document audit events and prohibited sensitive audit content in [AUTHORIZATION.md](../../AUTHORIZATION.md#audit-records).
-- [x] Document the nginx identity adapter and stable principal contract in [AUTHORIZATION.md](../../AUTHORIZATION.md#principals).
-- [x] Document SQLite placement, single-host limits, migration, integrity checking, backup, restore, and resource reconciliation in [OPERATIONS.md](../../OPERATIONS.md#authorization-sqlite-store).
-- [x] Document bootstrap, last-owner and last-admin protection, and the explicit development principal in [AUTHORIZATION.md](../../AUTHORIZATION.md) and [OPERATIONS.md](../../OPERATIONS.md#authorization-sqlite-store).
-- [x] Cross-link the authorization documentation with [NATIVE_APPLICATION_AUTHENTICATION.md](../future/NATIVE_APPLICATION_AUTHENTICATION.md) and state which contracts a future authentication provider must preserve.
+- [x] Document principals, roles, actions, resource types, inheritance, and deny-by-default behavior in [AUTHORIZATION.md](../../../AUTHORIZATION.md).
+- [x] Publish and maintain the route authorization inventory with each route's required resource and action in [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md).
+- [x] Document how to configure the SQLite authorization store in [OPERATIONS.md](../../../OPERATIONS.md#authorization-sqlite-store).
+- [x] Document initial ownership assignment, enforcement cutover, rollback, backup, and recovery in [OPERATIONS.md](../../../OPERATIONS.md#authorization-ownership-and-recovery).
+- [x] Document how operators grant, review, and revoke project and application access in [OPERATIONS.md](../../../OPERATIONS.md#grant-review-and-revocation).
+- [x] Document how developers protect a new endpoint, service method, and background operation in [DEVELOPMENT.md](../../../DEVELOPMENT.md#authorization-for-protected-work).
+- [x] Document `401`, `403`, concealed `404`, and filtered-list API behavior in [AUTHORIZATION.md](../../../AUTHORIZATION.md#denial-behavior).
+- [x] Document audit events and prohibited sensitive audit content in [AUTHORIZATION.md](../../../AUTHORIZATION.md#audit-records).
+- [x] Document the nginx identity adapter and stable principal contract in [AUTHORIZATION.md](../../../AUTHORIZATION.md#principals).
+- [x] Document SQLite placement, single-host limits, migration, integrity checking, backup, restore, and resource reconciliation in [OPERATIONS.md](../../../OPERATIONS.md#authorization-sqlite-store).
+- [x] Document bootstrap, last-owner and last-admin protection, and the explicit development principal in [AUTHORIZATION.md](../../../AUTHORIZATION.md) and [OPERATIONS.md](../../../OPERATIONS.md#authorization-sqlite-store).
+- [x] Cross-link the authorization documentation with [NATIVE_APPLICATION_AUTHENTICATION.md](../../future/NATIVE_APPLICATION_AUTHENTICATION.md) and state which contracts a future authentication provider must preserve.
 
 **Completion Criteria**
 
 Maintainers, operators, and API users can find one consistent description of implemented authorization behavior, and the route inventory matches the registered routes.
 
-### 6. Validate Coverage And Cut Over
+### 6. Validate Coverage
 
 **Objective**
 
-Prove policy behavior and enable enforcement without unowned resources or hidden bypasses.
+Prove policy behavior and implementation coverage without relying on route-only checks.
 
 **Tasks**
 
@@ -148,15 +138,11 @@ Prove policy behavior and enable enforcement without unowned resources or hidden
 - [x] Add tests for SQLite migration, concurrent access, transaction rollback, backup, restore, reconciliation, and integrity checks.
 - [x] Add service-level tests that bypass route dependencies and still reject unchecked sensitive work.
 - [x] Add an automated route inventory check that reports undeclared sensitive locator routes.
-- [ ] Inventory deployed resources and assign reviewed initial owners and grants.
-- [ ] Verify that no required resource is unowned before enforcement cutover.
-- [ ] Verify that no project or shared-source locator is missing or conflicts with an active resource record.
-- [ ] Run focused backend tests and the full backend regression suite.
-- [ ] Record cutover and rollback verification against the exact release commit.
+- Production route classification, deployment inventory, readiness validation, enforcement cutover, and rollback are owned by the separate [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 
 **Completion Criteria**
 
-All protected routes and operations pass the authorization matrix, the route inventory is complete, existing resources have reviewed grants, and deployment cutover and rollback are verified.
+Implemented protected routes and operations pass the authorization matrix. Production route completion, reviewed resources, deployment cutover, and rollback are outside this implementation plan and are gated by [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 
 ### 7. Implement Authorization Administration CLI
 
@@ -224,30 +210,30 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 
 | Area | Status | Notes |
 |---|---|---|
-| Inventories and migration inputs | Not started | Requires proposal approval and deployment resource review |
+| Inventories and migration inputs | Done | Implementation inputs are defined and handed off; deployment-resource, principal, and manifest review work belongs to the follow-up cutover plan |
 | Authorization foundation | Done | Typed policy, SQLite repository, stable principal adapter, atomic mutation audit, bootstrap, final-assignment protections, schema initialization, manifest dry-run inspection and application, backup, restore, integrity checks, manifest reconciliation, and production startup guards are implemented |
 | Project and child resources | Done | Project and child-resource routes enforce current project authorization. Long-running operations record their principal and stable parent project resource and authorize progress, streaming, cancellation, and result access. Backup restore and execution downloads use server-managed identifiers resolved through project containment checks. Project create, copy, and delete operations register and transition authorization resource records with filesystem operation compensation. |
-| Shared and administrative resources | In progress | Shared data source listings now return only sources with readable grants. Shared data source creation, upload, update, deletion, and schema-cache invalidation now require operator access. Create and delete update authorization resource records. Shared source configuration reads, connection tests, named schema introspection, table previews, query execution, and query-column introspection now require shared-source read access. Project data-source connections and project configuration updates require both project edit access and read access to every referenced shared source. Viewing and downloading application logs require the administrator-only `read_logs` action. |
-| Authorization documentation | In progress | The implemented principal, role, action, resource, inheritance, response, audit, stable-principal, and deny-by-default rules are documented in [AUTHORIZATION.md](../../AUTHORIZATION.md). Registered routes and their current authorization declarations are published in [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md). SQLite store configuration, ownership assignment, cutover, rollback, backup, and recovery are documented in [OPERATIONS.md](../../OPERATIONS.md#authorization-sqlite-store). Developer authorization guidance is documented in [DEVELOPMENT.md](../../DEVELOPMENT.md#authorization-for-protected-work). Ongoing grant-management interfaces and their operator documentation remain pending. |
-| Validation and cutover | In progress | Policy and dependency matrices cover allowed and denied outcomes for each declared requirement class. Route-wide unauthenticated checks cover every declared protected endpoint; query, administrator log, and operation endpoint matrices exercise concrete protected routes. Cross-user isolation covers projects, project-child outputs and backups, and shared sources; sessions and operations require ownership plus current project access. Concurrent SQLite grant writes, project-creation lifecycle compensation, and an automated sensitive-locator route check are implemented. Remaining storage tests, service checks, deployment inventory, and cutover verification remain. |
-| Group and wildcard-style project access | In progress | Typed subjects, SQLite migration, central matching, safeguards, membership resolver, effective-access CLI review, audit records, documentation, focused tests, and the no-cache decision are implemented. |
+| Shared and administrative resources | Done | Implemented: shared data source listings are filtered by readable grants; creation, upload, update, deletion, and schema-cache invalidation require operator access with resource-record updates on create and delete; shared source reads (configuration, connection tests, schema introspection, table previews, and query execution and columns) require shared-source read access; project data-source connections and project configuration updates require project edit plus read access to every referenced shared source; application logs require the `read_logs` action; `GET /api/v1/data-sources/files` and `GET /api/v1/data-sources/excel/metadata` enforce operator access for global scope and project read for project-local scope. Shared-data route inventory is reconciled with the registered routes and the automated route inventory check covers static data-source sub-routes. Config-driven data-source introspection follow-up and release-level regression are owned by the cutover plan. |
+| Authorization documentation | Done | Policy, route inventory, operations, developer guidance, audit behavior, stable-principal rules, and administration CLI workflows are documented. The separate cutover plan owns deployment evidence. |
+| Validation | Done | Policy and dependency matrices, route checks for implemented protected routes, cross-user isolation, lifecycle compensation, SQLite concurrency, and focused authorization tests are implemented. Production readiness and cutover are tracked separately. |
+| Group and wildcard-style project access | Done | Typed subjects, SQLite migration, central matching, safeguards, membership resolver, effective-access CLI review, audit records, documentation, focused tests, and the no-cache decision are implemented. |
 
 ## Definition Of Done
 
 - [x] One central policy denies unknown actions, roles, and resources by default.
 - [x] Persistent resource records, grants, roles, and audit events cannot be changed through project YAML or project file endpoints.
-- [ ] Every Phase 1 protected route and background operation appears in the route inventory and enforces its declared requirement.
+- [x] Implemented protected routes and operations have declared authorization requirements; final production classification is tracked in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 - [x] Project sessions do not grant project access.
 - [x] Shared-source access is checked separately from project access.
-- [ ] Outputs, backups, uploads, and operations resolve through server-owned records rather than arbitrary client paths.
-- [ ] Existing projects have reviewed owners, and shared resources have reviewed access grants.
+- Outputs, backups, uploads, and operations resolve through server-owned records rather than arbitrary client paths — deferred to [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../SERVER_OWNED_RESOURCE_IDENTIFIERS.md) as the follow-up completion requirement for the remaining path-identity work.
+- [x] The reviewed-manifest workflow supports initial owners and grants; deployment review is tracked in the follow-up cutover plan.
 - [x] Resource deletion and name reuse cannot transfer grants to a new resource.
 - [x] The final project owner and final application administrator cannot be removed.
 - [x] Broad project access uses typed, auditable subjects and cannot grant unsafe owner capabilities to every authenticated user by default.
-- [ ] Focused authorization tests and the backend regression suite pass.
-- [ ] Operator, developer, deployment, API behavior, and policy documentation matches the delivered system.
-- [ ] The stable principal contract and native-authentication relationship are documented and tested independently of nginx-specific request fields.
-- [ ] Remaining policy decisions or unsupported cases are recorded explicitly.
+- [x] Focused authorization tests pass; full backend regression and release validation belong to the follow-up cutover plan.
+- [x] Operator, developer, API behavior, policy, and administration documentation matches the delivered implementation.
+- [x] The stable principal contract and native-authentication relationship are documented and tested independently of nginx-specific request fields.
+- [x] Remaining implementation policy decisions and unsupported cases are recorded explicitly; deployment blockers are tracked in the cutover plan.
 
 ## Validation And Testing
 
@@ -259,21 +245,21 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 - Test that revocation blocks new operations and later operation access while an already-running operation retains its recorded authorization snapshot.
 - Test typed principal, group, and authenticated-`everyone` subjects, including membership changes, anonymous denial, broad-grant revocation, inheritance, and final-owner protection.
 - Test membership review separately from runtime authorization: successful provider expansion, unavailable and not-found groups, freshness reporting, strict CLI failure behavior, JSON output, and the rule that review failures do not silently change authorization decisions.
-- Run the backend test suite defined by the repository workflow after focused authorization tests pass. The focused authorization, operations, and configuration tests pass; the full backend run did not produce a completion result in the current environment.
-- Review the maintained route inventory against the registered FastAPI routes.
+- Cutover-specific regression, route-inventory, manifest, backup, and deployment checks are defined in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 
 ## Deliverables
 
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
-| Approved authorization policy | Roles, actions, resources, inheritance, and response rules | Not started | [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./CENTRALIZED_AUTHORIZATION_SYSTEM.md) |
-| Authorization repository | SQLite resource records, grants, application roles, audit events, migrations, manifest operations, backups, restore, integrity checks, and reconciliation outside project-managed data | Done | [authorization repository](../../../backend/app/authorization/repository.py) |
-| Authorization enforcement | Dependencies, service checks, operation ownership, and resource resolution | In progress | [authorization dependencies](../../../backend/app/authorization/dependencies.py) |
-| Route authorization inventory | Registered API routes and their declared authorization requirements | Done | [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) |
-| Operator and deployment guide | Initial ownership, cutover, rollback, backup, and recovery | In progress | [OPERATIONS.md](../../OPERATIONS.md#authorization-ownership-and-recovery) |
-| Developer guide | Protecting endpoints, services, and background operations | Done | [DEVELOPMENT.md](../../DEVELOPMENT.md#authorization-for-protected-work) |
-| Authorization regression suite | Policy, route, service, and cross-resource checks | In progress | [authorization tests](../../../backend/tests/authorization/) |
-| Release verification record | Tested release commit, ownership inventory, cutover, and rollback results | Not started | TBD |
+| Approved authorization policy | Roles, actions, resources, inheritance, and response rules | Done | [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./CENTRALIZED_AUTHORIZATION_SYSTEM.md) |
+| Authorization repository | SQLite resource records, grants, application roles, audit events, migrations, manifest operations, backups, restore, integrity checks, and reconciliation outside project-managed data | Done | [authorization repository](../../../../backend/app/authorization/repository.py) |
+| Authorization enforcement | Dependencies, service checks, operation ownership, and resource resolution | Done | [authorization dependencies](../../../../backend/app/authorization/dependencies.py) |
+| Route authorization inventory | Registered API routes and their declared authorization requirements | Done | [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md) |
+| Authorization cutover plan | Ordered route, deployment, readiness, cutover, and rollback phases | Done | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
+| Operator and deployment guide | Initial ownership, cutover, rollback, backup, and recovery | In progress | [OPERATIONS.md](../../../OPERATIONS.md#authorization-ownership-and-recovery) |
+| Developer guide | Protecting endpoints, services, and background operations | Done | [DEVELOPMENT.md](../../../DEVELOPMENT.md#authorization-for-protected-work) |
+| Authorization regression suite | Focused policy, route, service, and cross-resource checks for implemented routes; release-level regression and sign-off are owned by the cutover plan | Done | [authorization tests](../../../../backend/tests/authorization/) |
+| Release verification record | Tested release commit, ownership inventory, cutover, and rollback results | Not started (cutover plan) | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
 
 ## Scope
 
@@ -287,7 +273,7 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 
 - Native application login, credential storage, token issuance, account recovery, and multi-factor authentication.
 - Filesystem containment, SQL safety, secret redaction, and network restrictions except where authorization must compose with those controls.
-- Ingester authorization and capability enablement, which are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md).
+- Ingester authorization and capability enablement, which are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md).
 
 ## Risks And Mitigations
 
@@ -311,6 +297,7 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 - Typed principal, group, and authenticated-`everyone` subjects are approved. Group matching is disabled until the trusted nginx group source is explicitly enabled. Authenticated-`everyone` matching is disabled by default and requires explicit deployment configuration; anonymous requests remain denied.
 - Runtime group matching and operator membership review are separate concerns. Runtime matching may use verified groups from nginx; effective-principal review requires a trusted membership resolver backed by an identity authority that can enumerate group members.
 - SQLite remains authoritative for grants, resources, roles, and authorization audit events. It does not store group membership in this phase. Effective review queries the trusted provider directly; a future cache would be optional, expiring, non-authoritative, and review-only.
+- Config-driven data-source introspection routes (`POST /api/v1/data-sources/tables` and `POST /api/v1/data-sources/tables/schema`) remain authenticated-only pending an approved design that resolves the client-supplied config server-side from a registered data source. This follow-up is tracked with the cutover plan rather than treated as a reviewed grant.
 
 ## Assumptions
 

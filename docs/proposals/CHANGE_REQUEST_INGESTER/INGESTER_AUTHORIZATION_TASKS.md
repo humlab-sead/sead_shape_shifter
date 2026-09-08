@@ -3,7 +3,7 @@
 ## Phase Summary
 
 - Status: Not started
-- Related authorization plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](../MITIGATE_SECURITY_ISSUES/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
+- Related authorization plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](../MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
 - Goal: define and implement authorization for the ongoing `sead_change_request` ingester without enabling operations that still lack required containment and destination checks.
 
 **Acceptance Criteria**

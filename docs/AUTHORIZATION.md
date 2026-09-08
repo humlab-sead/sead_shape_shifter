@@ -4,7 +4,7 @@
 
 Shape Shifter uses a centralized authorization system to decide whether an authenticated principal may perform an action on a protected resource. Resource records, grants, application roles, and authorization audit events are stored outside project-managed data in the configured SQLite authorization database.
 
-This document describes the implemented policy. Route-by-route coverage and remaining enforcement work are tracked in [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](proposals/MITIGATE_SECURITY_ISSUES/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md).
+This document describes the implemented policy. Route-by-route coverage and remaining enforcement work are tracked in [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](proposals/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md).
 
 The current route declarations are listed in [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md). Routes marked `UNDECLARED` need classification before authorization cutover.
 

@@ -953,6 +953,46 @@ class ProjectService:
         """
         return self.files.list_data_source_files(extensions, project_name)
 
+    def list_authorized_data_source_files(
+        self,
+        principal: Principal,
+        authorization_service: AuthorizationService,
+        extensions: Iterable[str] | None = None,
+        project_name: str | None = None,
+    ) -> list[ProjectFileInfo]:
+        """Return the data source files a principal is allowed to list.
+
+        Includes global shared-data files only for principals with the operator
+        role. Includes a project's uploaded files only when the principal has
+        read access to that project; other project names are ignored rather
+        than reported.
+
+        Args:
+            principal: Authenticated principal requesting the file list.
+            authorization_service: Service that resolves access decisions.
+            extensions: Optional file extensions to filter.
+            project_name: Optional project whose uploaded files are included.
+
+        Returns:
+            List of files the principal is allowed to see.
+        """
+        include_global = authorization_service.can_perform_application_action(principal, Action.MANAGE_SHARED_SOURCES)
+        include_project_files = bool(project_name) and self._principal_can_read_project(authorization_service, principal, project_name)
+        files = self.files.list_data_source_files(extensions, project_name if include_project_files else None)
+        if not include_global:
+            files = [file for file in files if file.location != "global"]
+        return files
+
+    def _principal_can_read_project(
+        self,
+        authorization_service: AuthorizationService,
+        principal: Principal,
+        project_name: str,
+    ) -> bool:
+        """Return whether a principal has read access to an active project resource."""
+        resource = authorization_service.repository.get_resource_by_locator(ResourceType.PROJECT, project_name)
+        return resource is not None and authorization_service.is_allowed(principal, Action.READ, resource)
+
     def get_excel_metadata(
         self,
         file_path: str,
