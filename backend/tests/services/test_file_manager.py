@@ -112,6 +112,14 @@ class TestFileManager:
         assert len(files) == 1
         assert files[0].name == "data.xlsx"
 
+    def test_list_project_files_skips_symlink_outside_project(self, file_manager: FileManager, sample_project: Path, tmp_path: Path):
+        """Project listings must not expose files through an outside symlink."""
+        outside_file = tmp_path / "outside.xlsx"
+        outside_file.write_bytes(b"outside")
+        (sample_project / "outside-link.xlsx").symlink_to(outside_file)
+
+        assert file_manager.list_project_files("test_project") == []
+
     # save_project_file tests
 
     def test_save_project_file_success(self, file_manager: FileManager, sample_project: Path, temp_config_dir: Path):
@@ -128,6 +136,17 @@ class TestFileManager:
         saved_file = sample_project / "test.xlsx"
         assert saved_file.exists()
         assert saved_file.read_bytes() == b"test content"
+
+    @pytest.mark.parametrize("filename", ["../outside.xlsx", "/tmp/outside.xlsx", "other-project/data.xlsx"])
+    def test_save_project_file_cannot_escape_project(self, file_manager: FileManager, sample_project: Path, filename: str):
+        """Upload names cannot select a path outside the project directory."""
+        upload = self.create_upload_file(filename, b"content")
+
+        result = file_manager.save_project_file("test_project", upload)
+
+        assert result.name == Path(filename).name
+        assert (sample_project / result.name).read_bytes() == b"content"
+        assert not (sample_project.parent / "outside.xlsx").exists()
 
     def test_save_project_file_uses_default_extensions(self, file_manager: FileManager, sample_project: Path, temp_config_dir: Path):
         """Test file is saved with default extension validation (.xlsx, .xls)."""
@@ -448,6 +467,20 @@ class TestFileManager:
             call_args = mock_extract.call_args[0][0]
             assert call_args == excel_file
 
+    def test_get_excel_metadata_rejects_project_escape(self, file_manager: FileManager, sample_project: Path):
+        """Metadata lookup cannot follow a project-relative escape."""
+        with pytest.raises(BadRequestError, match="outside the managed project directory"):
+            file_manager.get_excel_metadata("../outside.xlsx", location="local", project_name="test_project")
+
+    def test_get_excel_metadata_rejects_symlink_escape(self, file_manager: FileManager, sample_project: Path, tmp_path: Path):
+        """Metadata lookup cannot inspect a symlink outside the project."""
+        outside_file = tmp_path / "outside.xlsx"
+        outside_file.write_bytes(b"outside")
+        (sample_project / "linked.xlsx").symlink_to(outside_file)
+
+        with pytest.raises(BadRequestError, match="outside the managed project directory"):
+            file_manager.get_excel_metadata("linked.xlsx", location="local", project_name="test_project")
+
     # Helper method tests
 
     def test_get_project_upload_dir(self, file_manager: FileManager, temp_config_dir: Path):
@@ -525,3 +558,9 @@ class TestFileManager:
         """Test resolving non-existent file raises error."""
         with pytest.raises(BadRequestError, match="File not found"):
             file_manager._resolve_path("nonexistent.xlsx")
+
+    @pytest.mark.parametrize("path", ["../outside.xlsx", "/etc/passwd"])
+    def test_resolve_path_rejects_paths_outside_root(self, file_manager: FileManager, path: str):
+        """File browsing rejects traversal and absolute paths outside the root."""
+        with pytest.raises(BadRequestError, match="outside the managed directory"):
+            file_manager._resolve_path(path)

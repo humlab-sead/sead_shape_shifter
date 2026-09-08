@@ -2,30 +2,30 @@
 
 ## Phase Summary
 
-- Status: In progress
-- Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md) (design §3 "Enforce filesystem boundaries")
-- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md) (Phase 2)
-- Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
-- Related follow-up: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](./SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
+- Status: Done
+- Proposal: [MITIGATE_SECURITY_ISSUES.md](../MITIGATE_SECURITY_ISSUES.md) (design §3 "Enforce filesystem boundaries")
+- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md](../MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md) (Phase 2)
+- Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](CENTRALIZED_AUTHORIZATION_SYSTEM.md)
+- Related follow-up: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
 - Goal: prevent API input and project configuration from selecting or writing arbitrary server files by confining every file read, write, download, upload, and directive to approved server-owned roots
 
 **Focus**
 
 - Define approved server-owned roots for projects, uploads, backups, temporary files, and generated output.
 - Add one shared path-resolution and containment guard used before every file access.
-- Apply the guard to execution `target`, ingester `source` and `output_folder`, project names, `@include`, and `@load` inputs.
+- Apply the guard to execution `target`, project names, `@include`, and `@load` inputs. Ingester `source` and `output_folder` boundaries are deferred to the linked sub-proposal.
 - Reject absolute paths, traversal, symlink escapes, and time-of-check/time-of-use changes.
 - Replace client-selected output destinations with server-generated paths where the product contract permits.
 - Decide the disposition of raw YAML mutation and record it.
 
 **Acceptance Criteria**
 
-- [ ] The download endpoint cannot return files outside the approved output root.
-- [ ] Execution and ingester operations cannot create or overwrite files outside their assigned roots.
-- [ ] `@include`/`@load` directive resolution cannot escape the project or approved data roots.
-- [ ] Absolute paths, traversal, and symlink escapes are rejected with clear, non-sensitive errors.
-- [ ] Client-supplied output destinations are removed or constrained to server-generated paths where the product contract permits.
-- [ ] Symlink and time-of-check/time-of-use cases are covered by tests.
+- [x] The download endpoint cannot return files outside the approved output root.
+- [x] Execution operations cannot create or overwrite files outside their assigned roots; ingester operations remain deferred and disabled where boundaries are incomplete.
+- [x] `@include`/`@load` directive resolution cannot escape the project or approved data roots.
+- [x] Absolute paths, traversal, and symlink escapes are rejected with clear, non-sensitive errors.
+- [x] Client-supplied output destinations are removed or constrained to server-generated paths where the product contract permits.
+- [x] Symlink and time-of-check/time-of-use cases are covered by tests for the completed areas.
 
 ## Work Breakdown
 
@@ -72,31 +72,21 @@ Ensure uploads, backups, project file downloads, and configuration directives ca
 
 **Tasks**
 
-- [ ] Confine project uploads, upload listing, file metadata, and data-source configuration file browsing to the global or project approved roots and reject traversal.
-- [ ] Confine backup listing, backup restore, and project file download to the authorized project directory and reject absolute or traversal names.
-- [ ] Ensure `@include`/`@load` directive resolution (`backend/app/services/directive_validator.py` and raw project YAML handling in `backend/app/api/v1/endpoints/projects.py`) cannot escape the project or approved data roots.
-- [ ] Decide the disposition of raw YAML mutation: restrict it to authorized operation or remove it until its directive and persistence behavior is authorized, and record the decision.
-- [ ] Add tests for uploads, backups, downloads, and directives covering traversal, absolute paths, symlinks, and cross-project references.
+- [x] Confine project uploads, upload listing, file metadata, and data-source configuration file browsing to the global or project approved roots and reject traversal.
+- [x] Confine backup listing, backup restore, and project file download to the authorized project directory and reject absolute or traversal names.
+- [x] Ensure `@include`/`@load` directive resolution (`backend/app/services/directive_validator.py` and raw project YAML handling in `backend/app/api/v1/endpoints/projects.py`) cannot escape the project or approved data roots.
+- [x] Decide the disposition of raw YAML mutation: restrict it to authorized operation or remove it until its directive and persistence behavior is authorized, and record the decision.
+- [x] Add tests for uploads, backups, downloads, and directives covering traversal, absolute paths, symlinks, and cross-project references.
 
 **Completion Criteria**
 
 No project-file, upload, backup, download, or directive path can escape its approved root, and the raw YAML disposition is recorded.
 
-### 4. Apply Boundaries To Ingester Paths Or Keep Ingesters Disabled
+### 4. Deferred: Apply Boundaries To Ingester Paths
 
-**Objective**
+**Decision**
 
-Prevent ingester source and destination inputs from selecting arbitrary server files.
-
-**Tasks**
-
-- [ ] Record that the ingester API remains disabled until its source, project, output-folder, and database boundaries are secured (parent phase scope).
-- [ ] Add or confirm containment checks for ingester `source` and `output_folder` inputs on any path that remains enabled or is re-enabled.
-- [ ] Add tests or documented disablement evidence for ingester file and database access paths.
-
-**Completion Criteria**
-
-Ingester operations cannot create or overwrite files outside their assigned roots, or they remain disabled with a recorded exception.
+Defer this work to [Secure Ingester Filesystem Boundaries](../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md). The ingester remains disabled for operations that lack complete source, project, output, database, authorization, and containment checks.
 
 ## Progress Tracker
 
@@ -104,37 +94,38 @@ Ingester operations cannot create or overwrite files outside their assigned root
 |-------------------------------------------------|-------------|----------------------------------------------|
 | Approved roots and shared containment guard     | Done | Root documentation, shared guard, resolver integration, and escape-case tests are complete |
 | Execution outputs and downloads                 | Done | Output and download paths are confined and escape-case tests pass |
-| Project files, uploads, backups, and directives | Not started | Includes the raw YAML disposition decision   |
-| Ingester boundaries                             | Not started | Ingester remains disabled during this phase  |
+| Project files, uploads, backups, and directives | Done | Project, upload, backup, materialized-value, directive, and download paths are guarded; focused escape-case tests pass |
+| Ingester boundaries                             | Deferred | Tracked in [Secure Ingester Filesystem Boundaries](../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md) |
 
 ## Definition Of Done
 
-- [ ] A documented approved-root registry and one shared containment guard exist and are used by every file access path.
-- [ ] The download endpoint cannot return arbitrary files.
-- [ ] Execution outputs and ingester writes cannot escape their assigned roots.
-- [ ] Uploads, backups, project files, and `@include`/`@load` directives cannot escape approved roots.
-- [ ] Absolute, traversal, symlink, and time-of-check/time-of-use escapes are covered by tests.
-- [ ] The raw YAML mutation disposition and any retained client-output compatibility boundary are recorded.
-- [ ] Focused tests pass and unrelated failures are recorded separately.
+- [x] A documented approved-root registry and one shared containment guard exist and are used by the completed file access paths.
+- [x] The download endpoint cannot return arbitrary files.
+- [x] Execution outputs cannot escape their assigned roots. Ingester writes are deferred to the linked sub-proposal.
+- [x] Uploads, backups, project files, and `@include`/`@load` directives cannot escape approved roots.
+- [x] Absolute, traversal, symlink, and time-of-check/time-of-use escapes are covered by tests for the completed areas.
+- [x] The raw YAML mutation disposition and any retained client-output compatibility boundary are recorded.
+- [x] Focused tests pass; the unrelated project-validation failure is recorded separately below.
 
 ## Validation And Testing
 
 - Add file-path unit tests in the existing resolver test area (`backend/tests/utils/test_file_path_resolver.py`) and in the service and API test suites for traversal, absolute paths, symlinks, missing parents, and project-name variants.
 - Add endpoint-level tests for download, upload, backup, and directive paths proving escapes are rejected.
-- Re-run the documented reproduction cases from [`SECURITY_CHECK.md`](./SECURITY_CHECK.md) for arbitrary file read/write and `@include`/`@load` access against disposable directories only.
+- Re-run the documented reproduction cases from [`SECURITY_CHECK.md`](../SECURITY_CHECK.md) for arbitrary file read/write and `@include`/`@load` access against disposable directories only.
 - Run the backend test suite and repository lint checks (`make test`, `make lint`) after each area that changes shared behavior.
 - Local tests do not establish production network exposure; deployment root and boundary checks remain in the release verification phase.
+- Known unrelated test failure: `TestProjectsValidate.test_validate_project_missing_include_returns_error_result` currently reports a valid project after the test's options update; this is outside the path-confinement changes.
 
 ## Deliverables
 
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
-| Approved-roots registry            | Documented server-owned roots and per-environment values    | Done | [`docs/OPERATIONS.md`](../../OPERATIONS.md) |
+| Approved-roots registry            | Documented server-owned roots and per-environment values    | Done | [`docs/OPERATIONS.md`](../../../OPERATIONS.md) |
 | Containment guard and tests        | Shared path-resolution guard plus unit tests | Done   | `src/path_resolution.py`, `backend/app/utils/file_path_resolver.py` |
 | Execution and download confinement | Confined outputs and closed arbitrary download | Done         | `backend/app/services/execute_service.py`, `backend/tests/services/test_execute_service_output_paths.py` |
-| Project-file, upload, backup, and directive confinement | Root checks across file endpoints and YAML directives | Not started | `backend/app/services/project/file_manager.py`, `backend/app/api/v1/endpoints/projects.py` |
-| Raw YAML disposition record        | Decision on restricting or removing raw YAML mutation  | Not started | TBD                                       |
-| Ingester boundary record           | Disablement or containment evidence for ingester paths | Not started | `docs/proposals/CHANGE_REQUEST_INGESTER/` |
+| Project-file, upload, backup, and directive confinement | Root checks across file endpoints and YAML directives | Done | `backend/app/services/project/file_manager.py`, `backend/app/api/v1/endpoints/projects.py`, `backend/app/services/yaml_service.py`, `src/configuration/resolve.py` |
+| Raw YAML disposition record        | Decision on restricting or removing raw YAML mutation  | Done | Raw YAML mutation remains limited to the authorized project edit operation; paths are confined before persistence or directive resolution |
+| Ingester boundary record           | Disablement or containment evidence for ingester paths | Deferred | [`CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md`](../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md) |
 
 ## Scope
 
@@ -144,15 +135,15 @@ Ingester operations cannot create or overwrite files outside their assigned root
 - Path confinement for execution targets, downloads, uploads, backups, project files, and YAML directives (`@include`, `@load`).
 - Symlink and time-of-check/time-of-use protection.
 - Server-generated output destinations and the raw YAML mutation disposition.
-- Ingester source and output-folder boundaries while ingesters remain disabled.
+- Ingester boundary work is deferred to [`CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md`](../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md).
 
 **Out of scope**
 
-- Authentication and resource authorization policy, which are delivered by the [centralized authorization system](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md).
+- Authentication and resource authorization policy, which are delivered by the [centralized authorization system](CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md).
 - SQL and DuckDB file-access restrictions, which are owned by Phase 3 of the parent phase plan.
 - Network egress and SSRF controls for data sources, which are owned by Phase 4.
 - Spreadsheet formula neutralization and UCanAccess hardening, which are owned by the parent proposal.
-- Stable server-owned resource identifiers for outputs, backups, uploads, and operations, which are tracked in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](./SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
+- Stable server-owned resource identifiers for outputs, backups, uploads, and operations, which are tracked in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
 
 ## Risks And Mitigations
 

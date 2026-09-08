@@ -30,12 +30,21 @@ from backend.app.services.validation_service import ValidationService, get_valid
 from backend.app.services.yaml_service import YamlService, get_yaml_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.exceptions import BadRequestError, BaseAPIException, NotFoundError
+from src.path_resolution import resolve_contained_path
 from src.target_model import DocumentFormat
 
 router = APIRouter()
 shared_data_source_reader_dependency = require_shared_data_source(Action.READ)
 
 # pylint: disable=no-member
+
+
+def _project_directory(project_name: str) -> Path:
+    """Resolve a project directory beneath the configured projects root."""
+    try:
+        return resolve_contained_path(ProjectNameMapper.to_path(project_name), settings.PROJECTS_DIR)
+    except ValueError as exc:
+        raise BadRequestError("Project path is outside the managed projects directory") from exc
 
 
 def _authorize_referenced_shared_data_sources(
@@ -388,7 +397,7 @@ async def list_backups(
         List of backup file information
     """
     yaml_service: YamlService = get_yaml_service()
-    project_dir = settings.PROJECTS_DIR / ProjectNameMapper.to_path(authorized_project.resource.locator)
+    project_dir = _project_directory(authorized_project.resource.locator)
     backups: list[Path] = yaml_service.list_backups(project_dir=project_dir)
     backup_infos: list[BackupInfo] = [
         BackupInfo(
@@ -421,13 +430,13 @@ async def restore_backup(
         Restored project
     """
     yaml_service: YamlService = get_yaml_service()
-    project_dir: Path = settings.PROJECTS_DIR / ProjectNameMapper.to_path(authorized_project.resource.locator)
+    project_dir: Path = _project_directory(authorized_project.resource.locator)
     backups: list[Path] = yaml_service.list_backups(project_dir=project_dir)
     backup_path: Path | None = next((backup for backup in backups if backup.name == request.backup_name), None)
     if backup_path is None:
         raise NotFoundError(f"Backup '{request.backup_name}' not found for project '{name}'")
 
-    target_path: Path = project_dir / "shapeshifter.yml"
+    target_path: Path = resolve_contained_path("shapeshifter.yml", project_dir)
     yaml_service.restore_backup(backup_path, str(target_path), create_backup=True)
     restored_data: dict[str, Any] = yaml_service.load(target_path)
     stat = target_path.stat()
@@ -628,8 +637,8 @@ async def get_project_raw_yaml(
     project_service.load_project(authorized_project.resource.locator)
 
     # Convert API name to filesystem path (: -> /)
-    path_name = ProjectNameMapper.to_path(authorized_project.resource.locator)
-    project_path = settings.PROJECTS_DIR / path_name / "shapeshifter.yml"
+    project_dir = _project_directory(authorized_project.resource.locator)
+    project_path = resolve_contained_path("shapeshifter.yml", project_dir, allow_absolute=False)
     if not project_path.exists():
         raise NotFoundError(f"Project file not found: {project_path}")
 
@@ -685,8 +694,8 @@ async def update_project_raw_yaml(
         _authorize_referenced_shared_data_sources(options.get("data_sources"), principal, authorization_service)
 
     # Write to file (convert API name to filesystem path: : -> /)
-    path_name = ProjectNameMapper.to_path(authorized_project.resource.locator)
-    project_path = settings.PROJECTS_DIR / path_name / "shapeshifter.yml"
+    project_dir = _project_directory(authorized_project.resource.locator)
+    project_path = resolve_contained_path("shapeshifter.yml", project_dir, allow_absolute=False)
     if not project_path.exists():
         raise NotFoundError(f"Project file not found: {project_path}")
 
@@ -734,17 +743,17 @@ def _resolve_target_model_path(project: Project, project_name: str) -> Path:
 
     # Security: must stay inside the project directory
     path_name: str = ProjectNameMapper.to_path(project_name)
-    project_dir: Path = (settings.PROJECTS_DIR / path_name).resolve()
+    project_dir: Path = _project_directory(project_name)
 
     # Resolve the file path: simple filenames are project-local, paths with directories use APPLICATION_ROOT
     if "/" not in rel_path and "\\" not in rel_path:
         # Simple filename - resolve relative to project directory
-        target_path: Path = (project_dir / rel_path).resolve()
+        target_path = resolve_contained_path(rel_path, project_dir)
     else:
         # Path with directories - resolve relative to APPLICATION_ROOT (for shared specs)
-        target_path = (settings.APPLICATION_ROOT / rel_path).resolve()
+        target_path = resolve_contained_path(rel_path, settings.application_root, allow_absolute=False)
 
-    if not target_path.is_relative_to(project_dir):
+    if not target_path.is_relative_to(project_dir.resolve()):
         raise BaseAPIException(
             f"Target model file '{rel_path}' is outside the project directory and cannot be edited here",
             403,
