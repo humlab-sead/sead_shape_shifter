@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import Generator
 
+import duckdb
 import pandas as pd
 import pytest
 
@@ -59,6 +60,17 @@ def loader(workspace: DuckDbWorkspace, table_store: TableStore) -> DuckDbLoader:
 
 class TestDuckDbWorkspace:
     """Tests for DuckDbWorkspace registration and querying."""
+
+    def test_workspace_rejects_persistent_database_paths(self, tmp_path) -> None:
+        database_path = tmp_path / "duckdb.duckdb"
+
+        with pytest.raises(ValueError, match="must use the in-memory database"):
+            DuckDbWorkspace(database=str(database_path))
+
+    def test_workspace_disables_external_access_by_default(self, workspace: DuckDbWorkspace) -> None:
+        result = workspace.connection.execute("SELECT current_setting('enable_external_access')").fetchone()
+        assert result is not None
+        assert result[0] is False
 
     def test_register_entity_makes_it_queryable(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame) -> None:
         workspace.register_entity("site", site_df)
@@ -128,6 +140,61 @@ class TestDuckDbWorkspace:
     def test_query_scalar_returns_none_for_empty_result(self, workspace: DuckDbWorkspace) -> None:
         result = workspace.query_scalar("SELECT NULL WHERE FALSE")
         assert result is None
+
+    def test_query_df_rejects_multiple_statements(self, workspace: DuckDbWorkspace) -> None:
+        with pytest.raises(ValueError, match="Multiple statements"):
+            workspace.query_df("SELECT 1; SELECT 2")
+
+    @pytest.mark.parametrize(
+        ("sql_template", "path_factory"),
+        [
+            ("SELECT * FROM read_csv_auto('{path}')", lambda tmp_path: tmp_path / "external.csv"),
+            ("SELECT * FROM read_parquet('{path}')", lambda tmp_path: tmp_path / "external.parquet"),
+            ("SELECT * FROM read_json_auto('{path}')", lambda tmp_path: tmp_path / "external.json"),
+            ("SELECT * FROM read_ndjson('{path}')", lambda tmp_path: tmp_path / "external.ndjson"),
+            ("SELECT * FROM read_text('{path}')", lambda tmp_path: tmp_path / "external.txt"),
+            ("SELECT * FROM read_blob('{path}')", lambda tmp_path: tmp_path / "external.bin"),
+            ("SELECT * FROM read_csv_auto('{path}')", lambda tmp_path: tmp_path / "nested" / ".." / "outside.csv"),
+            ("SELECT * FROM read_csv_auto('{path}')", lambda tmp_path: tmp_path / "symlink.csv"),
+            ("SELECT * FROM read_csv_auto('{path}')", lambda tmp_path: tmp_path / "absolute.csv"),
+            ("SELECT * FROM read_csv_auto('{path}')", lambda tmp_path: "https://example.com/external.csv"),
+        ],
+    )
+    def test_query_df_rejects_external_file_and_network_access(
+        self,
+        workspace: DuckDbWorkspace,
+        tmp_path,
+        sql_template: str,
+        path_factory,
+    ) -> None:
+        path = path_factory(tmp_path)
+
+        if hasattr(path, "parent") and not str(path).startswith("https://"):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if path.name.endswith(".csv") and "symlink" not in path.name:
+                path.write_text("value\n1\n", encoding="utf-8")
+            if path.name == "symlink.csv":
+                target = tmp_path / "target.csv"
+                target.write_text("value\n1\n", encoding="utf-8")
+                path.symlink_to(target)
+
+        query = sql_template.format(path=path.as_posix() if hasattr(path, "as_posix") else path)
+
+        with pytest.raises(ValueError, match="external file, network, and extension access is not allowed"):
+            workspace.query_df(query)
+
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "COPY (SELECT 1) TO '/tmp/export.csv'",
+            "ATTACH 'duckdb.duckdb' AS other",
+            "INSTALL httpfs",
+            "LOAD httpfs",
+        ],
+    )
+    def test_query_df_rejects_forbidden_duckdb_operations(self, workspace: DuckDbWorkspace, query: str) -> None:
+        with pytest.raises(ValueError, match="prohibited operations|Only SELECT queries are allowed"):
+            workspace.query_df(query)
 
     def test_list_registered_returns_sorted(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame, sample_df: pd.DataFrame) -> None:
         workspace.register_entity("sample", sample_df)
@@ -239,6 +306,10 @@ class TestDuckDbLoaderReadSql:
         workspace.register_entity("site", site_df)
         result = await loader.execute_scalar_sql("SELECT COUNT(*) FROM site")
         assert result == 3
+
+    async def test_read_sql_rejects_write_operation(self, loader: DuckDbLoader) -> None:
+        with pytest.raises(ValueError, match="DELETE"):
+            await loader.read_sql("DELETE FROM site")
 
     def test_create_db_uri(self, loader: DuckDbLoader) -> None:
         assert loader.create_db_uri() == "duckdb://internal"
