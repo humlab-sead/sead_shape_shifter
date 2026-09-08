@@ -129,6 +129,14 @@ class TestDuckDbWorkspace:
         result = workspace.query_scalar("SELECT NULL WHERE FALSE")
         assert result is None
 
+    def test_query_df_rejects_multiple_statements(self, workspace: DuckDbWorkspace) -> None:
+        with pytest.raises(ValueError, match="Multiple statements"):
+            workspace.query_df("SELECT 1; SELECT 2")
+
+    def test_query_df_rejects_file_access(self, workspace: DuckDbWorkspace) -> None:
+        with pytest.raises(ValueError, match="COPY"):
+            workspace.query_df("COPY (SELECT 1) TO '/tmp/export.csv'")
+
     def test_list_registered_returns_sorted(self, workspace: DuckDbWorkspace, site_df: pd.DataFrame, sample_df: pd.DataFrame) -> None:
         workspace.register_entity("sample", sample_df)
         workspace.register_entity("site", site_df)
@@ -239,6 +247,10 @@ class TestDuckDbLoaderReadSql:
         workspace.register_entity("site", site_df)
         result = await loader.execute_scalar_sql("SELECT COUNT(*) FROM site")
         assert result == 3
+
+    async def test_read_sql_rejects_write_operation(self, loader: DuckDbLoader) -> None:
+        with pytest.raises(ValueError, match="DELETE"):
+            await loader.read_sql("DELETE FROM site")
 
     def test_create_db_uri(self, loader: DuckDbLoader) -> None:
         assert loader.create_db_uri() == "duckdb://internal"

@@ -13,6 +13,7 @@ from sqlalchemy import create_engine
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.model import DataSourceConfig, TableConfig
+from src.sql_policy import ensure_read_only_sql
 from src.transforms.utility import add_system_id
 from src.utility import create_db_uri as create_pg_uri
 from src.utility import dotget
@@ -242,6 +243,7 @@ class SqlLoader(DataLoader):
 
     async def read_sql(self, sql: str) -> pd.DataFrame:
         """Read SQL query into a DataFrame using the provided connection."""
+        ensure_read_only_sql(sql)
         with create_engine(url=self.db_uri).begin() as connection:
             data: pd.DataFrame = pd.read_sql_query(sql=sql, con=connection)  # type: ignore[arg-type]
         return data
@@ -458,6 +460,7 @@ class SqliteLoader(SqlLoader):
 
     async def execute_scalar_sql(self, sql: str) -> Any:
         """Read SQL query that returns a single scalar value."""
+        ensure_read_only_sql(sql)
         with create_engine(url=self.db_uri).begin() as connection:
             result = connection.execute(sql)  # type: ignore[attr-defined]
             scalar_value = result.scalar()
@@ -529,12 +532,14 @@ class PostgresSqlLoader(SqlLoader):
 
     async def read_sql(self, sql: str) -> pd.DataFrame:
         """Read SQL query into a DataFrame using the provided connection."""
+        ensure_read_only_sql(sql)
         with create_engine(url=self.db_uri).begin() as connection:
             data: pd.DataFrame = pd.read_sql_query(sql=sql, con=connection)  # type: ignore[arg-type]
         return data
 
     async def execute_scalar_sql(self, sql: str) -> Any:
         """Read SQL query that returns a single scalar value."""
+        ensure_read_only_sql(sql)
         with create_engine(url=self.db_uri).begin() as connection:
             result = connection.execute(sql)  # type: ignore[attr-defined]
             scalar_value = result.scalar()
@@ -768,6 +773,7 @@ class UCanAccessSqlLoader(SqlLoader):
         return [str(desc[0]).strip("[]") for desc in cursor.description] if cursor.description else []
 
     def read_sql_sync(self, sql: str) -> pd.DataFrame:
+        ensure_read_only_sql(sql)
         with self.connection() as conn:
             with self._cursor(conn) as cursor:
                 cursor.execute(sql)
@@ -785,6 +791,7 @@ class UCanAccessSqlLoader(SqlLoader):
                 return df
 
     async def execute_scalar_sql(self, sql: str) -> Any:
+        ensure_read_only_sql(sql)
         with self.connection() as conn:
             with self._cursor(conn) as cursor:
                 cursor.execute(sql)

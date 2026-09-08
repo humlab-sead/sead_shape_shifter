@@ -1,6 +1,42 @@
 """Tests for SQL utility functions."""
 
-from backend.app.utils.sql import extract_tables
+import pytest
+
+from backend.app.utils.sql import extract_tables, validate_read_only_sql
+
+
+class TestReadOnlySQLPolicy:
+    """Test the shared read-only SQL execution policy."""
+
+    def test_accepts_single_select(self):
+        result = validate_read_only_sql("SELECT id FROM users")
+
+        assert result.is_valid is True
+        assert result.statement_type == "SELECT"
+
+    def test_rejects_multiple_executable_statements(self):
+        result = validate_read_only_sql("SELECT 1; SELECT 2")
+
+        assert result.is_valid is False
+        assert any("multiple statements" in error.lower() for error in result.errors)
+
+    def test_ignores_trailing_comments_when_counting_statements(self):
+        result = validate_read_only_sql("SELECT 1; -- explanatory comment")
+
+        assert result.is_valid is True
+
+    def test_rejects_nested_write_operation(self):
+        result = validate_read_only_sql("WITH changed AS (DELETE FROM users RETURNING id) SELECT * FROM changed")
+
+        assert result.is_valid is False
+        assert any("delete" in error.lower() for error in result.errors)
+
+    @pytest.mark.parametrize("query", ["CALL dangerous()", "VACUUM", "PRAGMA enable_object_cache=true", "SHOW tables"])
+    def test_rejects_non_select_operations(self, query):
+        result = validate_read_only_sql(query)
+
+        assert result.is_valid is False
+        assert any("only select" in error.lower() or "not allowed" in error.lower() for error in result.errors)
 
 
 class TestExtractTables:
