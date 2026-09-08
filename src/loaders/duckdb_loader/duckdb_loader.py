@@ -20,7 +20,7 @@ class DuckDbLoader(SqlLoader):
     """SQL loader over Shape Shifter's internal table_store.
 
     This loader does not connect to an external database. Instead, it queries
-    already-resolved entities registered in a persistent DuckDB workspace.
+    already-resolved entities registered in a transient in-memory DuckDB workspace.
     """
 
     driver: str = "duckdb"
@@ -36,7 +36,7 @@ class DuckDbLoader(SqlLoader):
                 type="string",
                 required=False,
                 default=":memory:",
-                description="DuckDB database path. Defaults to in-memory.",
+                description="DuckDB database path. The internal workspace is transient and must remain in-memory.",
                 placeholder=":memory:",
             ),
         ],
