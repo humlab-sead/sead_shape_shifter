@@ -1,11 +1,14 @@
 """API endpoints for executing full workflow."""
 
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from loguru import logger
 
+from backend.app.authorization.dependencies import require_project
+from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.models.execute import DispatcherMetadata, ExecuteRequest, ExecuteResult
 from backend.app.services.execute_service import ExecuteService, get_execute_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
@@ -36,7 +39,11 @@ async def get_dispatchers() -> list[DispatcherMetadata]:
 
 @router.post("/projects/{name}/execute", response_model=ExecuteResult)
 @handle_endpoint_errors
-async def execute_workflow(name: str, request: ExecuteRequest) -> ExecuteResult:
+async def execute_workflow(
+    name: str,
+    request: ExecuteRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EXECUTE))],
+) -> ExecuteResult:
     """
     Execute full Shape Shifter workflow for a project.
 
@@ -63,7 +70,7 @@ async def execute_workflow(name: str, request: ExecuteRequest) -> ExecuteResult:
 
     logger.info(f"Executing workflow for project '{name}' with dispatcher '{request.dispatcher_key}' to target '{request.target}'")
 
-    result = await execute_service.execute_workflow(name, request)
+    result = await execute_service.execute_workflow(authorized_project, request)
 
     if result.success:
         logger.info(f"Workflow execution completed successfully: {result.message}")
@@ -78,18 +85,25 @@ async def execute_workflow(name: str, request: ExecuteRequest) -> ExecuteResult:
 @router.get("/projects/{name}/execute/download")
 @handle_endpoint_errors
 async def download_execution_output(
-    name: str, target: str = Query(..., description="Absolute path to the dispatched file")
+    name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    target: str = Query(..., description="Server-managed output name or relative path"),
 ) -> FileResponse:
     """
     Download a file produced by a successful execution.
 
     Args:
         name: Project name (for logging)
-        target: Absolute filesystem path to the generated file (should match ExecuteResult.target)
+        target: Server-managed output name returned in ExecuteResult.target
     """
-    file_path = Path(target)
+    execute_service: ExecuteService = get_execute_service()
+    try:
+        file_path = Path(execute_service.resolve_output_target(authorized_project.resource.locator, target, "file"))
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
     if not file_path.is_file():
-        logger.error("Requested download target not found: %s", target)
+        logger.error("Requested managed download target not found: %s", target)
         raise HTTPException(status_code=404, detail="Execution output file not found")
 
     logger.info("Providing execution output download for project '%s': %s", name, target)

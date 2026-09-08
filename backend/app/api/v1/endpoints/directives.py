@@ -1,8 +1,12 @@
 """API endpoints for @value directive validation."""
 
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from backend.app.authorization.dependencies import require_project
+from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.services.directive_validator import DirectiveValidator
 from backend.app.services.project_service import ProjectService
 
@@ -28,7 +32,11 @@ class ValidateDirectiveResponse(BaseModel):
 
 
 @router.post("/projects/{project_name}/validate-directive", response_model=ValidateDirectiveResponse)
-async def validate_directive(project_name: str, request: ValidateDirectiveRequest):
+async def validate_directive(
+    project_name: str,
+    request: ValidateDirectiveRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+):
     """
     Validate a @value directive against project structure.
 
@@ -70,7 +78,11 @@ async def validate_directive(project_name: str, request: ValidateDirectiveReques
 
 
 @router.get("/projects/{project_name}/valid-directives", response_model=list[str])
-async def get_valid_directives(project_name: str, max_depth: int = 3):
+async def get_valid_directives(
+    project_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    max_depth: int = 3,
+):
     """
     Get all valid @value directive paths in the project.
 
@@ -83,7 +95,7 @@ async def get_valid_directives(project_name: str, max_depth: int = 3):
     """
     try:
         project_service = ProjectService()
-        project = project_service.load_project(project_name)
+        project = project_service.load_project(authorized_project.resource.locator)
 
         validator = DirectiveValidator(project)
         return validator.get_all_valid_paths(max_depth)

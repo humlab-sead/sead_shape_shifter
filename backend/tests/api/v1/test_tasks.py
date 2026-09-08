@@ -3,21 +3,13 @@
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from fastapi.testclient import TestClient
 
 from backend.app.core.config import settings
-from backend.app.main import app
 from backend.app.models.validation import ValidationResult
 from backend.app.services import project_service, task_service, validation_service, yaml_service
 
 
 # pylint: disable=redefined-outer-name, unused-argument
-@pytest.fixture(name="client")
-def client_fixture():
-    with TestClient(app) as client:
-        yield client
-
-
 @pytest.fixture
 def reset_services():
     """Reset service singletons between tests."""
@@ -75,15 +67,17 @@ def sample_project_data():
 class TestGetTaskStatus:
     """Tests for GET /projects/{name}/tasks endpoint."""
 
-    def test_get_task_status_returns_all_entities(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
+    async def test_get_task_status_returns_all_entities(
+        self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client
+    ):
         """Test that get_task_status returns status for all entities."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        client.post("/api/v1/projects", json=sample_project_data)
+        await authorized_client.post("/api/v1/projects", json=sample_project_data)
 
         # Get task status
-        response = client.get("/api/v1/projects/test_project/tasks")
+        response = await authorized_client.get("/api/v1/projects/test_project/tasks")
         assert response.status_code == 200
 
         data = response.json()
@@ -92,15 +86,17 @@ class TestGetTaskStatus:
         assert "location" in data["entities"]
         assert "site" in data["entities"]
 
-    def test_get_task_status_includes_completion_stats(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
+    async def test_get_task_status_includes_completion_stats(
+        self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client
+    ):
         """Test that completion statistics are included."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        client.post("/api/v1/projects", json=sample_project_data)
+        await authorized_client.post("/api/v1/projects", json=sample_project_data)
 
         # Get task status
-        response = client.get("/api/v1/projects/test_project/tasks")
+        response = await authorized_client.get("/api/v1/projects/test_project/tasks")
         data = response.json()
 
         stats = data["completion_stats"]
@@ -113,15 +109,17 @@ class TestGetTaskStatus:
         assert "required_done" in stats
         assert "required_todo" in stats
 
-    def test_get_task_status_entity_has_required_fields(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
+    async def test_get_task_status_entity_has_required_fields(
+        self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client
+    ):
         """Test that entity status has all required fields."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        client.post("/api/v1/projects", json=sample_project_data)
+        await authorized_client.post("/api/v1/projects", json=sample_project_data)
 
         # Get task status
-        response = client.get("/api/v1/projects/test_project/tasks")
+        response = await authorized_client.get("/api/v1/projects/test_project/tasks")
         data = response.json()
 
         location_status = data["entities"]["location"]
@@ -134,23 +132,23 @@ class TestGetTaskStatus:
         assert "blocked_by" in location_status
         assert "issues" in location_status
 
-    def test_get_task_status_nonexistent_project(self, tmp_path, monkeypatch, reset_services, client):
+    async def test_get_task_status_nonexistent_project(self, tmp_path, monkeypatch, reset_services, authorized_client):
         """Test getting task status for non-existent project."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.get("/api/v1/projects/nonexistent/tasks")
+        response = await authorized_client.get("/api/v1/projects/nonexistent/tasks")
         assert response.status_code == 404
 
 
 class TestMarkComplete:
     """Tests for POST /projects/{name}/tasks/{entity}/complete endpoint."""
 
-    def test_mark_complete_success(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
+    async def test_mark_complete_success(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
         """Test successfully marking entity as complete."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        client.post("/api/v1/projects", json=sample_project_data)
+        await authorized_client.post("/api/v1/projects", json=sample_project_data)
 
         # Mock the task_service.mark_complete method to succeed
         with patch("backend.app.api.v1.endpoints.tasks.get_task_service") as mock_get_service:
@@ -166,7 +164,7 @@ class TestMarkComplete:
             mock_get_service.return_value = mock_service
 
             # Mark location as complete
-            response = client.post("/api/v1/projects/test_project/tasks/location/complete")
+            response = await authorized_client.post("/api/v1/projects/test_project/tasks/location/complete")
 
             assert response.status_code == 200
             data = response.json()
@@ -175,23 +173,23 @@ class TestMarkComplete:
             # The API response model may rename 'status' to 'new_status'
             assert data.get("new_status") == "done" or data.get("status") == "done"
 
-    def test_mark_complete_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
+    async def test_mark_complete_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
         """Test marking non-existent entity as complete."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        client.post("/api/v1/projects", json=sample_project_data)
+        await authorized_client.post("/api/v1/projects", json=sample_project_data)
 
         # Try to mark non-existent entity as complete
-        response = client.post("/api/v1/projects/test_project/tasks/nonexistent/complete")
+        response = await authorized_client.post("/api/v1/projects/test_project/tasks/nonexistent/complete")
         assert response.status_code == 400
 
-    def test_mark_complete_updates_task_list(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
+    async def test_mark_complete_updates_task_list(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
         """Test that marking complete updates the task list in project file."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        client.post("/api/v1/projects", json=sample_project_data)
+        await authorized_client.post("/api/v1/projects", json=sample_project_data)
 
         # For this test, we'll use a mock that actually calls the real service
         # so we can test the integration, but we'll mock the validation/preview parts
@@ -204,11 +202,11 @@ class TestMarkComplete:
             mock_preview.return_value = None  # Preview succeeds
 
             # Mark as complete
-            response = client.post("/api/v1/projects/test_project/tasks/location/complete")
+            response = await authorized_client.post("/api/v1/projects/test_project/tasks/location/complete")
             assert response.status_code == 200
 
             # Verify task list was updated
-            project_response = client.get("/api/v1/projects/test_project")
+            project_response = await authorized_client.get("/api/v1/projects/test_project")
             project_data = project_response.json()
 
         # Check if task_list.done includes location (new format)
@@ -216,15 +214,15 @@ class TestMarkComplete:
         assert project_data["task_list"] is not None, "task_list should not be None"
         assert "location" in project_data["task_list"].get("done", [])
 
-    def test_mark_ignored_success(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
+    async def test_mark_ignored_success(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
         """Test successfully marking entity as ignored."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        client.post("/api/v1/projects", json=sample_project_data)
+        await authorized_client.post("/api/v1/projects", json=sample_project_data)
 
         # Mark location as ignored
-        response = client.post("/api/v1/projects/test_project/tasks/location/ignore")
+        response = await authorized_client.post("/api/v1/projects/test_project/tasks/location/ignore")
         assert response.status_code == 200
 
         data = response.json()
@@ -232,48 +230,48 @@ class TestMarkComplete:
         assert data["entity_name"] == "location"
         assert data["new_status"] == "ignored"
 
-    def test_mark_ignored_updates_task_list(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
+    async def test_mark_ignored_updates_task_list(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
         """Test that marking ignored updates the task list."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        client.post("/api/v1/projects", json=sample_project_data)
+        await authorized_client.post("/api/v1/projects", json=sample_project_data)
 
         # Mark as ignored
-        response = client.post("/api/v1/projects/test_project/tasks/location/ignore")
+        response = await authorized_client.post("/api/v1/projects/test_project/tasks/location/ignore")
         assert response.status_code == 200
 
         # Verify task list was updated
-        project_response = client.get("/api/v1/projects/test_project")
+        project_response = await authorized_client.get("/api/v1/projects/test_project")
         project_data = project_response.json()
 
         # Check if task_list.ignored includes location
         if "task_list" in project_data:
             assert "location" in project_data["task_list"].get("ignored", [])
 
-    def test_mark_ignored_nonexistent_project(self, tmp_path, monkeypatch, reset_services, client):
+    async def test_mark_ignored_nonexistent_project(self, tmp_path, monkeypatch, reset_services, authorized_client):
         """Test marking entity as ignored in non-existent project."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.post("/api/v1/projects/nonexistent/tasks/entity/ignore")
+        response = await authorized_client.post("/api/v1/projects/nonexistent/tasks/entity/ignore")
         assert response.status_code == 404
 
 
 class TestResetStatus:
     """Tests for DELETE /projects/{name}/tasks/{entity} endpoint."""
 
-    def test_reset_status_success(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
+    async def test_reset_status_success(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
         """Test successfully resetting entity status."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        client.post("/api/v1/projects", json=sample_project_data)
+        await authorized_client.post("/api/v1/projects", json=sample_project_data)
 
         # First mark as ignored
-        client.post("/api/v1/projects/test_project/tasks/location/ignore")
+        await authorized_client.post("/api/v1/projects/test_project/tasks/location/ignore")
 
         # Then reset
-        response = client.delete("/api/v1/projects/test_project/tasks/location")
+        response = await authorized_client.delete("/api/v1/projects/test_project/tasks/location")
         assert response.status_code == 200
 
         data = response.json()
@@ -281,79 +279,83 @@ class TestResetStatus:
         assert data["entity_name"] == "location"
         assert data["new_status"] == "todo"
 
-    def test_reset_status_removes_from_ignored_list(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
+    async def test_reset_status_removes_from_ignored_list(
+        self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client
+    ):
         """Test that reset removes entity from ignored list."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        client.post("/api/v1/projects", json=sample_project_data)
+        await authorized_client.post("/api/v1/projects", json=sample_project_data)
 
         # Mark as ignored
-        client.post("/api/v1/projects/test_project/tasks/location/ignore")
+        await authorized_client.post("/api/v1/projects/test_project/tasks/location/ignore")
 
         # Reset
-        client.delete("/api/v1/projects/test_project/tasks/location")
+        await authorized_client.delete("/api/v1/projects/test_project/tasks/location")
 
         # Verify task list was updated
-        project_response = client.get("/api/v1/projects/test_project")
+        project_response = await authorized_client.get("/api/v1/projects/test_project")
         project_data = project_response.json()
 
         # Check that location is NOT in ignored list
         if "task_list" in project_data:
             assert "location" not in project_data["task_list"].get("ignored", [])
 
-    def test_reset_status_nonexistent_project(self, tmp_path, monkeypatch, reset_services, client):
+    async def test_reset_status_nonexistent_project(self, tmp_path, monkeypatch, reset_services, authorized_client):
         """Test resetting status in non-existent project."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.delete("/api/v1/projects/nonexistent/tasks/entity")
+        response = await authorized_client.delete("/api/v1/projects/nonexistent/tasks/entity")
         assert response.status_code == 404
 
 
 class TestTaskStatusFlow:
     """Tests for complete task status workflow."""
 
-    def test_full_workflow_todo_to_ignored_to_reset(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
+    async def test_full_workflow_todo_to_ignored_to_reset(
+        self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client
+    ):
         """Test complete workflow: todo -> ignored -> reset."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        client.post("/api/v1/projects", json=sample_project_data)
+        await authorized_client.post("/api/v1/projects", json=sample_project_data)
 
         # Initial status should be todo
-        status_response = client.get("/api/v1/projects/test_project/tasks")
+        status_response = await authorized_client.get("/api/v1/projects/test_project/tasks")
         status_data = status_response.json()
         assert status_data["entities"]["location"]["status"] == "todo"
 
         # Mark as ignored
-        client.post("/api/v1/projects/test_project/tasks/location/ignore")
-        status_response = client.get("/api/v1/projects/test_project/tasks")
+        await authorized_client.post("/api/v1/projects/test_project/tasks/location/ignore")
+        status_response = await authorized_client.get("/api/v1/projects/test_project/tasks")
         status_data = status_response.json()
         assert status_data["entities"]["location"]["status"] == "ignored"
 
         # Reset to todo
-        client.delete("/api/v1/projects/test_project/tasks/location")
-        status_response = client.get("/api/v1/projects/test_project/tasks")
+        await authorized_client.delete("/api/v1/projects/test_project/tasks/location")
+        status_response = await authorized_client.get("/api/v1/projects/test_project/tasks")
         status_data = status_response.json()
         assert status_data["entities"]["location"]["status"] == "todo"
 
-    def test_completion_stats_update_correctly(self, tmp_path, monkeypatch, reset_services, sample_project_data, client):
+    async def test_completion_stats_update_correctly(self, tmp_path, monkeypatch, reset_services, sample_project_data, authorized_client):
         """Test that completion statistics update as entities change status."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create project
-        client.post("/api/v1/projects", json=sample_project_data)
+        await authorized_client.post("/api/v1/projects", json=sample_project_data)
 
         # Initial stats
-        status_response = client.get("/api/v1/projects/test_project/tasks")
+        status_response = await authorized_client.get("/api/v1/projects/test_project/tasks")
         stats = status_response.json()["completion_stats"]
         assert stats["done"] == 0
         assert stats["ignored"] == 0
         assert stats["completion_percentage"] == 0.0
 
         # Mark one as ignored
-        client.post("/api/v1/projects/test_project/tasks/location/ignore")
-        status_response = client.get("/api/v1/projects/test_project/tasks")
+        await authorized_client.post("/api/v1/projects/test_project/tasks/location/ignore")
+        status_response = await authorized_client.get("/api/v1/projects/test_project/tasks")
         stats = status_response.json()["completion_stats"]
         assert stats["ignored"] == 1
         assert stats["completion_percentage"] == 0.0

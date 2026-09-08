@@ -38,6 +38,20 @@ class Settings(BaseSettings):
     # Enable this in deployments where nginx authenticates the user and forwards the verified identity.
     TRUSTED_PROXY_AUTH_ENABLED: bool = False
     TRUSTED_PROXY_AUTH_HEADER: str = "X-Authenticated-User"
+    TRUSTED_PROXY_GROUPS_ENABLED: bool = False
+    TRUSTED_PROXY_GROUPS_HEADER: str = "X-Authenticated-Groups"
+    DEVELOPMENT_PRINCIPAL_ID: str | None = None
+
+    # Authorization storage and bootstrap
+    AUTHORIZATION_DATABASE_PATH: Path = Path("state/authorization.sqlite3")
+    AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS: list[str] = []
+    AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE: bool = False
+    AUTHORIZATION_MEMBERSHIP_LOOKUP_URL: str | None = None
+    AUTHORIZATION_MEMBERSHIP_PROVIDER: str = "trusted-membership-provider"
+    AUTHORIZATION_MEMBERSHIP_LOOKUP_TIMEOUT_SECONDS: float = 5.0
+
+    # Optional database driver startup
+    UCANACCESS_JVM_STARTUP_ENABLED: bool = True
 
     # CORS
     ALLOWED_ORIGINS: list[str] = [
@@ -66,6 +80,7 @@ class Settings(BaseSettings):
     LOG_RETENTION: str = "30 days"
     LOG_COMPRESSION: str = "zip"
     LOG_FILTER_FRAMEWORK_FRAMES: bool = True
+    LOG_CONFIGURE_ON_STARTUP_ENABLED: bool = True
 
     # Services
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
@@ -85,6 +100,14 @@ class Settings(BaseSettings):
         """Require trusted-proxy authentication for production settings."""
         if self.ENVIRONMENT == "production" and not self.TRUSTED_PROXY_AUTH_ENABLED:
             raise ValueError("TRUSTED_PROXY_AUTH_ENABLED must be true in production")
+        if self.ENVIRONMENT == "production" and self.DEVELOPMENT_PRINCIPAL_ID:
+            raise ValueError("DEVELOPMENT_PRINCIPAL_ID is only allowed in development and test")
+        if self.TRUSTED_PROXY_GROUPS_ENABLED and not self.TRUSTED_PROXY_AUTH_ENABLED:
+            raise ValueError("TRUSTED_PROXY_GROUPS_ENABLED requires TRUSTED_PROXY_AUTH_ENABLED")
+        if self.ENVIRONMENT == "production" and not any(
+            principal_id.strip() for principal_id in self.AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS
+        ):
+            raise ValueError("AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS must include at least one administrator in production")
         return self
 
     @model_validator(mode="after")
@@ -97,6 +120,17 @@ class Settings(BaseSettings):
         self.LOG_DIR = self._resolve_under_root(self.LOG_DIR)
         self.GLOBAL_DATA_DIR = self._resolve_under_root(self.GLOBAL_DATA_DIR)
         self.GLOBAL_DATA_SOURCE_DIR = self._resolve_under_root(self.GLOBAL_DATA_SOURCE_DIR)
+        self.AUTHORIZATION_DATABASE_PATH = self._resolve_under_root(self.AUTHORIZATION_DATABASE_PATH)
+
+        protected_directories = (
+            self.PROJECTS_DIR,
+            self.LOG_DIR,
+            self.GLOBAL_DATA_DIR,
+            self.GLOBAL_DATA_SOURCE_DIR,
+        )
+        if any(self.AUTHORIZATION_DATABASE_PATH.is_relative_to(directory) for directory in protected_directories):
+            raise ValueError("AUTHORIZATION_DATABASE_PATH must be outside project, log, and shared-data directories")
+        self.AUTHORIZATION_DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
         for path in (
             self.PROJECTS_DIR,

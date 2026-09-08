@@ -134,4 +134,5 @@ node_modules
 graphify-out/*-*-*
 graphify-out/cost.json 
 graphify-out/manifest.json 
-# graphify-out/cache/         # optional: commit for speed, skip to keep repo small
+# Optional: commit cache for speed, skip to keep repo small.
+graphify-out/cache/

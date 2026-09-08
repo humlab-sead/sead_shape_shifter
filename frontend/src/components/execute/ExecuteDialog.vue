@@ -38,11 +38,11 @@
           <v-text-field
             v-if="selectedTargetType === 'file'"
             v-model="fileTarget"
-            label="Output File Path"
+            label="Output File Name"
             :rules="filePathRules"
             variant="outlined"
             density="comfortable"
-            :hint="`Default: ./output/${projectName}.${selectedDispatcher}`"
+            :hint="`Managed output name, default: ${projectName}.${selectedDispatcher}`"
             persistent-hint
             class="mb-4"
           >
@@ -55,11 +55,11 @@
           <v-text-field
             v-if="selectedTargetType === 'folder'"
             v-model="folderTarget"
-            label="Output Folder Path"
+            label="Output Folder Name"
             :rules="[(v) => !!v || 'Folder path is required']"
             variant="outlined"
             density="comfortable"
-            :hint="`Default: ./output/${projectName}`"
+            :hint="`Managed output folder, default: ${projectName}`"
             persistent-hint
             class="mb-4"
           >
@@ -363,8 +363,8 @@ watch(() => props.modelValue, async (isOpen) => {
     
     // Set default file/folder targets
     if (projectName.value) {
-      fileTarget.value = `./output/${projectName.value}.xlsx`
-      folderTarget.value = `./output/${projectName.value}`
+      fileTarget.value = `${projectName.value}.xlsx`
+      folderTarget.value = projectName.value
     }
   } else {
     resetForm()

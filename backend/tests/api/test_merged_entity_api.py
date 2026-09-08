@@ -1,18 +1,9 @@
 """Tests for merged entity API support."""
 
 import pytest
-from fastapi.testclient import TestClient
 
 from backend.app.core.config import settings
-from backend.app.main import app
 from backend.app.services import project_service, validation_service, yaml_service
-
-
-@pytest.fixture(name="client")
-def client_fixture():
-    with TestClient(app) as client:
-        yield client
-
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -66,15 +57,18 @@ def merged_entity_project():
     }
 
 
-def test_get_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project, client):
+@pytest.mark.asyncio
+async def test_get_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project, authorized_client):
     """Test retrieving a merged entity via API."""
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
     # Create project with merged entity
-    client.post("/api/v1/projects", json=merged_entity_project)
+    client = authorized_client
+    create_response = await client.post("/api/v1/projects", json=merged_entity_project)
+    assert create_response.status_code == 201
 
     # Get merged entity
-    response = client.get("/api/v1/projects/test_merged_api/entities/analysis_entity")
+    response = await client.get("/api/v1/projects/test_merged_api/entities/analysis_entity")
 
     assert response.status_code == 200
     data = response.json()
@@ -92,15 +86,18 @@ def test_get_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_
     assert "ceramics" in branch_names
 
 
-def test_list_entities_includes_merged(tmp_path, monkeypatch, reset_services, merged_entity_project, client):
+@pytest.mark.asyncio
+async def test_list_entities_includes_merged(tmp_path, monkeypatch, reset_services, merged_entity_project, authorized_client):
     """Test listing entities includes merged entity."""
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
     # Create project with merged entity
-    client.post("/api/v1/projects", json=merged_entity_project)
+    client = authorized_client
+    create_response = await client.post("/api/v1/projects", json=merged_entity_project)
+    assert create_response.status_code == 201
 
     # List entities
-    response = client.get("/api/v1/projects/test_merged_api/entities")
+    response = await client.get("/api/v1/projects/test_merged_api/entities")
 
     assert response.status_code == 200
     entities = response.json()
@@ -114,15 +111,18 @@ def test_list_entities_includes_merged(tmp_path, monkeypatch, reset_services, me
     assert "branches" in merged_entity["entity_data"]
 
 
-def test_update_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project, client):
+@pytest.mark.asyncio
+async def test_update_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project, authorized_client):
     """Test updating a merged entity via API."""
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
     # Create project
-    client.post("/api/v1/projects", json=merged_entity_project)
+    client = authorized_client
+    create_response = await client.post("/api/v1/projects", json=merged_entity_project)
+    assert create_response.status_code == 201
 
     # Get current entity
-    response = client.get("/api/v1/projects/test_merged_api/entities/analysis_entity")
+    response = await client.get("/api/v1/projects/test_merged_api/entities/analysis_entity")
     assert response.status_code == 200
     entity = response.json()
 
@@ -131,7 +131,7 @@ def test_update_merged_entity(tmp_path, monkeypatch, reset_services, merged_enti
     updated_entity_data["branches"][0]["keys"] = ["sample_name", "sample_id"]
 
     # Update entity
-    response = client.put(
+    response = await client.put(
         "/api/v1/projects/test_merged_api/entities/analysis_entity",
         json={"entity_data": updated_entity_data},
     )
@@ -143,7 +143,8 @@ def test_update_merged_entity(tmp_path, monkeypatch, reset_services, merged_enti
     assert updated["entity_data"]["branches"][0]["keys"] == ["sample_name", "sample_id"]
 
 
-def test_create_merged_entity(tmp_path, monkeypatch, reset_services, client):
+@pytest.mark.asyncio
+async def test_create_merged_entity(tmp_path, monkeypatch, reset_services, authorized_client):
     """Test creating a new merged entity via API."""
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -159,7 +160,9 @@ def test_create_merged_entity(tmp_path, monkeypatch, reset_services, client):
             },
         },
     }
-    client.post("/api/v1/projects", json=base_project)
+    client = authorized_client
+    create_response = await client.post("/api/v1/projects", json=base_project)
+    assert create_response.status_code == 201
 
     # Create merged entity
     new_entity = {
@@ -170,7 +173,7 @@ def test_create_merged_entity(tmp_path, monkeypatch, reset_services, client):
         ],
     }
 
-    response = client.post(
+    response = await client.post(
         "/api/v1/projects/test_project/entities",
         json={"name": "new_merged", "entity_data": new_entity},
     )
@@ -183,7 +186,8 @@ def test_create_merged_entity(tmp_path, monkeypatch, reset_services, client):
     assert len(created["entity_data"]["branches"]) == 1
 
 
-def test_validation_detects_merged_errors(tmp_path, monkeypatch, reset_services, client):
+@pytest.mark.asyncio
+async def test_validation_detects_merged_errors(tmp_path, monkeypatch, reset_services, authorized_client):
     """Test that validation endpoint detects merged entity errors."""
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -207,10 +211,12 @@ def test_validation_detects_merged_errors(tmp_path, monkeypatch, reset_services,
         },
     }
 
-    client.post("/api/v1/projects", json=invalid_project)
+    client = authorized_client
+    create_response = await client.post("/api/v1/projects", json=invalid_project)
+    assert create_response.status_code == 201
 
     # Validate project - should catch missing public_id
-    response = client.post(
+    response = await client.post(
         "/api/v1/projects/test_validation/validate",
         json={"entity_names": ["invalid_merged"]},
     )
@@ -230,14 +236,17 @@ def test_validation_detects_merged_errors(tmp_path, monkeypatch, reset_services,
         assert has_public_id_error
 
 
-def test_delete_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project, client):
+@pytest.mark.asyncio
+async def test_delete_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project, authorized_client):
     """Test deleting a merged entity via API."""
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-    client.post("/api/v1/projects", json=merged_entity_project)
+    client = authorized_client
+    create_response = await client.post("/api/v1/projects", json=merged_entity_project)
+    assert create_response.status_code == 201
 
-    response = client.delete("/api/v1/projects/test_merged_api/entities/analysis_entity")
+    response = await client.delete("/api/v1/projects/test_merged_api/entities/analysis_entity")
     assert response.status_code == 204
 
-    get_response = client.get("/api/v1/projects/test_merged_api/entities/analysis_entity")
+    get_response = await client.get("/api/v1/projects/test_merged_api/entities/analysis_entity")
     assert get_response.status_code == 404

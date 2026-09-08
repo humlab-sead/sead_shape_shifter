@@ -6,11 +6,20 @@ Supports CRUD operations, connection testing, and status checking.
 """
 
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from loguru import logger
 
 from backend.app.api.dependencies import get_data_source_service
+from backend.app.authorization.dependencies import (
+    get_authorization_service,
+    get_principal,
+    require_application_action,
+    require_shared_data_source,
+)
+from backend.app.authorization.models import Action, AuthorizedResource, Principal, ResourceRecord, ResourceType
+from backend.app.authorization.service import AuthorizationService
 from backend.app.models.data_source import (
     DataSourceConfig,
     DataSourceStatus,
@@ -24,6 +33,9 @@ from backend.app.utils.error_handlers import handle_endpoint_errors
 from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
 
 router = APIRouter(prefix="/data-sources", tags=["data-sources"])
+data_source_principal_dependency = get_principal()
+data_source_operator_dependency = require_application_action(Action.MANAGE_SHARED_SOURCES)
+data_source_reader_dependency = require_shared_data_source(Action.READ)
 
 ALLOWED_FILE_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 MAX_FILE_SIZE_MB = 50
@@ -127,6 +139,8 @@ async def list_entity_types() -> list[EntityTypeInfo]:
 
 @router.get("", response_model=list[DataSourceConfig], summary="List all global data sources")
 async def list_data_sources(
+    principal: Annotated[Principal, Depends(data_source_principal_dependency)],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     service: DataSourceService = Depends(get_data_source_service),
 ) -> list[DataSourceConfig]:
     """
@@ -144,7 +158,7 @@ async def list_data_sources(
     """
     try:
         logger.info("Listing all global data source files")
-        data_sources: list[DataSourceConfig] = service.list_data_sources()
+        data_sources: list[DataSourceConfig] = service.list_authorized_data_sources(principal, authorization_service)
         logger.info(f"Found {len(data_sources)} data source files")
         return data_sources
     except Exception as e:
@@ -158,22 +172,31 @@ async def list_data_sources(
 @router.get("/files", response_model=list[ProjectFileInfo], summary="List available data source files")
 @handle_endpoint_errors
 async def list_data_source_files(
+    principal: Annotated[Principal, Depends(data_source_principal_dependency)],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     ext: list[str] | None = Query(default=None, description="Filter by extension"),
     project_name: str | None = Query(default=None, description="Project name to include project-specific files"),
 ) -> list[ProjectFileInfo]:
-    """List Excel/CSV files available for data source configuration.
+    """List Excel/CSV files the principal is allowed to read.
 
-    Returns files from global shared-data directory. If project_name is provided,
-    also includes files from that project's upload directory.
+    Global shared-data files are returned only to operators. When project_name
+    is provided, files from that project's upload directory are returned only
+    when the principal has read access to the project.
+
+    Returns:
+        List of files from the shared-data directory and, when authorized,
+        the named project's upload directory.
     """
 
     project_service: ProjectService = get_project_service()
-    return project_service.list_data_source_files(extensions=ext, project_name=project_name)
+    return project_service.list_authorized_data_source_files(principal, authorization_service, extensions=ext, project_name=project_name)
 
 
 @router.get("/excel/metadata", response_model=ExcelMetadataResponse, summary="Get Excel sheets and columns")
 @handle_endpoint_errors
 async def get_excel_metadata(
+    principal: Annotated[Principal, Depends(data_source_principal_dependency)],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     file: str = Query(..., description="Filename or relative path to Excel file"),
     location: str = Query(default="global", description="File location: 'global' (shared) or 'local' (project-specific)"),
     sheet_name: str | None = Query(default=None, description="Optional sheet name to inspect for columns"),
@@ -184,7 +207,23 @@ async def get_excel_metadata(
         default=None, description="Project name (required when location='local' and file is in project directory)"
     ),
 ) -> ExcelMetadataResponse:
-    """Return available sheets and columns for a given Excel file."""
+    """Return available sheets and columns for an Excel file the principal may read.
+
+    Reading a global shared-data file requires the operator role. Reading a
+    file in a project's upload directory requires read access to that project;
+    an unauthorized project returns a concealed 404.
+    """
+    if location == "local":
+        if not project_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="project_name is required when location is 'local'",
+            )
+        resource = authorization_service.repository.get_resource_by_locator(ResourceType.PROJECT, project_name)
+        if resource is None or not authorization_service.is_allowed(principal, Action.READ, resource):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    elif not authorization_service.can_perform_application_action(principal, Action.MANAGE_SHARED_SOURCES):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient authorization")
 
     project_service: ProjectService = get_project_service()
     sheets, columns = project_service.get_excel_metadata(
@@ -200,7 +239,10 @@ async def get_excel_metadata(
     summary="Upload a data source file",
 )
 @handle_endpoint_errors
-async def upload_data_source_file(file: UploadFile = File(...)) -> ProjectFileInfo:
+async def upload_data_source_file(
+    _operator: Annotated[Principal, Depends(data_source_operator_dependency)],
+    file: UploadFile = File(...),
+) -> ProjectFileInfo:
     """Upload an Excel or CSV file for use in data source configurations."""
 
     project_service: ProjectService = get_project_service()
@@ -214,6 +256,7 @@ async def upload_data_source_file(file: UploadFile = File(...)) -> ProjectFileIn
 @router.get("/{filename}", response_model=DataSourceConfig, summary="Get data source by filename")
 async def get_data_source(
     filename: str,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(data_source_reader_dependency)],
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceConfig:
     """
@@ -229,7 +272,7 @@ async def get_data_source(
     """
     try:
         logger.info(f"Getting data source: {filename}")
-        data_source: DataSourceConfig | None = service.load_data_source(Path(filename))
+        data_source: DataSourceConfig | None = service.load_data_source(Path(authorized_data_source.resource.locator))
 
         if data_source is None:
             raise HTTPException(
@@ -251,6 +294,8 @@ async def get_data_source(
 @router.post("", response_model=DataSourceConfig, status_code=status.HTTP_201_CREATED, summary="Create global data source file")
 async def create_data_source(
     config: DataSourceConfig,
+    principal: Annotated[Principal, Depends(data_source_operator_dependency)],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceConfig:
     """
@@ -283,7 +328,14 @@ async def create_data_source(
                 detail=f"Data source file '{filename}' already exists",
             )
 
-        created: DataSourceConfig = service.create_data_source(Path(filename), config)
+        created: DataSourceConfig | None = None
+        try:
+            created = service.create_data_source(Path(filename), config)
+            authorization_service.register_shared_data_source(principal, service.data_source_locator(filename))
+        except Exception:
+            if created is not None:
+                service.delete_data_source(Path(filename))
+            raise
         logger.info(f"Created data source file: {filename}")
         return created
     except HTTPException:
@@ -300,6 +352,7 @@ async def create_data_source(
 async def update_data_source(
     filename: str,
     config: DataSourceConfig,
+    _operator: Annotated[Principal, Depends(data_source_operator_dependency)],
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceConfig:
     """
@@ -345,6 +398,8 @@ async def update_data_source(
 @router.delete("/{filename}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete data source file")
 async def delete_data_source(
     filename: str,
+    _operator: Annotated[Principal, Depends(data_source_operator_dependency)],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     service: DataSourceService = Depends(get_data_source_service),
 ):
     """
@@ -372,7 +427,19 @@ async def delete_data_source(
                 detail=f"Data source file '{filename}' not found",
             )
 
-        service.delete_data_source(Path(filename))
+        resource: ResourceRecord | None = authorization_service.repository.get_resource_by_locator(
+            ResourceType.SHARED_DATA_SOURCE, service.data_source_locator(filename)
+        )
+        if resource is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+
+        authorization_service.transition_resource(resource, "deleting")
+        try:
+            service.delete_data_source(Path(filename))
+        except Exception:
+            authorization_service.transition_resource(resource, "active")
+            raise
+        authorization_service.transition_resource(resource, "deleted")
         logger.info(f"Deleted data source: {filename}")
     except HTTPException:
         raise
@@ -387,6 +454,7 @@ async def delete_data_source(
 @router.post("/{filename}/test", response_model=DataSourceTestResult, summary="Test data source connection")
 async def test_data_source_connection(
     filename: str,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(data_source_reader_dependency)],
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceTestResult:
     """
@@ -415,7 +483,7 @@ async def test_data_source_connection(
         logger.info(f"Testing connection to data source: {filename}")
 
         # Get data source config
-        config: DataSourceConfig | None = service.load_data_source(Path(filename))
+        config: DataSourceConfig | None = service.load_data_source(Path(authorized_data_source.resource.locator))
         if config is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -444,6 +512,7 @@ async def test_data_source_connection(
 @router.get("/{name}/status", response_model=DataSourceStatus, summary="Get data source status")
 async def get_data_source_status(
     name: str,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(data_source_reader_dependency)],
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceStatus:
     """
@@ -465,14 +534,15 @@ async def get_data_source_status(
         logger.info(f"Getting status for data source: {name}")
 
         # Check if exists
-        config: DataSourceConfig | None = service.load_data_source(Path(name))
+        locator = authorized_data_source.resource.locator
+        config: DataSourceConfig | None = service.load_data_source(Path(locator))
         if config is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Data source '{name}' not found",
             )
 
-        status_info = service.get_status(Path(name))
+        status_info = service.get_status(Path(locator))
         return status_info
     except HTTPException:
         raise
