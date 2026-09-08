@@ -89,19 +89,21 @@ The deployed application role can perform required reads and introspection but c
 **Objective**
 
 Prevent internal DuckDB execution from becoming a file, extension, or network access primitive.
+The internal DuckDB workspace is transient and in-memory only; it does not load or update persisted database state.
 
 **Tasks**
 
-- [ ] Apply the shared SQL policy to `@internal` DuckDB execution before opening or executing the query.
-- [ ] Disable DuckDB external access and extension loading for untrusted queries using the supported runtime configuration.
-- [ ] Reject file-reading and file-writing functions, `COPY`, `ATTACH`, extension installation or loading, and network-capable functions on untrusted paths.
-- [ ] If supported file access is required, define explicit approved directories and files and route access through the Phase 2 containment rules.
-- [ ] Verify that denied operations cannot reach paths outside approved roots, load extensions, or make network requests.
-- [ ] Add disposable-file tests for read, write, attach, copy, extension, network, traversal, absolute-path, and symlink cases.
+- [x] Apply the shared SQL policy to `@internal` DuckDB execution before opening or executing the query.
+- [x] Keep the DuckDB workspace transient and in-memory only so no persisted database state is loaded or updated.
+- [x] Disable DuckDB external access and extension loading for untrusted queries using the supported runtime configuration.
+- [x] Reject file-reading and file-writing functions, `COPY`, `ATTACH`, extension installation or loading, and network-capable functions on untrusted paths.
+- [x] Do not expose a controlled file-access mode; the internal DuckDB workspace remains transient and in-memory only.
+- [x] Verify that denied operations cannot reach paths outside approved roots, load extensions, or make network requests.
+- [x] Add disposable-file tests for read, write, attach, copy, extension, network, traversal, absolute-path, and symlink cases.
 
 **Completion Criteria**
 
-Untrusted DuckDB execution cannot access arbitrary files, extensions, or networks, while any retained controlled file access is explicitly allowlisted and path-confined.
+Untrusted DuckDB execution cannot access arbitrary files, extensions, or networks because the internal workspace is transient and in-memory only.
 
 ### 5. Add Query Resource Controls And Regression Evidence
 
@@ -129,7 +131,7 @@ Supported execution paths enforce resource limits, clean up after cancellation o
 | Shared SQL safety policy | Done | Shared statement and read-only checks cover the inventoried query, introspection, loader, workflow, and DuckDB workspace paths; public query errors no longer expose SQL or raw backend details |
 | Query construction and result limits | Done | Validated identifier quoting, bound metadata values, server-capped `LIMIT` handling, direct table-load caps, and a 5 MiB serialized response budget are covered by focused tests |
 | PostgreSQL least-privilege role | Done | Setup, catalog verification, and role-behavior evidence pass against disposable PostgreSQL 16; the release/operations record points to the executable setup and behavior scripts |
-| DuckDB external access and extensions | Not started | Controlled file access, if retained, depends on Phase 2 roots |
+| DuckDB external access and extensions | Done | Internal DuckDB queries are transient and in-memory only, external access and extension autoloading are disabled, and regression tests cover file, traversal, symlink, network, attach, copy, and extension cases |
 | Resource controls and regression evidence | Not started | Disposable database and file tests are required |
 
 ## Definition Of Done
@@ -139,7 +141,7 @@ Supported execution paths enforce resource limits, clean up after cancellation o
 - [ ] Identifier construction uses validated dialect-aware handling, values use parameters, and metadata filters cannot alter SQL structure.
 - [ ] Server-owned result, duration, memory, and concurrency limits are enforced and cannot be bypassed by user SQL.
 - [ ] The application PostgreSQL role has only the required read privileges and has been checked for ownership and inherited write capability.
-- [ ] DuckDB external access and extension loading are disabled for untrusted queries; retained file access is explicitly allowed and confined to approved roots.
+- [x] DuckDB external access and extension loading are disabled for untrusted queries; retained file access is not exposed because the internal workspace is transient and in-memory only.
 - [ ] Timeout and cancellation paths release resources and return stable, non-sensitive errors.
 - [ ] Focused route, service, workflow, PostgreSQL, and DuckDB tests pass, with unrelated failures recorded separately.
 - [ ] The verified security reproduction cases and effective database grants are recorded for the exact release candidate.
@@ -162,7 +164,7 @@ Supported execution paths enforce resource limits, clean up after cancellation o
 | SQL safety policy | Documented statement and operation policy shared by PostgreSQL and DuckDB execution paths | Done | [docs/SQL_SAFETY_POLICY.md](../../../SQL_SAFETY_POLICY.md) |
 | Shared validation and query-construction controls | Central validation, identifier handling, parameter binding, and result-limit enforcement | Done | [src/loaders/sql_loaders.py](../../../src/loaders/sql_loaders.py), [backend/app/services/query_service.py](../../../backend/app/services/query_service.py) |
 | PostgreSQL role controls | Least-privilege role setup, grant verification, and disposable-database evidence | Done | [scripts/postgres/create-readonly-role.sh](../../../scripts/postgres/create-readonly-role.sh), [scripts/postgres/verify_readonly_role.sql](../../../scripts/postgres/verify_readonly_role.sql), [scripts/postgres/test-readonly-role.sh](../../../scripts/postgres/test-readonly-role.sh), [docs/OPERATIONS.md](../../OPERATIONS.md) |
-| DuckDB restrictions | External-access, extension, network, and controlled-file restrictions with regression tests | Not started | TBD |
+| DuckDB restrictions | External-access, extension, network, and controlled-file restrictions with regression tests | Done | Internal DuckDB queries are transient and in-memory only, external access and extension autoloading are disabled, and regression tests cover file, traversal, symlink, network, attach, copy, and extension cases |
 | Query resource controls | Duration, result-size, memory, concurrency, cancellation, and cleanup controls | Not started | TBD |
 | Phase 3 validation record | Focused tests, reproduction results, known limitations, and exact release evidence | Not started | TBD |
 
