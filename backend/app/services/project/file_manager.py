@@ -9,6 +9,7 @@ from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import ProjectFileInfo
 from backend.app.utils.excel_utils import get_excel_metadata as extract_excel_metadata
 from backend.app.utils.exceptions import BadRequestError
+from src.path_resolution import resolve_contained_path
 
 DEFAULT_ALLOWED_UPLOAD_EXTENSIONS: set[str] = {".xlsx", ".xls"}
 MAX_PROJECT_UPLOAD_SIZE_MB: int = 50
@@ -60,7 +61,10 @@ class FileManager:
         """
 
         safe_path = ProjectNameMapper.to_path(project_name)
-        return self.projects_root / safe_path
+        try:
+            return resolve_contained_path(safe_path, self.projects_root)
+        except ValueError as exc:
+            raise BadRequestError("Project path is outside the managed projects directory") from exc
 
     def _to_public_path(self, path: Path) -> str:
         """Convert absolute path to public relative path for API responses.
@@ -108,13 +112,18 @@ class FileManager:
             BadRequestError: If file not found or invalid location
         """
         if location == "global":
-            resolved = self.global_data_dir / path_str
+            root = self.global_data_dir
         elif location == "local":
             # "local" here means base projects directory for file browsing,
             # not a specific project (that's what FilePathResolver handles)
-            resolved = self.projects_root / path_str
+            root = self.projects_root
         else:
             raise BadRequestError(f"Invalid location: {location}. Must be 'global' or 'local'")
+
+        try:
+            resolved = resolve_contained_path(path_str, root, allow_absolute=Path(path_str).is_absolute())
+        except ValueError as exc:
+            raise BadRequestError("File path is outside the managed directory") from exc
 
         # Validate file existence
         if not resolved.exists():
@@ -165,20 +174,25 @@ class FileManager:
 
         files: list[ProjectFileInfo] = []
         for file_path in sorted(upload_dir.glob("*")):
-            if not file_path.is_file():
+            try:
+                managed_file_path = resolve_contained_path(file_path, upload_dir, allow_absolute=True)
+            except ValueError:
                 continue
 
-            if file_path.name == "shapeshifter.yml":
+            if not managed_file_path.is_file():
                 continue
 
-            if ext_set and file_path.suffix.lower() not in ext_set:
+            if managed_file_path.name == "shapeshifter.yml":
                 continue
 
-            stat = file_path.stat()
+            if ext_set and managed_file_path.suffix.lower() not in ext_set:
+                continue
+
+            stat = managed_file_path.stat()
             files.append(
                 ProjectFileInfo(
-                    name=file_path.name,
-                    path=file_path.name,  # Just filename for project files
+                    name=managed_file_path.name,
+                    path=managed_file_path.name,  # Just filename for project files
                     location="local",
                     size_bytes=stat.st_size,
                     modified_at=stat.st_mtime,
@@ -221,10 +235,10 @@ class FileManager:
         upload_dir: Path = self._get_project_upload_dir(project_name)
         upload_dir.mkdir(parents=True, exist_ok=True)
 
-        target_path: Path = upload_dir / filename
+        target_path = resolve_contained_path(filename, upload_dir)
         counter = 1
         while target_path.exists():
-            target_path = upload_dir / f"{Path(filename).stem}-{counter}{ext}"
+            target_path = resolve_contained_path(f"{Path(filename).stem}-{counter}{ext}", upload_dir)
             counter += 1
 
         max_bytes: int = max_size_mb * 1024 * 1024
@@ -281,17 +295,22 @@ class FileManager:
                 ext_set = {f".{ext.lstrip('.').lower()}" for ext in extensions if ext}
 
             for file_path in sorted(upload_dir.glob("*")):
-                if not file_path.is_file():
+                try:
+                    managed_file_path = resolve_contained_path(file_path, upload_dir, allow_absolute=True)
+                except ValueError:
                     continue
 
-                if ext_set and file_path.suffix.lower() not in ext_set:
+                if not managed_file_path.is_file():
                     continue
 
-                stat = file_path.stat()
+                if ext_set and managed_file_path.suffix.lower() not in ext_set:
+                    continue
+
+                stat = managed_file_path.stat()
                 files.append(
                     ProjectFileInfo(
-                        name=file_path.name,
-                        path=file_path.name,
+                        name=managed_file_path.name,
+                        path=managed_file_path.name,
                         location="global",
                         size_bytes=stat.st_size,
                         modified_at=stat.st_mtime,
@@ -340,10 +359,10 @@ class FileManager:
         upload_dir: Path = self.global_data_dir
         upload_dir.mkdir(parents=True, exist_ok=True)
 
-        target_path: Path = upload_dir / filename
+        target_path = resolve_contained_path(filename, upload_dir)
         counter = 1
         while target_path.exists():
-            target_path = upload_dir / f"{Path(filename).stem}-{counter}{ext}"
+            target_path = resolve_contained_path(f"{Path(filename).stem}-{counter}{ext}", upload_dir)
             counter += 1
 
         max_bytes: int = max_size_mb * 1024 * 1024
@@ -407,7 +426,10 @@ class FileManager:
         if location == "local" and project_name:
             # File is in a specific project directory
             project_dir = self._get_project_upload_dir(project_name)
-            resolved_path = project_dir / file_path
+            try:
+                resolved_path = resolve_contained_path(file_path, project_dir)
+            except ValueError as exc:
+                raise BadRequestError("File path is outside the managed project directory") from exc
             if not resolved_path.exists():
                 raise BadRequestError(f"File not found: {file_path} (location: {location}, project: {project_name})")
         else:

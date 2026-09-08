@@ -22,7 +22,7 @@ from loguru import logger
 
 from backend.app.core.config import Settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
-from src.path_resolution import resolve_managed_file_path
+from src.path_resolution import resolve_contained_path, resolve_managed_file_path
 
 
 class FilePathResolver:
@@ -88,10 +88,11 @@ class FilePathResolver:
 
             # Convert project name (e.g., "dendro:sites") to path ("dendro/sites")
             project_path: str = ProjectNameMapper.to_path(project_name)
+            project_root = resolve_contained_path(project_path, self.settings.projects_root)
             resolved_path: Path = resolve_managed_file_path(
                 filename,
                 location="local",
-                local_root=self.settings.projects_root / project_path,
+                local_root=project_root,
             )
             logger.debug(f"Resolved local file: {filename} ({project_name}) -> {resolved_path}")
             return resolved_path
@@ -125,7 +126,7 @@ class FilePathResolver:
         """
         # Try global directory first
         try:
-            relative_path = absolute_path.relative_to(self.settings.global_data_dir)
+            relative_path = absolute_path.resolve().relative_to(self.settings.global_data_dir.resolve())
             return (str(relative_path), "global")
         except ValueError:
             pass  # Not in global directory
@@ -135,7 +136,7 @@ class FilePathResolver:
             try:
                 project_path = ProjectNameMapper.to_path(project_name)
                 project_dir = self.settings.projects_root / project_path
-                relative_path = absolute_path.relative_to(project_dir)
+                relative_path = absolute_path.resolve().relative_to(project_dir.resolve())
                 return (str(relative_path), "local")
             except ValueError:
                 pass  # Not in project directory

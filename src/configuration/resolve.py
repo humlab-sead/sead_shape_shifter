@@ -10,6 +10,7 @@ import yaml
 from dotenv import load_dotenv
 from loguru import logger
 
+from src.path_resolution import resolve_contained_path
 from src.utility import Registry, dget, dotexists, dotget, replace_env_vars
 
 from .utility import is_path_to_existing_file, load_data_file, load_yaml_file
@@ -32,6 +33,7 @@ class ResolutionContext:
     root_data: dict[str, Any] = dataclasses.field(default_factory=dict)
     env_filename: str | None = None
     try_without_prefix: bool = True
+    allowed_roots: tuple[Path, ...] = ()
 
     def for_loaded_source(self, source_path: str, root_data: dict[str, Any]) -> "ResolutionContext":
         """Return a context for resolving a newly loaded document.
@@ -49,6 +51,7 @@ class ResolutionContext:
             root_data=root_data,
             env_filename=self.env_filename,
             try_without_prefix=self.try_without_prefix,
+            allowed_roots=self.allowed_roots,
         )
 
 
@@ -112,6 +115,7 @@ def resolve_directives(
     inplace: bool = False,
     strict: bool = False,
     try_without_prefix: bool = True,
+    allowed_roots: tuple[str | Path, ...] = (),
 ) -> dict[str, Any]:
     """Resolve configuration directives in the provided data dictionary.
 
@@ -143,6 +147,7 @@ def resolve_directives(
         root_data=data,
         env_filename=env_filename,
         try_without_prefix=try_without_prefix,
+        allowed_roots=tuple(Path(root).resolve() for root in allowed_roots),
     )
 
     # Build directive resolver map (order does not matter — each resolver only
@@ -227,6 +232,21 @@ def _resolve_runtime_root(runtime_root: str | Path | None, env_prefix: str | Non
 
     application_root: str = replace_env_vars(f"${{{application_root_env_var}}}", env_prefix=env_prefix or "", try_without_prefix=True)
     return Path(application_root).resolve() if application_root else None
+
+
+def _resolve_directive_file_path(filename: str, context: ResolutionContext) -> str:
+    """Resolve a directive file and require it to stay in an approved root."""
+    if not context.allowed_roots:
+        return filename
+
+    path = Path(filename)
+    for root in context.allowed_roots:
+        try:
+            return str(resolve_contained_path(path, root, allow_absolute=path.is_absolute()))
+        except ValueError:
+            continue
+
+    raise ValueError("Directive file path is outside the approved data roots")
 
 
 def _is_path_env_var(env_var_name: str, env_prefix: str | None, application_root_env_var: str) -> bool:
@@ -392,6 +412,7 @@ class IncludeResolver(DirectiveResolver):
             runtime_root=context.runtime_root,
             env_filename=context.env_filename,
         )
+        filename = _resolve_directive_file_path(filename, context)
 
         load_dotenv(dotenv_path=context.env_filename)
 
@@ -458,6 +479,7 @@ class LoadResolver(DirectiveResolver):
             env_filename=context.env_filename,
             raise_if_missing=False,
         )
+        filename = _resolve_directive_file_path(filename, context)
 
         loaded_data = load_data_file(filename, sep)
         result = loaded_data if loaded_data is not None else argument
