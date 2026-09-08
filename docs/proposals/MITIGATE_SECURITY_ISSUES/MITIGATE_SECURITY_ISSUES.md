@@ -95,6 +95,8 @@ The implemented resource authorization model is documented in [CENTRALIZED_AUTHO
 
 ### 3. Enforce filesystem boundaries
 
+Implementation task plan: [MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md).
+
 - Define server-owned roots for projects, uploads, backups, temporary files, and generated output.
 - Resolve paths before access and require that the resolved path is inside the intended root using `is_relative_to()`.
 - Reject absolute paths and traversal for API inputs, including `target`, `source`, `output_folder`, `@include`, and `@load`.
