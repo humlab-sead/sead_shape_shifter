@@ -303,7 +303,8 @@ As this project grows, AI-assisted code work is affected less by raw file count 
 4. Keep feature logic locally coherent rather than scattered across layers.
 5. Keep commits and pull requests small and scoped.
 6. Add focused regression tests for bug-prone workflows.
-7. When asking for AI help, include: affected workflow, expected behavior, actual behavior, and likely files.
+7. When asking for AI help, include: affected workflow, expected behavior, actual behavior, likely files, and related proposal, phase-plan, or task-plan paths when available.
+8. Use `.venv/bin/graphify query` before broad code searches when exploring relationships; verify its results in current source and tests.
 
 The biggest performance cost for AI in a large repository is not size — it is uncertainty. Reducing ambiguity, duplication, and search noise usually improves AI effectiveness more than reducing line count.
 

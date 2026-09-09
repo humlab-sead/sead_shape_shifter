@@ -10,6 +10,8 @@ A phase plan is broader than a task plan. It explains the path from current stat
 
 For major efforts, treat the phase plan as a separate document from the proposal or change request by default. The proposal is the decision document. The phase plan is the execution-sequencing document. Only embed a compact delivery-order section inside a proposal when the work is small enough that a separate phase plan would add ceremony without clarity.
 
+Use the proposal as the source of approved decisions and `P-AC-*` criteria. Inspect the repository only far enough to confirm current state and phase boundaries; task plans perform the file-level investigation.
+
 ## Output
 
 Return only the Markdown phase plan unless the user asks for explanation.
@@ -62,10 +64,29 @@ Create ordered phases using this format:
 - <focus item>
 - <focus item>
 
+**Depends On**
+
+- <prior phase output or required decision>
+
+**Outputs**
+
+- <result available to a later phase>
+
 **Acceptance Criteria**
 
-- <checkable outcome>
-- <checkable outcome>
+- `PH1-AC-1` (from `P-AC-1`) <checkable outcome>
+
+**Validation Milestones**
+
+- `VM-1` <validation result and covered phase criteria>
+
+**Task-Plan Handoff**
+
+- <source criteria, fixed decisions, constraints, and blocking questions>
+
+**Readiness**
+
+<Ready for a task plan | Requires a named decision>
 ```
 
 Each phase should represent a meaningful delivery step, not a vague theme.
@@ -76,11 +97,13 @@ Prefer 3-7 phases for most projects. Use fewer phases for small efforts and more
 
 - Preserve the user's terminology when it appears project-specific.
 - Base phases on the current state, target state, and known gaps.
-- Make dependencies between phases clear through ordering.
+- Make dependencies clear through both ordering and each phase's **Depends On** field.
 - Ensure each stated gap is addressed by at least one phase.
-- Ensure each phase acceptance criterion is checkable and aligned with the phase goal.
+- Give each phase acceptance criterion a stable `PH<N>-AC-<N>` ID and map it to its source `P-AC-*` criterion.
+- Ensure each phase acceptance criterion is checkable, aligned with the phase goal, and covered by a validation milestone.
 - Do not invent shipped functionality, commands, file paths, APIs, or ownership.
-- Do not infer owners, dates, dependencies, PR workflow, commands, file paths, APIs, or test names.
+- Do not infer owners, dates, PR workflow, commands, file paths, APIs, or test names.
+- Establish dependencies from proposal decisions and verified current state. Record unknown dependencies as blocking questions rather than relying on phase order.
 - Distinguish proven/current behavior from planned behavior.
 - Use `TBD` only where an explicit placeholder is useful.
 - Keep acceptance criteria measurable.
@@ -88,6 +111,7 @@ Prefer 3-7 phases for most projects. Use fewer phases for small efforts and more
 - Include fallback, exception, or cutover phases when migration is involved.
 - If the plan concerns replacing legacy behavior, use parity as a delivery measure.
 - If information is missing but the goal is clear, make only structural assumptions about phase ordering or grouping and state them explicitly.
+- Mark a phase as ready for a task plan only when no unresolved question can change that phase's implementation or validation.
 - Do not repeat the same point verbatim across Summary, Current Position, phases, and Final Recommendation.
 
 ## Scope Guidance
@@ -108,7 +132,7 @@ It does not include frontend rollout, staffing, or release scheduling.
 
 Summarize current state as bullets.
 
-Include only facts provided by the user or clearly implied by the context.
+Include proposal decisions and verified repository facts. Label anything else as an assumption or open question.
 
 Good bullets:
 
@@ -143,9 +167,9 @@ Include layered validation when relevant:
 - legacy comparison tests where parity is required
 - type checking and CI where applicable
 
-Do not invent exact commands. Use placeholders if needed.
+For each phase, map validation milestones to `PH*-AC-*` criteria and state the expected result. Exact commands, test files, fixtures, and assertions belong in the phase task plan.
 
-Prefer repository-specific validation only when it is explicitly known from the user request or workspace context.
+Do not invent exact commands. Use placeholders only in phases that are not ready for task planning.
 
 ## Style
 
@@ -181,7 +205,9 @@ Before returning the plan, verify that:
 - phases are ordered by dependency
 - each known gap is covered by at least one phase
 - each phase has a goal, focus, and acceptance criteria
-- acceptance criteria are testable or reviewable
+- each phase states dependencies, outputs, readiness, and task-plan handoff information
+- acceptance criteria have stable IDs, source proposal criteria, and validation milestones
+- no phase marked ready has a blocking decision or dependency
 - unsupported or deferred work is not hidden
 - planned support is not described as already shipped
 - the plan is compact enough to be maintained
