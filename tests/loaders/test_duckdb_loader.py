@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from typing import Generator
 
-import duckdb
 import pandas as pd
 import pytest
 
