@@ -263,7 +263,8 @@ Two complementary families in `.github/prompts/`:
 **Implementation generators** (`agent`) — encode layer conventions so agents follow them every time:
 - `add-endpoint`, `add-loader`, `add-validator`
 - `core-test`, `backend-test`, `frontend-test`
-- `proposal-implementation-plan`
+- `create-proposal`, `create-phase-plan`, `create-phase-task-plan`
+- `implement-phase-task-plan`
 
 **Review and routing agents** (`ask`) — turn the rule set into reviewers:
 - `token-router` (route to the smallest useful context first)
@@ -534,7 +535,7 @@ Even the upstream SQL migration ships as forward + revert Sqitch artifacts along
 
 The planning documents are written *for humans and agents alike* and read like a contract:
 
-- **Grounding.** Plans are produced only after exploring real code (`proposal-implementation-plan` prompt forces this).
+- **Grounding.** Phase task plans are produced only after exploring real code (`create-phase-task-plan` forces this); proposal and phase-plan prompts keep earlier decisions focused.
 - **No invention.** Rules say: do not invent file paths, commands, owners, or APIs. Unknowns are `TBD` or open questions.
 - **Checkable units.** Every task and acceptance criterion is independently verifiable — an agent can tick a box only when a test or review confirms it.
 - **Honest status.** Blocked work stays blocked and recorded instead of being silently "done".
