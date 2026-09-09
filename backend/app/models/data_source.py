@@ -5,6 +5,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from backend.app.core.config import Settings, get_settings
+from backend.app.utils.public_errors import public_error_detail
 from src.loaders.base_loader import ConnectTestResult
 from src.utility import replace_env_vars
 
