@@ -742,7 +742,6 @@ def _resolve_target_model_path(project: Project, project_name: str) -> Path:
                 break
 
     # Security: must stay inside the project directory
-    path_name: str = ProjectNameMapper.to_path(project_name)
     project_dir: Path = _project_directory(project_name)
 
     # Resolve the file path: simple filenames are project-local, paths with directories use APPLICATION_ROOT
