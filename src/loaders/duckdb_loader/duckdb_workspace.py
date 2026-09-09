@@ -23,6 +23,7 @@ class DuckDbWorkspace:
             r"\bread_(?:csv(?:_auto)?|parquet(?:_scan)?|json(?:_auto)?|ndjson(?:_auto)?|text|blob|tsv(?:_auto)?|xlsx|excel)\s*\(",
             re.IGNORECASE,
         ),
+        re.compile(r"\bglob\s*\(", re.IGNORECASE),
         re.compile(r"\b(?:https?|s3|gs|azure|ftp)://", re.IGNORECASE),
     )
 
