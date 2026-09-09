@@ -175,7 +175,7 @@ async def check_dependencies(
 @router.post("/projects/{name}/fixes/preview")
 @handle_endpoint_errors
 async def preview_fixes(
-    name: str,
+    name: str,  # pylint: disable=unused-argument
     errors: list[dict[str, Any]],
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
 ) -> dict[str, Any]:

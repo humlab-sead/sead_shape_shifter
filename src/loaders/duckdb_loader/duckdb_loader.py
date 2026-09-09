@@ -84,7 +84,9 @@ class DuckDbLoader(SqlLoader):
 
         return data
 
-    async def read_sql(self, sql: str) -> pd.DataFrame:
+    async def read_sql(
+        self, sql: str, params: dict[str, Any] | tuple[Any, ...] | None = None
+    ) -> pd.DataFrame:  # pylint: disable=unused-argument
         ensure_read_only_sql(sql)
         self.workspace.register_many(self.table_store)
         return self.workspace.query_df(sql)

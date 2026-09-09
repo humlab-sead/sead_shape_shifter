@@ -32,6 +32,9 @@ MAX_QUERY_MEMORY_MB = 64
 QUERY_EXECUTION_SEMAPHORE = asyncio.Semaphore(MAX_QUERY_CONCURRENCY)
 
 
+# pylint: disable=raise-missing-from
+
+
 def is_internal_data_source(name: str) -> bool:
     """Check if a data source name refers to the internal virtual data source."""
     return name == INTERNAL_DATA_SOURCE

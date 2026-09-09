@@ -137,7 +137,7 @@ async def close_session(
 
 @router.get("/{project_name}/active", response_model=list[SessionResponse])
 async def list_active_sessions(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
 ) -> list[SessionResponse]:

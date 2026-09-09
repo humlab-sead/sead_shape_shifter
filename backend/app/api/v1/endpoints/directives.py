@@ -35,7 +35,7 @@ class ValidateDirectiveResponse(BaseModel):
 async def validate_directive(
     project_name: str,
     request: ValidateDirectiveRequest,
-    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],  # pylint: disable=unused-argument
 ):
     """
     Validate a @value directive against project structure.
@@ -80,7 +80,7 @@ async def validate_directive(
 @router.get("/projects/{project_name}/valid-directives", response_model=list[str])
 async def get_valid_directives(
     project_name: str,
-    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],  # pylint: disable=unused-argument
     max_depth: int = 3,
 ):
     """
