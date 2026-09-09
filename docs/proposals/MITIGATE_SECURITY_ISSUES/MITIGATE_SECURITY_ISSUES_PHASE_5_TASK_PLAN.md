@@ -26,7 +26,7 @@
 - [ ] Every original high-severity finding is either fixed with evidence or remains disabled with a documented exception.
 - [ ] Unauthenticated and cross-resource authorization tests cover every sensitive router and direct application route.
 - [x] Filesystem boundary tests cover traversal, absolute paths, symlinks, missing parents, and project-name variations.
-- [ ] SQL and DuckDB tests cover stacked statements, comments, embedded `LIMIT`, destructive statements, identifier edge cases, file functions, `COPY`, `ATTACH`, extension loading, network access, and paths outside approved roots.
+- [x] SQL and DuckDB tests cover stacked statements, comments, embedded `LIMIT`, destructive statements, identifier edge cases, file functions, `COPY`, `ATTACH`, extension loading, network access, and paths outside approved roots.
 - [ ] Response and logging tests cover secret, SQL, connection-string, and absolute-path redaction.
 - [ ] The verified cases in `SECURITY_CHECK.md` are re-run against disposable databases and files with pass/fail evidence recorded.
 - [ ] The full Core and backend test suites are run; security-relevant failures block release, and unrelated failures have a documented cause and release disposition.
@@ -90,21 +90,21 @@ Prove that the read-only SQL policy and DuckDB restrictions hold on every execut
 
 **Tasks**
 
-- [ ] Add stacked-statement tests for multiple statements separated by semicolons, comments, and whitespace.
-- [ ] Add comment tests for SQL comments that attempt to hide or split statements.
-- [ ] Add embedded-`LIMIT` tests confirming that a user-supplied `LIMIT` cannot bypass the server result limit.
-- [ ] Add destructive-statement tests for `DROP`, `ALTER`, `CREATE`, `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, `MERGE`, and `REPLACE`.
-- [ ] Add identifier edge-case tests for quoted identifiers, malformed identifiers, nested queries, and filter values containing SQL metacharacters.
-- [ ] Add tests for `COPY`, `ATTACH`, `DETACH`, `INSTALL`, `LOAD`, `EXPORT`, and `IMPORT` operations.
-- [ ] Add tests for transaction, session, and administrative operations including `BEGIN`, `COMMIT`, `ROLLBACK`, `SET`, `RESET`, `CALL`, `DO`, `PREPARE`, `DEALLOCATE`, `GRANT`, `REVOKE`, `PRAGMA`, `SHOW`, `VACUUM`, and `ANALYZE`.
-- [ ] Add DuckDB file-function tests for `read_csv_auto`, `read_csv`, `read_json`, `read_parquet`, `read_text`, `read_blob`, and `glob`.
-- [ ] Add DuckDB network-access tests confirming that network-capable operations are rejected.
-- [ ] Add DuckDB extension-loading tests confirming that `INSTALL` and `LOAD` are rejected.
-- [ ] Add tests for paths outside approved roots in DuckDB file operations.
-- [ ] Add tests for the `@internal` DuckDB execution path confirming the same read-only policy is applied.
+- [x] Add stacked-statement tests for multiple statements separated by semicolons, comments, and whitespace.
+- [x] Add comment tests for SQL comments that attempt to hide or split statements.
+- [x] Add embedded-`LIMIT` tests confirming that a user-supplied `LIMIT` cannot bypass the server result limit.
+- [x] Add destructive-statement tests for `DROP`, `ALTER`, `CREATE`, `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, `MERGE`, and `REPLACE`.
+- [x] Add identifier edge-case tests for quoted identifiers, malformed identifiers, nested queries, and filter values containing SQL metacharacters.
+- [x] Add tests for `COPY`, `ATTACH`, `DETACH`, `INSTALL`, `LOAD`, `EXPORT`, and `IMPORT` operations.
+- [x] Add tests for transaction, session, and administrative operations including `BEGIN`, `COMMIT`, `ROLLBACK`, `SET`, `RESET`, `CALL`, `DO`, `PREPARE`, `DEALLOCATE`, `GRANT`, `REVOKE`, `PRAGMA`, `SHOW`, `VACUUM`, and `ANALYZE`.
+- [x] Add DuckDB file-function tests for `read_csv_auto`, `read_csv`, `read_json`, `read_parquet`, `read_text`, `read_blob`, and `glob`.
+- [x] Add DuckDB network-access tests confirming that network-capable operations are rejected.
+- [x] Add DuckDB extension-loading tests confirming that `INSTALL` and `LOAD` are rejected.
+- [x] Add tests for paths outside approved roots in DuckDB file operations.
+- [x] Add tests for the `@internal` DuckDB execution path confirming the same read-only policy is applied.
 - [ ] Add tests for the read-only PostgreSQL role confirming allowed reads succeed and denied DDL, DML, `COPY`, and role operations fail.
-- [ ] Add tests for query duration, result size, memory, and concurrency limits.
-- [ ] Record a matrix covering each SQL policy case across public query routes, schema introspection, SQL loaders, workflow execution, internal DuckDB execution, and direct service paths.
+- [x] Add tests for query duration, result size, memory, and concurrency limits.
+- [x] Record a matrix covering each SQL policy case across public query routes, schema introspection, SQL loaders, workflow execution, internal DuckDB execution, and direct service paths.
 
 **Completion Criteria**
 
@@ -118,13 +118,13 @@ Prove that client responses and server logs do not disclose secrets, SQL, connec
 
 **Tasks**
 
-- [ ] Add response tests confirming that error responses do not contain database credentials, environment variable values, connection strings, or SQL text.
-- [ ] Add response tests confirming that error responses use stable public messages with correlation IDs.
-- [ ] Add response tests confirming that absolute filesystem paths are not disclosed in error responses.
-- [ ] Add logging tests confirming that credentials, environment values, connection strings, SQL text, and sensitive paths are redacted from server logs.
-- [ ] Add logging tests confirming that user-controlled newlines cannot forge log records.
-- [ ] Add tests for the data-source test endpoint confirming that connection failure messages do not echo environment variable values or host details.
-- [ ] Add tests for the global exception handler confirming it does not return raw exception messages to clients.
+- [x] Add response tests confirming that error responses do not contain database credentials, environment variable values, connection strings, or SQL text.
+- [x] Add response tests confirming that error responses use stable public messages with correlation IDs.
+- [x] Add response tests confirming that absolute filesystem paths are not disclosed in error responses.
+- [x] Add logging tests confirming that credentials, environment values, connection strings, SQL text, and sensitive paths are redacted from server logs.
+- [x] Add logging tests confirming that user-controlled newlines cannot forge log records.
+- [x] Add tests for the data-source test endpoint confirming that connection failure messages do not echo environment variable values or host details.
+- [x] Add tests for the global exception handler confirming it does not return raw exception messages to clients.
 
 **Completion Criteria**
 
@@ -183,8 +183,8 @@ Deployment verification is complete for the exact release commit, and `SECURITY_
 |---|---|---|
 | Authorization and authentication regression tests | Done | Runtime route, proxy-identity, direct-route, session-ownership, CORS, health, cross-resource HTTP, and team-grant regressions are covered |
 | Filesystem boundary regression tests | Done | Download endpoint, directive (@include/@load), backup, upload, file browsing, and project-name regressions are covered |
-| SQL and DuckDB regression tests | Not started |  |
-| Response and logging redaction tests | Not started |  |
+| SQL and DuckDB regression tests | In progress | Shared policy, SQL-loader, QueryService, and internal DuckDB regression coverage is passing; PostgreSQL least-privilege role integration remains |
+| Response and logging redaction tests | Done | Public error, global exception, data-source failure, credential/path redaction, correlation ID, and newline-safe logging regressions are covered |
 | Verified case re-runs and full test suites | Not started |  |
 | Deployment verification and security record update | Not started |  |
 
@@ -192,8 +192,8 @@ Deployment verification is complete for the exact release commit, and `SECURITY_
 
 - [x] Unauthenticated and cross-resource authorization tests cover every sensitive router and direct application route.
 - [x] Filesystem boundary tests cover traversal, absolute paths, symlinks, missing parents, and project-name variations.
-- [ ] SQL and DuckDB tests cover stacked statements, comments, embedded `LIMIT`, destructive statements, identifier edge cases, file functions, `COPY`, `ATTACH`, extension loading, network access, and paths outside approved roots.
-- [ ] Response and logging tests cover secret, SQL, connection-string, and absolute-path redaction.
+- [x] SQL and DuckDB tests cover stacked statements, comments, embedded `LIMIT`, destructive statements, identifier edge cases, file functions, `COPY`, `ATTACH`, extension loading, network access, and paths outside approved roots.
+- [x] Response and logging tests cover secret, SQL, connection-string, and absolute-path redaction.
 - [ ] The verified cases in `SECURITY_CHECK.md` are re-run against disposable databases and files with pass/fail evidence recorded.
 - [ ] The full Core and backend test suites are run; security-relevant failures block release, and unrelated failures have a documented cause and release disposition.
 - [ ] Deployment verification covers the exact image and release commit, Docker port binding, proxy routes, firewall rules, secret handling, database grants, mounted files, and logs.
@@ -217,8 +217,8 @@ Deployment verification is complete for the exact release commit, and `SECURITY_
 |---|---|---|---|
 | Route inventory and authorization regression tests | Runtime route, unauthenticated route, direct-route, session-ownership, CORS, health, cross-resource HTTP, and team-grant regressions are covered | Done | [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md), [test_route_authentication.py](../../backend/tests/authorization/test_route_authentication.py), [test_cross_resource_access.py](../../backend/tests/authorization/test_cross_resource_access.py), [test_cors.py](../../backend/tests/test_cors.py), [test_session_authorization.py](../../backend/tests/test_session_authorization.py) |
 | Filesystem boundary regression tests | Traversal, absolute-path, symlink, missing-parent, project-name, download, backup, upload, and directive-path tests | Done | [test_filesystem_boundaries.py](../../backend/tests/security/test_filesystem_boundaries.py), [test_directive_path_confinement.py](../../tests/configuration/test_directive_path_confinement.py), [test_execute_service_output_paths.py](../../backend/tests/services/test_execute_service_output_paths.py), [test_file_manager.py](../../backend/tests/services/test_file_manager.py), [test_file_path_resolver.py](../../backend/tests/utils/test_file_path_resolver.py) |
-| SQL and DuckDB regression tests | Stacked-statement, destructive, identifier, file-function, extension, and network tests | Not started | TBD |
-| Response and logging redaction tests | Secret, SQL, connection-string, and absolute-path redaction tests | Not started | TBD |
+| SQL and DuckDB regression tests | Stacked-statement, destructive, identifier, file-function, extension, and network tests | In progress | [test_sql_duckdb_regressions.py](../../backend/tests/security/test_sql_duckdb_regressions.py), [test_sql.py](../../backend/tests/utils/test_sql.py), [test_query_service.py](../../backend/tests/services/test_query_service.py), [test_duckdb_loader.py](../../tests/loaders/test_duckdb_loader.py) |
+| Response and logging redaction tests | Secret, SQL, connection-string, and absolute-path redaction tests | Done | [test_response_logging_redaction.py](../../backend/tests/security/test_response_logging_redaction.py), [safe_logging.py](../../backend/app/utils/safe_logging.py) |
 | Verified case re-run record | Pass/fail evidence for each `SECURITY_CHECK.md` case with the tested commit | Not started | TBD |
 | Full test suite results | Core and backend suite results with unrelated failures recorded separately | Not started | TBD |
 | Deployment verification record | Evidence for image, commit, port binding, proxy routes, firewall, secret handling, grants, mounts, and logs | Not started | TBD |
