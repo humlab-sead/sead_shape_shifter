@@ -351,7 +351,7 @@ class TestProjectsValidate:
             "/api/v1/projects/test_project",
             json={
                 "entities": {},
-                "options": {"data_sources": {"missing": "@include: definitely-missing.yml"}},
+                "options": {"missing": "@include: definitely-missing.yml"},
             },
         )
 
