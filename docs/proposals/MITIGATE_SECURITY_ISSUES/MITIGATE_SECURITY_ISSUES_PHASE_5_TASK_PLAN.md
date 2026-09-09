@@ -25,7 +25,7 @@
 - [ ] Focused security tests, regression tests, and deployment checks pass on the exact release candidate.
 - [ ] Every original high-severity finding is either fixed with evidence or remains disabled with a documented exception.
 - [ ] Unauthenticated and cross-resource authorization tests cover every sensitive router and direct application route.
-- [ ] Filesystem boundary tests cover traversal, absolute paths, symlinks, missing parents, and project-name variations.
+- [x] Filesystem boundary tests cover traversal, absolute paths, symlinks, missing parents, and project-name variations.
 - [ ] SQL and DuckDB tests cover stacked statements, comments, embedded `LIMIT`, destructive statements, identifier edge cases, file functions, `COPY`, `ATTACH`, extension loading, network access, and paths outside approved roots.
 - [ ] Response and logging tests cover secret, SQL, connection-string, and absolute-path redaction.
 - [ ] The verified cases in `SECURITY_CHECK.md` are re-run against disposable databases and files with pass/fail evidence recorded.
@@ -66,17 +66,17 @@ Prove that file read, write, download, upload, and directive paths cannot escape
 
 **Tasks**
 
-- [ ] Add traversal tests for `../` sequences in project names, file paths, execution targets, and directive paths.
-- [ ] Add absolute-path tests confirming that absolute paths are rejected or confined to approved roots.
-- [ ] Add symlink tests for symlinks pointing outside approved roots, including symlinked project directories, output directories, and backup directories.
-- [ ] Add missing-parent tests confirming that paths with non-existent parent directories are handled safely.
-- [ ] Add project-name variation tests for names containing special characters, Unicode, and path separators.
-- [ ] Add time-of-check/time-of-use tests for symlink replacement between resolution and access.
-- [ ] Make time-of-check/time-of-use tests deterministic by injecting the replacement between authorization and access, rather than relying on an uncontrolled race.
-- [ ] Add tests for the download endpoint confirming it cannot return files outside the approved output root.
-- [ ] Add tests for execution targets confirming outputs cannot be written outside assigned roots.
-- [ ] Add tests for `@include` and `@load` directive resolution confirming they cannot escape the project or approved data roots.
-- [ ] Add tests for upload, backup, and project-file paths confirming they are confined to approved roots.
+- [x] Add traversal tests for `../` sequences in project names, file paths, execution targets, and directive paths.
+- [x] Add absolute-path tests confirming that absolute paths are rejected or confined to approved roots.
+- [x] Add symlink tests for symlinks pointing outside approved roots, including symlinked project directories, output directories, and backup directories.
+- [x] Add missing-parent tests confirming that paths with non-existent parent directories are handled safely.
+- [x] Add project-name variation tests for names containing special characters, Unicode, and path separators.
+- [x] Add time-of-check/time-of-use tests for symlink replacement between resolution and access.
+- [x] Make time-of-check/time-of-use tests deterministic by injecting the replacement between authorization and access, rather than relying on an uncontrolled race.
+- [x] Add tests for the download endpoint confirming it cannot return files outside the approved output root.
+- [x] Add tests for execution targets confirming outputs cannot be written outside assigned roots.
+- [x] Add tests for `@include` and `@load` directive resolution confirming they cannot escape the project or approved data roots.
+- [x] Add tests for upload, backup, and project-file paths confirming they are confined to approved roots.
 
 **Completion Criteria**
 
@@ -182,7 +182,7 @@ Deployment verification is complete for the exact release commit, and `SECURITY_
 | Area | Status | Notes |
 |---|---|---|
 | Authorization and authentication regression tests | Done | Runtime route, proxy-identity, direct-route, session-ownership, CORS, health, cross-resource HTTP, and team-grant regressions are covered |
-| Filesystem boundary regression tests | Not started |  |
+| Filesystem boundary regression tests | Done | Download endpoint, directive (@include/@load), backup, upload, file browsing, and project-name regressions are covered |
 | SQL and DuckDB regression tests | Not started |  |
 | Response and logging redaction tests | Not started |  |
 | Verified case re-runs and full test suites | Not started |  |
@@ -191,7 +191,7 @@ Deployment verification is complete for the exact release commit, and `SECURITY_
 ## Definition Of Done
 
 - [x] Unauthenticated and cross-resource authorization tests cover every sensitive router and direct application route.
-- [ ] Filesystem boundary tests cover traversal, absolute paths, symlinks, missing parents, and project-name variations.
+- [x] Filesystem boundary tests cover traversal, absolute paths, symlinks, missing parents, and project-name variations.
 - [ ] SQL and DuckDB tests cover stacked statements, comments, embedded `LIMIT`, destructive statements, identifier edge cases, file functions, `COPY`, `ATTACH`, extension loading, network access, and paths outside approved roots.
 - [ ] Response and logging tests cover secret, SQL, connection-string, and absolute-path redaction.
 - [ ] The verified cases in `SECURITY_CHECK.md` are re-run against disposable databases and files with pass/fail evidence recorded.
@@ -216,7 +216,7 @@ Deployment verification is complete for the exact release commit, and `SECURITY_
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
 | Route inventory and authorization regression tests | Runtime route, unauthenticated route, direct-route, session-ownership, CORS, health, cross-resource HTTP, and team-grant regressions are covered | Done | [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md), [test_route_authentication.py](../../backend/tests/authorization/test_route_authentication.py), [test_cross_resource_access.py](../../backend/tests/authorization/test_cross_resource_access.py), [test_cors.py](../../backend/tests/test_cors.py), [test_session_authorization.py](../../backend/tests/test_session_authorization.py) |
-| Filesystem boundary regression tests | Traversal, absolute-path, symlink, missing-parent, and project-name tests | Not started | TBD |
+| Filesystem boundary regression tests | Traversal, absolute-path, symlink, missing-parent, project-name, download, backup, upload, and directive-path tests | Done | [test_filesystem_boundaries.py](../../backend/tests/security/test_filesystem_boundaries.py), [test_directive_path_confinement.py](../../tests/configuration/test_directive_path_confinement.py), [test_execute_service_output_paths.py](../../backend/tests/services/test_execute_service_output_paths.py), [test_file_manager.py](../../backend/tests/services/test_file_manager.py), [test_file_path_resolver.py](../../backend/tests/utils/test_file_path_resolver.py) |
 | SQL and DuckDB regression tests | Stacked-statement, destructive, identifier, file-function, extension, and network tests | Not started | TBD |
 | Response and logging redaction tests | Secret, SQL, connection-string, and absolute-path redaction tests | Not started | TBD |
 | Verified case re-run record | Pass/fail evidence for each `SECURITY_CHECK.md` case with the tested commit | Not started | TBD |
