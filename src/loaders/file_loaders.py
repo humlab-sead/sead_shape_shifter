@@ -138,6 +138,6 @@ class CsvLoader(FileLoader):
                 metadata=metadata,
             )
 
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
             return ConnectTestResult(success=False, message="File access failed", connection_time_ms=elapsed_ms, metadata={})

@@ -7,7 +7,6 @@ import os
 import re
 import socket
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 from backend.app.core.config import Settings, get_settings
