@@ -510,7 +510,7 @@ class DataSourceConnectionRequest(BaseModel):
 @router.get("/projects/{name}/data-sources", response_model=dict[str, str | dict[str, Any]])
 @handle_endpoint_errors
 async def get_project_data_sources(
-    name: str,
+    name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
 ) -> dict[str, str | dict[str, Any]]:
     """
@@ -1093,7 +1093,7 @@ async def clear_custom_layout(
 )
 @handle_endpoint_errors
 async def upload_project_file(
-    name: str,
+    name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     file: UploadFile = File(...),
 ) -> ProjectFileInfo:
@@ -1117,7 +1117,7 @@ async def upload_project_file(
 )
 @handle_endpoint_errors
 async def list_project_files(
-    name: str,
+    name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     ext: list[str] | None = Query(default=None, description="Filter by extension(s), e.g. ext=yml&ext=yaml"),
 ) -> list[ProjectFileInfo]:

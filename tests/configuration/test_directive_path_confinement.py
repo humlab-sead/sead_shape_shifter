@@ -15,8 +15,8 @@ import pytest
 from src.configuration.resolve import resolve_directives
 
 
-@pytest.fixture
-def project_root(tmp_path: Path) -> Path:
+@pytest.fixture(name="project_root")
+def _project_root(tmp_path: Path) -> Path:
     """Create a project directory with a project YAML file used as source_path."""
     root = tmp_path / "projects" / "demo"
     root.mkdir(parents=True)
@@ -24,22 +24,22 @@ def project_root(tmp_path: Path) -> Path:
     return root
 
 
-@pytest.fixture
-def shared_root(tmp_path: Path) -> Path:
+@pytest.fixture(name="shared_root")
+def _shared_root(tmp_path: Path) -> Path:
     """Create a second approved root for global shared data."""
     root = tmp_path / "shared"
     root.mkdir()
     return root
 
 
-@pytest.fixture
-def allowed_roots(project_root: Path, shared_root: Path) -> tuple[Path, ...]:
+@pytest.fixture(name="allowed_roots")
+def _allowed_roots(project_root: Path, shared_root: Path) -> tuple[Path, ...]:
     """Return the approved roots passed by the mapper layer."""
     return (project_root, shared_root)
 
 
-@pytest.fixture
-def source_path(project_root: Path) -> str:
+@pytest.fixture(name="source_path")
+def _source_path(project_root: Path) -> str:
     """Return the project YAML path used as the directive source_path."""
     return str(project_root / "shapeshifter.yml")
 

@@ -528,7 +528,7 @@ class QueryExecutionError(DomainException):
         self,
         message: str,
         data_source: str | None = None,
-        query: str | None = None,
+        query: str | None = None,  # pylint: disable=unused-argument
         **kwargs: Any,
     ):
         """
@@ -559,7 +559,7 @@ class QuerySecurityError(DomainException):
     def __init__(
         self,
         message: str,
-        query: str | None = None,
+        query: str | None = None,  # pylint: disable=unused-argument
         violations: list[str] | None = None,
         **kwargs: Any,
     ):

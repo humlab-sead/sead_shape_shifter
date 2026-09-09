@@ -18,8 +18,8 @@ from backend.app.models.data_source import DataSourceConfig
 from backend.app.models.query import QueryResult, QueryValidation
 
 
-@pytest.fixture
-def mock_data_source_service() -> MagicMock:
+@pytest.fixture(name="mock_data_source_service")
+def _mock_data_source_service() -> MagicMock:
     """Create a mocked data source service."""
     service = MagicMock()
     service.load_data_source.return_value = DataSourceConfig(
@@ -38,8 +38,8 @@ def mock_data_source_service() -> MagicMock:
     return service
 
 
-@pytest.fixture
-def mock_query_service() -> MagicMock:
+@pytest.fixture(name="mock_query_service")
+def _mock_query_service() -> MagicMock:
     """Create a mocked query service."""
     service = MagicMock()
     service.execute_query = AsyncMock(
@@ -57,8 +57,8 @@ def mock_query_service() -> MagicMock:
     return service
 
 
-@pytest.fixture
-def authorization_repository(tmp_path):
+@pytest.fixture(name="authorization_repository")
+def _authorization_repository(tmp_path):
     """Create an isolated authorization store with one readable source."""
     repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
     resource = ResourceRecord(uuid4(), ResourceType.SHARED_DATA_SOURCE, "authorized-source")
@@ -68,8 +68,8 @@ def authorization_repository(tmp_path):
     repository.close()
 
 
-@pytest.fixture
-def query_dependencies(
+@pytest.fixture(name="query_dependencies")
+def _query_dependencies(
     mock_data_source_service: MagicMock,
     mock_query_service: MagicMock,
     authorization_repository: SQLiteAuthorizationRepository,
@@ -116,7 +116,11 @@ def _client_for_principal(principal_id: str | None) -> AsyncClient:
     ],
 )
 @pytest.mark.asyncio
-async def test_query_endpoints_require_authentication(query_dependencies, path: str, payload: dict[str, str]) -> None:
+async def test_query_endpoints_require_authentication(
+    query_dependencies,  # pylint: disable=unused-argument
+    path: str,
+    payload: dict[str, str],
+) -> None:
     async with _client_for_principal(None) as client:
         response = await client.post(path, json=payload)
 
@@ -132,7 +136,11 @@ async def test_query_endpoints_require_authentication(query_dependencies, path: 
     ],
 )
 @pytest.mark.asyncio
-async def test_query_endpoints_conceal_unreadable_sources(query_dependencies, path: str, payload: dict[str, str]) -> None:
+async def test_query_endpoints_conceal_unreadable_sources(
+    query_dependencies,  # pylint: disable=unused-argument
+    path: str,
+    payload: dict[str, str],
+) -> None:
     async with _client_for_principal("bob") as client:
         response = await client.post(path, json=payload)
 
@@ -142,7 +150,7 @@ async def test_query_endpoints_conceal_unreadable_sources(query_dependencies, pa
 
 @pytest.mark.asyncio
 async def test_execute_query_uses_authorized_shared_source(
-    query_dependencies, mock_data_source_service: MagicMock, mock_query_service: MagicMock
+    query_dependencies, mock_data_source_service: MagicMock, mock_query_service: MagicMock  # pylint: disable=unused-argument
 ) -> None:
     async with _client_for_principal("alice") as client:
         response = await client.post("/api/v1/data-sources/authorized-source/query/execute", json={"query": "SELECT id FROM table1"})
@@ -153,7 +161,10 @@ async def test_execute_query_uses_authorized_shared_source(
 
 
 @pytest.mark.asyncio
-async def test_execute_query_forwards_limit_and_timeout(query_dependencies, mock_query_service: MagicMock) -> None:
+async def test_execute_query_forwards_limit_and_timeout(
+    query_dependencies,  # pylint: disable=unused-argument
+    mock_query_service: MagicMock,
+) -> None:
     async with _client_for_principal("alice") as client:
         response = await client.post(
             "/api/v1/data-sources/authorized-source/query/execute",
@@ -170,7 +181,10 @@ async def test_execute_query_forwards_limit_and_timeout(query_dependencies, mock
 
 
 @pytest.mark.asyncio
-async def test_validate_query_uses_authorized_shared_source(query_dependencies, mock_query_service: MagicMock) -> None:
+async def test_validate_query_uses_authorized_shared_source(
+    query_dependencies,  # pylint: disable=unused-argument
+    mock_query_service: MagicMock,
+) -> None:
     async with _client_for_principal("alice") as client:
         response = await client.post("/api/v1/data-sources/authorized-source/query/validate", json={"query": "SELECT id FROM table1"})
 
@@ -180,7 +194,9 @@ async def test_validate_query_uses_authorized_shared_source(query_dependencies, 
 
 @pytest.mark.asyncio
 async def test_introspect_query_columns_uses_authorized_shared_source(
-    query_dependencies, mock_data_source_service: MagicMock, mock_query_service: MagicMock
+    query_dependencies,  # pylint: disable=unused-argument
+    mock_data_source_service: MagicMock,
+    mock_query_service: MagicMock,
 ) -> None:
     async with _client_for_principal("alice") as client:
         response = await client.post("/api/v1/data-sources/authorized-source/query/columns", json={"query": "SELECT id FROM table1"})

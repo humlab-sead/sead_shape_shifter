@@ -9,8 +9,8 @@ from backend.app.services.execute_service import ExecuteService
 from backend.app.services.project_service import ProjectService
 
 
-@pytest.fixture
-def execute_service(tmp_path: Path) -> ExecuteService:
+@pytest.fixture(name="execute_service")
+def _execute_service(tmp_path: Path) -> ExecuteService:
     """Create an execution service with an isolated project root."""
     project_service = MagicMock(spec=ProjectService)
     project_service.projects_dir = tmp_path / "projects"
