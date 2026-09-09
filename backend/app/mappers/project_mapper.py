@@ -27,7 +27,8 @@ from typing import Any
 from loguru import logger
 
 from backend.app.core.config import settings
-from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityConfigMapperFactory
+from backend.app.exceptions import ConfigurationError
+from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityConfigMapperFactory, EntityMapperContext
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models import (
     Entity,
@@ -35,12 +36,100 @@ from backend.app.models import (
     ProjectMetadata,
 )
 from backend.app.utils import convert_ruamel_types
-from src.configuration.config import Config
-from src.model import ShapeShiftProject
+from src.configuration import find_unresolved_directives
+from src.model import ShapeShiftProject, TableConfig
+from src.reconciliation.mapping_manager import MappingManager
+from src.reconciliation.mapping_model import MappingCatalog
+from src.reconciliation.mapping_validator import SidecarValidationError, validate_entity_mapping, validate_local_key
+from src.types.fixed_entity_types import (
+    FixedEntityColumnTypeDeclarationError,
+    FixedEntityNormalizationWarning,
+    FixedEntityShapeValidationError,
+    FixedEntityTypeCoercer,
+    FixedEntityTypeConvention,
+    FixedEntityTypeConventionDeclarationError,
+    FixedEntityTypeValidationError,
+    format_fixed_entity_normalization_warning,
+    normalize_fixed_entity_type_conventions,
+)
 
 
 class ProjectMapper:
     """Bidirectional mapper between core and API project models."""
+
+    @staticmethod
+    def _validate_mapping_sidecar(project: ShapeShiftProject, project_path: str | None) -> None:
+        """Validate mapping sidecar entries against resolved entity configuration."""
+        if not project_path:
+            return
+
+        catalog: MappingCatalog = MappingManager().load(project_path)
+
+        for entity_name, entity_mapping in catalog.entities.items():
+            if not project.has_table(entity_name):
+                logger.debug(f"Sidecar entity '{entity_name}' not found in project config; skipping validation.")
+                continue
+
+            entity_config: TableConfig = project.get_table(entity_name)
+
+            try:
+                validate_entity_mapping(entity_mapping, entity_config)
+                validate_local_key(entity_mapping, entity_config)
+            except SidecarValidationError as exc:
+                raise ConfigurationError(message=str(exc), specification="MappingSidecarSpecification") from exc
+
+    @staticmethod
+    def _collect_load_warnings(cfg_dict: dict[str, Any], project_name: str, filename: str | None = None) -> list[str]:
+        """Collect non-fatal fixed-entity normalization warnings for project load responses."""
+        warnings: list[str] = []
+        source_name = filename or project_name
+        conventions: list[FixedEntityTypeConvention] = normalize_fixed_entity_type_conventions(cfg_dict.get("options", {}))
+
+        for entity_name, entity_dict in cfg_dict.get("entities", {}).items():
+            if not isinstance(entity_dict, dict) or entity_dict.get("type") != "fixed":
+                continue
+
+            columns = entity_dict.get("columns")
+            if not isinstance(columns, list) or not columns:
+                continue
+
+            try:
+                _coerced_values, normalization_warnings = FixedEntityTypeCoercer.coerce_fixed_entity_values_with_warnings(
+                    entity_dict,
+                    columns,
+                    entity_name,
+                    conventions,
+                )
+            except (
+                FixedEntityColumnTypeDeclarationError,
+                FixedEntityTypeConventionDeclarationError,
+                FixedEntityShapeValidationError,
+                FixedEntityTypeValidationError,
+            ):
+                # Invalid values belong to validation/persistence paths; load warnings only report successful normalizations.
+                continue
+
+            for warning in normalization_warnings:
+                warnings.append(format_fixed_entity_normalization_warning(warning))
+                ProjectMapper._log_load_warning(project_name, source_name, warning)
+
+        return warnings
+
+    @staticmethod
+    def _log_load_warning(project_name: str, source_name: str, warning: FixedEntityNormalizationWarning) -> None:
+        """Emit structured log details for a load-time fixed-entity normalization."""
+        logger.warning(
+            "Fixed entity normalization on load: project='{}' source='{}' entity='{}' row={} "
+            "column='{}' raw_value={!r} normalized_value={!r} target_type='{}'",
+            project_name,
+            source_name,
+            warning.entity_name,
+            warning.row_index + 1,
+            warning.column_name,
+            warning.raw_value,
+            warning.normalized_value,
+            warning.expected_type,
+        )
 
     @staticmethod
     def to_api_config(cfg_dict: dict[str, Any], name: str, filename: str | None = None) -> Project:
@@ -66,6 +155,7 @@ class ProjectMapper:
             type=metadata_dict.get("type", "shapeshifter-project"),
             description=metadata_dict.get("description", ""),
             version=metadata_dict.get("version", "1.0.0"),
+            data_provider_code=metadata_dict.get("data_provider_code"),
             default_entity=metadata_dict.get("default_entity"),
             target_model=metadata_dict.get("target_model"),
             file_path=filename,
@@ -84,9 +174,10 @@ class ProjectMapper:
         # File-based entities: decompose absolute paths to (filename, location)
         # Other entities: no-op transformation
         mapper_factory = EntityConfigMapperFactory(settings)
+        mapper_context = EntityMapperContext(project_name=name, project_options=cfg_dict.get("options", {}))
         for entity_dict in entities.values():
             mapper: EntityConfigMapper = mapper_factory.get_mapper_for_entity(entity_dict)
-            entity_dict.update(mapper.to_api(entity_dict, name))
+            entity_dict.update(mapper.to_api(entity_dict, mapper_context))
 
         # Map options (preserve as-is)
         options = cfg_dict.get("options", {})
@@ -94,11 +185,14 @@ class ProjectMapper:
         # Map task_list (preserve as-is)
         task_list = cfg_dict.get("task_list")
 
+        load_warnings = ProjectMapper._collect_load_warnings(cfg_dict, name, filename)
+
         return Project(
             metadata=metadata,
             entities=entities,
             options=options,
             task_list=task_list,
+            load_warnings=load_warnings,
         )
 
     @staticmethod
@@ -120,6 +214,7 @@ class ProjectMapper:
             "type": api_config.metadata.type or "shapeshifter-project",
             "description": api_config.metadata.description,
             "version": api_config.metadata.version,
+            "data_provider_code": api_config.metadata.data_provider_code,
             "default_entity": api_config.metadata.default_entity,
         }
         if api_config.metadata.target_model is not None:
@@ -155,7 +250,7 @@ class ProjectMapper:
                 output_names,
             )
 
-        unresolved: list[str] = Config.find_unresolved_directives(cfg_dict)
+        unresolved: list[str] = find_unresolved_directives(cfg_dict)
         if unresolved:
             extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
             logger.debug(f"@value references in config (will be resolved on load): {', '.join(unresolved[:5])}{extra}")
@@ -166,7 +261,7 @@ class ProjectMapper:
     def to_core(api_config: Project) -> ShapeShiftProject:
         """Convert API Project to core ShapeShiftProject.
 
-        Conditionally resolves @include: and @value: directives only if needed.
+        Conditionally resolves @include:, @load: and @value: directives only if needed.
         Resolves file paths based on location field at the API → Core boundary using strategy pattern.
         """
         cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_config=api_config)
@@ -174,13 +269,18 @@ class ProjectMapper:
         # Apply type-specific transformations (API → Core) using strategy pattern
         # File-based entities: resolve (filename, location) to absolute paths
         # Other entities: no-op transformation
-        project_name = api_config.metadata.name if api_config.metadata else api_config.filename
+        project_name: str = api_config.metadata.name if api_config.metadata else (api_config.filename or "")
         mapper_factory = EntityConfigMapperFactory(settings)
+        mapper_context = EntityMapperContext(project_name=project_name, project_options=cfg_dict.get("options", {}))
 
         entities = cfg_dict.get("entities", {})
-        for entity_dict in entities.values():
-            mapper = mapper_factory.get_mapper_for_entity(entity_dict)
-            entity_dict.update(mapper.to_core(entity_dict, project_name))  # type: ignore
+        for entity_name, entity_dict in entities.items():
+            mapper: EntityConfigMapper = mapper_factory.get_mapper_for_entity(entity_dict)
+            entity_input = dict(entity_dict)
+            entity_input.setdefault("name", entity_name)
+            transformed = mapper.to_core(entity_input, mapper_context)
+            transformed.pop("name", None)
+            entity_dict.update(transformed)  # type: ignore[arg-type]
 
         project = ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
 
@@ -192,6 +292,8 @@ class ProjectMapper:
                 env_prefix=settings.env_prefix,
                 env_filename=settings.env_file,
             )
+
+        ProjectMapper._validate_mapping_sidecar(project, api_config.filename)
 
         return project
 

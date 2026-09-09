@@ -1,6 +1,7 @@
 """Tests for ProjectMapper."""
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -439,6 +440,31 @@ class TestRoundTripConversion:
         assert restored_config.entities["sample"]["keys"] == original_config.entities["sample"]["keys"]
         assert restored_config.options == original_config.options
 
+    def test_data_provider_code_and_ingester_defaults_round_trip(self):
+        """Project provider identity and stable ingester defaults survive mapping."""
+        original_config = Project(
+            metadata=ProjectMetadata(name="test", entity_count=0, data_provider_code="SEAD"),
+            entities={},
+            options={
+                "ingesters": {
+                    "sead_change_request": {
+                        "defaults": {
+                            "datatype": "bugs",
+                            "deploy_strategy": "copy_csv",
+                            "author": "SEAD Lab",
+                        }
+                    }
+                }
+            },
+        )
+
+        core_dict = ProjectMapper.to_core_dict(original_config)
+        restored_config = ProjectMapper.to_api_config(core_dict, "test")
+
+        assert restored_config.metadata is not None
+        assert restored_config.metadata.data_provider_code == "SEAD"
+        assert restored_config.options == original_config.options
+
 
 class TestEdgeCases:
     """Tests for edge cases and error conditions."""
@@ -541,6 +567,80 @@ class TestEdgeCases:
         # Core -> API
         restored_config = ProjectMapper.to_api_config(core_dict, "test")
         assert restored_config.entities["contact_type"]["values"] == original_config.entities["contact_type"]["values"]
+
+    def test_fixed_entity_round_trip_preserves_column_types(self):
+        """Fixed entity column_types should survive API/Core round-trip unchanged."""
+        original_config = Project(
+            metadata=ProjectMetadata(name="test", entity_count=1),
+            entities={
+                "method": {
+                    "type": "fixed",
+                    "keys": ["label"],
+                    "public_id": "method_id",
+                    "columns": ["system_id", "method_id", "label", "created_at"],
+                    "column_types": {
+                        "system_id": "int",
+                        "method_id": "int",
+                        "label": "string",
+                        "created_at": "date",
+                    },
+                    "values": [[1, 53, "Sampling", "2026-05-19"]],
+                }
+            },
+            options={},
+        )
+
+        core_dict = ProjectMapper.to_core_dict(original_config)
+        assert core_dict["entities"]["method"]["column_types"] == {
+            "system_id": "int",
+            "method_id": "int",
+            "label": "string",
+            "created_at": "date",
+        }
+
+        restored_config = ProjectMapper.to_api_config(core_dict, "test")
+        assert restored_config.entities["method"]["column_types"] == original_config.entities["method"]["column_types"]
+
+    def test_to_api_config_exposes_fixed_entity_load_warnings(self):
+        """Project load should surface successful fixed-entity normalizations as warnings."""
+        core_dict = {
+            "metadata": {"name": "test", "type": "shapeshifter-project"},
+            "entities": {
+                "method": {
+                    "type": "fixed",
+                    "columns": ["system_id", "method_id", "name"],
+                    "values": [[1, "53", "Sampling"]],
+                }
+            },
+            "options": {},
+        }
+
+        result = ProjectMapper.to_api_config(core_dict, "test")
+
+        assert result.entities["method"]["values"] == [[1, "53", "Sampling"]]
+        assert result.load_warnings == ["Entity 'method', row 1, column 'method_id': normalized '53' to 53 (int)"]
+
+    def test_to_api_config_exposes_load_warnings_for_project_conventions(self):
+        """Project load warnings should include successful convention-based normalizations."""
+        core_dict = {
+            "metadata": {"name": "test", "type": "shapeshifter-project"},
+            "entities": {
+                "abundance_source": {
+                    "type": "fixed",
+                    "columns": ["system_id", "label", "abundance"],
+                    "values": [[1, "Oak", "12"]],
+                }
+            },
+            "options": {
+                "fixed_entity_types": {
+                    "conventions": [{"pattern": "abundance", "type": "int"}],
+                }
+            },
+        }
+
+        result = ProjectMapper.to_api_config(core_dict, "test")
+
+        assert result.load_warnings == ["Entity 'abundance_source', row 1, column 'abundance': normalized '12' to 12 (int)"]
 
 
 class TestProjectMapperIntegration:
@@ -646,13 +746,16 @@ class TestProjectMapperIntegration:
 
     def test_arbodat_project_entity_details(self):
         """Test detailed entity conversion for complex arbodat entities."""
-        project_path: Path = Path(__file__).parent.parent / "test_data" / "projects" / "arbodat" / "shapeshifter.yml"
-        original_shape_config = ShapeShiftProject.from_file(str(project_path))
-        original_cfg_dict = original_shape_config.cfg
+        project_path: Path = Path("tests/test_data/projects/arbodat/shapeshifter.yml")
+
+        assert project_path.exists(), f"Test project file not found: {project_path}"
+
+        original_shape_config: ShapeShiftProject = ShapeShiftProject.from_file(str(project_path))
+        original_cfg_dict: dict[str, dict[str, Any]] = original_shape_config.cfg
 
         # Convert to API and back
         api_project: Project = ProjectMapper.to_api_config(original_cfg_dict, "arbodat")
-        restored_cfg_dict = ProjectMapper.to_core_dict(api_project)
+        restored_cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_project)
 
         # Test specific complex entities
 

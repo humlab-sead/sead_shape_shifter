@@ -1,0 +1,13 @@
+Host humlabsead
+User my_name
+HostName humlabsead
+ProxyJump my_name@berra
+
+
+Host bellman-ollama-proxy
+    HostName berra
+    User my_name
+    LocalForward nnnn bellman:nnnn
+    ExitOnForwardFailure yes
+    ServerAliveInterval 30
+    ServerAliveCountMax 3

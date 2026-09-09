@@ -4,7 +4,7 @@
 
 export type Cardinality = 'one_to_one' | 'many_to_one' | 'one_to_many' | 'many_to_many'
 export type JoinType = 'left' | 'inner' | 'outer' | 'right' | 'cross'
-export type EntityType = 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl' | 'merged'
+export type EntityType = 'entity' | 'sql' | 'duckdb' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl' | 'merged'
 export type FilterStage = 'extract' | 'after_link' | 'after_unnest'
 
 export interface EntityFileOptions {
@@ -78,6 +78,7 @@ export interface Entity {
   surrogate_id?: string | null
   keys?: string[]
   columns?: string[]
+  column_types?: Record<string, string> | null
   extra_columns?: Record<string, any>
   foreign_keys?: ForeignKeyConfig[]
   unnest?: UnnestConfig | null

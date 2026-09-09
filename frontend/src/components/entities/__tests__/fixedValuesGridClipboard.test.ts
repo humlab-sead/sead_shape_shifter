@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
-import { applyClipboardMatrix, buildGridRowData, parseClipboardTable } from '../fixedValuesGridClipboard'
+import {
+  applyClipboardMatrix,
+  buildGridRowData,
+  coerceGridRows,
+  coerceGridValue,
+  inferColumnType,
+  normalizeGridColumnTypes,
+  parseClipboardTable,
+  parseStrictFloat,
+  parseStrictInteger,
+  summarizeValidationIssues,
+} from '../fixedValuesGridClipboard'
 
 describe('fixedValuesGridClipboard', () => {
   it('removes only trailing empty clipboard rows', () => {
@@ -28,15 +39,139 @@ describe('fixedValuesGridClipboard', () => {
       },
     })
 
-    expect(updated).toEqual([
+    expect(updated.rows).toEqual([
       [1, 'oak', null],
       [3, 'pine', 'count'],
     ])
+    expect(updated.errors).toEqual([])
   })
 
   it('builds grid row ids from stable system_id values', () => {
     expect(buildGridRowData([[10, 'oak']], 0)).toEqual([
       { id: 10, col_0: 10, col_1: 'oak' },
     ])
+  })
+
+  it('infers _id columns as numeric and other columns as string', () => {
+    expect(inferColumnType('system_id')).toBe('number')
+    expect(inferColumnType('method_group_id')).toBe('number')
+    expect(inferColumnType('label')).toBe('string')
+  })
+
+  it('uses explicit fixed column types ahead of naming inference', () => {
+    expect(inferColumnType('rank', { rank: 'int' })).toBe('number')
+    expect(inferColumnType('measurement', { measurement: 'float' })).toBe('float')
+    expect(inferColumnType('label', { label: 'string' })).toBe('string')
+    expect(inferColumnType('created_at', { created_at: 'date' })).toBe('preserve')
+  })
+
+  it('parses strict integers without truncation', () => {
+    expect(parseStrictInteger('53')).toBe(53)
+    expect(parseStrictInteger('-7')).toBe(-7)
+    expect(parseStrictInteger('')).toBeNull()
+    expect(parseStrictInteger('53abc')).toBeNull()
+    expect(parseStrictInteger('53.9')).toBeNull()
+  })
+
+  it('parses strict floats without truncation', () => {
+    expect(parseStrictFloat('53')).toBe(53)
+    expect(parseStrictFloat('-7.25')).toBe(-7.25)
+    expect(parseStrictFloat('.5')).toBe(0.5)
+    expect(parseStrictFloat('1.2e3')).toBe(1200)
+    expect(parseStrictFloat('')).toBeNull()
+    expect(parseStrictFloat('53.1abc')).toBeNull()
+  })
+
+  it('rejects invalid _id paste values and preserves the previous cell value', () => {
+    const updated = applyClipboardMatrix({
+      rows: [[1, 53, 'alpha']],
+      columns: ['system_id', 'method_group_id', 'label'],
+      startRowIndex: 0,
+      startColIndex: 1,
+      matrix: [['53abc']],
+      createEmptyRow: () => [2, null, null],
+    })
+
+    expect(updated.rows).toEqual([[1, 53, 'alpha']])
+    expect(updated.errors).toEqual([
+      'Row 1, column method_group_id: Expected integer ID',
+    ])
+  })
+
+  it('coerces valid _id values and preserves strings elsewhere', () => {
+    expect(coerceGridValue('method_group_id', '53', null)).toEqual({
+      value: 53,
+      error: null,
+    })
+    expect(coerceGridValue('label', 'Method A', null)).toEqual({
+      value: 'Method A',
+      error: null,
+    })
+  })
+
+  it('coerces declared int columns even when the name does not end with _id', () => {
+    expect(coerceGridValue('rank', '7', null, { rank: 'int' })).toEqual({
+      value: 7,
+      error: null,
+    })
+    expect(coerceGridValue('rank', '7x', 3, { rank: 'int' })).toEqual({
+      value: 3,
+      error: 'Expected integer value',
+    })
+  })
+
+  it('coerces declared float columns for non-_id columns', () => {
+    expect(coerceGridValue('measurement', '7.25', null, { measurement: 'float' })).toEqual({
+      value: 7.25,
+      error: null,
+    })
+    expect(coerceGridValue('measurement', '7.2x', 3.5, { measurement: 'float' })).toEqual({
+      value: 3.5,
+      error: 'Expected float value',
+    })
+  })
+
+  it('preserves unsupported-yet declared types without coercing loaded scalar values', () => {
+    expect(coerceGridValue('created_at', '2026-05-19', null, { created_at: 'date' })).toEqual({
+      value: '2026-05-19',
+      error: null,
+    })
+    expect(coerceGridRows(['system_id', 'is_active'], [[1, true]], { is_active: 'bool' })).toEqual({
+      rows: [[1, true]],
+      issues: [],
+      errors: [],
+    })
+  })
+
+  it('coerces loaded rows so save can persist normalized integer ids', () => {
+    expect(coerceGridRows(['system_id', 'method_group_id', 'label'], [[1, '53', 'Method A']])).toEqual({
+      rows: [[1, 53, 'Method A']],
+      issues: [],
+      errors: [],
+    })
+  })
+
+  it('collects row errors when loaded values contain invalid integer ids', () => {
+    expect(coerceGridRows(['system_id', 'method_group_id', 'label'], [[1, '53abc', 'Method A']])).toEqual({
+      rows: [[1, '53abc', 'Method A']],
+      issues: [{ rowIndex: 0, columnName: 'method_group_id', message: 'Expected integer ID' }],
+      errors: ['Row 1, column method_group_id: Expected integer ID'],
+    })
+  })
+
+  it('summarizes validation issues per column', () => {
+    expect(summarizeValidationIssues([
+      { rowIndex: 0, columnName: 'rank', message: 'Expected integer value' },
+      { rowIndex: 2, columnName: 'rank', message: 'Expected integer value' },
+    ])).toEqual([
+      'Column rank: 2 invalid values (rows 1, 3)',
+    ])
+  })
+
+  it('normalizes only supported fixed column types', () => {
+    expect(normalizeGridColumnTypes({ rank: 'INT', label: 'string', skip: 'json' })).toEqual({
+      rank: 'int',
+      label: 'string',
+    })
   })
 })

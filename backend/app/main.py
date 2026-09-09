@@ -15,7 +15,7 @@ from backend.app.api.v1.api import api_router
 from backend.app.core.config import settings
 from backend.app.core.logging_config import configure_logging
 from backend.app.core.state_manager import ApplicationState, init_app_state
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
 from backend.app.middleware.correlation import CorrelationMiddleware
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 
@@ -50,7 +50,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
     logger.info("Initializing JVM for MS Access database support...")
     init_jvm_for_ucanaccess()
 
-    Ingesters.discover(search_paths=settings.INGESTER_PATHS, enabled_only=settings.ENABLED_INGESTERS)
+    ingester_registry: IngesterRegistry = get_ingester_registry()
+    ingester_registry.discover(search_paths=settings.INGESTER_PATHS, enabled_only=settings.ENABLED_INGESTERS)
 
     logger.info("Application ready - configurations loaded on-demand via sessions")
 

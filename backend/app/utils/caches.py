@@ -1,6 +1,7 @@
 import hashlib
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 import pandas as pd
 from loguru import logger
@@ -11,6 +12,7 @@ from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
 from src.model import ShapeShiftProject, TableConfig
+from src.table_store import TableStore
 
 
 @dataclass
@@ -40,7 +42,7 @@ class ShapeShiftCache:
     def __init__(self, ttl_seconds: int = 300):
         """Initialize cache with TTL in seconds (default 5 minutes)."""
         # Store individual DataFrames: key -> DataFrame
-        self._dataframes: dict[str, pd.DataFrame] = {}
+        self._dataframes: TableStore = TableStore()
         # Store metadata: key -> CacheMetadata
         self._metadata: dict[str, CacheMetadata] = {}
         self._ttl: int = ttl_seconds
@@ -145,7 +147,7 @@ class ShapeShiftCache:
     def set_table_store(
         self,
         project_name: str,
-        table_store: dict[str, pd.DataFrame],
+        table_store: TableStore,
         target_entity: str,
         project_version: int = 0,
         entity_configs: dict[str, TableConfig] | None = None,
@@ -176,7 +178,7 @@ class ShapeShiftCache:
         entity_config: TableConfig,
         project_version: int | None = None,
         shapeshift_config: ShapeShiftProject | None = None,
-    ) -> dict[str, pd.DataFrame]:
+    ) -> TableStore:
         """Gather all cached dependencies for an entity with hash validation.
 
         Args:
@@ -188,7 +190,7 @@ class ShapeShiftCache:
         Returns:
             Dict of cached entity DataFrames
         """
-        cached_deps: dict[str, pd.DataFrame] = {}
+        cached_deps: TableStore = TableStore()
         for dep_name in entity_config.depends_on:
             # Get dependency config for hash validation if available
             dep_config: TableConfig | None = shapeshift_config.get_table(dep_name) if shapeshift_config else None
@@ -205,14 +207,14 @@ class ShapeShiftCache:
     class CacheCheckResult:
         found: bool
         data: pd.DataFrame | None
-        dependencies: dict[str, pd.DataFrame]
+        dependencies: TableStore
 
     def fetch_cached_entity_data(
         self, project_name: str, entity_name: str, project_version: int, entity_config: TableConfig, shapeshift_config: ShapeShiftProject
     ) -> CacheCheckResult:
         data: pd.DataFrame | None = self.get_dataframe(project_name, entity_name, project_version, entity_config)
         found: bool = data is not None
-        dependencies: dict[str, pd.DataFrame] = self.get_dependencies(project_name, entity_config, project_version, shapeshift_config)
+        dependencies: TableStore = self.get_dependencies(project_name, entity_config, project_version, shapeshift_config)
         return self.CacheCheckResult(found=found, data=data, dependencies=dependencies)
 
     def get_available_entities(self, project_name: str) -> set[str]:
@@ -278,6 +280,27 @@ class ShapeShiftProjectCache:
         self.project_service: ProjectService = project_service
         self._cache: dict[str, ShapeShiftProject] = {}
         self._versions: dict[str, int] = {}
+        self._file_paths: dict[str, str] = {}  # file path at cache time, for mtime checks
+        self._file_mtimes: dict[str, float] = {}  # file mtime at cache time, for external-change detection
+
+    def _current_file_mtime(self, project_name: str) -> float | None:
+        """Return the on-disk mtime of a cached project's YAML file, or None if unavailable."""
+        file_path = self._file_paths.get(project_name)
+        if not file_path:
+            return None
+        try:
+            return Path(file_path).stat().st_mtime
+        except OSError:
+            return None
+
+    def _store_file_meta(self, project_name: str, api_project: Project) -> None:
+        """Record file path and mtime from a freshly loaded API project."""
+        if api_project.metadata and api_project.metadata.file_path:
+            self._file_paths[project_name] = api_project.metadata.file_path
+            try:
+                self._file_mtimes[project_name] = float(api_project.metadata.modified_at or 0.0)
+            except (TypeError, ValueError):
+                self._file_mtimes[project_name] = 0.0
 
     async def get_project(self, project_name: str) -> ShapeShiftProject:
         """
@@ -299,12 +322,36 @@ class ShapeShiftProjectCache:
 
             # Check if cached version is still valid
             if project_name in self._cache and cached_version == current_version:
-                logger.trace(f"ShapeShiftProject cache hit for '{project_name}' (version {current_version})")
-                return self._cache[project_name]
+                # Version matches — also check file mtime to detect external YAML edits.
+                # Without this, a project loaded via the disk-fallback path (version=0) will
+                # never be reloaded even if the file changes, because version stays 0 forever.
+                disk_mtime: float | None = self._current_file_mtime(project_name)
+                cached_mtime: float | None = self._file_mtimes.get(project_name)
 
-            # Version mismatch or no cache - reload
-            logger.trace(
-                f"ShapeShiftProject cache miss/invalid for '{project_name}' (cached: {cached_version}, current: {current_version})"
+                if disk_mtime is not None and cached_mtime is not None and disk_mtime > cached_mtime:
+                    logger.info(
+                        "ShapeShiftProjectCache: '{}' file changed on disk "
+                        "(version={} unchanged, disk_mtime={:.3f} > cached_mtime={:.3f}) — reloading",
+                        project_name,
+                        current_version,
+                        disk_mtime,
+                        cached_mtime,
+                    )
+                    # Fall through to reload below
+                else:
+                    logger.trace(
+                        "ShapeShiftProjectCache: cache HIT '{}' (version={}, mtime_changed=False)",
+                        project_name,
+                        current_version,
+                    )
+                    return self._cache[project_name]
+
+            # Version mismatch, no cache, or stale mtime — reload
+            logger.info(
+                "ShapeShiftProjectCache: cache MISS '{}' (cached_version={}, current_version={})",
+                project_name,
+                cached_version,
+                current_version,
             )
             api_project: Project | None = get_app_state().get_project(project_name)
 
@@ -313,7 +360,12 @@ class ShapeShiftProjectCache:
                 shapeshift: ShapeShiftProject = ProjectMapper.to_core(api_project)
                 self._cache[project_name] = shapeshift
                 self._versions[project_name] = current_version
-                logger.trace(f"Loaded ShapeShiftProject from ApplicationState for '{project_name}'")
+                self._store_file_meta(project_name, api_project)
+                logger.info(
+                    "ShapeShiftProjectCache: loaded '{}' from ApplicationState (version={})",
+                    project_name,
+                    current_version,
+                )
                 return shapeshift
 
         except RuntimeError:
@@ -321,13 +373,19 @@ class ShapeShiftProjectCache:
             pass
 
         # Fallback: Load from disk
-        logger.trace(f"Loading ShapeShiftProject from disk for '{project_name}'")
+        logger.info("ShapeShiftProjectCache: loading '{}' from disk (fallback/no ApplicationState)", project_name)
         api_project = self.project_service.load_project(project_name)
         shapeshift: ShapeShiftProject = ProjectMapper.to_core(api_project)
 
         # Cache it (version 0 since not in active editing)
         self._cache[project_name] = shapeshift
         self._versions[project_name] = 0
+        self._store_file_meta(project_name, api_project)
+        logger.info(
+            "ShapeShiftProjectCache: cached '{}' from disk (version=0, mtime={:.3f})",
+            project_name,
+            self._file_mtimes.get(project_name, 0.0),
+        )
 
         return shapeshift
 
@@ -342,6 +400,8 @@ class ShapeShiftProjectCache:
         had_version = project_name in self._versions
         self._cache.pop(project_name, None)
         self._versions.pop(project_name, None)
+        self._file_paths.pop(project_name, None)
+        self._file_mtimes.pop(project_name, None)
         logger.info(
             "[{}] ShapeShiftProjectCache.invalidate_project: '{}' had_cache={} had_version={}",
             corr,

@@ -33,6 +33,30 @@ export const useEntityStore = defineStore('entity', () => {
     })
   }
 
+  function syncSelectedEntityFromList() {
+    const selectedName = selectedEntity.value?.name
+    if (!selectedName) {
+      return
+    }
+
+    const refreshedEntity = entities.value.find((entity: EntityResponse) => entity.name === selectedName)
+    selectedEntity.value = refreshedEntity ?? null
+  }
+
+  function syncCachedEntity(entity: EntityResponse) {
+    const index = entities.value.findIndex((cachedEntity: EntityResponse) => cachedEntity.name === entity.name)
+
+    if (index === -1) {
+      entities.value.push(entity)
+    } else {
+      entities.value[index] = entity
+    }
+
+    if (selectedEntity.value?.name === entity.name) {
+      selectedEntity.value = entity
+    }
+  }
+
   // Getters
   const entitiesByType = computed(() => {
     const grouped: Record<string, EntityResponse[]> = {}
@@ -82,6 +106,7 @@ export const useEntityStore = defineStore('entity', () => {
     currentProjectName.value = projectName
     try {
       entities.value = await api.entities.list(projectName)
+      syncSelectedEntityFromList()
       logState('fetchEntities:after', { projectName })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch entities'
@@ -138,7 +163,7 @@ export const useEntityStore = defineStore('entity', () => {
     error.value = null
     conflictInfo.value = null
     try {
-      const ifMatch = selectedEntity.value?.etag
+      const ifMatch = entityByName.value(entityName)?.etag ?? selectedEntity.value?.etag
       const entity = await api.entities.update(projectName, entityName, data, ifMatch)
 
       // Update entity in list
@@ -245,6 +270,7 @@ export const useEntityStore = defineStore('entity', () => {
     rootEntities,
     childrenOf,
     hasForeignKeys,
+    syncCachedEntity,
     // Actions
     fetchEntities,
     selectEntity,

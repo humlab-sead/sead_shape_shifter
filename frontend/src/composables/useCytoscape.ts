@@ -141,7 +141,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
   
   // Track single-click timeout for preventing conflicts with double-click
   let singleClickTimeout: number | null = null
-  const CLICK_DELAY = 250 // milliseconds
+  const CLICK_DELAY = 375 // milliseconds
 
   function getStyleOptions() {
     return {

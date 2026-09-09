@@ -11,9 +11,16 @@ from loguru import logger
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.fixed_schema import derive_fixed_schema
+from src.types.fixed_entity_types import normalize_fixed_entity_column_types, resolve_fixed_entity_column_type
 
 
-class EntityValuesResponse:
+def _normalized_isnan_values(df: pd.DataFrame) -> list[list[object]]:
+    """Convert pandas extension dtypes / nullable values to Python objects
+    Replace pd.NA, np.nan, pd.NaT with None for JSON serialization and consistent API behavior."""
+    return df.astype(object).where(pd.notna(df), None).values.tolist()
+
+
+class EntityValuesData:
     """Response containing entity values data."""
 
     def __init__(
@@ -124,14 +131,53 @@ class EntityValuesService:
 
         # Convert DataFrame to list[list] format
         columns: list[str] = df.columns.tolist()
-        values: list[list[Any]] = df.values.tolist()
+        values: list[list[Any]] = _normalized_isnan_values(df)
 
         # Generate etag
         etag: str = self._generate_etag(file_path)
 
         return columns, values, format_type, etag
 
-    def _write_values_file(self, file_path: Path, columns: list[str], values: list[list[Any]], format_type: str | None) -> str:
+    @staticmethod
+    def _build_dataframe_for_storage(
+        columns: list[str],
+        values: list[list[Any]],
+        column_types: dict[str, str] | None = None,
+    ) -> pd.DataFrame:
+        """Build a dataframe with stable dtypes for fixed-entity sidecar storage."""
+        column_index = pd.Index(columns)
+
+        if not column_types:
+            return pd.DataFrame(values, columns=pd.Index(columns))
+
+        normalized_column_types = normalize_fixed_entity_column_types("<external_values>", columns, column_types)
+        series_map: dict[str, pd.Series] = {}
+
+        for idx, column in enumerate(columns):
+            column_values = [row[idx] for row in values]
+            target_type: str = resolve_fixed_entity_column_type(column, normalized_column_types)
+
+            if target_type == "int":
+                series_map[column] = pd.Series(pd.array(column_values, dtype="Int64"), name=column)
+            elif target_type == "float":
+                series_map[column] = pd.Series(pd.array(column_values, dtype="Float64"), name=column)
+            elif target_type == "bool":
+                series_map[column] = pd.Series(pd.array(column_values, dtype="boolean"), name=column)
+            elif target_type in {"date", "string"}:
+                series_map[column] = pd.Series(pd.array(column_values, dtype="string"), name=column)
+            else:
+                series_map[column] = pd.Series(column_values, name=column)
+
+        return pd.DataFrame(series_map, columns=column_index)
+
+    def _write_values_file(
+        self,
+        file_path: Path,
+        columns: list[str],
+        values: list[list[Any]],
+        format_type: str | None,
+        column_types: dict[str, str] | None = None,
+    ) -> str:
         """
         Write values to parquet or CSV file.
 
@@ -155,8 +201,8 @@ class EntityValuesService:
         # Validate shape before handing off to pandas for clearer API errors.
         self._validate_values_shape(columns=columns, values=values)
 
-        # Convert list[list] to DataFrame
-        df = pd.DataFrame(values, columns=columns)
+        # Convert list[list] to DataFrame using stable dtypes when column types are known.
+        df = self._build_dataframe_for_storage(columns, values, column_types)
 
         # Write based on format
         if format_type == "parquet":
@@ -195,7 +241,7 @@ class EntityValuesService:
                 f"Fixed entity '{entity_name}' must update values using authoritative columns {expected_columns}; " f"received {columns}"
             )
 
-    def get_values(self, project_name: str, entity_name: str) -> EntityValuesResponse:
+    def get_values(self, project_name: str, entity_name: str) -> EntityValuesData:
         """
         Get external values for entity with @load: directive.
 
@@ -226,7 +272,7 @@ class EntityValuesService:
         # Read file
         columns, values, format_type, etag = self._read_values_file(file_path)
 
-        return EntityValuesResponse(columns=columns, values=values, format=format_type, row_count=len(values), etag=etag)
+        return EntityValuesData(columns=columns, values=values, format=format_type, row_count=len(values), etag=etag)
 
     def update_values(
         self,
@@ -236,7 +282,8 @@ class EntityValuesService:
         values: list[list[Any]],
         format_type: str | None = None,
         if_match: str | None = None,
-    ) -> EntityValuesResponse:
+        column_types: dict[str, str] | None = None,
+    ) -> EntityValuesData:
         """
         Update external values for entity with @load: directive.
 
@@ -277,12 +324,12 @@ class EntityValuesService:
         logger.info(f"Updating values at {file_path}")
 
         # Write file
-        actual_format: str = self._write_values_file(file_path, columns, values, format_type)
+        actual_format: str = self._write_values_file(file_path, columns, values, format_type, column_types)
 
         # Generate new etag after write
         new_etag: str = self._generate_etag(file_path)
 
-        return EntityValuesResponse(columns=columns, values=values, format=actual_format, row_count=len(values), etag=new_etag)
+        return EntityValuesData(columns=columns, values=values, format=actual_format, row_count=len(values), etag=new_etag)
 
 
 def get_entity_values_service() -> EntityValuesService:

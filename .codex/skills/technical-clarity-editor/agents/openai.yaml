@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clarify Docs"
+  short_description: "Lightly revise technical documents to improve clarity, readability, and flow"
+  default_prompt: "Use $technical-clarity-editor to revise this document for clarity while preserving terminology, tone, structure, technical level, and implementation intent."

@@ -1,6 +1,0 @@
-driver: postgresql
-options:
-  host: ${SEAD_HOST}
-  port: ${SEAD_PORT}
-  dbname: ${SEAD_DBNAME}
-  username: ${SEAD_USER}

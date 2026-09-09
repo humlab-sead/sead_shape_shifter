@@ -55,6 +55,13 @@ export interface AutoReconcileResult {
   candidates: Record<string, ReconciliationCandidate[]>
 }
 
+export interface ExportToMappingResult {
+  exported: number
+  skipped_manual: number
+  entity: string
+  field: string
+}
+
 export interface ReconciliationPreviewRow {
   [key: string]: any // Dynamic keys and columns
   target_id?: number | null

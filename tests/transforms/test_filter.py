@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from src.model import TableConfig
+from src.table_store import TableStore
 from src.transforms.filter import VALID_FILTER_STAGES, ExistsInFilter, Filters, QueryFilter, apply_filters
 
 
@@ -317,7 +318,7 @@ class TestApplyFilters:
         entities_cfg = {"test": {"filters": [{"type": "query", "query": "a > 2"}]}}
         cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
 
-        result = apply_filters("test", df, cfg, {})
+        result = apply_filters("test", df, cfg, TableStore())
 
         expected = pd.DataFrame({"a": [3, 4, 5], "b": [30, 40, 50]}, index=[2, 3, 4])
         pd.testing.assert_frame_equal(result, expected)
@@ -328,7 +329,7 @@ class TestApplyFilters:
         entities_cfg = {"test": {"filters": [{"type": "query", "query": "a > 1"}, {"type": "query", "query": "b < 50"}]}}
         cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
 
-        result = apply_filters("test", df, cfg, {})
+        result = apply_filters("test", df, cfg, TableStore())
 
         expected = pd.DataFrame({"a": [2, 3, 4], "b": [20, 30, 40]}, index=[1, 2, 3])
         pd.testing.assert_frame_equal(result, expected)
@@ -339,7 +340,7 @@ class TestApplyFilters:
         entities_cfg = {"test": {"filters": []}}
         cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
 
-        result = apply_filters("test", df, cfg, {})
+        result = apply_filters("test", df, cfg, TableStore())
 
         pd.testing.assert_frame_equal(result, df)
 
@@ -349,7 +350,7 @@ class TestApplyFilters:
         entities_cfg = {"test": {"filters": [{"query": "a > 1"}]}}  # Missing 'type'
         cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
 
-        result = apply_filters("test", df, cfg, {})
+        result = apply_filters("test", df, cfg, TableStore())
 
         pd.testing.assert_frame_equal(result, df)
         assert "missing 'type' field" in caplog.text.lower()
@@ -361,7 +362,7 @@ class TestApplyFilters:
         cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
 
         with pytest.raises(KeyError, match="is not registered"):
-            apply_filters("test", df, cfg, {})
+            apply_filters("test", df, cfg, TableStore())
 
     def test_apply_filters_with_exists_in(self):
         """Test applying exists_in filter through apply_filters."""
@@ -371,7 +372,7 @@ class TestApplyFilters:
         entities_cfg = {"test": {"filters": [{"type": "exists_in", "column": "id", "other_entity": "other"}]}}
         cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
 
-        result = apply_filters("test", df, cfg, data_store)
+        result = apply_filters("test", df, cfg, TableStore(data_store))
 
         expected = pd.DataFrame({"id": [2, 4], "name": ["B", "D"]}, index=[1, 3])
         pd.testing.assert_frame_equal(result, expected)
@@ -386,7 +387,7 @@ class TestApplyFilters:
         }
         cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
 
-        result = apply_filters("test", df, cfg, data_store)
+        result = apply_filters("test", df, cfg, TableStore(data_store))
 
         # First filter: value >= 30 -> [3, 4, 5]
         # Second filter: id in [2, 3, 4] -> [3, 4]
@@ -406,7 +407,7 @@ class TestApplyFilters:
         }
         cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
 
-        result = apply_filters("test", df, cfg, {}, stage="extract")
+        result = apply_filters("test", df, cfg, TableStore(), stage="extract")
 
         expected = pd.DataFrame({"id": [2, 3], "value": [20, 30]}, index=[1, 2])
         pd.testing.assert_frame_equal(result, expected)
@@ -417,7 +418,7 @@ class TestApplyFilters:
         entities_cfg = {"test": {"filters": [{"type": "query", "stage": "after_unnest", "query": "value_name in ['ph', 'loi']"}]}}
         cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
 
-        result = apply_filters("test", df, cfg, {}, stage="after_unnest")
+        result = apply_filters("test", df, cfg, TableStore(), stage="after_unnest")
 
         expected = pd.DataFrame({"value_name": ["ph", "loi"], "value": [7.1, 9.2]}, index=[0, 1])
         pd.testing.assert_frame_equal(result, expected)
@@ -429,7 +430,7 @@ class TestApplyFilters:
         cfg = TableConfig(entities_cfg=entities_cfg, entity_name="test")
 
         with pytest.raises(ValueError, match="Invalid filter stage"):
-            apply_filters("test", df, cfg, {}, stage="postprocess")
+            apply_filters("test", df, cfg, TableStore(), stage="postprocess")
 
 
 class TestFilterRegistry:

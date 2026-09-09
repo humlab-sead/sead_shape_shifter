@@ -41,6 +41,12 @@ class ValidateRequest(BaseModel):
 
     source: str = Field(..., description="Path to source file or data to validate")
     config: dict[str, Any] = Field(default_factory=dict, description="Optional configuration parameters for validation")
+    submission_context: dict[str, Any] | None = Field(
+        default=None, description="Optional submission context for ingesters that need operator metadata"
+    )
+    deploy_strategy: str | None = Field(
+        default=None, description="Optional deploy artifact strategy for ingesters that support multiple outputs"
+    )
 
 
 class ValidateResponse(BaseModel):
@@ -59,6 +65,11 @@ class ValidateResponse(BaseModel):
     is_valid: bool = Field(..., description="Whether the data is valid")
     errors: list[str] = Field(default_factory=list, description="List of validation errors")
     warnings: list[str] = Field(default_factory=list, description="List of validation warnings")
+    infos: list[str] = Field(default_factory=list, description="List of informational messages")
+    pending_confirmation_report: dict[str, Any] | None = Field(
+        default=None,
+        description="Pending confirmation report when Binding Set confirmation blocks progress",
+    )
 
 
 class IngestRequest(BaseModel):
@@ -93,6 +104,12 @@ class IngestRequest(BaseModel):
     output_folder: str = Field(default="output", description="Folder for output files")
     do_register: bool = Field(default=False, description="Register submission in database")
     explode: bool = Field(default=False, description="Explode submission into public tables")
+    submission_context: dict[str, Any] | None = Field(
+        default=None, description="Optional submission context for ingesters that need operator metadata"
+    )
+    deploy_strategy: str | None = Field(
+        default=None, description="Optional deploy artifact strategy for ingesters that support multiple outputs"
+    )
 
 
 class IngestResponse(BaseModel):
@@ -115,3 +132,12 @@ class IngestResponse(BaseModel):
     message: str = Field(..., description="Status message")
     submission_id: int | None = Field(None, description="Database submission ID if registered")
     output_path: str | None = Field(None, description="Path to output files")
+    error_details: str | None = Field(None, description="Detailed error information when ingestion is incomplete or failed")
+    deploy_artifact: dict[str, Any] | None = Field(
+        default=None,
+        description="In-memory deploy artifact containing SQL statements and package metadata",
+    )
+    pending_confirmation_report: dict[str, Any] | None = Field(
+        default=None,
+        description="Pending confirmation report when Binding Set confirmation blocks progress",
+    )

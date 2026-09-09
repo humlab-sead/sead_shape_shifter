@@ -7,6 +7,8 @@ import os
 import pandas as pd
 from loguru import logger
 
+from src.table_store import TableStore
+
 from .metadata import SchemaService, SeadSchema, Table
 from .policies import UpdatePolicies
 from .utility import flatten_sets, log_decorator, to_lookups_sql
@@ -21,14 +23,14 @@ def load_excel_sheet(reader: pd.ExcelFile, sheet_name: str) -> pd.DataFrame:
 class Submission:
     """Logic dealing with the submission data"""
 
-    def __init__(self, data_tables: dict[str, pd.DataFrame], schema: SeadSchema) -> None:
-        self.data_tables: dict[str, pd.DataFrame] = data_tables
+    def __init__(self, data_tables: TableStore, schema: SeadSchema) -> None:
+        self.data_tables: TableStore = data_tables
         self.schema: SeadSchema = schema
-        self._table_lookup: dict[str, pd.DataFrame] = self._generate_table_lookup(data_tables, schema)
+        self._table_lookup: TableStore = self._generate_table_lookup(data_tables, schema)
 
-    def _generate_table_lookup(self, data_tables: dict[str, pd.DataFrame], schema: SeadSchema) -> dict[str, pd.DataFrame]:
+    def _generate_table_lookup(self, data_tables: TableStore, schema: SeadSchema) -> TableStore:
         """Generates a lookup dictionary mapping table names and excel sheet names to data tables."""
-        lookup: dict[str, pd.DataFrame] = data_tables
+        lookup: TableStore = data_tables
         for table_name, data in data_tables.items():
             table: Table = schema.get_table(table_name)
             if table.table_name not in data_tables:
@@ -90,7 +92,7 @@ class Submission:
     def load(*, schema: SeadSchema, service: SchemaService, source: str | pd.ExcelFile, apply_policies: bool = True) -> "Submission":
         """Loads the submission file into a SubmissionData object"""
 
-        data_tables: dict[str, pd.DataFrame] = Submission.load_data_tables(source, schema)
+        data_tables: TableStore = Submission.load_data_tables(source, schema)
 
         submission: Submission = Submission(data_tables, schema)
 
@@ -101,13 +103,15 @@ class Submission:
         return submission
 
     @staticmethod
-    def load_data_tables(source: str | pd.ExcelFile, schema: SeadSchema) -> dict[str, pd.DataFrame]:
+    def load_data_tables(source: str | pd.ExcelFile, schema: SeadSchema) -> TableStore:
         with pd.ExcelFile(source) if isinstance(source, str) else source as reader:
-            data_tables: dict[str, pd.DataFrame] = {
-                tablename: load_excel_sheet(reader, data.excel_sheet)
-                for tablename, data in schema.items()
-                if data.excel_sheet in reader.sheet_names
-            }
+            data_tables: TableStore = TableStore(
+                {
+                    tablename: load_excel_sheet(reader, data.excel_sheet)
+                    for tablename, data in schema.items()
+                    if data.excel_sheet in reader.sheet_names
+                }
+            )
 
             logger.debug(f"   read sheets: {','.join(k for k in data_tables)}")
 

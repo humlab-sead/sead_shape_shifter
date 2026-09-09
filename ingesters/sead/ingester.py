@@ -14,14 +14,14 @@ from backend.app.ingesters.protocol import (
     IngestionResult,
     ValidationResult,
 )
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import get_ingester_registry
 from ingesters.sead.metadata import SchemaService, SeadSchema
 from ingesters.sead.process import ImportService, Options
 from ingesters.sead.specification import SpecificationError, SubmissionSpecification
 from ingesters.sead.submission import Submission
 
 
-@Ingesters.register(key="sead")
+@get_ingester_registry().register(key="sead")
 class SeadIngester:
     """Ingester for SEAD Clearinghouse database.
 

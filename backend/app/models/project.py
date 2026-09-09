@@ -7,7 +7,7 @@ from typing import Any, Literal, Type
 from pydantic import BaseModel, Field, field_serializer
 from pydantic.json_schema import GenerateJsonSchema
 
-from src.configuration.config import Config
+from src.configuration import find_unresolved_directives
 
 
 class ExcelMetadataResponse(BaseModel):
@@ -41,6 +41,7 @@ class ProjectMetadata(BaseModel):
     type: str | None = Field(default="shapeshifter-project", description="Project type identifier")
     description: str | None = Field(default=None, description="Project description")
     version: str | None = Field(default=None, description="Project version")
+    data_provider_code: str | None = Field(default=None, description="Stable SEAD data provider code for the project")
     file_path: str | None = Field(default=None, description="File path if loaded from file")
     entity_count: int = Field(
         ...,
@@ -51,7 +52,7 @@ class ProjectMetadata(BaseModel):
     modified_at: float = Field(default=0, description="Last modification timestamp (Unix timestamp)")
     is_valid: bool = Field(default=True, description="Whether project is valid")
     default_entity: str | None = Field(default=None, description="Default source entity name")
-    target_model: str | dict[str, Any] | None = Field(default=None, description="Target model spec: inline dict or @include: path string")
+    target_model: str | dict[str, Any] | None = Field(default=None, description="Target model spec: inline dict or @load: path string")
 
     @field_serializer("created_at", "modified_at")
     def serialize_timestamp(self, value: float) -> str | None:
@@ -102,6 +103,7 @@ class Project(BaseModel):
     options: dict[str, Any] = Field(default_factory=dict, description="Global options")
     task_list: dict[str, Any] | None = Field(default=None, description="Task list for entity progress tracking")
     metadata: ProjectMetadata | None = Field(default=None, description="Project metadata")
+    load_warnings: list[str] = Field(default_factory=list, description="Non-fatal normalization warnings detected while loading")
 
     @property
     def ingesters(self) -> dict[str, Any]:
@@ -150,7 +152,7 @@ class Project(BaseModel):
 
     def unresolved_directives(self) -> list[str]:
         """Check if the project has any unresolved references."""
-        return Config.find_unresolved_directives(self.entities) + Config.find_unresolved_directives(self.options)
+        return find_unresolved_directives(self.entities) + find_unresolved_directives(self.options)
 
     @property
     def data_sources(self) -> dict[str, Any]:

@@ -78,7 +78,7 @@ class TestCreateFixedTable:
 
     @pytest.mark.asyncio
     async def test_raises_when_empty_columns(self):
-        """Test raises ValueError when single column config has no surrogate_name and no columns."""
+        """Test raises ValueError when single-column config has no columns."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "keys": [], "public_id": "entity_id", "values": ["val1", "val2"]}}
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
@@ -87,26 +87,7 @@ class TestCreateFixedTable:
             await FixedLoader(data_source=None).load(entity, table_cfg)
 
     @pytest.mark.asyncio
-    async def test_single_column_with_surrogate_name_but_not_in_columns(self):
-        """Test create fixed table with single column using surrogate_name."""
-        entity = "location_type"
-        config = {
-            "location_type": {
-                "type": "fixed",
-                "keys": [],
-                "public_id": "location_type_id",
-                "surrogate_name": "location_type",
-                "columns": ["xyz"],
-                "values": ["Ort", "Kreis", "Land", "Staat"],
-            }
-        }
-        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
-
-        with pytest.raises(ValueError, match=" 'surrogate_name' not specified in 'columns'"):
-            await FixedLoader(data_source=None).load(entity, table_cfg)
-
-    @pytest.mark.asyncio
-    async def test_single_column_with_surrogate_name_and_surrogate_id(self):
+    async def test_single_column_with_public_id_and_identity_columns(self):
         """Test creates fixed table with public_id added."""
         entity = "location_type"
         config = {
@@ -115,7 +96,6 @@ class TestCreateFixedTable:
                 "keys": [],
                 "columns": ["system_id", "location_type_id", "location_type"],
                 "public_id": "location_type_id",
-                "surrogate_name": "location_type",
                 "values": [[1, None, "Ort"], [2, None, "Kreis"], [3, None, "Land"]],
             }
         }
@@ -151,8 +131,8 @@ class TestCreateFixedTable:
         assert result["type_name"].tolist() == ["Type1", "Type2", "Type3"]
 
     @pytest.mark.asyncio
-    async def test_single_column_with_surrogate_id_no_surrogate_name(self):
-        """Test single column with public_id but no surrogate_name uses column name."""
+    async def test_single_column_with_public_id_uses_column_name(self):
+        """Test single column with public_id uses the configured column name."""
         entity = "test_entity"
         config = {
             "test_entity": {
@@ -181,8 +161,9 @@ class TestCreateFixedTable:
                 "type": "fixed",
                 "keys": [],
                 "public_id": "coordinate_method_dimension_id",
+                "column_types": {"limit_lower": "float", "limit_upper": "float"},
                 "columns": ["system_id", "coordinate_method_dimension_id", "coordinate_type", "limit_lower", "limit_upper"],
-                "values": [[1, None, "KoordX", None, None], [2, None, "KoordY", None, None], [3, 0.0, "KoordZ", 0.0, 100.0]],
+                "values": [[1, None, "KoordX", None, None], [2, None, "KoordY", None, None], [3, 0, "KoordZ", 0.0, 100.0]],
             }
         }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
@@ -270,7 +251,6 @@ class TestCreateFixedTable:
                 "keys": [],
                 "columns": ["system_id", "site_property_type_id", "site_property_type"],
                 "public_id": "site_property_type_id",
-                "surrogate_name": "site_property_type",
                 "values": [[1, None, "Limes"], [2, None, "FustelTyp?"], [3, None, "okFustel"], [4, None, "TK"], [5, None, "EVNr"]],
             }
         }
@@ -331,7 +311,6 @@ class TestCreateFixedTable:
                 "type": "fixed",
                 "keys": [],
                 "public_id": "location_type_id",
-                "surrogate_name": "location_type",
                 "columns": ["system_id", "location_type_id", "location_type"],
                 "values": [[1, None, "Ort"], [2, None, "Kreis"], [3, None, "Land"], [4, None, "Staat"], [5, None, "FlurStr"]],
             }
@@ -353,7 +332,6 @@ class TestCreateFixedTable:
             "test_entity": {
                 "type": "fixed",
                 "public_id": "id",
-                "surrogate_name": "value",
                 "keys": [],
                 "columns": ["value"],
                 "values": ["OnlyOne"],
@@ -374,9 +352,9 @@ class TestCreateFixedTable:
             "test_entity": {
                 "type": "fixed",
                 "keys": [],
+                "column_types": {"level": "int"},
                 "columns": ["system_id", "id", "level"],
                 "public_id": "id",
-                "surrogate_name": "level",
                 "values": [[1, None, 1], [2, None, 2], [3, None, 3], [4, None, 5], [5, None, 10]],
             },
         }
@@ -398,7 +376,7 @@ class TestCreateFixedTable:
                 "public_id": "id",
                 "keys": [],
                 "columns": ["value"],
-                "values": [1, "two", 3.0, None],
+                "values": ["1", "two", "3.0", None],
             },
         }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
@@ -406,9 +384,9 @@ class TestCreateFixedTable:
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
         assert len(result) == 4
-        assert result["value"].tolist()[0] == 1
+        assert result["value"].tolist()[0] == "1"
         assert result["value"].tolist()[1] == "two"
-        assert result["value"].tolist()[2] == 3.0
+        assert result["value"].tolist()[2] == "3.0"
         assert pd.isna(result["value"].tolist()[3])
 
     @pytest.mark.asyncio
@@ -420,6 +398,7 @@ class TestCreateFixedTable:
                 "type": "fixed",
                 "keys": [],
                 "public_id": "id",
+                "column_types": {"col3": "int"},
                 "columns": ["col1", "col2", "col3"],
                 "values": [["A", None, 1], [None, "B", None], ["C", "D", 3]],
             }
@@ -434,6 +413,74 @@ class TestCreateFixedTable:
         assert pd.isna(result.iloc[1]["col3"])
 
     @pytest.mark.asyncio
+    async def test_coerces_externally_loaded_dict_rows_using_column_types(self):
+        """Externally loaded fixed rows should normalize null-like values and typed columns before DataFrame creation."""
+        entity = "method"
+        config = {
+            entity: {
+                "type": "fixed",
+                "public_id": "method_id",
+                "keys": [],
+                "columns": ["system_id", "method_id", "rank", "observed_on", "enabled"],
+                "column_types": {
+                    "rank": "int",
+                    "observed_on": "date",
+                    "enabled": "bool",
+                },
+                "values": [
+                    {
+                        "system_id": "1",
+                        "method_id": "10",
+                        "rank": "3",
+                        "observed_on": "2024-01-02",
+                        "enabled": "true",
+                    },
+                    {
+                        "system_id": "2",
+                        "method_id": float("nan"),
+                        "rank": pd.NA,
+                        "observed_on": pd.NaT,
+                        "enabled": "false",
+                    },
+                ],
+            }
+        }
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
+
+        result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
+
+        assert result.columns.tolist() == ["system_id", "method_id", "rank", "observed_on", "enabled"]
+        assert result.iloc[0].tolist() == [1, 10, 3, "2024-01-02", True]
+        assert result.iloc[1]["system_id"] == 2
+        assert pd.isna(result.iloc[1]["method_id"])
+        assert pd.isna(result.iloc[1]["rank"])
+        assert pd.isna(result.iloc[1]["observed_on"])
+        assert not result.iloc[1]["enabled"]
+
+    @pytest.mark.asyncio
+    async def test_coerces_matching_columns_using_project_conventions(self):
+        """Project conventions should coerce matching non-_id columns during fixed loading."""
+        entity = "abundance_source"
+        config = {
+            entity: {
+                "type": "fixed",
+                "public_id": "abundance_id",
+                "keys": ["label"],
+                "columns": ["system_id", "abundance_id", "label", "abundance"],
+                "values": [{"system_id": "1", "abundance_id": None, "label": "Oak", "abundance": "12"}],
+            }
+        }
+        table_cfg = TableConfig(
+            entities_cfg=config,
+            entity_name=entity,
+            project_options={"fixed_entity_types": {"conventions": [{"pattern": "abundance", "type": "int"}]}},
+        )
+
+        result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
+
+        assert result.iloc[0]["abundance"] == 12
+
+    @pytest.mark.asyncio
     async def test_surrogate_id_column_order(self):
         """Test that public_id is added as a new column."""
         entity = "test_entity"
@@ -442,6 +489,7 @@ class TestCreateFixedTable:
                 "type": "fixed",
                 "public_id": "id",
                 "keys": [],
+                "column_types": {"value": "int"},
                 "columns": ["system_id", "id", "name", "value"],
                 "values": [[None, None, "A", 1], [None, None, "B", 2]],
             }
@@ -450,7 +498,7 @@ class TestCreateFixedTable:
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
-        # Surrogate ID is added by add_surrogate_id which appends it
+        # public_id should exist in the resulting table columns
         assert "id" in result.columns
         assert "name" in result.columns
         assert "value" in result.columns
@@ -463,8 +511,8 @@ class TestCreateFixedTable:
             "test_entity": {
                 "type": "fixed",
                 "public_id": "id",
-                "surrogate_name": "number",
                 "keys": [],
+                "column_types": {"number": "int"},
                 "columns": ["system_id", "id", "number"],
                 "values": [[i, None, i] for i in range(1, 101)],
             },
@@ -485,7 +533,6 @@ class TestCreateFixedTable:
             "test_entity": {
                 "type": "fixed",
                 "public_id": "id",
-                "surrogate_name": "text",
                 "keys": [],
                 "columns": ["system_id", "id", "text"],
                 "values": [
@@ -513,7 +560,6 @@ class TestCreateFixedTable:
             "test_entity": {
                 "type": "fixed",
                 "public_id": "id",
-                "surrogate_name": "text",
                 "keys": [],
                 "columns": ["text"],
                 "values": ["Ö", "ä", "ü", "ß", "é"],
@@ -536,6 +582,7 @@ class TestCreateFixedTable:
                 "keys": [],
                 "columns": ["flag", "name"],
                 "public_id": "id",
+                "column_types": {"flag": "bool"},
                 "values": [[True, "Yes"], [False, "No"], [True, "Maybe"]],
             },
         }
@@ -592,7 +639,6 @@ class TestCreateFixedTable:
             "test_entity": {
                 "type": "fixed",
                 "public_id": "system_id",
-                "surrogate_name": "dimension_name",
                 "keys": [],
                 "columns": ["dimension_id", "dimension_name"],
                 "values": [[1, "Width"], [2, "Height"], [3, "Depth"]],

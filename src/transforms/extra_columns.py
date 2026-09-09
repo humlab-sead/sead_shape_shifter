@@ -67,6 +67,10 @@ class ExtraColumnEvaluator:
     # Matches: {col}, {first_name}, {col123}
     # Doesn't match: {{literal}}, {123invalid}
     INTERPOLATION_PATTERN = re.compile(r"(?<!\{)\{([a-zA-Z_][\w]*)\}(?!\})")
+    INTEGER_LITERAL_PATTERN = re.compile(r"[+-]?\d+")
+    FLOAT_LITERAL_PATTERN = re.compile(r"[+-]?(?:\d+\.\d*|\.\d+)")
+    INTEGER_LITERAL_PATTERN = re.compile(r"[+-]?\d+")
+    FLOAT_LITERAL_PATTERN = re.compile(r"[+-]?(?:\d+\.\d*|\.\d+)")
 
     def __init__(self):
         """Initialize evaluator with FormulaEngine for DSL formula support."""
@@ -105,13 +109,13 @@ class ExtraColumnEvaluator:
 
         # Get available source columns
         if isinstance(source, pd.DataFrame):
-            source_columns = set(source.columns)
+            source_columns: set[str] = set(source.columns)
         else:
             source_columns = set(source)
 
         # Build case-insensitive column lookup if needed
         if not case_sensitive:
-            col_map = {str(c).lower(): c for c in source_columns}
+            col_map: dict[str, str] = {str(c).lower(): c for c in source_columns}
         else:
             col_map = {c: c for c in source_columns}
 
@@ -384,6 +388,23 @@ class ExtraColumnEvaluator:
         return text.replace("{{", "{").replace("}}", "}")
 
     @staticmethod
+    def coerce_string_constant_literal(value: str) -> str | int | float:
+        """Coerce plain numeric string literals used as extra-column constants.
+
+        This applies only after formula, interpolation, and column-copy detection,
+        so it affects only literal string constants such as "53" or "53.5".
+        """
+        text = value.strip()
+
+        if ExtraColumnEvaluator.INTEGER_LITERAL_PATTERN.fullmatch(text):
+            return int(text)
+
+        if ExtraColumnEvaluator.FLOAT_LITERAL_PATTERN.fullmatch(text):
+            return float(text)
+
+        return value
+
+    @staticmethod
     def evaluate_interpolation(df: pd.DataFrame, pattern: str, entity_name: str = "") -> pd.Series:
         """
         Evaluate interpolated string pattern against DataFrame.
@@ -587,9 +608,12 @@ class ExtraColumnEvaluator:
                 continue
 
             # Case 6: String constant (doesn't match any column, or matches extra_column key)
-            result[new_col] = value
+            result[new_col] = self.coerce_string_constant_literal(value)
             added_count += 1
-            logger.trace(f"{entity_name}[extra_columns]: Added constant '{new_col}' = '{value}'")
+            logger.trace(
+                f"{entity_name}[extra_columns]: Added constant "
+                f"'{new_col}' = '{result[new_col].iloc[0] if len(result) > 0 else result[new_col]}'"
+            )
 
         if added_count > 0 or deferred or skipped_count > 0:
             msg_parts = []

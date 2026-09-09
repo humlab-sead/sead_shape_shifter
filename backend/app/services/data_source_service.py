@@ -128,32 +128,45 @@ class DataSourceService:
 
         return result
 
-    def load_data_source(self, source: str | Path | dict[str, Any]) -> DataSourceConfig | None:
+    def load_data_source(
+        self,
+        source: str | Path | dict[str, Any],
+        *,
+        strict: bool = False,
+    ) -> DataSourceConfig | None:
         """Load a specific data source by filename.
-           If it's a dict, then assume it's already the config.
-           If it's a string, treat it as a filename and load from file.
+
+        If it's a dict, assume it's already the config.
+        If it's a string or Path, treat it as a filename and load from file.
 
         Args:
-            source: Data source filename (with or without .yml extension) or dict
+            source: Data source filename, with or without .yml extension, or dict.
+            strict: If True, raise QueryExecutionError when the source is not found
+                or invalid. If False, return None instead.
 
         Returns:
-            Data source or None if not found
+            Data source, or None if not found or invalid and strict is False.
         """
         if isinstance(source, dict):
             return DataSourceConfig(name=source.get("name", "inline"), **source)
 
-        file_path: Path = self._resolve_data_source_path(source)
-        if not file_path.exists():
-            return None
-        try:
-            data: dict[str, Any] = self._read_data_source_file(file_path)
-            if not data:
-                return None
+        error: Exception | None = None
 
-            return DataSourceConfig(name=file_path.stem, **data)
+        try:
+            file_path: Path = self._resolve_data_source_path(source)
+            if file_path.exists():
+                data: dict[str, Any] = self._read_data_source_file(file_path)
+                if data:
+                    return DataSourceConfig(name=file_path.stem, **data)
+
         except Exception as e:  # pylint: disable=broad-except
             logger.error(f"Failed to load data source {source}: {e}")
-            return None
+            error = e
+
+        if strict:
+            raise ValueError(f"Data source '{source}' not found or invalid") from error
+
+        return None
 
     def create_data_source(self, filename: str | Path, config: DataSourceConfig) -> DataSourceConfig:
         """Create a new global data source file.

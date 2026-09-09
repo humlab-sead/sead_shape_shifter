@@ -7,7 +7,12 @@ from backend.app.core.config import settings
 from backend.app.main import app
 from backend.app.services import project_service, validation_service, yaml_service
 
-client = TestClient(app)
+
+@pytest.fixture(name="client")
+def client_fixture():
+    with TestClient(app) as client:
+        yield client
+
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -61,7 +66,7 @@ def merged_entity_project():
     }
 
 
-def test_get_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project):
+def test_get_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project, client):
     """Test retrieving a merged entity via API."""
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -87,7 +92,7 @@ def test_get_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_
     assert "ceramics" in branch_names
 
 
-def test_list_entities_includes_merged(tmp_path, monkeypatch, reset_services, merged_entity_project):
+def test_list_entities_includes_merged(tmp_path, monkeypatch, reset_services, merged_entity_project, client):
     """Test listing entities includes merged entity."""
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -109,7 +114,7 @@ def test_list_entities_includes_merged(tmp_path, monkeypatch, reset_services, me
     assert "branches" in merged_entity["entity_data"]
 
 
-def test_update_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project):
+def test_update_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project, client):
     """Test updating a merged entity via API."""
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -138,7 +143,7 @@ def test_update_merged_entity(tmp_path, monkeypatch, reset_services, merged_enti
     assert updated["entity_data"]["branches"][0]["keys"] == ["sample_name", "sample_id"]
 
 
-def test_create_merged_entity(tmp_path, monkeypatch, reset_services):
+def test_create_merged_entity(tmp_path, monkeypatch, reset_services, client):
     """Test creating a new merged entity via API."""
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -178,7 +183,7 @@ def test_create_merged_entity(tmp_path, monkeypatch, reset_services):
     assert len(created["entity_data"]["branches"]) == 1
 
 
-def test_validation_detects_merged_errors(tmp_path, monkeypatch, reset_services):
+def test_validation_detects_merged_errors(tmp_path, monkeypatch, reset_services, client):
     """Test that validation endpoint detects merged entity errors."""
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -225,7 +230,7 @@ def test_validation_detects_merged_errors(tmp_path, monkeypatch, reset_services)
         assert has_public_id_error
 
 
-def test_delete_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project):
+def test_delete_merged_entity(tmp_path, monkeypatch, reset_services, merged_entity_project, client):
     """Test deleting a merged entity via API."""
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 

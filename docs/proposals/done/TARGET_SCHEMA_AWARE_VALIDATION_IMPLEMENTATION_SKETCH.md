@@ -3,7 +3,7 @@
 ## Status
 
 - **Milestones 1–3: complete** — core engine, backend integration, frontend wiring all done
-- **Remaining backlog:** see [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
+- **Closed follow-through record:** see [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
 - Scope: implementation approach for [TARGET_SCHEMA_AWARE_VALIDATION.md](TARGET_SCHEMA_AWARE_VALIDATION.md)
 
 ## Summary
@@ -59,16 +59,16 @@ The proposal’s target model should be represented as a small shared schema ali
 
 See `src/target_model/models.py` for the current source of truth.
 
-## Loading And Resolution Model
+## Loading Model
 
 Not yet implemented at the backend boundary. The intended behaviour is unchanged from the original sketch:
 
-1. allow `metadata.target_model` to be either an inline object or an `@include:` reference,
-2. resolve the reference using the same infrastructure already used for included project content,
-3. validate the resolved object into `TargetModel`,
+1. allow `metadata.target_model` to be either an inline object or an `@load:` reference,
+~~2. resolve the reference using the same infrastructure already used for included project content,~~
+3. validate the loaded object into `TargetModel`,
 4. pass the parsed target model into the core conformance engine.
 
-This avoids leaking unresolved include directives into the semantic validation layer and aligns with the project's layer-boundary rule: directives live in the YAML or API boundary, resolved values live in the backend or core logic path that consumes them.
+~~This avoids leaking unresolved include directives into the semantic validation layer and aligns with the project's layer-boundary rule: directives live in the YAML or API boundary, resolved values live in the backend or core logic path that consumes them.~~
 
 ## Core Conformance Engine
 
@@ -160,12 +160,12 @@ class TableConfig:
 
 The standalone validator in `target_models/` was a useful prototype but depended on a reduced project model with only literal `columns`, `keys`, a shallow `foreign_keys` list, and `extra_columns`. That model cannot answer conformance questions for projects that use append inheritance, materialized state, unnest transformations, or FK-generated columns. Moving conformance onto `TableConfig` recovers DRY and makes the column contract authoritative.
 
-### Backend Adapter (Pending)
+### Backend Adapter (Implemented)
 
-When backend integration is implemented, the adapter should remain thin:
+Backend integration is complete. The adapter remains thin:
 
 ```python
-# backend/app/validators/target_model_validator.py  — not yet written
+# backend/app/validators/target_model_validator.py
 class TargetModelValidator:
     def validate(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ValidationError]:
         from src.target_model.conformance import TargetModelConformanceValidator
@@ -174,12 +174,12 @@ class TargetModelValidator:
         return [ValidationMapper.to_api_error(issue) for issue in issues]
 ```
 
-## Validation Service Integration (Pending)
+## Validation Service Integration (Implemented)
 
-The integration point will be the existing `ValidationService`:
+The integration point is the existing `ValidationService`:
 
 ```python
-# backend/app/services/validation_service.py  — not yet modified
+# backend/app/services/validation_service.py
 async def validate_project(self, project_name: str, use_target_model: bool = True) -> ValidationResponse:
     api_project = self.project_service.load_project(project_name)
     core_project = ProjectMapper.to_core(api_project)
@@ -202,7 +202,7 @@ Key constraints remain: structural validation stays first; target-model validati
 - [x] Add core-facing conformance engine: `TargetModelConformanceValidator.validate(target_model, project)`
 - [x] Add `TargetModelSpecValidator` for spec self-consistency checks
 - [x] Add `metadata.target_model` field to the API project model
-- [x] Implement `@include:` resolution for `target_model` at the backend boundary
+- [x] Implement `@load:` resolution for `target_model` at the backend boundary
 - [x] Ship validation in parallel with existing standalone example tests during transition
 
 ### Phase 2: Target-Facing Column Semantics In Core
@@ -219,7 +219,7 @@ Key constraints remain: structural validation stays first; target-model validati
 ### Phase 3: Migration And Backend Adoption
 
 - [x] Add `metadata.target_model` support to API project/mapper layer
-- [x] Implement target-model loading and `@include:` resolution at backend boundary
+- [x] Implement target-model loading and `@load:` filename resolution at backend boundary
 - [x] Add `TargetModelValidator` backend adapter (`backend/app/validators/`)
 - [x] Wire into `ValidationService.validate_target_model()`
 - [x] Migrate standalone `target_models/` example tests to use the core conformance engine
@@ -227,19 +227,19 @@ Key constraints remain: structural validation stays first; target-model validati
 
 ### Phase 4 and Future Enhancements
 
-Phase 4 advanced semantic rules, future enhancements, and remaining deferred items are tracked in [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Phase 4 advanced semantic rules, future enhancements, and remaining deferred items are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Testing Strategy
 
 ### Current coverage
 
 - `tests/model/test_target_model_conformance.py` — 11 tests, 98% branch coverage of `src/target_model/conformance.py`
-- `target_models/tests/` — standalone spec and example-project tests (still using the pre-core-integration path)
+- ~~`target_models/tests/` — standalone spec and example-project tests (still using the pre-core-integration path)~~
 
 ### Remaining test areas
 
-Test coverage gaps are tracked in [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Test coverage gaps are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Open Technical Questions
 
-Open technical questions (target model loading location, validation code naming, rule disabling) are tracked in [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Open technical questions (target model loading location, validation code naming, rule disabling) are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).

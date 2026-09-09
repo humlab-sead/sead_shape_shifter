@@ -118,6 +118,35 @@
       "title": "AppendConfig",
       "type": "object"
     },
+    "BranchConfig": {
+      "description": "Configuration for a branch in a merged parent entity.\n\nEach branch defines a source entity that contributes rows to the merged parent.\nBranches are merged sequentially in declaration order with automatic:\n- Branch discriminator column ({entity}_branch)\n- Branch FK propagation (sparse FK columns for lineage tracking)\n- Column union (all columns from all branches)\n- Type conflict handling (safe numeric upcasts, datetime\u2192string, fail fast)",
+      "properties": {
+        "name": {
+          "description": "Branch identifier (must be unique within merged parent)",
+          "title": "Name",
+          "type": "string"
+        },
+        "source": {
+          "description": "Source entity name providing rows for this branch",
+          "title": "Source",
+          "type": "string"
+        },
+        "keys": {
+          "description": "Business keys to validate against source (optional, used for branch-level validation)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Keys",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "source"
+      ],
+      "title": "BranchConfig",
+      "type": "object"
+    },
     "FilterConfig": {
       "description": "Configuration for staged entity filters.",
       "properties": {
@@ -269,6 +298,12 @@
           ],
           "default": null,
           "description": "Foreign key constraints"
+        },
+        "defer_dependency": {
+          "default": false,
+          "description": "Break a dependency cycle by deferring the FK link to a final pass. Use only when circular references are unavoidable.",
+          "title": "Defer Dependency",
+          "type": "boolean"
         }
       },
       "required": [
@@ -409,7 +444,8 @@
             "fixed",
             "csv",
             "xlsx",
-            "openpyxl"
+            "openpyxl",
+            "merged"
           ],
           "type": "string"
         },
@@ -520,7 +556,24 @@
       "title": "Columns",
       "type": "array"
     },
+    "column_types": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional explicit fixed-entity column type declarations (for example int, string, float, bool, date)",
+      "title": "Column Types"
+    },
     "extra_columns": {
+      "additionalProperties": true,
       "description": "Additional computed columns",
       "title": "Extra Columns",
       "type": "object"
@@ -559,6 +612,14 @@
         "$ref": "#/$defs/AppendConfig"
       },
       "title": "Append",
+      "type": "array"
+    },
+    "branches": {
+      "description": "Branch configurations for merged parent entities (type='merged' only)",
+      "items": {
+        "$ref": "#/$defs/BranchConfig"
+      },
+      "title": "Branches",
       "type": "array"
     },
     "depends_on": {
@@ -623,6 +684,142 @@
       "default": null,
       "description": "Fixed values for 'fixed' type entities",
       "title": "Values"
+    },
+    "options": {
+      "type": "object",
+      "description": "Loader-specific options. Required keys depend on entity type.",
+      "oneOf": [
+        {
+          "description": "Options for type: sqlite",
+          "properties": {
+            "filename": {
+              "type": "string",
+              "description": "Path to .db or .sqlite file"
+            }
+          },
+          "required": [
+            "filename"
+          ]
+        },
+        {
+          "description": "Options for type: access",
+          "properties": {
+            "filename": {
+              "type": "string",
+              "description": "Path to .mdb or .accdb file"
+            },
+            "ucanaccess_dir": {
+              "type": "string",
+              "description": "Path to UCanAccess library directory",
+              "default": "lib/ucanaccess"
+            }
+          },
+          "required": [
+            "filename"
+          ]
+        },
+        {
+          "description": "Options for type: csv",
+          "properties": {
+            "filename": {
+              "type": "string",
+              "description": "Path to .csv file"
+            },
+            "encoding": {
+              "type": "string",
+              "description": "File encoding",
+              "default": "utf-8"
+            },
+            "delimiter": {
+              "type": "string",
+              "description": "Field delimiter",
+              "default": ","
+            }
+          },
+          "required": [
+            "filename"
+          ]
+        },
+        {
+          "description": "Options for type: xlsx",
+          "properties": {
+            "filename": {
+              "type": "string",
+              "description": "Path to .xlsx or .xls file"
+            },
+            "sheet_name": {
+              "type": "string",
+              "description": "Sheet name to load"
+            },
+            "sanitize_header": {
+              "type": "boolean",
+              "description": "Whether to sanitize column headers to be YAML-friendly",
+              "default": true
+            }
+          },
+          "required": [
+            "filename"
+          ]
+        },
+        {
+          "description": "Options for type: openpyxl",
+          "properties": {
+            "filename": {
+              "type": "string",
+              "description": "Path to .xlsx file"
+            },
+            "sheet_name": {
+              "type": "string",
+              "description": "Sheet name to load"
+            },
+            "range": {
+              "type": "string",
+              "description": "Cell range to load (e.g., A1:D10)"
+            },
+            "sanitize_header": {
+              "type": "boolean",
+              "description": "Whether to sanitize column headers to be YAML-friendly",
+              "default": true
+            }
+          },
+          "required": [
+            "filename"
+          ]
+        }
+      ]
+    },
+    "check_functional_dependency": {
+      "default": true,
+      "description": "Whether to check functional dependency when dropping duplicates. Default True.",
+      "title": "Check Functional Dependency",
+      "type": "boolean"
+    },
+    "surrogate_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Fixed entity type name used when the entity represents a controlled vocabulary type.",
+      "title": "Surrogate Name"
+    },
+    "type_names": {
+      "description": "Column name list for unnest type columns, referenced by @value: in other entities.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Type Names",
+      "type": "array"
+    },
+    "replacements": {
+      "additionalProperties": true,
+      "description": "Value replacement rules applied during data extraction.",
+      "title": "Replacements",
+      "type": "object"
     }
   },
   "required": [],

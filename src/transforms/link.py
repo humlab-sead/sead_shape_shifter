@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 from loguru import logger
@@ -7,6 +7,7 @@ from src.model import ForeignKeyConfig, ForeignKeyMergeSetup, ShapeShiftProject,
 from src.process_state import DeferredLinkingTracker
 from src.specifications import ForeignKeyDataSpecification
 from src.specifications.constraints import ForeignKeyConstraintValidator, ForeignKeyRuntimeOptions
+from src.table_store import TableStore
 from src.transforms.utility import merge_with_null_safety
 
 
@@ -31,11 +32,34 @@ def _resolve_fk_runtime_options(fk: ForeignKeyConfig, remote_cfg: TableConfig) -
     return ForeignKeyRuntimeOptions.from_constraints(fk.constraints)
 
 
-class ForeignKeyLinker:
+def _build_fk_validator(
+    local_entity: TableConfig,
+    fk: ForeignKeyConfig,
+    remote_entity: TableConfig,
+    runtime_options: ForeignKeyRuntimeOptions,
+) -> ForeignKeyConstraintValidator:
+    validator_cls: Any = ForeignKeyConstraintValidator
 
-    def __init__(self, project: ShapeShiftProject, table_store: dict[str, pd.DataFrame]) -> None:
+    try:
+        return validator_cls(
+            local_entity=local_entity,
+            fk=fk,
+            remote_entity=remote_entity,
+            runtime_options=runtime_options,
+        )
+    except TypeError as exc:
+        if "unexpected keyword argument 'local_entity'" not in str(exc):
+            raise
+
+        # Preserve compatibility with simpler test doubles that still accept
+        # the older entity-name positional form.
+        return validator_cls(local_entity.entity_name, fk, runtime_options=runtime_options)  # pylint: disable=missing-kwoa
+
+
+class ForeignKeyLinker:
+    def __init__(self, project: ShapeShiftProject, table_store: TableStore) -> None:
         self.project: ShapeShiftProject = project
-        self.table_store: dict[str, pd.DataFrame] = table_store
+        self.table_store: TableStore = table_store
         self.validators: list[ForeignKeyConstraintValidator] = []
         self.deferred_tracker: DeferredLinkingTracker = DeferredLinkingTracker()
 
@@ -59,25 +83,27 @@ class ForeignKeyLinker:
             ForeignKeyConstraintViolation: If any constraints are violated
         """
 
-        remote_cfg: TableConfig = self.project.get_table(entity_name=fk.remote_entity)
-        runtime_options: ForeignKeyRuntimeOptions = _resolve_fk_runtime_options(fk, remote_cfg)
+        local_entity: TableConfig = self.project.get_table(entity_name=fk.local_entity)
+        remote_entity: TableConfig = self.project.get_table(entity_name=fk.remote_entity)
+        runtime_options: ForeignKeyRuntimeOptions = _resolve_fk_runtime_options(fk, remote_entity)
 
-        validator: ForeignKeyConstraintValidator = ForeignKeyConstraintValidator(
-            fk.local_entity,
-            fk,
+        validator: ForeignKeyConstraintValidator = _build_fk_validator(
+            local_entity=local_entity,
+            fk=fk,
+            remote_entity=remote_entity,
             runtime_options=runtime_options,
         ).validate_before_merge(local_df, remote_df)
 
         # Store validator to collect issues later
         self.validators.append(validator)
 
-        link_setup: ForeignKeyMergeSetup = fk.generate_link_setup(remote_df.columns.tolist(), remote_cfg)
+        link_setup: ForeignKeyMergeSetup = fk.generate_link_setup(remote_df.columns.tolist(), remote_entity)
 
         # Build column list: system_id + remote_columns (avoid duplicates)
-        cols_to_select: list[str] = [remote_cfg.system_id]
-        cols_to_select.extend([col for col in link_setup.remote_columns if col != remote_cfg.system_id])
+        cols_to_select: list[str] = [remote_entity.system_id]
+        cols_to_select.extend([col for col in link_setup.remote_columns if col != remote_entity.system_id])
 
-        remote_df = remote_df[cols_to_select].rename(columns=link_setup.rename_map)
+        remote_df = cast(pd.DataFrame, remote_df.loc[:, cols_to_select]).rename(columns=cast(Any, link_setup.rename_map))
 
         opts: dict[str, Any] = self._resolve_link_opts(fk, validator)
 
@@ -85,13 +111,18 @@ class ForeignKeyLinker:
         if "right_on" in opts:
             opts["right_on"] = [link_setup.rename_map.get(key, key) for key in opts["right_on"]]
 
-        linked_df: pd.DataFrame = merge_with_null_safety(
-            local_df=local_df,
-            remote_df=remote_df,
-            allow_null_keys=fk.constraints.allow_null_keys,
-            use_null_safe_merge=runtime_options.use_null_safe_merge,
-            **opts,
-        )
+        try:
+            linked_df: pd.DataFrame = merge_with_null_safety(
+                local_df=local_df,
+                remote_df=remote_df,
+                allow_null_keys=fk.constraints.allow_null_keys,
+                use_null_safe_merge=runtime_options.use_null_safe_merge,
+                **opts,
+            )
+        except Exception as e:
+            raise ValueError(
+                f"Failed to link '{fk.local_entity}' to '{fk.remote_entity}' " f"on keys {fk.local_keys} -> {fk.remote_keys}: {e}"
+            ) from e
 
         validator.validate_after_merge(local_df, remote_df, linked_df, merge_indicator_col=validator.merge_indicator_col)
 
@@ -99,7 +130,7 @@ class ForeignKeyLinker:
             linked_df = linked_df.drop(columns=[validator.merge_indicator_col], errors="ignore")
 
         if fk.extra_columns and fk.drop_remote_id:
-            linked_df = linked_df.drop(columns=[remote_cfg.public_id], errors="ignore")
+            linked_df = linked_df.drop(columns=[remote_entity.public_id], errors="ignore")
 
         logger.debug(
             f"{fk.local_entity}[linking]: Linked '{fk.remote_entity}' using keys {fk.local_keys}"
@@ -122,7 +153,6 @@ class ForeignKeyLinker:
         deferred: bool = False
 
         for fk in table_cfg.foreign_keys:
-
             specification: ForeignKeyDataSpecification = ForeignKeyDataSpecification(cfg=self.project, table_store=self.table_store)
 
             satisfied: bool | None = specification.is_satisfied_by(fk_cfg=fk)

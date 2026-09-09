@@ -10,8 +10,7 @@ from ingesters.sead.submission import Submission
 
 # Import test builders for easy access in tests
 from ingesters.sead.tests.builders import build_column, build_schema, build_table
-from src.configuration import ConfigStore
-from src.configuration.interface import ConfigLike
+from src.configuration import ConfigLike, ConfigStore
 
 # pylint: disable=redefined-outer-name
 
@@ -37,7 +36,7 @@ def cfg() -> ConfigLike:
 @pytest.fixture(scope="function", autouse=True)
 def minimal_config():
     """Minimal config for unit tests - auto-used so policies don't fail on ConfigValue.resolve()."""
-    store = ConfigStore.get_instance()
+    store: ConfigStore = ConfigStore.get_instance()
     if not store.is_configured("default"):
         store.configure_context(source=CONFIG_FILENAME, env_filename=DOTENV_FILENAME, env_prefix=ENV_PREFIX)
     yield

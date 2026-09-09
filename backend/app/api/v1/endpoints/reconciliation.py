@@ -477,6 +477,27 @@ async def delete_mapping(
     return ReconciliationMapper.registry_to_dto(catalog)
 
 
+@router.post(
+    "/projects/{project_name}/reconciliation/{entity_name}/{target_field}/export-to-mapping",
+    response_model=api.ExportToMappingResult,
+)
+@handle_endpoint_errors
+async def export_reconciliation_to_mapping(
+    project_name: str,
+    entity_name: str,
+    target_field: str,
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> api.ExportToMappingResult:
+    """Copy reconciliation links for one entity field into the mapping sidecar."""
+    exported, skipped_manual = service.export_to_mapping(project_name, entity_name, target_field)
+    return api.ExportToMappingResult(
+        exported=exported,
+        skipped_manual=skipped_manual,
+        entity=entity_name,
+        field=target_field,
+    )
+
+
 @router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mark-unmatched")
 @handle_endpoint_errors
 async def mark_as_unmatched(

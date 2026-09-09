@@ -11,7 +11,7 @@ from loguru import logger
 from backend.app.core.config import Settings, settings
 from backend.app.core.state_manager import ApplicationState, get_app_state
 from backend.app.core.utility import friendly_dtype
-from backend.app.mappers.entity_config_mapper import EntityConfigMapperFactory
+from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityConfigMapperFactory, EntityMapperContext
 from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.caches import ShapeShiftCache, ShapeShiftProjectCache
@@ -19,6 +19,7 @@ from src.exceptions import FunctionalDependencyError
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.specifications.constraints import ForeignKeyConstraintViolation, ForeignKeyNullConstraintViolation, ValidationIssue
+from src.table_store import TableStore
 from src.validation_messages import format_validation_message_with_context
 
 
@@ -31,11 +32,11 @@ class ShapeShiftService:
         self.project_cache = ShapeShiftProjectCache(project_service)
         self.settings: Settings = settings
         # Optional warm table_store populated by batch preview to short-circuit later preview calls
-        self._warm_table_store: dict[str, pd.DataFrame] | None = None
+        self._warm_table_store: TableStore | None = None
         # Initialize entity config mapper factory for type-specific transformations
         self._mapper_factory = EntityConfigMapperFactory(self.settings)
 
-    def _resolve_entity_config(self, entity_config: dict[str, Any], project_name: str) -> None:
+    def _resolve_entity_config(self, entity_config: dict[str, Any], context: EntityMapperContext) -> None:
         """Apply type-specific transformations to entity config using strategy pattern.
 
         For file-based entities: resolves (filename, location) to absolute path.
@@ -45,12 +46,12 @@ class ShapeShiftService:
 
         Args:
             entity_config: Entity configuration dictionary (modified in-place)
-            project_name: Project name for resolving local paths
+            context: Context for entity mapping, including project name and options
         """
         # Get appropriate mapper based on entity type
-        mapper = self._mapper_factory.get_mapper_for_entity(entity_config)
+        mapper: EntityConfigMapper = self._mapper_factory.get_mapper_for_entity(entity_config)
         # Apply transformation (API → Core: resolve paths)
-        entity_config.update(mapper.to_core(entity_config, project_name))
+        entity_config.update(mapper.to_core(entity_config, context))
 
     async def preview_entity(
         self, project_name: str, entity_name: str, limit: int | None = 50, override_config: dict[str, Any] | None = None
@@ -89,7 +90,8 @@ class ShapeShiftService:
         if using_override:
             # Apply type-specific transformation to override_config
             # (override bypasses ProjectMapper.to_core(), so we must transform here)
-            self._resolve_entity_config(override_config, project_name)
+            context = EntityMapperContext(project_name=project_name, project_options=project.options)
+            self._resolve_entity_config(override_config, context)
 
             # Clone project and replace entity config
             project = project.clone()
@@ -106,13 +108,13 @@ class ShapeShiftService:
 
         # Fast path: if warm table_store from batch run exists, reuse it directly (but not when using override)
         if not using_override and self._warm_table_store and entity_name in self._warm_table_store:
-            table_store = {entity_name: self._warm_table_store[entity_name]}
+            table_store = TableStore({entity_name: self._warm_table_store[entity_name]})
             validation_issues: list[dict] = []
             cached_hit = True
         else:
             # Skip cache lookup when using override config
             if using_override:
-                cached_data = ShapeShiftCache.CacheCheckResult(found=False, data=None, dependencies={})
+                cached_data = ShapeShiftCache.CacheCheckResult(found=False, data=None, dependencies=TableStore())
                 cached_hit = False
             else:
                 cached_data: ShapeShiftCache.CacheCheckResult = self.cache.fetch_cached_entity_data(
@@ -120,11 +122,11 @@ class ShapeShiftService:
                 )
                 cached_hit = cached_data.data is not None
 
-            table_store: dict[str, pd.DataFrame]
+            table_store: TableStore
             validation_issues: list[dict] = []
 
             if cached_data.data is not None:
-                table_store = {entity_name: cached_data.data} | cached_data.dependencies
+                table_store = TableStore({entity_name: cached_data.data} | cached_data.dependencies)
             else:
                 resolved_cfg: ShapeShiftProject = project.clone().resolve(filename=project.filename, strict=True, **self.settings.env_opts)
                 table_store, validation_issues = await self.shapeshift(
@@ -158,8 +160,8 @@ class ShapeShiftService:
         self,
         project: ShapeShiftProject,
         entity_names: list[str],
-        initial_table_store: dict[str, pd.DataFrame],
-    ) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+        initial_table_store: TableStore,
+    ) -> tuple[TableStore, list[dict]]:
         """
         Run ShapeShifter to produce multiple entities in one pass.
 
@@ -201,8 +203,8 @@ class ShapeShiftService:
         self,
         project: ShapeShiftProject,
         entity_name: str,
-        initial_table_store: dict[str, pd.DataFrame],
-    ) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+        initial_table_store: TableStore,
+    ) -> tuple[TableStore, list[dict]]:
         """
         Run ShapeShifter to produce entity data.
 
@@ -312,7 +314,7 @@ class ShapeShiftService:
 
         return all_issues
 
-    async def preview_entities_batch(self, project_name: str, entity_names: list[str]) -> dict[str, pd.DataFrame]:
+    async def preview_entities_batch(self, project_name: str, entity_names: list[str]) -> TableStore:
         """
         Process multiple entities in one ShapeShifter run to populate cache efficiently.
 
@@ -338,9 +340,9 @@ class ShapeShiftService:
         project_version: int = self.get_project_version(project_name)
 
         # Validate all entities exist
-        for entity_name in entity_names:
-            if entity_name not in project.tables:
-                raise ValueError(f"Entity '{entity_name}' not found in project")
+        missing_entities: list[str] = [name for name in entity_names if name not in project.tables]
+        if missing_entities:
+            raise ValueError(f"Entities not found in project '{project_name}': {', '.join(missing_entities)}")
 
         # Run single ShapeShifter normalization for all target entities
         resolved_project: ShapeShiftProject = project
@@ -350,7 +352,7 @@ class ShapeShiftService:
         table_store, _ = await self.shapeshift_batch(
             project=resolved_project,
             entity_names=entity_names,  # Pass actual target entities
-            initial_table_store={},
+            initial_table_store=TableStore(),
         )
 
         # Cache all processed entities (target entities + dependencies) in one call
@@ -404,7 +406,7 @@ class PreviewResultBuilder:
         self,
         entity_name: str,
         entity_cfg: TableConfig,
-        table_store: dict[str, pd.DataFrame],
+        table_store: TableStore,
         limit: int | None,
         cache_hit: bool,
         validation_issues: list[dict] | None = None,

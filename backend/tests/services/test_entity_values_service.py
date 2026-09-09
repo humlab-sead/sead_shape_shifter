@@ -128,6 +128,30 @@ class TestEntityValuesService:
         assert df.columns.tolist() == columns
         assert df.values.tolist() == values
 
+    def test_write_values_file_preserves_typed_fixed_values_for_parquet(self, service, tmp_path):
+        """Typed parquet writes should preserve fixed-safe ints, nulls, booleans, and dates."""
+        file_path = tmp_path / "typed.parquet"
+        columns = ["system_id", "optional_id", "sample_date", "enabled", "score"]
+        values = [
+            [1, None, "2024-01-02", True, 1.5],
+            [2, 7, None, False, None],
+        ]
+        column_types = {
+            "optional_id": "int",
+            "sample_date": "date",
+            "enabled": "bool",
+            "score": "float",
+        }
+
+        format_type = service._write_values_file(file_path, columns, values, "parquet", column_types)
+
+        assert format_type == "parquet"
+        records = pd.read_parquet(file_path).to_dict(orient="records")
+        assert records == [
+            {"system_id": 1, "optional_id": None, "sample_date": "2024-01-02", "enabled": True, "score": 1.5},
+            {"system_id": 2, "optional_id": 7, "sample_date": None, "enabled": False, "score": None},
+        ]
+
     def test_write_values_file_infers_format_from_extension(self, service, tmp_path):
         """Test format inference from file extension."""
         file_path = tmp_path / "output.parquet"

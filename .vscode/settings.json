@@ -1,111 +1,142 @@
 {
-    "python.testing.pytestArgs": [
-        "tests",
-        "backend/tests",
-        "ingesters/sead/tests",
-        "target_models/tests"
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
-    "workbench.colorCustomizations": {
-        "activityBar.activeBackground": "#5b7456",
-        "activityBar.background": "#5b7456",
-        "activityBar.foreground": "#e7e7e7",
-        "activityBar.inactiveForeground": "#e7e7e799",
-        "activityBarBadge.background": "#283578",
-        "activityBarBadge.foreground": "#e7e7e7",
-        "commandCenter.border": "#e7e7e799",
-        "sash.hoverBorder": "#5b7456",
-        "statusBar.background": "#445740",
-        "statusBar.foreground": "#e7e7e7",
-        "statusBarItem.hoverBackground": "#5b7456",
-        "statusBarItem.remoteBackground": "#445740",
-        "statusBarItem.remoteForeground": "#e7e7e7",
-        "titleBar.activeBackground": "#445740",
-        "titleBar.activeForeground": "#e7e7e7",
-        "titleBar.inactiveBackground": "#44574099",
-        "titleBar.inactiveForeground": "#e7e7e799",
-        "editor.background": "#000000",
-        "sideBar.background": "#000000",
-        "panel.background": "#000000"
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
     },
-    "yaml.keyOrdering": false,
-    "yaml.schemas": {
-        "/home/roger/source/sead_shape_shifter/frontend/src/schemas/projectSchema.json": [
-            "**/shapeshifter.yml"
-        ]
+    "[markdown]": {
+        "editor.defaultFormatter": "darkriszty.markdown-table-prettify"
     },
-    "yaml.format.enable": true,
-    "yaml.format.singleQuote": false,
-    "yaml.format.bracketSpacing": false,
-    "yaml.format.proseWrap": "preserve",
-    "yaml.format.printWidth": 4096,
+    "[sql]": {
+        "editor.defaultFormatter": "sqlfluff.vscode-sqlfluff"
+    },
     "[yaml]": {
         "editor.defaultFormatter": "redhat.vscode-yaml",
         "editor.formatOnSave": false,
-        "editor.tabSize": 2,
-        "editor.insertSpaces": true
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2
     },
-    "python.analysis.exclude": [
-        "**/node_modules",
-        "**/__pycache__",
-        "**/.venv",
-        "**/venv",
-        "**/frontend",
-        "**/dist",
-        "**/build",
-        "**/output",
-        "**/backups",
-        "**/tmp",
-        "**/data",
-        "**/deprecated",
-        "**/.git",
-        "**/.pytest_cache",
-        "**/.mypy_cache",
-        "**/htmlcov",
-        "**/shape_shifter.egg-info",
-        "**/.git/**",
-        "**/.*",
-    ],
-    "python.analysis.aiHoverSummaries": true,
+    "chat.tools.terminal.autoApprove": {
+        "gh": true,
+        "git add": true,
+        "git commit": true
+    },
+    "chat.tools.urls.autoApprove": {
+        "https://*.cytoscape.org": {
+            "approveRequest": false,
+            "approveResponse": true
+        },
+        "https://js.cytoscape.org": {
+            "approveRequest": true,
+            "approveResponse": false
+        }
+    },
+    "chat.viewSessions.orientation": "stacked",
+    "editor.hover.delay": 1400,
+    "editor.minimap.enabled": false,
+    "files.autoSave": "afterDelay",
+    "files.watcherExclude": {
+        "**/.git/**": true,
+        "**/.venv/**": true,
+        "**/venv/**": true,
+        "**/node_modules/**": true,
+        "**/frontend/node_modules/**": true,
+        "**/frontend/dist/**": true,
+        "**/frontend/coverage/**": true,
+        "**/frontend/.vite/**": true,
+        "**/frontend/.nuxt/**": true,
+        "**/frontend/.output/**": true,
+        "**/frontend/playwright-report/**": true,
+        "**/frontend/test-results/**": true,
+
+        "**/tmp/**": true,
+        "**/data/**": true,
+        "**/graphify-out/**": true,
+        "**/output/**": true,
+        "**/logs/**": true,
+
+        "**/__pycache__/**": true,
+        "**/.pytest_cache/**": true,
+        "**/.ruff_cache/**": true,
+        "**/.mypy_cache/**": true,
+        "**/.tox/**": true,
+        "**/.nox/**": true,
+        "**/htmlcov/**": true,
+
+        "**/sead-tools/**": true
+    },
+    "git.confirmSync": false,
+    "gitlens.rebaseEditor.ordering": "asc",
+    "markdownlint.config": {
+        "MD007": false,
+        "MD013": {
+            "line_length": -1
+        },
+        "MD024": false,
+        "MD029": false,
+        "MD032": false
+    },
+    "mcp": {
+        "servers": {
+            "vuetify-mcp": {
+                "args": [
+                    "-y",
+                    "@vuetify/mcp"
+                ],
+                "command": "npx"
+            }
+        }
+    },
+    "peacock.remoteColor": "#336c73",
+    "python.analysis.aiHoverSummaries": false,
     "python.analysis.autoFormatStrings": true,
     "python.analysis.autoImportCompletions": true,
     "python.analysis.diagnosticMode": "openFilesOnly",
-    "python.analysis.disableTaggedHints": true,
-    "python.analysis.importFormat": "absolute",
-    "python.analysis.extraPaths": [
-        ".",
-        "src",
-        "tests",
-        "target_models/src"
-    ],
-    "python.analysis.generateWithTypeAnnotation": true,
-    "python.analysis.ignore": [
+    "python.analysis.exclude": [
+        "**/.*",
         "**/__pycache__/**",
-        "**/.git/**",
-        "**/.mypy_cache/**",
         "**/.pytest_cache/**",
+        "**/.ruff_cache/**",
+        "**/.mypy_cache/**",
+        "**/.git/**",
+        "**/.tox/**",
+        "**/.nox/**",
         "**/.venv/**",
-        "**/backups/**",
-        "**/build/**",
-        "**/data/**",
-        "**/deprecated/**",
-        "**/dist/**",
-        "**/frontend/**",
-        "**/htmlcov/**",
-        "**/lib/**",
-        "**/node_modules/**",
-        "**/output/**",
-        "**/shape_shifter.egg-info/**",
-        "**/tmp/**",
         "**/venv/**",
+        "**/env/**",
+        "**/coverage/**",
+        "**/dist/**",
+        "**/build/**",
+        "**/node_modules/**",
+        "**/.vite/**",
+        "**/tmp/**",
+        "htmlcov/**",
+        "**/*.egg-info/**",
+        "docs/**",
+        "docker/**",
+        "deprecated/**",
+        "data/**",
+        "**/output/**",
+        "**/backups/**",
+        "sead-tools/**",
+        "frontend/**",
+        "./frontend/node_modules/.pnpm/**",
+        "**/frontend/node_modules/**",
+        "backend/tests/test_data/**",
     ],
     "python.analysis.include": [
-        "src/**",
-        "backend/**",
-        "tests/**",
-        "target_models/**"
+        "src",
+        "tests",
+        "backend/app",
+        "backend/tests",
+        "ingesters",
     ],
+    "python.analysis.extraPaths": [
+        // ".",
+        // "backend"
+    ],
+    "python.analysis.autoSearchPaths": false,
+    "python.analysis.generateWithTypeAnnotation": true,
+    "python.analysis.importFormat": "absolute",
+    "python.analysis.indexing": true,
     "python.analysis.inlayHints.callArgumentNames": "off",
     "python.analysis.inlayHints.functionReturnTypes": true,
     "python.analysis.inlayHints.pytestParameters": true,
@@ -113,87 +144,68 @@
     "python.analysis.typeCheckingMode": "standard",
     "python.analysis.typeEvaluation.deprecateTypingAliases": true,
     "python.analysis.typeEvaluation.disableBytesTypePromotions": false,
-    "python.analysis.indexing": true,
-    "python.analysis.userFileIndexingLimit": 2000,
-    "files.watcherExclude": {
-        "**/.git/objects/**": true,
-        "**/.git/subtree-cache/**": true,
-        "**/node_modules/**": true,
-        "**/.venv/**": true,
-        "**/venv/**": true,
-        "**/dist/**": true,
-        "**/build/**": true,
-        "**/output/**": true,
-        "**/backups/**": true,
-        "**/tmp/**": true,
-        "**/__pycache__/**": true,
-        "**/.pytest_cache/**": true,
-        "**/.mypy_cache/**": true,
-        "**/htmlcov/**": true,
-        "**/shape_shifter.egg-info/**": true,
-        "**/data/**": true
-    },
-    "search.exclude": {
-        "**/node_modules": true,
-        "**/.venv": true,
-        "**/venv": true,
-        "**/dist": true,
-        "**/build": true,
-        "**/output": true,
-        "**/backups": true,
-        "**/tmp": true,
-        "**/__pycache__": true,
-        "**/.pytest_cache": true,
-        "**/.mypy_cache": true,
-        "**/htmlcov": true,
-        "**/shape_shifter.egg-info": true,
-        "**/data/**": true
-    },
-    "remote.autoForwardPorts": true,
-        "remote.portsAttributes": {
-            "22": { "onAutoForward": "ignore" },
-            "25": { "onAutoForward": "ignore" },
-            "80": { "onAutoForward": "ignore" },
-            "443": { "onAutoForward": "ignore" },
-            "8010": { "onAutoForward": "ignore" },
-            "8011": { "onAutoForward": "ignore" },
-            "8020": { "onAutoForward": "ignore" },
-            "8021": { "onAutoForward": "ignore" },
-            "8030": { "onAutoForward": "ignore" },
-            "8084": { "onAutoForward": "ignore" },
-            "8484": { "onAutoForward": "ignore" },
-            "8485": { "onAutoForward": "ignore" },
-    },
-    "peacock.remoteColor": "#668302",
-    "cSpell.words": [
-        "arbodat",
-        "Marp",
-        "shapeshifter"
+    "python.analysis.userFileIndexingLimit": 500,
+    "python.testing.autoTestDiscoverOnSaveEnabled": false,
+    "python.testing.pytestArgs": [
+        "-qq",
+        "tests",
+        "backend/tests",
+        "ingesters/sead/tests"
     ],
-    "chat.tools.terminal.autoApprove": {
-        "git add": true,
-        "git commit": true
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "search.exclude": {
+        "**/htmlcov": true,
+        "**/.venv": true,
+        "**/__pycache__": true,
+        "**/venv": true,
+        "**/node_modules": true,
+        "**/data": true,
+        "**/tmp": true
     },
-    "mcp": {
-        "servers": {
-            "vuetify-mcp": {
-                "command": "npx",
-                "args": [
-                    "-y",
-                    "@vuetify/mcp"
-                ]
-            }
-        }
+    "search.maxResults": 20000,
+    "search.useIndexing": true,
+    "terminal.integrated.tabs.location": "left",
+    "testing.defaultGutterClickAction": "debug",
+    "testing.gutterEnabled": true,
+    "workbench.colorCustomizations": {
+        "activityBar.activeBackground": "#b41706",
+        "activityBar.background": "#b41706",
+        "activityBar.foreground": "#e7e7e7",
+        "activityBar.inactiveForeground": "#e7e7e799",
+        "activityBarBadge.background": "#011f04",
+        "activityBarBadge.foreground": "#e7e7e7",
+        "activityBarTop.activeBackground": "#b41706",
+        "activityBarTop.background": "#b41706",
+        "activityBarTop.foreground": "#e7e7e7",
+        "activityBarTop.inactiveForeground": "#e7e7e799",
+        "commandCenter.border": "#e7e7e799",
+        "commandCenter.foreground": "#e7e7e7",
+        "sash.hoverBorder": "#b41706",
+        "statusBar.background": "#831104",
+        "statusBar.debuggingBackground": "#831104",
+        "statusBar.debuggingForeground": "#e7e7e7",
+        "statusBar.foreground": "#e7e7e7",
+        "statusBarItem.hoverBackground": "#b41706",
+        "statusBarItem.remoteBackground": "#000000",
+        "statusBarItem.remoteForeground": "#e7e7e7",
+        "titleBar.activeBackground": "#831104",
+        "titleBar.activeForeground": "#e7e7e7",
+        "titleBar.inactiveBackground": "#83110499",
+        "titleBar.inactiveForeground": "#e7e7e799"
     },
-    "sqlfluff.dialect": "postgres",
-    "sqlfluff.codeActions.excludeRules.global": false,
-    "markdownlint.config": {
-        "MD007": false,
-        "MD032": false,
-        "MD013": {
-            "line_length": -1
-        },
-        "MD024": false,
-        "MD029": false,
-    }
+    "workbench.tree.indent": 18,
+    "yaml.format.bracketSpacing": false,
+    "yaml.format.enable": true,
+    "yaml.format.printWidth": 4096,
+    "yaml.format.proseWrap": "preserve",
+    "yaml.format.singleQuote": false,
+    "yaml.keyOrdering": false,
+    "yaml.schemas": {
+        "/home/roger/source/sead_shape_shifter/frontend/src/schemas/projectSchema.json": [
+            "**/shapeshifter.yml"
+        ]
+    },
+    "vitest.filesWatcherInclude": "frontend/src/**/*",
+    "vitest.watchOnStartup": false
 }

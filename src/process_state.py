@@ -1,19 +1,22 @@
 from dataclasses import dataclass, field
 
-import pandas as pd
 from loguru import logger
 
 from src.model import ShapeShiftProject
+from src.table_store import TableStore
 
 
 class ProcessState:
     """Helper class to track processing state of entities during normalization."""
 
-    def __init__(self, project: ShapeShiftProject, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
+    def __init__(self, project: ShapeShiftProject, table_store: TableStore, target_entities: set[str] | None = None) -> None:
         self.project: ShapeShiftProject = project
-        self.table_store: dict[str, pd.DataFrame] = table_store
+        self.table_store: TableStore = table_store
         # Resolve target entities through the project to ensure dependencies are included consistently.
-        self.target_entities: set[str] = project.resolve_target_entities(target_entities)
+        # Filter to only entities that actually exist in the project config — FK references to
+        # undefined entities (e.g. from a stale cache or partial config) are silently excluded.
+        resolved: set[str] = project.resolve_target_entities(target_entities)
+        self.target_entities: set[str] = {e for e in resolved if project.has_table(e)}
 
     def get_next_entity_to_process(self) -> str | None:
         """Get the next entity that can be processed based on dependencies."""
@@ -30,6 +33,8 @@ class ProcessState:
         return None
 
     def get_unmet_dependencies(self, entity: str) -> set[str]:
+        if not self.project.has_table(entity):
+            return set()
         return self.project.get_table(entity_name=entity).depends_on - self.processed_entities
 
     def get_all_unmet_dependencies(self) -> dict[str, set[str]]:

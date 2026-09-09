@@ -29,11 +29,31 @@ const DeleteConfirmationDialogStub = {
   template: '<div class="delete-confirmation-dialog-stub" />',
 }
 
+const VTextFieldStub = {
+  name: 'VTextField',
+  props: ['modelValue', 'prependInnerIcon', 'label', 'variant', 'density', 'clearable', 'hideDetails', 'prefix'],
+  template: '<div class="v-text-field-stub" />',
+}
+
+const VSelectStub = {
+  name: 'VSelect',
+  props: ['modelValue', 'items', 'label', 'variant', 'density', 'clearable', 'hideDetails', 'prefix'],
+  template: '<div class="v-select-stub" />',
+}
+
+const globalStubs = {
+  EntityFormDialog: EntityFormDialogStub,
+  DeleteConfirmationDialog: DeleteConfirmationDialogStub,
+  VTextField: VTextFieldStub,
+  VSelect: VSelectStub,
+}
+
 function createEntity(name: string): EntityResponse {
   return {
     name,
     entity_data: { type: 'entity' },
-  } as EntityResponse
+    etag: `${name}-etag`,
+  }
 }
 
 describe('EntityListCard', () => {
@@ -54,10 +74,7 @@ describe('EntityListCard', () => {
       },
       global: {
         renderStubDefaultSlot: true,
-        stubs: {
-          EntityFormDialog: EntityFormDialogStub,
-          DeleteConfirmationDialog: DeleteConfirmationDialogStub,
-        },
+        stubs: globalStubs,
       },
     })
 
@@ -77,10 +94,7 @@ describe('EntityListCard', () => {
       },
       global: {
         renderStubDefaultSlot: true,
-        stubs: {
-          EntityFormDialog: EntityFormDialogStub,
-          DeleteConfirmationDialog: DeleteConfirmationDialogStub,
-        },
+        stubs: globalStubs,
       },
     })
 
@@ -107,10 +121,7 @@ describe('EntityListCard', () => {
       },
       global: {
         renderStubDefaultSlot: true,
-        stubs: {
-          EntityFormDialog: EntityFormDialogStub,
-          DeleteConfirmationDialog: DeleteConfirmationDialogStub,
-        },
+        stubs: globalStubs,
       },
     })
 

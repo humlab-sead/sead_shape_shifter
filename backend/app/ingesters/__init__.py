@@ -12,10 +12,10 @@ from backend.app.ingesters.protocol import (
     IngestionResult,
     ValidationResult,
 )
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
 
 # Note: Ingester implementations are no longer imported here.
-# They are dynamically discovered at application startup via Ingesters.discover()
+# They are dynamically discovered at application startup via get_ingester_registry().discover()
 
 __all__ = [
     "Ingester",
@@ -23,5 +23,6 @@ __all__ = [
     "IngesterMetadata",
     "IngestionResult",
     "ValidationResult",
-    "Ingesters",
+    "get_ingester_registry",
+    "IngesterRegistry",
 ]

@@ -8,7 +8,7 @@ from typing import Any, cast
 import pandas as pd
 from pandas._typing import Dtype
 
-from src.configuration.resolve import ConfigValue
+from src.configuration import ConfigValue
 
 from .utility import camel_case_name, load_dataframe_from_postgres
 

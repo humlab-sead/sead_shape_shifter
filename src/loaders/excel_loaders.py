@@ -82,6 +82,7 @@ class PandasLoader(ExcelLoader):
         filename: str = clean_opts.pop("filename")
         sheet_name: str | None = clean_opts.pop("sheet_name", None)
         sanitize_header: bool = clean_opts.pop("sanitize_header", True)
+        clean_opts.pop("location", None)  # Shape Shifter metadata field, not a pandas option
         file_path = Path(filename)
         df: pd.DataFrame | dict[str, pd.DataFrame] = pd.read_excel(file_path, sheet_name=sheet_name, **clean_opts)
         if not isinstance(df, pd.DataFrame):

@@ -1,5 +1,6 @@
-import pandas as pd
 from loguru import logger
+
+from src.table_store import TableStore
 
 # pylint: disable=line-too-long
 
@@ -21,7 +22,7 @@ def extract_translation_map(
     return translations_map
 
 
-def translate(data: dict[str, pd.DataFrame], translations_map: dict[str, str] | None) -> dict[str, pd.DataFrame]:
+def translate(data: TableStore, translations_map: dict[str, str] | None) -> TableStore:
     """Translate column names using translation from config."""
 
     if not translations_map:

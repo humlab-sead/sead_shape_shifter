@@ -209,6 +209,26 @@ class TestExtraColumnsEvaluation:
         assert result["const"].tolist() == ["literal", "literal"]
         assert len(deferred) == 0
 
+    def test_numeric_string_constant_is_coerced_to_int(self):
+        """Quoted integer literals are coerced when treated as string constants."""
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"a": [1, 2]})
+        result, deferred = evaluator.evaluate_extra_columns(df, {"const": "53"}, "test")
+
+        assert "const" in result.columns
+        assert result["const"].tolist() == [53, 53]
+        assert len(deferred) == 0
+
+    def test_numeric_string_constant_is_coerced_to_float(self):
+        """Quoted float literals are coerced when treated as string constants."""
+        evaluator = ExtraColumnEvaluator()
+        df = pd.DataFrame({"a": [1, 2]})
+        result, deferred = evaluator.evaluate_extra_columns(df, {"const": "53.5"}, "test")
+
+        assert "const" in result.columns
+        assert result["const"].tolist() == [53.5, 53.5]
+        assert len(deferred) == 0
+
     def test_escaped_equals_string_constant(self):
         """Escaped strings starting with '=' remain string constants."""
         evaluator = ExtraColumnEvaluator()

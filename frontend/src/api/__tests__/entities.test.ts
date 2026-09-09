@@ -13,6 +13,14 @@ vi.mock('../client', () => ({
 
 import { apiRequest } from '../client'
 
+function createEntityResponse(name: string, entityData: Record<string, unknown>): EntityResponse {
+  return {
+    name,
+    entity_data: entityData,
+    etag: `${name}-etag`,
+  }
+}
+
 describe('entitiesApi', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -21,8 +29,8 @@ describe('entitiesApi', () => {
   describe('list', () => {
     it('should fetch all entities for a project', async () => {
       const mockEntities: EntityResponse[] = [
-        { name: 'entity1', entity_data: { field: 'value1' } },
-        { name: 'entity2', entity_data: { field: 'value2' } },
+        createEntityResponse('entity1', { field: 'value1' }),
+        createEntityResponse('entity2', { field: 'value2' }),
       ]
 
       vi.mocked(apiRequest).mockResolvedValue(mockEntities)
@@ -47,10 +55,7 @@ describe('entitiesApi', () => {
 
   describe('get', () => {
     it('should fetch a specific entity', async () => {
-      const mockEntity: EntityResponse = {
-        name: 'test-entity',
-        entity_data: { table: 'users', columns: ['id', 'name'] },
-      }
+      const mockEntity: EntityResponse = createEntityResponse('test-entity', { table: 'users', columns: ['id', 'name'] })
 
       vi.mocked(apiRequest).mockResolvedValue(mockEntity)
 
@@ -64,10 +69,7 @@ describe('entitiesApi', () => {
     })
 
     it('should handle entity names with special characters', async () => {
-      const mockEntity: EntityResponse = {
-        name: 'entity-with-dash',
-        entity_data: {},
-      }
+      const mockEntity: EntityResponse = createEntityResponse('entity-with-dash', {})
 
       vi.mocked(apiRequest).mockResolvedValue(mockEntity)
 
@@ -90,10 +92,7 @@ describe('entitiesApi', () => {
         },
       }
 
-      const mockResponse: EntityResponse = {
-        name: 'new-entity',
-        entity_data: createRequest.entity_data,
-      }
+      const mockResponse: EntityResponse = createEntityResponse('new-entity', createRequest.entity_data)
 
       vi.mocked(apiRequest).mockResolvedValue(mockResponse)
 
@@ -113,10 +112,7 @@ describe('entitiesApi', () => {
         entity_data: {},
       }
 
-      vi.mocked(apiRequest).mockResolvedValue({
-        name: 'minimal-entity',
-        entity_data: {},
-      })
+      vi.mocked(apiRequest).mockResolvedValue(createEntityResponse('minimal-entity', {}))
 
       await entitiesApi.create('test-project', createRequest)
 
@@ -138,10 +134,7 @@ describe('entitiesApi', () => {
         },
       }
 
-      const mockResponse: EntityResponse = {
-        name: 'test-entity',
-        entity_data: updateRequest.entity_data,
-      }
+      const mockResponse: EntityResponse = createEntityResponse('test-entity', updateRequest.entity_data)
 
       vi.mocked(apiRequest).mockResolvedValue(mockResponse)
 
@@ -170,10 +163,7 @@ describe('entitiesApi', () => {
         },
       }
 
-      vi.mocked(apiRequest).mockResolvedValue({
-        name: 'orders',
-        entity_data: updateRequest.entity_data,
-      })
+      vi.mocked(apiRequest).mockResolvedValue(createEntityResponse('orders', updateRequest.entity_data))
 
       await entitiesApi.update('test-project', 'orders', updateRequest)
 

@@ -1,7 +1,7 @@
 # type: ignore
 
-from .config import Config, ConfigFactory
-from .interface import ConfigFactoryLike, ConfigLike
+from .config import Config, ConfigLike, load_config
+from .config_value import ConfigValue, inject_config
 from .provider import (
     ConfigProvider,
     ConfigStore,
@@ -11,16 +11,20 @@ from .provider import (
     reset_config_provider,
     set_config_provider,
 )
-from .resolve import ConfigValue, inject_config
-from .setup import get_connection, setup_config_store
+from .resolve import find_unresolved_directives, load_resolved_yaml, resolve_directives
+from .utility import is_path_to_existing_file, is_yaml_file
 
 __all__ = [
     # config
     "Config",
-    "ConfigFactory",
+    "load_config",
+    "resolve_directives",
+    "load_resolved_yaml",
+    "find_unresolved_directives",
+    "is_yaml_file",
+    "is_path_to_existing_file",
     # interface
     "ConfigLike",
-    "ConfigFactoryLike",
     # provider
     "ConfigProvider",
     "ConfigStore",
@@ -32,7 +36,4 @@ __all__ = [
     # resolve
     "ConfigValue",
     "inject_config",
-    # setup
-    "get_connection",
-    "setup_config_store",
 ]

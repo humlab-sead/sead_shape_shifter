@@ -63,5 +63,3 @@ task_list:
   - cultural_group
   - dating_period
   - chronological_period
-notes:
-  dating_period: This is entity that is ignored since it fills no purpose. ArchDat dating are instead stored in "relative_dating". The pilot has no chronology dating, nor any entry in Datierung.

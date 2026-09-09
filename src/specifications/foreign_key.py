@@ -2,6 +2,7 @@ import pandas as pd
 
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 from src.specifications.base import Specification
+from src.table_store import TableStore
 
 # pylint: disable=line-too-long
 
@@ -101,9 +102,9 @@ class ForeignKeyConfigSpecification(Specification):
 class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
     """Checks if local and remote keys are present in the actual table data (pandas.DataFrames)."""
 
-    def __init__(self, table_store: dict[str, pd.DataFrame], cfg: "ShapeShiftProject") -> None:
+    def __init__(self, table_store: TableStore, cfg: "ShapeShiftProject") -> None:
         super().__init__(cfg)
-        self.table_store: dict[str, pd.DataFrame] = table_store
+        self.table_store: TableStore = table_store
 
     def is_satisfied_by(self, *, fk_cfg: ForeignKeyConfig | None = None, **kwargs) -> bool:
 

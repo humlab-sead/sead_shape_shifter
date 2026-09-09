@@ -1,33 +1,893 @@
 metadata:
-  name: bugs
+  name: bugs_cep
   type: shapeshifter-project
-  description: Configuration for debug tests of shapeshifter.
-  version: 1.0.0
-  default_entity: survey
+  description: >-
+    Draft Shape Shifter project for extracting BugsCEP data into SEAD-facing
+    entities. This draft covers the site slice, the next low-friction
+    lookup entities from the current Java import flow, and the first dating
+    facts needed by relative and radiometric date records.
+  version: 0.5.0
+  default_entity: site
+
 entities:
-  a:
+  # This file intentionally mixes two layers of information:
+  # 1. executable Shape Shifter entities that can already extract and shape
+  #    BugsCEP rows into SEAD-facing tables
+  # 2. YAML comments that preserve important Java importer behavior which is
+  #    not yet expressible in Shape Shifter itself, especially trace lookups,
+  #    update gating, and error-only control flow.
+
+  # The Java site importer resolves Bugs Country and Region strings into
+  # tbl_locations rows of these two SEAD location types before it writes the
+  # site-to-location links.
+  location_type:
     type: fixed
-    public_id: a_id
-    keys: []
-    columns: [system_id, a_type, a_id, a_value]
+    public_id: location_type_id
+    keys: [location_type]
+    columns:
+      - system_id
+      - location_type_id
+      - location_type
+      - description
     values:
-    - [1, 'A', 1, 'a']
-  b:
+      - [1, null, Country, Country rows referenced by sites and dating labs.]
+      - [2, null, Sub-country administrative region, Region rows referenced by Bugs site imports.]
+
+  # This keeps bugs_site_code as the primary business key inside Shape Shifter.
+  # The current Java importer uses that same code for bugs_trace lookups and as
+  # the first-pass identity for site reconciliation.
+  #
+  # Java-only policy not modeled as executable YAML:
+  # - prerequisite: resolve Region and Country to existing or newly created
+  #   locations before site reconciliation starts
+  # - reconciliation rule order:
+  #   1. bugs_trace lookup by SiteCODE
+  #   2. name + location lookup in tbl_sites / tbl_site_locations
+  #   3. create new site
+  # - external edit guard: reject the row if the traced SEAD site was updated
+  #   after the last bugs import
+  # - update gate: if a traced site changed and allow.site.updates=false,
+  #   return an error instead of writing an update
+  site:
+    type: sql
+    public_id: site_id
+    keys: [bugs_site_code]
+    columns:
+      - site_id
+      - bugs_site_code
+      - site_name
+      - region_name
+      - country_name
+      - national_site_identifier
+      - latitude_dd
+      - longitude_dd
+      - altitude
+      - site_description
+    data_source: bugs_cep_access
+    drop_empty_rows: [site_name]
+    # Region and Country are kept as staging columns because Shape Shifter can
+    # express the resulting location entities and site_location bridge rows,
+    # but not yet the Java prerequisite/error flow around missing countries,
+    # trace-first updates, or update-vs-insert decisions.
+    query: |-
+      select
+        null as [site_id],
+        [SiteCODE] as [bugs_site_code],
+        [SiteName] as [site_name],
+        [Region] as [region_name],
+        [Country] as [country_name],
+        [NGR] as [national_site_identifier],
+        [LatDD] as [latitude_dd],
+        [LongDD] as [longitude_dd],
+        [Alt] as [altitude],
+        [Interp] as [site_description]
+      from [TSite]
+
+  # The Java helper creates or reuses both country and region locations.
+  # This SQL draft models the resulting tbl_locations-facing rows directly.
+  location:
+    type: sql
+    public_id: location_id
+    keys: [location_type, location_name]
+    columns:
+      - location_id
+      - location_type
+      - location_name
+      - default_lat_dd
+      - default_long_dd
+    data_source: bugs_cep_access
+    drop_duplicates: [location_type, location_name]
+    depends_on: [location_type]
+    foreign_keys:
+      - entity: location_type
+        local_keys: [location_type]
+        remote_keys: [location_type]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+    query: |-
+      select
+        null as [location_id],
+        'Country' as [location_type],
+        [Country] as [location_name],
+        null as [default_lat_dd],
+        null as [default_long_dd]
+      from [TSite]
+      where [Country] is not null and [Country] <> ''
+
+      union all
+
+      select
+        null as [location_id],
+        'Sub-country administrative region' as [location_type],
+        [Region] as [location_name],
+        null as [default_lat_dd],
+        null as [default_long_dd]
+      from [TSite]
+      where [Region] is not null and [Region] <> ''
+
+  # The Java pipeline writes separate tbl_site_locations rows after site and
+  # location reconciliation. Here we materialize the bridge rows directly from
+  # the same Bugs source table.
+  site_location:
+    type: sql
+    public_id: site_location_id
+    keys: [bugs_site_code, location_type, location_name]
+    columns:
+      - site_location_id
+      - bugs_site_code
+      - location_type
+      - location_name
+    data_source: bugs_cep_access
+    depends_on: [site, location]
+    drop_duplicates: [bugs_site_code, location_type, location_name]
+    foreign_keys:
+      - entity: site
+        local_keys: [bugs_site_code]
+        remote_keys: [bugs_site_code]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+      - entity: location
+        local_keys: [location_type, location_name]
+        remote_keys: [location_type, location_name]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+    query: |-
+      select
+        null as [site_location_id],
+        [SiteCODE] as [bugs_site_code],
+        'Country' as [location_type],
+        [Country] as [location_name]
+      from [TSite]
+      where [Country] is not null and [Country] <> ''
+
+      union all
+
+      select
+        null as [site_location_id],
+        [SiteCODE] as [bugs_site_code],
+        'Sub-country administrative region' as [location_type],
+        [Region] as [location_name]
+      from [TSite]
+      where [Region] is not null and [Region] <> ''
+
+  # Java: BibliographyImporter -> tbl_biblio. The current importer writes the
+  # Bugs reference, authors, title, and derived full_reference. Bugs notes are
+  # read from Access but not persisted into tbl_biblio today.
+  #
+  # Java-only policy not modeled as executable YAML:
+  # - reconciliation rule order:
+  #   1. bugs_trace lookup by REFERENCE
+  #   2. case-insensitive lookup on tbl_biblio.bugs_reference
+  #   3. create new biblio row
+  # - update detection compares bugs_reference, authors, title, and
+  #   full_reference only
+  citation:
+    type: sql
+    public_id: biblio_id
+    keys: [bugs_reference]
+    columns:
+      - biblio_id
+      - bugs_reference
+      - authors
+      - title
+      - full_reference
+    data_source: bugs_cep_access
+    drop_empty_rows: [bugs_reference]
+    query: |-
+      select
+        null as [biblio_id],
+        [REFERENCE] as [bugs_reference],
+        [AUTHOR] as [authors],
+        [TITLE] as [title],
+        iif([AUTHOR] is null or [TITLE] is null, [REFERENCE], [AUTHOR] & ' ' & [TITLE]) as [full_reference]
+      from [TBiblio]
+      where [REFERENCE] is not null and [REFERENCE] <> ''
+
+  # Java: SiteReferencesImporter -> tbl_site_references. This importer depends
+  # on SiteImporter and BibliographyImporter and writes a simple site/biblio
+  # bridge table when both sides resolve successfully.
+  #
+  # Java-only policy not modeled as executable YAML:
+  # - if SiteCODE does not resolve to a SEAD site, emit "Missing site: <code>"
+  # - if Ref is null or empty, emit "No reference specified."
+  # - if Ref does not resolve to a bibliography row, emit
+  #   "No reference found for ref: <ref>"
+  # - de-duplication happens against existing tbl_site_references rows for the
+  #   site, using site + biblio equality rather than trace lookup
+  #
+  # Note: tbl_site_references is part of the current Java import output but is
+  # not yet described in the Shape Shifter SEAD target-model files.
+  site_reference:
+    type: sql
+    public_id: site_reference_id
+    keys: [bugs_site_code, bugs_reference]
+    columns:
+      - site_reference_id
+      - bugs_site_code
+      - bugs_reference
+    data_source: bugs_cep_access
+    depends_on: [site, citation]
+    drop_empty_rows: [bugs_site_code, bugs_reference]
+    drop_duplicates: [bugs_site_code, bugs_reference]
+    foreign_keys:
+      - entity: site
+        local_keys: [bugs_site_code]
+        remote_keys: [bugs_site_code]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+      - entity: citation
+        local_keys: [bugs_reference]
+        remote_keys: [bugs_reference]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+    query: |-
+      select
+        null as [site_reference_id],
+        [SiteCODE] as [bugs_site_code],
+        [Ref] as [bugs_reference]
+      from [TSiteRef]
+      where [SiteCODE] is not null and [SiteCODE] <> ''
+        and [Ref] is not null and [Ref] <> ''
+
+  # Java: LabImporter -> tbl_dating_labs. The current importer writes
+  # international_lab_id, lab_name, and a country FK resolved through
+  # tbl_locations. Country resolution and the error-only branches stay outside
+  # executable YAML for now.
+  #
+  # Java-only policy not modeled as executable YAML:
+  # - dependency: CountryImporter must already have created the country rows
+  # - reconciliation rule order:
+  #   1. bugs_trace lookup by LabID
+  #   2. exact lookup on tbl_dating_labs.international_lab_id
+  #   3. create new lab row
+  # - country resolution errors:
+  #   * null/empty country -> "No country specified"
+  #   * literal placeholder value "Country" -> ignored/error row
+  #   * no matching country row -> "No country found"
+  # - Address and Telephone are read from Access in Java but not written to
+  #   tbl_dating_labs, and Website/email never enter the fetched row set
+  dating_lab:
+    type: sql
+    public_id: dating_lab_id
+    keys: [international_lab_id]
+    columns:
+      - dating_lab_id
+      - international_lab_id
+      - lab_name
+      - country_name
+    data_source: bugs_cep_access
+    drop_empty_rows: [international_lab_id, lab_name]
+    query: |-
+      select
+        null as [dating_lab_id],
+        [LabID] as [international_lab_id],
+        [Labname] as [lab_name],
+        [Country] as [country_name]
+      from [TLab]
+      where [LabID] is not null and [LabID] <> ''
+
+  # Java: PeriodImporter -> tbl_relative_age_types lookup + tbl_relative_ages.
+  # The Java importer ignores PeriodCODE='?' rows, resolves PeriodType against
+  # existing tbl_relative_age_types rows, and converts begin/end into either
+  # c14 or calendar age columns based on YearsType.
+  #
+  # In this draft, relative_age_type is generated directly from the distinct
+  # PeriodType values present in BugsCEP so the relative_ages slice can link to
+  # a local SEAD-facing classifier entity without assuming a pre-populated DB.
+  relative_age_type:
+    type: sql
+    public_id: relative_age_type_id
+    keys: [age_type]
+    columns:
+      - relative_age_type_id
+      - age_type
+      - description
+    data_source: bugs_cep_access
+    drop_empty_rows: [age_type]
+    drop_duplicates: [age_type]
+    query: |-
+      select distinct
+        null as [relative_age_type_id],
+        [PeriodType] as [age_type],
+        null as [description]
+      from [TPeriods]
+      where [PeriodType] is not null and [PeriodType] <> ''
+        and [PeriodCODE] is not null and [PeriodCODE] <> ''
+        and [PeriodCODE] <> '?'
+
+  # Java-only policy not modeled as executable YAML:
+  # - ignore rows where PeriodCODE = '?'
+  # - reconciliation rule order:
+  #   1. bugs_trace lookup by PeriodCODE
+  #   2. create or update relative age row
+  # - if PeriodName is blank, Java flags an error and falls back to PeriodCODE
+  # - geography resolution tries a country trace match first, then a unique
+  #   location-by-name lookup; ambiguous names produce an error row instead of
+  #   a location link
+  # - PeriodRef is read from Access but not written to tbl_relative_ages
+  relative_ages:
+    type: sql
+    public_id: relative_age_id
+    keys: [bugs_period_code]
+    columns:
+      - relative_age_id
+      - bugs_period_code
+      - relative_age_name
+      - description
+      - c14_age_older
+      - c14_age_younger
+      - cal_age_older
+      - cal_age_younger
+      - abbreviation
+      - age_type
+      - geography_name
+    data_source: bugs_cep_access
+    depends_on: [relative_age_type]
+    drop_empty_rows: [bugs_period_code]
+    foreign_keys:
+      - entity: relative_age_type
+        local_keys: [age_type]
+        remote_keys: [age_type]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+    query: |-
+      select
+        null as [relative_age_id],
+        [PeriodCODE] as [bugs_period_code],
+        iif([PeriodName] is null or [PeriodName] = '', [PeriodCODE], [PeriodName]) as [relative_age_name],
+        [PeriodDesc] as [description],
+        iif(([YearsType] in ('C14','c14','Radiometric','radiometric'))
+            and (([BeginBCAD] = 'BP') or ([BeginBCAD] is null and [Begin] = 0)),
+            [Begin],
+            null) as [c14_age_older],
+        iif(([YearsType] in ('C14','c14','Radiometric','radiometric'))
+            and (([EndBCAD] = 'BP') or ([EndBCAD] is null and [End] = 0)),
+            [End],
+            null) as [c14_age_younger],
+        iif([YearsType] in ('Calendar','calendar','Calender','calender'),
+            iif([Begin] is null,
+                null,
+                iif([BeginBCAD] = 'BC', [Begin] + 1950,
+                    iif([BeginBCAD] = 'AD', 1950 - [Begin], [Begin]))),
+            null) as [cal_age_older],
+        iif([YearsType] in ('Calendar','calendar','Calender','calender'),
+            iif([End] is null,
+                null,
+                iif([EndBCAD] = 'BC', [End] + 1950,
+                    iif([EndBCAD] = 'AD', 1950 - [End], [End]))),
+            null) as [cal_age_younger],
+        [PeriodCODE] as [abbreviation],
+        [PeriodType] as [age_type],
+        [PeriodGeog] as [geography_name]
+      from [TPeriods]
+      where [PeriodCODE] is not null and [PeriodCODE] <> ''
+        and [PeriodCODE] <> '?'
+
+  # The Java sample path runs CountsheetImporter before SampleImporter and then
+  # attaches each sample to the traced countsheet/sample-group row. This draft
+  # builds the minimum SEAD-facing scaffold directly from TSample so later date
+  # slices have a local backbone to target.
+  #
+  # Java-only policy not modeled as executable YAML:
+  # - missing CountsheetCODE -> error row instead of a created sample
+  # - X and Y values are treated as suspicious and logged as errors
+  # - Z/depth values become related dimension rows rather than columns on the
+  #   sample record itself
+  sample_type:
     type: fixed
-    public_id: b_id
-    keys: []
-    columns: [system_id, b_type, b_id, b_value]
+    public_id: sample_type_id
+    keys: [type_name]
+    columns:
+      - system_id
+      - sample_type_id
+      - type_name
+      - description
     values:
-    - [1, 'B', 1, 'b']
-  ab:
+      - [1, null, Unspecified Bugs sample, Provisional sample type for BugsCEP samples until a fuller sample slice is modeled.]
+
+  alt_ref_type:
     type: fixed
-    public_id: ab_id
-    keys: []
-    columns: [system_id, ab_type, ab_id, ab_value]
-    values: []
-    append:
-    - source: a
-      columns: [system_id, a_type, a_id, a_value]
-    - source: b
-      columns: [system_id, b_type, b_id, b_value]
+    public_id: alt_ref_type_id
+    keys: [alt_ref_type]
+    columns:
+      - system_id
+      - alt_ref_type_id
+      - alt_ref_type
+      - description
+    values:
+      - [1, null, Other alternative sample name, Matches the default alternative reference type used by the Java sample importer.]
+
+  method_group:
+    type: fixed
+    public_id: method_group_id
+    keys: [group_name]
+    columns:
+      - system_id
+      - method_group_id
+      - group_name
+      - description
+    values:
+      - [1, null, Sample collection, Provisional group for BugsCEP sample-group scaffolding.]
+      - [2, null, Dating to period, Matches the Java relative-date importer method group name.]
+      - [3, null, Dating by radiometric methods, Matches the Java geochronology importer method group name.]
+
+  method:
+    type: fixed
+    public_id: method_id
+    keys: [method_abbrev_or_alt_name]
+    depends_on: [method_group]
+    columns:
+      - system_id
+      - method_id
+      - method_name
+      - description
+      - method_group_id
+      - method_abbrev_or_alt_name
+      - biblio_id
+    values:
+      - [1, null, Bugs countsheet sample group, Provisional collection method used to satisfy tbl_sample_groups requirements for the dating scaffold., 1, BUGS_SAMPLE_GROUP, null]
+      - [2, null, ArchPerC14, Java-style relative-date method abbreviation for archaeological period rows with C14 years., 2, ArchPerC14, null]
+      - [3, null, ArchPerCal, Java-style relative-date method abbreviation for archaeological period rows with calendar years., 2, ArchPerCal, null]
+      - [4, null, DendroC14, Java-style relative-date method abbreviation for dendro rows with C14 years., 2, DendroC14, null]
+      - [5, null, DendroCal, Java-style relative-date method abbreviation for dendro rows with calendar years., 2, DendroCal, null]
+      - [6, null, GeolPerC14, Java-style relative-date method abbreviation for geological period rows with C14 years., 2, GeolPerC14, null]
+      - [7, null, GeolPerCal, Java-style relative-date method abbreviation for geological period rows with calendar years., 2, GeolPerCal, null]
+      - [8, null, HistPerCal, Java-style relative-date method abbreviation for historical period rows with calendar years., 2, HistPerCal, null]
+      - [9, null, PollenC14, Java-style relative-date method abbreviation for pollen rows with C14 years., 2, PollenC14, null]
+      - [10, null, PollenCal, Java-style relative-date method abbreviation for pollen rows with calendar years., 2, PollenCal, null]
+      - [11, null, Strat(Geol)C14, Java-style relative-date method abbreviation for geological stratigraphy rows with C14 years., 2, Strat(Geol)C14, null]
+      - [12, null, Strat(Geol)Cal, Java-style relative-date method abbreviation for geological stratigraphy rows with calendar years., 2, Strat(Geol)Cal, null]
+      - [13, null, UnknownPerCal, Java-style fallback relative-date method abbreviation for unknown period rows with calendar years., 2, UnknownPerCal, null]
+      - [14, null, AAR, Direct geochronology method abbreviation from BugsCEP dating rows., 3, AAR, null]
+      - [15, null, C14 AMS, Direct geochronology method abbreviation from BugsCEP dating rows., 3, C14 AMS, null]
+      - [16, null, C14 Humous, Direct geochronology method abbreviation from BugsCEP dating rows., 3, C14 Humous, null]
+      - [17, null, C14 IsoSat, Direct geochronology method abbreviation from BugsCEP dating rows., 3, C14 IsoSat, null]
+      - [18, null, C14 Std, Direct geochronology method abbreviation from BugsCEP dating rows., 3, C14 Std, null]
+      - [19, null, C14 Unspec., Direct geochronology method abbreviation from BugsCEP dating rows., 3, C14 Unspec., null]
+      - [20, null, CalAMS, Direct geochronology method abbreviation from BugsCEP dating rows., 3, CalAMS, null]
+      - [21, null, ESR, Direct geochronology method abbreviation from BugsCEP dating rows., 3, ESR, null]
+      - [22, null, TL, Direct geochronology method abbreviation from BugsCEP dating rows., 3, TL, null]
+      - [23, null, U-Series, Direct geochronology method abbreviation from BugsCEP dating rows., 3, U-Series, null]
+      - [24, null, U234/U238, Direct geochronology method abbreviation from BugsCEP dating rows., 3, U234/U238, null]
+      - [25, null, UnknownCal, Shared Java fallback method abbreviation for blank relative-date methods and direct geochronology rows named UnknownCal., 3, UnknownCal, null]
+      - [26, null, UnknownRadio, Direct geochronology method abbreviation from BugsCEP dating rows., 3, UnknownRadio, null]
+      - [27, null, Wiggle, Direct geochronology method abbreviation from BugsCEP dating rows., 3, Wiggle, null]
+
+  data_type:
+    type: fixed
+    public_id: data_type_id
+    keys: [data_type_name]
+    columns:
+      - system_id
+      - data_type_id
+      - data_type_name
+      - definition
+    values:
+      - [1, null, Uncalibrated dates, Matches the Java relative-date importer dataset data type.]
+      - [2, null, Undefined other, Matches the Java geochronology importer dataset data type.]
+
+  # This is intentionally thinner than the Java Countsheet importer. It keeps
+  # the site relationship and countsheet code so samples and date records can
+  # link through a SEAD-facing sample_group entity.
+  sample_group:
+    type: sql
+    public_id: sample_group_id
+    keys: [bugs_site_code, bugs_countsheet_code]
+    columns:
+      - sample_group_id
+      - bugs_site_code
+      - bugs_countsheet_code
+      - sample_group_name
+      - sample_group_description
+      - method_abbrev
+    data_source: bugs_cep_access
+    depends_on: [site, method]
+    drop_empty_rows: [bugs_site_code, bugs_countsheet_code]
+    drop_duplicates: [bugs_site_code, bugs_countsheet_code]
+    foreign_keys:
+      - entity: site
+        local_keys: [bugs_site_code]
+        remote_keys: [bugs_site_code]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+      - entity: method
+        local_keys: [method_abbrev]
+        remote_keys: [method_abbrev_or_alt_name]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+    query: |-
+      select distinct
+        null as [sample_group_id],
+        [SiteCODE] as [bugs_site_code],
+        [CountsheetCODE] as [bugs_countsheet_code],
+        [CountsheetCODE] as [sample_group_name],
+        null as [sample_group_description],
+        'BUGS_SAMPLE_GROUP' as [method_abbrev]
+      from [TSample]
+      where [SiteCODE] is not null and [SiteCODE] <> ''
+        and [CountsheetCODE] is not null and [CountsheetCODE] <> ''
+
+  # Java uses the traced countsheet/sample-group row plus a default sample type
+  # and default alternative reference type. This scaffold preserves those same
+  # defaults but keeps the unresolved depth/dimension handling out of scope.
+  sample:
+    type: sql
+    public_id: physical_sample_id
+    keys: [bugs_sample_code]
+    columns:
+      - physical_sample_id
+      - bugs_sample_code
+      - bugs_site_code
+      - bugs_countsheet_code
+      - sample_name
+      - sample_type_name
+      - alt_ref_type
+      - bugs_ref_nr_context
+      - z_or_depth_top
+      - z_or_depth_bottom
+    data_source: bugs_cep_access
+    depends_on: [sample_group, sample_type, alt_ref_type]
+    drop_empty_rows: [bugs_sample_code, bugs_site_code, bugs_countsheet_code]
+    foreign_keys:
+      - entity: sample_group
+        local_keys: [bugs_site_code, bugs_countsheet_code]
+        remote_keys: [bugs_site_code, bugs_countsheet_code]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+      - entity: sample_type
+        local_keys: [sample_type_name]
+        remote_keys: [type_name]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+      - entity: alt_ref_type
+        local_keys: [alt_ref_type]
+        remote_keys: [alt_ref_type]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+    query: |-
+      select
+        null as [physical_sample_id],
+        [SampleCODE] as [bugs_sample_code],
+        [SiteCODE] as [bugs_site_code],
+        [CountsheetCODE] as [bugs_countsheet_code],
+        iif([RefNrContext] is null or [RefNrContext] = '', [SampleCODE], [RefNrContext]) as [sample_name],
+        'Unspecified Bugs sample' as [sample_type_name],
+        'Other alternative sample name' as [alt_ref_type],
+        [RefNrContext] as [bugs_ref_nr_context],
+        [ZorDepthTop] as [z_or_depth_top],
+        [ZorDepthBot] as [z_or_depth_bottom]
+      from [TSample]
+      where [SampleCODE] is not null and [SampleCODE] <> ''
+
+  # Java creates a dataset inside the relative-date and geochronology updaters.
+  # This draft keeps the same one-source-row-to-one-dataset shape, but uses
+  # Java-style method abbreviations and dataset data-type names, while still
+  # leaving master-dataset lookup outside executable YAML.
+  #
+  # Explicit Shape Shifter policy:
+  # - blank TDatesPeriod.DatingMethod -> UnknownCal, matching the Java default
+  # - blank TDatesRadio.DatingMethod -> UnknownRadio, a project-level fallback
+  #   added here so the row remains visible instead of being dropped during
+  #   method linking; this is stricter documentation than the current Java path
+  dataset:
+    type: sql
+    public_id: dataset_id
+    keys: [bugs_source_table, dataset_name]
+    columns:
+      - dataset_id
+      - bugs_source_table
+      - dataset_name
+      - data_type_name
+      - method_abbrev
+    data_source: bugs_cep_access
+    depends_on: [method, data_type]
+    drop_empty_rows: [bugs_source_table, dataset_name]
+    drop_duplicates: [bugs_source_table, dataset_name]
+    foreign_keys:
+      - entity: method
+        local_keys: [method_abbrev]
+        remote_keys: [method_abbrev_or_alt_name]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+      - entity: data_type
+        local_keys: [data_type_name]
+        remote_keys: [data_type_name]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+    query: |-
+      select
+        null as [dataset_id],
+        trim('TDatesPeriod') as [bugs_source_table],
+        [PeriodDateCODE] as [dataset_name],
+        trim('Uncalibrated dates') as [data_type_name],
+        iif(len(trim(dp.[DatingMethod] & '')) = 0,
+          'UnknownCal',
+          trim(dp.[DatingMethod]) &
+            iif(p.[YearsType] in ('Calendar', 'Calender'), 'Cal',
+              iif(p.[YearsType] = 'C14', 'C14',
+                iif(p.[YearsType] = 'Radiometric', 'Radio', '')))) as [method_abbrev]
+      from [TDatesPeriod] dp
+      left join [TPeriods] p on dp.[PeriodCODE] = p.[PeriodCODE]
+      where [PeriodDateCODE] is not null and [PeriodDateCODE] <> ''
+
+      union all
+
+      select
+        null as [dataset_id],
+        trim('TDatesRadio') as [bugs_source_table],
+        [DateCODE] as [dataset_name],
+        trim('Undefined other') as [data_type_name],
+        iif(len(trim([DatingMethod] & '')) = 0,
+          'UnknownRadio',
+          trim([DatingMethod])) as [method_abbrev]
+      from [TDatesRadio]
+      where [DateCODE] is not null and [DateCODE] <> ''
+
+  # This gives later date facts a stable sample+dataset join target without
+  # claiming we already reproduce the Java trace/update logic.
+  analysis_entity:
+    type: sql
+    public_id: analysis_entity_id
+    keys: [bugs_source_table, bugs_record_code, bugs_sample_code]
+    columns:
+      - analysis_entity_id
+      - bugs_source_table
+      - bugs_record_code
+      - bugs_sample_code
+      - dataset_name
+    data_source: bugs_cep_access
+    depends_on: [sample, dataset]
+    drop_empty_rows: [bugs_source_table, bugs_record_code, bugs_sample_code]
+    foreign_keys:
+      - entity: sample
+        local_keys: [bugs_sample_code]
+        remote_keys: [bugs_sample_code]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+      - entity: dataset
+        local_keys: [bugs_source_table, dataset_name]
+        remote_keys: [bugs_source_table, dataset_name]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+    query: |-
+      select
+        null as [analysis_entity_id],
+        trim('TDatesPeriod') as [bugs_source_table],
+        [PeriodDateCODE] as [bugs_record_code],
+        [SampleCODE] as [bugs_sample_code],
+        [PeriodDateCODE] as [dataset_name]
+      from [TDatesPeriod]
+      where [PeriodDateCODE] is not null and [PeriodDateCODE] <> ''
+        and [SampleCODE] is not null and [SampleCODE] <> ''
+
+      union all
+
+      select
+        null as [analysis_entity_id],
+        trim('TDatesRadio') as [bugs_source_table],
+        [DateCODE] as [bugs_record_code],
+        [SampleCODE] as [bugs_sample_code],
+        [DateCODE] as [dataset_name]
+      from [TDatesRadio]
+      where [DateCODE] is not null and [DateCODE] <> ''
+        and [SampleCODE] is not null and [SampleCODE] <> ''
+
+  # The Java date importers resolve uncertainty symbols through
+  # tbl_dating_uncertainty and keep unknown symbols as error rows. This draft
+  # materializes the known symbols found in the source data so both fact slices
+  # can link to a local SEAD-facing classifier.
+  dating_uncertainty:
+    type: sql
+    public_id: dating_uncertainty_id
+    keys: [uncertainty]
+    columns:
+      - dating_uncertainty_id
+      - uncertainty
+    data_source: bugs_cep_access
+    drop_empty_rows: [uncertainty]
+    drop_duplicates: [uncertainty]
+    query: |-
+      select trim([Uncertainty]) as [uncertainty], null as [dating_uncertainty_id]
+      from [TDatesPeriod]
+      where [Uncertainty] is not null and trim([Uncertainty]) <> ''
+
+      union all
+
+      select trim([Uncertainty]) as [uncertainty], null as [dating_uncertainty_id]
+      from [TDatesRadio]
+      where [Uncertainty] is not null and trim([Uncertainty]) <> ''
+
+  # Java: DatesPeriodImporter -> tbl_relative_dates. The Java importer resolves
+  # sample and relative age by trace, creates the dataset on the analysis
+  # entity, and copies notes plus dating uncertainty when present.
+  #
+  # Java-only policy not modeled as executable YAML:
+  # - missing sample -> error row instead of a fact record
+  # - relative-date method resolution happens while creating the dataset, not
+  #   on tbl_relative_dates itself
+  # - missing uncertainty symbol emits an error row instead of leaving an
+  #   unmatched string behind
+  relative_dating:
+    type: sql
+    public_id: relative_date_id
+    keys: [bugs_period_date_code, bugs_sample_code]
+    columns:
+      - relative_date_id
+      - bugs_source_table
+      - bugs_period_date_code
+      - bugs_sample_code
+      - bugs_period_code
+      - dating_uncertainty
+      - notes
+    data_source: bugs_cep_access
+    depends_on: [analysis_entity, relative_ages, dating_uncertainty]
+    drop_empty_rows: [bugs_period_date_code, bugs_sample_code]
+    foreign_keys:
+      - entity: analysis_entity
+        local_keys: [bugs_source_table, bugs_period_date_code, bugs_sample_code]
+        remote_keys: [bugs_source_table, bugs_record_code, bugs_sample_code]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+      - entity: relative_ages
+        local_keys: [bugs_period_code]
+        remote_keys: [bugs_period_code]
+        how: left
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: true
+          allow_null_keys: true
+      - entity: dating_uncertainty
+        local_keys: [dating_uncertainty]
+        remote_keys: [uncertainty]
+        how: left
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: true
+          allow_null_keys: true
+    query: |-
+      select
+        null as [relative_date_id],
+        'TDatesPeriod' as [bugs_source_table],
+        [PeriodDateCODE] as [bugs_period_date_code],
+        [SampleCODE] as [bugs_sample_code],
+        [PeriodCODE] as [bugs_period_code],
+        trim([Uncertainty]) as [dating_uncertainty],
+        [Notes] as [notes]
+      from [TDatesPeriod]
+      where [PeriodDateCODE] is not null and [PeriodDateCODE] <> ''
+        and [SampleCODE] is not null and [SampleCODE] <> ''
+
+  # Java: DatesRadioImporter -> tbl_geochronology. The Java importer creates a
+  # sample+dataset analysis entity, resolves dating_lab by LabID, converts age
+  # and error values to SEAD decimals, and links uncertainty when found.
+  #
+  # Java-only policy not modeled as executable YAML:
+  # - missing sample -> error row instead of a fact record
+  # - missing lab mapping can produce an error or flagged row depending on the
+  #   lab manager state
+  # - material type currently participates in Java-side method/dataset context
+  #   but is not yet modeled in this YAML draft
+  #
+  # Explicit Shape Shifter policy:
+  # - if TDatesRadio.DatingMethod is blank, keep the row and route dataset
+  #   method resolution through UnknownRadio instead of dropping the row
+  geochronology:
+    type: sql
+    public_id: geochron_id
+    keys: [bugs_date_code, bugs_sample_code, lab_number]
+    columns:
+      - geochron_id
+      - bugs_source_table
+      - bugs_date_code
+      - bugs_sample_code
+      - international_lab_id
+      - lab_number
+      - age
+      - error_older
+      - error_younger
+      - dating_uncertainty
+      - notes
+    data_source: bugs_cep_access
+    depends_on: [analysis_entity, dating_lab, dating_uncertainty]
+    drop_empty_rows: [bugs_date_code, bugs_sample_code]
+    foreign_keys:
+      - entity: analysis_entity
+        local_keys: [bugs_source_table, bugs_date_code, bugs_sample_code]
+        remote_keys: [bugs_source_table, bugs_record_code, bugs_sample_code]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
+          allow_null_keys: false
+      - entity: dating_lab
+        local_keys: [international_lab_id]
+        remote_keys: [international_lab_id]
+        how: left
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: true
+          allow_null_keys: true
+      - entity: dating_uncertainty
+        local_keys: [dating_uncertainty]
+        remote_keys: [uncertainty]
+        how: left
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: true
+          allow_null_keys: true
+    query: |-
+      select
+        null as [geochron_id],
+        'TDatesRadio' as [bugs_source_table],
+        [DateCODE] as [bugs_date_code],
+        [SampleCODE] as [bugs_sample_code],
+        [LabID] as [international_lab_id],
+        [LabNr] as [lab_number],
+        [Date] as [age],
+        [AgeErrorOrPlusError] as [error_older],
+        iif([AgeErrorMinus] is null, [AgeErrorOrPlusError], [AgeErrorMinus]) as [error_younger],
+        trim([Uncertainty]) as [dating_uncertainty],
+        [Notes] as [notes]
+      from [TDatesRadio]
+      where [DateCODE] is not null and [DateCODE] <> ''
+        and [SampleCODE] is not null and [SampleCODE] <> ''
+
 options:
+  data_sources:
+    bugs_cep_access:
+      driver: ucanaccess
+      options:
+        # Point this at a real BugsCEP .mdb file before validation or preview.
+        filename: ${BUGS_CEP_MDB_FILE}
+        ucanaccess_dir: lib/ucanaccess

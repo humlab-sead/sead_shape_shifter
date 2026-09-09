@@ -43,8 +43,8 @@ async def validate_project_data(
     Returns:
         Validation result with data-specific errors and warnings
     """
-    validation_service = get_validation_service()
-    result = await validation_service.validate_project_data(
+    validation_service: ValidationService = get_validation_service()
+    result: ValidationResult = await validation_service.validate_project_data(
         name,
         entity_names,
         validation_mode=validation_mode,
@@ -96,7 +96,7 @@ async def validate_target_model(name: str) -> ValidationResult:
         name: Project name
 
     Returns:
-        Validation result with conformance errors (severity="error").
+        Validation result with conformance issues grouped by severity.
         ``is_valid`` is True when there are zero conformance issues.
     """
     validation_service: ValidationService = get_validation_service()

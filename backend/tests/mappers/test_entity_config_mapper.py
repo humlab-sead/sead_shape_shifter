@@ -9,7 +9,14 @@ from backend.app.core.config import Settings
 from backend.app.mappers.entity_config_mapper import (
     DefaultEntityConfigMapper,
     EntityConfigMapperFactory,
+    EntityMapperContext,
     FileBasedEntityConfigMapper,
+    FixedEntityConfigMapper,
+)
+from src.types.fixed_entity_types import (
+    FixedEntityColumnTypeDeclarationError,
+    FixedEntityShapeValidationError,
+    FixedEntityTypeValidationError,
 )
 
 
@@ -48,9 +55,9 @@ class TestEntityConfigMapperFactory:
         assert isinstance(mapper, DefaultEntityConfigMapper)
 
     def test_get_mapper_for_fixed_returns_default_mapper(self, factory: EntityConfigMapperFactory) -> None:
-        """Test that fixed values driver returns default (no-op) mapper."""
+        """Test that fixed values driver returns fixed-entity mapper."""
         mapper = factory.get_mapper("fixed")
-        assert isinstance(mapper, DefaultEntityConfigMapper)
+        assert isinstance(mapper, FixedEntityConfigMapper)
 
 
 class TestDefaultEntityConfigMapper:
@@ -65,14 +72,14 @@ class TestDefaultEntityConfigMapper:
     def test_to_api_returns_unchanged_config(self, mapper: DefaultEntityConfigMapper) -> None:
         """Test that to_api returns config unchanged."""
         config = {"name": "test", "data_source": {"driver": "postgresql"}}
-        result = mapper.to_api(config, "project")
+        result = mapper.to_api(config, EntityMapperContext(project_name="project"))
         assert result is config  # Same object
         assert result == {"name": "test", "data_source": {"driver": "postgresql"}}
 
     def test_to_core_returns_unchanged_config(self, mapper: DefaultEntityConfigMapper) -> None:
         """Test that to_core returns config unchanged."""
         config = {"name": "test", "data_source": {"driver": "fixed"}}
-        result = mapper.to_core(config, "project")
+        result = mapper.to_core(config, EntityMapperContext(project_name="project"))
         assert result is config  # Same object
         assert result == {"name": "test", "data_source": {"driver": "fixed"}}
 
@@ -104,7 +111,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"filename": "data.csv", "location": "global"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_core(config, "test_project")
+        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"))
 
         expected_path = str(mock_settings.global_data_dir / "data.csv")
         assert result["options"]["filename"] == expected_path
@@ -115,7 +122,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"filename": "data.csv", "location": "local"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_core(config, "test_project")
+        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"))
 
         expected_path = str(mock_settings.projects_root / "test_project" / "data.csv")
         assert result["options"]["filename"] == expected_path
@@ -127,7 +134,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"filename": absolute_path}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_api(config, "test_project")
+        result = mapper.to_api(config, EntityMapperContext(project_name="test_project"))
 
         assert result["options"]["filename"] == "data.csv"
         assert result["options"]["location"] == "global"
@@ -138,7 +145,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"filename": absolute_path}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_api(config, "test_project")
+        result = mapper.to_api(config, EntityMapperContext(project_name="test_project"))
 
         assert result["options"]["filename"] == "data.csv"
         assert result["options"]["location"] == "local"
@@ -148,7 +155,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"filename": "${GLOBAL_DATA_DIR}/data.csv"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_core(config, "test_project")
+        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"))
 
         expected_path = str(mock_settings.global_data_dir / "data.csv")
         assert result["options"]["filename"] == expected_path
@@ -159,7 +166,7 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"other_field": "value"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_core(config, "test_project")
+        result = mapper.to_core(config, EntityMapperContext(project_name="test_project"))
 
         assert result == config
 
@@ -168,6 +175,121 @@ class TestFileBasedEntityConfigMapper:
         config = {"options": {"other_field": "value"}}
         mapper = factory.get_mapper("csv")
 
-        result = mapper.to_api(config, "test_project")
+        result = mapper.to_api(config, EntityMapperContext(project_name="test_project"))
 
         assert result == config
+
+
+class TestFixedEntityConfigMapper:
+    """Test fixed entity type coercion during API-to-core mapping."""
+
+    @pytest.fixture
+    def mapper(self) -> FixedEntityConfigMapper:
+        """Create fixed-entity mapper."""
+        settings = Mock(spec=Settings)
+        return FixedEntityConfigMapper(settings)
+
+    def test_to_core_coerces_string_id_values(self, mapper: FixedEntityConfigMapper) -> None:
+        """String integers in _id columns should be normalized to ints."""
+        config = {
+            "name": "method",
+            "type": "fixed",
+            "columns": ["system_id", "method_id", "name", "sead_method_group_id"],
+            "values": [
+                [9, "105", "Sampling", "17"],
+                [10, 76, "Collecting", None],
+            ],
+        }
+
+        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+
+        assert result["values"] == [
+            [9, 105, "Sampling", 17],
+            [10, 76, "Collecting", None],
+        ]
+
+    def test_to_core_normalizes_legacy_single_column_scalar_values(self, mapper: FixedEntityConfigMapper) -> None:
+        """Single-column fixed entities may still arrive as a flat scalar list from legacy YAML."""
+        config = {
+            "name": "feature_property_type",
+            "type": "fixed",
+            "columns": ["arbodat_code"],
+            "values": ["gebäud", "okBefu", "okErh"],
+        }
+
+        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+
+        assert result["values"] == [["gebäud"], ["okBefu"], ["okErh"]]
+
+    def test_to_core_raises_on_invalid_id_value(self, mapper: FixedEntityConfigMapper) -> None:
+        """Invalid non-empty _id values should fail fast during mapping."""
+        config = {
+            "name": "method",
+            "type": "fixed",
+            "columns": ["system_id", "method_id", "name"],
+            "values": [[1, "abc", "Sampling"]],
+        }
+
+        with pytest.raises(FixedEntityTypeValidationError) as exc:
+            mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+
+        assert exc.value.entity_name == "method"
+        assert exc.value.issues[0].column_name == "method_id"
+
+    def test_to_core_uses_declared_column_types_for_non_id_columns(self, mapper: FixedEntityConfigMapper) -> None:
+        """Declared column_types should override naming inference during mapping."""
+        config = {
+            "name": "method",
+            "type": "fixed",
+            "columns": ["system_id", "rank", "label"],
+            "column_types": {"rank": "int"},
+            "values": [[1, "7", "Sampling"]],
+        }
+
+        result = mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+
+        assert result["values"] == [[1, 7, "Sampling"]]
+
+    def test_to_core_uses_project_conventions_for_non_id_columns(self, mapper: FixedEntityConfigMapper) -> None:
+        """Project conventions should coerce matching non-_id columns during mapping."""
+        config = {
+            "name": "abundance_source",
+            "type": "fixed",
+            "columns": ["system_id", "label", "abundance"],
+            "values": [[1, "Oak", "12"]],
+        }
+
+        result = mapper.to_core(
+            config,
+            EntityMapperContext(
+                project_name="arbodat",
+                project_options={"fixed_entity_types": {"conventions": [{"pattern": "abundance", "type": "int"}]}},
+            ),
+        )
+
+        assert result["values"] == [[1, "Oak", 12]]
+
+    def test_to_core_rejects_unsupported_declared_column_type(self, mapper: FixedEntityConfigMapper) -> None:
+        """Unsupported fixed column_types declarations should fail before mapping completes."""
+        config = {
+            "name": "method",
+            "type": "fixed",
+            "columns": ["system_id", "rank", "label"],
+            "column_types": {"rank": "integer"},
+            "values": [[1, "7", "Sampling"]],
+        }
+
+        with pytest.raises(FixedEntityColumnTypeDeclarationError):
+            mapper.to_core(config, EntityMapperContext(project_name="arbodat"))
+
+    def test_to_core_rejects_duplicate_columns_before_row_width_validation(self, mapper: FixedEntityConfigMapper) -> None:
+        """Duplicate fixed columns should produce a direct config error during mapping."""
+        config = {
+            "name": "site_type_group",
+            "type": "fixed",
+            "columns": ["system_id", "site_type_group_id", "FuTypGrup", "FuTypGrup"],
+            "values": [[1, None, "A"]],
+        }
+
+        with pytest.raises(FixedEntityShapeValidationError, match="declares duplicate columns: FuTypGrup"):
+            mapper.to_core(config, EntityMapperContext(project_name="arbodat"))

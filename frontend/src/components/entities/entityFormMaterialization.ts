@@ -11,7 +11,7 @@ export interface MaterializationRoundTripState {
  */
 export function normalizeEditableFixedColumns(
   columns: string[],
-  keys: string[],
+  _keys: string[],
   publicId: string | null | undefined
 ): string[] {
   const hiddenColumns = new Set<string>(['system_id'])

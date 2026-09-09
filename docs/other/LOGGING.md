@@ -151,18 +151,6 @@ async def process_endpoint(data: InputData):
     return result
 ```
 
-## Migration Notes
-
-**Removed redundant code**:
-- Old `configure_logging()` in `src/utility.py` (lines 265-298) - Replaced with `setup_logging()`
-- Old `configure_logging()` in `ingesters/sead/utility.py` - Now uses `src.utility.setup_logging()`
-- Updated `src/configuration/setup.py` to use `setup_logging()` instead
-
-**Consolidated architecture**:
-- **Backend API**: `backend/app/core/logging_config.py` - Full-featured with rotation, retention, compression
-- **CLI/Scripts**: `src/utility.py::setup_logging()` - Simple, focused on developer experience
-- **Error handling**: Integrated with FastAPI exception handlers for automatic logging
-
 ## Best Practices
 
 1. **Use appropriate log levels**:

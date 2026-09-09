@@ -122,7 +122,7 @@ class TestClassBasedSchemas:
 
     def test_schema_metadata(self):
         """Schemas should have proper metadata."""
-        schemas = DriverSchemaRegistry.all()
+        schemas: dict[str, DriverSchema] = DriverSchemaRegistry.all()
 
         # Known aliases - these map to a different base schema
         aliases = {
@@ -130,6 +130,7 @@ class TestClassBasedSchemas:
             "xls": "xlsx",
             "postgres": "postgresql",
             "ucanaccess": "access",
+            "internal": "duckdb",
         }
 
         for driver, schema in schemas.items():
@@ -138,9 +139,10 @@ class TestClassBasedSchemas:
                 assert schema.driver == aliases[driver], f"Alias '{driver}' should point to base schema '{aliases[driver]}'"
             else:
                 assert schema.driver == driver
+
             assert schema.display_name
             assert schema.description
-            assert schema.category in ["database", "file"]
+            assert schema.category in ["database", "file", "internal"]
             assert len(schema.fields) > 0
 
     def test_backend_endpoint_compatibility(self):

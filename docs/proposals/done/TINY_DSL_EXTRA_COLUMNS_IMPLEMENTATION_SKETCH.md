@@ -607,7 +607,7 @@ For adding new features, see [docs/other/DSL_EXTENSIBILITY_GUIDE.md](../../other
 - Clean separation of concerns (tokenizer, parser, validator, backend)
 - Extensible design for future enhancements
 
-The implementation fits the current codebase, preserves existing `extra_columns` behavior, and aligns with the broader ergonomics direction in [docs/proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md](docs/proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md).
+The implementation fits the current codebase, preserves existing `extra_columns` behavior, and aligns with later branch-scoping follow-up work in [docs/proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](docs/proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md).
 
 **Next steps** for future enhancements:
 - Add `replace()` function if user demand emerges

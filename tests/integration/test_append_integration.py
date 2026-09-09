@@ -5,6 +5,7 @@ import pytest
 
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
+from src.table_store import TableStore
 
 # pylint: disable=no-member, redefined-outer-name
 
@@ -52,7 +53,7 @@ class TestAppendIntegration:
         # Initialize normalizer directly without ConfigStore
 
         normalizer: ShapeShifter = ShapeShifter(
-            table_store={"survey": survey_df},
+            table_store=TableStore({"survey": survey_df}),
             project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
@@ -116,7 +117,7 @@ class TestAppendIntegration:
         # Initialize normalizer directly without ConfigStore
 
         normalizer: ShapeShifter = ShapeShifter(
-            table_store={"survey": survey_df},
+            table_store=TableStore({"survey": survey_df}),
             project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
@@ -182,7 +183,7 @@ class TestAppendIntegration:
         # Initialize normalizer directly without ConfigStore
 
         normalizer: ShapeShifter = ShapeShifter(
-            table_store={"survey": survey_df},
+            table_store=TableStore({"survey": survey_df}),
             project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
@@ -233,7 +234,7 @@ class TestAppendIntegration:
         # Initialize normalizer directly without ConfigStore
 
         normalizer: ShapeShifter = ShapeShifter(
-            table_store={"survey": survey_df},
+            table_store=TableStore({"survey": survey_df}),
             project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
@@ -292,7 +293,7 @@ class TestAppendIntegration:
         # Initialize normalizer directly without ConfigStore
 
         normalizer: ShapeShifter = ShapeShifter(
-            table_store={"survey": survey_df},
+            table_store=TableStore({"survey": survey_df}),
             project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
@@ -352,7 +353,7 @@ class TestAppendIntegration:
         }
 
         normalizer: ShapeShifter = ShapeShifter(
-            table_store={"survey": survey_df},
+            table_store=TableStore({"survey": survey_df}),
             project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
@@ -424,7 +425,7 @@ class TestAppendIntegration:
         }
 
         normalizer: ShapeShifter = ShapeShifter(
-            table_store={"survey": survey_df, "legacy_survey": legacy_df},
+            table_store=TableStore({"survey": survey_df, "legacy_survey": legacy_df}),
             project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
@@ -504,7 +505,7 @@ class TestAppendIntegration:
         }
 
         normalizer: ShapeShifter = ShapeShifter(
-            table_store={"survey": survey_df, "legacy_survey": legacy_df},
+            table_store=TableStore({"survey": survey_df, "legacy_survey": legacy_df}),
             project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
@@ -564,7 +565,7 @@ class TestAppendIntegration:
         }
 
         normalizer: ShapeShifter = ShapeShifter(
-            table_store={"survey": survey_df, "legacy_survey": legacy_df},
+            table_store=TableStore({"survey": survey_df, "legacy_survey": legacy_df}),
             project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
@@ -633,7 +634,7 @@ class TestAppendIntegration:
         }
 
         normalizer: ShapeShifter = ShapeShifter(
-            table_store={"survey": survey_df, "legacy_survey": legacy_df},
+            table_store=TableStore({"survey": survey_df, "legacy_survey": legacy_df}),
             project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
@@ -695,7 +696,7 @@ class TestAppendIntegration:
         }
 
         normalizer: ShapeShifter = ShapeShifter(
-            table_store={"survey": survey_df, "legacy_survey": legacy_df},
+            table_store=TableStore({"survey": survey_df, "legacy_survey": legacy_df}),
             project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
@@ -768,7 +769,7 @@ class TestAppendIntegration:
         }
 
         normalizer: ShapeShifter = ShapeShifter(
-            table_store={"a": a_df, "b": b_df},
+            table_store=TableStore({"a": a_df, "b": b_df}),
             project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="a",
         )

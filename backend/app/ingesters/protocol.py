@@ -45,6 +45,7 @@ class ValidationResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     infos: list[str] = field(default_factory=list)
+    pending_confirmation_report: dict[str, Any] | None = None
 
     @property
     def has_errors(self) -> bool:
@@ -76,6 +77,44 @@ class IngestionResult:
     tables_processed: int = 0
     records_inserted: int = 0
     error_details: str | None = None
+    deploy_artifact: dict[str, Any] | None = None
+    pending_confirmation_report: dict[str, Any] | None = None
+
+    @staticmethod
+    def create_success_result(
+        *, message: str, tables_processed: int, records_inserted: int, deploy_artifact: dict[str, Any]
+    ) -> "IngestionResult":
+        """Build a standard successful ingestion result."""
+        return IngestionResult(
+            success=True,
+            message=message,
+            submission_id=None,
+            tables_processed=tables_processed,
+            records_inserted=records_inserted,
+            error_details=None,
+            deploy_artifact=deploy_artifact,
+            pending_confirmation_report=None,
+        )
+
+    @staticmethod
+    def create_failed_result(
+        *,
+        message: str,
+        details: str,
+        deploy_artifact: dict[str, Any] | None = None,
+        pending_confirmation_report: dict[str, Any] | None = None,
+    ) -> "IngestionResult":
+        """Build a standard failed ingestion result."""
+        return IngestionResult(
+            success=False,
+            message=message,
+            submission_id=None,
+            tables_processed=0,
+            records_inserted=0,
+            error_details=details,
+            deploy_artifact=deploy_artifact,
+            pending_confirmation_report=pending_confirmation_report,
+        )
 
 
 @dataclass

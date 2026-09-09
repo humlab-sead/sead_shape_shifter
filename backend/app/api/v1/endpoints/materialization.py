@@ -6,19 +6,23 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.materialization import (
     CanMaterializeResponse,
     MaterializationResult,
+    MaterializedMappingSyncResult,
     MaterializeRequest,
     UnmaterializationResult,
     UnmaterializeRequest,
 )
 from backend.app.models.project import Project
 from backend.app.services.materialization_service import MaterializationService
-from backend.app.services.project_service import ProjectService
+from backend.app.services.project_service import get_project_service
 from src.model import ShapeShiftProject, TableConfig
 from src.specifications.materialize import CanMaterializeSpecification
 
 router = APIRouter()
-project_service = ProjectService()
-materialization_service = MaterializationService(project_service)
+
+
+def get_materialization_service() -> MaterializationService:
+    """Create a materialization service bound to the current project service."""
+    return MaterializationService(get_project_service())
 
 
 @router.get("/projects/{project_name}/entities/{entity_name}/can-materialize", response_model=CanMaterializeResponse)
@@ -29,7 +33,7 @@ async def can_materialize(project_name: str, entity_name: str) -> CanMaterialize
     Returns validation errors and estimated row count.
     """
     try:
-        api_project: Project = project_service.load_project(project_name)
+        api_project: Project = get_project_service().load_project(project_name)
         core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
 
         try:
@@ -60,7 +64,7 @@ async def materialize_entity(project_name: str, entity_name: str, request: Mater
     4. Updates entity config with materialized section
     5. Saves project
     """
-    result: MaterializationResult = await materialization_service.materialize_entity(
+    result: MaterializationResult = await get_materialization_service().materialize_entity(
         project_name=project_name,
         entity_name=entity_name,
         storage_format=request.storage_format,
@@ -84,7 +88,7 @@ async def unmaterialize_entity(project_name: str, entity_name: str, request: Unm
     4. Restores saved_state config
     5. Saves project
     """
-    result: UnmaterializationResult = await materialization_service.unmaterialize_entity(
+    result: UnmaterializationResult = await get_materialization_service().unmaterialize_entity(
         project_name=project_name, entity_name=entity_name, cascade=request.cascade
     )
 
@@ -101,5 +105,16 @@ async def unmaterialize_entity(project_name: str, entity_name: str, request: Unm
             )
 
         raise HTTPException(status_code=400, detail=result.errors[0] if result.errors else "Unmaterialization failed")
+
+    return result
+
+
+@router.patch("/projects/{project_name}/mapping/from-materialized/{entity_name}", response_model=MaterializedMappingSyncResult)
+async def sync_mapping_from_materialized(project_name: str, entity_name: str) -> MaterializedMappingSyncResult:
+    """Replace manual sidecar links for an entity from its saved materialized rows."""
+    result = get_materialization_service().sync_materialized_entity_mappings(project_name=project_name, entity_name=entity_name)
+
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.errors[0] if result.errors else "Materialized mapping sync failed")
 
     return result

@@ -71,7 +71,7 @@ class MetadataUpdateRequest(BaseModel):
     version: str | None = Field(default=None, description="Project version (x.y.z format)")
     default_entity: str | None = Field(default=None, description="Default entity name")
     target_model: str | None = Field(
-        default=None, description="Target model spec path (e.g. @include: target.yml); empty string clears the field"
+        default=None, description="Target model spec path (e.g. @load: target.yml); empty string clears the field"
     )
 
 
@@ -435,7 +435,8 @@ async def connect_data_source_to_project(name: str, request: DataSourceConnectio
     """
 
     # Load project
-    project: Project = get_project_service().load_project(name)
+    project_service: ProjectService = get_project_service()
+    project: Project = project_service.load_project(name)
 
     # Check if source name already exists
     data_sources = project.options.get("data_sources", {})
@@ -446,8 +447,9 @@ async def connect_data_source_to_project(name: str, request: DataSourceConnectio
     data_sources[request.source_name] = f"@include: {request.source_filename}"
     project.options["data_sources"] = data_sources
 
-    # Save project
-    updated_config: Project = get_project_service().save_project(project)
+    # Boundary save: replaces only the options section, leaving entities and YAML comments untouched.
+    project_service.save_options_boundary(name, project.options)
+    updated_config: Project = project_service.load_project(name, force_reload=True)
 
     logger.info(f"Connected data source '{request.source_name}' (@include: {request.source_filename}) " f"to project '{name}'")
 
@@ -470,7 +472,8 @@ async def disconnect_data_source_from_project(name: str, source_name: str) -> Pr
         Updated project
     """
 
-    project: Project = get_project_service().load_project(name)
+    project_service: ProjectService = get_project_service()
+    project: Project = project_service.load_project(name)
 
     data_sources: dict[str, str] = project.options.get("data_sources", {})
     if source_name not in data_sources:
@@ -479,7 +482,9 @@ async def disconnect_data_source_from_project(name: str, source_name: str) -> Pr
     del data_sources[source_name]
     project.options["data_sources"] = data_sources
 
-    updated_config: Project = get_project_service().save_project(project)
+    # Boundary save: replaces only the options section, leaving entities and YAML comments untouched.
+    project_service.save_options_boundary(name, project.options)
+    updated_config: Project = project_service.load_project(name, force_reload=True)
 
     logger.info(f"Disconnected data source '{source_name}' from project '{name}'")
 
@@ -584,23 +589,28 @@ def _resolve_target_model_path(project: Project, project_name: str) -> Path:
         BadRequestError: if target_model is an inline dict (no backing file).
         BaseAPIException (403): if the resolved path escapes the project directory.
     """
-    target_model = project.metadata.target_model if project.metadata else None
+    target_model: str | dict[str, Any] | None = project.metadata.target_model if project.metadata else None
     if target_model is None:
         raise NotFoundError(f"Project '{project_name}' has no target_model configured")
     if isinstance(target_model, dict):
         raise BadRequestError("Target model is defined inline and has no backing file to edit")
 
-    raw = str(target_model).strip()
-    rel_path = raw[len("@include:") :].strip() if raw.startswith("@include:") else raw
+    raw: str = str(target_model).strip()
+    rel_path: str = raw
+    if raw.startswith("@"):
+        for prefix in ("@load", "@include"):
+            if raw.startswith(prefix):
+                rel_path: str = raw[len(prefix) :].lstrip(":").strip()
+                break
 
     # Security: must stay inside the project directory
-    path_name = ProjectNameMapper.to_path(project_name)
-    project_dir = (settings.PROJECTS_DIR / path_name).resolve()
+    path_name: str = ProjectNameMapper.to_path(project_name)
+    project_dir: Path = (settings.PROJECTS_DIR / path_name).resolve()
 
     # Resolve the file path: simple filenames are project-local, paths with directories use APPLICATION_ROOT
     if "/" not in rel_path and "\\" not in rel_path:
         # Simple filename - resolve relative to project directory
-        target_path = (project_dir / rel_path).resolve()
+        target_path: Path = (project_dir / rel_path).resolve()
     else:
         # Path with directories - resolve relative to APPLICATION_ROOT (for shared specs)
         target_path = (settings.APPLICATION_ROOT / rel_path).resolve()
@@ -681,7 +691,9 @@ async def update_project_target_model_yaml(name: str, request: RawYamlUpdateRequ
 @handle_endpoint_errors
 async def download_target_model_docs(
     name: str,
-    format: str = Query("html", description="Documentation format: html, markdown, or excel"),  # pylint: disable=redefined-builtin
+    format: str = Query(  # pylint: disable=redefined-builtin
+        "html", description="Documentation format: html, markdown, excel, sims, or schema-reference"
+    ),
 ) -> Response:
     """
     Generate and download target model documentation for a project.
@@ -693,6 +705,8 @@ async def download_target_model_docs(
     - html: Interactive web page with entity cards, search, and visual indicators
     - markdown: Static documentation for GitHub/wikis
     - excel: Spreadsheet with 3 sheets (Entities, Columns, Relationships)
+    - sims: SIMS identity register grouped by identity behavior
+    - schema-reference: Markdown reference generated from the Pydantic target-model schema
 
     Args:
         name: Project name
@@ -712,7 +726,7 @@ async def download_target_model_docs(
     try:
         doc_format = DocumentFormat(format_lower)
     except ValueError as e:
-        raise BadRequestError(f"Invalid format '{format}'. Supported: html, markdown, excel") from e
+        raise BadRequestError(f"Invalid format '{format}'. Supported: html, markdown, excel, sims, schema-reference") from e
 
     # Generate documentation
     content: bytes = documentation_service.generate_target_model_docs(name, doc_format)
@@ -722,15 +736,22 @@ async def download_target_model_docs(
         DocumentFormat.HTML: "text/html",
         DocumentFormat.MARKDOWN: "text/markdown",
         DocumentFormat.EXCEL: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        DocumentFormat.SIMS: "text/markdown",
+        DocumentFormat.SCHEMA_REFERENCE: "text/markdown",
     }
     extensions: dict[DocumentFormat, str] = {
         DocumentFormat.HTML: "html",
         DocumentFormat.MARKDOWN: "md",
         DocumentFormat.EXCEL: "xlsx",
+        DocumentFormat.SIMS: "sims.md",
+        DocumentFormat.SCHEMA_REFERENCE: "schema-reference.md",
     }
 
     media_type: str = content_types[doc_format]
-    filename: str = f"{name}_target_model.{extensions[doc_format]}"
+    if doc_format is DocumentFormat.SCHEMA_REFERENCE:
+        filename = f"{name}_target_model_schema_reference.md"
+    else:
+        filename = f"{name}_target_model.{extensions[doc_format]}"
 
     logger.info(f"Serving {doc_format.value} target model documentation for project '{name}' ({len(content)} bytes)")
 

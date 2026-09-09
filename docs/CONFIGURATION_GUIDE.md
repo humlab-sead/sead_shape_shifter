@@ -46,7 +46,8 @@ entities:          # Entity definitions   (required)
 options:           # Global options (optional)
   translations:    # Column name translations
   data_sources:    # named data sources associated to this project
-  mappings:        # Remote entity mappings (optional)
+  fixed_entity_types:  # Project-level fixed-entity type conventions (optional)
+  mappings:        # (Legacy) Remote entity mappings — use <project>-mapping.yml sidecar instead
 ```
 
 ---
@@ -77,7 +78,7 @@ metadata:                             # Metadata definitions (required)
 - **description**: Detailed description of what this configuration does (supports multi-line strings using `|`)
 - **version**: Semantic version string (e.g., "1.0.0", "2.1.3") for tracking configuration changes
 - **default_entity**: Reference to an existing entity used as the default source for `data` type entities
-- **target_model**: Reference to a target model specification. Accepted as a `@include:` directive pointing to a YAML file (`"@include: target_models/specs/sead_v2.yml"`) or as an inline mapping. When present, the **Check Conformance** button in the editor validates the project entities against the spec. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the full target model format.
+- **target_model**: Reference to a target model specification. Accepted as a `@load:` directive pointing to a YAML file (`"@load: resources/target_models/sead_superset_model.yml"`) or as an inline mapping. When present, the **Check Conformance** button in the editor validates the project entities against the spec. See [TARGET_MODEL_GUIDE.md](TARGET_MODEL_GUIDE.md) for the workflow and [TARGET_MODEL_SCHEMA_REFERENCE.md](TARGET_MODEL_SCHEMA_REFERENCE.md) for the generated field-level schema reference.
 
 ### Examples
 
@@ -97,7 +98,7 @@ metadata:
     Transforms data to match SEAD Clearinghouse schema.
   version: "2.1.0"
   default_entity: sample_data
-  target_model: "@include: target_models/specs/sead_v2.yml"
+  target_model: "@load: resources/target_models/sead_superset_model.yml"
 ```
 
 ## Entity Section
@@ -111,13 +112,13 @@ entities:
   entity_name:
     # Identity & Keys
     public_id: string                       # Target system primary key name
-    surrogate_name: string                  # Alternative name for public ID
     keys: [string, ...]                     # Natural (business) key columns
     
     # Data Selection
     source: string | null                   # Data: source entity or null for default source
     type: \"data\" | \"fixed\" | \"sql\"    # Data source type  (required)
     columns: [string, ...]                  # Columns to extract
+    column_types: {string: string}          # Optional fixed-entity type declarations
     
     # Data quality
     drop_empty_rows: bool | [string, ...] | {string: [any, ...]}  # Empty row handling
@@ -162,7 +163,7 @@ This architecture separates concerns between:
 - **Business logic**: `keys` for entity identification in source data
 - **Global scope**: `public_id` for target system integration and FK relationships
 
-**Critical Principle**: All relationships in ShapeShifter use local `system_id` values. FK columns always contain parent's `system_id` (sequential integers), never external IDs. External IDs (e.g., SEAD IDs) are applied as a decoration step via `mappings.yml` → `map_to_remote()`.
+**Critical Principle**: All relationships in ShapeShifter use local `system_id` values. FK columns always contain parent's `system_id` (sequential integers), never external IDs. External IDs (e.g., SEAD IDs) are applied as a decoration step via the mapping sidecar (`<project>-mapping.yml`).
 
 #### `system_id` (Auto-Managed)
 - **Type**: `string` (always "system_id")
@@ -188,7 +189,7 @@ This architecture separates concerns between:
 - **Required**: **Yes** (error if missing for fixed entities, warning for others)
 - **Description**: Serves dual purpose in the identity system:
   1. **Column Name**: Specifies the target system's PK column name (e.g., "location_id" in SEAD schema)
-  2. **Column Values**: Holds mapped external IDs from `mappings.yml` (local business key → SEAD ID)
+  2. **Column Values**: Holds mapped external IDs from the mapping sidecar (local business key → SEAD ID)
   
   Additionally, `public_id` determines FK column names in child entities to avoid `system_id` collision.
 - **Import Rule**: Unlike `system_id`, `public_id` may be source-backed when the source actually provides that identifier. If the source does not provide it, the column is still part of the target schema and may be added or populated later in the pipeline.
@@ -198,7 +199,7 @@ This architecture separates concerns between:
   Parent (location):
     system_id: [1, 2, 3]           ← Local sequential
     location_name: ["Norway", ...]  ← Business key
-    location_id: [162, 205, ...]    ← SEAD IDs from mappings.yml
+    location_id: [162, 205, ...]    ← SEAD IDs from mapping sidecar
                  ↑ public_id column
   
   Child (site) after FK link:
@@ -267,24 +268,6 @@ This architecture separates concerns between:
       public_id: entity_id
   ```
 - **Note**: Both fields are accepted for backward compatibility, but `public_id` takes precedence if both are present.
-
-#### `surrogate_name`
-- **Type**: `string`
-- **Required**: No
-- **Description**: Name of a text column associated with the `public_id`. This column can be used when reconciling entities by name in the UI editor.
-- **Example**:
-  ```yaml
-  public_id: contact_type_id
-  surrogate_name: contact_type
-  ```
-- **Validation Rules**:
-  - **Type**: Must be `string` if provided
-  - **Usage**: Currently not validated but should be documented
-- **Suggested Additional Validation**:
-  - Should not conflict with existing column names
-  - Should not be the same as `public_id`
-  - Must exist in `columns` if provided
-
 
 #### `keys`
 - **Type**: `list[string]`
@@ -356,7 +339,7 @@ entities:
 **Critical Architectural Principle**: 
 - **All relationships use local `system_id` values** - FK columns contain parent's `system_id` (1, 2, 3...), never external IDs
 - **FK column naming**: Child FK column = parent's `public_id` (avoids `system_id` collision)
-- **SEAD ID mapping**: Applied separately via `mappings.yml` → `map_to_remote()` (decoration step)
+- **SEAD ID mapping**: Applied separately via the mapping sidecar (`<project>-mapping.yml`) as a decoration step
 - **Local domain integrity**: All processing happens with sequential integer references
 
 ---
@@ -464,7 +447,7 @@ method:
 - **Description**: 
   - `"entity"`: Extract from source data (spreadsheet or another entity)
   - `"fixed"`: Use fixed/hardcoded values defined in `values`
-  - `"sql"`: Execute SQL query against a database (requires `data_source` and `query`)
+  - `"sql"`: Execute SQL query against a data source (requires `data_source` and `query`). Use `data_source: "@internal"` to query already-processed Shape Shifter entities via the built-in DuckDB engine.
   - `"merged"`: Merge multiple source entities into a single parent entity with branch tracking (requires `branches`)
 - **Requirements by Type**:
   - `type: fixed` → requires `values` (list of lists)
@@ -479,12 +462,22 @@ method:
     - ["value1", "desc1"]
     - ["value2", "desc2"]
   
-  # SQL query
+  # SQL query against external database
   type: sql
   data_source: sead
   query: |
     select id, name
     from tbl_dimensions
+  
+  # SQL query over already-processed entities (built-in DuckDB engine)
+  type: sql
+  data_source: "@internal"
+  depends_on: [site, sample]
+  query: |
+    SELECT s.site_name, COUNT(sa.system_id) AS sample_count
+    FROM site s
+    JOIN sample sa ON sa.site_id = s.system_id
+    GROUP BY s.site_name
   ```
 - **Validation Rules**:
   - **Type**: Must be one of `"entity"`, `"fixed"`, `"sql"`, or `"merged"` if provided
@@ -500,9 +493,13 @@ method:
     - **When `type: sql`**:
       - `data_source` is required (error if missing)
       - `query` is required (error if missing)
-      - `data_source` must exist in `options.data_sources` (error if not)
+      - If `data_source` is not `"@internal"`, it must exist in `options.data_sources` (error if not)
       - `source` should be empty (warning if set)
       - `values` should be empty (warning if set)
+    - **When `type: sql` with `data_source: "@internal"`**:
+      - `query` is executed against the in-memory DuckDB workspace (already-processed entities)
+      - `depends_on` should list all entities referenced in the query
+      - No entry in `options.data_sources` is required
     - **When `type: entity`**:
       - Can use `source` field to reference another entity
       - Should not have `values`, `data_source`, or `query` (warning if present)
@@ -580,7 +577,7 @@ method:
 #### `values`
 - **Type**: `list[list[any]]` or `list[any]` (for single-column tables)
 - **Required**: Yes when `type: fixed`; No for other types
-- **Description**: 2D array of fixed values for lookup tables. Each inner list represents a row of data.
+- **Description**: 2D array of fixed values for lookup tables. Each inner list represents a row of data. For fixed entities, value typing is enforced at load, validation, and save time.
 - **Example**:
   ```yaml
   # Multi-column fixed values
@@ -602,23 +599,59 @@ method:
     - **Multi-column**: Each row must be a list with length matching `columns` count (error if mismatch)
     - **Single-column**: If values are primitives (not lists), `columns` must have exactly 1 item (error if not)
   - **Consistency**: All rows should have the same number of columns (error if inconsistent)
+  - **Fixed-Entity Type Rules**:
+    - Columns ending with `_id` default to integer semantics when `type: fixed`
+    - Empty string values in fixed entities normalize to `null`
+    - Coercible integer strings such as `"53"` normalize in memory to `53` during project load
+    - Invalid non-empty `_id` values such as `"53.0"`, `"abc"`, or booleans are rejected rather than coerced to `null`
+    - Successful load-time normalizations are surfaced in the UI and are only written back to YAML on explicit save
   - **Append Configurations**: Also validated for append items with `type: fixed`
 - **Common Issues**:
   - Column/row count mismatch
   - Empty values list
   - Mixed row structures (some lists, some primitives)
   - Missing `columns` configuration
+  - String values in `_id` columns causing load-time normalization warnings
 - **Suggested Additional Validation**:
   - Warn if values contain duplicate rows (when keys are defined)
   - Validate data types match expected column types
 - **Example**:
   ```yaml
   type: fixed
-  columns: ["code", "description"]
+  public_id: contact_type_id
+  columns: ["contact_type_name", "description", "sead_contact_group_id"]
   values:
-    - ["Type A", "Description A"]
-    - ["Type B", "Description B"]
+    - ["Type A", "Description A", 17]
+    - ["Type B", "Description B", "18"]  # normalized in memory on load; persisted on explicit save
   ```
+
+#### `column_types`
+- **Type**: `dict[string, string]`
+- **Required**: No
+- **Description**: Optional explicit type declarations for `type: fixed` entities. When present, declared types override both project-level fixed-entity conventions and the built-in `_id` inference. This is useful for non-`_id` fixed columns that should be validated as `int`, `float`, `bool`, or `date` instead of the default undeclared behavior.
+- **Allowed Values**: `int`, `string`, `float`, `bool`, `date`
+- **Example**:
+  ```yaml
+  type: fixed
+  public_id: method_id
+  columns: ["label", "rank", "created_at", "is_active"]
+  column_types:
+    rank: int
+    created_at: date
+    is_active: bool
+  values:
+    - ["Sampling", 1, "2026-05-19", true]
+    - ["Collecting", "2", "2026-05-20", "false"]
+  ```
+- **Validation Rules**:
+  - Applies only to `type: fixed` entities
+  - Keys must match declared columns (error if unknown column is listed)
+  - Values must use the allowlist above (error on unsupported types such as `integer`)
+  - Precedence is explicit: `column_types` first, then `options.fixed_entity_types.conventions`, then built-in `_id -> int`, then no inferred type for other undeclared columns
+- **Common Issues**:
+  - Declaring a column name that is not present in `columns`
+  - Using unsupported type names such as `integer` instead of `int`
+  - Forgetting that declared types affect both load-time coercion and save-time validation
 
 #### `branches`
 - **Type**: `list[BranchConfig]`
@@ -748,7 +781,7 @@ This is the canonical mechanism for four common cases:
 - **Copy** when you just need another column name for an existing value
 - **Constant** when every row should receive the same value, `null`, number, or boolean
 - **Interpolation** when you are assembling a label, synthetic identifier, or display string from several columns
-- **Formula** when interpolation is not enough and you need a small expression such as `upper(...)`, `trim(...)`, `substr(...)`, or `coalesce(...)`
+- **Formula** when interpolation is not enough and you need a small expression such as `upper(...)`, `trim(...)`, `substr(...)`, `coalesce(...)`, `replace(...)`, `regex_extract(...)`, or `to_decimal(...)`
 
 Quick examples:
 
@@ -877,6 +910,14 @@ This is the right fit when the derived value depends on cleanup, fallback handli
     initials: "=concat(upper(substr(first_name, 0, 1)), upper(substr(last_name, 0, 1)))"
     # DSL formula with coalesce for null handling
     display_name: "=coalesce(preferred_name, concat(first_name, ' ', last_name))"
+    # Replace a sentinel value used as missing marker
+    status_clean: "=replace(status, 'N/A', '')"
+    # Extract a numeric code embedded in a source ID string (e.g. 'SITE-042' → '042')
+    site_code: "=regex_extract(site_id, '[0-9]+')"
+    # Extract a named capture group to pull a prefix
+    country_code: "=regex_extract(location_key, '^([A-Z]{2})', 1)"
+    # Convert a float measurement column to Decimal with 4 decimal places
+    latitude_decimal: "=to_decimal(latitude, 4)"
     # Create constant null column
     feature_type_description: null
     # Create constant value column
@@ -892,6 +933,13 @@ This is the right fit when the derived value depends on cleanup, fallback handli
     - `trim(str)` - Remove leading/trailing whitespace
     - `substr(str, start, length)` - Extract substring (0-indexed)
     - `coalesce(...)` - Return first non-null value
+    - `replace(str, old, new)` - Replace all occurrences of substring `old` with `new` (literal, not regex)
+    - `regex_extract(str, pattern[, group])` - Extract first regex match; `group` selects capture group (default 0 = full match); returns null when no match
+    - `to_decimal(value[, precision])` - Convert a numeric value (float, int, str, Decimal) or null to `Decimal` rounded to `precision` decimal places (default 10)
+    - `to_int(value)` - Convert value to int; null/NaN pass through as null
+    - `to_float(value)` - Convert value to float; null/NaN pass through as null
+    - `to_str(value)` - Convert value to string; null/NaN pass through as null
+    - `to_date(value[, format])` - Parse string to `date` using `format` (default `%Y-%m-%d`); null/NaN pass through as null
   - **Literals**: String literals (`"text"` or `'text'`), integers (`42`, `-10`), booleans (`true`, `false`), null (`null`)
   - **Security**: No arbitrary code execution - only whitelisted functions, bounded complexity (max depth 20, max 500 nodes)
   - **Type Handling**: All functions operate on pandas Series for vectorized evaluation
@@ -2225,7 +2273,52 @@ unnest:
 
 ## Options Section
 
-The `options` section contains global configuration for translations and data sources.
+The `options` section contains global configuration for translations, data sources, and other project-wide behaviors.
+
+### Fixed Entity Type Conventions
+
+```yaml
+options:
+  fixed_entity_types:
+    conventions:
+      - pattern: "*_id"
+        type: int
+      - pattern: "*_uuid"
+        type: string
+      - pattern: "abundance"
+        type: int
+```
+
+Project-level fixed-entity type conventions define reusable default types for fixed-entity columns.
+
+- Applies only to `type: fixed` entities
+- Matching uses glob-style column-name patterns
+- Rules are evaluated in order
+- First match wins
+- Allowed type values are `int`, `string`, `float`, `bool`, and `date`
+
+Precedence is:
+
+1. `entity.column_types[column]`
+2. first matching `options.fixed_entity_types.conventions` rule
+3. built-in `_id -> int` fallback
+4. otherwise no inferred type for undeclared non-`_id` columns
+
+Runtime behavior is strict only when a type is explicitly active through `column_types`, a matching project convention, or the built-in `_id` fallback. Undeclared non-`_id` columns continue to preserve incoming scalar values.
+
+**Validation Rules**:
+
+- `fixed_entity_types` must be a mapping when present
+- `conventions` must be a list
+- Each convention entry must define a non-empty `pattern`
+- Each convention entry must define a supported `type`
+- Invalid convention definitions fail project validation
+
+**Common Issues**:
+
+- Using unsupported type names such as `integer` instead of `int`
+- Assuming conventions replace per-entity `column_types` rather than acting as defaults
+- Expecting conventions to affect non-fixed entities
 
 ### Translation Project
 
@@ -2292,6 +2385,31 @@ options:
         path: /path/to/database.accdb
 ```
 
+#### DuckDB Internal Workspace
+
+Entities with `type: duckdb` do not require a `data_source` entry. They query Shape Shifter's own in-memory entity store using [DuckDB](https://duckdb.org/). All entities that have already been processed and stored are available as SQL views named after the entity.
+
+```yaml
+entities:
+  site_summary:
+    type: duckdb
+    depends_on: [site, sample]
+    query: |
+      SELECT s.site_name, COUNT(sa.system_id) AS sample_count
+      FROM site s
+      JOIN sample sa ON sa.site_id = s.system_id
+      GROUP BY s.site_name
+    public_id: site_summary_id
+    keys: [site_name]
+    columns: [site_name, sample_count]
+```
+
+**Key points**:
+- The entity must come after its dependencies in the processing order. Use `depends_on` to declare them explicitly.
+- All FK values in the queried entities are local `system_id` values (integers), not external IDs.
+- No `data_source` entry is needed; the loader is selected automatically by `type: duckdb`.
+- The alternative keys `internal` and `shape_store` also select this loader (e.g. for use in `data_source` entries when needed).
+
 ---
 
 ## Special Syntax
@@ -2325,7 +2443,7 @@ remote_keys: "@value: entities.feature.keys"
 
 ### `@include:` Include Syntax
 
-The `@include:` syntax allows splitting configuration across multiple files.
+The `@include:` syntax allows splitting configuration across multiple files. This directive resolves recursively directives and references in the loaded data.  
 
 **Format:**
 ```yaml
@@ -2339,17 +2457,18 @@ options:
     sead: "@include: sead-options.yml"
     arbodat_lookup: "@include: arbodat-lookup-options.yml"
 
-mappings: "@include: mappings.yml"
+# Mapping sidecar is auto-loaded from <project>-mapping.yml; no @include needed
 ```
 
 ### `@load:` Load Syntax
 
-The `@load:` syntax loads external files (typically for translations).
+The `@load:` syntax loads external data files (e.g. for translations) without resolving directives or references.
 
 **Format:**
 ```yaml
 @load: path.to.property
 ```
+`path.to.property` must refer to a valid path in the raw input data. References to data introduced later during resolution, such as included or loaded data, are not currently supported.
 
 **Example:**
 ```yaml
@@ -2937,9 +3056,10 @@ archaeological_period:
 contact_type:
   source: null
   type: fixed
-  surrogate_id: contact_type_id
-  surrogate_name: contact_type
+  public_id: contact_type_id
   columns: ["contact_type_name", "description", "arbodat_code"]
+  column_types:
+    arbodat_code: string
   values:
     - ["Archaeologist", "Name of scientist responsible", "ArchBear"]
     - ["Botanist", "Name of botanist responsible", "BotBear"]
@@ -3473,6 +3593,7 @@ This comprehensive validation system helps catch configuration errors early, pro
 
 - **Use `@value:` references** to avoid duplication
 - **Split large configs** using `@include:`
+- **Move data to seperate files** using `@load:`
 - **Keep data sources** in separate files
 - **Version control** your project files
 
@@ -3646,7 +3767,7 @@ This guide consolidates the following previously separate documents:
 
 **Additional Resources:**
 - **[USER_GUIDE.md](USER_GUIDE.md)**: Complete user guide for Shape Shifter
-- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)**: Development and architecture documentation
+- **[DEVELOPMENT.md](DEVELOPMENT.md)**: Development and architecture documentation
 - **[VALIDATION_IMPROVEMENTS.md](VALIDATION_IMPROVEMENTS.md)**: Validation system design and improvements
 - **[README.md](README.md)**: Documentation index and navigation
 
@@ -3660,13 +3781,12 @@ entities: dict[string, EntityConfig]
 options:
   translations: TranslationConfig
   data_sources: dict[string, DataSourceConfig]
-mappings: dict[string, any]
+  mappings: dict[string, any]  # Legacy; use <project>-mapping.yml sidecar
 
 # EntityConfig
 EntityConfig:
   # Identity
   surrogate_id?: string
-  surrogate_name?: string
   public_id?: string
   keys?: list[string]
   

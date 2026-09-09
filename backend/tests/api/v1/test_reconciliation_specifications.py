@@ -14,7 +14,11 @@ from backend.app.services import project_service, validation_service, yaml_servi
 
 # pylint: disable=redefined-outer-name, unused-argument
 
-client = TestClient(app)
+
+@pytest.fixture
+def client():
+    with TestClient(app) as client:
+        yield client
 
 
 @pytest.fixture
@@ -112,7 +116,7 @@ def sample_recon_config(tmp_path):
 class TestListSpecifications:
     """Tests for GET /api/v1/reconcile/specifications endpoint."""
 
-    def test_list_specifications_success(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_list_specifications_success(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client):
         """Test listing specifications successfully."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -134,7 +138,7 @@ class TestListSpecifications:
         assert site_name["mapping_count"] == 2
         assert site_name["source"] == "another_entity"
 
-    def test_list_specifications_empty(self, tmp_path, monkeypatch, reset_services, sample_project):
+    def test_list_specifications_empty(self, tmp_path, monkeypatch, reset_services, sample_project, client):
         """Test listing when no specifications exist."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -149,7 +153,7 @@ class TestListSpecifications:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_list_specifications_no_config(self, tmp_path, monkeypatch, reset_services, sample_project):
+    def test_list_specifications_no_config(self, tmp_path, monkeypatch, reset_services, sample_project, client):
         """Test listing when no reconciliation config exists."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -164,7 +168,9 @@ class TestCreateSpecification:
     """Tests for POST /api/v1/reconcile/specifications endpoint."""
 
     @patch("backend.app.services.reconciliation.service.ProjectMapper")
-    def test_create_specification_success(self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_create_specification_success(
+        self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client
+    ):
         """Test creating new specification."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -194,7 +200,9 @@ class TestCreateSpecification:
         assert "sample_type" in config["entities"]["sample"]
 
     @patch("backend.app.services.reconciliation.service.ProjectMapper")
-    def test_create_specification_duplicate(self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_create_specification_duplicate(
+        self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client
+    ):
         """Test creating duplicate specification fails."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -222,7 +230,7 @@ class TestCreateSpecification:
 
     @patch("backend.app.services.reconciliation.service.ProjectMapper")
     def test_create_specification_invalid_entity(
-        self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config
+        self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client
     ):
         """Test creating specification for non-existent entity fails."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -253,7 +261,7 @@ class TestCreateSpecification:
 class TestUpdateSpecification:
     """Tests for PUT /api/v1/reconcile/specifications/{entity_name}/{target_field} endpoint."""
 
-    def test_update_specification_success(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_update_specification_success(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client):
         """Test updating specification."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -275,7 +283,9 @@ class TestUpdateSpecification:
         assert spec["source"] == "other_source"
         assert spec["property_mappings"] == {"new_prop": "new_col"}
 
-    def test_update_specification_preserves_mapping(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_update_specification_preserves_mapping(
+        self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client
+    ):
         """Test that updating preserves existing mappings."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -294,7 +304,7 @@ class TestUpdateSpecification:
         # Original spec had 2 mappings
         assert len(spec["mapping"]) == 2
 
-    def test_update_specification_not_found(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_update_specification_not_found(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client):
         """Test updating non-existent specification fails."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -314,7 +324,7 @@ class TestUpdateSpecification:
 class TestDeleteSpecification:
     """Tests for DELETE /api/v1/reconcile/specifications/{entity_name}/{target_field} endpoint."""
 
-    def test_delete_specification_success(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_delete_specification_success(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client):
         """Test deleting specification without mappings."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -326,7 +336,9 @@ class TestDeleteSpecification:
         assert "site_code" not in config["entities"]["site"]
         assert "site_name" in config["entities"]["site"]
 
-    def test_delete_specification_with_mappings_no_force(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_delete_specification_with_mappings_no_force(
+        self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client
+    ):
         """Test deleting specification with mappings fails without force."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -336,7 +348,9 @@ class TestDeleteSpecification:
         assert "Cannot delete existing mapping" in response.json()["detail"]
         assert "from catalog" in response.json()["detail"]
 
-    def test_delete_specification_with_mappings_force(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_delete_specification_with_mappings_force(
+        self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client
+    ):
         """Test force deleting specification with mappings succeeds."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -346,7 +360,7 @@ class TestDeleteSpecification:
         config = response.json()
         assert "site_name" not in config["entities"]["site"]
 
-    def test_delete_specification_not_found(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_delete_specification_not_found(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client):
         """Test deleting non-existent specification fails."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -360,7 +374,7 @@ class TestGetAvailableFields:
 
     @patch("backend.app.services.shapeshift_service.get_shapeshift_service")
     def test_get_available_fields_success(
-        self, mock_get_shapeshift_service, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config
+        self, mock_get_shapeshift_service, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client
     ):
         """Test getting available fields."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -388,7 +402,7 @@ class TestGetAvailableFields:
 class TestGetMappingCount:
     """Tests for GET /api/v1/reconcile/specifications/{entity_name}/{target_field}/mapping-count endpoint."""
 
-    def test_get_mapping_count_success(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_get_mapping_count_success(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client):
         """Test getting mapping count."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -398,7 +412,7 @@ class TestGetMappingCount:
         result = response.json()
         assert result["count"] == 2
 
-    def test_get_mapping_count_zero(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_get_mapping_count_zero(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client):
         """Test getting mapping count when no mappings exist."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -408,7 +422,7 @@ class TestGetMappingCount:
         result = response.json()
         assert result["count"] == 0
 
-    def test_get_mapping_count_not_found(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
+    def test_get_mapping_count_not_found(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, client):
         """Test getting mapping count for non-existent specification."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 

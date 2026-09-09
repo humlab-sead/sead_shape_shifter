@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from src.model import ShapeShiftProject
+from src.table_store import TableStore
 from src.transforms.link import ForeignKeyLinker
 
 
@@ -70,21 +71,27 @@ class TestLinkExtraColumnsChain:
     def test_extra_columns_chain_linking(self, project):
         """Test that FK #2 can use columns added by FK #1's extra_columns."""
         # Initialize table store with source data
-        table_store = {
-            "dataset": pd.DataFrame({"Projekt": ["P1", "P2"], "Fraktion": ["F1", "F2"], "system_id": [1, 2]}),
-            "_project_contact": pd.DataFrame(
-                {
-                    "Projekt": ["P1", "P2"],
-                    "contact_type": ["ArchAusg", "BotBear"],
-                    "contact_name": ["Alice", "Bob"],
-                    "system_id": [1, 2],
-                }
-            ),
-            "contact": pd.DataFrame(
-                {"contact_name": ["Alice", "Bob", "Charlie"], "email": ["a@test.com", "b@test.com", "c@test.com"], "system_id": [1, 2, 3]}
-            ),
-            "dataset_contacts": pd.DataFrame({"Projekt": ["P1", "P2"], "Fraktion": ["F1", "F2"], "system_id": [1, 2]}),
-        }
+        table_store = TableStore(
+            {
+                "dataset": pd.DataFrame({"Projekt": ["P1", "P2"], "Fraktion": ["F1", "F2"], "system_id": [1, 2]}),
+                "_project_contact": pd.DataFrame(
+                    {
+                        "Projekt": ["P1", "P2"],
+                        "contact_type": ["ArchAusg", "BotBear"],
+                        "contact_name": ["Alice", "Bob"],
+                        "system_id": [1, 2],
+                    }
+                ),
+                "contact": pd.DataFrame(
+                    {
+                        "contact_name": ["Alice", "Bob", "Charlie"],
+                        "email": ["a@test.com", "b@test.com", "c@test.com"],
+                        "system_id": [1, 2, 3],
+                    }
+                ),
+                "dataset_contacts": pd.DataFrame({"Projekt": ["P1", "P2"], "Fraktion": ["F1", "F2"], "system_id": [1, 2]}),
+            }
+        )
 
         # Link the entity
         linker = ForeignKeyLinker(project, table_store)
@@ -111,14 +118,20 @@ class TestLinkExtraColumnsChain:
     def test_extra_columns_not_available_fails_validation(self, project):
         """Test that FK #2 fails validation if FK #1 hasn't added the required column."""
         # Initialize table store without _project_contact (so FK #1 will fail)
-        table_store = {
-            "dataset": pd.DataFrame({"Projekt": ["P1", "P2"], "Fraktion": ["F1", "F2"], "system_id": [1, 2]}),
-            # Missing _project_contact - FK #1 will be deferred
-            "contact": pd.DataFrame(
-                {"contact_name": ["Alice", "Bob", "Charlie"], "email": ["a@test.com", "b@test.com", "c@test.com"], "system_id": [1, 2, 3]}
-            ),
-            "dataset_contacts": pd.DataFrame({"Projekt": ["P1", "P2"], "Fraktion": ["F1", "F2"], "system_id": [1, 2]}),
-        }
+        table_store = TableStore(
+            {
+                "dataset": pd.DataFrame({"Projekt": ["P1", "P2"], "Fraktion": ["F1", "F2"], "system_id": [1, 2]}),
+                # Missing _project_contact - FK #1 will be deferred
+                "contact": pd.DataFrame(
+                    {
+                        "contact_name": ["Alice", "Bob", "Charlie"],
+                        "email": ["a@test.com", "b@test.com", "c@test.com"],
+                        "system_id": [1, 2, 3],
+                    }
+                ),
+                "dataset_contacts": pd.DataFrame({"Projekt": ["P1", "P2"], "Fraktion": ["F1", "F2"], "system_id": [1, 2]}),
+            }
+        )
 
         # Link the entity
         linker = ForeignKeyLinker(project, table_store)

@@ -4,6 +4,7 @@ from typing import Any
 
 from loguru import logger
 
+from backend.app.core.config import get_settings
 from backend.app.ingesters.protocol import (
     Ingester,
     IngesterConfig,
@@ -11,7 +12,7 @@ from backend.app.ingesters.protocol import (
     IngestionResult,
     ValidationResult,
 )
-from backend.app.ingesters.registry import Ingesters
+from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.models.ingester import (
     IngesterMetadataResponse,
     IngestRequest,
@@ -19,19 +20,19 @@ from backend.app.models.ingester import (
     ValidateRequest,
     ValidateResponse,
 )
+from backend.app.services.ingester_runtime import inject_ingester_database_dependencies, inject_ingester_runtime_dependencies
 
 
 class IngesterService:
     """Service for managing data ingesters."""
 
-    @staticmethod
-    def list_ingesters() -> list[IngesterMetadataResponse]:
+    def list_ingesters(self) -> list[IngesterMetadataResponse]:
         """List all registered ingesters with their metadata.
 
         Returns:
             List of ingester metadata responses
         """
-        metadata_list: list[IngesterMetadata] = Ingesters.get_metadata_list()
+        metadata_list: list[IngesterMetadata] = get_ingester_registry().get_metadata_list()
         return [
             IngesterMetadataResponse(
                 key=metadata.key,
@@ -43,8 +44,7 @@ class IngesterService:
             for metadata in metadata_list
         ]
 
-    @staticmethod
-    async def validate(key: str, request: ValidateRequest) -> ValidateResponse:
+    async def validate(self, key: str, request: ValidateRequest) -> ValidateResponse:
         """Validate data using specified ingester.
 
         Args:
@@ -58,12 +58,18 @@ class IngesterService:
             ValueError: If ingester not found or validation fails critically
         """
         # Get ingester class
-        ingester_cls = Ingesters.get(key)
+        ingester_cls: None | type[Ingester] = get_ingester_registry().get(key)
         if ingester_cls is None:
             raise ValueError(f"Ingester '{key}' not found")
 
         # Create configuration
-        config = IngesterService._create_config(request.config)
+        config_dict = request.config.copy()
+        if request.submission_context is not None:
+            config_dict["submission_context"] = request.submission_context
+        if request.deploy_strategy is not None:
+            config_dict["deploy_strategy"] = request.deploy_strategy
+
+        config: IngesterConfig = self._create_config(config_dict, key=key)
 
         # Instantiate and validate
         try:
@@ -74,6 +80,8 @@ class IngesterService:
                 is_valid=result.is_valid,
                 errors=result.errors,
                 warnings=result.warnings,
+                infos=result.infos,
+                pending_confirmation_report=result.pending_confirmation_report,
             )
         except Exception as e:  # pylint: disable=broad-except
             logger.exception(f"Validation failed for ingester '{key}'")
@@ -81,10 +89,11 @@ class IngesterService:
                 is_valid=False,
                 errors=[f"Validation error: {str(e)}"],
                 warnings=[],
+                infos=[],
+                pending_confirmation_report=None,
             )
 
-    @staticmethod
-    async def ingest(key: str, request: IngestRequest) -> IngestResponse:
+    async def ingest(self, key: str, request: IngestRequest) -> IngestResponse:
         """Ingest data using specified ingester.
 
         Args:
@@ -98,7 +107,7 @@ class IngesterService:
             ValueError: If ingester not found or ingestion fails
         """
         # Get ingester class
-        ingester_cls = Ingesters.get(key)
+        ingester_cls: None | type[Ingester] = get_ingester_registry().get(key)
         if ingester_cls is None:
             raise ValueError(f"Ingester '{key}' not found")
 
@@ -113,7 +122,12 @@ class IngesterService:
                 "explode": request.explode,
             }
         )
-        config = IngesterService._create_config(config_dict)
+        if request.submission_context is not None:
+            config_dict["submission_context"] = request.submission_context
+        if request.deploy_strategy is not None:
+            config_dict["deploy_strategy"] = request.deploy_strategy
+
+        config: IngesterConfig = self._create_config(config_dict, key=key)
 
         # Instantiate and ingest
         try:
@@ -126,6 +140,9 @@ class IngesterService:
                 message=result.message,
                 submission_id=result.submission_id,
                 output_path=request.output_folder,
+                error_details=result.error_details,
+                deploy_artifact=result.deploy_artifact,
+                pending_confirmation_report=result.pending_confirmation_report,
             )
         except Exception as e:  # pylint: disable=broad-except
             logger.exception(f"Ingestion failed for ingester '{key}'")
@@ -135,10 +152,12 @@ class IngesterService:
                 message=f"Ingestion error: {str(e)}",
                 submission_id=None,
                 output_path=None,
+                error_details=str(e),
+                deploy_artifact=None,
+                pending_confirmation_report=None,
             )
 
-    @staticmethod
-    def _create_config(config_dict: dict[str, Any]) -> IngesterConfig:
+    def _create_config(self, config_dict: dict[str, Any], key: str | None = None) -> IngesterConfig:
         """Create IngesterConfig from dict, extracting standard fields.
 
         Args:
@@ -153,6 +172,8 @@ class IngesterService:
         # Build extra dict with all non-standard fields
         standard_fields = {"host", "port", "dbname", "user", "submission_name", "data_types", "database"}
         extra = {k: v for k, v in config_dict.items() if k not in standard_fields}
+        extra = inject_ingester_runtime_dependencies(key, extra, get_settings())
+        extra = inject_ingester_database_dependencies(key, extra, db_config)
 
         return IngesterConfig(
             host=db_config.get("host", "localhost"),
@@ -163,3 +184,17 @@ class IngesterService:
             data_types=config_dict.get("data_types", ""),
             extra=extra,
         )
+
+
+__DEFAULT_INGESTER_SERVICE: IngesterService | None = None
+
+
+def get_ingester_service() -> IngesterService:
+    """Factory function to get an instance of IngesterService.
+
+    Returns:
+        IngesterService instance
+    """
+    global __DEFAULT_INGESTER_SERVICE  # pylint: disable=global-statement
+    __DEFAULT_INGESTER_SERVICE = __DEFAULT_INGESTER_SERVICE or IngesterService()
+    return __DEFAULT_INGESTER_SERVICE

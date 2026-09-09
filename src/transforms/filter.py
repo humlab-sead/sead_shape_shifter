@@ -4,6 +4,7 @@ from venv import logger
 import pandas as pd
 
 from src.model import TableConfig
+from src.table_store import TableStore
 from src.transforms.filter_metadata import FilterFieldMetadata, FilterSchema
 from src.utility import Registry
 
@@ -32,7 +33,7 @@ def apply_filters(
     name: str,
     df: pd.DataFrame,
     cfg: TableConfig,
-    data_store: dict[str, pd.DataFrame],
+    data_store: TableStore,
     stage: str = "extract",
 ) -> pd.DataFrame:
     """Apply filters defined in the entity config for a specific execution stage."""
@@ -99,7 +100,7 @@ class ExistsInFilter:
         ],
     )
 
-    def apply(self, df: pd.DataFrame, filter_cfg: dict[str, Any], data_store: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    def apply(self, df: pd.DataFrame, filter_cfg: dict[str, Any], data_store: TableStore) -> pd.DataFrame:
 
         if any(k not in filter_cfg for k in ("column", "other_entity")):
             raise ValueError("Filter 'exists_in' requires 'column' and 'other_entity' parameters")
@@ -151,7 +152,7 @@ class QueryFilter:
         self,
         df: pd.DataFrame,
         filter_cfg: dict[str, Any],
-        data_store: dict[str, pd.DataFrame],  # pylint: disable=unused-argument
+        data_store: TableStore,  # pylint: disable=unused-argument
     ) -> pd.DataFrame:
 
         if not filter_cfg.get("query"):

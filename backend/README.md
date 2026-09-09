@@ -243,9 +243,14 @@ uv run pytest backend/tests --cov=backend.app --cov-report=html
 from fastapi.testclient import TestClient
 from backend.app.main import app
 
-client = TestClient(app)
-response = client.get("/api/v1/health")
-assert response.status_code == 200
+@pytest.fixture
+def client():
+    with TestClient(app) as client:
+        yield client
+
+def test_is_healthy(client):
+    response = client.get("/api/v1/health")
+    assert response.status_code == 200
 
 # Service tests - mock ApplicationState
 from unittest.mock import MagicMock

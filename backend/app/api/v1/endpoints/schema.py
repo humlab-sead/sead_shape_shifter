@@ -68,7 +68,7 @@ async def list_tables_with_config(
     List all tables in a data source using a resolved config dict.
 
     This endpoint accepts a fully resolved data source configuration,
-    useful when the config comes from a project with @include: directives.
+    useful when the config comes from a project with @xyz: directives.
 
     **Request Body**:
     - `config`: Data source configuration dictionary

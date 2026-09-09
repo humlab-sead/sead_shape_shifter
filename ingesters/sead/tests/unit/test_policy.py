@@ -16,6 +16,7 @@ from ingesters.sead.policies import (
 )
 from ingesters.sead.submission import Submission
 from ingesters.sead.tests.builders import build_column, build_schema, build_table
+from src.table_store import TableStore
 
 
 def test_initialization(mock_service):
@@ -38,7 +39,7 @@ def test_get_policy_id(mock_service):
 
 def test_add_primary_key_column_if_missing_policy(mock_service):
     """Test that missing PK column is added to table."""
-    schema = build_schema(
+    schema: SeadSchema = build_schema(
         [
             build_table(
                 "table1",
@@ -51,7 +52,7 @@ def test_add_primary_key_column_if_missing_policy(mock_service):
         ]
     )
 
-    submission = Submission(data_tables={"table1": pd.DataFrame(columns=["col1", "col2"])}, schema=schema)
+    submission = Submission(data_tables=TableStore({"table1": pd.DataFrame(columns=["col1", "col2"])}), schema=schema)
 
     policy = AddPrimaryKeyColumnIfMissingPolicy(schema=schema, submission=submission, service=mock_service)
     policy.apply()
@@ -83,7 +84,7 @@ def test_add_default_foreign_key_policy(mock_service):
 
 def test_if_lookup_table_is_missing_add_table_using_system_id_as_public_id(mock_service):
     """Test that referenced lookup table is auto-created with identity mapping."""
-    schema = build_schema(
+    schema: SeadSchema = build_schema(
         [
             build_table("table1", "id", is_lookup=False),
         ]
@@ -131,15 +132,17 @@ def test_update_types_based_on_sead_schema(mock_service):
     )
 
     submission = Submission(
-        data_tables={
-            "table1": pd.DataFrame(
-                {
-                    "col1": [1, 2, 3],
-                    "col2": [4, 5, 6],
-                    "col3": [7, 8, 9],
-                }
-            )
-        },
+        data_tables=TableStore(
+            {
+                "table1": pd.DataFrame(
+                    {
+                        "col1": [1, 2, 3],
+                        "col2": [4, 5, 6],
+                        "col3": [7, 8, 9],
+                    }
+                )
+            }
+        ),
         schema=schema,
     )
 
@@ -165,15 +168,17 @@ def test_if_system_id_is_missing_set_system_id_to_public_id(mock_service):
         ]
     )
 
-    submission = Submission(
-        data_tables={
-            "table1": pd.DataFrame(
-                {
-                    "id": [1, 2, 3],
-                    "system_id": [np.nan, np.nan, np.nan],
-                }
-            )
-        },
+    submission: Submission = Submission(
+        data_tables=TableStore(
+            {
+                "table1": pd.DataFrame(
+                    {
+                        "id": [1, 2, 3],
+                        "system_id": [np.nan, np.nan, np.nan],
+                    }
+                )
+            }
+        ),
         schema=schema,
     )
 
@@ -186,7 +191,7 @@ def test_if_system_id_is_missing_set_system_id_to_public_id(mock_service):
 def test_if_foreign_key_value_is_missing_add_identity_mapping_to_foreign_key_table(mock_service):
     """Test that missing FK references trigger creation of lookup records."""
     # Create schema with lookup table
-    schema = build_schema(
+    schema: SeadSchema = build_schema(
         [
             build_table(
                 "tbl_table",
@@ -219,8 +224,8 @@ def test_if_foreign_key_value_is_missing_add_identity_mapping_to_foreign_key_tab
 
 def test_if_lookup_with_no_new_data_then_keep_only_system_id_public_id__not_lookup(mock_service):
     """Test that non-lookup tables are not modified by this policy."""
-    schema = MagicMock(spec=SeadSchema)
-    submission = MagicMock(spec=Submission)
+    schema: SeadSchema = MagicMock(spec=SeadSchema)
+    submission: Submission = MagicMock(spec=Submission)
     table = MagicMock(spec=Table)
     table.is_lookup = False
     schema.__getitem__.return_value = table
@@ -233,8 +238,8 @@ def test_if_lookup_with_no_new_data_then_keep_only_system_id_public_id__not_look
 
 
 def test_if_lookup_with_no_new_data_then_keep_only_system_id_public_id__pk_not_in_data_table(mock_service):
-    schema = MagicMock(spec=SeadSchema)
-    submission = MagicMock(spec=Submission)
+    schema: SeadSchema = MagicMock(spec=SeadSchema)
+    submission: Submission = MagicMock(spec=Submission)
     table = MagicMock(spec=Table)
     table.is_lookup = True
     table.pk_name = "public_id"

@@ -14,52 +14,61 @@ from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService
 from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders, LoaderType
-from src.mapping import LinkToRemoteService
+from src.loaders.duckdb_loader import DuckDbWorkspace
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
 from src.path_resolution import resolve_managed_file_path
 from src.process_state import ProcessState
+from src.reconciliation.mapping_manager import MappingManager
+from src.reconciliation.mapping_model import Link, LinkSource, MappingCatalog, encode_local_key
+from src.table_store import TableStore
+from src.transforms.branch import process_merged_branch
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.transforms.extra_columns import ExtraColumnEvaluator
 from src.transforms.filter import apply_filters
 from src.transforms.link import ForeignKeyLinker
 from src.transforms.translate import translate
 from src.transforms.unnest import unnest
-from src.transforms.utility import add_system_id  # Renamed from add_surrogate_id
+from src.transforms.utility import add_system_id
+
+INTERNAL_DATA_SOURCE = "@internal"
 
 
-class ShapeShifter:
+class LoaderInstanceSet:
+    """Simple cache for DataLoader instances keyed by data source or table type."""
 
-    def __init__(
-        self,
-        project: ShapeShiftProject | str,
-        default_entity: str | None = None,
-        table_store: dict[str, pd.DataFrame] | None = None,
-        target_entities: set[str] | None = None,
-    ) -> None:
+    def __init__(self, table_store: TableStore, duckdb_workspace: DuckDbWorkspace, project: ShapeShiftProject) -> None:
+        self._cache: dict[str, DataLoader] = {}
+        self.table_store: TableStore = table_store
+        self.duckdb_workspace: DuckDbWorkspace = duckdb_workspace
+        self.project: ShapeShiftProject = project
 
-        if not project or not isinstance(project, (ShapeShiftProject, str)):
-            raise ValueError("A valid configuration must be provided")
-
-        self.default_entity: str | None = default_entity
-        self.table_store: dict[str, pd.DataFrame] = table_store or {}
-        self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
-        self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
-        self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
-        self.extra_col_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
-        self.unresolved_extra_columns: dict[str, dict[str, dict[str, Any]]] = {}
+    def close_all(self) -> None:
+        for loader in self._cache.values():
+            loader.close()
+        self._cache.clear()
 
     def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
-        """Resolve the DataLoader, if any, for the given TableConfig."""
+        context = {"workspace": self.duckdb_workspace, "table_store": self.table_store}
+
         if table_cfg.data_source:
-            data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
-            return DataLoaders.get(key=data_source.driver)(data_source=data_source)
+            cache_key = f"ds:{table_cfg.data_source}"
+            if cache_key not in self._cache:
+                if table_cfg.data_source == INTERNAL_DATA_SOURCE:
+                    self._cache[cache_key] = DataLoaders.get(key="duckdb").create(data_source=None, **context)
+                else:
+                    data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
+                    self._cache[cache_key] = DataLoaders.get(key=data_source.driver).create(data_source=data_source, **context)
+            return self._cache[cache_key]
 
         if table_cfg.type and table_cfg.type in DataLoaders.items:
-            return DataLoaders.get(key=table_cfg.type)(data_source=None)
+            cache_key = f"type:{table_cfg.type}"
+            if cache_key not in self._cache:
+                self._cache[cache_key] = DataLoaders.get(key=table_cfg.type).create(data_source=None, **context)
+            return self._cache[cache_key]
 
         return None
 
-    def _resolve_project_local_file_options(self, table_cfg: TableConfig, loader: DataLoader) -> None:
+    def apply_local_file_options(self, table_cfg: TableConfig, loader: DataLoader) -> None:
         """Resolve `location: local` file paths relative to the project file directory."""
         if loader.loader_type() != LoaderType.FILE:
             return
@@ -83,12 +92,44 @@ class ShapeShifter:
         options["filename"] = str(resolve_managed_file_path(filename, location="local", local_root=project_dir))
         table_cfg.entity_cfg["options"] = options
 
+
+class ShapeShifter:
+    def __init__(
+        self,
+        project: ShapeShiftProject | str,
+        default_entity: str | None = None,
+        table_store: TableStore | None = None,
+        target_entities: set[str] | None = None,
+    ) -> None:
+        if not project or not isinstance(project, (ShapeShiftProject, str)):
+            raise ValueError("A valid configuration must be provided")
+
+        self.default_entity: str | None = default_entity
+
+        self.table_store: TableStore = table_store if isinstance(table_store, TableStore) else TableStore(table_store or {})
+        self.duckdb_workspace: DuckDbWorkspace = DuckDbWorkspace(database=":memory:")
+
+        self.table_store.add_on_set_hook(self.duckdb_workspace.register_entity, replay=True)
+        self.table_store.add_on_delete_hook(self.duckdb_workspace.unregister_entity)
+
+        self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
+        self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
+        self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
+        self.extra_col_evaluator: ExtraColumnEvaluator = ExtraColumnEvaluator()
+        self.unresolved_extra_columns: dict[str, dict[str, dict[str, Any]]] = {}
+        self.mapping_manager: MappingManager = MappingManager()
+        self.mapping_catalog: MappingCatalog | None = None
+
+        self.loaders: LoaderInstanceSet = LoaderInstanceSet(
+            table_store=self.table_store, duckdb_workspace=self.duckdb_workspace, project=self.project
+        )
+
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
         logger.trace(f"Resolving source for entity '{table_cfg.entity_name}'")
-        loader: DataLoader | None = self.resolve_loader(table_cfg=table_cfg)
+        loader: DataLoader | None = self.loaders.resolve_loader(table_cfg=table_cfg)
         if loader:
-            self._resolve_project_local_file_options(table_cfg, loader)
+            self.loaders.apply_local_file_options(table_cfg, loader)
             logger.trace(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
 
@@ -100,7 +141,6 @@ class ShapeShifter:
         raise ValueError(f"Unable to resolve source for entity '{table_cfg.entity_name}'")
 
     async def get_subset(self, subset_service: SubsetService, entity: str, table_cfg: TableConfig) -> pd.DataFrame:
-
         dfs: list[pd.DataFrame] = []
 
         for sub_table_cfg in table_cfg.get_sub_table_configs():
@@ -118,7 +158,7 @@ class ShapeShifter:
 
             # Special processing for merged entity branches
             if table_cfg.type == "merged":
-                sub_data = self._process_merged_branch(entity, table_cfg, sub_table_cfg, sub_data)
+                sub_data = process_merged_branch(entity, table_cfg, sub_table_cfg, sub_data)
 
             dfs.append(sub_data)
 
@@ -139,108 +179,77 @@ class ShapeShifter:
 
         return data
 
-    def _process_merged_branch(
-        self, entity: str, table_cfg: TableConfig, sub_table_cfg: TableConfig, sub_data: pd.DataFrame
-    ) -> pd.DataFrame:
-        """Process a single branch for a merged entity.
-
-        Adds:
-        - Branch discriminator column (e.g., 'analysis_entity_branch')
-        - FK propagation columns (sparse, nullable Int64 FKs)
-
-        Args:
-            entity: Name of the merged entity
-            table_cfg: Configuration for the merged entity
-            sub_table_cfg: Configuration for this specific branch
-            sub_data: DataFrame containing branch data
-
-        Returns:
-            DataFrame with added columns for merging
-        """
-        # Extract branch metadata from sub_table_cfg
-        branch_name: str = sub_table_cfg.entity_cfg.get("_branch_name", "unknown")
-        branch_source: str = sub_table_cfg.entity_cfg.get("source")
-
-        # 1. Add branch discriminator column
-        discriminator_column: str = f"{entity}_branch"
-        sub_data[discriminator_column] = branch_name
-
-        # 2. Add sparse FK propagation columns — one per branch source, named from the
-        # source entity's public_id when available, otherwise {source_entity}_id.
-        # The current branch's column is populated from the source entity's system_id;
-        # all other branches receive NULL (sparse pattern).
-        # system_id is available in sub_data because get_sub_table_configs() explicitly
-        # includes it in the branch column list, and normalize() adds it per-entity before
-        # downstream merged entities are processed.
-        for branch_cfg in table_cfg.branches:
-            branch_src: str = branch_cfg.get("source")
-            source_cfg: dict[str, Any] = table_cfg.entities_cfg.get(branch_src, {}) if branch_src else {}
-            fk_column_name: str = source_cfg.get("public_id") or f"{branch_src}_id"
-
-            if branch_src == branch_source:
-                # Populate from the source entity's system_id carried through sub_data
-                if "system_id" in sub_data.columns:
-                    sub_data[fk_column_name] = sub_data["system_id"].astype("Int64")
-                else:
-                    sub_data[fk_column_name] = pd.array(pd.NA, dtype="Int64")
-            else:
-                sub_data[fk_column_name] = pd.NA
-
-            sub_data[fk_column_name] = sub_data[fk_column_name].astype("Int64")
-
-        # Drop the source system_id so it doesn't pollute the merged entity's own identity column
-        if "system_id" in sub_data.columns:
-            sub_data = sub_data.drop(columns=["system_id"])
-
-        return sub_data
-
     async def normalize(self) -> Self:
         """Extract all configured entities and store them."""
         subset_service: SubsetService = SubsetService()
+        self.mapping_catalog = self.mapping_manager.load(self.project.filename)
 
-        while len(self.state.unprocessed_entities) > 0:
-
+        while self.state.unprocessed_entities:
             entity: str | None = self.state.get_next_entity_to_process()
 
             if entity is None:
                 self.state.log_unmet_dependencies()
                 raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
 
-            table_cfg: TableConfig = self.project.get_table(entity)
+            await self._process_entity(entity, subset_service)
 
-            if not all(isinstance(col, str) for col in table_cfg.columns):
-                raise ValueError(f"Invalid columns configuration for entity '{entity}': all columns must be strings")
+        self._link_deferred_foreign_keys()
+        self.duckdb_workspace.close()
+        self.loaders.close_all()
+        return self
 
-            # Process all configured tables (base + append items)
-            data: pd.DataFrame = await self.get_subset(subset_service, entity, table_cfg)
+    async def _process_entity(self, entity: str, subset_service: SubsetService) -> None:
+        """Extract, transform, and store a single entity through the full pipeline."""
+        table_cfg: TableConfig = self.project.get_table(entity)
 
-            # Evaluate extra_columns immediately after loading (before FK linking)
-            # This ensures columns added via extra_columns (including key columns) are available for FK validation
-            if table_cfg.extra_columns:
-                data, deferred = self.extra_col_evaluator.evaluate_extra_columns(
-                    df=data,
-                    extra_columns=table_cfg.extra_columns,
-                    entity_name=entity,
-                    defer_missing=True,  # Defer columns that reference FK-added columns
-                )
-                if deferred:
-                    logger.trace(f"{entity}[extra_columns]: Deferred {len(deferred)} columns until after FK linking")
+        if not all(isinstance(col, str) for col in table_cfg.columns):
+            raise ValueError(f"Invalid columns configuration for entity '{entity}': all columns must be strings")
 
-            if table_cfg.filters:
-                data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store, stage="extract")
+        # Process all configured tables (base + append items)
+        data: pd.DataFrame = await self.get_subset(subset_service, entity, table_cfg)
 
-            delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
-            # Apply post-concatenation deduplication if append_mode is "distinct"
-            # if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
-            if table_cfg.drop_duplicates and not delay_drop_duplicates:
-                data = self.drop_duplicates(entity, table_cfg, data)
-                # logger.info(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
+        # Evaluate extra_columns immediately after loading (before FK linking)
+        # This ensures columns added via extra_columns (including key columns) are available for FK validation
+        if table_cfg.extra_columns:
+            data, deferred = self.extra_col_evaluator.evaluate_extra_columns(
+                df=data,
+                extra_columns=table_cfg.extra_columns,
+                entity_name=entity,
+                defer_missing=True,  # Defer columns that reference FK-added columns
+            )
+            if deferred:
+                logger.trace(f"{entity}[extra_columns]: Deferred {len(deferred)} columns until after FK linking")
 
-            self.table_store[entity] = data
+        if table_cfg.filters:
+            data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store, stage="extract")
 
+        delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
+        # Apply post-concatenation deduplication if append_mode is "distinct"
+        # if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
+        if table_cfg.drop_duplicates and not delay_drop_duplicates:
+            data = self.drop_duplicates(entity, table_cfg, data)
+            # logger.info(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
+
+        self.table_store[entity] = data
+
+        self.linker.link_entity(entity_name=entity)
+
+        # Re-evaluate deferred extra_columns after FK linking (in case they reference FK-added columns)
+        self._evaluate_deferred_extra_columns(entity)
+
+        if table_cfg.filters:
+            self.table_store[entity] = apply_filters(
+                name=entity,
+                df=self.table_store[entity],
+                cfg=table_cfg,
+                data_store=self.table_store,
+                stage="after_link",
+            )
+
+        if table_cfg.unnest:
+            self.unnest_entity(entity=entity)
             self.linker.link_entity(entity_name=entity)
-
-            # Re-evaluate deferred extra_columns after FK linking (in case they reference FK-added columns)
+            # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
             self._evaluate_deferred_extra_columns(entity)
 
             if table_cfg.filters:
@@ -249,63 +258,43 @@ class ShapeShifter:
                     df=self.table_store[entity],
                     cfg=table_cfg,
                     data_store=self.table_store,
-                    stage="after_link",
+                    stage="after_unnest",
                 )
 
-            if table_cfg.unnest:
-                self.unnest_entity(entity=entity)
-                self.linker.link_entity(entity_name=entity)
-                # Re-evaluate deferred extra_columns after unnesting (in case unnest added new columns)
-                self._evaluate_deferred_extra_columns(entity)
+        if delay_drop_duplicates and table_cfg.drop_duplicates:
+            self.table_store[entity] = self.drop_duplicates(entity, table_cfg, self.table_store[entity])
 
-                if table_cfg.filters:
-                    self.table_store[entity] = apply_filters(
-                        name=entity,
-                        df=self.table_store[entity],
-                        cfg=table_cfg,
-                        data_store=self.table_store,
-                        stage="after_unnest",
-                    )
+        self._check_duplicate_keys(entity, table_cfg)
 
-            if delay_drop_duplicates and table_cfg.drop_duplicates:
-                self.table_store[entity] = self.drop_duplicates(entity, table_cfg, self.table_store[entity])
+        if table_cfg.drop_empty_rows:
+            self.table_store[entity] = drop_empty_rows(data=self.table_store[entity], entity_name=entity, subset=table_cfg.drop_empty_rows)
 
-            self._check_duplicate_keys(entity, table_cfg)
+        # Add system_id if requested and not present (always uses "system_id" column name)
+        if table_cfg.system_id and table_cfg.system_id not in self.table_store[entity].columns:
+            self.table_store[entity] = add_system_id(self.table_store[entity], table_cfg.system_id)
 
-            if table_cfg.drop_empty_rows:
-                self.table_store[entity] = drop_empty_rows(
-                    data=self.table_store[entity], entity_name=entity, subset=table_cfg.drop_empty_rows
-                )
+        # Add public_id column immediately so downstream merged entities see a complete source table
+        self.table_store[entity] = table_cfg.add_public_id_column(self.table_store[entity])
+        self._apply_mapping_sidecar_links(entity, table_cfg)
 
-            # Add system_id if requested and not present (always uses "system_id" column name)
-            if table_cfg.system_id and table_cfg.system_id not in self.table_store[entity].columns:
-                self.table_store[entity] = add_system_id(self.table_store[entity], table_cfg.system_id)
+        self.retry_linking()
 
-            # Add public_id column immediately so downstream merged entities see a complete source table
-            self.table_store[entity] = table_cfg.add_public_id_column(self.table_store[entity])
+        # Verify extra_columns were evaluated for this entity
+        if table_cfg.extra_columns:
+            unresolved_extra_columns = self.extra_col_evaluator.get_unresolved_extra_columns(
+                self.table_store[entity],
+                table_cfg.extra_columns,
+            )
 
-            self.retry_linking()
+            if unresolved_extra_columns:
+                self.unresolved_extra_columns[entity] = unresolved_extra_columns
+            else:
+                self.unresolved_extra_columns.pop(entity, None)
 
-            # Verify extra_columns were evaluated for this entity
-            if table_cfg.extra_columns:
-                unresolved_extra_columns = self.extra_col_evaluator.get_unresolved_extra_columns(
-                    self.table_store[entity],
-                    table_cfg.extra_columns,
-                )
+            self.extra_col_evaluator.verify_extra_columns(self.table_store[entity], table_cfg.extra_columns, entity)
 
-                if unresolved_extra_columns:
-                    self.unresolved_extra_columns[entity] = unresolved_extra_columns
-                else:
-                    self.unresolved_extra_columns.pop(entity, None)
-
-                self.extra_col_evaluator.verify_extra_columns(self.table_store[entity], table_cfg.extra_columns, entity)
-
-            # Reorder columns immediately so each entity is fully formed before downstream entities process it
-            self.table_store[entity] = self.project.reorder_columns(entity, self.table_store[entity])
-
-        self._link_deferred_foreign_keys()
-
-        return self
+        # Reorder columns immediately so each entity is fully formed before downstream entities process it
+        self.table_store[entity] = self.project.reorder_columns(entity, self.table_store[entity])
 
     def _link_deferred_foreign_keys(self, max_retries: int = 5) -> None:
         """Perform additional linking passes for any entities with deferred foreign key dependencies."""
@@ -459,15 +448,61 @@ class ShapeShifter:
         return self
 
     def map_to_remote(self, link_cfgs: dict[str, dict[str, Any]]) -> Self:
-        """Map local PK values to remote identities using mapping configuration."""
-        if not link_cfgs:
-            return self
-        service = LinkToRemoteService(remote_link_cfgs=link_cfgs)
-        for entity_name in self.table_store.keys():
-            if entity_name not in link_cfgs:
-                continue
-            self.table_store[entity_name] = service.link_to_remote(entity_name, self.table_store[entity_name])
+        """Deprecated no-op kept for compatibility with older callers."""
+        if link_cfgs:
+            logger.warning("options.mappings is deprecated and ignored during normalization; use <project>-mapping.yml instead")
         return self
+
+    def _apply_mapping_sidecar_links(self, entity_name: str, table_cfg: TableConfig) -> None:
+        """Apply committed sidecar links to the entity's public_id column.
+
+        Sidecar links are loaded once per normalization run and applied after the
+        entity's public_id column exists. Only committed links are applied.
+        When multiple links exist for a key over time, precedence is determined by
+        source order: manual, reconciliation, import.
+        """
+        if not self.mapping_catalog or not table_cfg.public_id:
+            return
+
+        entity_mapping = self.mapping_catalog.entities.get(entity_name)
+        if entity_mapping is None:
+            return
+
+        data = self.table_store[entity_name]
+        local_key = entity_mapping.local_key
+        key_columns = [local_key] if isinstance(local_key, str) else local_key
+
+        if any(column not in data.columns for column in key_columns):
+            logger.warning(
+                f"{entity_name}[mapping]: Skipping sidecar link application because local_key columns are missing: {key_columns}"
+            )
+            return
+
+        committed_links: dict[str, Link] = self.mapping_catalog.committed_links_by_entity(entity_name)
+        if not committed_links:
+            return
+
+        source_priority: dict[LinkSource, int] = {
+            LinkSource.MANUAL: 0,
+            LinkSource.RECONCILIATION: 1,
+            LinkSource.IMPORT: 2,
+        }
+        prioritized_links: dict[str, Link] = {}
+        for encoded_key, link in committed_links.items():
+            current = prioritized_links.get(encoded_key)
+            if current is None or source_priority[link.source] < source_priority[current.source]:
+                prioritized_links[encoded_key] = link
+
+        def resolve_target_id(row: pd.Series) -> Any:
+            values = row[local_key] if isinstance(local_key, str) else [row[column] for column in key_columns]
+            encoded_key = encode_local_key(local_key, values)
+            link = prioritized_links.get(encoded_key)
+            if link is None or link.committed_at is None:
+                return row[table_cfg.public_id]
+            return link.target_id
+
+        self.table_store[entity_name] = data.copy()
+        self.table_store[entity_name][table_cfg.public_id] = data.apply(resolve_target_id, axis=1)
 
     def log_shapes(self, target: str) -> Self:
         """Log the shape of each table as a TSV in same folder as target."""

@@ -271,9 +271,8 @@ make fr
 
 ## Related Documentation
 
-- [Testing Guide](../TESTING_GUIDE.md) - Main functional testing procedures
+- [Testing Guide](../TESTING.md) - Main functional testing procedures
 - [Non-Functional Testing Guide](NON_FUNCTIONAL_TESTING_GUIDE.md) - Performance, browser compatibility
-- [Accessibility Testing Guide](ACCESSIBILITY_TESTING_GUIDE.md) - WCAG compliance testing
 - [Error Scenario Testing](ERROR_SCENARIO_TESTING.md) - Error handling verification
 - [Test Results Template](TEST_RESULTS_TEMPLATE.md) - Test documentation format
 
