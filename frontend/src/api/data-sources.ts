@@ -5,6 +5,12 @@
 import { apiRequest } from './client'
 import type { DataSourceConfig, DataSourceTestResult, DataSourceStatus } from '@/types/data-source'
 
+export interface EntityTypeInfo {
+  value: string
+  title: string
+  subtitle: string
+}
+
 /**
  * Data Source API service
  */
@@ -78,6 +84,16 @@ export const dataSourcesApi = {
     return apiRequest<DataSourceStatus>({
       method: 'GET',
       url: `/data-sources/${filename}/status`,
+    })
+  },
+
+  /**
+   * Get supported entity types for the entity type selector
+   */
+  getEntityTypes: async (): Promise<EntityTypeInfo[]> => {
+    return apiRequest<EntityTypeInfo[]>({
+      method: 'GET',
+      url: '/data-sources/entity-types',
     })
   },
 }

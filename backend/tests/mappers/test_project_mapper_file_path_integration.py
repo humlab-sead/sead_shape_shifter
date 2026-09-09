@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from backend.app.core.config import Settings
+from backend.app.exceptions import ConfigurationError
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project, ProjectMetadata
 
@@ -124,6 +125,156 @@ class TestProjectMapperFilePathIntegration:
             entity_options = core_project.cfg["entities"]["entity1"]["options"]
             expected_path = str(mock_settings.global_data_dir / "global_data.csv")
             assert entity_options["filename"] == expected_path
+
+    def test_to_core_resolves_project_local_target_model_include(self, mock_settings: Settings) -> None:
+        """Test that to_core() resolves a project-local target model include to a dict."""
+        with patch("backend.app.mappers.project_mapper.settings", mock_settings):
+            project_dir = mock_settings.projects_root / "test_project"
+            project_file = project_dir / "shapeshifter.yml"
+            project_file.write_text("metadata:\n  name: test_project\nentities: {}\n", encoding="utf-8")
+            target_model_path = project_dir / "target-model.yml"
+            target_model_path.write_text(
+                "model:\n  name: Test Model\n  format_version: '1'\n  version: '1.0.0'\nentities: {}\n",
+                encoding="utf-8",
+            )
+
+            api_project = Project(
+                metadata=ProjectMetadata(
+                    name="test_project",
+                    file_path=str(project_file),
+                    type="shapeshifter-project",
+                    description="Test project",
+                    version="1.0.0",
+                    entity_count=0,
+                    target_model="@load: target-model.yml",
+                ),
+                entities={},
+                options={},
+            )
+
+            core_project = ProjectMapper.to_core(api_project)
+
+            assert isinstance(core_project.metadata.target_model, dict)
+            assert core_project.metadata.target_model["model"] == {
+                "name": "Test Model",
+                "format_version": "1",
+                "version": "1.0.0",
+            }
+            assert core_project.metadata.target_model["entities"] == {}
+
+    def test_to_core_raises_file_not_found_for_missing_target_model_include(self, mock_settings: Settings) -> None:
+        """Test that to_core() raises a clear FileNotFoundError for missing target model includes."""
+        with patch("backend.app.mappers.project_mapper.settings", mock_settings):
+            project_dir = mock_settings.projects_root / "test_project"
+            project_file = project_dir / "shapeshifter.yml"
+            project_file.write_text("metadata:\n  name: test_project\nentities: {}\n", encoding="utf-8")
+            api_project = Project(
+                metadata=ProjectMetadata(
+                    name="test_project",
+                    file_path=str(project_file),
+                    type="shapeshifter-project",
+                    description="Test project",
+                    version="1.0.0",
+                    entity_count=0,
+                    target_model="@include: missing-target-model.yml",
+                ),
+                entities={},
+                options={},
+            )
+
+            with pytest.raises(FileNotFoundError, match="missing-target-model.yml"):
+                ProjectMapper.to_core(api_project)
+
+    def test_to_core_raises_configuration_error_for_mapping_public_id_mismatch(self, mock_settings: Settings) -> None:
+        """Test that to_core() fails fast when a sidecar public_id does not match the entity config."""
+        with patch("backend.app.mappers.project_mapper.settings", mock_settings):
+            project_dir = mock_settings.projects_root / "test_project"
+            project_dir.mkdir(parents=True, exist_ok=True)
+            project_file = project_dir / "shapeshifter.yml"
+            project_file.write_text("metadata:\n  name: test_project\nentities: {}\n", encoding="utf-8")
+            (project_dir / "test_project-mapping.yml").write_text(
+                "version: '1'\n"
+                "metadata:\n"
+                "  project: test_project\n"
+                "  created_at: '2026-06-15T00:00:00Z'\n"
+                "  updated_at: '2026-06-15T00:00:00Z'\n"
+                "entities:\n"
+                "  entity1:\n"
+                "    local_key: sample_code\n"
+                "    public_id: wrong_id\n"
+                "    entity_type: primary\n"
+                "    links: {}\n",
+                encoding="utf-8",
+            )
+
+            api_project = Project(
+                metadata=ProjectMetadata(
+                    name="test_project",
+                    file_path=str(project_file),
+                    type="shapeshifter-project",
+                    description="Test project",
+                    version="1.0.0",
+                    entity_count=1,
+                ),
+                entities={
+                    "entity1": {
+                        "name": "entity1",
+                        "type": "csv",
+                        "public_id": "sample_id",
+                        "keys": ["sample_code"],
+                        "options": {"filename": "local_data.csv", "location": "local"},
+                    }
+                },
+            )
+
+            with pytest.raises(ConfigurationError, match="specifies public_id 'wrong_id'.*entity public_id is 'sample_id'"):
+                ProjectMapper.to_core(api_project)
+
+    def test_to_core_accepts_valid_mapping_sidecar(self, mock_settings: Settings) -> None:
+        """Test that to_core() accepts a valid sidecar mapping configuration."""
+        with patch("backend.app.mappers.project_mapper.settings", mock_settings):
+            project_dir = mock_settings.projects_root / "test_project"
+            project_dir.mkdir(parents=True, exist_ok=True)
+            project_file = project_dir / "shapeshifter.yml"
+            project_file.write_text("metadata:\n  name: test_project\nentities: {}\n", encoding="utf-8")
+            (project_dir / "test_project-mapping.yml").write_text(
+                "version: '1'\n"
+                "metadata:\n"
+                "  project: test_project\n"
+                "  created_at: '2026-06-15T00:00:00Z'\n"
+                "  updated_at: '2026-06-15T00:00:00Z'\n"
+                "entities:\n"
+                "  entity1:\n"
+                "    local_key: sample_code\n"
+                "    public_id: sample_id\n"
+                "    entity_type: primary\n"
+                "    links: {}\n",
+                encoding="utf-8",
+            )
+
+            api_project = Project(
+                metadata=ProjectMetadata(
+                    name="test_project",
+                    file_path=str(project_file),
+                    type="shapeshifter-project",
+                    description="Test project",
+                    version="1.0.0",
+                    entity_count=1,
+                ),
+                entities={
+                    "entity1": {
+                        "name": "entity1",
+                        "type": "csv",
+                        "public_id": "sample_id",
+                        "keys": ["sample_code"],
+                        "options": {"filename": "local_data.csv", "location": "local"},
+                    }
+                },
+            )
+
+            core_project = ProjectMapper.to_core(api_project)
+
+            assert core_project.get_table("entity1").public_id == "sample_id"
 
     def test_to_api_config_restores_location_for_global_file(self, mock_settings: Settings) -> None:
         """Test that to_api_config() decomposes absolute paths back to location + filename."""

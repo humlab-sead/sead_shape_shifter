@@ -128,6 +128,9 @@ class TestEnvironmentVariableResolution:
 
             resolved: DataSourceConfig = config.resolve_config_env_vars()
 
+            assert resolved is not None
+            assert resolved.options is not None
+
             assert resolved.options["filename"] == "/path/to/file.mdb"
             assert resolved.options["ucanaccess_dir"] == "/path/to/ucanaccess"  # type: ignore
             assert resolved.options["other_param"] == "literal"  # type: ignore

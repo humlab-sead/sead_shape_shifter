@@ -40,30 +40,6 @@
         "is_unknown": false
     },
     {
-        "table_name": "tbl_dendro",
-        "pk_name": "dendro_id",
-        "java_class": "TblDendro",
-        "excel_sheet": "tbl_dendro",
-        "is_lookup": false,
-        "is_unknown": false
-    },
-    {
-        "table_name": "tbl_dendro_date_notes",
-        "pk_name": "dendro_date_note_id",
-        "java_class": "TblDendroDateNotes",
-        "excel_sheet": "tbl_dendro_date_notes",
-        "is_lookup": false,
-        "is_unknown": false
-    },
-    {
-        "table_name": "tbl_dendro_dates",
-        "pk_name": "dendro_date_id",
-        "java_class": "TblDendroDates",
-        "excel_sheet": "tbl_dendro_dates",
-        "is_lookup": false,
-        "is_unknown": false
-    },
-    {
         "table_name": "tbl_locations",
         "pk_name": "location_id",
         "java_class": "TblLocations",

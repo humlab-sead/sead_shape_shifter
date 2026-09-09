@@ -60,11 +60,6 @@
           "description": "File path if loaded from file",
           "title": "File Path"
         },
-        "entity_count": {
-          "description": "Number of entities",
-          "title": "Entity Count",
-          "type": "integer"
-        },
         "created_at": {
           "anyOf": [
             {
@@ -114,6 +109,7 @@
               "type": "string"
             },
             {
+              "additionalProperties": true,
               "type": "object"
             },
             {
@@ -121,13 +117,12 @@
             }
           ],
           "default": null,
-          "description": "Target model spec: inline dict or @include: path string",
+          "description": "Target model spec: inline dict or @load: path string",
           "title": "Target Model"
         }
       },
       "required": [
-        "name",
-        "entity_count"
+        "name"
       ],
       "title": "ProjectMetadata",
       "type": "object"
@@ -137,6 +132,7 @@
   "properties": {
     "entities": {
       "additionalProperties": {
+        "additionalProperties": true,
         "type": "object"
       },
       "description": "Map of entity name to entity (raw dicts)",
@@ -144,6 +140,7 @@
       "type": "object"
     },
     "options": {
+      "additionalProperties": true,
       "description": "Global options",
       "title": "Options",
       "type": "object"
@@ -151,6 +148,7 @@
     "task_list": {
       "anyOf": [
         {
+          "additionalProperties": true,
           "type": "object"
         },
         {
@@ -172,6 +170,14 @@
       ],
       "default": null,
       "description": "Project metadata"
+    },
+    "load_warnings": {
+      "description": "Non-fatal normalization warnings detected while loading",
+      "items": {
+        "type": "string"
+      },
+      "title": "Load Warnings",
+      "type": "array"
     }
   },
   "title": "ShapeShifter Project Configuration",

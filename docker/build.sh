@@ -193,7 +193,13 @@ if [ "$g_source" = "github" ]; then
             g_additional_tags+=("$g_image_name:latest")
         fi
     else
-        echo "info: building from branch $g_git_ref (with cache invalidation)"
+        echo "info: building from non-version ref $g_git_ref (with cache invalidation)"
+
+        # Add a dated additional tag (e.g. dev-20260906) so each deploy from a
+        # non-version ref leaves a stable rollback point beside the rolling tag.
+        ref_prefix=$(echo "$g_git_ref" | sed 's/[^a-zA-Z0-9._-]/-/g')
+        g_additional_tags+=("$g_image_name:${ref_prefix}-$(date +%Y%m%d)")
+
         # Get latest commit SHA for cache busting
         g_cache_bust=$(git ls-remote "$g_git_repo" "refs/heads/$g_git_ref" 2>/dev/null | cut -f1)
         if [ -z "$g_cache_bust" ]; then
@@ -273,6 +279,11 @@ if [ -n "$g_no_cache" ]; then
     build_args+=("$g_no_cache")
 fi
 
+# Build once and tag with every additional tag
+for tag in "${g_additional_tags[@]}"; do
+    build_args+=(-t "$tag")
+done
+
 # Add context (parent directory for docker/Dockerfile)
 build_args+=("$g_build_context")
 
@@ -287,6 +298,12 @@ echo -e "${GREEN}============================================================${R
 echo -e "${GREEN}✓ Build complete!${RESET}"
 echo -e "${GREEN}============================================================${RESET}"
 echo -e "${GREEN}Image:${RESET} $g_image_name:$g_image_tag"
+if [ ${#g_additional_tags[@]} -gt 0 ]; then
+    echo -e "${GREEN}Additional tags:${RESET}"
+    for tag in "${g_additional_tags[@]}"; do
+        echo -e "  - $tag"
+    done
+fi
 echo -e ""
 echo -e "${BLUE}To run the container:${RESET}"
 echo -e "  cd $g_script_dir"

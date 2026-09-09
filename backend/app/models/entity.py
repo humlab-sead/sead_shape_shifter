@@ -1,5 +1,7 @@
 """Pydantic models for an entity."""
 
+from __future__ import annotations
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -58,6 +60,10 @@ class ForeignKeyConfig(BaseModel):
     )
     drop_remote_id: bool = Field(default=False, description="Drop remote surrogate ID after merge")
     constraints: ForeignKeyConstraints | None = Field(default=None, description="Foreign key constraints")
+    defer_dependency: bool = Field(
+        default=False,
+        description="Break a dependency cycle by deferring the FK link to a final pass. Use only when circular references are unavoidable.",
+    )
 
     @field_validator("local_keys", "remote_keys", mode="before")
     @classmethod
@@ -155,6 +161,10 @@ class Entity(BaseModel):
     keys: list[str] = Field(default_factory=list, description="Business/natural key columns from source data")
 
     columns: list[str] = Field(default_factory=list, description="Columns to extract")
+    column_types: dict[str, str] | None = Field(
+        default=None,
+        description="Optional explicit fixed-entity column type declarations (for example int, string, float, bool, date)",
+    )
     extra_columns: dict[str, Any] = Field(default_factory=dict, description="Additional computed columns")
     foreign_keys: list[ForeignKeyConfig] = Field(default_factory=list, description="Foreign key relationships")
     unnest: UnnestConfig | None = Field(default=None, description="Unnest configuration")
@@ -169,6 +179,22 @@ class Entity(BaseModel):
     drop_empty_rows: bool | list[str] = Field(default=False, description="Drop empty rows")
     check_column_names: bool = Field(default=True, description="Validate column names")
     values: list[list[Any]] | None = Field(default=None, description="Fixed values for 'fixed' type entities")
+    options: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Loader-specific options (filename, sheet_name, range, etc.). Required keys depend on entity type.",
+    )
+    check_functional_dependency: bool = Field(
+        default=True,
+        description="Whether to check functional dependency when dropping duplicates. Default True.",
+    )
+    type_names: list[str] = Field(
+        default_factory=list,
+        description="Column name list for unnest type columns, referenced by @value: in other entities.",
+    )
+    replacements: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Value replacement rules applied during data extraction.",
+    )
 
     @field_validator("name")
     @classmethod

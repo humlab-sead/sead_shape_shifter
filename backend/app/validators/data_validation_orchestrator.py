@@ -18,6 +18,14 @@ from backend.app.services.project_service import ProjectService
 from backend.app.services.shapeshift_service import ShapeShiftService
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
+from src.table_store import TableStore
+from src.target_model.data_validators import (
+    AllowedValuesConformanceValidator,
+    FKReferentialIntegrityConformanceValidator,
+    NullabilityConformanceValidator,
+    TypeCompatibilityConformanceValidator,
+)
+from src.target_model.models import TargetModel
 from src.validators.data_validators import (
     ColumnExistsValidator,
     DataTypeCompatibilityValidator,
@@ -101,8 +109,8 @@ class FullDataFetchStrategy(DataFetchStrategy):
 class TableStoreDataFetchStrategy(DataFetchStrategy):
     """Strategy for fetching from pre-existing table store (already normalized)."""
 
-    def __init__(self, table_store: dict[str, pd.DataFrame]) -> None:
-        self.table_store: dict[str, pd.DataFrame] = table_store
+    def __init__(self, table_store: TableStore) -> None:
+        self.table_store: TableStore = table_store
 
     async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
         """Fetch from existing table store."""
@@ -119,14 +127,17 @@ class DataValidationOrchestrator:
     - Return domain ValidationIssues (consumer transforms as needed)
     """
 
-    def __init__(self, fetch_strategy: DataFetchStrategy) -> None:
+    def __init__(self, fetch_strategy: DataFetchStrategy, target_model: TargetModel | None = None) -> None:
         """
         Initialize orchestrator with data fetch strategy.
 
         Args:
             fetch_strategy: Strategy for fetching entity data (preview, full, or table_store)
+            target_model: Optional resolved target model for data conformance checks
+                          (nullability, type compatibility, FK referential integrity).
         """
         self.fetch_strategy: DataFetchStrategy = fetch_strategy
+        self.target_model: TargetModel | None = target_model
 
     async def validate_all_entities(
         self,
@@ -222,6 +233,28 @@ class DataValidationOrchestrator:
                         issues.extend(DataTypeCompatibilityValidator.validate(df, remote_df, fk_config, entity_name))
                     except Exception as e:
                         logger.warning(f"Could not validate FK integrity for {entity_name} -> {remote_entity}: {e}")
+
+            # Target-model-aware data conformance (nullability, type, FK referential integrity)
+            if self.target_model is not None:
+                entity_spec = self.target_model.entities.get(entity_name)
+                if entity_spec is not None:
+                    issues.extend(NullabilityConformanceValidator.validate(df, entity_spec, entity_name))
+                    issues.extend(TypeCompatibilityConformanceValidator.validate(df, entity_spec, entity_name))
+                    issues.extend(AllowedValuesConformanceValidator.validate(df, entity_spec, entity_name))
+
+                    for fk_spec in entity_spec.foreign_keys:
+                        if not fk_spec.required or fk_spec.via:
+                            continue  # skip optional and bridge-mediated FKs
+                        target_entity_spec = self.target_model.entities.get(fk_spec.entity)
+                        if target_entity_spec is None or not target_entity_spec.public_id:
+                            continue
+                        try:
+                            target_df: pd.DataFrame = await self.fetch_strategy.fetch(project_name, fk_spec.entity)
+                            issues.extend(
+                                FKReferentialIntegrityConformanceValidator.validate(df, fk_spec, target_df, target_entity_spec, entity_name)
+                            )
+                        except Exception as e:
+                            logger.warning(f"Could not validate target model FK integrity {entity_name} -> {fk_spec.entity}: {e}")
 
         except Exception as e:
             logger.warning(f"Could not validate entity {entity_name}: {e}")

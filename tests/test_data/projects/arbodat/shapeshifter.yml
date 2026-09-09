@@ -1,14 +1,13 @@
 metadata:
-  name: arbodat:arbodat-rebecka
+  name: arbodat
   type: shapeshifter-project
   description: Configuration for importing data from ArboDat database into SEAD.
   version: 1.0.0
   default_entity: survey
+  target_model: '@load: sead_superset_model.yml'
 entities:
   abundance:
     type: sql
-    source:
-    public_id: abundance_id
     keys: '@value: entities.analysis_entity.keys'
     columns:
     - Projekt
@@ -29,6 +28,13 @@ entities:
     - FGewicht
     - EDatProb
     - AnmFrakt
+    public_id: abundance_id
+    data_source: arbodat_data
+    query: |-
+      select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],
+             [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl],
+             [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]
+      from [Details];
     foreign_keys:
     - entity: analysis_entity
       local_keys: '@value: entities.analysis_entity.keys'
@@ -56,9 +62,7 @@ entities:
     extra_columns:
       abundance: FAnzahl
       analysis_entity_type: abundance
-      analysis_entity_value: "{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}"
-    data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],\n       [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl], [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]\nfrom [Details];"
+      analysis_entity_value: '{PCODE}|{Fraktion}|{cf}|{RTyp}|{Zust}'
   abundance_element:
     type: fixed
     public_id: abundance_element_id
@@ -129,7 +133,9 @@ entities:
         columns: [RTypGrup, RTypGrup_EN, Nummer]
         public_id: abundance_element_group_id
         data_source: arbodat_lookup
-        query: "select [RTypGrup], [RTypGrup_EN], [Nummer]\nfrom [RtypGruppen];\n"
+        query: |-
+          select [RTypGrup], [RTypGrup_EN], [Nummer]
+          from [RtypGruppen];
         extra_columns:
           abundance_element_group_name: RTypGrup_EN
       materialized_at: '2026-03-13T14:41:04.914235'
@@ -215,9 +221,12 @@ entities:
     drop_duplicates: true
     extra_columns:
       analysis_entity_type: relative_dating
-      analysis_entity_value: "{ArchDat}"
+      analysis_entity_value: '{ArchDat}'
     data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr], null as [PCODE], null as [Fraktion], null as [cf], null as [RTyp], null as [Zust], [ArchDat]\nfrom [Proben]\nwhere [ArchDat] is not null and [ArchDat] <> '';"
+    query: |-
+      select [Projekt], [Befu], [ProbNr], null as [PCODE], null as [Fraktion], null as [cf], null as [RTyp], null as [Zust], [ArchDat]
+      from [Proben]
+      where [ArchDat] is not null and [ArchDat] <> '';
   analysis_entity:
     type: fixed
     source:
@@ -307,7 +316,8 @@ entities:
       data_source: arbodat_data
       check_column_names: false
       type: sql
-      query: "select distinct [BotBest], \"BotBest\" from [Befunde] where [BotBest] is not null ;\n"
+      query: |-
+        select distinct [BotBest], "BotBest" from [Befunde] where [BotBest] is not null ;
   contact_type:
     type: fixed
     source:
@@ -320,8 +330,6 @@ entities:
     - [3, null, 'Author(s) ', Publication/manuscript/short report, Aut]
     - [4, null, Bot. Determination, 'Name(s) of person(s) responsible for charcoal or seed/fruit determination, etc', BotBest]
     - [5, null, Site Director/Institution, Name of site director and/or institution, ArchAusg]
-    contact_types: [ArchAusg, ArchBear, BotBear, Aut, BotBest]
-    surrogate_name: contact_type
   coordinate_method_dimension:
     type: fixed
     source:
@@ -383,13 +391,10 @@ entities:
       local_keys: [Projekt]
       remote_keys: [Projekt]
       how: left
-      contraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-        cardinality: many_to_one
       constraints:
         cardinality: many_to_one
         require_unique_left: false
+        allow_unmatched_left: false
         allow_null_keys: false
     - entity: method
       local_keys: [Fraktion]
@@ -490,12 +495,63 @@ entities:
     depends_on: [sample]
     drop_duplicates: true
     data_source: arbodat_data
-    query: "select distinct\n  [Projekt],\n  [Befu],\n  [ProbNr],\n  [Unterprobe],\n  [Labornummer],\n  [Material],\n  [Methode],\n  [Waldkante],\n  [C14-Alter BP],\n  [Standardab C14],\n  [C14 cal],\n  [Dendroalter],\n  [Alter andere],\n  [13C PDB-Wert],\n  [Standardab 13C PDB],\n  [pMC-Wert],\n  [Standardab PMC],\n  [Anmerkungen]\nfrom [Datierung] ;\n"
-  dating_period:
+    query: |-
+      select distinct
+        [Projekt],
+        [Befu],
+        [ProbNr],
+        [Unterprobe],
+        [Labornummer],
+        [Material],
+        [Methode],
+        [Waldkante],
+        [C14-Alter BP],
+        [Standardab C14],
+        [C14 cal],
+        [Dendroalter],
+        [Alter andere],
+        [13C PDB-Wert],
+        [Standardab 13C PDB],
+        [pMC-Wert],
+        [Standardab PMC],
+        [Anmerkungen]
+      from [Datierung] ;
+  dating_archaeological_period:
     type: sql
-    public_id: dating_period_id
+    public_id: dating_archaeological_period_id
     keys: '@value: entities.sample.keys'
-    columns: [Projekt, Befu, ProbNr, ChronoDat, ArchDat]
+    columns: [Projekt, Befu, ProbNr, ArchDat]
+    foreign_keys:
+    - entity: sample
+      local_keys: '@value: entities.sample.keys'
+      remote_keys: '@value: entities.sample.keys'
+      constraints:
+        cardinality: many_to_one
+        allow_unmatched_right: true
+        require_unique_left: false
+        require_unique_right: false
+        allow_null_keys: false
+        allow_row_decrease: true
+    - entity: archaeological_period
+      local_keys: [ArchDat]
+      remote_keys: [ArchDat]
+      how: left
+      constraints:
+        cardinality: many_to_one
+        allow_unmatched_right: true
+        require_unique_left: false
+        require_unique_right: false
+        allow_null_keys: false
+        allow_row_decrease: true
+    depends_on: [sample]
+    drop_empty_rows: [ArchDat]
+    data_source: arbodat_data
+    query: "select distinct [Projekt], [Befu], [ProbNr], [ArchDat] from [Proben] ;"
+  dating_chronological_period:
+    type: sql
+    public_id: dating_chronological_period_id
+    keys: '@value: entities.sample.keys'
+    columns: [Projekt, Befu, ProbNr, ChronoDat]
     foreign_keys:
     - entity: sample
       local_keys: '@value: entities.sample.keys'
@@ -518,21 +574,10 @@ entities:
         require_unique_right: false
         allow_null_keys: true
         allow_row_decrease: true
-    - entity: archaeological_period
-      local_keys: [ArchDat]
-      remote_keys: [ArchDat]
-      how: left
-      constraints:
-        cardinality: many_to_one
-        allow_unmatched_right: true
-        require_unique_left: false
-        require_unique_right: false
-        allow_null_keys: false
-        allow_row_decrease: true
     depends_on: [sample]
-    drop_empty_rows: [ChronoDat, ArchDat]
+    drop_empty_rows: [ChronoDat]
     data_source: arbodat_data
-    query: "select distinct [Projekt], [Befu], [ProbNr], [ChronoDat], [ArchDat]\nfrom [Proben] ;\n"
+    query: "select distinct [Projekt], [Befu], [ProbNr], [ChronoDat] from [Proben] ;"
   dimension:
     type: fixed
     source:
@@ -568,6 +613,9 @@ entities:
     public_id: feature_id
     keys: [Projekt, Befu]
     columns:
+    - Fustel
+    - Projekt
+    - Befu
     - FlSchn
     - BefuTyp
     - FuTypVermut
@@ -590,7 +638,11 @@ entities:
     depends_on: [project]
     drop_duplicates: [Projekt, Befu]
     data_source: arbodat_data
-    query: select [Projekt], [Befu], [FlSchn], [BefuTyp], [FuTypVermut], [gebäud], [okBefu], [okErh], [BotBest], [BestJa], [Anmerkung] from [Befunde]
+    query: |-
+      select p.[Fustel], b.[Projekt], b.[Befu], b.[FlSchn], b.[BefuTyp], b.[FuTypVermut], b.[gebäud], b.[okBefu], b.[okErh], b.[BotBest], b.[BestJa], b.[Anmerkung]
+      from [Befunde] b
+      inner join Projekte p using ([Projekt])
+      where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015') ;
   feature_property:
     type: sql
     source:
@@ -630,7 +682,6 @@ entities:
       feature_property_type: 1
       feature_property_name: 1
       feature_property_description: 1
-    surrogate_names: feature_property_type
   feature_type:
     type: fixed
     public_id: feature_type_id
@@ -670,9 +721,9 @@ entities:
     - arbodat_value
     - notes
     values:
-    - [1, '1', null, null, F, Uncertainty at the family level]
-    - [2, '2', null, null, G, Uncertainty at the genus level]
-    - [3, '3', null, null, A, Uncertainty at the species level]
+    - [1, 1, null, null, F, Uncertainty at the family level]
+    - [2, 2, null, null, G, Uncertainty at the genus level]
+    - [3, 3, null, null, A, Uncertainty at the species level]
     - [4, null, null, c.f. Variety, V, Uncertainty at the variety level]
     - [5, null, null, c.f. Subspecies, S, Uncertainty at the subspecies level]
   location:
@@ -684,6 +735,12 @@ entities:
     - entity: location_type
       local_keys: [location_type]
       remote_keys: [location_type]
+      constraints:
+        cardinality: many_to_one
+        allow_unmatched_right: true
+        require_unique_left: false
+        require_unique_right: false
+        allow_row_decrease: true
     depends_on: [location_type]
     drop_duplicates: [location_type, location_name]
     check_functional_dependency: true
@@ -692,7 +749,7 @@ entities:
       query: location_name.notna() and location_name != '' and location_name != '2017/9030'
       stage: after_unnest
     unnest:
-      value_vars: '@value: entities.location.columns'
+      value_vars: [Ort, Kreis, Land, Staat, FlurStr]
       var_name: location_type
       value_name: location_name
       id_vars: []
@@ -700,18 +757,18 @@ entities:
       default_lat_dd:
       default_long_dd:
     data_source: arbodat_data
-    query: "select distinct [Ort], [Kreis], [Land], [Staat], [FlurStr] from [Projekte] where [Projekte].[Projekt] in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015') \n--and [FlurStr] not in ('', '2017/9030'); removes too much\n\n"
+    query: "select distinct [Ort], [Kreis], [Land], [Staat], [FlurStr] from [Projekte] where [Projekte].[Projekt] in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015') ;"
   location_type:
     type: fixed
     public_id: location_type_id
     keys: []
     columns: [system_id, location_type_id, location_type]
     values:
-    - [1, null, Ort]
-    - [2, null, Kreis]
-    - [3, null, Land]
-    - [4, null, Staat]
-    - [5, null, FlurStr]
+    - [1, 2, Ort]
+    - [2, 2, Kreis]
+    - [3, 2, Land]
+    - [4, 1, Staat]
+    - [5, 10, FlurStr]
   master_dataset:
     type: fixed
     public_id: master_set_id
@@ -728,7 +785,6 @@ entities:
     depends_on: []
   method:
     type: fixed
-    public_id: method_id
     keys: []
     columns:
     - system_id
@@ -739,17 +795,19 @@ entities:
     - method_abbrev_or_alt_name
     - sead_method_group_id
     - arbodat_code
+    public_id: method_id
     values:
-    - [1, null, null, Organic remains >2.0 mm, 'ORG 2,0', 'ORG 2,0', null, 'ORG 2,0']
-    - [2, null, null, Organic remains 1.0-2.0 mm, 'ORG 1,0', 'ORG 1,0', null, 'ORG 1,0']
-    - [3, null, null, Organic remains 0.5-1.0 mm, 'ORG 0,5', 'ORG 0,5', null, 'ORG 0,5']
-    - [4, null, null, Organic remains 0.25-0.5 mm, 'ORG 0,25', 'ORG 0,25', null, 'ORG 0,25']
-    - [5, null, null, Mineral remains >2.0 mm, 'MIN 2,0', 'MIN 2,0', null, 'MIN 2,0']
-    - [6, null, null, Mineral remains 1.0-2.0 mm, 'MIN 1,0', 'MIN 1,0', null, 'MIN 1,0']
-    - [7, null, null, Mineral remains 0.5-1.0 mm, 'MIN 0,5', 'MIN 0,5', null, 'MIN 0,5']
-    - [8, null, null, Mineral remains 0.25-0.5 mm, 'MIN 0,25', 'MIN 0,25', null, 'MIN 0,25']
-    - [9, 105, null, null, Local or unknown grid, null, null, null]
-    - [10, 76, null, null, Altitude above sea level, null, null, null]
+    - [1, null, null, Light fraction 2.0 mm, 'ORG 2,0', 'ORG 2,0', 1, 'ORG 2,0']
+    - [2, null, null, Light fraction 1.0 mm, 'ORG 1,0', 'ORG 1,0', 1, 'ORG 1,0']
+    - [3, null, null, Light fraction 0.5 mm, 'ORG 0,5', 'ORG 0,5', 1, 'ORG 0,5']
+    - [4, null, null, Light fraction 0.25 mm, 'ORG 0,25', 'ORG 0,25', 1, 'ORG 0,25']
+    - [5, null, null, Heavy fraction 2.0 mm, 'MIN 2,0', 'MIN 2,0', 1, 'MIN 2,0']
+    - [6, null, null, Heavy fraction 1.0 mm, 'MIN 1,0', 'MIN 1,0', 1, 'MIN 1,0']
+    - [7, null, null, Heavy fraction 0.5 mm, 'MIN 0,5', 'MIN 0,5', 1, 'MIN 0,5']
+    - [8, null, null, Heavy fraction 0.25 mm, 'MIN 0,25', 'MIN 0,25', 1, 'MIN 0,25']
+    - [9, 105, null, null, Local or unknown grid, null, 17, null]
+    - [10, 76, null, null, Altitude above sea level, null, 17, null]
+    - [11, 53, null, null, null, null, null, null]
     foreign_keys:
     - entity: method_group
       local_keys: [sead_method_group_id]
@@ -757,12 +815,11 @@ entities:
       how: left
       constraints:
         allow_null_keys: true
-    depends_on: []
   method_group:
     type: sql
     public_id: method_group_id
     keys: [method_group_id]
-    columns: [group_name, description]
+    columns: [method_group_id, group_name, description]
     depends_on: []
     data_source: sead
     query: select "method_group_id", "group_name", "description" from public.tbl_method_groups
@@ -791,12 +848,12 @@ entities:
   project:
     type: sql
     public_id: project_id
-    keys: [Projekt, Fustel]
-    columns: []
+    keys: [Projekt, Fustel, EVNr]
+    columns: [Projekt, Fustel, EVNr]
     foreign_keys:
     - entity: site
-      local_keys: [Fustel]
-      remote_keys: [Fustel]
+      local_keys: [Fustel, EVNr]
+      remote_keys: [Fustel, EVNr]
     extra_columns:
       project_name: Projekt
       project_type_id: 0
@@ -804,7 +861,10 @@ entities:
       project_abbrev_name:
       description:
     data_source: arbodat_data
-    query: "select distinct [Projekt], [Fustel] from [Projekte] where [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015')\n"
+    query: |-
+      select distinct [Projekt], [Fustel], coalesce([EVNr], '') as [EVNr]
+      from [Projekte]
+      where [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;
   relative_dating:
     type: entity
     source: _analysis_entity_relative_dating
@@ -883,6 +943,11 @@ entities:
     - TiefeBis
     - TiefeVon
     - Prob_üNN
+    data_source: arbodat_data
+    query: |-
+      select [Projekt], [Befu], [ProbNr], [KoordX], [KoordY], [KoordZ], [TiefeBis], [TiefeVon], [Prob_üNN]
+      from [Proben]
+      where [Proben].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015');
     foreign_keys:
     - entity: sample
       local_keys: [Projekt, Befu, ProbNr]
@@ -908,8 +973,8 @@ entities:
         allow_row_decrease: true
     depends_on: [sample, dimension, coordinate_method_dimension]
     drop_duplicates: true
-    drop_empty_rows: [coordinate_value]
     check_functional_dependency: true
+    drop_empty_rows: [measurement]
     unnest:
       id_vars: [Projekt, Befu, ProbNr]
       value_vars:
@@ -920,9 +985,7 @@ entities:
       - TiefeVon
       - Prob_üNN
       var_name: coordinate_type
-      value_name: coordinate_value
-    data_source: arbodat_data
-    query: "select [Projekt], [Befu], [ProbNr], [KoordX], [KoordY], [KoordZ], [TiefeBis], [TiefeVon], [Prob_üNN]\r\nfrom [Proben]\r\nwhere [Proben].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015');"
+      value_name: measurement
   sample_description_type:
     type: fixed
     source:
@@ -939,7 +1002,6 @@ entities:
     - [7, null, Elevation ASL, Elevation of sample above sea level., Prob_üNN]
     - [8, null, Sediment, Indicates whether the sample is sediment., SedProb]
     - [9, null, Cultural group, Cultural group, KultGr]
-    surrogate_name: type_name
     type_names:
     - Vorfu
     - Trocken
@@ -972,99 +1034,100 @@ entities:
       var_name: type_name
       value_name: description_value
     data_source: arbodat_data
-    query: "select distinct [Projekt], [Befu], [ProbNr],\n       [Vorfu], [Trocken], [Strat], [Schi],\n       [Quadr], [Plan], [Prob_üNN], [SedProb], [KultGr]\nfrom [Proben] ;\n"
+    query: |-
+      select distinct [Projekt], [Befu], [ProbNr],
+             [Vorfu], [Trocken], [Strat], [Schi],
+             [Quadr], [Plan], [Prob_üNN], [SedProb], [KultGr]
+      from [Proben] ;
   sample_group:
     type: entity
-    source: feature
+    keys: [Projekt, Befu, site_id]
+    columns: [Projekt, Befu, Fustel]
     public_id: sample_group_id
-    keys: [site_id, Projekt, Befu]
-    columns: [Projekt, Befu]
+    source: feature
+    foreign_keys:
+    - entity: site
+      local_keys: [Fustel]
+      remote_keys: [Fustel]
+      how: inner
+      constraints:
+        cardinality: many_to_one
+        allow_unmatched_right: true
+        require_unique_left: false
+        require_unique_right: false
+        allow_row_decrease: true
+    - entity: method
+      local_keys: [method_id]
+      remote_keys: [system_id]
+      how: inner
+      constraints:
+        cardinality: many_to_one
+        allow_unmatched_right: true
+        require_unique_left: false
+        require_unique_right: false
+        allow_row_decrease: true
     depends_on: [feature]
     drop_duplicates: true
+    check_functional_dependency: true
     extra_columns:
       sample_group_name: Befu
       sample_group_description:
       sampling_context_id:
-      method_id:
+      method_id: 11
   sample_type:
     type: sql
-    public_id: sample_type_id
     keys: [ProbTyp]
     columns: [ProbTyp, PrTyp, Nummer]
-    depends_on: []
-    drop_duplicates: [ProbTyp]
-    extra_columns:
-      sample_type_name: ProbTyp
-      sample_type_description: PrTyp
+    public_id: sample_type_id
     data_source: arbodat_lookup
     query: select distinct [ProbTyp], [PrTyp], [Nummer] from [Probentypen] ;
+    drop_duplicates: [ProbTyp]
+    check_functional_dependency: true
+    extra_columns:
+      type_name: ProbTyp
+      sample_type_description: PrTyp
   site:
-    type: fixed
-    public_id: site_id
-    keys: [EVNr, Fustel]
+    type: sql
+    keys: [Fustel, EVNr]
     columns:
-    - system_id
-    - site_id
-    - EVNr
     - Fustel
-    - site_type_id
-    - altitude
-    - coordinate_system
-    - latitude_dd
-    - longitude_dd
-    - national_site_identifier
-    - site_name
+    - EVNr
     - FustelTyp
     - KoordSys
-    - Projekt
-    - hWert
     - rWert
+    - hWert
     - üNN
-    values:
-    - [1, null, '224073', Blaker kirkegård, 28, 143.0, .nan, 628472.0, 6653720.0, '224073', Blaker kirkegård, Siedl, .nan, '19_0014', 6653720.0, 628472.0, 143.0]
-    - [2, null, 'L1960:2928', Göteborg 342, 30, .nan, .nan, .nan, .nan, 'L1960:2928', Göteborg 342, Stadt, .nan, '22_0005', .nan, .nan, .nan]
-    - [3, null, .nan, Kville 1502, 25, .nan, .nan, .nan, .nan, .nan, Kville 1502, Rin, .nan, '18_0025', .nan, .nan, .nan]
-    - [4, null, 'L1969:1130', 'Sandarna Gbg 15:1', 9, .nan, .nan, .nan, .nan, 'L1969:1130', 'Sandarna Gbg 15:1', FustelSo, .nan, '22_0015', .nan, .nan, .nan]
-    materialized:
-      enabled: true
-      source_state:
-        type: sql
-        keys: [Fustel, EVNr]
-        columns:
-        - Fustel
-        - EVNr
-        - FustelTyp
-        - KoordSys
-        - rWert
-        - hWert
-        - üNN
-        - Projekt
-        public_id: site_id
-        data_source: arbodat_data
-        query: select distinct p.Fustel, p.EVNr, b.FustelTyp, p.KoordSys, p.rWert, p.hWert, p.[üNN], p.[Projekt] from Projekte as p inner join ( select distinct Projekt, FustelTyp from Befunde ) as b on p.Projekt = b.Projekt where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');
-        foreign_keys:
-        - entity: site_type
-          local_keys: [FustelTyp]
-          remote_keys: [FustelTyp]
-          how: left
-          constraints:
-            allow_unmatched_left: false
-            allow_null_keys: false
-            cardinality: many_to_one
-        depends_on: [site_type]
-        drop_duplicates: [Fustel, EVNr]
-        check_functional_dependency: false
-        extra_columns:
-          site_name: Fustel
-          national_site_identifier: EVNr
-          coordinate_system: KoordSys
-          latitude_dd: rWert
-          longitude_dd: hWert
-          altitude: üNN
-      materialized_at: '2026-03-16T18:25:28.756469'
+    public_id: site_id
+    data_source: arbodat_data
+    query: |-
+      select distinct p.Fustel, coalesce([EVNr], '') as [EVNr], b.FustelTyp, p.KoordSys, p.rWert, p.hWert, p.[üNN]
+      from Projekte as p
+      inner join (
+        select Projekt, max(FustelTyp) as FustelTyp
+        from Befunde group by Projekt
+      ) as b on p.Projekt = b.Projekt
+      where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');
+    foreign_keys:
+    - entity: site_type
+      local_keys: [FustelTyp]
+      remote_keys: [FustelTyp]
+      how: left
+      constraints:
+        allow_unmatched_left: false
+        allow_null_keys: false
+        cardinality: many_to_one
+    depends_on: [site_type]
+    drop_duplicates: [Fustel, EVNr]
+    check_functional_dependency: false
+    extra_columns:
+      site_name: Fustel
+      national_site_identifier: EVNr
+      coordinate_system: KoordSys
+      latitude_dd: rWert
+      longitude_dd: hWert
+      altitude: üNN
   site_location:
     type: sql
-    public_id: site_location_id
     keys: []
     columns:
     - Fustel
@@ -1074,6 +1137,12 @@ entities:
     - Land
     - Staat
     - FlurStr
+    public_id: site_location_id
+    data_source: arbodat_data
+    query: |-
+      select distinct [Fustel], coalesce([EVNr], '') as [EVNr], [Ort], [Kreis], [Land], [Staat], [FlurStr]
+      from [Projekte]
+      where [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015') ;
     foreign_keys:
     - entity: site
       local_keys: [Fustel, EVNr]
@@ -1102,8 +1171,6 @@ entities:
       value_vars: [Ort, Kreis, Land, Staat, FlurStr]
       var_name: location_type
       value_name: location_name
-    data_source: arbodat_data
-    query: "select distinct [Fustel], [EVNr], [Ort], [Kreis], [Land], [Staat], [FlurStr] from [Projekte] where  [Projekte].[Projekt] in ('19_0013','19_0014', '22_0005', '18_0025', '22_0015');\n"
   site_natural_region:
     type: sql
     public_id: site_natural_region_id
@@ -1120,7 +1187,10 @@ entities:
     drop_duplicates: [Fustel, EVNr]
     check_functional_dependency: true
     data_source: arbodat_data
-    query: "select distinct [Fustel], [EVNr], [NaturE]\nfrom [Projekte]\nwhere [NaturE] is not null ;\n"
+    query: |-
+      select distinct [Fustel], coalesce([EVNr], '') as [EVNr], [NaturE]
+      from [Projekte]
+      where [NaturE] is not null ;
   site_property_type:
     type: fixed
     source:
@@ -1134,7 +1204,6 @@ entities:
     - [4, null, EVNr, 'LfD excavation record number, according to the State Office for Monument Preservation (LfD)', EVNr]
     - [5, null, AnmFustel, 'e.g., pollen analysis by NN; soil science by NN; anthropology, etc.', AnmFustel]
     depends_on: []
-    surrogate_name: site_property_type
   site_property:
     type: sql
     source:
@@ -1152,7 +1221,7 @@ entities:
       local_keys: '@value: entities.site.keys'
       remote_keys: '@value: entities.site.keys'
     - entity: site_property_type
-      local_keys: ['@value: entities.site_property_type.surrogate_name']
+      local_keys: [site_property_type]
       remote_keys: [arbodat_code]
     depends_on: [site, site_property_type]
     drop_duplicates: [Fustel, EVNr, site_property_type]
@@ -1163,7 +1232,9 @@ entities:
       var_name: site_property_type
       value_name: site_property_value
     data_source: arbodat_data
-    query: "select distinct [Fustel], [EVNr], [okFustel], [Limes], [TK], [AnmFustel] from [Projekte] ;\n"
+    query: |-
+      select distinct [Fustel], coalesce([EVNr], '') as [EVNr], [okFustel], [Limes], [TK], [AnmFustel]
+      from [Projekte] ;
   site_type_group:
     type: fixed
     public_id: site_type_group_id
@@ -1176,7 +1247,6 @@ entities:
     - description
     - site_type_group
     - Beschreibung
-    - FuTypGrup
     values:
     - [1, null, '-99', not chosen, '-99', not chosen, '-99']
     - [2, null, Aue, alluvium/flood plain, Aue, alluvium/flood plain, Aue]
@@ -1215,22 +1285,20 @@ entities:
     columns:
     - system_id
     - site_type_id
+    - FustelTyp
     - site_type_group_id
     - description
     - site_type
     - Beschreibung
     - FuTypGrup
-    - FustelTyp
     values: '@load:materialized/site_type.parquet'
     materialized:
       enabled: true
       source_state:
         type: sql
+        public_id: site_type_id
         keys: [FustelTyp]
         columns: [FustelTyp, FuTypGrup, Beschreibung]
-        public_id: site_type_id
-        data_source: arbodat_lookup
-        query: select [FustelTyp], [FuTypGrup], [Beschreibung] from [Fundstellentyp];
         foreign_keys:
         - entity: site_type_group
           local_keys: [FuTypGrup]
@@ -1245,7 +1313,9 @@ entities:
         extra_columns:
           site_type: FustelTyp
           description: Beschreibung
-      materialized_at: '2026-03-13T06:48:45.724589'
+        data_source: arbodat_lookup
+        query: select [FustelTyp], [FuTypGrup], [Beschreibung] from [Fundstellentyp];
+      materialized_at: '2026-05-11T11:38:46.960774'
   _pcodes:
     type: sql
     source:
@@ -1279,7 +1349,9 @@ entities:
       genus_id:
       species: BNam
     data_source: arbodat_lookup
-    query: "select distinct t.[PCODE], t.[BNam], t.[Name_E], t.[Fam], t.[S_Od], t.[TaxAut], t.[Achtung]\r\nfrom [ÖkoSozDaten] t ;"
+    query: |-
+      select distinct t.[PCODE], t.[BNam], t.[Name_E], t.[Fam], t.[S_Od], t.[TaxAut], t.[Achtung]
+      from [ÖkoSozDaten] t ;
   taxa_use_categories:
     type: sql
     source:
@@ -1330,7 +1402,9 @@ entities:
       remote_keys: [PCODE]
     depends_on: [taxa]
     data_source: arbodat_lookup
-    query: "select [PCODE], [G], [G_u], [Kl], [Kl_u], [O], [O_u], [Soz], [Soz_u], [U], [U_u], [V], [V_u], [Ökogruppe], [Ökogruppe_u]\nfrom [ÖkoSozDaten];\n"
+    query: |-
+      select [PCODE], [G], [G_u], [Kl], [Kl_u], [O], [O_u], [Soz], [Soz_u], [U], [U_u], [V], [V_u], [Ökogruppe], [Ökogruppe_u]
+      from [ÖkoSozDaten];
   taxa_dominance:
     type: sql
     source:
@@ -1343,7 +1417,9 @@ entities:
       remote_keys: [PCODE]
     depends_on: [taxa]
     data_source: arbodat_lookup
-    query: "select [PCODE], [Dom], [Dom_u]\nfrom [ÖkoSozDaten];\n"
+    query: |-
+      select [PCODE], [Dom], [Dom_u]
+      from [ÖkoSozDaten];
   taxa_oberdorfer_characteristics:
     type: sql
     source:
@@ -1368,7 +1444,9 @@ entities:
       remote_keys: [PCODE]
     depends_on: [taxa]
     data_source: arbodat_lookup
-    query: "select [PCODE], [Anm], [ARE], [BLA], [BLE], [Pio], [Roh], [SozGrup], [WT], [WUA], [WUE], [Zeig]\nfrom [ÖkoSozDaten];\n"
+    query: |-
+      select [PCODE], [Anm], [ARE], [BLA], [BLE], [Pio], [Roh], [SozGrup], [WT], [WUA], [WUE], [Zeig]
+      from [ÖkoSozDaten];
   taxa_persistence:
     type: sql
     source:
@@ -1381,7 +1459,9 @@ entities:
       remote_keys: [PCODE]
     depends_on: [taxa]
     data_source: arbodat_lookup
-    query: "select [PCODE], [Bl], [Bl_u], [Leb]\nfrom [ÖkoSozDaten];\n"
+    query: |-
+      select [PCODE], [Bl], [Bl_u], [Leb]
+      from [ÖkoSozDaten];
   taxa_briemle_characteristics:
     type: sql
     source:
@@ -1394,7 +1474,9 @@ entities:
       remote_keys: [PCODE]
     depends_on: [taxa]
     data_source: arbodat_lookup
-    query: "select [PCODE], [FW], [M], [TKG], [W]\nfrom [ÖkoSozDaten];\n"
+    query: |-
+      select [PCODE], [FW], [M], [TKG], [W]
+      from [ÖkoSozDaten];
   taxa_ecological_behaviour:
     type: sql
     source:
@@ -1424,7 +1506,9 @@ entities:
       remote_keys: [PCODE]
     depends_on: [taxa]
     data_source: arbodat_lookup
-    query: "select [PCODE], [F], [F_s], [F_u], [K], [K_u], [L], [L_u], [N], [N_u], [Re], [Re_u], [S], [S_u], [SMet], [T], [T_u]\nfrom [ÖkoSozDaten];\n"
+    query: |-
+      select [PCODE], [F], [F_s], [F_u], [K], [K_u], [L], [L_u], [N], [N_u], [Re], [Re_u], [S], [S_u], [SMet], [T], [T_u]
+      from [ÖkoSozDaten];
   _project_contact:
     type: sql
     source:
@@ -1438,7 +1522,7 @@ entities:
       var_name: contact_type
       value_name: contact_name
     data_source: arbodat_data
-    query: "select distinct [Projekt], [ArchAusg], [ArchBear], [BotBear] from [Projekte] ;\n"
+    query: "select distinct [Projekt], [ArchAusg], [ArchBear], [BotBear] from [Projekte] ;"
   relative_ages:
     type: openpyxl
     public_id: relative_age_id
@@ -1512,11 +1596,11 @@ entities:
     - [2, null, null, imprint, 60, Ab, imprint]
     - [3, null, null, kiln-dried/partly charred, 55, ag, kiln-dried/partly charred]
     - [4, null, null, calcinated, 56, ca, calcinated]
-    - [5, '5', null, mineralised, 30, mi, mineralised]
+    - [5, 5, null, mineralised, 30, mi, mineralised]
     - [6, null, null, waterlogged, 20, sf, waterlogged]
     - [7, null, null, others, 999, so, others]
     - [8, null, null, dessicated, 40, st, dessicated]
-    - [9, '1', null, charred, 10, vk, charred]
+    - [9, 1, null, charred, 10, vk, charred]
     - [10, null, null, charred and mineralised, 50, vm, charred and mineralised]
   ecocode_system:
     type: fixed

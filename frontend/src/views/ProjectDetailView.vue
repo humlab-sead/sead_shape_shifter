@@ -76,6 +76,16 @@
     <!-- Main Content -->
     <v-row v-else-if="selectedProject">
       <v-col cols="12">
+        <v-alert v-if="loadWarnings.length > 0" type="warning" variant="tonal" class="mb-4">
+          <v-alert-title>Load-Time Normalizations Detected</v-alert-title>
+          <div class="text-body-2 mb-2">
+            Coercible fixed-entity values were normalized in memory while loading. Save the project to persist these changes.
+          </div>
+          <ul class="pl-4 mb-0">
+            <li v-for="warning in loadWarnings" :key="warning">{{ warning }}</li>
+          </ul>
+        </v-alert>
+
         <v-tabs v-model="activeTab" bg-color="transparent">
           <v-tab value="entities">
             <v-icon icon="mdi-cube-outline" class="mr-2" />
@@ -652,7 +662,7 @@
           <v-window-item value="yaml">
             <!-- Sub-tab bar: only shown when project has a project-local target model file reference -->
             <v-tabs
-              v-if="typeof selectedProject?.metadata?.target_model === 'string'"
+              v-if="hasEditableTargetModelYaml"
               v-model="activeYamlSubTab"
               density="compact"
               class="mb-3"
@@ -716,7 +726,7 @@
 
               <!-- Target Model sub-tab (only mounted when project has a string target_model file reference) -->
               <v-window-item
-                v-if="typeof selectedProject?.metadata?.target_model === 'string'"
+                v-if="hasEditableTargetModelYaml"
                 value="target-model-yaml"
               >
                 <v-card variant="outlined">
@@ -752,6 +762,11 @@
                           <v-list-item @click="handleDownloadTargetModelDocs('excel')">
                             <v-list-item-title>
                               <v-icon icon="mdi-file-excel" size="small" class="mr-2" />Excel Spreadsheet
+                            </v-list-item-title>
+                          </v-list-item>
+                          <v-list-item @click="handleDownloadTargetModelDocs('schema-reference')">
+                            <v-list-item-title>
+                              <v-icon icon="mdi-file-document-outline" size="small" class="mr-2" />Schema Reference (Markdown)
                             </v-list-item-title>
                           </v-list-item>
                         </v-list>
@@ -909,7 +924,7 @@
 
     <!-- Entity Editor Overlay (for graph double-click) -->
     <entity-form-dialog
-      v-if="entityStore.overlayEntityName && overlayEntity"
+      v-if="entityStore.overlayEntityName"
       v-model="entityStore.showEditorOverlay"
       :project-name="projectName"
       :entity="overlayEntity"
@@ -1158,6 +1173,27 @@ const targetModelYamlError = ref<string | null>(null)
 const targetModelYamlHasChanges = ref(false)
 const targetModelDocsDownloading = ref(false)
 
+function getProjectLocalTargetModelPath(targetModel: string | null | undefined): string | null {
+  if (!targetModel) {
+    return null
+  }
+  // strip any leading "@load:" or "@include:" prefix and whitespace, then check if the remaining string is a simple filename (no slashes)
+  let rawPath = targetModel;
+  for (const prefix of ['@load:', '@include:']) {
+    if (rawPath.startsWith(prefix)) {
+      return rawPath.slice(prefix.length).trim().split(/[\\/]/).length === 1 ? rawPath.slice(prefix.length).trim() : null
+    }
+  }
+  if (!rawPath) {
+    return null
+  }
+
+  return rawPath.includes('/') || rawPath.includes('\\') ? null : rawPath
+}
+
+const editableTargetModelPath = computed(() => getProjectLocalTargetModelPath(selectedProject.value?.metadata?.target_model ?? null))
+const hasEditableTargetModelYaml = computed(() => editableTargetModelPath.value !== null)
+
 // Computed
 const mergedValidationResult = computed(() => {
   if (!validationResult.value && !dataValidationResult.value && !conformanceValidationResult.value) return null
@@ -1202,6 +1238,8 @@ const validationChipText = computed(() => {
   if (hasWarnings.value) return `${warningCount.value} warnings`
   return 'Valid'
 })
+
+const loadWarnings = computed(() => selectedProject.value?.load_warnings ?? [])
 
 const isDark = computed(() => theme.global.current.value.dark)
 
@@ -1556,10 +1594,6 @@ async function handleRefresh() {
 }
 
 async function handleEntityUpdated() {
-  if (projectName.value) {
-    await refresh(projectName.value)
-  }
-
   await fetchEntities()
 
   if (projectName.value) {
@@ -2383,7 +2417,7 @@ async function handleSaveTargetModelYaml() {
   }
 }
 
-async function handleDownloadTargetModelDocs(format: 'html' | 'markdown' | 'excel') {
+async function handleDownloadTargetModelDocs(format: 'html' | 'markdown' | 'excel' | 'schema-reference') {
   if (!projectName.value) return
 
   targetModelDocsDownloading.value = true
@@ -2395,8 +2429,13 @@ async function handleDownloadTargetModelDocs(format: 'html' | 'markdown' | 'exce
     const link = document.createElement('a')
     link.href = url
     
-    const extensions = { html: 'html', markdown: 'md', excel: 'xlsx' }
-    link.download = `${projectName.value}_target_model.${extensions[format]}`
+    const filenames = {
+      html: `${projectName.value}_target_model.html`,
+      markdown: `${projectName.value}_target_model.md`,
+      excel: `${projectName.value}_target_model.xlsx`,
+      'schema-reference': `${projectName.value}_target_model_schema_reference.md`,
+    }
+    link.download = filenames[format]
     
     document.body.appendChild(link)
     link.click()
@@ -2535,6 +2574,12 @@ watch(activeTab, async (newTab) => {
 watch(activeYamlSubTab, async (newSubTab) => {
   if (newSubTab === 'target-model-yaml' && targetModelYamlContent.value === null) {
     await handleLoadTargetModelYaml()
+  }
+})
+
+watch(hasEditableTargetModelYaml, (isEditable) => {
+  if (!isEditable && activeYamlSubTab.value === 'target-model-yaml') {
+    activeYamlSubTab.value = 'project-yaml'
   }
 })
 

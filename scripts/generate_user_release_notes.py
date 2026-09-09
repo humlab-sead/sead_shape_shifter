@@ -204,7 +204,7 @@ def parse_sections(section_text: str) -> dict[str, list[str]]:
         heading_match = re.match(r"^###\s+(.+)$", line.strip())
         if heading_match:
             current_heading = heading_match.group(1).strip().lower()
-            sections.setdefault(current_heading, [])
+            sections.setdefault(current_heading or "other", [])
             continue
 
         bullet_match = re.match(r"^\*\s+(.+?)\s+\(\[[0-9a-f]{7}\]\([^)]*\)\)(?:,.*)?$", line.strip())

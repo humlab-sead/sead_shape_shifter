@@ -22,6 +22,7 @@ import pandas as pd
 from ingesters.sead.metadata import SeadSchema
 from ingesters.sead.submission import Submission
 from ingesters.sead.tests.builders import build_column, build_schema, build_table
+from src.table_store import TableStore
 
 # ============================================================================
 # Schema Fixtures
@@ -137,18 +138,20 @@ def COMPLEX_SCHEMA() -> SeadSchema:
 def SIMPLE_SUBMISSION() -> Callable[[], Submission]:
     """Factory for simple single-table submission with new records."""
 
-    def _factory():
-        schema = SIMPLE_SCHEMA()
-        data_tables = {
-            "tbl_simple": pd.DataFrame(
-                {
-                    "system_id": [1, 2, 3],
-                    "simple_id": [None, None, None],  # New records
-                    "name": ["Alice", "Bob", "Charlie"],
-                    "value": [100, 200, 300],
-                }
-            )
-        }
+    def _factory() -> Submission:
+        schema: SeadSchema = SIMPLE_SCHEMA()
+        data_tables: TableStore = TableStore(
+            {
+                "tbl_simple": pd.DataFrame(
+                    {
+                        "system_id": [1, 2, 3],
+                        "simple_id": [None, None, None],  # New records
+                        "name": ["Alice", "Bob", "Charlie"],
+                        "value": [100, 200, 300],
+                    }
+                )
+            }
+        )
         return Submission(data_tables=data_tables, schema=schema)
 
     return _factory
@@ -157,17 +160,19 @@ def SIMPLE_SUBMISSION() -> Callable[[], Submission]:
 def LOOKUP_SUBMISSION() -> Callable[[], Submission]:
     """Factory for lookup table submission with existing records."""
 
-    def _factory():
-        schema = LOOKUP_SCHEMA()
-        data_tables = {
-            "tbl_lookup": pd.DataFrame(
-                {
-                    "system_id": [1, 2, 3],
-                    "lookup_id": [10, 20, 30],  # Existing records
-                    "name": ["Type A", "Type B", "Type C"],
-                }
-            )
-        }
+    def _factory() -> Submission:
+        schema: SeadSchema = LOOKUP_SCHEMA()
+        data_tables: TableStore = TableStore(
+            {
+                "tbl_lookup": pd.DataFrame(
+                    {
+                        "system_id": [1, 2, 3],
+                        "lookup_id": [10, 20, 30],  # Existing records
+                        "name": ["Type A", "Type B", "Type C"],
+                    }
+                )
+            }
+        )
         return Submission(data_tables=data_tables, schema=schema)
 
     return _factory
@@ -176,21 +181,23 @@ def LOOKUP_SUBMISSION() -> Callable[[], Submission]:
 def TWO_TABLE_SUBMISSION() -> Callable[[], Submission]:
     """Factory for submission with main table and lookup table."""
 
-    def _factory():
-        schema = TWO_TABLE_SCHEMA()
-        data_tables = {
-            "tbl_main": pd.DataFrame(
-                {
-                    "system_id": [1, 2],
-                    "main_id": [None, None],  # New records
-                    "lookup_id": [1, 2],  # References to lookup table
-                    "description": ["Main record 1", "Main record 2"],
-                }
-            ),
-            "tbl_lookup": pd.DataFrame(
-                {"system_id": [1, 2], "lookup_id": [10, 20], "name": ["Category A", "Category B"]}  # Existing records
-            ),
-        }
+    def _factory() -> Submission:
+        schema: SeadSchema = TWO_TABLE_SCHEMA()
+        data_tables: TableStore = TableStore(
+            {
+                "tbl_main": pd.DataFrame(
+                    {
+                        "system_id": [1, 2],
+                        "main_id": [None, None],  # New records
+                        "lookup_id": [1, 2],  # References to lookup table
+                        "description": ["Main record 1", "Main record 2"],
+                    }
+                ),
+                "tbl_lookup": pd.DataFrame(
+                    {"system_id": [1, 2], "lookup_id": [10, 20], "name": ["Category A", "Category B"]}  # Existing records
+                ),
+            }
+        )
         return Submission(data_tables=data_tables, schema=schema)
 
     return _factory
@@ -199,9 +206,10 @@ def TWO_TABLE_SUBMISSION() -> Callable[[], Submission]:
 def EMPTY_SUBMISSION() -> Callable[[], Submission]:
     """Factory for empty submission (useful for policy testing)."""
 
-    def _factory():
-        schema = SIMPLE_SCHEMA()
-        return Submission(data_tables={}, schema=schema)
+    def _factory() -> Submission:
+        schema: SeadSchema = SIMPLE_SCHEMA()
+        data_tables: TableStore = TableStore({})
+        return Submission(data_tables=data_tables, schema=schema)
 
     return _factory
 

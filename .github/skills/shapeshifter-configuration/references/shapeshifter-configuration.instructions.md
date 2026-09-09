@@ -1,0 +1,1 @@
+../../../instructions/shapeshifter-configuration.instructions.md

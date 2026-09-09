@@ -11,7 +11,7 @@ from backend.app.models.project import Project
 from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
-from src.configuration.config import Config
+from src.configuration import resolve_directives
 from src.model import ShapeShiftProject
 from src.specifications import CompositeProjectSpecification, SpecificationIssue
 from src.validation_messages import format_validation_message_with_context
@@ -135,14 +135,15 @@ class ValidationService:
         try:
             settings = get_settings()
 
-            project_cfg = Config.resolve_references(
+            project_cfg = resolve_directives(
                 project_cfg,
                 source_path=source_path,
                 env_prefix=settings.env_prefix,
+                runtime_root=settings.application_root,
                 try_without_prefix=True,
             )
         except FileNotFoundError as e:
-            # Missing @include file should be reported as a normal validation error,
+            # Missing /@load file should be reported as a normal validation error,
             # not as a 500 internal server error.
             return ValidationResult(
                 is_valid=False,
@@ -241,7 +242,7 @@ class ValidationService:
         Run target-model conformance validation for a project.
 
         Loads the project, resolves it to the core model (which expands any
-        @include: reference in metadata.target_model), then runs
+        @load: reference in metadata.target_model), then runs
         TargetModelConformanceValidator against the resolved spec.
 
         If the project has no metadata.target_model, returns an empty valid result.
@@ -250,14 +251,21 @@ class ValidationService:
             project_name: Project name to validate.
 
         Returns:
-            ValidationResult with conformance errors (severity="error") only.
+            ValidationResult with conformance issues grouped by severity.
             is_valid is True only when there are zero conformance errors.
         """
         from backend.app.validators.target_model_validator import TargetModelValidator  # pylint: disable=import-outside-toplevel
 
         project_service: ProjectService = get_project_service()
         api_project: Project = project_service.load_project(project_name)
-        core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+
+        try:
+            core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+        except FileNotFoundError as e:
+            # @load: in metadata.target_model points to a missing file.
+            # Treat as if no target_model was configured — skip conformance silently.
+            logger.debug(f"Target model file not found for project '{project_name}', skipping conformance: {e}")
+            return ValidationResult(is_valid=True)
 
         target_model_data: dict | None = core_project.metadata.target_model
 
@@ -266,9 +274,13 @@ class ValidationService:
             return ValidationResult(is_valid=True)
 
         logger.debug(f"Running target-model conformance for project: {project_name}")
-        errors: list[ValidationError] = TargetModelValidator().validate(target_model_data, core_project)
+        issues: list[ValidationError] = TargetModelValidator().validate(target_model_data, core_project)
 
-        return ValidationResult(is_valid=len(errors) == 0, errors=errors)
+        errors: list[ValidationError] = [issue for issue in issues if issue.severity == "error"]
+        warnings: list[ValidationError] = [issue for issue in issues if issue.severity == "warning"]
+        info: list[ValidationError] = [issue for issue in issues if issue.severity == "info"]
+
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings, info=info)
 
 
 # Singleton instance

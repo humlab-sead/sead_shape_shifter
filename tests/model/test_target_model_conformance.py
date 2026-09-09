@@ -4,13 +4,19 @@ from pathlib import Path
 import yaml
 
 from src.model import ShapeShiftProject, TableConfig
-from src.target_model.conformance import TargetModelConformanceValidator
+from src.target_model.conformance import (
+    CONFORMANCE_VALIDATORS,
+    ConformanceIssue,
+    EntityConformanceValidator,
+    GlobalConformanceValidator,
+    TargetModelConformanceValidator,
+)
 from src.target_model.models import TargetModel
 
-TEST_DATA_DIR = Path(__file__).resolve().parent.parent / "test_data"
-SPEC_PATH = TEST_DATA_DIR / "specs" / "sead_v2.yml"
-EXAMPLES_DIR = TEST_DATA_DIR / "examples"
-REAL_PROJECTS_DIR = TEST_DATA_DIR / "projects"
+TEST_DATA_DIR: Path = Path(__file__).resolve().parent.parent / "test_data"
+SPEC_PATH: Path = TEST_DATA_DIR / "specs" / "sead_standard_model.yml"
+EXAMPLES_DIR: Path = TEST_DATA_DIR / "examples"
+REAL_PROJECTS_DIR: Path = TEST_DATA_DIR / "projects"
 
 
 def load_target_model() -> TargetModel:
@@ -18,18 +24,56 @@ def load_target_model() -> TargetModel:
 
 
 def load_project(name: str) -> ShapeShiftProject:
-    project_path = EXAMPLES_DIR / name
+    project_path: Path = EXAMPLES_DIR / name
     return ShapeShiftProject(cfg=yaml.safe_load(project_path.read_text(encoding="utf-8")))
 
 
 def load_real_project(project_name: str) -> ShapeShiftProject:
-    project_path = REAL_PROJECTS_DIR / project_name / "shapeshifter.yml"
+    project_path: Path = REAL_PROJECTS_DIR / project_name / "shapeshifter.yml"
     return ShapeShiftProject(cfg=yaml.safe_load(project_path.read_text(encoding="utf-8")))
 
 
-def issue_pairs(target_model: TargetModel, project: ShapeShiftProject) -> list[tuple[str, str | None]]:
-    issues = TargetModelConformanceValidator().validate(target_model, project)
+def issue_pairs(target_model: TargetModel, project: ShapeShiftProject) -> list[tuple[str | None, str | None]]:
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
     return [(issue.code, issue.entity) for issue in issues]
+
+
+def test_conformance_registry_runs_global_and_entity_validator_base_types() -> None:
+    """The registry should execute both global and entity validator subclasses."""
+
+    @CONFORMANCE_VALIDATORS.register(key="test_global_conformance_validator")
+    class TestGlobalConformanceValidator(GlobalConformanceValidator):  # pylint: disable=unused-variable
+        def validate_global(self, target_model: TargetModel, project: ShapeShiftProject) -> list[ConformanceIssue]:
+            return [ConformanceIssue(code="TEST_GLOBAL_CONFORMANCE_RULE", entity="sample", message="global validator executed")]
+
+    @CONFORMANCE_VALIDATORS.register(key="test_entity_conformance_validator")
+    class TestEntityConformanceValidator(EntityConformanceValidator):  # pylint: disable=unused-variable
+        def validate_entity(self, entity_name: str, entity_spec, table_cfg) -> list[ConformanceIssue]:
+            return [ConformanceIssue(code="TEST_ENTITY_CONFORMANCE_RULE", entity=entity_name, message="entity validator executed")]
+
+    target_model: TargetModel = TargetModel.model_validate(
+        {
+            "model": {"name": "test", "version": "1.0"},
+            "entities": {"sample": {"required": True, "public_id": "sample_id"}},
+        }
+    )
+    project = ShapeShiftProject(
+        cfg={
+            "metadata": {"name": "registry-base-types", "type": "shapeshifter-project"},
+            "entities": {"sample": {"public_id": "sample_id", "columns": ["sample_name"]}},
+        }
+    )
+
+    try:
+        issues = TargetModelConformanceValidator().validate(target_model, project)
+    finally:
+        CONFORMANCE_VALIDATORS.items.pop("test_global_conformance_validator", None)
+        CONFORMANCE_VALIDATORS.items.pop("test_entity_conformance_validator", None)
+
+    issue_codes = {issue.code for issue in issues}
+
+    assert "TEST_GLOBAL_CONFORMANCE_RULE" in issue_codes
+    assert "TEST_ENTITY_CONFORMANCE_RULE" in issue_codes
 
 
 def test_table_config_target_facing_columns_treat_materialized_entity_as_fixed_view() -> None:
@@ -74,7 +118,7 @@ def test_table_config_target_facing_columns_treat_materialized_entity_as_fixed_v
 
 
 def test_core_conformance_validator_treats_materialized_entity_as_fixed_view() -> None:
-    target_model = TargetModel.model_validate(
+    target_model: TargetModel = TargetModel.model_validate(
         {
             "model": {"name": "SEAD Clearinghouse", "version": "2.0.0"},
             "entities": {
@@ -127,7 +171,7 @@ def test_core_conformance_validator_treats_materialized_entity_as_fixed_view() -
         }
     )
 
-    issues = TargetModelConformanceValidator().validate(target_model, project)
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
     assert [(issue.code, issue.entity) for issue in issues] == [
         ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "method"),
@@ -236,8 +280,8 @@ def test_table_config_target_facing_columns_allow_chained_fk_extra_columns_after
 
 
 def test_core_legacy_mode_matches_existing_fixture() -> None:
-    target_model = load_target_model()
-    project = load_project("sead_arbodat_core.yml")
+    target_model: TargetModel = load_target_model()
+    project: ShapeShiftProject = load_project("sead_arbodat_core.yml")
 
     assert sorted(issue_pairs(target_model, project)) == sorted(
         [
@@ -252,17 +296,253 @@ def test_core_legacy_mode_matches_existing_fixture() -> None:
 
 
 def test_core_conformance_reports_missing_entity_and_wrong_public_id() -> None:
-    target_model = load_target_model()
-    project = load_project("sead_missing_sample_group.yml")
+    target_model: TargetModel = load_target_model()
+    project: ShapeShiftProject = load_project("sead_missing_sample_group.yml")
 
-    issues = set(issue_pairs(target_model, project))
+    issues: set[tuple[str | None, str | None]] = set(issue_pairs(target_model, project))
 
     assert ("MISSING_REQUIRED_ENTITY", "sample_group") in issues
     assert ("UNEXPECTED_PUBLIC_ID", "sample") in issues
 
 
+def test_core_conformance_accepts_sample_note_example_fixture() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "sample": {
+                "required": True,
+                "public_id": "physical_sample_id",
+                "columns": {
+                    "sample_name": {"required": True},
+                },
+            },
+            "sample_note": {
+                "required": False,
+                "public_id": "sample_note_id",
+                "columns": {
+                    "physical_sample_id": {"required": True},
+                    "note_type": {"required": False},
+                    "note": {"required": True},
+                },
+                "foreign_keys": [{"entity": "sample", "required": True}],
+            },
+        }
+    )
+    project: ShapeShiftProject = load_project("sead_sample_note_context.yml")
+
+    assert issue_pairs(target_model, project) == []
+
+
+def test_core_conformance_accepts_sample_group_note_example_fixture() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "sample_group": {
+                "required": True,
+                "public_id": "sample_group_id",
+                "columns": {
+                    "sample_group_name": {"required": True},
+                },
+            },
+            "sample_group_note": {
+                "required": False,
+                "public_id": "sample_group_note_id",
+                "columns": {
+                    "sample_group_id": {"required": True},
+                    "note": {"required": True},
+                },
+                "foreign_keys": [{"entity": "sample_group", "required": True}],
+            },
+        }
+    )
+    project: ShapeShiftProject = load_project("sead_sample_group_note_context.yml")
+
+    assert issue_pairs(target_model, project) == []
+
+
+def test_core_conformance_accepts_transitive_foreign_key_path() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "site": {
+                "required": True,
+                "public_id": "site_id",
+            },
+            "sample_group": {
+                "required": True,
+                "public_id": "sample_group_id",
+                "foreign_keys": [{"entity": "site", "required": True}],
+            },
+            "sample": {
+                "required": True,
+                "public_id": "sample_id",
+                "foreign_keys": [{"entity": "site", "required": True}],
+            },
+        }
+    )
+    project = ShapeShiftProject(
+        cfg={
+            "metadata": {
+                "name": "transitive-fk-example",
+                "type": "shapeshifter-project",
+            },
+            "entities": {
+                "site": {
+                    "public_id": "site_id",
+                    "columns": ["site_name"],
+                },
+                "sample_group": {
+                    "public_id": "sample_group_id",
+                    "columns": ["sample_group_name"],
+                    "foreign_keys": [{"entity": "site", "local_keys": ["site_id"], "remote_keys": ["site_id"]}],
+                },
+                "sample": {
+                    "public_id": "sample_id",
+                    "columns": ["sample_name"],
+                    "foreign_keys": [{"entity": "sample_group", "local_keys": ["sample_group_id"], "remote_keys": ["sample_group_id"]}],
+                },
+            },
+        }
+    )
+
+    issues = set(issue_pairs(target_model, project))
+
+    assert ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample") not in issues
+
+
+def test_schema_aware_append_emits_issue_when_append_branch_misses_required_column() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "site": {
+                "required": True,
+                "public_id": "site_id",
+                "columns": {
+                    "site_name": {"required": True},
+                    "site_type": {"required": True},
+                },
+            }
+        }
+    )
+    project = ShapeShiftProject(
+        cfg={
+            "metadata": {"name": "append-missing-required", "type": "shapeshifter-project"},
+            "entities": {
+                "site": {
+                    "public_id": "site_id",
+                    "columns": ["site_name", "site_type"],
+                    "append": [
+                        {
+                            "type": "fixed",
+                            "columns": ["site_name"],
+                            "values": [["Append Site"]],
+                        }
+                    ],
+                }
+            },
+        }
+    )
+
+    issues = set(issue_pairs(target_model, project))
+
+    assert ("APPEND_MISSING_REQUIRED_COLUMN", "site") in issues
+
+
+def test_schema_aware_append_respects_align_by_position() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "site": {
+                "required": True,
+                "public_id": "site_id",
+                "columns": {
+                    "site_name": {"required": True},
+                    "site_type": {"required": True},
+                },
+            }
+        }
+    )
+    project = ShapeShiftProject(
+        cfg={
+            "metadata": {"name": "append-align-by-position", "type": "shapeshifter-project"},
+            "entities": {
+                "legacy_site": {
+                    "public_id": "legacy_site_id",
+                    "columns": ["legacy_name", "legacy_kind"],
+                },
+                "site": {
+                    "public_id": "site_id",
+                    "columns": ["site_name", "site_type"],
+                    "append": [
+                        {
+                            "source": "legacy_site",
+                            "align_by_position": True,
+                        }
+                    ],
+                },
+            },
+        }
+    )
+
+    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "APPEND_MISSING_REQUIRED_COLUMN" not in codes
+
+
+def test_required_columns_ignores_required_generated_columns() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "site": {
+                "required": True,
+                "public_id": "site_id",
+                "columns": {
+                    "site_name": {"required": True},
+                    "site_slug": {"required": True, "generated": True},
+                },
+            }
+        }
+    )
+    project = _minimal_project({"site": {"public_id": "site_id", "columns": ["site_name"]}})
+
+    issues = issue_pairs(target_model, project)
+
+    assert ("MISSING_REQUIRED_COLUMN", "site") not in issues
+
+
+def test_schema_aware_append_ignores_required_generated_columns() -> None:
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "site": {
+                "required": True,
+                "public_id": "site_id",
+                "columns": {
+                    "site_name": {"required": True},
+                    "site_slug": {"required": True, "generated": True},
+                },
+            }
+        }
+    )
+    project = ShapeShiftProject(
+        cfg={
+            "metadata": {"name": "append-generated-column", "type": "shapeshifter-project"},
+            "entities": {
+                "site": {
+                    "public_id": "site_id",
+                    "columns": ["site_name", "site_slug"],
+                    "append": [
+                        {
+                            "type": "fixed",
+                            "columns": ["site_name"],
+                            "values": [["Append Site"]],
+                        }
+                    ],
+                }
+            },
+        }
+    )
+
+    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "APPEND_MISSING_REQUIRED_COLUMN" not in codes
+
+
 def test_core_conformance_keeps_alias_like_names_strict() -> None:
-    target_model = load_target_model()
+    target_model: TargetModel = load_target_model()
     project = ShapeShiftProject(
         cfg={
             "metadata": {
@@ -324,57 +604,61 @@ def test_core_conformance_keeps_alias_like_names_strict() -> None:
 
 
 def test_core_conformance_reports_known_gaps_for_full_arbodat_project() -> None:
-    target_model = load_target_model()
-    project = load_real_project("arbodat")
+    target_model: TargetModel = load_target_model()
+    project: ShapeShiftProject = load_real_project("arbodat")
 
     assert sorted(issue_pairs(target_model, project)) == sorted(
         [
-            ("MISSING_BRIDGE_ENTITY", "site"),
+            ("APPEND_MISSING_REQUIRED_COLUMN", "analysis_entity"),
+            ("APPEND_MISSING_REQUIRED_COLUMN", "analysis_entity"),
             ("MISSING_INDUCED_REQUIRED_ENTITY", "taxa_tree_master"),
+            ("ORPHAN_FACT_ENTITY", "abundance_property"),
+            ("MISSING_REQUIRED_COLUMN", "abundance_ident_level"),
             ("MISSING_REQUIRED_COLUMN", "analysis_entity"),
-            ("MISSING_REQUIRED_COLUMN", "sample_type"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance"),
+            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "abundance_ident_level"),
             ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "analysis_entity"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
-            ("MISSING_REQUIRED_FOREIGN_KEY_TARGET", "sample_group"),
         ]
     )
 
 
 def test_core_conformance_current_corpus_issue_families_are_stable() -> None:
-    target_model = load_target_model()
-    corpus = {
+    target_model: TargetModel = load_target_model()
+    corpus: dict[str, ShapeShiftProject] = {
         "sead_arbodat_core": load_project("sead_arbodat_core.yml"),
         "sead_missing_sample_group": load_project("sead_missing_sample_group.yml"),
         "arbodat_full": load_real_project("arbodat"),
     }
 
-    issue_summary = {name: Counter(code for code, _entity in issue_pairs(target_model, project)) for name, project in corpus.items()}
+    issue_summary: dict[str, Counter[str | None]] = {
+        name: Counter(code for code, _entity in issue_pairs(target_model, project)) for name, project in corpus.items()
+    }
 
     assert issue_summary == {
         "sead_arbodat_core": Counter(
             {
-                "MISSING_BRIDGE_ENTITY": 1,
                 "MISSING_REQUIRED_COLUMN": 3,
-                "MISSING_REQUIRED_ENTITY": 1,
+                "MISSING_BRIDGE_ENTITY": 1,
                 "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 1,
+                "MISSING_REQUIRED_ENTITY": 1,
             }
         ),
         "sead_missing_sample_group": Counter(
             {
-                "MISSING_BRIDGE_ENTITY": 1,
                 "MISSING_REQUIRED_COLUMN": 5,
-                "MISSING_REQUIRED_ENTITY": 2,
                 "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 2,
+                "MISSING_REQUIRED_ENTITY": 2,
                 "UNEXPECTED_PUBLIC_ID": 1,
+                "MISSING_BRIDGE_ENTITY": 1,
             }
         ),
         "arbodat_full": Counter(
             {
-                "MISSING_BRIDGE_ENTITY": 1,
-                "MISSING_INDUCED_REQUIRED_ENTITY": 1,
+                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 3,
                 "MISSING_REQUIRED_COLUMN": 2,
-                "MISSING_REQUIRED_FOREIGN_KEY_TARGET": 4,
+                "APPEND_MISSING_REQUIRED_COLUMN": 2,
+                "MISSING_INDUCED_REQUIRED_ENTITY": 1,
+                "ORPHAN_FACT_ENTITY": 1,
             }
         ),
     }
@@ -384,17 +668,19 @@ def _minimal_target_model(entities: dict) -> TargetModel:
     return TargetModel.model_validate({"model": {"name": "test", "version": "1.0"}, "entities": entities})
 
 
-def _minimal_project(entities: dict) -> ShapeShiftProject:
-    return ShapeShiftProject(cfg={"metadata": {"name": "test", "type": "shapeshifter-project"}, "entities": entities})
+def _minimal_project(entities: dict, options: dict | None = None) -> ShapeShiftProject:
+    return ShapeShiftProject(
+        cfg={"metadata": {"name": "test", "type": "shapeshifter-project"}, "entities": entities, "options": options or {}}
+    )
 
 
 def test_public_id_validator_produces_missing_public_id_when_project_entity_has_none() -> None:
     """PublicIdConformanceValidator reports MISSING_PUBLIC_ID when the spec declares a public_id
     but the project entity omits it entirely."""
-    target_model = _minimal_target_model({"location": {"public_id": "location_id", "required": True}})
-    project = _minimal_project({"location": {"columns": ["location_name"]}})  # no public_id
+    target_model: TargetModel = _minimal_target_model({"location": {"public_id": "location_id", "required": True}})
+    project: ShapeShiftProject = _minimal_project({"location": {"columns": ["location_name"]}})  # no public_id
 
-    codes = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "MISSING_PUBLIC_ID" in codes
 
@@ -402,12 +688,33 @@ def test_public_id_validator_produces_missing_public_id_when_project_entity_has_
 def test_public_id_validator_is_silent_when_spec_declares_no_public_id() -> None:
     """PublicIdConformanceValidator produces no issue when the target spec does not declare a public_id,
     regardless of what the project entity carries."""
-    target_model = _minimal_target_model({"location": {"required": True}})  # no public_id in spec
-    project = _minimal_project({"location": {"public_id": "location_id", "columns": ["location_name"]}})
+    target_model: TargetModel = _minimal_target_model({"location": {"required": True}})  # no public_id in spec
+    project: ShapeShiftProject = _minimal_project({"location": {"public_id": "location_id", "columns": ["location_name"]}})
 
-    issues = TargetModelConformanceValidator().validate(target_model, project)
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
 
-    assert not any(issue.code.startswith("MISSING_PUBLIC_ID") or issue.code.startswith("UNEXPECTED_PUBLIC_ID") for issue in issues)
+    assert not any(
+        (issue.code or "").startswith("MISSING_PUBLIC_ID") or (issue.code or "").startswith("UNEXPECTED_PUBLIC_ID") for issue in issues
+    )
+
+
+def test_disabled_rules_skip_named_conformance_validator() -> None:
+    """Disabled conformance rules should be skipped by registry key."""
+    target_model: TargetModel = TargetModel.model_validate(
+        {
+            "model": {"name": "test", "version": "1.0"},
+            "naming": {"public_id_suffix": "_id"},
+            "entities": {"location": {}},
+        }
+    )
+    project: ShapeShiftProject = _minimal_project(
+        {"location": {"public_id": "location_identifier", "columns": ["location_name"]}},
+        options={"validation": {"disabled_rules": ["naming_convention"]}},
+    )
+
+    codes: list[str | None] = [issue.code for issue in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "PUBLIC_ID_NAMING_VIOLATION" not in codes
 
 
 # ---------------------------------------------------------------------------
@@ -418,7 +725,7 @@ def test_public_id_validator_is_silent_when_spec_declares_no_public_id() -> None
 def test_induced_requirement_emits_issue_when_optional_entity_present_but_required_fk_target_absent() -> None:
     """If non-required entity X is in the project and has a required FK to Y,
     then Y must also be present even though Y is not globally required."""
-    target_model = _minimal_target_model(
+    target_model: TargetModel = _minimal_target_model(
         {
             "site": {
                 "required": False,
@@ -428,16 +735,18 @@ def test_induced_requirement_emits_issue_when_optional_entity_present_but_requir
         }
     )
     # project has site but NOT location
-    project = _minimal_project({"site": {"columns": ["site_name"]}})
+    project: ShapeShiftProject = _minimal_project({"site": {"columns": ["site_name"]}})
 
-    codes_entities = [(i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes_entities: list[tuple[str | None, str | None]] = [
+        (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
+    ]
 
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "location") in codes_entities
 
 
 def test_induced_requirement_is_silent_when_required_fk_target_is_present() -> None:
     """No issue when the induced-required entity Y is already present in the project."""
-    target_model = _minimal_target_model(
+    target_model: TargetModel = _minimal_target_model(
         {
             "site": {
                 "required": False,
@@ -446,7 +755,7 @@ def test_induced_requirement_is_silent_when_required_fk_target_is_present() -> N
             "location": {"required": False},
         }
     )
-    project = _minimal_project(
+    project: ShapeShiftProject = _minimal_project(
         {
             "site": {"columns": ["site_name"]},
             "location": {"columns": ["location_name"]},
@@ -460,7 +769,7 @@ def test_induced_requirement_is_silent_when_required_fk_target_is_present() -> N
 
 def test_induced_requirement_is_silent_when_optional_entity_is_absent_from_project() -> None:
     """If X is not present in the project, its FK requirements are not induced."""
-    target_model = _minimal_target_model(
+    target_model: TargetModel = _minimal_target_model(
         {
             "site": {
                 "required": False,
@@ -470,9 +779,9 @@ def test_induced_requirement_is_silent_when_optional_entity_is_absent_from_proje
         }
     )
     # project has neither site nor location — no rule triggered
-    project = _minimal_project({"sample": {"columns": ["sample_name"]}})
+    project: ShapeShiftProject = _minimal_project({"sample": {"columns": ["sample_name"]}})
 
-    codes = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "MISSING_INDUCED_REQUIRED_ENTITY" not in codes
 
@@ -480,7 +789,7 @@ def test_induced_requirement_is_silent_when_optional_entity_is_absent_from_proje
 def test_induced_requirement_does_not_double_report_when_entity_is_globally_required() -> None:
     """If X is globally required (required=True), the induced_requirements validator skips it;
     required_entity validator handles it. No MISSING_INDUCED_REQUIRED_ENTITY is emitted for X."""
-    target_model = _minimal_target_model(
+    target_model: TargetModel = _minimal_target_model(
         {
             "site": {
                 "required": True,  # globally required — handled by required_entity validator
@@ -490,10 +799,10 @@ def test_induced_requirement_does_not_double_report_when_entity_is_globally_requ
         }
     )
     # project has neither — required_entity will fire for site, not induced_requirements
-    project = _minimal_project({"sample": {"columns": ["sample_name"]}})
+    project: ShapeShiftProject = _minimal_project({"sample": {"columns": ["sample_name"]}})
 
-    issues = TargetModelConformanceValidator().validate(target_model, project)
-    codes = [i.code for i in issues]
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+    codes: list[str | None] = [i.code for i in issues]
 
     assert "MISSING_REQUIRED_ENTITY" in codes  # site is globally required
     assert "MISSING_INDUCED_REQUIRED_ENTITY" not in codes  # induced validator skips globally-required entities
@@ -501,7 +810,7 @@ def test_induced_requirement_does_not_double_report_when_entity_is_globally_requ
 
 def test_induced_requirement_is_transitive() -> None:
     """If X (present) → Y (absent, required FK) → Z (absent, required FK), both Y and Z are reported."""
-    target_model = _minimal_target_model(
+    target_model: TargetModel = _minimal_target_model(
         {
             "abundance": {
                 "required": False,
@@ -515,9 +824,11 @@ def test_induced_requirement_is_transitive() -> None:
         }
     )
     # only abundance is present — taxon and taxon_group must both be induced
-    project = _minimal_project({"abundance": {"columns": ["count"]}})
+    project: ShapeShiftProject = _minimal_project({"abundance": {"columns": ["count"]}})
 
-    codes_entities = set((i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project))
+    codes_entities: set[tuple[str | None, str | None]] = set(
+        (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
+    )
 
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon") in codes_entities
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon_group") in codes_entities
@@ -530,57 +841,59 @@ def test_induced_requirement_is_transitive() -> None:
 
 def test_source_type_appropriateness_emits_issue_for_classifier_with_entity_type() -> None:
     """A classifier using type: entity should produce CLASSIFIER_WRONG_SOURCE_TYPE."""
-    target_model = _minimal_target_model({"sample_type": {"role": "classifier"}})
-    project = _minimal_project({"sample_type": {"type": "entity", "columns": ["sample_type_name"]}})
+    target_model: TargetModel = _minimal_target_model({"sample_type": {"role": "classifier"}})
+    project: ShapeShiftProject = _minimal_project({"sample_type": {"type": "entity", "columns": ["sample_type_name"]}})
 
-    codes_entities = [(i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes_entities: list[tuple[str | None, str | None]] = [
+        (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
+    ]
 
     assert ("CLASSIFIER_WRONG_SOURCE_TYPE", "sample_type") in codes_entities
 
 
 def test_source_type_appropriateness_is_silent_for_classifier_with_fixed_type() -> None:
     """A classifier using type: fixed is correct — no issue."""
-    target_model = _minimal_target_model({"sample_type": {"role": "classifier"}})
-    project = _minimal_project({"sample_type": {"type": "fixed", "columns": ["system_id", "sample_type_id"]}})
+    target_model: TargetModel = _minimal_target_model({"sample_type": {"role": "classifier"}})
+    project: ShapeShiftProject = _minimal_project({"sample_type": {"type": "fixed", "columns": ["system_id", "sample_type_id"]}})
 
-    codes = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "CLASSIFIER_WRONG_SOURCE_TYPE" not in codes
 
 
 def test_source_type_appropriateness_is_silent_for_classifier_with_sql_type() -> None:
     """A classifier using type: sql is correct — no issue."""
-    target_model = _minimal_target_model({"sample_type": {"role": "classifier"}})
-    project = _minimal_project({"sample_type": {"type": "sql", "source": "SELECT * FROM sample_types"}})
+    target_model: TargetModel = _minimal_target_model({"sample_type": {"role": "classifier"}})
+    project: ShapeShiftProject = _minimal_project({"sample_type": {"type": "sql", "source": "SELECT * FROM sample_types"}})
 
-    codes = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "CLASSIFIER_WRONG_SOURCE_TYPE" not in codes
 
 
 def test_source_type_appropriateness_is_silent_for_non_classifier_entity_type() -> None:
     """A non-classifier entity may use any source type — rule does not apply."""
-    target_model = _minimal_target_model({"sample": {"role": "fact"}})
-    project = _minimal_project({"sample": {"type": "entity", "columns": ["sample_name"]}})
+    target_model: TargetModel = _minimal_target_model({"sample": {"role": "fact"}})
+    project: ShapeShiftProject = _minimal_project({"sample": {"type": "entity", "columns": ["sample_name"]}})
 
-    codes = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "CLASSIFIER_WRONG_SOURCE_TYPE" not in codes
 
 
 def test_source_type_appropriateness_is_silent_when_classifier_has_no_type() -> None:
     """If the project entity omits type entirely, emit no issue (cannot determine intent)."""
-    target_model = _minimal_target_model({"sample_type": {"role": "classifier"}})
-    project = _minimal_project({"sample_type": {"columns": ["sample_type_name"]}})  # no type key
+    target_model: TargetModel = _minimal_target_model({"sample_type": {"role": "classifier"}})
+    project: ShapeShiftProject = _minimal_project({"sample_type": {"columns": ["sample_type_name"]}})  # no type key
 
-    codes = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
 
     assert "CLASSIFIER_WRONG_SOURCE_TYPE" not in codes
 
 
 def test_induced_requirement_transitive_stops_at_present_intermediate() -> None:
     """If X (present) → Y (present) → Z (absent), Z is still reported because Y is present."""
-    target_model = _minimal_target_model(
+    target_model: TargetModel = _minimal_target_model(
         {
             "abundance": {
                 "required": False,
@@ -594,14 +907,155 @@ def test_induced_requirement_transitive_stops_at_present_intermediate() -> None:
         }
     )
     # both abundance and taxon are present; taxon_group is missing
-    project = _minimal_project(
+    project: ShapeShiftProject = _minimal_project(
         {
             "abundance": {"columns": ["count"]},
             "taxon": {"columns": ["taxon_name"]},
         }
     )
 
-    codes_entities = set((i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project))
+    codes_entities: set[tuple[str | None, str | None]] = set(
+        (i.code, i.entity) for i in TargetModelConformanceValidator().validate(target_model, project)
+    )
 
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon_group") in codes_entities
     assert ("MISSING_INDUCED_REQUIRED_ENTITY", "taxon") not in codes_entities  # taxon is present
+
+
+def test_no_orphan_facts_is_silent_when_constraint_is_not_declared() -> None:
+    """The orphan-fact rule should only run when the target model declares that global constraint."""
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "dataset": {"role": "lookup", "required": True},
+            "analysis_entity": {"role": "fact", "required": True},
+        }
+    )
+    project: ShapeShiftProject = _minimal_project(
+        {"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}}
+    )
+
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "ORPHAN_FACT_ENTITY" not in codes
+
+
+def test_no_orphan_facts_emits_issue_for_fact_without_required_lookup_path() -> None:
+    """A fact with no path to any required lookup or classifier should be reported when the constraint is enabled."""
+    target_model: TargetModel = TargetModel.model_validate(
+        {
+            "model": {"name": "test", "version": "1.0"},
+            "constraints": [{"type": "no_orphan_facts"}],
+            "entities": {
+                "dataset": {"role": "lookup", "required": True},
+                "analysis_entity": {"role": "fact", "required": True},
+            },
+        }
+    )
+    project: ShapeShiftProject = _minimal_project(
+        {"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}}
+    )
+
+    issues = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert any(issue.code == "ORPHAN_FACT_ENTITY" and issue.entity == "analysis_entity" for issue in issues)
+    assert next(issue for issue in issues if issue.code == "ORPHAN_FACT_ENTITY").severity == "warning"
+
+
+def test_no_orphan_facts_uses_error_severity_when_constraint_is_strict() -> None:
+    """Strict orphan-fact constraints should be promoted from warning to error."""
+    target_model: TargetModel = TargetModel.model_validate(
+        {
+            "model": {"name": "test", "version": "1.0"},
+            "constraints": [{"type": "no_orphan_facts", "required": "strict"}],
+            "entities": {
+                "dataset": {"role": "lookup", "required": True},
+                "analysis_entity": {"role": "fact", "required": True},
+            },
+        }
+    )
+    project: ShapeShiftProject = _minimal_project(
+        {"analysis_entity": {"columns": ["analysis_name"]}, "dataset": {"columns": ["dataset_name"]}}
+    )
+
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert any(issue.code == "ORPHAN_FACT_ENTITY" and issue.severity == "error" for issue in issues)
+
+
+def test_no_orphan_facts_accepts_transitive_required_lookup_path() -> None:
+    """A fact linked transitively to a required lookup should satisfy the orphan-fact rule."""
+    target_model: TargetModel = TargetModel.model_validate(
+        {
+            "model": {"name": "test", "version": "1.0"},
+            "constraints": [{"type": "no_orphan_facts"}],
+            "entities": {
+                "site": {"role": "lookup", "required": True},
+                "sample_group": {"role": "bridge", "required": True},
+                "sample": {"role": "fact", "required": True},
+            },
+        }
+    )
+    project: ShapeShiftProject = _minimal_project(
+        {
+            "site": {"public_id": "site_id", "columns": ["site_name"]},
+            "sample_group": {
+                "public_id": "sample_group_id",
+                "columns": ["sample_group_name"],
+                "foreign_keys": [{"entity": "site", "local_keys": ["site_id"], "remote_keys": ["site_id"]}],
+            },
+            "sample": {
+                "public_id": "sample_id",
+                "columns": ["sample_name"],
+                "foreign_keys": [{"entity": "sample_group", "local_keys": ["sample_group_id"], "remote_keys": ["sample_group_id"]}],
+            },
+        }
+    )
+
+    codes: list[str | None] = [i.code for i in TargetModelConformanceValidator().validate(target_model, project)]
+
+    assert "ORPHAN_FACT_ENTITY" not in codes
+
+
+def test_source_type_appropriateness_emits_warning_by_default() -> None:
+    """Classifier source-type mismatches should stay advisory unless overridden."""
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "taxon": {
+                "role": "classifier",
+                "required": True,
+            }
+        }
+    )
+    project: ShapeShiftProject = _minimal_project({"taxon": {"type": "entity", "columns": ["taxon_name"]}})
+
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert any(issue.code == "CLASSIFIER_WRONG_SOURCE_TYPE" and issue.severity == "warning" for issue in issues)
+
+
+def test_rule_severity_override_promotes_phase_four_rule_to_error() -> None:
+    """Project severity overrides should replace the default severity for a conformance rule."""
+    target_model: TargetModel = _minimal_target_model(
+        {
+            "taxon": {
+                "role": "classifier",
+                "required": True,
+            }
+        }
+    )
+    project: ShapeShiftProject = ShapeShiftProject(
+        cfg={
+            "metadata": {"name": "severity-override-example", "type": "shapeshifter-project"},
+            "entities": {
+                "taxon": {
+                    "type": "entity",
+                    "columns": ["taxon_name"],
+                }
+            },
+            "options": {"validation": {"severity_overrides": {"source_type_appropriateness": "error"}}},
+        }
+    )
+
+    issues: list[ConformanceIssue] = TargetModelConformanceValidator().validate(target_model, project)
+
+    assert any(issue.code == "CLASSIFIER_WRONG_SOURCE_TYPE" and issue.severity == "error" for issue in issues)

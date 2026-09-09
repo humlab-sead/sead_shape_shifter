@@ -155,16 +155,6 @@ tbl_biblio,authors,authors,23,character varying,0,0,0,True,False,False,,,java.la
 tbl_biblio,full_reference,fullReference,24,text,0,0,0,False,False,False,,,java.lang.String
 tbl_biblio,url,url,25,character varying,0,0,0,True,False,False,,,java.lang.String
 tbl_biblio,biblio_uuid,biblioUuid,26,uuid,0,0,0,False,False,False,,,java.util.UUID
-tbl_ceramics,ceramics_id,ceramicsId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_ceramics,analysis_entity_id,analysisEntityId,2,integer,32,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
-tbl_ceramics,measurement_value,measurementValue,3,character varying,0,0,0,False,False,False,,,java.lang.String
-tbl_ceramics,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_ceramics,ceramics_lookup_id,ceramicsLookupId,5,integer,32,0,0,False,False,True,tbl_ceramics_lookup,ceramics_lookup_id,TblCeramicsLookup
-tbl_ceramics_lookup,ceramics_lookup_id,ceramicsLookupId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_ceramics_lookup,method_id,methodId,2,integer,32,0,0,False,False,True,tbl_methods,method_id,TblMethods
-tbl_ceramics_lookup,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
-tbl_ceramics_lookup,name,name,4,character varying,0,0,0,False,False,False,,,java.lang.String
-tbl_ceramics_lookup,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
 tbl_chronologies,chronology_id,chronologyId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
 tbl_chronologies,age_model,ageModel,2,text,0,0,0,True,False,False,,,java.lang.String
 tbl_chronologies,relative_age_type_id,relativeAgeTypeId,3,integer,32,0,0,True,False,False,,,java.lang.Integer
@@ -262,29 +252,6 @@ tbl_dating_uncertainty,dating_uncertainty_id,datingUncertaintyId,1,integer,32,0,
 tbl_dating_uncertainty,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
 tbl_dating_uncertainty,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
 tbl_dating_uncertainty,uncertainty,uncertainty,4,character varying,0,0,0,True,False,False,,,java.lang.String
-tbl_dendro,dendro_id,dendroId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_dendro,analysis_entity_id,analysisEntityId,2,integer,32,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
-tbl_dendro,measurement_value,measurementValue,3,character varying,0,0,0,False,False,False,,,java.lang.String
-tbl_dendro,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_dendro,dendro_lookup_id,dendroLookupId,5,integer,32,0,0,False,False,True,tbl_dendro_lookup,dendro_lookup_id,TblDendroLookup
-tbl_dendro_date_notes,dendro_date_note_id,dendroDateNoteId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_dendro_date_notes,dendro_date_id,dendroDateId,2,integer,32,0,0,False,False,True,tbl_dendro_dates,dendro_date_id,TblDendroDates
-tbl_dendro_date_notes,note,note,3,text,0,0,0,True,False,False,,,java.lang.String
-tbl_dendro_date_notes,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_dendro_dates,dendro_date_id,dendroDateId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_dendro_dates,season_id,seasonId,2,integer,32,0,0,True,False,False,,,java.lang.Integer
-tbl_dendro_dates,dating_uncertainty_id,datingUncertaintyId,3,integer,32,0,0,True,False,True,tbl_dating_uncertainty,dating_uncertainty_id,TblDatingUncertainty
-tbl_dendro_dates,dendro_lookup_id,dendroLookupId,4,integer,32,0,0,False,False,True,tbl_dendro_lookup,dendro_lookup_id,TblDendroLookup
-tbl_dendro_dates,age_type_id,ageTypeId,5,integer,32,0,0,False,False,True,tbl_age_types,age_type_id,TblAgeTypes
-tbl_dendro_dates,analysis_entity_id,analysisEntityId,6,integer,32,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
-tbl_dendro_dates,age_older,ageOlder,7,integer,32,0,0,True,False,False,,,java.lang.Integer
-tbl_dendro_dates,age_younger,ageYounger,8,integer,32,0,0,True,False,False,,,java.lang.Integer
-tbl_dendro_dates,date_updated,dateUpdated,9,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_dendro_lookup,dendro_lookup_id,dendroLookupId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_dendro_lookup,method_id,methodId,2,integer,32,0,0,True,False,True,tbl_methods,method_id,TblMethods
-tbl_dendro_lookup,name,name,3,character varying,0,0,0,False,False,False,,,java.lang.String
-tbl_dendro_lookup,description,description,4,text,0,0,0,True,False,False,,,java.lang.String
-tbl_dendro_lookup,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
 tbl_dimensions,dimension_id,dimensionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
 tbl_dimensions,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
 tbl_dimensions,dimension_abbrev,dimensionAbbrev,3,character varying,0,0,40,True,False,False,,,java.lang.String
@@ -356,41 +323,6 @@ tbl_image_types,image_type_id,imageTypeId,1,integer,32,0,0,False,True,False,,,ja
 tbl_image_types,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
 tbl_image_types,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
 tbl_image_types,image_type,imageType,4,character varying,0,0,40,False,False,False,,,java.lang.String
-tbl_imported_taxa_replacements,imported_taxa_replacement_id,importedTaxaReplacementId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_imported_taxa_replacements,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_imported_taxa_replacements,imported_name_replaced,importedNameReplaced,3,character varying,0,0,100,False,False,False,,,java.lang.String
-tbl_imported_taxa_replacements,taxon_id,taxonId,4,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
-tbl_isotope_measurements,isotope_measurement_id,isotopeMeasurementId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_isotope_measurements,isotope_standard_id,isotopeStandardId,2,integer,32,0,0,True,False,True,tbl_isotope_standards,isotope_standard_id,TblIsotopeStandards
-tbl_isotope_measurements,method_id,methodId,3,integer,32,0,0,True,False,True,tbl_methods,method_id,TblMethods
-tbl_isotope_measurements,isotope_type_id,isotopeTypeId,4,integer,32,0,0,True,False,True,tbl_isotope_types,isotope_type_id,TblIsotopeTypes
-tbl_isotope_measurements,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_isotope_standards,isotope_standard_id,isotopeStandardId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_isotope_standards,isotope_ration,isotopeRation,2,character varying,0,0,0,True,False,False,,,java.lang.String
-tbl_isotope_standards,international_scale,internationalScale,3,character varying,0,0,0,True,False,False,,,java.lang.String
-tbl_isotope_standards,accepted_ratio_xe6,acceptedRatioXe6,4,character varying,0,0,0,True,False,False,,,java.lang.String
-tbl_isotope_standards,error_of_ratio,errorOfRatio,5,character varying,0,0,0,True,False,False,,,java.lang.String
-tbl_isotope_standards,reference,reference,6,character varying,0,0,0,True,False,False,,,java.lang.String
-tbl_isotope_standards,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_isotope_types,isotope_type_id,isotopeTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_isotope_types,designation,designation,2,character varying,0,0,0,True,False,False,,,java.lang.String
-tbl_isotope_types,abbreviation,abbreviation,3,character varying,0,0,0,True,False,False,,,java.lang.String
-tbl_isotope_types,atomic_number,atomicNumber,4,numeric,0,0,0,True,False,False,,,java.math.BigDecimal
-tbl_isotope_types,description,description,5,text,0,0,0,True,False,False,,,java.lang.String
-tbl_isotope_types,alternative_designation,alternativeDesignation,6,character varying,0,0,0,True,False,False,,,java.lang.String
-tbl_isotope_types,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_isotope_value_specifiers,isotope_value_specifier_id,isotopeValueSpecifierId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_isotope_value_specifiers,name,name,2,character varying,0,0,0,False,False,False,,,java.lang.String
-tbl_isotope_value_specifiers,description,description,3,text,0,0,0,False,False,False,,,java.lang.String
-tbl_isotope_value_specifiers,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_isotopes,isotope_id,isotopeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_isotopes,analysis_entity_id,analysisEntityId,2,integer,32,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
-tbl_isotopes,isotope_measurement_id,isotopeMeasurementId,3,integer,32,0,0,False,False,True,tbl_isotope_measurements,isotope_measurement_id,TblIsotopeMeasurements
-tbl_isotopes,isotope_standard_id,isotopeStandardId,4,integer,32,0,0,True,False,True,tbl_isotope_standards,isotope_standard_id,TblIsotopeStandards
-tbl_isotopes,measurement_value,measurementValue,5,text,0,0,0,True,False,False,,,java.lang.String
-tbl_isotopes,unit_id,unitId,6,integer,32,0,0,False,False,True,tbl_units,unit_id,TblUnits
-tbl_isotopes,isotope_value_specifier_id,isotopeValueSpecifierId,7,integer,32,0,0,False,False,True,tbl_isotope_value_specifiers,isotope_value_specifier_id,TblIsotopeValueSpecifiers
-tbl_isotopes,date_updated,dateUpdated,8,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
 tbl_languages,language_id,languageId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
 tbl_languages,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
 tbl_languages,language_name_english,languageNameEnglish,3,character varying,0,0,100,True,False,False,,,java.lang.String
@@ -412,28 +344,6 @@ tbl_locations,location_type_id,locationTypeId,3,integer,32,0,0,False,False,True,
 tbl_locations,default_lat_dd,defaultLatDd,4,numeric,18,10,0,True,False,False,,,java.math.BigDecimal
 tbl_locations,default_long_dd,defaultLongDd,5,numeric,18,10,0,True,False,False,,,java.math.BigDecimal
 tbl_locations,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_mcr_names,taxon_id,taxonId,1,integer,32,0,0,False,True,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
-tbl_mcr_names,comparison_notes,comparisonNotes,2,character varying,0,0,255,True,False,False,,,java.lang.String
-tbl_mcr_names,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_mcr_names,mcr_name_trim,mcrNameTrim,4,character varying,0,0,80,True,False,False,,,java.lang.String
-tbl_mcr_names,mcr_number,mcrNumber,5,smallint,16,0,0,True,False,False,,,java.lang.Short
-tbl_mcr_names,mcr_species_name,mcrSpeciesName,6,character varying,0,0,200,True,False,False,,,java.lang.String
-tbl_mcr_summary_data,mcr_summary_data_id,mcrSummaryDataId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_mcr_summary_data,cog_mid_tmax,cogMidTmax,2,smallint,16,0,0,True,False,False,,,java.lang.Short
-tbl_mcr_summary_data,cog_mid_trange,cogMidTrange,3,smallint,16,0,0,True,False,False,,,java.lang.Short
-tbl_mcr_summary_data,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_mcr_summary_data,taxon_id,taxonId,5,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
-tbl_mcr_summary_data,tmax_hi,tmaxHi,6,smallint,16,0,0,True,False,False,,,java.lang.Short
-tbl_mcr_summary_data,tmax_lo,tmaxLo,7,smallint,16,0,0,True,False,False,,,java.lang.Short
-tbl_mcr_summary_data,tmin_hi,tminHi,8,smallint,16,0,0,True,False,False,,,java.lang.Short
-tbl_mcr_summary_data,tmin_lo,tminLo,9,smallint,16,0,0,True,False,False,,,java.lang.Short
-tbl_mcr_summary_data,trange_hi,trangeHi,10,smallint,16,0,0,True,False,False,,,java.lang.Short
-tbl_mcr_summary_data,trange_lo,trangeLo,11,smallint,16,0,0,True,False,False,,,java.lang.Short
-tbl_mcrdata_birmbeetledat,mcrdata_birmbeetledat_id,mcrdataBirmbeetledatId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
-tbl_mcrdata_birmbeetledat,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
-tbl_mcrdata_birmbeetledat,mcr_data,mcrData,3,text,0,0,0,True,False,False,,,java.lang.String
-tbl_mcrdata_birmbeetledat,mcr_row,mcrRow,4,smallint,16,0,0,False,False,False,,,java.lang.Short
-tbl_mcrdata_birmbeetledat,taxon_id,taxonId,5,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
 tbl_measured_value_dimensions,measured_value_dimension_id,measuredValueDimensionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
 tbl_measured_value_dimensions,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
 tbl_measured_value_dimensions,dimension_id,dimensionId,3,integer,32,0,0,False,False,True,tbl_dimensions,dimension_id,TblDimensions

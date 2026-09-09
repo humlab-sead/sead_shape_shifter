@@ -10,7 +10,7 @@ These are the primary system documentation files:
 
 ### User Documentation
 
-- **[USER_GUIDE.md](USER_GUIDE.md)** (7,500+ lines)
+- **[USER_GUIDE.md](USER_GUIDE.md)**
   - Getting started with Shape Shifter
   - Working with projects
   - Managing entities and relationships
@@ -21,14 +21,14 @@ These are the primary system documentation files:
 
 ### System Requirements & Architecture
 
-- **[REQUIREMENTS.md](REQUIREMENTS.md)** (5,900+ lines)
+- **[REQUIREMENTS.md](REQUIREMENTS.md)**
   - 33 functional requirements (FR-1 to FR-33)
   - 15 non-functional requirements (NFR-1 to NFR-15)
   - User personas and use cases
   - Success criteria and constraints
   - Comprehensive glossary
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** (1,000+ lines)
+- **[DESIGN.md](DESIGN.md)**
   - System architecture (Vue3 + FastAPI)
   - Backend and frontend architecture details
   - Design patterns and best practices
@@ -38,7 +38,7 @@ These are the primary system documentation files:
 
 ### Project
 
-- **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** (2,500+ lines) **★ COMPREHENSIVE CONSOLIDATED GUIDE**
+- **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** 
   - Complete YAML configuration reference
   - Entity definitions and all properties
   - **Foreign Key Constraints** - Complete validation system with cardinality, match requirements, data quality constraints
@@ -50,9 +50,15 @@ These are the primary system documentation files:
   - Complete examples and best practices
   - Troubleshooting guide
 
+- **[DATA_PROVIDER_SUBMISSION_LIFECYCLE.md](DATA_PROVIDER_SUBMISSION_LIFECYCLE.md)**
+  - Durable lifecycle policy for provider-submitted data changes
+  - Ownership-first update rules and one-live-version history invariants
+  - Allowed, restricted, and blocked change classes
+  - Minimum state model and state-transition policy contract
+
 ### Development
 
-- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** (10,000+ lines)
+- **[DEVELOPMENT.md](DEVELOPMENT.md)**
   - Development environment setup
   - System architecture deep-dive
   - Backend development with Python/FastAPI
@@ -64,9 +70,22 @@ These are the primary system documentation files:
   - Troubleshooting and debugging
   - Contributing guidelines
 
-- **[PROPOSAL_WRITING_GUIDE.md](PROPOSAL_WRITING_GUIDE.md)**
+- **[OPERATIONS.md](OPERATIONS.md)**
+  - Environments and operational assumptions
+  - Configuration and secrets model
+  - Data layout and mounted paths
+  - Build artifacts and image tagging
+  - Deployment flow and deploy scripts
+  - CI pipeline and release process
+  - Post-deployment verification and smoke checks
+  - Rollback procedure
+  - Health checks, observability, and log management
+  - Backup and recovery
+
+- **[proposal-writing-guide.instructions.md](../.github/instructions/proposal-writing-guide.instructions.md)**
   - Rules for writing short, problem-focused design proposals
   - Keeps proposal documents precise, concrete, and decision-oriented
+  - Moved to `.github/instructions/` so it loads automatically when editing proposals
 
 - **[templates/PROPOSAL_TEMPLATE.md](templates/PROPOSAL_TEMPLATE.md)**
   - Default template for new design proposals
@@ -74,7 +93,7 @@ These are the primary system documentation files:
 
 ### Testing
 
-- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** (3,800+ lines)
+- **[TESTING.md](TESTING.md)**
   - Testing philosophy and strategy
   - Backend testing with pytest
   - Frontend testing with Vitest
@@ -88,94 +107,85 @@ These are the primary system documentation files:
 
 ## Supplementary Documentation
 
-### Reconciliation Features
-
-- **[RECONCILIATION_SETUP_GUIDE.md](RECONCILIATION_SETUP_GUIDE.md)**
-  - Entity reconciliation setup
-  - Source configuration
-  - Mapping and matching strategies
-  - API integration
-
 ### Design Proposals
 
-- **[proposals/AI_PROJECT_ADVISOR_PROPOSAL.md](proposals/AI_PROJECT_ADVISOR_PROPOSAL.md)**
-  - Proposal for a project advisor with Shape Shifter and SEAD/SIMS knowledge
-  - Scope, architecture, context model, safety boundaries, and phased delivery
+Proposal documents are grouped by status:
 
-- **[proposals/QUERY_FILTER_ENGINE_SELECTION.md](proposals/QUERY_FILTER_ENGINE_SELECTION.md)**
-  - Proposes adding an explicit `engine` field to `type: query` filters for advanced pandas query behavior
-  - Recommends `engine: python` over prefix forms like `query: "python:..."`
+- **[proposals/](proposals/)**: active and backlog proposals under discussion
+- **[proposals/future/](proposals/future/)**: deferred proposals kept for later work
+- **[proposals/done/](proposals/done/)**: completed or decided proposals
+- **[proposals/onhold/](proposals/onhold/)**: paused proposal work
 
-- **[proposals/ENTITY_EDITOR_OPTIMISTIC_LOCKING.md](proposals/ENTITY_EDITOR_OPTIMISTIC_LOCKING.md)**
-  - Shape Shifter currently has optimistic locking at the project level for the entire project.
-  - The most frequent use case in the UI, is where a user opens, edits, and saves one entity at a time.
-  - This proposal introduces optimistic locking at an entity level increasing collaborative work.
+Current proposals:
 
-- **[proposals/OPT_IN_PRESERVE_SYSTEM_ID_FILE_BACKED.md](proposals/OPT_IN_PRESERVE_SYSTEM_ID_FILE_BACKED.md)**
-  - Introduce an explicit, validated opt-in mechanism to allow file-backed reference entities (e.g., loaded via openpyxl, csv) to preserve externally curated `system_id` values. This will:
-    - Enable stable identity for reference tables curated outside Shape Shifter
-    - Prevent accidental acceptance of user-supplied IDs without review
-    - Maintain strict validation and integrity for all other entity types
+- **[proposals/BUGSCEP_PILOT_PROJECT.md](proposals/BUGSCEP_PILOT_PROJECT.md)**
+  - Documents the current BugsCEP pilot and the next implementation slices for continued migration work.
 
-- **[proposals/VUETIFY_4_MIGRATION_RESUME_PLAN.md](proposals/VUETIFY_4_MIGRATION_RESUME_PLAN.md)**
-  - Records the current Vuetify 4 migration findings, including what is safe and unsafe to pre-apply.
-  - Captures the resume plan, affected files, and recommended execution order for the eventual frontend upgrade.
+- **[proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md](proposals/BRANCH_SCOPED_CONSUMERS_FOR_MIXED_BRANCH_PARENTS.md)**
+  - Proposes explicit branch-scoped consumption for downstream entities that read mixed-branch parent rows.
 
-- **[proposals/RAW_SOURCE_DATA_EXPLORER_PROPOSAL.md](proposals/RAW_SOURCE_DATA_EXPLORER_PROPOSAL.md)**
-  - Proposes evolving Schema Explorer into a stronger raw source data investigation tool.
-  - Recommends a phased path from AG Grid-based loaded-row preview to larger fetches, server-driven exploration, and column profiling.
+- **[proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](proposals/done/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)**
+  - Records the completed conformance backlog rollout and the deferred follow-up that moved out of the active proposal set.
 
-- **[proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md](proposals/COMPLEX_ENTITY_MODELING_ERGONOMICS.md)**
-  - Proposes new modeling ergonomics for complex target-schema scenarios such as merged parent entities, lookup/fact pairs, and branch-aware downstream entities.
-  - Recommends merged-parent modeling, branch-scoped consumers, and explicit fact-to-lookup intent as the highest-value modeling improvements, with related supporting proposals split out separately.
+- **[proposals/CHANGE_REQUEST_INGESTER/](proposals/CHANGE_REQUEST_INGESTER/)**
+  - Groups the active change-request ingester design and follow-up proposal documents.
 
-- **[proposals/COMMENT_PRESERVING_SAVE_PATH.md](proposals/COMMENT_PRESERVING_SAVE_PATH.md)**
+Future proposals:
+
+- **[proposals/future/AI_PROJECT_ADVISOR_PROPOSAL.md](proposals/future/AI_PROJECT_ADVISOR_PROPOSAL.md)**
+  - Proposal for a grounded project advisor with Shape Shifter and SEAD/SIMS knowledge.
+
+- **[proposals/future/COMMENT_PRESERVING_SAVE_PATH.md](proposals/future/COMMENT_PRESERVING_SAVE_PATH.md)**
   - Proposes preserving YAML comments across ordinary project saves so local modeling rationale is not lost during editor round trips.
-  - Recommends a comment-preserving persistence path instead of treating a generic entity-level `note` field as a substitute.
 
-- **[proposals/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md](proposals/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md)**
+- **[proposals/future/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md](proposals/future/COMMENT_PRESERVING_SAVE_PATH_IMPLEMENTATION_SKETCH.md)**
   - Companion technical sketch for implementing the comment-preserving save proposal.
-  - Compares the current save flow with a save-time reload and merge flow that preserves comments without adding another long-lived cache layer.
+
+- **[proposals/future/FIXED_ENTITY_TYPE_CONVENTION_ENHANCEMENTS.md](proposals/future/FIXED_ENTITY_TYPE_CONVENTION_ENHANCEMENTS.md)**
+  - Tracks deferred work around fixed-entity type conventions.
+
+- **[proposals/future/FK_NULL_KEY_POLICY_MODEL.md](proposals/future/FK_NULL_KEY_POLICY_MODEL.md)**
+  - Placeholder for a later phase proposal about an explicit missing-key policy model.
+
+- **[proposals/future/QUERY_FILTER_ENGINE_SELECTION.md](proposals/future/QUERY_FILTER_ENGINE_SELECTION.md)**
+  - Defers a narrow extension to allow explicit pandas query-engine selection (`engine: python`) on `type: query` filters.
+
+- **[proposals/future/PENDING_IMPROVEMENTS.md](proposals/future/PENDING_IMPROVEMENTS.md)**
+  - Collects proposal ideas that remain deferred but not yet closed.
+
+- **[proposals/future/UNIFIED_FILE_BACKED_ENTITY_TYPE.md](proposals/future/UNIFIED_FILE_BACKED_ENTITY_TYPE.md)**
+  - Proposes replacing separate file-backed entity types with one `type: file` model plus format selection.
 
 ### Done Proposals
 
-- **[proposals/done/USER_FACING_RELEASE_NOTES_STRATEGY.md](proposals/done/USER_FACING_RELEASE_NOTES_STRATEGY.md)**
-  - Recommends keeping the technical `CHANGELOG.md` while adding curated user-facing release notes
-  - Covers both the documentation strategy and the semantic-release workflow for publishing shorter GitHub Release summaries
-
-- **[proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)**
-  - Defines the Phase 1 lookup-join default for null handling in alternative-key foreign key joins.
-  - Recommends leaving the FK unresolved instead of raising when lookup-style joins have missing alternative keys.
-
-- **[proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md)**
-  - Records the completed derived-value follow-through work around `extra_columns`.
-  - Concludes that the current `extra_columns` plus DSL path is sufficient for lightweight derived values and closes the question of a second overlapping derived-value feature for now.
-
-- **[proposals/done/FK_NULL_KEY_POLICY_MODEL.md](proposals/done/FK_NULL_KEY_POLICY_MODEL.md)**
-  - Placeholder for a future Phase 2 proposal about an explicit missing-key policy model.
-  - Outlines the open design questions for a broader user-facing null-key strategy.
+- **[proposals/done/](proposals/done/)**
+  - Browse completed and decided proposal documents.
 
 - **[proposals/done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md](proposals/done/BOUNDARY_BASED_PROJECT_PERSISTENCE.md)**
-  - Proposes explicit persistence boundaries for `metadata`, `options`, and `entities[entity_name]` instead of treating every save as whole-document regeneration.
-  - Positions that narrower subtree-merge capability as a foundation for comment-preserving saves, entity-level optimistic locking, and future collaboration improvements.
+  - Proposes narrower project-save boundaries as a foundation for later collaboration and persistence improvements.
 
-- **[proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md](proposals/done/INTRODUCE_TINY_DSL_IN_EXTRA_COLUMNS.md)**
-  - Proposes a small, safe DSL layered on top of `extra_columns` for lightweight derived-value transforms.
-  - Positions the feature relative to `translate`, `replacements`, and Proposal 3 in the complex-entity ergonomics work.
+- **[proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md](proposals/done/DERIVED_VALUE_ERGONOMICS_FOLLOW_THROUGH.md)**
+  - Records the completed follow-through work around `extra_columns` derived values.
 
-- **[proposals/done/TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md](proposals/done/TINY_DSL_EXTRA_COLUMNS_IMPLEMENTATION_SKETCH.md)**
-  - Companion technical design sketch for implementing the tiny DSL in `extra_columns`.
-  - Describes proposed classes, function signatures, parser shape, pandas execution model, and test strategy.
-
-- **[proposals/done/STAGED_FILTER_EXECUTION.md](proposals/done/STAGED_FILTER_EXECUTION.md)**
-  - Proposes stage-aware filter execution so filters can run after linking or unnesting when needed.
-  - Preserves the current default early-filter behavior while adding explicit later pipeline stages.
+- **[proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md](proposals/done/FK_LOOKUP_NULL_KEY_DEFAULT_BEHAVIOR.md)**
+  - Defines the current default behavior for null handling in lookup-style foreign-key joins.
 
 - **[proposals/done/MATERIALIZED_DEPENDENCY_VISUALIZATION.md](proposals/done/MATERIALIZED_DEPENDENCY_VISUALIZATION.md)**
-  - Documents the implemented dependency-graph support for showing frozen historical source dependencies on materialized fixed entities.
-  - Covers the backend extractor, frozen edge metadata, Cytoscape styling, and validation coverage.
+  - Documents the delivered dependency-graph support for frozen historical source dependencies.
+
+- **[proposals/done/USER_FACING_RELEASE_NOTES_STRATEGY.md](proposals/done/USER_FACING_RELEASE_NOTES_STRATEGY.md)**
+  - Covers the adopted strategy for user-facing release notes alongside the technical changelog.
 
 ### Other Documents
+
+- **[presentations/PRESENTATION.md](presentations/PRESENTATION.md)**
+  - Marp slide deck: general system overview for the SEAD development team
+
+- **[presentations/PRESENTATION_ARCHAEOLOGISTS.md](presentations/PRESENTATION_ARCHAEOLOGISTS.md)**
+  - Marp slide deck: Shape Shifter overview for archaeologists and domain experts
+
+- **[presentations/EXECUTIVE_SUMMARY.md](presentations/EXECUTIVE_SUMMARY.md)**
+  - Short non-technical summary of Shape Shifter for stakeholders
 
 - **[other/DSL_EXTENSIBILITY_GUIDE.md](other/DSL_EXTENSIBILITY_GUIDE.md)**
   - Extension guide for adding new expression types or functions to the tiny DSL after the initial implementation.
@@ -204,10 +214,6 @@ Historical implementation notes and feature-specific documentation have been mov
 
 These are preserved for reference but may contain outdated information.
 
-## Archived Documentation
-
-Previously consolidated source documents are available in the [archive/](archive/) directory for historical reference.
-
 ## Quick Navigation
 
 ### I want to
@@ -217,17 +223,17 @@ Previously consolidated source documents are available in the [archive/](archive
 - Configure transformations: [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)
 
 **Develop on Shape Shifter:**
-- Start here: [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
-- Architecture overview: [ARCHITECTURE.md](ARCHITECTURE.md)
-- Backend integration: [BACKEND_INTEGRATION.md](BACKEND_INTEGRATION.md)
+- Start here: [DEVELOPMENT.md](DEVELOPMENT.md)
+- Architecture overview: [DESIGN.md](DESIGN.md)
+- Operations and deployment: [OPERATIONS.md](OPERATIONS.md)
 
 **Test Shape Shifter:**
-- Testing procedures: [TESTING_GUIDE.md](TESTING_GUIDE.md)
+- Testing procedures: [TESTING.md](TESTING.md)
 - Project validation: [CONFIGURATION_GUIDE.md - Project Validation section](CONFIGURATION_GUIDE.md#project-validation)
 
 **Understand Requirements:**
 - Feature requirements: [REQUIREMENTS.md](REQUIREMENTS.md)
-- System architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
+- System architecture: [DESIGN.md](DESIGN.md)
 
 **Configure Relationships:**
 - Foreign keys & constraints: [CONFIGURATION_GUIDE.md - Foreign Key Constraints section](CONFIGURATION_GUIDE.md#foreign-key-constraints)

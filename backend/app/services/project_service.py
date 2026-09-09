@@ -88,7 +88,7 @@ class ProjectService:
         )
 
         # Initialize entity operations component
-        self.entities = EntityOperations(
+        self.entity_operations = EntityOperations(
             project_lock_getter=self._get_lock,
             load_project_callback=self.load_project,
             save_project_callback=self.save_project,
@@ -173,12 +173,15 @@ class ProjectService:
             ResourceNotFoundError: If project not found
             ConfigurationError: If project is invalid
         """
-        # Force reload: invalidate cache before loading
-        if force_reload:
-            self.state.invalidate(name)
-            logger.info(f"Force reload requested for '{name}', cache invalidated")
-
         corr: str = get_correlation_id()
+
+        # Force reload: invalidate ALL caches before loading (not just ApplicationState).
+        # Without this, ShapeShiftProjectCache can serve stale data when the project was
+        # loaded via the disk-fallback path (stored with version=0). A subsequent REFRESH
+        # also results in version=0, causing a false cache hit in ShapeShiftProjectCache.
+        if force_reload:
+            self._invalidate_all_caches(name, corr)
+            logger.info(f"[{corr}] Force reload requested for '{name}', all caches invalidated")
 
         # Check ApplicationState cache first (actively edited projects)
         cached_project: Project | None = self.state.get(name)
@@ -188,6 +191,14 @@ class ProjectService:
             # cause lost-update race conditions.
             copy: Project = cached_project.model_copy(deep=True)
             entity_count: int = len(copy.entities or {})
+
+            # Merge sidecar task_list so cached projects reflect the latest task state
+            # written independently by mark_complete / mark_ignored / reset_status.
+            project_file: Path = self.projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
+            sidecar_task_list = self.sidecar_manager.load_task_list(project_file)
+            if sidecar_task_list:
+                copy.task_list = sidecar_task_list
+
             logger.info(
                 "[{}] load_project: '{}' from CACHE (deep copy) entities={}",
                 corr,
@@ -228,7 +239,7 @@ class ProjectService:
                     data["task_list"] = sidecar_task_list
                     logger.debug(f"Loaded task_list from sidecar after migration for '{name}'")
 
-            project: Project = ProjectMapper.to_api_config(data, name)
+            project: Project = ProjectMapper.to_api_config(data, name, str(filename))
 
             assert project.metadata is not None  # For mypy
 
@@ -561,7 +572,7 @@ class ProjectService:
             description: Project description (optional)
             version: Project version (optional)
             default_entity: Default entity name (optional)
-            target_model: Target model path string (e.g. '@include: target.yml').  Pass
+            target_model: Target model path string (e.g. '@load: target.yml').  Pass
                 ``None`` with ``target_model_provided=False`` to leave unchanged.  Pass
                 ``None`` with ``target_model_provided=True`` to clear the field.
                 Pass an empty string to also clear the field.
@@ -615,7 +626,7 @@ class ProjectService:
         Raises:
             ResourceConflictError: If entity already exists
         """
-        return self.entities.add_entity(project, entity_name, entity)
+        return self.entity_operations.add_entity(project, entity_name, entity)
 
     def update_entity(self, project: Project, entity_name: str, entity: Entity) -> Project:
         """
@@ -632,7 +643,7 @@ class ProjectService:
         Raises:
             ResourceNotFoundError: If entity not found
         """
-        return self.entities.update_entity(project, entity_name, entity)
+        return self.entity_operations.update_entity(project, entity_name, entity)
 
     def delete_entity(self, project: Project, entity_name: str) -> Project:
         """
@@ -648,7 +659,7 @@ class ProjectService:
         Raises:
             ResourceNotFoundError: If entity not found
         """
-        return self.entities.delete_entity(project, entity_name)
+        return self.entity_operations.delete_entity(project, entity_name)
 
     def get_entity(self, project: Project, entity_name: str) -> dict[str, Any]:
         """
@@ -664,7 +675,7 @@ class ProjectService:
         Raises:
             ResourceNotFoundError: If entity not found
         """
-        return self.entities.get_entity(project, entity_name)
+        return self.entity_operations.get_entity(project, entity_name)
 
     # Convenience wrapper methods for entity operations by project name
 
@@ -683,7 +694,7 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceConflictError: If entity already exists
         """
-        return self.entities.add_entity_by_name(project_name, entity_name, entity_data)
+        return self.entity_operations.add_entity_by_name(project_name, entity_name, entity_data)
 
     def update_entity_by_name(
         self,
@@ -711,7 +722,7 @@ class ProjectService:
             ResourceNotFoundError: If entity not found
             EntityConflictError: If *expected_etag* is given and does not match
         """
-        return self.entities.update_entity_by_name(project_name, entity_name, entity_data, expected_etag=expected_etag)
+        return self.entity_operations.update_entity_by_name(project_name, entity_name, entity_data, expected_etag=expected_etag)
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:
         """
@@ -727,7 +738,7 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
         """
-        return self.entities.delete_entity_by_name(project_name, entity_name)
+        return self.entity_operations.delete_entity_by_name(project_name, entity_name)
 
     def get_entity_by_name(self, project_name: str, entity_name: str) -> dict[str, Any]:
         """
@@ -744,11 +755,11 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
         """
-        return self.entities.get_entity_by_name(project_name, entity_name)
+        return self.entity_operations.get_entity_by_name(project_name, entity_name)
 
     def get_entity_etag_by_name(self, project_name: str, entity_name: str) -> str:
         """Return the current ETag for an entity."""
-        return self.entities.get_entity_etag_by_name(project_name, entity_name)
+        return self.entity_operations.get_entity_etag_by_name(project_name, entity_name)
 
     def activate_project(self, name: str) -> Project:
         """

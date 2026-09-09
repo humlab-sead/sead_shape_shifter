@@ -6,6 +6,16 @@ from src.model import TableConfig
 from src.transforms.dsl import FormulaEngine, extract_column_references
 from src.transforms.extra_columns import ExtraColumnEvaluator
 from src.transforms.filter import Filters, normalize_filter_stage
+from src.types.fixed_entity_types import (
+    FixedEntityColumnTypeDeclarationError,
+    FixedEntityTypeConvention,
+    FixedEntityTypeConventionDeclarationError,
+    build_fixed_entity_full_columns,
+    is_valid_fixed_entity_value,
+    normalize_fixed_entity_column_types,
+    normalize_fixed_entity_type_conventions,
+    resolve_fixed_entity_runtime_type,
+)
 from src.utility import Registry, dotget
 
 from .base import ProjectSpecification
@@ -47,9 +57,6 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
         if self.field_exists(f"entities.{entity_name}.type"):
             self.check_fields(entity_name, ["type"], "of_type/E", expected_types=(str,))
 
-        if self.field_exists(f"entities.{entity_name}.surrogate_name"):
-            self.check_fields(entity_name, ["surrogate_name"], "is_in_columns/E")
-
         return not self.has_errors()
 
 
@@ -72,6 +79,40 @@ class DataEntityFieldsSpecification(EntityFieldsBaseSpecification):
 @ENTITY_TYPE_SPECIFICATION.register(key="fixed")
 class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
+    def _validate_column_types(
+        self,
+        entity_name: str,
+        values: list[Any],
+        columns: list[str],
+        public_id: str,
+        keys: list[str],
+        column_types: dict[str, str],
+        conventions: list[FixedEntityTypeConvention],
+    ) -> None:
+        """Validate that fixed-entity values match declared or inferred backend types."""
+        full_columns = build_fixed_entity_full_columns(columns, keys, public_id)
+
+        for row_idx, row in enumerate(values):
+            row_columns = columns if len(row) == len(columns) else full_columns
+
+            for col_idx, value in enumerate(row):
+                col_name = row_columns[col_idx]
+                expected_type_name = resolve_fixed_entity_runtime_type(col_name, column_types, conventions)
+
+                if value is None or expected_type_name is None:
+                    continue
+
+                if not is_valid_fixed_entity_value(value, expected_type_name):
+                    self.add_error(
+                        (
+                            f"Column '{col_name}' (row {row_idx}) has value '{value}' "
+                            f"(type {type(value).__name__}), expected {expected_type_name} or null"
+                        ),
+                        entity=entity_name,
+                        field="values",
+                        column=col_name,
+                    )
+
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that fields are for the fixed entity."""
         super().is_satisfied_by(entity_name=entity_name, **kwargs)
@@ -92,15 +133,33 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
         # Note: system_id is always "system_id" (standardized name, auto-generated)
 
-        self.check_fields(entity_name, ["values"], "exists/E,not_empty/W")
+        self.check_fields(entity_name, ["values"], "exists/E")
+
+        if not table.has_append:
+            # warn if values is empty since fixed entities are expected to have data
+            self.check_fields(entity_name, ["values"], "not_empty/W")
+
         self.check_fields(entity_name, ["type"], "has_value/E", expected_value="fixed")
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
         self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
 
         columns: list[str] = table.safe_columns
+        keys: list[str] = table.safe_keys
         raw_values: list[Any] | None = table.values if isinstance(table.values, list) else None
         dict_rows = raw_values is not None and len(raw_values) > 0 and all(isinstance(row, dict) for row in raw_values)
         values: list[Any] = raw_values if dict_rows and raw_values is not None else table.safe_values
+
+        try:
+            column_types = normalize_fixed_entity_column_types(entity_name, columns, table.column_types)
+        except FixedEntityColumnTypeDeclarationError as exc:
+            self.add_error(str(exc), entity=entity_name, field="column_types")
+            return not self.has_errors()
+
+        try:
+            conventions = normalize_fixed_entity_type_conventions(self.project_cfg.get("options", {}))
+        except FixedEntityTypeConventionDeclarationError as exc:
+            self.add_error(str(exc), entity=entity_name, field="options.fixed_entity_types")
+            return not self.has_errors()
 
         if dict_rows:
             row_keys = set().union(*(row.keys() for row in raw_values)) if raw_values else set()
@@ -130,6 +189,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         # 1. Old format: values match columns exactly (backward compatibility)
         # 2. New format: values include identity columns (system_id, public_id)
         #    Using set union elegantly deduplicates if identity columns are mistakenly in columns
+        shape_is_valid = True
         if values and not dict_rows:
             expected_with_identity: int = len(set(columns) | {public_id, "system_id"})
             expected_without_identity: int = len(columns)
@@ -137,6 +197,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
             # Check all rows have consistent length
             if not all(len(row) == values_length for row in values):
+                shape_is_valid = False
                 self.add_error(
                     f"Fixed data entity '{entity_name}' has inconsistent row lengths in values",
                     entity=entity_name,
@@ -144,6 +205,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
                 )
             # Accept either old format (data only) or new format (with identity columns)
             elif values_length not in (expected_without_identity, expected_with_identity):
+                shape_is_valid = False
                 self.add_error(
                     f"Fixed data entity '{entity_name}' has mismatched number of columns and values "
                     f"(got {values_length} values per row, expected {expected_without_identity} for data-only "
@@ -151,6 +213,9 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
                     entity=entity_name,
                     field="values",
                 )
+
+        if values and not dict_rows and shape_is_valid:
+            self._validate_column_types(entity_name, values, columns, public_id, keys, column_types, conventions)
 
         return not self.has_errors()
 

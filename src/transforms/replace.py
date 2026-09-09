@@ -63,7 +63,7 @@ def apply_replacements(df: pd.DataFrame, *, replacements: Mapping[str, Any], ent
 
         # ---- Advanced rules list (ordered) ----
         if isinstance(spec, list) and all(isinstance(item, Mapping) for item in spec):
-            series: pd.Series[Any] = out[col]
+            series: pd.Series = out[col]
             for rule in spec:
                 series = _apply_replacement_rule(series, rule=rule, entity_name=entity_name, column_name=col)
             out[col] = series
@@ -174,7 +174,7 @@ def _coerce_series_for_match(series: pd.Series, *, coerce: str | None) -> pd.Ser
     if not coerce or coerce in ("string", "str"):
         return series.astype("string")
     if coerce in ("int", "int64", "integer"):
-        numeric = pd.to_numeric(series, errors="coerce")
+        numeric: pd.Series = pd.to_numeric(series, errors="coerce")
         numeric = numeric.where((numeric % 1) == 0)
         return numeric.astype("Int64")
     if coerce in ("float", "double", "number"):
@@ -221,11 +221,11 @@ class BlankOutRule(ReplacementRule):
     @classmethod
     def apply(cls, series: pd.Series, *, rule: Mapping[str, Any], ctx: RuleContext) -> pd.Series:
         to_blank: Any | None = rule.get("blank_out")
-        before: pd.Series[Any] = series
+        before: pd.Series = series
 
         # Preserve historical semantics unless coercion is explicitly requested.
         if not ctx.coerce:
-            out: pd.Series[Any] = series.replace(to_replace=to_blank, value=pd.NA)
+            out: pd.Series = series.replace(to_replace=to_blank, value=pd.NA)
         else:
             match_series = _coerce_series_for_match(series, coerce=ctx.coerce)
             values = _coerce_values_for_match(to_blank, coerce=ctx.coerce)
@@ -264,8 +264,8 @@ class MapRule(ReplacementRule):
         if ctx.report_unmatched:
             if ctx.normalize_ops:
                 keys_norm: set[str] = {_normalize_scalar(k, ops=ctx.normalize_ops) for k in mapping.keys()}
-                norm: pd.Series[Any] = _normalize_for_match(series, ops=ctx.normalize_ops)
-                unmatched_mask: pd.Series[bool] = norm.notna() & ~norm.isin(list(keys_norm))
+                norm: pd.Series = _normalize_for_match(series, ops=ctx.normalize_ops)
+                unmatched_mask: pd.Series = norm.notna() & ~norm.isin(list(keys_norm))
             elif ctx.coerce:
                 keys_coerced = {
                     _coerce_scalar_for_match(k, coerce=ctx.coerce)
@@ -280,7 +280,7 @@ class MapRule(ReplacementRule):
                 unmatched_mask = norm.notna() & ~norm.isin(list(keys_norm))
 
             if bool(unmatched_mask.any()):
-                top: pd.Series[int] = series[unmatched_mask].astype("string").value_counts(dropna=True).head(ctx.report_top)
+                top: pd.Series = series[unmatched_mask].astype("string").value_counts(dropna=True).head(ctx.report_top)
                 n_unmatched = int(unmatched_mask.sum())
                 logger.info(
                     f"{ctx.entity_name}[replacements]: {ctx.column_name}: "
@@ -288,7 +288,7 @@ class MapRule(ReplacementRule):
                 )
 
         if not ctx.normalize_ops and not ctx.coerce:
-            out: pd.Series[Any] = series.replace(to_replace=mapping)
+            out: pd.Series = series.replace(to_replace=mapping)
             if ctx.report_replaced:
                 changed = int((series.astype("string") != out.astype("string")).fillna(False).sum())
                 logger.info(f"{ctx.entity_name}[replacements]: {ctx.column_name}: map replaced {changed} value(s)")
@@ -319,7 +319,7 @@ class MapRule(ReplacementRule):
         changed_total = 0
         for old_value, new_value in mapping.items():
             old_norm: str = _normalize_scalar(old_value, ops=ctx.normalize_ops)
-            mask: pd.Series[bool] = norm == old_norm
+            mask: pd.Series = norm == old_norm
             if mask.any():
                 out = out.where(~mask, new_value)
                 changed_total += int(mask.sum())
@@ -384,11 +384,9 @@ class ContainsRule(ReplacementRule):
             if str(f).lower() in ("i", "ignorecase"):
                 case_sensitive = False
 
-        norm: pd.Series[Any] = _normalize_for_match(series, ops=ctx.normalize_ops)
+        norm: pd.Series = _normalize_for_match(series, ops=ctx.normalize_ops)
         needle: str = _normalize_scalar(from_value, ops=ctx.normalize_ops)
-        contains_mask: pd.Series[bool] = (
-            norm.astype("string").fillna(pd.NA).str.contains(needle, case=case_sensitive, regex=False, na=False)
-        )
+        contains_mask: pd.Series = norm.astype("string").fillna(pd.NA).str.contains(needle, case=case_sensitive, regex=False, na=False)
 
         mask = contains_mask
         if ctx.negate:
@@ -435,7 +433,7 @@ class EqualsRule(ReplacementRule):
             return series.where(~mask, cast(Any, to_value))
 
         if not ctx.normalize_ops and not ctx.negate:
-            out: pd.Series[Any] = series.replace(to_replace={from_value: to_value})
+            out: pd.Series = series.replace(to_replace={from_value: to_value})  # type: ignore[assignment]
             if ctx.report_replaced:
                 changed = int((series.astype("string") != out.astype("string")).fillna(False).sum())
                 logger.info(f"{ctx.entity_name}[replacements]: {ctx.column_name}: equals replaced {changed} value(s)")
@@ -454,10 +452,10 @@ class EqualsRule(ReplacementRule):
                 logger.info(f"{ctx.entity_name}[replacements]: {ctx.column_name}: not_equals replaced {int(mask.sum())} value(s)")
             return series.where(~mask, cast(Any, to_value))
 
-        norm: pd.Series[Any] = _normalize_for_match(series, ops=ctx.normalize_ops)
+        norm: pd.Series = _normalize_for_match(series, ops=ctx.normalize_ops)
         from_norm: str = _normalize_scalar(from_value, ops=ctx.normalize_ops)
-        equals_mask: pd.Series[bool] = (norm == from_norm).fillna(False)
-        mask: pd.Series[bool] = equals_mask
+        equals_mask: pd.Series = (norm == from_norm).fillna(False)
+        mask: pd.Series = equals_mask
         if ctx.negate:
             mask = (~equals_mask) & norm.notna()
         if not mask.any():
@@ -481,14 +479,14 @@ class StartsWithRule(ReplacementRule):
         if from_value is None:
             return series
 
-        norm: pd.Series[Any] = _normalize_for_match(series, ops=ctx.normalize_ops)
+        norm: pd.Series = _normalize_for_match(series, ops=ctx.normalize_ops)
         prefix: str = _normalize_scalar(from_value, ops=ctx.normalize_ops)
 
         if _is_ignore_case(rule.get("flags")):
             norm = norm.astype("string").str.lower()
             prefix = prefix.lower()
 
-        starts_mask: pd.Series[bool] = norm.astype("string").fillna(pd.NA).str.startswith(prefix, na=False)
+        starts_mask: pd.Series = norm.astype("string").fillna(pd.NA).str.startswith(prefix, na=False)
         mask = starts_mask
         if ctx.negate:
             mask = (~starts_mask) & norm.notna()
@@ -513,15 +511,15 @@ class EndsWithRule(ReplacementRule):
         if from_value is None:
             return series
 
-        norm: pd.Series[Any] = _normalize_for_match(series, ops=ctx.normalize_ops)
+        norm: pd.Series = _normalize_for_match(series, ops=ctx.normalize_ops)
         suffix: str = _normalize_scalar(from_value, ops=ctx.normalize_ops)
 
         if _is_ignore_case(rule.get("flags")):
             norm = norm.astype("string").str.lower()
             suffix = suffix.lower()
 
-        ends_mask: pd.Series[bool] = norm.astype("string").fillna(pd.NA).str.endswith(suffix, na=False)
-        mask: pd.Series[bool] = ends_mask
+        ends_mask: pd.Series = norm.astype("string").fillna(pd.NA).str.endswith(suffix, na=False)
+        mask: pd.Series = ends_mask
         if ctx.negate:
             mask = (~ends_mask) & norm.notna()
 
@@ -546,7 +544,7 @@ class InRule(ReplacementRule):
             return series
 
         if ctx.normalize_ops:
-            match_series: pd.Series[str] = _normalize_for_match(series, ops=ctx.normalize_ops).astype("string")
+            match_series: pd.Series = _normalize_for_match(series, ops=ctx.normalize_ops).astype("string")
             values: list[str] = [_normalize_scalar(v, ops=ctx.normalize_ops) for v in _as_sequence(from_value)]
             if _is_ignore_case(rule.get("flags")):
                 match_series = match_series.str.lower()
@@ -562,7 +560,7 @@ class InRule(ReplacementRule):
                 match_series = series
                 values = _as_sequence(from_value)
 
-        mask: pd.Series[bool] = match_series.isin(values).fillna(False)
+        mask: pd.Series = match_series.isin(values).fillna(False)
         if ctx.negate:
             mask = (~mask) & match_series.notna()
         if not mask.any():
@@ -586,9 +584,9 @@ class RegexRule(ReplacementRule):
             return series
 
         pattern: re.Pattern[str] = _compile_regex(from_value, flags_spec=rule.get("flags"))
-        norm: pd.Series[Any] = _normalize_for_match(series, ops=ctx.normalize_ops)
-        matches: pd.Series[bool] = norm.astype("string").fillna(pd.NA).str.match(pattern, na=False)
-        mask: pd.Series[bool] = matches
+        norm: pd.Series = _normalize_for_match(series, ops=ctx.normalize_ops)
+        matches: pd.Series = norm.astype("string").fillna(pd.NA).str.match(pattern, na=False)
+        mask: pd.Series = matches
         if ctx.negate:
             mask = (~matches) & norm.notna()
         if not mask.any():
@@ -614,12 +612,12 @@ class RegexSubRule(ReplacementRule):
             return series
 
         pattern: re.Pattern = _compile_regex(from_value, flags_spec=rule.get("flags"))
-        before: pd.Series[str] = series.astype("string")
+        before: pd.Series = series.astype("string")
 
         # If `to` is explicitly null, treat it as "replace matching cells with NA"
         # (empty string replacement can be achieved with `to: ""`).
         if to_value is None:
-            match_mask: pd.Series[bool] = before.fillna(pd.NA).str.contains(pattern, na=False)
+            match_mask: pd.Series = before.fillna(pd.NA).str.contains(pattern, na=False)
             changed_count = int(match_mask.sum())
             if changed_count == 0:
                 if ctx.report_unmatched:
@@ -632,9 +630,9 @@ class RegexSubRule(ReplacementRule):
             return series.where(~match_mask, cast(Any, pd.NA))
 
         replacement = str(to_value)
-        after: pd.Series[str] = before.str.replace(pattern, replacement, regex=True)
+        after: pd.Series = before.str.replace(pattern, replacement, regex=True)
 
-        changed_mask: pd.Series[bool] = before.fillna("<NA>") != after.fillna("<NA>")
+        changed_mask: pd.Series = before.fillna("<NA>") != after.fillna("<NA>")
         changed_count = int(changed_mask.sum())
 
         if changed_count == 0:

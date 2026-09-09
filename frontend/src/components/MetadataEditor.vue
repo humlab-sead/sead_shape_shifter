@@ -68,13 +68,13 @@
           :items="targetModelItems"
           :loading="yamlFilesLoading"
           label="Target Model"
-          hint="YAML file declaring the target model (e.g. @include: target_model.yml). Select a file or type an @include: path."
+          hint="YAML file declaring the target model (e.g. @load: target_model.yml). Select a file or type an @load: path."
           persistent-hint
           variant="outlined"
           density="comfortable"
           clearable
           class="mb-4"
-          placeholder="@include: target_model.yml"
+          placeholder="@load: target_model.yml"
         >
           <template #prepend-inner>
             <v-icon icon="mdi-check-decagram-outline" size="small" />
@@ -148,8 +148,8 @@ async function loadYamlFiles() {
   }
 }
 
-// Build combobox items: format each YAML file as an @include: path
-const targetModelItems = computed(() => yamlFiles.value.map((name) => `@include: ${name}`))
+// Build combobox items: format each YAML file as an @load: path
+const targetModelItems = computed(() => yamlFiles.value.map((name) => `@load: ${name}`))
 
 // Form data
 const formData = ref<{
@@ -200,7 +200,7 @@ const hasChanges = computed(() => {
 function loadMetadata() {
   if (selectedProject.value?.metadata) {
     const metadata = selectedProject.value.metadata
-    // target_model on ProjectMetadata may be a string (@include: ...) or null; if it's an
+    // target_model on ProjectMetadata may be a string (@load: ...) or (@include: ...) null; if it's an
     // object (resolved inline dict) we can't display it sensibly — show null instead.
     const rawTargetModel: string | null =
       typeof metadata.target_model === 'string' ? metadata.target_model : null

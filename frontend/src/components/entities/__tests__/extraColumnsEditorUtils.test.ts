@@ -5,8 +5,11 @@ import {
   analyzeExtraColumnExpression,
   extractFormulaReferences,
   extractInterpolationReferences,
+  formatExtraColumnEditorValue,
   getExtraColumnDiagnostics,
   getExtraColumnSuggestions,
+  parseExtraColumnConstantLiteral,
+  parseExtraColumnEditorValue,
 } from '../extraColumnsEditorUtils'
 
 describe('extraColumnsEditorUtils', () => {
@@ -25,6 +28,28 @@ describe('extraColumnsEditorUtils', () => {
   it('classifies interpolation and formula expressions', () => {
     expect(analyzeExtraColumnExpression('{first} {last}').kind).toBe('interpolation')
     expect(analyzeExtraColumnExpression('=concat(first, last)').kind).toBe('formula')
+  })
+
+  it('parses constant scalar literals for save', () => {
+    expect(parseExtraColumnConstantLiteral('11')).toBe(11)
+    expect(parseExtraColumnConstantLiteral('11.5')).toBe(11.5)
+    expect(parseExtraColumnConstantLiteral('true')).toBe(true)
+    expect(parseExtraColumnConstantLiteral('null')).toBeNull()
+    expect(parseExtraColumnConstantLiteral('literal')).toBe('literal')
+  })
+
+  it('parses only constant expressions as scalars', () => {
+    expect(parseExtraColumnEditorValue('11', ['sample_code'])).toBe(11)
+    expect(parseExtraColumnEditorValue('sample_code', ['sample_code'])).toBe('sample_code')
+    expect(parseExtraColumnEditorValue('{sample_code}', ['sample_code'])).toBe('{sample_code}')
+    expect(parseExtraColumnEditorValue('=concat(sample_code)', ['sample_code'])).toBe('=concat(sample_code)')
+  })
+
+  it('formats existing scalar values for editor display', () => {
+    expect(formatExtraColumnEditorValue(11)).toBe('11')
+    expect(formatExtraColumnEditorValue(11.5)).toBe('11.5')
+    expect(formatExtraColumnEditorValue(true)).toBe('true')
+    expect(formatExtraColumnEditorValue(null)).toBeNull()
   })
 
   it('reports duplicate and reserved-name conflicts', () => {

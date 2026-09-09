@@ -1,0 +1,29 @@
+metadata:
+  name: example:sead-sample-note-context
+  type: shapeshifter-project
+  description: Minimal SEAD-shaped project fixture covering the sample_note entity.
+  version: 1.0.0
+
+entities:
+  sample:
+    type: entity
+    public_id: physical_sample_id
+    keys: []
+    columns: []
+    extra_columns:
+      sample_name:
+
+  sample_note:
+    type: entity
+    public_id: sample_note_id
+    keys: []
+    columns: []
+    foreign_keys:
+      - entity: sample
+        local_keys: [physical_sample_id]
+        remote_keys: [physical_sample_id]
+    extra_columns:
+      note_type:
+      note:
+
+options: {}

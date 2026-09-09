@@ -25,14 +25,14 @@ docs/images/
 
 ## Diagram SVG Files
 
-The diagrams in `diagrams/` are automatically generated from the Mermaid diagrams in `SYSTEM_DIAGRAMS.md`.
+The diagrams in `diagrams/` are automatically generated from the Mermaid diagrams in `DIAGRAMS.md`.
 
 ### Regenerating Diagrams
 
 To extract and convert all diagrams:
 
 ```bash
-# Extract Mermaid code from SYSTEM_DIAGRAMS.md
+# Extract Mermaid code from DIAGRAMS.md
 make diagrams-extract
 
 # Convert to SVG using mermaid.ink API

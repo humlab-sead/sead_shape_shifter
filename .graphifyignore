@@ -1,0 +1,72 @@
+# Generated output and local environments
+graphify-out/
+.git/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.vscode/
+.claude/
+.clinerules/
+.codex/
+.github/
+**/__pycache__/
+**/node_modules/
+**/.uv-cache/
+**/.vite/
+**/.next/
+**/.nuxt/
+**/dist/
+**/build/
+
+# Local and generated application data
+data/
+logs/
+output/
+tmp/
+deprecated/
+sead-tools/
+lib/
+
+# Large test fixtures; keep test source code
+**/test_data/
+
+# Historical or presentation-only documentation
+/docs/archive/
+/docs/images/
+/docs/presentations/
+/docs/proposals/done/
+/docs/proposals/future/
+/docs/proposals/onhold/
+/docs/proposals/*/archive/
+/docs/proposals/*/done/
+/docs/proposals/*/future/
+/docs/proposals/*/onhold/
+
+# Binary assets and database fixtures
+*.pyc
+*.log
+*.coverage
+.coverage
+.coverage.*
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.webp
+*.svg
+*.mdb
+*.accdb
+*.xlsx
+*.xls
+*.parquet
+*.zip
+*.tar
+*.gz
+*.xz
+*.pdf
+
+# Potential secrets
+**/.env*
+**/*secret*
+**/*credentials*

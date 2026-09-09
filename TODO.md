@@ -10,6 +10,7 @@
 **Quick Tips:**
 
 - Use `/help` in Copilot Chat to see all available commands
+- Use '/code-review' in Copilot chat to do av review of (un-commited?) changes
 - Reference files with `#file:path/to/file.ts`
 - Use `@workspace` to search across the entire workspace
 - Structure prompts: [Context] + [Specific Task] + [Constraints/Format]
@@ -21,15 +22,11 @@
 ### New features
 
  - [] TODO: [Frontend/Backend] Edit data source configuration in a dual-mode editor (Form/YAML).
- - [] TODO: Add additional frontend/backend options (e.g., themes, temp directory, logging level, etc.)
  - [] TODO: Add capability to generate a default reconciliation YAML based on service manifest received from calling services /reconcile endpoint.
  - [] TODO: #68 Add a "finally" step that removes intermediate tables and columns.
- - [] TODO: #66 Introduce a "transformations" section with more advance columnar transforms (e.g. toWSG84).
  - [] TODO: #69 Add "parent" property to entity definitions.
- - [] TODO: #108 Add tiny DSL Expression Support in extra_columns
  - [] TODO: Introduce optional support for types for entity fields
           (e.g., string, integer, date) and support type conversions in extra_columns.
- - [] TODO: Improve multiuser support (working on same project)
  - [] TODO: Add more reconciliation entity types, and non-SEAD types (e.g. Geonames, RAÄ-lämningsnummer)
  - [] TODO: Improve UX suggestions when editing entity (awareness of availiable tables, columns etc)
  - [] TODO: Consider limiting "@value:" directive usage to only refer to non-directive keys.
@@ -44,10 +41,6 @@
 ### TODO: #68 Add "finally" cleanup step 
 - Drops intermediate tables/columns after processing
 - Fits naturally after Store phase
-
-### TODO: #66 Transformations section (toWGS84, etc.) - **Data Quality Feature**
-- Coordinate transformations, case normalization, etc.
-- Consider using existing libraries (pyproj for coords)
 
 ### TODO: #67 String concatenation in extra_columns - **Subset of #108**
 
@@ -108,103 +101,6 @@ Given the context, we should be able to constrict valid dot.path, e.g. when pick
 
 What are your thought? How would an implementation plan look like? 
 
-### FIXME: Store resolved bug
-
-We have a bug related to the recently fixes related to the "@value" directive. All "@value" directives have been resolved in the stored (on disk) file
-
-
-### FIXME: Entity not persisted ** CAN NOT REPRODUCE! ***
-
-There is new bug related to saving project/entity most likely caused by recent changes. 
-
-1. I open this entity in the Entity Editor:
-
-```
-name: abundance_element
-type: sql
-system_id: system_id
-keys:
-  - RTyp
-columns:
-  - Resttyp
-  - RTypGrup
-  - RTypNr
-public_id: abundance_element_id
-data_source: arbodat_lookup
-query: select [RTyp], [Resttyp], [RTypGrup], [RTypNr] from [RTyp];
-foreign_keys:
-  - entity: abundance_element_group
-    local_keys:
-      - RTypGrup
-    remote_keys:
-      - RTypGrup
-depends_on:
-  - abundance_element_group
-extra_columns:
-  element_name: RTyp
-  element_description: Resttyp
-```
-
-2. Add "@value:entities.abundance.keys" to "keys". Opening YAML tab shows as expected that '@value:entities.abundance.keys' has been added to keys.
-
-```
-name: abundance_element
-type: sql
-system_id: system_id
-keys:
-  - RTyp
-  - '@value:entities.abundance.keys'
-columns:
-...
-```
-
-3. Press SAVE in entity editor
-   ==> Status message that entity has been saved successfully
-   ==> Button "SAVE CHANGES" in project details view becomes enabled. This is not expected.
-
-4. Verify entity in project detail views YAML tab shows expected values:
-
-```
-name: abundance_element
-type: sql
-system_id: system_id
-keys:
-  - RTyp
-  - '@value:entities.abundance.keys'
-columns:
-...
-```
-
-5. Verify YAML on disk
-
-### TODO: Fixes related to task status
-
-In the graph view, when changing "Color by" from "Entity Type" to "Task Status", only entities with types "Done" or "Ignored" changes color. All other entities remain colored by entity type.
-
-We have four task status values: "todo", "ongoing", "done" and "ignored". The shapeshifter.tasks.yml has keys "required_entities", "completed" and "ignored". The mapping of "todo" and "ongoing" to "required_entities" is unclear.
-
-I think we should use the keys "todo", "ongoing", "done" and "ignored" in shapeshifter.tasks.yml.
-
-The keys should have the following semantics:
- - "todo": initial state, an entity that don't yet exists in the project file: COLOR: yellowish?
- - "ongoing": if entity exists, but "done" or "ignored": COLOR: bluish?
- - "ignored": entity is ignored by task system's definition of done: COLOR: greyish
- - "done": end state, entity is finalized. COLOR: greenish
-
-With this semantics, we need to add placeholder nodes in the graph for "todo" entities.
-Possibly, also, we need to simple ways of adding/removing "todo" entities.
-Or, possibly, we could allow user to edit "shapeshifter.tasks.yml"
-
-I think these changes (and bugfixes) would increase the usability of the task feature.
-What do you think?
-
-### TODO: Consider adding a trash bin when deleteing projects (move instead of delete)
-### TODO: Change "optimistic locking" concurrency strategy
-
-When saving project YAML, the system compares client's project's version number to server side version number. If the version
-number differs, the the client's updates are discarded. We should instead use a merging strategy as the default 
-concurrency resolver. If client's project only differ
-
 ### TODO: File location resolution fails if project's folder name differs from metadata.name
 
 if project not in folder "xyz" then this fails with FileLoader raising FileNotFoundError:
@@ -220,8 +116,9 @@ entities:
       filename: abc.xlsx
       location: local
       sheet_name: Sheet1
+```
 
-### Buggar
+### FIXME: Buggar
 
 site_location, och site_property har varningen "returns no data" där motsvarande SQL-frågor ger resultat när de körs i query tester (utan semikolon)  
 site_natural_region har samma varning, men där ska ingen data vara så det är ok
@@ -239,3 +136,124 @@ Current phase 9 in target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md  is out-of-
 1. proposal docs/proposals/TARGET_MODEL_SPECIFICATION_FORMAT.md shoudld be focused on the target model specification format only, and it's semantics. No design, or implementation detail and no implementation planning details.
 2. docs/proposals/TARGET_SCHEMA_AWARE_VALIDATION.md is focusing on the requirements and design of logic that implement's 1ö
 3. target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md is focused on the development of the SEAD target model specification YAML file only.
+
+
+### TODO: We need a single source of truth for specifying projekts
+We can't duplicate "where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');" wverywhjere
+
+### FIXME: Fix arbodat project (CHANGELOG)
+
+  - A site can have many projects: property "Projekt" is removed from "site.columns" and "site.sql"
+  - A site can only have one site type: change "site.sql" to group by "Fustel", then take max "FustelTyp"
+  - Assume "Fustel" is unique
+  - Pull "Fustel" into "feature"
+  - Pull "Fustel" into "sample_group"
+  - Property "CoordSys" varies over "Projekt" in "Projekte", FD-check fails
+    Fix:
+      select distinct p.Fustel, coalesce([EVNr], '') as [EVNr], b.FustelTyp, c.KoordSys, p.rWert, p.hWert, p.[üNN]
+      from Projekte as p
+      inner join (
+        select Projekt, max(FustelTyp) as FustelTyp
+        from Befunde group by Projekt
+      ) as b on p.Projekt = b.Projekt
+      left join(
+        select Projekt, max(KoordSys) as KoordSys
+        from Projekte
+        group by Projekt  
+      ) c on c.[Projekt] = p.[Projekt]
+      where p.Projekt in ('19_0013', '19_0014', '22_0005', '18_0025', '22_0015');
+  - FIXME: FD checks fails for Abodat ["Blake"]
+
+
+
+# FIXME: Verify that graphify wiki is automatically updated by hook!
+
+# Copilot Tips
+
+## Reduce Costs
+
+1. Keep sessions short and focused (you can limit #request in settings.json)
+1. Minimize referenced context size (open files, selected code, codebase scans)
+1. Disable agent-tools you are not using (enable per session even)
+1. Use cheap models for simple tasks
+1. Auto only selects cheap models!
+1. Use code completion!!!
+
+
+## Increase Code Quality
+
+1. Add carefully curated instructions files (*.instructions.md, AGENTS.md etc)
+1. Make instructions discoverable (from README.md, master agent file)
+1. Create a change request (proposal)
+1. Create phase plan
+1. Create iteration plan per phase
+1. Keep documententation up-to-date (no stale documents)
+1. Add a knowledge graph that agent can use (e.g. `graphify` or `serena`)
+1. Use plan mode before youe use agent for larger tasks!!!
+
+
+##  Copilot CLI
+
+/ide    # connects to vscode (auto when workspaces matches)
+
+https://spark-note.com/en/blog/serena-vs-graphify-search-comparison/
+https://medium.com/manomano-tech/project-aegis-benchmarking-ai-agents-and-why-serena-is-our-new-must-have-311673db35dd
+
+# rtk installed
+
+λ brew install rtk
+λ rtk init -g --copilot
+[rtk] /!\ No hook installed — run `rtk init -g` for automatic token savings
+[ok] Added Copilot user-level instructions to /home/roger/.copilot/copilot-instructions.md
+
+GitHub Copilot global integration installed (user-scoped).
+
+  Hook config:    /home/roger/.copilot/hooks/rtk-rewrite.json
+  Instructions:   /home/roger/.copilot/copilot-instructions.md
+
+  Applies to all Copilot CLI sessions on this machine.
+  Restart your Copilot CLI session to activate.
+
+.codex/config.toml
+[shell_environment_policy]
+inherit = "all"
+
+[shell_environment_policy.set]
+PATH = "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/roger/.local/bin:/home/roger/.pyenv/shims:/home/roger/.pyenv/bin:/home/roger/source/sead_shape_shifter/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+
+[projects."/home/roger/source/sead_shape_shifter"]
+trust_level = "trusted"
+
+[projects."/home/roger/source/sead_query_api"]
+trust_level = "trusted"
+
+
+openai_base_url = "http://localhost:8787/v1"
+
+## Add PATH for non-interactive shells (needed for vscode Codex extension, remote SSH)
+.pam.environment
+
+PATH OVERRIDE=/home/roger/source/sead_shape_shifter/.venv/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/roger/.dotnet/tools:/home/roger/.local/bin:/home/roger/bin/go/bin:/home/roger/.npm/lib/bin:/home/roger/bin:/usr/local/bin:/usr/bin:/bin
+
+
+# TODO: BUGCEP_IMPORT_MIGRATION
+
+
+We need to create a handoff for the next phase of this migration of BugsCEP importer. Please suggest what this handoff should include.
+
+1. Create add a new proposal named BUGCEP_IMPORT_MIGRATION.md to new folder sead_shape_shifter/docs/proposals/BUGCEP_IMPORT_MIGRATION/ and using instructions in sead_shape_shifter/.github/instructions/proposal-writing-guide.instructions.md. The goal of the proposal is to create a new BugsCEP importer using the reconciliation policy YAML files.   
+2. Craete a machine-readable document that an AI coding agent can use to more easy get up-to-speed in this migration work.
+
+
+# TODO: test Github Copilot /code-review chat command
+
+Rules in semantic_rules.yml that are not implemented in a specification:
+entity.xlsx.requires_filename
+entity.openpyxl.requires_filename
+entity.csv.requires_filename
+entity.tsv.requires_filename
+entity.duckdb.requires_query
+entity.duckdb.requires_depends_on
+entity.xlsx.filename_must_exist
+entity.openpyxl.filename_must_exist
+entity.csv.filename_must_exist

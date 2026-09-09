@@ -32,10 +32,20 @@ Automatically creates additional tags based on repository state:
 # → Tags: shape-shifter:v1.9.0 + shape-shifter:latest
 ```
 
+**Scenario 3: Building from a non-version ref (branch, non-semver tag, or SHA)**
+```bash
+./build.sh --git-ref dev
+# Any git ref that is not a vN.N.N release tag:
+# → Tags: shape-shifter:dev + shape-shifter:dev-20260906 (date of the build)
+```
+
 **Benefits:**
 - ✅ Production releases automatically get both version and latest tags
 - ✅ Ensures latest always points to most recent stable release
+- ✅ Every non-version build leaves a dated tag (`<ref>-YYYYMMDD`) as a rollback point beside the rolling tag
 - ✅ No manual tagging required
+
+All tags (primary and additional) are applied in a single `docker build` via multiple `-t` flags.
 
 ### 4. **User Permission Handling**
 - Auto-detects `sead` user UID (defaults to 1002)
@@ -124,14 +134,16 @@ cd /path/to/deployment
 # Build from feature branch
 ./build.sh --git-ref develop
 
-# Result: shape-shifter:develop
+# Result: shape-shifter:develop + shape-shifter:develop-20260906 (date tag)
 # Cache bust: Uses latest commit SHA from develop branch
 
 # Custom tag
 ./build.sh --git-ref develop --image-tag dev-latest
 
-# Result: shape-shifter:dev-latest
+# Result: shape-shifter:dev-latest + shape-shifter:develop-20260906 (date tag)
 ```
+
+Dated tags use `<ref>-YYYYMMDD`, where the ref is sanitized the same way as the primary branch tag (`/` becomes `-`). Rebuilding the same ref on the same day overwrites that day's date tag.
 
 ### Force Rebuild
 ```bash
@@ -207,27 +219,29 @@ git push origin v1.10.0
 
 # If main HEAD matches v1.10.0 tag:
 # Output:
-# info: building from branch main (with cache invalidation)
+# info: building from non-version ref main (with cache invalidation)
 # info: main branch equals tag v1.10.0, adding version tag
 # Image Tag:      latest
-# Additional Tags: shape-shifter:v1.10.0
+# Additional Tags: shape-shifter:main-20260906 shape-shifter:v1.10.0
 #
-# Result: Both tags point to same image
+# Result: All tags point to the same image
 # - shape-shifter:latest
+# - shape-shifter:main-20260906
 # - shape-shifter:v1.10.0
 ```
 
-### Example 3: Development Branch
+### Example 3: Development Branch (non-version ref)
 ```bash
 # Building feature branch
 ./build.sh --git-ref feature/new-ui
 
 # Output:
 # Image Tag:      feature-new-ui
-# (no additional tags)
+# Additional Tags: shape-shifter:feature-new-ui-20260906
 #
-# Result: Single tag only
+# Result: Rolling tag plus a dated rollback point
 # - shape-shifter:feature-new-ui
+# - shape-shifter:feature-new-ui-20260906
 ```
 
 ## How Cache Invalidation Works (Legacy)

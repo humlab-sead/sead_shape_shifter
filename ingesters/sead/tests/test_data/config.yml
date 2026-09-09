@@ -16,9 +16,6 @@ policies:
     tbl_dataset_contacts:
       contact_type_id: 2
       contact_id: 1
-  if_table_is_missing_add_table_using_system_id_as_public_id:
-    # add missing table foreign keys where the foreign key is a public id
-    tables:
 
   if_table_is_missing_add_table_using_system_id_as_public_id:
     disabled: false

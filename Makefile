@@ -25,8 +25,17 @@ install-api:
 test:
 	@uv run pytest tests backend/tests ingesters/sead/tests -v
 
+.PHONY: test-validate
+test-validate:
+	@uv run python scripts/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml \
+		--workflow all --log-level ERROR --ignore EMPTY_RESULT > validation_issues.csv 
+
+.PHONY: profile-validate
+profile-validate:
+	@uv run pyinstrument scripts/validate_project.py tests/test_data/projects/arbodat/shapeshifter.yml --workflow all
+
 .PHONY: profile
-profile:
+profile-test:
 	@echo "Profiling test with py-spy..."
 	@uv run py-spy record -o profile.svg --format speedscope -- pytest $(TEST) -v -s
 	@echo "✓ Profile saved to profile.svg (open in browser or speedscope.app)"
@@ -49,7 +58,11 @@ black:
 
 .PHONY: pylint
 pylint:
-	@uv run pylint src tests backend/app backend/tests ingesters
+	@uv run pylint src tests backend ingesters
+
+.PHONY: pyright
+pyright:
+	@uv run pyright --threads 2 src backend ingesters
 
 .PHONY: ruff
 ruff:
@@ -57,11 +70,11 @@ ruff:
 
 .PHONY: tidy
 tidy:
-	@uv run isort src tests backend/app backend/tests ingesters
-	@uv run black src tests backend/app backend/tests ingesters
+	@uv run isort src tests backend ingesters
+	@uv run black src tests backend ingesters
 
 .PHONY: lint
-lint: tidy ruff pylint
+lint: tidy ruff pylint check-target-model-schema-reference
 
 .PHONY: check-imports
 check-imports:
@@ -82,6 +95,20 @@ check-schemas:
 	@PYTHONPATH=.:backend uv run python scripts/generate_schemas.py --check
 
 ################################################################################
+# Target-model schema reference generation
+################################################################################
+
+.PHONY: generate-target-model-schema-reference
+generate-target-model-schema-reference:
+	@echo "Generating target-model schema reference from Pydantic models..."
+	@uv run python scripts/generate_target_model_schema_reference.py
+
+.PHONY: check-target-model-schema-reference
+check-target-model-schema-reference:
+	@echo "Checking if target-model schema reference is in sync with Pydantic models..."
+	@uv run python scripts/generate_target_model_schema_reference.py --check
+
+################################################################################
 # Target-model template generation
 ################################################################################
 
@@ -92,7 +119,7 @@ generate-arbodat-yaml:
 	@echo "Generating Arbodat starter project YAML at $(ARBODAT_TEMPLATE_OUTPUT)..."
 	@mkdir -p $(dir $(ARBODAT_TEMPLATE_OUTPUT))
 	@PYTHONPATH=target_models/src uv run python target_models/scripts/generate_project_template.py \
-		--spec target_models/specs/sead_v2.yml \
+		--spec resources/target_models/sead_standard_model.yml \
 		--project-name arbodat:generated-template \
 		--domain abundance \
 		--domain dating \
@@ -196,6 +223,43 @@ backend-test:
 reconcile:
 	@echo "Running auto-reconciliation CLI..."
 	@PYTHONPATH=.:backend uv run python scripts/auto_reconcile.py $(ARGS)
+
+################################################################################
+# AI Coding Assistants recipes
+# Candidates: rtk, graphify, serena, snip, headroom
+################################################################################
+
+rtk-install:
+	@echo "Installing RTK and setting up global configurations..."
+	@if ! command -v rtk &> /dev/null; then \
+		echo "RTK not found, installing..."; \
+		brew install rtk; \
+	else \
+		brew upgrade rtk &> /dev/null; \
+	fi
+	@rtk init -g --copilot
+	@rtk init -g --codex
+
+create-graphify:
+	@graphify extract . --project
+	@graphify cluster-only $(HOME)/source/sead_shape_shifter
+	@graphify export callflow-html
+
+update-graphify:
+	@uv run graphify update $(HOME)/source/sead_shape_shifter  --force
+	@git add graphify-out
+	@if git diff --cached --quiet -- graphify-out; then \
+		echo "No changes in graphify-out"; \
+	else \
+		git commit -m "chore: updated graphify graph"; \
+	fi
+
+install-graphify:
+	@uv add --dev graphifyy[all]
+	@graphify hook install
+	@graphify vscode install
+	@graphify codex install
+	@echo "✓ Graphify installed and pre-commit hook set up"
 
 ################################################################################
 # Project Editor UI
@@ -387,11 +451,11 @@ presentation-all: presentation-pdf presentation-html presentation-pptx
 
 .PHONY: diagrams-extract
 diagrams-extract:
-	@echo "Extracting Mermaid diagrams from SYSTEM_DIAGRAMS.md..."
+	@echo "Extracting Mermaid diagrams from DIAGRAMS.md..."
 	@mkdir -p tmp/mermaid
 	@python3 tmp/extract_mermaid.py 2>/dev/null || python3 -c " \
 		import re, os; \
-		content = open('docs/SYSTEM_DIAGRAMS.md').read(); \
+		content = open('docs/DIAGRAMS.md').read(); \
 		matches = re.findall(r'## (\d+)\.\s+([^\n]+)\n\n\`\`\`mermaid\n(.*?)\`\`\`', content, re.DOTALL); \
 		os.makedirs('tmp/mermaid', exist_ok=True); \
 		[open(f'tmp/mermaid/{num}-{re.sub(r\"[^\\w\\s-]\", \"\", title).strip().lower().replace(\" \", \"-\").replace(\"--\", \"-\")}.mmd', 'w').write(diagram.strip()) for num, title, diagram in matches]; \

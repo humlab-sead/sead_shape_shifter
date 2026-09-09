@@ -22,7 +22,6 @@
     "noUncheckedIndexedAccess": true,
 
     /* Path resolution */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },

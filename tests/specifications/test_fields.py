@@ -39,6 +39,8 @@ class TestFieldExistsValidator:
 
         assert len(validator.errors) == 1
         assert "Field 'nonexistent' is required but missing" in validator.errors[0].message
+        assert validator.errors[0].entity_field == "nonexistent"
+        assert validator.errors[0].column_name is None
 
     def test_nested_field_exists(self, project_cfg):
         """Test validation with nested field path."""

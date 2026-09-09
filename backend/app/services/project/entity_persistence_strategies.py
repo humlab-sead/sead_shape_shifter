@@ -8,12 +8,26 @@ import pandas as pd
 
 from backend.app.exceptions import SchemaValidationError
 from backend.app.utils.fixed_schema import build_fixed_full_columns, normalize_fixed_entity
+from src.types.fixed_entity_types import (
+    FixedEntityColumnTypeDeclarationError,
+    FixedEntityTypeConventionDeclarationError,
+    build_fixed_entity_full_columns,
+    is_valid_fixed_entity_value,
+    normalize_fixed_entity_column_types,
+    normalize_fixed_entity_type_conventions,
+    resolve_fixed_entity_runtime_type,
+)
 
 
 class EntityPersistenceStrategy(Protocol):
     """Strategy interface for preparing entities for persistence."""
 
-    def prepare_for_persistence(self, entity_name: str, entity_data: dict[str, Any]) -> dict[str, Any]:  # type: ignore[override]
+    def prepare_for_persistence(
+        self,
+        entity_name: str,
+        entity_data: dict[str, Any],
+        project_options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:  # type: ignore[override]
         """Validate and normalize entity data before persistence."""
 
     def normalize_materialized_dataframe(
@@ -29,7 +43,12 @@ class EntityPersistenceStrategy(Protocol):
 class DefaultEntityPersistenceStrategy:
     """Default persistence strategy with no type-specific behavior."""
 
-    def prepare_for_persistence(self, entity_name: str, entity_data: dict[str, Any]) -> dict[str, Any]:  # pylint: disable=unused-argument
+    def prepare_for_persistence(
+        self,  # pylint: disable=unused-argument
+        entity_name: str,  # pylint: disable=unused-argument
+        entity_data: dict[str, Any],
+        project_options: dict[str, Any] | None = None,  # pylint: disable=unused-argument
+    ) -> dict[str, Any]:  # pylint: disable=unused-argument
         return entity_data
 
     def normalize_materialized_dataframe(
@@ -46,7 +65,59 @@ class FixedEntityPersistenceStrategy:
     """Persistence strategy for fixed entities."""
 
     @staticmethod
-    def _validate_fixed_entity_shape(entity_name: str, entity_data: dict[str, Any]) -> None:
+    def _validate_types(entity_name: str, entity_data: dict[str, Any], project_options: dict[str, Any] | None = None) -> None:
+        """Ensure fixed-entity values match declared or inferred backend types before persisting."""
+        columns = entity_data.get("columns")
+        if not isinstance(columns, list):
+            return
+
+        values = entity_data.get("values")
+        if not isinstance(values, list) or not values:
+            return
+
+        try:
+            column_types = normalize_fixed_entity_column_types(entity_name, columns, entity_data.get("column_types"))
+        except FixedEntityColumnTypeDeclarationError as exc:
+            raise SchemaValidationError(message=str(exc), entity=entity_name, field="column_types") from exc
+
+        try:
+            conventions = normalize_fixed_entity_type_conventions(project_options)
+        except FixedEntityTypeConventionDeclarationError as exc:
+            raise SchemaValidationError(message=str(exc), entity=entity_name, field="options.fixed_entity_types") from exc
+
+        raw_keys = entity_data.get("keys")
+        keys: list[str] = [key for key in raw_keys if isinstance(key, str)] if isinstance(raw_keys, list) else []
+        public_id = entity_data.get("public_id") if isinstance(entity_data.get("public_id"), str) else None
+        full_columns = build_fixed_entity_full_columns(columns, keys, public_id)
+
+        for row_idx, row in enumerate(values):
+            row_columns = columns if len(row) == len(columns) else full_columns
+
+            for col_idx, value in enumerate(row):
+                if value is None:
+                    continue
+
+                col_name = row_columns[col_idx]
+                expected_type_name = resolve_fixed_entity_runtime_type(col_name, column_types, conventions)
+
+                if expected_type_name is None:
+                    continue
+
+                if not is_valid_fixed_entity_value(value, expected_type_name):
+                    raise SchemaValidationError(
+                        message=(
+                            f"Column '{col_name}' row {row_idx}: expected {expected_type_name} or null, " f"got {type(value).__name__}"
+                        ),
+                        entity=entity_name,
+                        field="values",
+                    )
+
+    @staticmethod
+    def _validate_fixed_entity_shape(
+        entity_name: str,
+        entity_data: dict[str, Any],
+        project_options: dict[str, Any] | None = None,
+    ) -> None:
         """Reject malformed fixed entities before they reach YAML persistence."""
         columns = entity_data.get("columns")
         if not isinstance(columns, list):
@@ -102,8 +173,15 @@ class FixedEntityPersistenceStrategy:
                 field="values",
             )
 
-    def prepare_for_persistence(self, entity_name: str, entity_data: dict[str, Any]) -> dict[str, Any]:
-        self._validate_fixed_entity_shape(entity_name, entity_data)
+        FixedEntityPersistenceStrategy._validate_types(entity_name, entity_data, project_options)
+
+    def prepare_for_persistence(
+        self,
+        entity_name: str,
+        entity_data: dict[str, Any],
+        project_options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        self._validate_fixed_entity_shape(entity_name, entity_data, project_options)
         return normalize_fixed_entity(entity_data)
 
     def normalize_materialized_dataframe(

@@ -36,13 +36,13 @@
 - `frontend/src/views/ProjectDetailView.vue` — `useConformanceValidation` imported and wired; `handleConformanceValidate()` handler added; `mergedValidationResult` extended to include conformance results alongside structural and data results
 - `frontend/src/components/MetadataEditor.vue` — **Target Model** combobox added; lists project YAML files as `@include: <file>` suggestions; allows free-text entry; clearable; included in save payload
 
-### Pending
+### Follow-Through
 
-Naming convention conformance and standalone test migration are complete (Milestone 3). Remaining deferred and future items — including semantic mismatch detection, Phase 4 advanced rules, format extensions, and open technical questions — have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Milestones 1-3 are complete. The delivered follow-through and deferred notes live in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md), and the remaining non-ecosystem follow-up is tracked in GitHub issue #457.
 
 ## Summary
 
-Add optional target-schema-aware validation that reasons about modeling intent and target system requirements, not just YAML structure. The validator would catch semantic mismatches like fact tables using lookup-style IDs or entities missing required relationships. Target models are defined in reusable specification files and referenced via `@include:`, making Shape Shifter generic while still allowing target-specific guidance when needed.
+Add optional target-schema-aware validation that reasons about modeling intent and target system requirements, not just YAML structure. The validator would catch semantic mismatches like fact tables using lookup-style IDs or entities missing required relationships. Target models are defined in reusable specification files and referenced via `@load:`, making Shape Shifter generic while still allowing target-specific guidance when needed.
 
 ## Problem
 
@@ -108,15 +108,15 @@ This proposal does not:
 - Public ID conformance (missing, unexpected)
 - Spec self-consistency (unknown FK targets, identity columns, unique-set columns, naming conventions)
 
-### Still absent from any validation path
+### Remaining Follow-Up Outside The Current Validation Path
 
-- Entity semantic roles (fact vs lookup vs classifier) — semantic mismatch detection deferred to [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
-- Source type appropriateness (classifiers should use `fixed` or `sql`) — deferred
-- Backend wiring for Phase 4 checks — deferred
+- Branch-aware semantic validation for merged-parent branch coverage
+- Alias matching and semantic normalization heuristics
+- Broader semantic-role mismatch heuristics beyond the delivered role-informed checks
 
 ## Proposed Design
 
-The target-model format is defined in [TARGET_MODEL_SPECIFICATION_FORMAT.md](TARGET_MODEL_SPECIFICATION_FORMAT.md). Implementation details and code-level sketches are documented in [TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md](TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md). Phased rollout for the first SEAD model is tracked in [target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md](../../target_models/docs/SEAD_V2_IMPLEMENTATION_PLAN.md).
+The target-model format is defined in [TARGET_MODEL_SPECIFICATION_FORMAT.md](TARGET_MODEL_SPECIFICATION_FORMAT.md). Implementation details and code-level sketches are documented in [TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md](TARGET_SCHEMA_AWARE_VALIDATION_IMPLEMENTATION_SKETCH.md). Phased rollout for the first SEAD model is tracked in [SEAD_V2_IMPLEMENTATION_PLAN.md](SEAD_V2_IMPLEMENTATION_PLAN.md).
 
 ### Key Concepts
 
@@ -153,11 +153,11 @@ Naming conventions are target-model rules about identifiers and columns, such as
 
 Introduce target model specification files that define target system requirements independently from project data mappings.
 
-**File location during iteration:** `target_models/specs/<target_system_name>.yml`
+**File location during iteration:** `resources/target_models/<target_system_name>.yml`
 
 **Structure:**
 ```yaml
-# target_models/specs/sead_v2.yml
+# resources/target_models/sead_standard_model.yml
 model:
   name: "SEAD Clearinghouse"
   version: "2.0.0"
@@ -203,13 +203,13 @@ constraints:
 
 ### Project Referencing
 
-Projects reference target models using existing `@include:` pattern:
+Projects reference target models using existing `@load:` pattern:
 
 ```yaml
 metadata:
   type: shapeshifter-project
   name: "Arbodat Dendrochronology Import"
-  target_model: "@include: target_models/specs/sead_v2.yml"
+  target_model: "@load: resources/target_models/sead_standard_model.yml"
   
 entities:
   location:
@@ -247,7 +247,7 @@ metadata:
 - [x] Expected/unexpected public_id checks (`PublicIdConformanceValidator`)
 - [ ] Naming convention checks against project entities — public_id_suffix validated in `TargetModelSpecValidator` only; not yet in conformance
 
-**Phase 2: Semantic Checks** — deferred; see [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
+**Phase 2: Semantic Checks** — see the closed follow-through record in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md)
 - [ ] Global role-informed checks such as `no_orphan_facts`
 - [ ] Semantic naming mismatches where entity key and expected identifier clearly diverge
 
@@ -256,7 +256,7 @@ metadata:
 - [ ] Branch-scoped consumer validity
 - [ ] Schema-aware append conformance
 
-Deferred items and open technical questions are tracked in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Deferred items and open technical questions are summarized in [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Architecture Decisions
 
@@ -283,10 +283,10 @@ Deferred items and open technical questions are tracked in [TARGET_MODEL_CONFORM
 
 ```yaml
 # This (recommended):
-target_model: "@include: target_models/specs/sead_v2.yml"
+target_model: "@include: resources/target_models/sead_standard_model.yml"
 
 # Not this:
-target_model: "target_models/specs/sead_v2.yml"
+target_model: "resources/target_models/sead_standard_model.yml"
 ```
 
 Reasons:
@@ -362,7 +362,7 @@ If the project has no `target_model` declared, the endpoint returns an empty val
 
 ### Metadata Editor — Target Model field
 
-A **Target Model** combobox is added below the Default Entity selector. On mount the editor fetches the project's uploaded YAML files (`GET /projects/{name}/files?ext=yml,yaml`) and presents them as `@include: <filename>` options. Users can also type a path directly, which is the idiomatic way to reference a spec file that lives outside the uploads directory (e.g. `@include: target_models/specs/sead_v2.yml`). The field is clearable; clearing it and saving removes `target_model` from the project metadata entirely. The value is always included in the PATCH payload so the backend can distinguish an intentional clear from a field that was simply not sent.
+A **Target Model** combobox is added below the Default Entity selector. On mount the editor fetches the project's uploaded YAML files (`GET /projects/{name}/files?ext=yml,yaml`) and presents them as `@include: <filename>` options. Users can also type a path directly, which is the idiomatic way to reference a spec file that lives outside the uploads directory (e.g. `@include: resources/target_models/sead_standard_model.yml`). The field is clearable; clearing it and saving removes `target_model` from the project metadata entirely. The value is always included in the PATCH payload so the backend can distinguish an intentional clear from a field that was simply not sent.
 
 ## Alternatives Considered
 
@@ -441,7 +441,7 @@ entities:
 
 ## Open Questions
 
-Deferred open questions (severity defaults, custom validators, multiple target models, target model inheritance, validation configuration / rule disabling) have been consolidated into [docs/proposals/TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
+Deferred open questions (severity defaults, custom validators, multiple target models, target model inheritance, validation configuration / rule disabling) have been consolidated into [TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md](TARGET_MODEL_CONFORMANCE_ENHANCEMENTS.md).
 
 ## Final Recommendation
 
@@ -451,7 +451,7 @@ Implement target-schema-aware validation using separate, reusable target model s
 - Define target model schema around top-level `model`, `entities`, `naming`, and `constraints`
 - Add `metadata.target_model` field
 - Implement basic validation (required entities, columns, and foreign keys)
-- Ship with `target_models/specs/sead_v2.yml` as reference
+- Ship with `resources/target_models/sead_standard_model.yml` as reference
 
 **Benefits:**
 - Makes Shape Shifter truly generic (no hardcoded SEAD assumptions)
