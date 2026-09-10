@@ -164,9 +164,9 @@ The former deployment-verification Area 6 is now owned by [CENTRALIZED_AUTHORIZA
 |---|---|---|
 | Authorization and authentication regression tests | Done | Runtime route, proxy-identity, direct-route, session-ownership, CORS, health, cross-resource HTTP, and team-grant regressions are covered |
 | Filesystem boundary regression tests | Done | Download endpoint, directive (@include/@load), backup, upload, file browsing, and project-name regressions are covered |
-| SQL and DuckDB regression tests | In progress | Shared policy, SQL-loader, QueryService, and internal DuckDB regression coverage is passing; PostgreSQL least-privilege role integration remains |
+| SQL and DuckDB regression tests | In progress | Shared policy, SQL-loader, QueryService, internal DuckDB, and Shape Shifter PostgreSQL `SELECT` coverage passes; the tested account is a pre-existing system-wide SEAD user, and `NOINHERIT` is DBA-owned and outside Shape Shifter scope |
 | Response and logging redaction tests | Done | Public error, global exception, data-source failure, credential/path redaction, correlation ID, and newline-safe logging regressions are covered |
-| Verified case re-runs and full test suites | In progress | Focused security checks and Core suite pass; backend has one unrelated pre-existing ingester test failure. PostgreSQL role integration remains outstanding. |
+| Verified case re-runs and full test suites | In progress | Focused security checks and Core suite pass; backend has one unrelated pre-existing ingester test failure. PostgreSQL behavior passes, with account ownership and `NOINHERIT` recorded as deployment/DBA disposition. |
 | Deployment verification and security record update | Moved | Owned by the authorization cutover plan’s Podman deployment phase; blocked until a deployment host and Podman service model are selected |
 
 ## Definition Of Done
