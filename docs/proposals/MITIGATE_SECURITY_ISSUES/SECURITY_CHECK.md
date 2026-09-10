@@ -465,6 +465,76 @@ was updated accordingly. All dev testing used the same localhost-only binding
 and scratch Postgres; the sacrificial table was dropped again during the 1.3
 re-run.
 
+## Phase 5 Verification Record (2026-09-10)
+
+The repository verification was run against source commit
+`4fc4e74fd47e99b3ed894d737f8653c6bd90eb3c` on branch
+`security-regression-and-release-verification`. The worktree already contained
+uncommitted test changes and an untracked authorization probe; those files were
+preserved and were not used as Phase 5 changes.
+
+### Re-run evidence
+
+| Case | Result | Evidence and limitation |
+|---|---|---|
+| 1.1 arbitrary file read | PASS | Disposable-root download, absolute-path, traversal, symlink, and file-resolver tests passed. |
+| 1.2 arbitrary file write | PASS | Disposable output-root and symlink-replacement tests passed through the execution service. |
+| 1.3 multi-statement SQL | PASS | Shared SQL policy, QueryService, PostgreSQL-loader pre-connection tests, and the Shape Shifter `SELECT` using `sead_ro` passed. The account is a pre-existing system-wide SEAD user, not a Shape Shifter-dedicated application user. |
+| 1.4 environment-variable exfiltration | PASS | Data-source failure response and log-redaction tests passed; secret values and connection details were absent. |
+| 1.5 ingester endpoints | PARTIAL | Unauthenticated route protection is covered and passed. Deep SEAD file-read/database-write verification still requires a real or equivalent SEAD clearing-house database; retain the existing exception. |
+| 1.6 SQL identifier interpolation | PASS (code-level regression) | Identifier edge-case quoting tests passed. A live crafted PostgreSQL object-name test was not run. |
+| 2.1 `@include`/`@load` file read | PASS | Disposable project/shared-root traversal, absolute-path, and symlink confinement tests passed. |
+| 2.4 CORS origin reflection | PASS | CORS regression tests passed. |
+| D1 internal DuckDB file read/write | PASS | Internal DuckDB policy tests rejected file functions, outside paths, network paths, and stacked statements on read and scalar paths. |
+| D4 unauthenticated data-source config leak | PASS | Route authentication, cross-resource access, and data-source API tests passed. |
+
+The focused Phase 5 security set passed with **471 tests**. This included
+disposable filesystem and DuckDB fixtures plus public-route and direct-service
+checks; no disposable PostgreSQL server was available for this run.
+
+### Full-suite and quality results
+
+| Check | Result |
+|---|---|
+| `uv run pytest tests -v` | PASS — 1,648 passed, 1 skipped, 7 warnings |
+| `uv run pytest backend/tests -v` | FAIL — 1,948 passed, 14 skipped, 1 failed |
+| `make lint` | PASS — formatting, Ruff, Pylint, and schema-reference checks passed |
+
+The backend failure is unrelated to Phase 5 security changes:
+`backend/tests/ingesters/test_sead_change_request_package_builder.py::TestBuildChangeRequestPackage::test_includes_only_insertable_row_states`
+expected `sample` and `sample_taxon` package tables but received none. The test
+file is unchanged from the tested commit and the worktree changes do not touch
+the ingester package builder.
+
+### Finding matrix
+
+| Finding IDs | Result mapping |
+|---|---|
+| 1.1, 1.2, 2.1, D1 | Focused disposable filesystem/output/directive/DuckDB tests above; live deployment reproduction not performed. |
+| 1.3, 1.6 | SQL policy, QueryService, PostgreSQL-loader, identifier regression tests, and the successful Shape Shifter `SELECT` using `sead_ro`. `sead_ro` is a pre-existing system-wide SEAD user rather than a Shape Shifter-dedicated account; DBA-owned role configuration remains outside Shape Shifter scope. |
+| 1.4, D4 | Response/logging redaction, route authentication, cross-resource, and data-source API tests above. |
+| 1.5 | Protected-route test passed; real-SEAD deep-path verification remains the documented exception. |
+| 2.2, 2.3 | Existing practical-verification evidence above; not re-run in this local Phase 5 test pass. |
+| 2.4 | CORS regression test passed. |
+| 3.1–3.10 | Existing code/repository evidence in this record; deployment-specific checks remain outstanding. |
+| N1–N3 | Existing practical-verification evidence above; no new live database or ingester environment was available. |
+| D2–D3 | Existing dev reproduction and review evidence above; these are correctness follow-ups, not Phase 5 security pass criteria. |
+
+### PostgreSQL role disposition
+
+The database-side read-only checks and the Shape Shifter `SELECT` integration
+test passed using `sead_ro`. This account is a pre-existing, system-wide SEAD
+user and is not dedicated to Shape Shifter. Creating or replacing it with an
+application-specific account is therefore outside this repository's scope.
+
+The `NOINHERIT` correction has been passed to the DBA. It is a database
+administration action outside Shape Shifter's control and must be tracked as a
+deployment exception or external prerequisite, not as an application defect.
+
+Deployment verification is not complete: no target deployment environment,
+immutable image digest, proxy/firewall access, database-grant inspection, or
+container-log access was provided for this run.
+
 ---
 
 ## Tier 1 — Exploitable with a single unauthenticated request
