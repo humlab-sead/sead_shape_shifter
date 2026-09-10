@@ -213,8 +213,9 @@ class TestCreateSpecification:
 
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/mapping-registry", json=payload)
 
-        assert response.status_code == 400
-        assert "already exists" in response.json()["detail"]
+        assert response.status_code == 409
+        detail = response.json()["detail"]
+        assert "already exists" in detail["message"]
 
     @patch("backend.app.services.reconciliation.service.ProjectMapper")
     async def test_create_specification_invalid_entity(
@@ -243,7 +244,8 @@ class TestCreateSpecification:
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/mapping-registry", json=payload)
 
         assert response.status_code == 400
-        assert "does not exist" in response.json()["detail"]
+        detail = response.json()["detail"]
+        assert "does not exist" in detail["message"]
 
 
 class TestUpdateSpecification:
@@ -341,8 +343,9 @@ class TestDeleteSpecification:
         response = await authorized_client.delete("/api/v1/projects/test_project/reconciliation/mapping-registry/site/site_name")
 
         assert response.status_code == 400
-        assert "Cannot delete existing mapping" in response.json()["detail"]
-        assert "from catalog" in response.json()["detail"]
+        detail = response.json()["detail"]
+        assert "Cannot delete existing mapping" in detail["message"]
+        assert "from catalog" in detail["message"]
 
     async def test_delete_specification_with_mappings_force(
         self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config, authorized_client
