@@ -10,7 +10,7 @@ import jpype
 import pandas as pd
 import sqlparse
 from loguru import logger
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlparse.tokens import Comment, Keyword, Literal
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
@@ -574,7 +574,12 @@ class PostgresSqlLoader(SqlLoader):
         """Read SQL query into a DataFrame using the provided connection."""
         ensure_read_only_sql(sql)
         with create_engine(url=self.db_uri).begin() as connection:
-            data: pd.DataFrame = pd.read_sql_query(sql=sql, con=connection, params=params)  # type: ignore[arg-type]
+            if params is not None:
+                # Wrap in text() so named parameters such as :schema are bound
+                # by SQLAlchemy instead of being sent to the driver as literals.
+                data: pd.DataFrame = pd.read_sql_query(sql=text(sql), con=connection, params=params)
+            else:
+                data: pd.DataFrame = pd.read_sql_query(sql=sql, con=connection)
         return data
 
     async def execute_scalar_sql(self, sql: str) -> Any:

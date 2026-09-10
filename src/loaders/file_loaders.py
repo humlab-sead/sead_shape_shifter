@@ -109,11 +109,12 @@ class CsvLoader(FileLoader):
 
         assert self.data_source is not None
 
-        try:
-            file_path: str | None = self.data_source.options.get("filename") if self.data_source.options else None
-            if not file_path:
-                raise ValueError("CSV source requires 'filename' or 'file_path'")
+        file_path: str | None = self.data_source.options.get("filename") if self.data_source.options else None
+        if not file_path:
+            elapsed_ms: int = int((time.time() - start_time) * 1000)
+            return ConnectTestResult(success=False, message="Filename is required", connection_time_ms=elapsed_ms, metadata={})
 
+        try:
             path: Path = Path(file_path)
             if not path.exists():
                 raise FileNotFoundError(f"File not found: {file_path}")

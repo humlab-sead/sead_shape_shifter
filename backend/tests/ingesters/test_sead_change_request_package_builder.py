@@ -120,4 +120,5 @@ class TestBuildChangeRequestPackage:
         package = build_change_request_package(projection_result, identity_result, planned_tables)
 
         assert package.tables["sample"].frame["sample_name"].tolist() == ["changed"]
+        assert package.tables["sample"].planned_actions is not None
         assert package.tables["sample"].planned_actions.tolist() == [PlannedRowAction.UPDATE_EXISTING_CANDIDATE]
