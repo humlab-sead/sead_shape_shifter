@@ -52,7 +52,7 @@ Ensure that sensitive operations require the verified identity authenticated by 
 - [x] Keep health checks public only when required by deployment health checks.
 - [x] Separate project editing sessions from authenticated identity and verify session ownership.
 - [x] Restrict CORS to configured trusted origins; remove broad development-domain defaults from shared and production settings.
-- [ ] If cookie authentication is used, add CSRF protection and secure cookie attributes.
+- ~~[ ] If cookie authentication is used, add CSRF protection and secure cookie attributes.~~
 - [x] Record [native application authentication](../future/NATIVE_APPLICATION_AUTHENTICATION.md) as future work without making it a dependency for this phase.
 
 **Completion Criteria**

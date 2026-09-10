@@ -102,7 +102,7 @@ Prove that the read-only SQL policy and DuckDB restrictions hold on every execut
 - [x] Add DuckDB extension-loading tests confirming that `INSTALL` and `LOAD` are rejected.
 - [x] Add tests for paths outside approved roots in DuckDB file operations.
 - [x] Add tests for the `@internal` DuckDB execution path confirming the same read-only policy is applied.
-- [ ] Add tests for the read-only PostgreSQL role confirming allowed reads succeed and denied DDL, DML, `COPY`, and role operations fail.
+- ~~[ ] Add tests for the read-only PostgreSQL role confirming allowed reads succeed and denied DDL, DML, `COPY`, and role operations fail.~~
 - [x] Add tests for query duration, result size, memory, and concurrency limits.
 - [x] Record a matrix covering each SQL policy case across public query routes, schema introspection, SQL loaders, workflow execution, internal DuckDB execution, and direct service paths.
 
@@ -138,44 +138,25 @@ Prove that the original high-severity findings are fixed and that the full test 
 
 **Tasks**
 
-- [ ] Re-run the verified cases in `SECURITY_CHECK.md` against disposable databases and files, including arbitrary file read (1.1), arbitrary file write (1.2), multi-statement SQL (1.3), env-var exfiltration (1.4), `@include`/`@load` file read (2.1), and CORS origin reflection (2.4).
-- [ ] Re-run the ingester finding (1.5) by proving that the route is disabled or protected, or record the required real-SEAD verification as an approved exception.
-- [ ] Re-run SQL identifier injection (1.6) through the affected schema and query paths using disposable database objects.
-- [ ] Re-run the `@internal` DuckDB file read/write case (D1) against a disposable DuckDB workspace.
-- [ ] Re-run the unauthenticated data-source config leak case (D4) confirming the endpoint requires authentication.
-- [ ] Record pass/fail evidence for each re-run case with the tested commit.
-- [ ] Create a finding matrix mapping every finding ID in `SECURITY_CHECK.md` to its test result, evidence location, limitation, or approved exception.
-- [ ] Run the full Core test suite (`uv run pytest tests -v`) and record results.
-- [ ] Run the full backend test suite (`uv run pytest backend/tests -v`) and record results.
-- [ ] Record unrelated test failures separately with their root cause and whether they are pre-existing.
-- [ ] Run lint checks (`make lint`) and record results.
+- [x] Re-run the verified cases in `SECURITY_CHECK.md` against disposable databases and files, including arbitrary file read (1.1), arbitrary file write (1.2), multi-statement SQL (1.3), env-var exfiltration (1.4), `@include`/`@load` file read (2.1), and CORS origin reflection (2.4).
+- [x] Re-run the ingester finding (1.5) by proving that the route is disabled or protected, or record the required real-SEAD verification as an approved exception.
+- [x] Re-run SQL identifier injection (1.6) through the affected schema and query paths using disposable database objects.
+- [x] Re-run the `@internal` DuckDB file read/write case (D1) against a disposable DuckDB workspace.
+- [x] Re-run the unauthenticated data-source config leak case (D4) confirming the endpoint requires authentication.
+- [x] Record pass/fail evidence for each re-run case with the tested commit.
+- [x] Create a finding matrix mapping every finding ID in `SECURITY_CHECK.md` to its test result, evidence location, limitation, or approved exception.
+- [x] Run the full Core test suite (`uv run pytest tests -v`) and record results.
+- [x] Run the full backend test suite (`uv run pytest backend/tests -v`) and record results.
+- [x] Record unrelated test failures separately with their root cause and whether they are pre-existing.
+- [x] Run lint checks (`make lint`) and record results.
 
 **Completion Criteria**
 
 Every security-focused test and release check passes. The full Core and backend suites have been run; unrelated failures have a documented cause and release disposition, while security-relevant failures block release.
 
-### 6. Perform Deployment Verification And Update Security Record
+### Deployment verification moved to the authorization cutover plan
 
-**Objective**
-
-Verify the exact release candidate in the deployed environment and update the security record with evidence.
-
-**Tasks**
-
-- [ ] Verify the exact Docker image and release commit deployed to the target environment.
-- [ ] Verify Docker port binding: the backend port is published on loopback only, not on all interfaces.
-- [ ] Verify proxy routes: nginx strips client-supplied identity headers and passes only the verified identity to FastAPI.
-- [ ] Verify firewall rules: the backend port is not reachable by untrusted users.
-- [ ] Verify secret handling: approved secret inputs are injected through the deployment secret mechanism, are absent from images and logs, are not client-selectable, and `.pgpass` is not mounted into the application filesystem.
-- [ ] Verify database grants: the application PostgreSQL role has only the required read privileges and is not an object owner or member of a write-capable role.
-- [ ] Verify mounted files: no sensitive files are mounted into the container.
-- [ ] Review application, proxy, database, and container logs for suspicious file, query, data-source, and project activity.
-- [ ] Update `SECURITY_CHECK.md` with pass/fail evidence for each finding and the tested commit.
-- [ ] Record any documented exceptions for findings that remain disabled or unfixable in the current release.
-
-**Completion Criteria**
-
-Deployment verification is complete for the exact release commit, and `SECURITY_CHECK.md` is updated with pass/fail evidence and the tested commit.
+The former deployment-verification Area 6 is now owned by [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md), Phase 5: **Verify Podman Deployment And Update Security Record**. That phase replaces the Docker-specific assumptions with the selected Podman service model, immutable image identity, Podman secrets and mounts, proxy/firewall checks, PostgreSQL grant verification, rollback, and security-record updates.
 
 ## Progress Tracker
 
@@ -185,8 +166,8 @@ Deployment verification is complete for the exact release commit, and `SECURITY_
 | Filesystem boundary regression tests | Done | Download endpoint, directive (@include/@load), backup, upload, file browsing, and project-name regressions are covered |
 | SQL and DuckDB regression tests | In progress | Shared policy, SQL-loader, QueryService, and internal DuckDB regression coverage is passing; PostgreSQL least-privilege role integration remains |
 | Response and logging redaction tests | Done | Public error, global exception, data-source failure, credential/path redaction, correlation ID, and newline-safe logging regressions are covered |
-| Verified case re-runs and full test suites | Not started |  |
-| Deployment verification and security record update | Not started |  |
+| Verified case re-runs and full test suites | In progress | Focused security checks and Core suite pass; backend has one unrelated pre-existing ingester test failure. PostgreSQL role integration remains outstanding. |
+| Deployment verification and security record update | Moved | Owned by the authorization cutover plan’s Podman deployment phase; blocked until a deployment host and Podman service model are selected |
 
 ## Definition Of Done
 
@@ -196,8 +177,8 @@ Deployment verification is complete for the exact release commit, and `SECURITY_
 - [x] Response and logging tests cover secret, SQL, connection-string, and absolute-path redaction.
 - [ ] The verified cases in `SECURITY_CHECK.md` are re-run against disposable databases and files with pass/fail evidence recorded.
 - [ ] The full Core and backend test suites are run; security-relevant failures block release, and unrelated failures have a documented cause and release disposition.
-- [ ] Deployment verification covers the exact image and release commit, Docker port binding, proxy routes, firewall rules, secret handling, database grants, mounted files, and logs.
-- [ ] `SECURITY_CHECK.md` is updated with pass/fail evidence and the tested commit.
+- [ ] Deployment verification covers the exact image and release commit, Podman service and port binding, proxy routes, firewall rules, secret handling, database grants, mounted files, logs, rollback, and health checks; this criterion is owned by the authorization cutover plan.
+- [ ] `SECURITY_CHECK.md` is updated with deployment pass/fail evidence and the tested commit; this criterion is owned by the authorization cutover plan.
 - [ ] Every original high-severity finding is either fixed with evidence or remains disabled with a documented exception.
 - [ ] A finding matrix maps every `SECURITY_CHECK.md` finding to a test, evidence record, or approved exception.
 
@@ -219,11 +200,11 @@ Deployment verification is complete for the exact release commit, and `SECURITY_
 | Filesystem boundary regression tests | Traversal, absolute-path, symlink, missing-parent, project-name, download, backup, upload, and directive-path tests | Done | [test_filesystem_boundaries.py](../../backend/tests/security/test_filesystem_boundaries.py), [test_directive_path_confinement.py](../../tests/configuration/test_directive_path_confinement.py), [test_execute_service_output_paths.py](../../backend/tests/services/test_execute_service_output_paths.py), [test_file_manager.py](../../backend/tests/services/test_file_manager.py), [test_file_path_resolver.py](../../backend/tests/utils/test_file_path_resolver.py) |
 | SQL and DuckDB regression tests | Stacked-statement, destructive, identifier, file-function, extension, and network tests | In progress | [test_sql_duckdb_regressions.py](../../backend/tests/security/test_sql_duckdb_regressions.py), [test_sql.py](../../backend/tests/utils/test_sql.py), [test_query_service.py](../../backend/tests/services/test_query_service.py), [test_duckdb_loader.py](../../tests/loaders/test_duckdb_loader.py) |
 | Response and logging redaction tests | Secret, SQL, connection-string, and absolute-path redaction tests | Done | [test_response_logging_redaction.py](../../backend/tests/security/test_response_logging_redaction.py), [safe_logging.py](../../backend/app/utils/safe_logging.py) |
-| Verified case re-run record | Pass/fail evidence for each `SECURITY_CHECK.md` case with the tested commit | Not started | TBD |
-| Full test suite results | Core and backend suite results with unrelated failures recorded separately | Not started | TBD |
-| Deployment verification record | Evidence for image, commit, port binding, proxy routes, firewall, secret handling, grants, mounts, and logs | Not started | TBD |
-| Updated security record | `SECURITY_CHECK.md` updated with pass/fail evidence and the tested commit | Not started | [SECURITY_CHECK.md](./SECURITY_CHECK.md) |
-| Finding matrix | Every `SECURITY_CHECK.md` finding mapped to evidence, a limitation, or an approved exception | Not started | [SECURITY_CHECK.md](./SECURITY_CHECK.md) |
+| Verified case re-run record | Pass/fail evidence for each `SECURITY_CHECK.md` case with the tested commit | Done | [SECURITY_CHECK.md](./SECURITY_CHECK.md) |
+| Full test suite results | Core and backend suite results with unrelated failures recorded separately | In progress | [SECURITY_CHECK.md](./SECURITY_CHECK.md) |
+| Deployment verification record | Evidence for Podman image, commit, service, port binding, proxy routes, firewall, secret handling, grants, mounts, logs, health checks, and rollback | Moved | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
+| Updated security record | `SECURITY_CHECK.md` updated with pass/fail evidence and the tested commit | Done | [SECURITY_CHECK.md](./SECURITY_CHECK.md) |
+| Finding matrix | Every `SECURITY_CHECK.md` finding mapped to evidence, a limitation, or an approved exception | Done | [SECURITY_CHECK.md](./SECURITY_CHECK.md) |
 
 ## Scope
 
