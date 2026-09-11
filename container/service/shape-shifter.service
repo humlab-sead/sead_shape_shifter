@@ -1,0 +1,48 @@
+[Unit]
+Description=Shape Shifter Podman Container Service
+Documentation=https://github.com/humlab-sead/sead_shape_shifter
+After=podman.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+
+# Ensure Podman user session is available
+Environment="PODMAN_SYSTEMD_UNIT=%n"
+
+# Set working directory to container folder
+WorkingDirectory=%h/container
+
+# Start command using podman-compose
+ExecStart=/usr/bin/podman-compose \
+  -f podman-compose.yml \
+  -p shapeshifter \
+  up
+
+# Stop command
+ExecStop=/usr/bin/podman-compose \
+  -f podman-compose.yml \
+  -p shapeshifter \
+  down
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+
+# Resource limits (adjust based on your system)
+# Limit memory to 2GB
+MemoryLimit=2G
+
+# Limit CPU to 2 cores (200%)
+CPUQuota=200%
+
+# Auto-restart on boot (requires loginctl enable-linger)
+RemainAfterExit=no
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=shape-shifter
+
+[Install]
+WantedBy=default.target
