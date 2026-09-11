@@ -43,19 +43,19 @@ For deployment to dedicated users, multiple environments, NGINX, and systemd ins
 
 Run these from `container/`:
 
-| Command | Purpose |
-|---|---|
-| `make setup` | Create data directories and the environment file |
-| `make build` | Build the image |
-| `make up` | Start the container |
-| `make down` | Stop the container |
-| `make restart` | Restart the container |
-| `make logs` | Follow container logs |
-| `make status` | Show container status |
-| `make shell` | Open a shell in the container |
-| `make healthcheck` | Check the health endpoint |
-| `make backup` | Create a data backup |
-| `make service-install` | Install the systemd user service |
+| Command                | Purpose                                          |
+|------------------------|--------------------------------------------------|
+| `make setup`           | Create data directories and the environment file |
+| `make build`           | Build the image                                  |
+| `make up`              | Start the container                              |
+| `make down`            | Stop the container                               |
+| `make restart`         | Restart the container                            |
+| `make logs`            | Follow container logs                            |
+| `make status`          | Show container status                            |
+| `make shell`           | Open a shell in the container                    |
+| `make healthcheck`     | Check the health endpoint                        |
+| `make backup`          | Create a data backup                             |
+| `make service-install` | Install the systemd user service                 |
 
 Run `make help` for the complete target list.
 
