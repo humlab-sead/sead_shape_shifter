@@ -10,14 +10,6 @@ This directory contains the Podman deployment for Shape Shifter. It supports roo
 - A dedicated user account for each deployed environment
 - Sufficient disk space for projects, logs, outputs, and backups
 
-Install the packages on Debian or Ubuntu:
-
-```bash
-sudo apt-get update
-sudo apt-get install -y podman podman-compose
-sudo loginctl enable-linger "$USER"
-podman unshare id
-```
 
 ## Quick Start
 
