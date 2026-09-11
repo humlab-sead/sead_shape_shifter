@@ -1,0 +1,80 @@
+version: '3.9'
+
+# Podman Compose configuration for Shape Shifter
+# Works with both podman-compose and podman (native pods)
+#
+# Usage:
+#   podman-compose up -d
+#   podman-compose down
+#   podman-compose logs -f
+#
+# For rootless Podman with systemd user service, see service/shape-shifter.service
+
+services:
+  shape-shifter:
+    build:
+      context: ..
+      dockerfile: container/Containerfile
+      args:
+        # User ID settings (defaults to current user, works with rootless Podman)
+        - USER_UID=${USER_UID:-1000}
+        - USER_GID=${USER_GID:-1000}
+
+        # Build-time arguments for frontend (served via backend, so API URL is blank)
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-""}
+        - VITE_ENV=${VITE_ENV:-production}
+        - VITE_ENABLE_ANALYTICS=${VITE_ENABLE_ANALYTICS:-false}
+        - VITE_ENABLE_DEBUG=${VITE_ENABLE_DEBUG:-false}
+
+    image: shape-shifter:latest
+    container_name: shape-shifter
+    
+    # For Podman rootless: user is always the current user, UID/GID set at build time
+    # Docker-style user specification not needed
+
+    ports:
+      - "${HOST_PORT:-8012}:8012"
+
+    env_file:
+      # Load all environment variables from backend.env
+      - ./data/backend.env
+
+    # Podman rootless does not support extra_hosts in the same way,
+    # but host.docker.internal still works on many systems.
+    # For compatibility, we rely on environment variables or DNS resolution.
+
+    networks:
+      - shape-shifter-network
+
+    volumes:
+      # Mount local data directories from container-data/
+      # Use absolute paths for Podman rootless compatibility
+      - ${PWD}/../container-data/projects:/app/projects:rw
+      - ${PWD}/../container-data/shared:/app/shared:rw
+      - ${PWD}/../container-data/logs:/app/logs:rw
+      - ${PWD}/../container-data/output:/app/output:rw
+      - ${PWD}/../container-data/backups:/app/backups:rw
+      - ${PWD}/../container-data/tmp:/app/tmp:rw
+
+      # Mount .pgpass for PostgreSQL authentication (if exists)
+      - ${PWD}/../container-data/.pgpass:/app/.pgpass:ro
+
+    restart: unless-stopped
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Podman health checks work similarly to Docker
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8012/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  shape-shifter-network:
+    driver: bridge

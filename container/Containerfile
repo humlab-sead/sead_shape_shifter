@@ -1,0 +1,216 @@
+# ==============================================================================
+# Podman Containerfile for Shape Shifter
+# Builds frontend (Vue 3) and serves via FastAPI backend
+#
+# Build Modes:
+#   1. From local context (default - recommended for development):
+#      podman build -f container/Containerfile -t shape-shifter .
+#
+#   2. From GitHub repository (recommended for production):
+#      podman build -f container/Containerfile \
+#                   --build-arg SOURCE=github \
+#                   --build-arg GIT_REF=main \
+#                   -t shape-shifter .
+#
+#   3. From GitHub with cache invalidation (when branch has new commits):
+#      podman build -f container/Containerfile \
+#                   --build-arg SOURCE=github \
+#                   --build-arg GIT_REF=main \
+#                   --build-arg CACHE_BUST=$(git ls-remote https://github.com/humlab-sead/sead_shape_shifter.git refs/heads/main | cut -f1) \
+#                   -t shape-shifter .
+#
+# NOTE: Compatible with Docker and Podman (buildah).
+# ==============================================================================
+
+# Global build arguments (available to all stages)
+ARG PYTHON_VERSION=3.13
+ARG NODE_VERSION=20
+ARG ALPINE_VERSION=3.19
+ARG USER_UID=1000
+ARG USER_GID=1000
+ARG SOURCE=workdir
+
+# ------------------------------------------------------------------------------
+# Stage 0: Resolve Application Source
+# ------------------------------------------------------------------------------
+ARG ALPINE_VERSION
+FROM alpine:${ALPINE_VERSION} AS source-github
+
+ARG GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git
+ARG GIT_REF=main
+ARG CACHE_BUST=1
+
+WORKDIR /source
+
+RUN echo "Cloning application from GitHub: ${GIT_REPO} (ref: ${GIT_REF})..." && \
+    echo "Cache bust value: ${CACHE_BUST}" && \
+    apk add --no-cache git && \
+    git clone --depth 1 --branch "${GIT_REF}" "${GIT_REPO}" /source && \
+    cd /source && \
+    echo "Cloned commit: $(git rev-parse HEAD)"
+
+FROM alpine:${ALPINE_VERSION} AS source-workdir
+
+WORKDIR /source
+
+# Local workdir builds require repository-root context so these paths exist.
+COPY frontend/ ./frontend/
+COPY src/ ./src/
+COPY backend/ ./backend/
+COPY ingesters/ ./ingesters/
+COPY scripts/ ./scripts/
+COPY docs/ ./docs/
+COPY lib/ ./lib/
+COPY pyproject.toml ./
+COPY uv.lock ./
+COPY README.md ./
+
+FROM alpine:${ALPINE_VERSION} AS lib-context
+
+WORKDIR /lib-context
+
+# lib/ is expected to exist in the Podman build context for both build modes.
+COPY lib/ ./lib/
+
+ARG SOURCE=workdir
+FROM source-${SOURCE} AS source
+
+
+# ------------------------------------------------------------------------------
+# Stage 1: Build Frontend
+# ------------------------------------------------------------------------------
+ARG NODE_VERSION
+FROM node:${NODE_VERSION}-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+
+# Install pnpm
+RUN npm install -g pnpm@9
+
+# Copy dependency manifests first so application source edits do not invalidate
+# the pnpm install layer.
+COPY --from=source /source/frontend/package.json ./package.json
+COPY --from=source /source/frontend/pnpm-lock.yaml ./pnpm-lock.yaml
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy frontend source after dependencies are installed.
+COPY --from=source /source/frontend ./
+
+# Build frontend
+# - VITE_API_BASE_URL: Leave empty for backend-served frontend
+# - VITE_ENV: production for optimized build
+ARG VITE_API_BASE_URL=""
+ARG VITE_ENV=production
+ARG VITE_ENABLE_ANALYTICS=false
+ARG VITE_ENABLE_DEBUG=false
+
+RUN echo "Building frontend with:" && \
+    echo "  VITE_API_BASE_URL=${VITE_API_BASE_URL}" && \
+    echo "  VITE_ENV=${VITE_ENV}" && \
+    echo "  VITE_ENABLE_ANALYTICS=${VITE_ENABLE_ANALYTICS}" && \
+    echo "  VITE_ENABLE_DEBUG=${VITE_ENABLE_DEBUG}" && \
+    pnpm run build
+
+
+# ------------------------------------------------------------------------------
+# Stage 2: Build Python Backend
+# ------------------------------------------------------------------------------
+ARG PYTHON_VERSION
+FROM python:${PYTHON_VERSION}-alpine AS backend-builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apk add --no-cache build-base postgresql-client libpq-dev
+
+# Copy dependency lock file
+COPY --from=source /source/uv.lock ./uv.lock
+
+# Install uv (Python package manager)
+RUN pip install --no-cache-dir uv
+
+# Copy pyproject.toml and build wheels
+COPY --from=source /source/pyproject.toml ./
+
+# Build wheels in a temporary location
+RUN uv pip install --python /usr/local/bin/python3 \
+    --compile-bytecode \
+    -e ".[api]" \
+    --target /wheels
+
+
+# ------------------------------------------------------------------------------
+# Stage 3: Runtime
+# ------------------------------------------------------------------------------
+ARG PYTHON_VERSION
+ARG USER_UID
+ARG USER_GID
+
+FROM python:${PYTHON_VERSION}-alpine AS runtime
+
+WORKDIR /app
+
+# Install runtime dependencies only
+RUN apk add --no-cache \
+    postgresql-client \
+    libpq \
+    curl \
+    dumb-init
+
+# Create non-root user (UID/GID configurable for Podman rootless)
+RUN addgroup -g ${USER_GID} -S appgroup && \
+    adduser -u ${USER_UID} -S appuser -G appgroup
+
+# Copy built wheels from builder
+COPY --from=backend-builder /wheels /wheels
+
+# Install wheels into system Python
+RUN pip install --no-cache-dir --no-index --find-links=/wheels \
+    /wheels/*
+
+# Copy application source
+COPY --from=source /source/src ./src
+COPY --from=source /source/backend ./backend
+COPY --from=source /source/ingesters ./ingesters
+COPY --from=source /source/docs ./docs
+COPY --from=source /source/scripts ./scripts
+COPY --from=source /source/lib ./lib
+COPY --from=source /source/README.md ./
+
+# Copy built frontend to be served by backend
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+
+# Create runtime directories (owned by appuser)
+RUN mkdir -p \
+    /app/projects \
+    /app/shared \
+    /app/logs \
+    /app/output \
+    /app/backups \
+    /app/tmp \
+    /app/.config && \
+    chown -R appuser:appgroup /app
+
+# Set environment for Python
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app:/app/backend \
+    PORT=8012
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
+    CMD curl -f http://localhost:8012/api/v1/health || exit 1
+
+# Use dumb-init to handle signals properly in Podman
+ENTRYPOINT ["/usr/sbin/dumb-init", "--"]
+
+# Run as non-root user
+USER appuser:appgroup
+
+# Expose port
+EXPOSE 8012
+
+# Start FastAPI server
+CMD ["python", "-m", "uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8012"]
