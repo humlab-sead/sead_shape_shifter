@@ -26,6 +26,8 @@ check_podman_prerequisites() {
         echo "OK: lingering enabled for $USER"
     else
         echo "FAIL: lingering not enabled for $USER"
+        echo "info: to enable lingering for your user, run:"
+        echo "info: sudo loginctl enable-linger $USER"
         failed=1
     fi
 
