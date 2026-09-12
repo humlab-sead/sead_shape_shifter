@@ -62,14 +62,14 @@ if [ -f "$DATA_DIR/backend.env" ]; then
   log_warning "backend.env already exists, skipping"
   log_info "Edit with: nano $DATA_DIR/backend.env"
 else
-  if [ -f "$ROOT_DIR/.env.example" ]; then
-    cp "$ROOT_DIR/.env.example" "$DATA_DIR/backend.env"
+  if [ -f "$ROOT_DIR/backend.env.example" ]; then
+    cp "$ROOT_DIR/backend.env.example" "$DATA_DIR/backend.env"
     chmod 600 "$DATA_DIR/backend.env"
     log_success "Created backend.env from template"
     log_warning "Edit required: nano $DATA_DIR/backend.env"
   else
-    log_error ".env.example not found at $ROOT_DIR/.env.example"
-    log_info "Create manually: cp .env.example $DATA_DIR/backend.env"
+    log_error "backend.env.example not found at $ROOT_DIR/backend.env.example"
+    log_info "Create manually: cp backend.env.example $DATA_DIR/backend.env"
     exit 1
   fi
 fi

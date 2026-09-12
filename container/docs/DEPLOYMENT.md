@@ -1,6 +1,6 @@
 # Podman Deployment Guide
 
-High-level guide for deploying Shape Shifter to production. For detailed tool documentation, see the Makefile and setup.sh.
+High-level guide for deploying Shape Shifter to production. For detailed tool documentation, see the Makefile and `scripts/setup.sh`.
 
 ## Quick Navigation
 
@@ -38,7 +38,7 @@ sudo loginctl enable-linger "$USER"
 Run the setup as the dedicated environment user from the repository's `container/` directory:
 
 ```bash
-bash setup.sh
+bash scripts/setup.sh
 make build
 make up
 ```
@@ -103,9 +103,9 @@ See `make help` for complete list.
 
 ## Reference
 
-- **setup.sh** - Automates initial setup (pre-flight checks, directories, env files)
+- **scripts/setup.sh** - Automates initial setup (pre-flight checks, directories, env files)
 - **Makefile** - 25+ targets (build, start, logs, backup, systemd, etc.)
-- **.env.example** - All configurable environment variables
+- **backend.env.example** - Committed template listing all configurable environment variables (placeholders only)
 - **Podman documentation** - Host-level container diagnostics and administration
 
 ---

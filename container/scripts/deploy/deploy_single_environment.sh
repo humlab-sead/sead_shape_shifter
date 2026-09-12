@@ -79,7 +79,7 @@ else
   git clone -b "${BRANCH:-main}" "${REPO_URL:-https://github.com/humlab-sead/sead_shape_shifter.git}" ~/sead_shape_shifter
 fi
 cd ~/sead_shape_shifter/container
-bash setup.sh
+bash scripts/setup.sh
 # Configure application manually before starting the container.
 # Example: nano ~/container-data/backend.env
 '
