@@ -95,12 +95,12 @@ setup-directories: check-podman
 .PHONY: setup-env
 setup-env: check-podman
 	@if [ ! -f "$(DATA_DIR)/backend.env" ]; then \
-		if [ -f ".env.example" ]; then \
-			cp .env.example "$(DATA_DIR)/backend.env"; \
-			echo "$(GREEN)✓ Created $(DATA_DIR)/backend.env from .env.example$(NC)"; \
+		if [ -f "backend.env.example" ]; then \
+			cp backend.env.example "$(DATA_DIR)/backend.env"; \
+			echo "$(GREEN)✓ Created $(DATA_DIR)/backend.env from backend.env.example$(NC)"; \
 			echo "$(YELLOW)  Edit this file and restart the container to apply changes$(NC)"; \
 		else \
-			echo "$(YELLOW)⚠ .env.example not found, create $(DATA_DIR)/backend.env manually$(NC)"; \
+			echo "$(YELLOW)⚠ backend.env.example not found, create $(DATA_DIR)/backend.env manually$(NC)"; \
 		fi \
 	else \
 		echo "$(GREEN)✓ $(DATA_DIR)/backend.env already exists$(NC)"; \
