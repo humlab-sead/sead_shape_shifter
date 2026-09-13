@@ -1,0 +1,46 @@
+# Build context excludes for standalone Podman builds.
+# Podman reads .containerignore first and falls back to .dockerignore.
+#
+# Only Containerfile and lib/ are copied from the context in standalone
+# (SOURCE=github) builds, so everything else can be excluded safely.
+
+# Version control and editor state
+.git/
+.github/
+.vscode/
+
+# Local runtime data (never part of the image)
+container-data/
+data/
+*.log
+logs/
+output/
+backups/
+tmp/
+
+# Secrets and environment files
+.env
+*.env
+!*.env.example
+
+# Python and Node build state
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# UCanAccess licenses are not needed at runtime; keep the JARs.
+lib/ucanaccess/licenses/
+
+# Documentation and service definitions are not needed to build the image
+docs/
+service/
+*.md
+!README.md
+
+# OS noise
+.DS_Store
+Thumbs.db
