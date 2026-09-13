@@ -31,7 +31,7 @@ def get_materialization_service() -> MaterializationService:
 
 @router.get("/projects/{project_name}/entities/{entity_name}/can-materialize", response_model=CanMaterializeResponse)
 async def can_materialize(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
 ) -> CanMaterializeResponse:
@@ -62,7 +62,7 @@ async def can_materialize(
 
 @router.post("/projects/{project_name}/entities/{entity_name}/materialize", response_model=MaterializationResult)
 async def materialize_entity(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     request: MaterializeRequest,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
@@ -91,7 +91,7 @@ async def materialize_entity(
 
 @router.post("/projects/{project_name}/entities/{entity_name}/unmaterialize", response_model=UnmaterializationResult)
 async def unmaterialize_entity(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     request: UnmaterializeRequest,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
@@ -129,7 +129,7 @@ async def unmaterialize_entity(
 
 @router.patch("/projects/{project_name}/mapping/from-materialized/{entity_name}", response_model=MaterializedMappingSyncResult)
 async def sync_mapping_from_materialized(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
 ) -> MaterializedMappingSyncResult:

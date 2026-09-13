@@ -4,6 +4,7 @@ Tests for Database Loaders
 Tests the vendor-specific database introspection methods in database loaders.
 """
 
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
@@ -713,7 +714,9 @@ class DummySqlLoader(SqlLoader):
     def create_db_uri(self) -> str:
         return "sqlite://"
 
-    async def read_sql(self, sql: str) -> pd.DataFrame:
+    async def read_sql(
+        self, sql: str, params: dict[str, Any] | tuple[Any, ...] | None = None
+    ) -> pd.DataFrame:  # pylint: disable=unused-argument
         return pd.DataFrame()
 
     async def get_tables(self, **kwargs):

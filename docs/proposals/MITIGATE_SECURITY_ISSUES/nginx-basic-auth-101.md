@@ -40,8 +40,8 @@ A separate password file per site is usually clearest:
 
 ```bash
 sudo install -d -m 750 -o root -g www-data /etc/nginx/htpasswd
-sudo htpasswd -c /etc/nginx/htpasswd/shape-shifter alice
-sudo htpasswd /etc/nginx/htpasswd/shape-shifter bob
+sudo htpasswd -c /etc/nginx/htpasswd/shape-shifter admin
+sudo htpasswd /etc/nginx/htpasswd/shape-shifter roger
 sudo chown root:www-data /etc/nginx/htpasswd/shape-shifter
 sudo chmod 640 /etc/nginx/htpasswd/shape-shifter
 ```

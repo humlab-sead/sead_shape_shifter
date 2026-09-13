@@ -70,7 +70,7 @@ def _has_executable_tokens(statement: Statement) -> bool:
 def _statement_type(statement: Statement) -> str | None:
     """Return the first SQL operation token in a statement."""
     for token in statement.flatten():
-        if token.ttype in (DML, DDL):
+        if token.ttype in (DML, DDL, Keyword.DCL):
             return token.value.upper()
         if token.ttype is Keyword and token.value.upper() in READ_ONLY_FORBIDDEN_KEYWORDS:
             return token.value.upper()
@@ -80,7 +80,7 @@ def _statement_type(statement: Statement) -> str | None:
 def _find_forbidden_operation(statement: Statement) -> str | None:
     """Return the first forbidden operation token, including nested query tokens."""
     for token in statement.flatten():
-        if token.ttype in (DML, DDL, Keyword):
+        if token.ttype in (DML, DDL, Keyword.DCL, Keyword):
             operation = token.value.upper()
             if operation in READ_ONLY_FORBIDDEN_KEYWORDS:
                 return operation

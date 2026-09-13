@@ -21,6 +21,8 @@ class TestProjectMapperFilePathIntegration:
         settings.GLOBAL_DATA_DIR = tmp_path / "shared" / "shared-data"
         settings.global_data_dir = settings.GLOBAL_DATA_DIR  # For property access
         settings.PROJECTS_DIR = tmp_path / "projects"
+        settings.GLOBAL_DATA_SOURCE_DIR = tmp_path / "shared" / "shared-data-sources"
+        settings.global_data_source_dir = settings.GLOBAL_DATA_SOURCE_DIR  # For property access
         settings.projects_root = settings.PROJECTS_DIR  # For property access
         settings.env_prefix = "SHAPE_SHIFTER_"
         settings.env_file = ".env"

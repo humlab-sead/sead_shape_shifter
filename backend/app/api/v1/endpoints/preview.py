@@ -119,7 +119,7 @@ def get_validate_fk_service(
 @handle_endpoint_errors
 async def preview_entity(
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
-    project_name: str = Path(..., description="Name of the configuration"),
+    project_name: str = Path(..., description="Name of the configuration"),  # pylint: disable=unused-argument
     entity_name: str = Path(..., description="Name of the entity to preview"),
     body: Optional[dict[str, Any]] = Body(None, description="Request body with optional entity_config"),
     limit: Optional[int] = Query(None, ge=1, le=10000, description="Maximum number of rows to return. None for all rows."),
@@ -175,7 +175,7 @@ async def preview_entity(
 @handle_endpoint_errors
 async def get_entity_sample(
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
-    project_name: str = Path(..., description="Name of the configuration"),
+    project_name: str = Path(..., description="Name of the configuration"),  # pylint: disable=unused-argument
     entity_name: str = Path(..., description="Name of the entity"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of rows (default 100)"),
     preview_service: ShapeShiftService = Depends(get_preview_service),
@@ -244,7 +244,7 @@ async def invalidate_preview_cache(
 @handle_endpoint_errors
 async def test_foreign_key_join(
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
-    project_name: str = Path(..., description="Name of the configuration"),
+    project_name: str = Path(..., description="Name of the configuration"),  # pylint: disable=unused-argument
     entity_name: str = Path(..., description="Name of the entity with the foreign key"),
     fk_index: int = Path(..., description="Index of the foreign key to test", ge=0),
     sample_size: int = Query(100, description="Number of rows to test", ge=10, le=1000),
