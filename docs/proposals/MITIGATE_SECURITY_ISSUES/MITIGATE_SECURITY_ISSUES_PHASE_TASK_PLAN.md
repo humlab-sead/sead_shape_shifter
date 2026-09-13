@@ -67,13 +67,13 @@ Prevent API input and project configuration from selecting arbitrary server file
 
 **Tasks**
 
-- [ ] Define approved roots for projects, uploads, backups, temporary files, and generated output.
-- [ ] Add path resolution and containment checks before every read, write, download, upload, and directory creation.
-- [ ] Apply the checks to execution `target`, ingester `source`, ingester `output_folder`, project names, `@include`, and `@load` paths.
-- [ ] Reject absolute paths and traversal outside the approved root.
-- [ ] Resolve symlinks before authorization and cover symlink and time-of-check/time-of-use cases in tests.
-- [ ] Replace client-selected output destinations with server-generated paths where the product contract permits.
-- [ ] Restrict or remove raw YAML mutation until its directive and persistence behavior is authorized.
+- [x] Define approved roots for projects, uploads, backups, temporary files, and generated output.
+- [x] Add path resolution and containment checks before every read, write, download, upload, and directory creation.
+- [x] Apply the checks to execution `target`, ingester `source`, ingester `output_folder`, project names, `@include`, and `@load` paths.
+- [x] Reject absolute paths and traversal outside the approved root.
+- [x] Resolve symlinks before authorization and cover symlink and time-of-check/time-of-use cases in tests.
+- [x] Replace client-selected output destinations with server-generated paths where the product contract permits.
+- [x] Restrict or remove raw YAML mutation until its directive and persistence behavior is authorized.
 
 **Completion Criteria**
 
@@ -87,14 +87,14 @@ Prevent query endpoints and workflow execution from modifying databases or acces
 
 **Tasks**
 
-- [ ] Reject more than one non-empty SQL statement instead of returning a warning.
-- [ ] Apply one execution policy to query validation, query execution, workflow execution, schema introspection, and `@internal` DuckDB execution.
-- [ ] Replace keyword-only checks with a documented read-only SQL policy and reject DDL, DML, `COPY`, `ATTACH`, extension operations, and other side-effecting statements.
-- [ ] Correct result-limit enforcement so a user-supplied `LIMIT` cannot bypass the server limit.
-- [ ] Replace interpolated SQL identifiers and metadata filters with safe, dialect-aware identifier handling.
-- [ ] Configure a dedicated PostgreSQL role with only the required read privileges. Confirm it is not an object owner or member of a write-capable role.
-- [ ] Disable DuckDB external access and extension loading for untrusted queries. If controlled file access is required, configure explicit allowed paths and directories.
-- [ ] Add resource limits for query duration, result size, memory, and concurrency.
+- [x] Reject more than one non-empty SQL statement instead of returning a warning.
+- [x] Apply one execution policy to query validation, query execution, workflow execution, schema introspection, and `@internal` DuckDB execution.
+- [x] Replace keyword-only checks with a documented read-only SQL policy and reject DDL, DML, `COPY`, `ATTACH`, extension operations, and other side-effecting statements.
+- [x] Correct result-limit enforcement so a user-supplied `LIMIT` cannot bypass the server limit.
+- [x] Replace interpolated SQL identifiers and metadata filters with safe, dialect-aware identifier handling.
+- [x] Configure a dedicated PostgreSQL role with only the required read privileges. Confirm it is not an object owner or member of a write-capable role.
+- [x] Disable DuckDB external access and extension loading for untrusted queries. If controlled file access is required, configure explicit allowed paths and directories.
+- [x] Add resource limits for query duration, result size, memory, and concurrency.
 
 **Completion Criteria**
 
