@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Prepare the Podman deployment: directories, environment file and .pgpass.
+# Safe to run more than once; existing files are left untouched.
 set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,10 +14,10 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-log_info() { echo -e "${BLUE}ℹ${NC} $*"; }
-log_success() { echo -e "${GREEN}✓${NC} $*"; }
-log_warning() { echo -e "${YELLOW}⚠${NC} $*"; }
-log_error() { echo -e "${RED}✗${NC} $*"; }
+log_info() { echo -e "${BLUE}i${NC} $*"; }
+log_success() { echo -e "${GREEN}+${NC} $*"; }
+log_warning() { echo -e "${YELLOW}!${NC} $*"; }
+log_error() { echo -e "${RED}x${NC} $*"; }
 
 check_command() { command -v "$1" >/dev/null 2>&1; }
 
@@ -32,16 +34,15 @@ if ! check_command podman-compose; then
   echo "Install podman-compose: sudo apt-get install -y podman-compose"
   exit 1
 fi
-log_success "podman-compose $(podman-compose --version)"
+log_success "podman-compose $(podman-compose --version 2>/dev/null | head -n1)"
 
 if [ "$EUID" -eq 0 ]; then
-  log_warning "Running as root - container will run as root"
-  log_info "Recommended: Run this script as the dedicated user instead"
+  log_warning "Running as root. Run setup as the dedicated environment user instead."
 else
-  log_success "Running as user: $(whoami)"
+  log_success "Running as user: $(whoami) (uid $(id -u), gid $(id -g))"
 fi
 
-if systemctl --user is-active --quiet user@$(id -u).service; then
+if systemctl --user is-active --quiet "user@$(id -u).service"; then
   log_success "Systemd user session is active"
 else
   log_warning "Systemd user session may not be active"
@@ -50,73 +51,72 @@ fi
 
 echo
 log_info "Creating data directories..."
-mkdir -p "$DATA_DIR"/{projects,shared,logs,output,backups,tmp,.pgpass}
+mkdir -p "$DATA_DIR"/{projects,shared,logs,output,backups,tmp,state}
 chmod 755 "$DATA_DIR"
-chmod 700 "$DATA_DIR"/.pgpass
-log_success "Data directory created: $DATA_DIR"
-log_success "Subdirectories: projects, shared, logs, output, backups, tmp"
+chmod 755 "$DATA_DIR"/{projects,shared,logs,output,backups,tmp,state}
+log_success "Data directory ready: $DATA_DIR"
+log_success "Subdirectories: projects, shared, logs, output, backups, tmp, state"
 
 echo
 log_info "Setting up environment configuration..."
 if [ -f "$DATA_DIR/backend.env" ]; then
-  log_warning "backend.env already exists, skipping"
+  log_warning "backend.env already exists, leaving it unchanged"
   log_info "Edit with: nano $DATA_DIR/backend.env"
 else
   if [ -f "$ROOT_DIR/backend.env.example" ]; then
     cp "$ROOT_DIR/backend.env.example" "$DATA_DIR/backend.env"
     chmod 600 "$DATA_DIR/backend.env"
-    log_success "Created backend.env from template"
+    log_success "Created backend.env from backend.env.example"
     log_warning "Edit required: nano $DATA_DIR/backend.env"
   else
     log_error "backend.env.example not found at $ROOT_DIR/backend.env.example"
-    log_info "Create manually: cp backend.env.example $DATA_DIR/backend.env"
     exit 1
   fi
 fi
 
 echo
-log_info "Setting up systemd user service..."
-if [ ! -f "$SERVICE_DIR/shape-shifter.service" ]; then
-  log_warning "service/shape-shifter.service not found"
-  log_info "To install systemd service later, run: make service-install"
-  exit 0
+log_info "Setting up PostgreSQL password file..."
+mkdir -p "$DATA_DIR/.pgpass"
+chmod 700 "$DATA_DIR/.pgpass"
+if [ -f "$DATA_DIR/.pgpass/.pgpass" ]; then
+  log_warning ".pgpass already exists, leaving it unchanged"
+else
+  if [ -f "$ROOT_DIR/.pgpass.example" ]; then
+    cp "$ROOT_DIR/.pgpass.example" "$DATA_DIR/.pgpass/.pgpass"
+  else
+    touch "$DATA_DIR/.pgpass/.pgpass"
+  fi
+  chmod 600 "$DATA_DIR/.pgpass/.pgpass"
+  log_success "Created $DATA_DIR/.pgpass/.pgpass"
 fi
 
-mkdir -p ~/.config/systemd/user
-cp "$SERVICE_DIR/shape-shifter.service" ~/.config/systemd/user/
-
-systemctl --user daemon-reload 2>/dev/null || {
-  log_warning "Could not reload systemd (session may not be active yet)"
-  log_info "After login, run: systemctl --user daemon-reload"
-}
-
-log_success "Systemd user service template installed"
-log_info "To enable auto-start: systemctl --user enable shape-shifter"
+echo
+log_info "Checking UCanAccess JARs..."
+if [ -d "$ROOT_DIR/lib/ucanaccess" ]; then
+  log_success "UCanAccess found at $ROOT_DIR/lib/ucanaccess"
+else
+  log_warning "Missing $ROOT_DIR/lib/ucanaccess"
+  log_info "MS Access data sources need it. Install with: make install-ucanaccess"
+fi
 
 echo
-log_info "Setup complete!"
+log_info "Setting up systemd user service..."
+if [ ! -f "$SERVICE_DIR/shape-shifter.service" ]; then
+  log_warning "service/shape-shifter.service not found, skipping"
+else
+  mkdir -p ~/.config/systemd/user
+  cp "$SERVICE_DIR/shape-shifter.service" ~/.config/systemd/user/
+  systemctl --user daemon-reload 2>/dev/null || \
+    log_warning "Could not reload systemd yet; run 'systemctl --user daemon-reload' after login"
+  log_success "Systemd user service installed"
+  log_info "Enable auto-start with: systemctl --user enable shape-shifter"
+fi
 
+echo
+log_success "Setup complete"
 echo ""
-echo -e "${BLUE}Next Steps:${NC}"
-echo ""
-echo "1. Edit environment configuration:"
-echo "   nano $DATA_DIR/backend.env"
-echo ""
-echo "2. Build container image:"
-echo "   cd $ROOT_DIR"
-echo "   make build"
-echo ""
-echo "3. Start the application:"
-echo "   make up"
-echo ""
-echo "4. Verify it's running:"
-echo "   curl http://localhost:8012/api/v1/health"
-echo ""
-echo -e "${BLUE}Optional: Enable Auto-Start${NC}"
-echo ""
-echo "5. Install systemd service (for auto-start on boot):"
-echo "   make service-install"
-echo "   systemctl --user enable shape-shifter"
-echo ""
-echo "6. Enable lingering (if not already enabled):"
-echo "   sudo loginctl enable-linger $(whoami)"
+echo -e "${BLUE}Next steps:${NC}"
+echo "1. Edit the environment file:  nano $DATA_DIR/backend.env"
+echo "2. Build the image:            make build"
+echo "3. Start the container:        make up"
+echo "4. Check health:               make healthcheck"
