@@ -1,60 +1,90 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Bootstrap the Podman deployment on a fresh host.
+#
+# Checks prerequisites, downloads the container/ deployment files for a branch,
+# then leaves the host ready to run: make setup && make build && make up
+#
+# Usage:
+#   bash get-install.sh [--branch BRANCH] [--repo URL]
+set -euo pipefail
 
-check_podman_prerequisites() {
-    local failed=0
+REPO_URL="${REPO_URL:-https://github.com/humlab-sead/sead_shape_shifter.git}"
+BRANCH="${BRANCH:-main}"
 
-    echo "Checking Podman setup..."
-
-    # Podman installed
-    if command -v podman >/dev/null 2>&1; then
-        echo "OK: podman installed ($(podman --version))"
-    else
-        echo "FAIL: podman is not installed"
-        failed=1
-    fi
-
-    # podman-compose installed
-    if command -v podman-compose >/dev/null 2>&1; then
-        echo "OK: podman-compose installed ($(podman-compose --version 2>/dev/null | head -n1))"
-    else
-        echo "FAIL: podman-compose is not installed"
-        failed=1
-    fi
-
-    # systemd lingering enabled
-    if [[ "$(loginctl show-user "$USER" -p Linger --value 2>/dev/null)" == "yes" ]]; then
-        echo "OK: lingering enabled for $USER"
-    else
-        echo "FAIL: lingering not enabled for $USER"
-        echo "info: to enable lingering for your user, run:"
-        echo "info: sudo loginctl enable-linger $USER"
-        failed=1
-    fi
-
-    # Rootless Podman user namespace works
-    if podman unshare id >/dev/null 2>&1; then
-        echo "OK: podman rootless user namespace works"
-    else
-        echo "FAIL: 'podman unshare id' failed"
-        failed=1
-    fi
-
-    if (( failed )); then
-      echo "Podman setup is incomplete."
-      echo "Podman prerequisites are missing"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --branch)
+      BRANCH="$2"
+      shift 2
+      ;;
+    --repo)
+      REPO_URL="$2"
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: bash get-install.sh [--branch BRANCH] [--repo URL]"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
       exit 1
-    fi
+      ;;
+  esac
+done
 
-    echo "Podman setup is complete."
-    return 0
-}
+CURRENT_USER="$(whoami)"
+failed=0
 
-check_podman_prerequisites
+echo "Checking Podman setup for $CURRENT_USER..."
 
-# REFS=security-regression-and-release-verification
+if command -v podman >/dev/null 2>&1; then
+  echo "OK: podman installed ($(podman --version))"
+else
+  echo "FAIL: podman is not installed"
+  failed=1
+fi
 
-# curl -L https://github.com/humlab-sead/sead_shape_shifter/archive/refs/heads/$REFS.tar.gz |
-#   tar -xz \
-#     --wildcards \
-#     --strip-components=1 \
-#     "sead_shape_shifter-$REFS/container/*"
+if command -v podman-compose >/dev/null 2>&1; then
+  echo "OK: podman-compose installed ($(podman-compose --version 2>/dev/null | head -n1))"
+else
+  echo "FAIL: podman-compose is not installed"
+  failed=1
+fi
+
+if [[ "$(loginctl show-user "$CURRENT_USER" -p Linger --value 2>/dev/null)" == "yes" ]]; then
+  echo "OK: lingering enabled for $CURRENT_USER"
+else
+  echo "FAIL: lingering not enabled for $CURRENT_USER"
+  echo "info: run: sudo loginctl enable-linger $CURRENT_USER"
+  failed=1
+fi
+
+if podman unshare id >/dev/null 2>&1; then
+  echo "OK: rootless Podman user namespace works"
+else
+  echo "FAIL: 'podman unshare id' failed"
+  failed=1
+fi
+
+if (( failed )); then
+  echo "Podman setup is incomplete."
+  exit 1
+fi
+
+echo ""
+echo "Downloading container deployment files for branch '$BRANCH'..."
+curl -L "${REPO_URL%.git}/archive/refs/heads/${BRANCH}.tar.gz" |
+  tar -xz \
+    --wildcards \
+    --strip-components=1 \
+    "sead_shape_shifter-${BRANCH}/container/*"
+
+echo "Deployment files extracted."
+echo ""
+echo "Next steps:"
+echo "  cd container"
+echo "  make install-ucanaccess   # required only for MS Access data sources"
+echo "  make setup"
+echo "  nano ../container-data/backend.env"
+echo "  make build"
+echo "  make up"
