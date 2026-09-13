@@ -215,7 +215,9 @@ class TestReconciliationExportApi:
         response = await authorized_client.post("/api/v1/projects/test_project/reconciliation/site/site_code/export-to-mapping")
 
         assert response.status_code == 404
-        assert response.json()["detail"] == "No reconciliation registry for entity 'site' target 'site_code'"
+        detail = response.json()["detail"]
+        assert detail["error_type"] == "ResourceNotFoundError"
+        assert detail["message"] == "No reconciliation registry for entity 'site' target 'site_code'"
 
     async def test_exported_links_are_applied_during_normalization(self, tmp_path: Path, monkeypatch, authorized_client) -> None:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)

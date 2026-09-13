@@ -169,7 +169,7 @@ class SQLiteAuthorizationRepository:
         """Persist a server-owned resource record."""
         with self._connection:
             self._connection.execute(
-                "INSERT INTO resource(resource_id, resource_type, locator, parent_resource_id, lifecycle_state) " "VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO resource(resource_id, resource_type, locator, parent_resource_id, lifecycle_state) VALUES (?, ?, ?, ?, ?)",
                 (
                     str(resource.resource_id),
                     resource.resource_type.value,

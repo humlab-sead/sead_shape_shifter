@@ -410,7 +410,7 @@ async def toggle_task_flagged(
 @router.get("/projects/{name}/tasks/{entity_name}/note", response_model=TaskNoteResponse)
 @handle_endpoint_errors
 async def get_task_note(
-    name: str,
+    name: str,  # pylint: disable=unused-argument
     entity_name: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
 ) -> TaskNoteResponse:

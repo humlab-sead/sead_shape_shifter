@@ -172,7 +172,7 @@ async def execute_query(
     },
 )
 async def validate_query(
-    data_source_name: str,
+    data_source_name: str,  # pylint: disable=unused-argument
     execution: QueryExecution,
     authorized_data_source: Annotated[AuthorizedResource, Depends(query_reader_dependency)],
     query_service: QueryService = Depends(get_query_service),

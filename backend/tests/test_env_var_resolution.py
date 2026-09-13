@@ -201,16 +201,16 @@ class TestEnvironmentVariableResolution:
 
         from src.loaders.base_loader import ConnectTestResult
 
-        os.environ["TEST_CONN_HOST"] = "test.db.com"
-        os.environ["TEST_CONN_DB"] = "testdb"
+        os.environ["SEAD_TEST_CONN_HOST"] = "localhost"
+        os.environ["SEAD_TEST_CONN_DB"] = "testdb"
 
         try:
             config = DataSourceConfig(
                 name="test",
                 driver="postgresql",  # type: ignore
-                host="${TEST_CONN_HOST}",
+                host="${SEAD_TEST_CONN_HOST}",
                 port=5432,
-                database="${TEST_CONN_DB}",
+                database="${SEAD_TEST_CONN_DB}",
                 username="testuser",
                 **{},
             )
@@ -237,5 +237,5 @@ class TestEnvironmentVariableResolution:
                 # Verify the loader class was instantiated
                 mock_loader_class.assert_called_once()
         finally:
-            del os.environ["TEST_CONN_HOST"]
-            del os.environ["TEST_CONN_DB"]
+            del os.environ["SEAD_TEST_CONN_HOST"]
+            del os.environ["SEAD_TEST_CONN_DB"]

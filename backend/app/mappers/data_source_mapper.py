@@ -5,7 +5,7 @@ from typing import Any
 import backend.app.models.data_source as api
 import src.model as core
 from backend.app.services.data_source_policy import validate_server_managed_data_source
-from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
+from src.loaders.driver_metadata import DriverSchema
 
 
 class DataSourceMapper:

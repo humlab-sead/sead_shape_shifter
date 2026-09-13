@@ -6,6 +6,7 @@ import pytest
 import yaml
 
 from backend.app import models as dto
+from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError, ValidationError
 from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.reconciliation import ReconciliationQueryService, ReconciliationService
@@ -1121,7 +1122,7 @@ class TestSpecificationManagement:
             links=[],
         )
 
-        with pytest.raises(BadRequestError, match="already exists"):
+        with pytest.raises(ResourceConflictError, match="already exists"):
             reconciliation_service.catalog_manager.create_entity_mapping("test", "site", "site_code", new_spec)
 
     @patch("backend.app.services.reconciliation.service.ProjectMapper")
@@ -1155,7 +1156,7 @@ class TestSpecificationManagement:
             links=[],
         )
 
-        with pytest.raises(BadRequestError, match="Entity 'invalid_entity' does not exist"):
+        with pytest.raises(ValidationError, match="Entity 'invalid_entity' does not exist"):
             reconciliation_service.catalog_manager.create_entity_mapping("test", "invalid_entity", "some_field", new_spec)
 
     def test_update_specification_success(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
@@ -1211,7 +1212,7 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        with pytest.raises(NotFoundError, match="not found"):
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             reconciliation_service.catalog_manager.update_entity_mapping(
                 project_name="test",
                 entity_name="site",
@@ -1258,7 +1259,7 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        with pytest.raises(BadRequestError, match="Cannot delete existing mapping.*from catalog"):
+        with pytest.raises(ValidationError, match="Cannot delete existing mapping.*from catalog"):
             reconciliation_service.catalog_manager.delete("test", "site", "site_code", force=False)
 
     def test_delete_specification_with_mappings_force(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
@@ -1306,7 +1307,7 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        with pytest.raises(NotFoundError, match="not found"):
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             reconciliation_service.catalog_manager.delete("test", "site", "nonexistent_field")
 
     def test_delete_last_specification_removes_entity(self, reconciliation_service: ReconciliationService, tmp_path, catalog):

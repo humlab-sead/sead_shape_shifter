@@ -9,6 +9,7 @@ from loguru import logger
 
 from backend.app.clients.reconciliation_client import ReconciliationClient, ReconciliationQuery
 from backend.app.core.operation_manager import OperationStatus, operation_manager
+from backend.app.exceptions import ResourceNotFoundError
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models import AutoReconcileResult, Project, ReconciliationCandidate
 from backend.app.models.shapeshift import PreviewResult
@@ -218,7 +219,11 @@ class ReconciliationService:
         reconciliation_catalog: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
         resolution_set: core.EntityResolutionSet | None = reconciliation_catalog.get(entity_name, target_field)
         if resolution_set is None:
-            raise NotFoundError(f"No reconciliation registry for entity '{entity_name}' target '{target_field}'")
+            raise ResourceNotFoundError(
+                f"No reconciliation registry for entity '{entity_name}' target '{target_field}'",
+                resource_type="entity_mapping",
+                resource_id=f"{entity_name}.{target_field}",
+            )
 
         mapping_service: MappingService = MappingService(self.project_service)
         api_project, table, mapping_catalog = mapping_service._load_project_table_and_catalog(project_name, entity_name)

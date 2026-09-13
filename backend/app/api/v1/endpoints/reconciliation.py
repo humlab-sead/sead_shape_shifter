@@ -67,7 +67,7 @@ async def get_reconciliation_service_manifest(service: ReconciliationService = D
 @router.get("/projects/{project_name}/reconciliation")
 @handle_endpoint_errors
 async def get_entity_mapping_registry(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.EntityResolutionCatalog:
@@ -87,7 +87,7 @@ async def get_entity_mapping_registry(
 @router.put("/projects/{project_name}/reconciliation")
 @handle_endpoint_errors
 async def update_entity_mapping_registry(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     recon_config: api.EntityResolutionCatalog,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -110,7 +110,7 @@ async def update_entity_mapping_registry(
 @router.put("/projects/{project_name}/reconciliation/raw")
 @handle_endpoint_errors
 async def update_entity_resolution_catalog_raw(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     yaml_content: str = Body(..., media_type="text/plain"),
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -145,7 +145,7 @@ async def update_entity_resolution_catalog_raw(
 @router.get("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/preview")
 @handle_endpoint_errors
 async def get_reconciliation_preview(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
@@ -233,7 +233,7 @@ async def auto_reconcile_entity(
 
 @router.get("/operations/{operation_id}/progress")
 async def get_operation_progress(
-    operation_id: str,
+    operation_id: str,  # pylint: disable=unused-argument
     operation_progress: Annotated[OperationProgress, Depends(require_operation(Action.READ))],
 ) -> dict[str, Any]:
     """
@@ -251,7 +251,7 @@ async def get_operation_progress(
 @router.get("/operations/{operation_id}/stream")
 async def stream_operation_progress(
     operation_id: str,
-    operation_progress: Annotated[OperationProgress, Depends(require_operation(Action.READ))],
+    operation_progress: Annotated[OperationProgress, Depends(require_operation(Action.READ))],  # pylint: disable=unused-argument
 ) -> StreamingResponse:
     """
     Stream real-time progress updates via Server-Sent Events (SSE).
@@ -303,7 +303,9 @@ async def stream_operation_progress(
 @handle_endpoint_errors
 async def cancel_operation(
     operation_id: str,
-    operation_progress: Annotated[OperationProgress, Depends(require_operation(Action.EDIT))],
+    operation_progress: Annotated[  # pylint: disable=unused-argument
+        OperationProgress, Depends(require_operation(Action.EDIT))  # pylint: disable=unused-argument
+    ],
 ) -> dict[str, str]:
     """
     Cancel a running operation.
@@ -378,10 +380,10 @@ async def auto_reconcile_entity_sync(
 @router.get("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/suggest")
 @handle_endpoint_errors
 async def suggest_entities(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
-    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],  # pylint: disable=unused-argument
     query: str = Query(..., min_length=2),
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> list[api.ReconciliationCandidate]:
@@ -419,7 +421,7 @@ async def suggest_entities(
 @router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mapping")
 @handle_endpoint_errors
 async def update_mapping(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
     source_value: Any,
@@ -459,7 +461,7 @@ async def update_mapping(
 @router.delete("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mapping")
 @handle_endpoint_errors
 async def delete_mapping(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
@@ -497,7 +499,7 @@ async def delete_mapping(
 )
 @handle_endpoint_errors
 async def export_reconciliation_to_mapping(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
@@ -516,7 +518,7 @@ async def export_reconciliation_to_mapping(
 @router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mark-unmatched")
 @handle_endpoint_errors
 async def mark_as_unmatched(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
     source_value: Any,
@@ -556,7 +558,7 @@ async def mark_as_unmatched(
 @router.get("/projects/{project_name}/reconciliation/mapping-registry")
 @handle_endpoint_errors
 async def list_entity_mappings(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> list[api.EntityResolutionListItem]:
@@ -578,7 +580,7 @@ async def list_entity_mappings(
 @router.post("/projects/{project_name}/reconciliation/mapping-registry", status_code=201)
 @handle_endpoint_errors
 async def create_registry(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     request: api.EntityResolutionCatalogCreateRequest,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -614,7 +616,7 @@ async def create_registry(
 @router.put("/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}")
 @handle_endpoint_errors
 async def update_catalog(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
     request: api.EntityResolutionCatalogUpdateRequest,
@@ -669,7 +671,7 @@ async def update_catalog(
 @router.delete("/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}")
 @handle_endpoint_errors
 async def delete_catalog(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
@@ -707,7 +709,7 @@ async def delete_catalog(
 @router.get("/projects/{project_name}/reconciliation/available-fields/{entity_name}")
 @handle_endpoint_errors
 async def get_available_target_fields(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -731,7 +733,7 @@ async def get_available_target_fields(
 @router.get("/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}/mapping-count")
 @handle_endpoint_errors
 async def get_mapping_count(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
     authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],

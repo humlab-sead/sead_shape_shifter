@@ -1,9 +1,9 @@
 """Tests for reverse-proxy identity enforcement."""
 
 import json
-from collections.abc import Callable
 
 import pytest
+from starlette.types import Message, Receive, Scope, Send
 
 from backend.app.middleware.proxy_auth import ProxyAuthenticationMiddleware
 
@@ -14,11 +14,11 @@ async def _call_middleware(
     *,
     enabled: bool = True,
     groups_enabled: bool = False,
-) -> list[dict]:
+) -> list[Message]:
     """Run the middleware with a minimal ASGI request and collect response messages."""
-    messages: list[dict] = []
+    messages: list[Message] = []
 
-    async def app(scope: dict, receive: Callable, send: Callable) -> None:
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:  # pylint: disable=unused-argument
         body = json.dumps(
             {
                 "user": scope.get("state", {}).get("authenticated_user"),
@@ -39,10 +39,10 @@ async def _call_middleware(
 
     request_headers = [(name.lower().encode(), value.encode()) for name, value in headers.items()]
 
-    async def receive() -> dict:
+    async def receive() -> Message:
         return {"type": "http.request", "body": b"", "more_body": False}
 
-    async def send(message: dict) -> None:
+    async def send(message: Message) -> None:
         messages.append(message)
 
     await middleware(
@@ -64,7 +64,7 @@ async def _call_middleware(
     return messages
 
 
-def _response_status(messages: list[dict]) -> int:
+def _response_status(messages: list[Message]) -> int:
     """Return the status code from collected ASGI response messages."""
     return next(message["status"] for message in messages if message["type"] == "http.response.start")
 
@@ -77,7 +77,7 @@ async def test_proxy_auth_rejects_request_without_identity() -> None:
     assert json.loads(_response_body(messages)) == {"detail": "Authentication required"}
 
 
-def _response_body(messages: list[dict]) -> bytes:
+def _response_body(messages: list[Message]) -> bytes:
     """Return the response body from collected ASGI response messages."""
     return b"".join(message.get("body", b"") for message in messages if message["type"] == "http.response.body")
 

@@ -6,6 +6,7 @@ files (require project read access) for:
 - GET /api/v1/data-sources/excel/metadata
 """
 
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -54,7 +55,6 @@ def environment(tmp_path, monkeypatch, repository: SQLiteAuthorizationRepository
     monkeypatch.setattr(application_settings, "APPLICATION_ROOT", tmp_path)
 
     # Global shared-data file library
-    import shutil
 
     shutil.copy2(EXCEL_FIXTURE, global_dir / "global.xlsx")
 

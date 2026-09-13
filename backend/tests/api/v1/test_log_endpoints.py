@@ -12,8 +12,8 @@ from backend.app.authorization.service import AuthorizationService
 from backend.app.main import app
 
 
-@pytest.fixture
-def authorization_repository(tmp_path):
+@pytest.fixture(name="authorization_repository")
+def _authorization_repository(tmp_path):
     """Create an isolated authorization store with one administrator."""
     repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
     repository.add_application_role("alice", "admin", "bootstrap")
@@ -21,8 +21,8 @@ def authorization_repository(tmp_path):
     repository.close()
 
 
-@pytest.fixture
-def log_dependencies(tmp_path, monkeypatch, authorization_repository: SQLiteAuthorizationRepository):
+@pytest.fixture(name="log_dependencies")
+def _log_dependencies(tmp_path, monkeypatch, authorization_repository: SQLiteAuthorizationRepository):
     """Provide temporary log files while retaining real authorization checks."""
     (tmp_path / "app.log").write_text("2026-09-07 | INFO     | Application started\n", encoding="utf-8")
     (tmp_path / "error.log").write_text("2026-09-07 | ERROR    | Request failed\n", encoding="utf-8")
@@ -53,7 +53,10 @@ def _client_for_principal(principal_id: str | None) -> AsyncClient:
 
 @pytest.mark.parametrize("path", ["/api/v1/logs/app", "/api/v1/logs/app/download"])
 @pytest.mark.asyncio
-async def test_log_endpoints_require_authentication(log_dependencies, path: str) -> None:
+async def test_log_endpoints_require_authentication(
+    log_dependencies,  # pylint: disable=unused-argument
+    path: str,
+) -> None:
     async with _client_for_principal(None) as client:
         response = await client.get(path)
 
@@ -62,7 +65,10 @@ async def test_log_endpoints_require_authentication(log_dependencies, path: str)
 
 @pytest.mark.parametrize("path", ["/api/v1/logs/app", "/api/v1/logs/app/download"])
 @pytest.mark.asyncio
-async def test_log_endpoints_reject_non_administrators(log_dependencies, path: str) -> None:
+async def test_log_endpoints_reject_non_administrators(
+    log_dependencies,  # pylint: disable=unused-argument
+    path: str,
+) -> None:
     async with _client_for_principal("bob") as client:
         response = await client.get(path)
 
@@ -71,7 +77,9 @@ async def test_log_endpoints_reject_non_administrators(log_dependencies, path: s
 
 
 @pytest.mark.asyncio
-async def test_administrator_can_read_and_download_logs(log_dependencies) -> None:
+async def test_administrator_can_read_and_download_logs(
+    log_dependencies,  # pylint: disable=unused-argument
+) -> None:
     async with _client_for_principal("alice") as client:
         read_response = await client.get("/api/v1/logs/app")
         download_response = await client.get("/api/v1/logs/error/download")

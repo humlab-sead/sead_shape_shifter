@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan sequences the remaining work required to move the implemented centralized authorization system into enforced production use. The authorization repository, policy, route dependencies, service checks, administration CLI, tests, and operating procedures are implemented. Deployment inventory, final route classification, release readiness, and cutover evidence remain.
+This plan sequences the remaining work required to move the implemented centralized authorization system into enforced production use. The authorization repository, policy, route dependencies, service checks, administration CLI, tests, and operating procedures are implemented. Deployment inventory, final route classification, release readiness, Podman deployment verification, and cutover evidence remain.
 
 The plan is separate from the authorization design and implementation task plan. It owns the remaining inventory, migration-input, validation, cutover, and rollback tasks.
 
@@ -19,6 +19,7 @@ This plan covers:
 - confirming trusted-proxy principal IDs used for administrators and grants;
 - preparing, reviewing, applying, and reconciling the initial authorization manifest;
 - running focused and full regression validation;
+- building and deploying the exact release with Podman;
 - recording release, backup, rollback, and post-deployment access evidence.
 
 It does not cover new authorization policy design, native authentication, or ingester capability authorization beyond classifying its current routes and recording any required follow-up.
@@ -30,6 +31,7 @@ It does not cover new authorization policy design, native authentication, or ing
 - The administration CLI supports manifest migration, reconciliation, resource and role review, grant mutations, backups, restore, and integrity checks.
 - The maintained route inventory still contains `UNDECLARED` entries that require classification before cutover.
 - Deployment-specific projects, shared data sources, principal IDs, initial grants, release evidence, and rollback evidence have not been recorded as complete.
+- The existing operations documentation describes Docker Compose; the target server will use Podman, so the image, service definition, secret injection, volume mounts, health checks, logging, and rollback workflow require a Podman-specific deployment record.
 
 ## Phase Plan
 
@@ -118,6 +120,60 @@ Enable the tested release and preserve a repeatable rollback path.
 - A rollback can restore a valid authorization database and reconciliation completes afterward.
 - Any unclassified route, unowned resource, identity mismatch, or failed check blocks cutover rather than being accepted as an exception without review.
 
+### Phase 5: Verify Podman Deployment And Update Security Record
+
+**Goal**
+
+Verify the exact authorization release in the new Podman deployment and record security evidence for the release.
+
+**Focus**
+
+- Select and document the Podman service model for the server, with systemd Quadlet as the recommended production option unless the deployment owner approves another supported model.
+- Build or import an immutable image identified by both its source commit and image digest; do not treat a mutable `latest` tag as release identity.
+- Verify Podman port publishing keeps the backend reachable only on the local host and that the reverse proxy is the only external entry point.
+- Verify reverse-proxy behavior: client-supplied identity headers are removed, the authenticated identity is inserted, and direct backend requests without that identity are rejected.
+- Verify firewall rules, Podman network settings, health checks, restart behavior, logs, and the single-worker requirement.
+- Replace Docker-specific secret and volume assumptions with Podman-compatible secret injection and explicitly reviewed mounts. Confirm that credentials are not in the image, logs, client-controlled settings, or unintended container paths.
+- Update the deployment runbook and operator-facing deployment artifacts so the supported workflow, commands, paths, service lifecycle, health checks, logs, and rollback procedure describe Podman rather than Docker Compose.
+- Verify the PostgreSQL role grants, authorization database location, project/shared-data mounts, and absence of sensitive host files.
+- Run post-deployment allowed and denied access checks, review application/proxy/database/container logs, and update `SECURITY_CHECK.md` with the tested commit, image digest, evidence, limitations, and exceptions.
+- Exercise rollback using the recorded Podman image, service definition, authorization database backup, and integrity/reconciliation checks.
+
+**Depends On**
+
+- Phases 1–4 complete, including the reviewed authorization manifest and backup.
+- A selected deployment host and an approved Podman service model.
+
+**Outputs**
+
+- A Podman deployment record containing the source commit, image digest, service definition revision, mounts, secrets, network exposure, grants, logs, smoke checks, and rollback result.
+- An updated `SECURITY_CHECK.md` and a release disposition for every finding and exception.
+
+**Acceptance Criteria**
+
+- The exact source commit and immutable image digest are recorded and match the running Podman container.
+- The backend port is published on loopback only; proxy and firewall checks show no untrusted direct access.
+- Proxy identity-header handling, health behavior, allowed access, denied access, and cross-resource isolation pass after deployment.
+- Podman secrets, mounts, environment variables, PostgreSQL grants, authorization database placement, and logs meet the approved security rules without credential disclosure.
+- Backup integrity, restore/reconciliation, and application rollback checks pass, or a reviewed exception records the failed check and release disposition.
+- `SECURITY_CHECK.md` contains evidence for each finding, the tested commit and image digest, limitations, and approved exceptions.
+
+**Validation Milestones**
+
+- `VM-5.1` Podman image, service, port, proxy, firewall, secret, mount, and environment inspection passes.
+- `VM-5.2` Post-deployment authorization and security smoke checks pass for administrator, project owner, and denied principal.
+- `VM-5.3` Backup/restore and rollback checks pass with integrity and manifest reconciliation.
+- `VM-5.4` Security record and finding matrix are updated and reviewed.
+
+**Task-Plan Handoff**
+
+- The task plan must define the selected Podman service model, exact host/container paths, secret mechanism, proxy and firewall inspection method, database-grant queries, image identity commands, and rollback procedure.
+- The task plan must stop before deployment if the host, service model, proxy configuration, firewall access, or database administrator evidence is unavailable.
+
+**Readiness**
+
+Requires a named deployment host, an approved Podman service model, and access to the reverse proxy, firewall, container runtime, and PostgreSQL grant information.
+
 ## Cross-Phase Rules
 
 - Do not enable enforcement while a sensitive route or background operation remains unclassified.
@@ -135,7 +191,7 @@ Enable the tested release and preserve a repeatable rollback path.
 - Inspect and apply the manifest with dry-run and reconciliation checks.
 - Run database integrity checks before and after backup, restore, and cutover.
 - Perform post-deployment allowed and denied access checks using known deployment principals.
-- Review the deployment record for release, manifest, backup, rollback, and exception evidence.
+- For the Podman deployment, review the immutable image digest, service definition, published ports, network/firewall exposure, proxy identity handling, secrets, mounts, environment variables, grants, logs, health checks, rollback, and exception evidence.
 
 ## Final Recommendation
 

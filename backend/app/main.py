@@ -18,6 +18,8 @@ from backend.app.core.state_manager import ApplicationState, init_app_state
 from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
 from backend.app.middleware.correlation import CorrelationMiddleware
 from backend.app.middleware.proxy_auth import ProxyAuthenticationMiddleware
+from backend.app.utils.public_errors import public_error_detail
+from backend.app.utils.safe_logging import sanitize_log_value
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 
 
@@ -100,17 +102,19 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     This is a last-resort handler. Most errors should be caught by the
     @handle_endpoint_errors decorator which provides better context.
     """
-    logger.exception(f"Unhandled exception during {request.method} {request.url.path}: {exc}")
-
-    # Get the exception type name for better error context
-    exc_type: str = type(exc).__name__
-    error_detail: str = str(exc) or "An unexpected error occurred"
+    logger.error(
+        "Unhandled exception during {} {}: type={} details={}",
+        request.method,
+        request.url.path,
+        type(exc).__name__,
+        sanitize_log_value(exc),
+    )
 
     return JSONResponse(
         status_code=500,
         content={
-            "detail": error_detail,
-            "error_type": exc_type,
+            "detail": public_error_detail("An unexpected error occurred"),
+            "error_type": "InternalServerError",
             "message": "An unexpected error occurred. The error has been logged.",
         },
     )

@@ -1,0 +1,38 @@
+[Unit]
+Description=Shape Shifter Podman Container Service
+Documentation=https://github.com/humlab-sead/sead_shape_shifter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+# Start podman-compose once and leave the container running. podman-compose
+# resolves every path from CONTAINER_DATA_DIR, so set it explicitly.
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=%h/container
+
+Environment=CONTAINER_DATA_DIR=%h/container-data
+Environment=DATA_DIR=%h/container-data
+Environment=COMPOSE_PROJECT_NAME=shapeshifter
+Environment=IMAGE_NAME=shape-shifter:latest
+Environment=HOST_PORT=8012
+Environment=PODMAN_SYSTEMD_UNIT=%n
+
+ExecStart=/usr/bin/podman-compose -f podman-compose.yml -p shapeshifter up -d
+ExecStop=/usr/bin/podman-compose -f podman-compose.yml -p shapeshifter down
+
+# Restart the compose invocation if it fails; container restart policy is set
+# by podman-compose.yml (restart: unless-stopped).
+Restart=on-failure
+RestartSec=10
+
+# Optional resource limits. Adjust to the host capacity.
+# MemoryLimit=2G
+# CPUQuota=200%
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=shape-shifter
+
+[Install]
+WantedBy=default.target

@@ -14,8 +14,8 @@ from backend.app.core.operation_manager import operation_manager
 from backend.app.main import app
 
 
-@pytest.fixture
-def authorization_repository(tmp_path):
+@pytest.fixture(name="authorization_repository")
+def _authorization_repository(tmp_path):
     """Create an isolated store with the project that owns an operation."""
     repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
     project = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
@@ -24,8 +24,8 @@ def authorization_repository(tmp_path):
     repository.close()
 
 
-@pytest.fixture
-def operation_dependencies(authorization_repository):
+@pytest.fixture(name="operation_dependencies")
+def _operation_dependencies(authorization_repository):
     """Create an operation and retain the real authorization dependency."""
     repository, project = authorization_repository
     operation_id = operation_manager.create_operation(

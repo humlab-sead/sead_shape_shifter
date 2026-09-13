@@ -25,9 +25,9 @@ Use these section orders unless an existing file has a stronger local pattern.
 
 | Type | Required Shape |
 |---|---|
-| Proposal | Title; Status; Summary; Problem; Scope; Non-Goals; Current Behavior when needed; Proposed Design; Alternatives Considered when useful; Risks And Tradeoffs; Testing And Validation; Acceptance Criteria; compact Recommended Delivery Order when useful; Open Questions when real; Final Recommendation |
-| Phase plan | Title; Summary; Problem; Scope; Current Position; Phase Plan; Cross-Phase Rules; Validation Strategy; Final Recommendation when useful |
-| Task plan | Phase Summary; Work Breakdown; Progress Tracker; Definition Of Done; Validation And Testing; Deliverables; Scope when needed; Risks And Mitigations when meaningful; Open Questions when real; Assumptions when needed |
+| Proposal | Title; Status; Summary; Problem; Scope; Non-Goals; Current Behavior when needed; Proposed Design; Alternatives Considered when useful; Risks And Tradeoffs; Testing And Validation; Acceptance Criteria; Planning Handoff when a phase plan follows; compact Recommended Delivery Order when useful; Open Questions when real; Final Recommendation |
+| Phase plan | Title; Summary; Problem; Scope; Current Position; Phase Plan using the phase shape below; Cross-Phase Rules; Validation Strategy; Final Recommendation when useful |
+| Task plan | Phase Summary; Repository Findings; Scope; Work Breakdown; Acceptance-Criteria Coverage; Validation And Testing; Deliverables; Progress Tracker; Definition Of Done; Risks And Open Questions when relevant |
 | Handoff | Title; Purpose; Current State; Completed Work; Key References; Next Actions; Risks; Open Decisions; Suggested Follow-Up Documents |
 | Archive note | Title; Status; Summary; Completed Scope; Validation Performed; Remaining Follow-Up when real |
 
@@ -47,10 +47,29 @@ Each phase-plan phase must use this shape:
 - <focus item>
 - <focus item>
 
+**Depends On**
+
+- <prior phase output or required decision>
+
+**Outputs**
+
+- <result available to a later phase>
+
 **Acceptance Criteria**
 
-- <checkable outcome>
-- <checkable outcome>
+- `PH1-AC-1` (from `P-AC-1`) <checkable outcome>
+
+**Validation Milestones**
+
+- `VM-1` <validation result and covered phase criteria>
+
+**Task-Plan Handoff**
+
+- <source criteria, fixed decisions, constraints, and blocking questions>
+
+**Readiness**
+
+<Ready for a task plan | Requires a named decision>
 ```
 
 Prefer 3-7 phases. Use parity as an explicit measure when replacing legacy behavior. Include fallback, exception, or cutover phases for migrations when relevant.
@@ -64,7 +83,10 @@ Prefer 3-7 phases. Use parity as an explicit measure when replacing legacy behav
 - Make current state and planned state explicit.
 - Treat unknown owners, dates, commands, and rollout details as `TBD` instead of guessing.
 - Do not describe planned behavior as shipped behavior.
-- For task plans, every acceptance criterion must map to at least one work area and one definition-of-done item.
+- Give proposal acceptance criteria stable `P-AC-<N>` IDs.
+- Map each phase `PH<N>-AC-<N>` criterion to its source `P-AC-*` criterion and to a validation milestone.
+- Map each phase task plan's `PH*-AC-*` criteria to task IDs, validation IDs, and definition-of-done evidence.
+- Link a task plan to its source phase plan and phase when known.
 - For archive notes, mark work complete only when validation is stated.
 
 ## Before Finishing
@@ -75,5 +97,6 @@ Check that:
 - required sections for that document type are present or intentionally omitted
 - planned work is not described as completed work
 - acceptance criteria are checkable
+- acceptance criteria retain their required source and downstream mappings
 - open questions are real decisions, not filler
 - related phase plans, task plans, or handoff documents are linked when they already exist
