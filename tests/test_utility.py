@@ -329,10 +329,10 @@ class TestEnv2dict:
 
     def test_env2dict_nested_paths(self):
         """Test that underscores create nested paths."""
-        with patch.dict(os.environ, {"CONFIG_DB_CONNECTION_HOST": "localhost"}):
-            result = env2dict("CONFIG", lower_key=True)
+        with patch.dict(os.environ, {"XYZ_A_B_C": "localhost"}):
+            result = env2dict("XYZ", lower_key=True)
 
-            assert result == {"db": {"connection": {"host": "localhost"}}}
+            assert result == {"a": {"b": {"c": "localhost"}}}
 
 
 class TestReplaceEnvVars:
