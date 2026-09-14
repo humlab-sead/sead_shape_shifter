@@ -18,10 +18,10 @@ output/
 backups/
 tmp/
 
-# Secrets and environment files
+# Secrets and environment files (keep the *.example templates)
 .env
 *.env
-!*.env.example
+!*.example
 
 # Python and Node build state
 .venv/
