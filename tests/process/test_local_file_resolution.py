@@ -98,7 +98,7 @@ def test_local_file_loader_resolves_paths_relative_to_project_file() -> None:
     project: ShapeShiftProject = ShapeShiftProject.from_file(
         "./tests/test_data/projects/arbodat/shapeshifter.yml",
         env_prefix="SHAPE_SHIFTER",
-        env_file=".env",
+        env_file="tests/test.env",
     )
     shapeshifter = ShapeShifter(project=project)
     table_cfg: TableConfig = project.get_table("relative_ages")
