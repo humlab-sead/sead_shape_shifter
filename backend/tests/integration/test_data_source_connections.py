@@ -17,7 +17,7 @@ project_root: Path = find_parent_with(Path(__file__), "pyproject.toml")
 @pytest.mark.asyncio
 async def test_postgresql_connection(settings: Settings):
 
-    dotenv.load_dotenv(project_root / "projects/.env")
+    dotenv.load_dotenv(project_root / ".env")
 
     schema: DriverSchema | None = DriverSchemaRegistry.get("postgresql")
     logger.info(f"PostgreSQL Schema: {schema}")

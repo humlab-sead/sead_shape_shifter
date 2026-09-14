@@ -212,9 +212,9 @@ setup: setup-volumes setup-env
 .PHONY: setup-volumes
 setup-volumes:
 	@echo "Setting up host directories with UID=$(USER_UID) GID=$(USER_GID)..."
-	@mkdir -p $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
-	@sudo chown -R $(USER_UID):$(USER_GID) $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
-	@chmod -R 755 $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
+	@mkdir -p $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp,state}
+	@sudo chown -R $(USER_UID):$(USER_GID) $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp,state}
+	@chmod -R 755 $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp,state}
 	@echo "✓ Volume directories created with proper permissions"
 
 # Setup environment files from examples

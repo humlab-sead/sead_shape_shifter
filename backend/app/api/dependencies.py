@@ -7,7 +7,7 @@ Provides dependency injection functions for FastAPI endpoints.
 from typing import Annotated, Generator
 from uuid import UUID
 
-from fastapi import Cookie, Depends, Header, HTTPException
+from fastapi import Cookie, Depends, Header, HTTPException, Request
 
 from backend.app import services
 from backend.app.core.config import settings
@@ -63,15 +63,23 @@ async def get_session_id(
     return None
 
 
+async def get_authenticated_user(request: Request) -> str | None:
+    """Return the identity asserted by the trusted proxy, when proxy authentication is enabled."""
+    return getattr(request.state, "authenticated_user", None)
+
+
 async def get_current_session(
     session_id: Annotated[UUID | None, Depends(get_session_id)],
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
+    authenticated_user: Annotated[str | None, Depends(get_authenticated_user)],
 ) -> ProjectSession | None:
     """Get current editing session (optional)."""
     if session_id:
         session: ProjectSession | None = await app_state.get_session(session_id)
         if not session:
             raise HTTPException(404, f"Session {session_id} not found or expired")
+        if authenticated_user is not None and session.user_id != authenticated_user:
+            raise HTTPException(403, "Session does not belong to the authenticated user")
         return session
     return None
 

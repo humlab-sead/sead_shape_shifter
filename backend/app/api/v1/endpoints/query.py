@@ -1,18 +1,24 @@
 """\nQuery execution API endpoints.\n"""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 
 import backend.app.models.data_source as api
 from backend.app.api.dependencies import get_data_source_service
+from backend.app.authorization.dependencies import require_shared_data_source
+from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
 from backend.app.models.query import QueryExecution, QueryIntrospection, QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService, is_internal_data_source
+from backend.app.utils.public_errors import public_error_detail
 from src.model import DataSourceConfig, ShapeShiftProject
 
 router = APIRouter()
+query_reader_dependency = require_shared_data_source(Action.READ)
 
 
 def get_query_service() -> QueryService:
@@ -52,7 +58,7 @@ def _resolve_data_source_config(
         return api.DataSourceConfig(name=data_source_name, **core_ds.data_source_cfg)
     except Exception as e:
         raise QueryExecutionError(
-            message=f"Failed to resolve data source '{data_source_name}': {str(e)}",
+            message=f"Failed to resolve data source '{data_source_name}'.",
             data_source=data_source_name,
         ) from e
 
@@ -93,6 +99,7 @@ def _resolve_data_source_config(
 async def execute_query(
     data_source_name: str,
     execution: QueryExecution,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(query_reader_dependency)],
     query_service: QueryService = Depends(get_query_service),
     data_source_service: DataSourceService = Depends(get_data_source_service),
 ) -> QueryResult:
@@ -112,21 +119,25 @@ async def execute_query(
         HTTPException: If query is invalid or execution fails
     """
     try:
-        ds_cfg = _resolve_data_source_config(data_source_name, data_source_service)
+        ds_cfg = _resolve_data_source_config(authorized_data_source.resource.locator, data_source_service)
         if ds_cfg is None:
             raise HTTPException(status_code=400, detail=f"Data source '{data_source_name}' cannot be queried directly")
         result: QueryResult = await query_service.execute_query(
-            ds_cfg=ds_cfg, query=execution.query, limit=execution.limit, timeout=execution.timeout
+            ds_cfg=ds_cfg,
+            query=execution.query,
+            limit=execution.limit,
+            timeout=execution.timeout,
+            memory_limit_mb=execution.memory_limit_mb,
         )
         return result
     except QuerySecurityError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Query rejected by the SQL safety policy.") from e
     except QueryExecutionError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail=public_error_detail("Query execution failed")) from e
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=public_error_detail("Query execution failed")) from e
 
 
 @router.post(
@@ -161,7 +172,10 @@ async def execute_query(
     },
 )
 async def validate_query(
-    data_source_name: str, execution: QueryExecution, query_service: QueryService = Depends(get_query_service)
+    data_source_name: str,  # pylint: disable=unused-argument
+    execution: QueryExecution,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(query_reader_dependency)],
+    query_service: QueryService = Depends(get_query_service),
 ) -> QueryValidation:
     """
     Validate a SQL query without executing it.
@@ -174,7 +188,7 @@ async def validate_query(
     Returns:
         QueryValidation with validation results
     """
-    return query_service.validate_query(execution.query, data_source_name)
+    return query_service.validate_query(execution.query, authorized_data_source.resource.locator)
 
 
 @router.post(
@@ -208,6 +222,7 @@ async def validate_query(
 async def introspect_query_columns(
     data_source_name: str,
     introspection: QueryIntrospection,
+    authorized_data_source: Annotated[AuthorizedResource, Depends(query_reader_dependency)],
     project_name: str | None = None,
     query_service: QueryService = Depends(get_query_service),
     data_source_service: DataSourceService = Depends(get_data_source_service),
@@ -231,14 +246,15 @@ async def introspect_query_columns(
         HTTPException: If query is invalid or execution fails
     """
     try:
-        ds_cfg = _resolve_data_source_config(data_source_name, data_source_service, project_name, project_service)
+        source_name = data_source_name if project_name else authorized_data_source.resource.locator
+        ds_cfg = _resolve_data_source_config(source_name, data_source_service, project_name, project_service)
         columns: list[str] = await query_service.introspect_query_columns(ds_cfg=ds_cfg, query=introspection.query)
         return {"columns": columns}
     except QuerySecurityError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Query rejected by the SQL safety policy.") from e
     except QueryExecutionError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=500, detail=public_error_detail("Column introspection failed")) from e
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=public_error_detail("Column introspection failed")) from e

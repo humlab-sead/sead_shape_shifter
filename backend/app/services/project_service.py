@@ -7,6 +7,8 @@ from typing import Any, Iterable
 from fastapi import UploadFile
 from loguru import logger
 
+from backend.app.authorization.models import Action, Principal, ResourceRecord, ResourceType
+from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings
 from backend.app.core.state_manager import ApplicationStateManager, get_app_state_manager
 from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError
@@ -152,6 +154,31 @@ class ProjectService:
 
         logger.debug(f"Found {len(configs)} project(s) satisfying specification")
         return configs
+
+    def list_authorized_projects(self, principal: Principal, authorization_service: AuthorizationService) -> list[ProjectMetadata]:
+        """Return project metadata entries readable by a principal."""
+        authorized_projects: list[ProjectMetadata] = []
+        for metadata in self.list_projects():
+            resource = authorization_service.repository.get_resource_by_locator(ResourceType.PROJECT, metadata.name)
+            if resource is not None and authorization_service.is_allowed(principal, Action.READ, resource):
+                authorized_projects.append(metadata)
+        return authorized_projects
+
+    def assign_project_owner(
+        self,
+        project_name: str,
+        principal: Principal,
+        authorization_service: AuthorizationService,
+    ) -> ResourceRecord:
+        """Create a project authorization record and assign the principal as owner."""
+        try:
+            return authorization_service.register_project(principal, project_name)
+        except ValueError as error:
+            raise ResourceConflictError(
+                message=str(error),
+                resource_type="project",
+                resource_id=project_name,
+            ) from error
 
     def load_project(self, name: str, force_reload: bool = False) -> Project:
         """
@@ -925,6 +952,46 @@ class ProjectService:
             List of file information from global and optionally local stores
         """
         return self.files.list_data_source_files(extensions, project_name)
+
+    def list_authorized_data_source_files(
+        self,
+        principal: Principal,
+        authorization_service: AuthorizationService,
+        extensions: Iterable[str] | None = None,
+        project_name: str | None = None,
+    ) -> list[ProjectFileInfo]:
+        """Return the data source files a principal is allowed to list.
+
+        Includes global shared-data files only for principals with the operator
+        role. Includes a project's uploaded files only when the principal has
+        read access to that project; other project names are ignored rather
+        than reported.
+
+        Args:
+            principal: Authenticated principal requesting the file list.
+            authorization_service: Service that resolves access decisions.
+            extensions: Optional file extensions to filter.
+            project_name: Optional project whose uploaded files are included.
+
+        Returns:
+            List of files the principal is allowed to see.
+        """
+        include_global = authorization_service.can_perform_application_action(principal, Action.MANAGE_SHARED_SOURCES)
+        include_project_files = bool(project_name) and self._principal_can_read_project(authorization_service, principal, project_name)
+        files = self.files.list_data_source_files(extensions, project_name if include_project_files else None)
+        if not include_global:
+            files = [file for file in files if file.location != "global"]
+        return files
+
+    def _principal_can_read_project(
+        self,
+        authorization_service: AuthorizationService,
+        principal: Principal,
+        project_name: str,
+    ) -> bool:
+        """Return whether a principal has read access to an active project resource."""
+        resource = authorization_service.repository.get_resource_by_locator(ResourceType.PROJECT, project_name)
+        return resource is not None and authorization_service.is_allowed(principal, Action.READ, resource)
 
     def get_excel_metadata(
         self,

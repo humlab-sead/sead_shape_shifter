@@ -163,6 +163,55 @@ Run `make tidy && make lint` before opening a pull request.
 
 See [DESIGN.md](DESIGN.md) for the full layer boundary and identity system design.
 
+### Authorization for protected work
+
+Use the centralized authorization dependencies for every protected endpoint. Import actions and dependencies from the authorization package; do not duplicate role checks in a route or service.
+
+```python
+from typing import Annotated
+
+from fastapi import Depends
+
+from backend.app.authorization.dependencies import require_project
+from backend.app.authorization.models import Action, AuthorizedResource
+
+project_reader = require_project(Action.READ)
+
+
+@router.get("/projects/{name}/example")
+async def read_example(
+   name: str,
+   authorized_project: Annotated[AuthorizedResource, Depends(project_reader)],
+) -> dict:
+   return await service.read_example(authorized_project)
+```
+
+The project path parameter must be named `name` or `project_name` so `require_project()` can resolve it. Use `require_shared_data_source(Action.READ)` for a named shared source and `require_application_action(action)` for deployment-wide permissions. Each dependency adds `authorization_requirement` metadata used by [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md).
+
+Sensitive service methods must accept an `AuthorizedResource` or perform the same central authorization check before accessing data. Use `authorized_resource.resource.locator` only after the dependency has resolved it. Do not pass client-supplied resource names, paths, or an `AuthorizedResource` value from an API request into a service as proof of authorization.
+
+For a long-running project operation, record the initiating principal and project resource UUID when creating its operation record:
+
+```python
+operation_id = operation_manager.create_operation(
+   operation_type="example",
+   owner_principal_id=authorized_project.principal.principal_id,
+   project_resource_id=str(authorized_project.resource.resource_id),
+)
+```
+
+Use `require_operation(Action.READ)` or `require_operation(Action.EDIT)` for later progress, stream, result, and cancellation routes. Do not treat an operation ID or session ID as authorization. A background task uses the authorization state recorded when it starts; later access must reauthorize against the recorded project.
+
+When adding or changing protected work:
+
+1. Select the resource and action from `backend.app.authorization.models.Action`.
+2. Add the matching dependency and use its returned authorized resource for the service call.
+3. Record every required resource for multi-resource operations; project access does not grant shared-source access.
+4. Add the route to [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md) with the declared requirement.
+5. Add focused allowed, denied, and concealed-resource tests. Test service or background entry points without relying only on route dependencies.
+
+See [AUTHORIZATION.md](AUTHORIZATION.md) for policy rules and response behavior.
+
 ### Frontend
 
 - `<script setup lang="ts">` with `defineProps<T>()` and `defineEmits<T>()`.

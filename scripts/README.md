@@ -66,6 +66,39 @@ python3 scripts/generate_user_release_notes.py --version 1.26.0 --force-heuristi
 - `--prompt-output`: Custom path for the generated Copilot prompt file
 - `--list-versions`: Print release versions available in `CHANGELOG.md` and exit
 
+## Deployment Scripts
+
+These scripts package the deployment steps from the container deployment guide into reusable command-line helpers.
+
+### `deploy_single_environment.sh`
+
+Deploy the project for a dedicated environment user and start the container stack.
+
+```bash
+# Deploy a single environment user
+container/scripts/deploy/deploy_single_environment.sh shapeshifter-test
+
+# Override the repository branch and host port
+container/scripts/deploy/deploy_single_environment.sh shapeshifter-prod --branch main --host-port 8013
+```
+
+### `install_nginx_reverse_proxy.sh`
+
+Install an NGINX vhost for HTTPS traffic to the Podman service.
+
+```bash
+# Run as root
+sudo container/scripts/deploy/install_nginx_reverse_proxy.sh shapeshifter.example.com 8012
+```
+
+### `install_systemd_service.sh`
+
+Install and enable the user-level systemd service for the container.
+
+```bash
+container/scripts/deploy/install_systemd_service.sh shapeshifter-test
+```
+
 ## Auto-Reconcile Script
 
 The `auto_reconcile.py` script runs the entity reconciliation workflow from the command line.
