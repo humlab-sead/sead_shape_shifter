@@ -73,7 +73,7 @@ target/
 .ipynb_checkpoints
 
 # pyenv
-.python-version
+# .python-version
 
 # celery beat schedule file
 celerybeat-schedule
@@ -117,6 +117,7 @@ deprecated
 output*.xlsx
 **/*.mdb
 **/*.accdb
+!tests/test_data/ucanaccess_test.mdb
 backups
 .vite
 coverage
