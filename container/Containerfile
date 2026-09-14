@@ -1,0 +1,222 @@
+# ==============================================================================
+# Podman Containerfile for Shape Shifter
+# Builds the Vue 3 frontend and serves it plus the FastAPI backend on port 8012.
+#
+# This file mirrors the proven Docker image (docker/Dockerfile). It uses the
+# same Debian-based Python runtime so binary wheels (pandas, pyarrow, psycopg,
+# jpype) resolve from the standard manylinux set, and so a real JRE is available
+# for UCanAccess (MS Access) support.
+#
+# Build Modes:
+#   1. Standalone from GitHub (used on deployment hosts):
+#      podman build -f Containerfile \
+#                   --build-arg SOURCE=github \
+#                   --build-arg GIT_REF=main \
+#                   -t shape-shifter:latest .
+#
+#   2. From the local repository checkout (development):
+#      podman build -f container/Containerfile -t shape-shifter:latest .
+#
+#   3. From GitHub with cache invalidation (when the branch has new commits):
+#      podman build -f Containerfile \
+#                   --build-arg SOURCE=github \
+#                   --build-arg GIT_REF=main \
+#                   --build-arg CACHE_BUST=$(git ls-remote https://github.com/humlab-sead/sead_shape_shifter.git refs/heads/main | cut -f1) \
+#                   -t shape-shifter:latest .
+#
+# Standalone builds require the UCanAccess JARs beside this Containerfile:
+#   lib/ucanaccess/*.jar   (see scripts/install-ucanaccess.sh)
+# ==============================================================================
+
+# Global build arguments (available to all stages)
+ARG PYTHON_VERSION=3.13
+ARG NODE_VERSION=20
+ARG ALPINE_VERSION=3.19
+ARG USER_UID=1000
+ARG USER_GID=1000
+ARG SOURCE=workdir
+
+# ------------------------------------------------------------------------------
+# Stage 0: Resolve application source
+# ------------------------------------------------------------------------------
+ARG ALPINE_VERSION
+FROM alpine:${ALPINE_VERSION} AS source-github
+
+ARG GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git
+ARG GIT_REF=main
+ARG CACHE_BUST=1
+
+WORKDIR /source
+
+RUN echo "Cloning application from GitHub: ${GIT_REPO} (ref: ${GIT_REF})..." && \
+    echo "Cache bust value: ${CACHE_BUST}" && \
+    apk add --no-cache git && \
+    git clone --depth 1 --branch "${GIT_REF}" "${GIT_REPO}" /source && \
+    cd /source && \
+    echo "Cloned commit: $(git rev-parse HEAD)"
+
+FROM alpine:${ALPINE_VERSION} AS source-workdir
+
+WORKDIR /source
+
+# Local workdir builds require repository-root context so these paths exist.
+COPY frontend/ ./frontend/
+COPY src/ ./src/
+COPY backend/ ./backend/
+COPY ingesters/ ./ingesters/
+COPY scripts/ ./scripts/
+COPY docs/ ./docs/
+COPY pyproject.toml ./
+COPY uv.lock ./
+COPY README.md ./
+
+FROM alpine:${ALPINE_VERSION} AS lib-context
+
+WORKDIR /lib-context
+
+# lib/ is read from the build context in both build modes. GitHub builds clone
+# application source without the (git-ignored) UCanAccess JARs, so those JARs
+# must travel with the deployment bundle.
+COPY lib/ ./lib/
+
+ARG SOURCE=workdir
+FROM source-${SOURCE} AS source
+
+
+# ------------------------------------------------------------------------------
+# Stage 1: Build frontend
+# ------------------------------------------------------------------------------
+ARG NODE_VERSION
+FROM node:${NODE_VERSION}-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+
+# Install pnpm
+RUN npm install -g pnpm@9
+
+# Copy dependency manifests first so application source edits do not invalidate
+# the pnpm install layer.
+COPY --from=source /source/frontend/package.json ./package.json
+COPY --from=source /source/frontend/pnpm-lock.yaml ./pnpm-lock.yaml
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy frontend source after dependencies are installed.
+COPY --from=source /source/frontend ./
+
+# Build-time environment variables for Vite
+ARG VITE_API_BASE_URL
+ARG VITE_ENV=production
+ARG VITE_ENABLE_ANALYTICS=false
+ARG VITE_ENABLE_DEBUG=false
+
+# Create production .env file for build
+RUN echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" > .env.production && \
+    echo "VITE_ENV=${VITE_ENV}" >> .env.production && \
+    echo "VITE_ENABLE_ANALYTICS=${VITE_ENABLE_ANALYTICS}" >> .env.production && \
+    echo "VITE_ENABLE_DEBUG=${VITE_ENABLE_DEBUG}" >> .env.production
+
+# Build frontend for production. Skip the vue-tsc type check: the container
+# build must not fail on type-only diagnostics that the repository test suite
+# already covers.
+RUN pnpm run build:skip-check
+
+
+# ------------------------------------------------------------------------------
+# Stage 2: Python dependencies
+# ------------------------------------------------------------------------------
+ARG PYTHON_VERSION
+FROM python:${PYTHON_VERSION}-slim AS python-builder
+
+WORKDIR /app
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+
+# Install uv for fast Python package installation
+RUN pip install --no-cache-dir uv
+
+# Copy dependency metadata first so normal source edits do not force a full
+# Python dependency reinstall.
+COPY --from=source /source/pyproject.toml ./pyproject.toml
+COPY --from=source /source/uv.lock ./uv.lock
+COPY --from=source /source/README.md ./README.md
+
+# Install only locked runtime dependencies into a dedicated virtual environment.
+RUN uv sync --frozen --no-dev --extra api --no-install-project
+
+
+# ------------------------------------------------------------------------------
+# Stage 3: Production runtime
+# ------------------------------------------------------------------------------
+ARG PYTHON_VERSION
+FROM python:${PYTHON_VERSION}-slim
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Required for UCanAccess (MS Access support). JPype starts a JVM at startup.
+    default-jre-headless \
+    # Required for some database drivers
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security.
+# UID/GID are overridden at build time to match the host deployment user so
+# rootless Podman with "userns keep-id" can write the bind-mounted data dirs.
+ARG USER_UID
+ARG USER_GID
+
+RUN GROUP_NAME=$(getent group ${USER_GID} | cut -d: -f1) && \
+    if [ -z "$GROUP_NAME" ]; then \
+        groupadd -r shapeshifter --gid=${USER_GID}; \
+        GROUP_NAME=shapeshifter; \
+    fi && \
+    useradd -o --uid ${USER_UID} -g ${USER_GID} --home-dir=/app --shell=/bin/bash shapeshifter
+
+# Copy the dedicated Python environment from the builder
+COPY --from=python-builder /opt/venv /opt/venv
+
+# Copy application source from the selected source resolver
+COPY --from=source /source/src ./src/
+COPY --from=source /source/backend ./backend/
+COPY --from=source /source/docs ./docs/
+COPY --from=source /source/scripts ./scripts/
+COPY --from=source /source/ingesters ./ingesters/
+
+# Copy UCanAccess JARs from the build context in both modes.
+COPY --from=lib-context /lib-context/lib ./lib/
+
+# Copy built frontend from frontend-builder
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+
+# Create only the writable runtime directories with the correct ownership.
+RUN mkdir -p /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state && \
+    chown ${USER_UID}:${USER_GID} /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state && \
+    chmod 775 /app/projects /app/shared /app/logs /app/output /app/backups /app/tmp /app/state
+
+# Set environment variables
+ENV PATH=/opt/venv/bin:$PATH \
+    PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    ENVIRONMENT=production \
+    SHAPE_SHIFTER_APPLICATION_ROOT=/app \
+    PROJECTS_DIR=/app/projects \
+    LOG_LEVEL=INFO \
+    PORT=8012
+
+# Switch to non-root user
+USER shapeshifter
+
+EXPOSE 8012
+
+# Health check using the image's own Python (no curl needed in the image)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8012/api/v1/health').read()"
+
+# IMPORTANT: keep --workers 1. ApplicationState (the in-memory project cache) is
+# per-process. Multiple workers would each hold an independent cache, so entity
+# edits handled by one worker would be invisible to another and silently lost.
+# Implement shared state (for example Redis) before increasing the worker count.
+CMD ["python", "-m", "uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8012", "--workers", "1", "--timeout-keep-alive", "120"]

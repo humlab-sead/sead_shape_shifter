@@ -150,6 +150,77 @@ def test_resolve_references_uses_any_existing_source_file_for_relative_paths(tmp
     assert resolved["nested"]["child"]["key"] == "value"
 
 
+def test_resolve_directives_rejects_paths_outside_approved_roots(tmp_path: Path) -> None:
+    """Directive files must remain beneath the supplied project or shared roots."""
+    project_root = tmp_path / "projects" / "demo"
+    project_root.mkdir(parents=True)
+    source_file = project_root / "shapeshifter.yml"
+    outside_file = tmp_path / "outside.yml"
+    outside_file.write_text("value: escaped\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="approved data roots"):
+        resolve_directives(
+            {"nested": "@include: ../outside.yml"},
+            source_path=str(source_file),
+            allowed_roots=(project_root,),
+        )
+
+
+def test_resolve_directives_allows_load_from_approved_shared_root(tmp_path: Path) -> None:
+    """@load may read a file from an explicitly approved shared root."""
+    project_root = tmp_path / "projects" / "demo"
+    shared_root = tmp_path / "shared"
+    project_root.mkdir(parents=True)
+    shared_root.mkdir()
+    source_file = project_root / "shapeshifter.yml"
+    values_file = shared_root / "values.csv"
+    values_file.write_text("name\nalice\n", encoding="utf-8")
+
+    resolved = resolve_directives(
+        {"values": f"@load: {values_file}"},
+        source_path=str(source_file),
+        allowed_roots=(project_root, shared_root),
+    )
+
+    assert resolved["values"] == [{"name": "alice"}]
+
+
+def test_resolve_directives_rejects_absolute_and_symlink_escape(tmp_path: Path) -> None:
+    """Directive paths cannot bypass roots with absolute names or symlinks."""
+    project_root = tmp_path / "projects" / "demo"
+    project_root.mkdir(parents=True)
+    source_file = project_root / "shapeshifter.yml"
+    outside_file = tmp_path / "outside.yml"
+    outside_file.write_text("value: escaped\n", encoding="utf-8")
+    symlink = project_root / "linked.yml"
+    symlink.symlink_to(outside_file)
+
+    for directive in (f"@include: {outside_file}", "@include: linked.yml"):
+        with pytest.raises(ValueError, match="approved data roots"):
+            resolve_directives(
+                {"nested": directive},
+                source_path=str(source_file),
+                allowed_roots=(project_root,),
+            )
+
+
+def test_resolve_directives_rejects_cross_project_include(tmp_path: Path) -> None:
+    """A project cannot include a file from a sibling project root."""
+    project_root = tmp_path / "projects" / "project-a"
+    other_project = tmp_path / "projects" / "project-b"
+    project_root.mkdir(parents=True)
+    other_project.mkdir()
+    source_file = project_root / "shapeshifter.yml"
+    (other_project / "shared.yml").write_text("value: other-project\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="approved data roots"):
+        resolve_directives(
+            {"nested": "@include: ../project-b/shared.yml"},
+            source_path=str(source_file),
+            allowed_roots=(project_root,),
+        )
+
+
 def test_configfactory_applies_env_prefix(tmp_path: Path, monkeypatch) -> None:
     """load_config should inject env-prefixed values into loaded data."""
     monkeypatch.setenv("MYAPP_SECTION_KEY", "from_env")

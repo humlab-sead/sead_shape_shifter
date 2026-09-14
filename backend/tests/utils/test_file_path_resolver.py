@@ -71,6 +71,30 @@ class TestFilePathResolver:
         with pytest.raises(ValueError, match="Invalid location"):
             resolver.resolve("file.csv", "invalid")  # type: ignore
 
+    def test_resolve_rejects_absolute_filename(self, resolver: FilePathResolver, tmp_path: Path) -> None:
+        """Test that absolute filenames cannot bypass the configured root."""
+        with pytest.raises(ValueError, match="Absolute paths are not allowed"):
+            resolver.resolve(str(tmp_path / "outside.csv"), "global")
+
+    def test_resolve_rejects_traversal_filename(self, resolver: FilePathResolver) -> None:
+        """Test that parent traversal cannot escape the configured root."""
+        with pytest.raises(ValueError, match="outside the managed root"):
+            resolver.resolve("../outside.csv", "global")
+
+    def test_resolve_rejects_symlink_escape(self, resolver: FilePathResolver, mock_settings: Settings, tmp_path: Path) -> None:
+        """Test that a symlink below the root cannot target an external file."""
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (mock_settings.global_data_dir / "linked").symlink_to(outside, target_is_directory=True)
+
+        with pytest.raises(ValueError, match="outside the managed root"):
+            resolver.resolve("linked/data.csv", "global")
+
+    def test_resolve_rejects_project_name_escape(self, resolver: FilePathResolver) -> None:
+        """Test that project-name path variants cannot escape the projects root."""
+        with pytest.raises(ValueError, match="outside the managed root"):
+            resolver.resolve("data.csv", "local", "../outside")
+
     # Test: decompose()
 
     def test_decompose_global_file(self, resolver: FilePathResolver, mock_settings: Settings) -> None:

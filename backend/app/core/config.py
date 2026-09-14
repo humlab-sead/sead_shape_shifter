@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Import version from package
@@ -34,21 +34,35 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["development", "production", "test"] = "development"
     API_V1_PREFIX: str = "/api/v1"
 
+    # Reverse-proxy authentication
+    # Enable this in deployments where nginx authenticates the user and forwards the verified identity.
+    TRUSTED_PROXY_AUTH_ENABLED: bool = False
+    TRUSTED_PROXY_AUTH_HEADER: str = "X-Authenticated-User"
+    TRUSTED_PROXY_GROUPS_ENABLED: bool = False
+    TRUSTED_PROXY_GROUPS_HEADER: str = "X-Authenticated-Groups"
+    DEVELOPMENT_PRINCIPAL_ID: str | None = None
+
+    # Authorization storage and bootstrap
+    AUTHORIZATION_DATABASE_PATH: Path = Path("state/authorization.sqlite3")
+    AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS: list[str] = []
+    AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE: bool = False
+    AUTHORIZATION_MEMBERSHIP_LOOKUP_URL: str | None = None
+    AUTHORIZATION_MEMBERSHIP_PROVIDER: str = "trusted-membership-provider"
+    AUTHORIZATION_MEMBERSHIP_LOOKUP_TIMEOUT_SECONDS: float = 5.0
+
+    # Optional database driver startup
+    UCANACCESS_JVM_STARTUP_ENABLED: bool = True
+
     # CORS
     ALLOWED_ORIGINS: list[str] = [
         "http://localhost:5173",  # Vite dev server
         "http://localhost:3000",  # Alternative frontend port
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
-        "https://tgx7q4bq-5173.euw.devtunnels.ms",  # DevTunnels frontend
-        "https://tgx7q4bq-8012.euw.devtunnels.ms",  # DevTunnels backend
     ]
 
-    # CORS regex patterns for wildcard domains (allows any devtunnel or github dev preview)
-    # Pattern matches: https://anything-port.region.devtunnels.ms
-    ALLOWED_ORIGIN_REGEX: str = (
-        r"https://[a-zA-Z0-9\-]+\.(euw|eus|weu|neu|sasia|asia|[a-z]+)\.devtunnels\.ms$|https://[a-zA-Z0-9\-]+\.preview\.app\.github\.dev$"
-    )
+    # Remote origins must be explicitly configured for the deployment.
+    ALLOWED_ORIGIN_REGEX: str | None = None
 
     # File paths
     PROJECTS_DIR: Path = Path("projects")
@@ -66,10 +80,14 @@ class Settings(BaseSettings):
     LOG_RETENTION: str = "30 days"
     LOG_COMPRESSION: str = "zip"
     LOG_FILTER_FRAMEWORK_FRAMES: bool = True
+    LOG_CONFIGURE_ON_STARTUP_ENABLED: bool = True
 
     # Services
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
     SIMS_SERVICE_URL: str = "http://localhost:8000"  # sead_authority_service base URL for /identity endpoints
+
+    # Data source policy
+    DATA_SOURCE_ALLOWED_ENV_VAR_PREFIXES: str = Field(default="SEAD_,SHAPE_SHIFTER_")
 
     # Suggestions
     ENABLE_FK_SUGGESTIONS: bool = False
@@ -81,6 +99,21 @@ class Settings(BaseSettings):
     MATERIALIZATION_INLINE_THRESHOLD: int = 20  # Rows below which data is stored inline in YAML
 
     @model_validator(mode="after")
+    def validate_production_authentication(self) -> "Settings":
+        """Require trusted-proxy authentication for production settings."""
+        if self.ENVIRONMENT == "production" and not self.TRUSTED_PROXY_AUTH_ENABLED:
+            raise ValueError("TRUSTED_PROXY_AUTH_ENABLED must be true in production")
+        if self.ENVIRONMENT == "production" and self.DEVELOPMENT_PRINCIPAL_ID:
+            raise ValueError("DEVELOPMENT_PRINCIPAL_ID is only allowed in development and test")
+        if self.TRUSTED_PROXY_GROUPS_ENABLED and not self.TRUSTED_PROXY_AUTH_ENABLED:
+            raise ValueError("TRUSTED_PROXY_GROUPS_ENABLED requires TRUSTED_PROXY_AUTH_ENABLED")
+        if self.ENVIRONMENT == "production" and not any(
+            principal_id.strip() for principal_id in self.AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS
+        ):
+            raise ValueError("AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS must include at least one administrator in production")
+        return self
+
+    @model_validator(mode="after")
     def resolve_paths(self) -> "Settings":
         """Resolve relative paths against APPLICATION_ROOT and ensure directories exist."""
 
@@ -90,6 +123,17 @@ class Settings(BaseSettings):
         self.LOG_DIR = self._resolve_under_root(self.LOG_DIR)
         self.GLOBAL_DATA_DIR = self._resolve_under_root(self.GLOBAL_DATA_DIR)
         self.GLOBAL_DATA_SOURCE_DIR = self._resolve_under_root(self.GLOBAL_DATA_SOURCE_DIR)
+        self.AUTHORIZATION_DATABASE_PATH = self._resolve_under_root(self.AUTHORIZATION_DATABASE_PATH)
+
+        protected_directories = (
+            self.PROJECTS_DIR,
+            self.LOG_DIR,
+            self.GLOBAL_DATA_DIR,
+            self.GLOBAL_DATA_SOURCE_DIR,
+        )
+        if any(self.AUTHORIZATION_DATABASE_PATH.is_relative_to(directory) for directory in protected_directories):
+            raise ValueError("AUTHORIZATION_DATABASE_PATH must be outside project, log, and shared-data directories")
+        self.AUTHORIZATION_DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
         for path in (
             self.PROJECTS_DIR,

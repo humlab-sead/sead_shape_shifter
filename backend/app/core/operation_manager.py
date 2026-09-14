@@ -26,6 +26,8 @@ class OperationProgress:
 
     operation_id: str
     operation_type: str
+    owner_principal_id: str
+    project_resource_id: str
     status: OperationStatus
     current: int = 0
     total: int = 0
@@ -113,6 +115,8 @@ class OperationManager:
     def create_operation(
         self,
         operation_type: str,
+        owner_principal_id: str,
+        project_resource_id: str,
         total: int = 0,
         message: str = "",
         metadata: dict[str, Any] | None = None,
@@ -122,6 +126,8 @@ class OperationManager:
 
         Args:
             operation_type: Type of operation (e.g., "auto_reconcile")
+            owner_principal_id: Principal that created the operation
+            project_resource_id: Stable parent project resource ID
             total: Total number of items to process
             message: Initial status message
             metadata: Additional metadata
@@ -134,6 +140,8 @@ class OperationManager:
         progress = OperationProgress(
             operation_id=operation_id,
             operation_type=operation_type,
+            owner_principal_id=owner_principal_id,
+            project_resource_id=project_resource_id,
             status=OperationStatus.PENDING,
             total=total,
             message=message,

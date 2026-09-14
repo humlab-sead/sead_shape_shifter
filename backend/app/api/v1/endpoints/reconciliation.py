@@ -3,7 +3,7 @@
 import asyncio
 import json
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 import yaml as pyyaml
 from fastapi import APIRouter, Body, Depends, Query
@@ -11,6 +11,8 @@ from fastapi.responses import StreamingResponse
 from loguru import logger
 from pydantic import ValidationError
 
+from backend.app.authorization.dependencies import require_operation, require_project
+from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
 from backend.app.core.operation_manager import OperationProgress, operation_manager
@@ -65,7 +67,9 @@ async def get_reconciliation_service_manifest(service: ReconciliationService = D
 @router.get("/projects/{project_name}/reconciliation")
 @handle_endpoint_errors
 async def get_entity_mapping_registry(
-    project_name: str, service: ReconciliationService = Depends(get_reconciliation_service)
+    project_name: str,  # pylint: disable=unused-argument
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
+    service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.EntityResolutionCatalog:
     """
     Get entity resolution catalog for a project.
@@ -74,7 +78,7 @@ async def get_entity_mapping_registry(
     Maps domain model to DTO at API boundary.
     """
     # Service returns domain model
-    domain_registry: core.EntityResolutionCatalog = service.catalog_manager.load_catalog(project_name)
+    domain_registry: core.EntityResolutionCatalog = service.catalog_manager.load_catalog(authorized_project.resource.locator)
 
     # Map to DTO for API response
     return ReconciliationMapper.registry_to_dto(domain_registry)
@@ -83,8 +87,9 @@ async def get_entity_mapping_registry(
 @router.put("/projects/{project_name}/reconciliation")
 @handle_endpoint_errors
 async def update_entity_mapping_registry(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     recon_config: api.EntityResolutionCatalog,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.EntityResolutionCatalog:
     """
@@ -96,7 +101,7 @@ async def update_entity_mapping_registry(
     domain_config: core.EntityResolutionCatalog = ReconciliationMapper.registry_to_domain(recon_config)
 
     # Service works with domain model
-    service.catalog_manager.save_catalog(project_name, domain_config)
+    service.catalog_manager.save_catalog(authorized_project.resource.locator, domain_config)
 
     # Return original DTO (unchanged)
     return recon_config
@@ -105,7 +110,8 @@ async def update_entity_mapping_registry(
 @router.put("/projects/{project_name}/reconciliation/raw")
 @handle_endpoint_errors
 async def update_entity_resolution_catalog_raw(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     yaml_content: str = Body(..., media_type="text/plain"),
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.EntityResolutionCatalog:
@@ -127,7 +133,7 @@ async def update_entity_resolution_catalog_raw(
         domain_config: core.EntityResolutionCatalog = ReconciliationMapper.registry_to_domain(catalog)
 
         # Save
-        service.catalog_manager.save_catalog(project_name, domain_config)
+        service.catalog_manager.save_catalog(authorized_project.resource.locator, domain_config)
 
         return catalog
     except pyyaml.YAMLError as e:
@@ -139,9 +145,10 @@ async def update_entity_resolution_catalog_raw(
 @router.get("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/preview")
 @handle_endpoint_errors
 async def get_reconciliation_preview(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> list[dict[str, Any]]:
     """
@@ -149,7 +156,7 @@ async def get_reconciliation_preview(
 
     Returns source data enriched with reconciliation status (target_id, confidence, etc.)
     """
-    return await service.get_reconciliation_preview(project_name, entity_name, target_field)
+    return await service.get_reconciliation_preview(authorized_project.resource.locator, entity_name, target_field)
 
 
 @router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/auto-reconcile")
@@ -158,6 +165,7 @@ async def auto_reconcile_entity(
     project_name: str,
     entity_name: str,
     target_field: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     threshold: float = Query(0.95, ge=0.0, le=1.0),
     review_threshold: float | None = Query(None, ge=0.0, le=1.0),
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -178,7 +186,7 @@ async def auto_reconcile_entity(
         Dictionary with operation_id for tracking progress
     """
     # Load entity resolution catalog (service returns domain model)
-    catalog: core.EntityResolutionCatalog = service.catalog_manager.load_catalog(project_name)
+    catalog: core.EntityResolutionCatalog = service.catalog_manager.load_catalog(authorized_project.resource.locator)
 
     entity_mapping: core.EntityResolutionSet | None = catalog.get(entity_name, target_field)
     if entity_mapping is None:
@@ -195,6 +203,8 @@ async def auto_reconcile_entity(
     # Create operation for progress tracking
     operation_id: str = operation_manager.create_operation(
         operation_type="auto_reconcile",
+        owner_principal_id=authorized_project.principal.principal_id,
+        project_resource_id=str(authorized_project.resource.resource_id),
         total=0,
         message=f"Starting reconciliation for {entity_name}...",
         metadata={"project": project_name, "entity": entity_name, "threshold": threshold},
@@ -204,7 +214,7 @@ async def auto_reconcile_entity(
     async def run_reconciliation():
         try:
             await service.auto_reconcile_entity(
-                project_name=project_name,
+                project_name=authorized_project.resource.locator,
                 entity_name=entity_name,
                 target_field=target_field,
                 entity_mapping=entity_mapping,
@@ -222,7 +232,10 @@ async def auto_reconcile_entity(
 
 
 @router.get("/operations/{operation_id}/progress")
-async def get_operation_progress(operation_id: str) -> dict[str, Any]:
+async def get_operation_progress(
+    operation_id: str,  # pylint: disable=unused-argument
+    operation_progress: Annotated[OperationProgress, Depends(require_operation(Action.READ))],
+) -> dict[str, Any]:
     """
     Get current progress for an operation.
 
@@ -232,15 +245,14 @@ async def get_operation_progress(operation_id: str) -> dict[str, Any]:
     Returns:
         Progress information
     """
-    progress: OperationProgress | None = operation_manager.get_progress(operation_id)
-    if not progress:
-        raise NotFoundError(f"Operation {operation_id} not found")
-
-    return progress.to_dict()
+    return operation_progress.to_dict()
 
 
 @router.get("/operations/{operation_id}/stream")
-async def stream_operation_progress(operation_id: str) -> StreamingResponse:
+async def stream_operation_progress(
+    operation_id: str,
+    operation_progress: Annotated[OperationProgress, Depends(require_operation(Action.READ))],  # pylint: disable=unused-argument
+) -> StreamingResponse:
     """
     Stream real-time progress updates via Server-Sent Events (SSE).
 
@@ -250,9 +262,6 @@ async def stream_operation_progress(operation_id: str) -> StreamingResponse:
     Returns:
         SSE stream of progress updates
     """
-    progress: OperationProgress | None = operation_manager.get_progress(operation_id)
-    if not progress:
-        raise NotFoundError(f"Operation {operation_id} not found")
 
     async def event_generator():
         """Generate SSE events for operation progress."""
@@ -292,7 +301,12 @@ async def stream_operation_progress(operation_id: str) -> StreamingResponse:
 
 @router.post("/operations/{operation_id}/cancel")
 @handle_endpoint_errors
-async def cancel_operation(operation_id: str) -> dict[str, str]:
+async def cancel_operation(
+    operation_id: str,
+    operation_progress: Annotated[  # pylint: disable=unused-argument
+        OperationProgress, Depends(require_operation(Action.EDIT))  # pylint: disable=unused-argument
+    ],
+) -> dict[str, str]:
     """
     Cancel a running operation.
 
@@ -302,9 +316,7 @@ async def cancel_operation(operation_id: str) -> dict[str, str]:
     Returns:
         Cancellation status
     """
-    success: bool = operation_manager.cancel_operation(operation_id)
-    if not success:
-        raise NotFoundError(f"Operation {operation_id} not found")
+    operation_manager.cancel_operation(operation_id)
 
     return {"operation_id": operation_id, "status": "cancelled", "message": "Cancellation requested"}
 
@@ -316,6 +328,7 @@ async def auto_reconcile_entity_sync(
     project_name: str,
     entity_name: str,
     target_field: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     threshold: float = Query(0.95, ge=0.0, le=1.0),
     review_threshold: float | None = Query(None, ge=0.0, le=1.0),
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -337,7 +350,7 @@ async def auto_reconcile_entity_sync(
         AutoReconcileResult with counts and candidates
     """
     # Load reconciliation config (service returns domain model)
-    catalog: core.EntityResolutionCatalog = service.catalog_manager.load_catalog(project_name)
+    catalog: core.EntityResolutionCatalog = service.catalog_manager.load_catalog(authorized_project.resource.locator)
 
     # Get entity mapping using domain model method
     resolution_set: core.EntityResolutionSet | None = catalog.get(entity_name, target_field)
@@ -347,14 +360,14 @@ async def auto_reconcile_entity_sync(
     resolution_set.metadata.update_thresholds(threshold=threshold, review_threshold=review_threshold)
 
     # Persist updated thresholds even if reconciliation is blocked/fails.
-    service.catalog_manager.save_catalog(project_name, catalog)
+    service.catalog_manager.save_catalog(authorized_project.resource.locator, catalog)
 
-    if get_app_state_manager().is_dirty(project_name):
+    if get_app_state_manager().is_dirty(authorized_project.resource.locator):
         raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
 
     logger.info(f"Starting auto-reconciliation for {entity_name}.{target_field} with threshold {threshold}")
     result: api.AutoReconcileResult = await service.auto_reconcile_entity(
-        project_name=project_name,
+        project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,
         entity_mapping=resolution_set,  # Pass domain model
@@ -367,9 +380,10 @@ async def auto_reconcile_entity_sync(
 @router.get("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/suggest")
 @handle_endpoint_errors
 async def suggest_entities(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],  # pylint: disable=unused-argument
     query: str = Query(..., min_length=2),
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> list[api.ReconciliationCandidate]:
@@ -386,7 +400,7 @@ async def suggest_entities(
         list of matching candidates with scores
     """
     # Get entity spec to resolve service type (service returns domain model)
-    catalog: core.EntityResolutionCatalog = service.catalog_manager.load_catalog(project_name)
+    catalog: core.EntityResolutionCatalog = service.catalog_manager.load_catalog(authorized_project.resource.locator)
 
     # Use domain model method
     resolution_set: core.EntityResolutionSet | None = catalog.get(entity_name, target_field)
@@ -407,10 +421,11 @@ async def suggest_entities(
 @router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mapping")
 @handle_endpoint_errors
 async def update_mapping(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
     source_value: Any,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     target_id: int | None = None,
     notes: str | None = None,
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -431,7 +446,7 @@ async def update_mapping(
     """
     # Service returns domain model
     domain_registry: core.EntityResolutionCatalog = service.update_mapping(
-        project_name=project_name,
+        project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,
         source_value=source_value,
@@ -446,9 +461,10 @@ async def update_mapping(
 @router.delete("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mapping")
 @handle_endpoint_errors
 async def delete_mapping(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     source_value: Any = Query(...),
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.EntityResolutionCatalog:
@@ -466,7 +482,7 @@ async def delete_mapping(
     """
     # Service returns domain model
     catalog: core.EntityResolutionCatalog = service.update_mapping(
-        project_name=project_name,
+        project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,
         source_value=source_value,
@@ -483,13 +499,14 @@ async def delete_mapping(
 )
 @handle_endpoint_errors
 async def export_reconciliation_to_mapping(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.ExportToMappingResult:
     """Copy reconciliation links for one entity field into the mapping sidecar."""
-    exported, skipped_manual = service.export_to_mapping(project_name, entity_name, target_field)
+    exported, skipped_manual = service.export_to_mapping(authorized_project.resource.locator, entity_name, target_field)
     return api.ExportToMappingResult(
         exported=exported,
         skipped_manual=skipped_manual,
@@ -501,10 +518,11 @@ async def export_reconciliation_to_mapping(
 @router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mark-unmatched")
 @handle_endpoint_errors
 async def mark_as_unmatched(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
     source_value: Any,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     notes: str | None = None,
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.EntityResolutionCatalog:
@@ -523,7 +541,7 @@ async def mark_as_unmatched(
     """
     # Service returns domain model
     catalog: core.EntityResolutionCatalog = service.mark_as_unmatched(
-        project_name=project_name,
+        project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,
         source_value=source_value,
@@ -540,7 +558,8 @@ async def mark_as_unmatched(
 @router.get("/projects/{project_name}/reconciliation/mapping-registry")
 @handle_endpoint_errors
 async def list_entity_mappings(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> list[api.EntityResolutionListItem]:
     """
@@ -555,14 +574,15 @@ async def list_entity_mappings(
         List of entity resolution items with metadata
     """
 
-    return service.catalog_manager.list_entity_mappings(project_name)
+    return service.catalog_manager.list_entity_mappings(authorized_project.resource.locator)
 
 
 @router.post("/projects/{project_name}/reconciliation/mapping-registry", status_code=201)
 @handle_endpoint_errors
 async def create_registry(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     request: api.EntityResolutionCatalogCreateRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.EntityResolutionCatalog:
     """
@@ -583,7 +603,7 @@ async def create_registry(
 
     # Service returns domain model
     catalog: core.EntityResolutionCatalog = service.catalog_manager.create_entity_mapping(
-        project_name=project_name,
+        project_name=authorized_project.resource.locator,
         entity_name=request.entity_name,
         target_field=request.target_field,
         entity_mapping=entity_mapping_domain,
@@ -596,10 +616,11 @@ async def create_registry(
 @router.put("/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}")
 @handle_endpoint_errors
 async def update_catalog(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
     request: api.EntityResolutionCatalogUpdateRequest,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.EntityResolutionCatalog:
     """
@@ -633,7 +654,7 @@ async def update_catalog(
 
     # Service returns domain model
     catalog: core.EntityResolutionCatalog = service.catalog_manager.update_entity_mapping(
-        project_name=project_name,
+        project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,
         source=source_domain,
@@ -650,9 +671,10 @@ async def update_catalog(
 @router.delete("/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}")
 @handle_endpoint_errors
 async def delete_catalog(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.EDIT))],
     force: bool = Query(False, description="Force delete even if mappings exist"),
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> api.EntityResolutionCatalog:
@@ -674,7 +696,7 @@ async def delete_catalog(
     """
     # Service returns domain model
     catalog: core.EntityResolutionCatalog = service.catalog_manager.delete(
-        project_name=project_name,
+        project_name=authorized_project.resource.locator,
         entity_name=entity_name,
         target_field=target_field,
         force=force,
@@ -687,8 +709,9 @@ async def delete_catalog(
 @router.get("/projects/{project_name}/reconciliation/available-fields/{entity_name}")
 @handle_endpoint_errors
 async def get_available_target_fields(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> list[str]:
     """
@@ -704,15 +727,16 @@ async def get_available_target_fields(
     Raises:
         NotFoundError: If entity doesn't exist
     """
-    return await service.get_available_target_fields(project_name, entity_name)
+    return await service.get_available_target_fields(authorized_project.resource.locator, entity_name)
 
 
 @router.get("/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}/mapping-count")
 @handle_endpoint_errors
 async def get_mapping_count(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
     entity_name: str,
     target_field: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> dict[str, int]:
     """
@@ -729,5 +753,5 @@ async def get_mapping_count(
     Raises:
         NotFoundError: If catalog doesn't exist
     """
-    count: int = service.get_mapping_count(project_name, entity_name, target_field)
+    count: int = service.get_mapping_count(authorized_project.resource.locator, entity_name, target_field)
     return {"count": count}

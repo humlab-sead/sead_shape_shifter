@@ -7,7 +7,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
-from backend.app.api.dependencies import require_session
+from backend.app.authorization.dependencies import get_authorization_service, get_principal, require_authorized_session, require_project
+from backend.app.authorization.models import Action, AuthorizedResource, Principal, ResourceType
+from backend.app.authorization.service import AuthorizationService
 from backend.app.core.state_manager import ApplicationState, ProjectSession, get_app_state
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 
@@ -39,6 +41,8 @@ async def create_session(
     request: SessionCreateRequest,
     response: Response,
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
+    principal: Annotated[Principal, Depends(get_principal())],
+    authorization_service: Annotated[AuthorizationService, Depends(get_authorization_service)],
 ) -> SessionResponse:
     """
     Create a new editing session for a configuration file.
@@ -49,6 +53,10 @@ async def create_session(
     Multiple users can have sessions for the same project, but
     optimistic concurrency control is used to prevent conflicts when saving.
     """
+    resource = authorization_service.repository.get_resource_by_locator(ResourceType.PROJECT, request.project_name)
+    authorized = authorization_service.authorize(principal, Action.EDIT, resource) if resource is not None else None
+    if authorized is None:
+        raise HTTPException(404, f"Project '{request.project_name}' not found")
 
     # Convert API project name to filesystem path (: -> /)
     project_path_name: str = ProjectNameMapper.to_path(request.project_name)
@@ -59,7 +67,8 @@ async def create_session(
         raise HTTPException(404, f"Project '{request.project_name}' not found")
 
     # Create session
-    session_id: UUID = await app_state.create_session(request.project_name, request.user_id)
+    session_user_id = principal.principal_id
+    session_id: UUID = await app_state.create_session(request.project_name, session_user_id)
     session: ProjectSession | None = await app_state.get_session(session_id)
 
     if not session:
@@ -94,7 +103,7 @@ async def create_session(
 
 @router.get("/current", response_model=SessionResponse)
 async def get_current_session_info(
-    session: Annotated[ProjectSession, Depends(require_session)],
+    session: Annotated[ProjectSession, Depends(require_authorized_session(Action.EDIT))],
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
 ) -> SessionResponse:
     """Get information about current session."""
@@ -114,7 +123,7 @@ async def get_current_session_info(
 
 @router.delete("/current", status_code=204)
 async def close_session(
-    session: Annotated[ProjectSession, Depends(require_session)],
+    session: Annotated[ProjectSession, Depends(require_authorized_session(Action.EDIT))],
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
 ) -> None:
     """
@@ -128,7 +137,8 @@ async def close_session(
 
 @router.get("/{project_name}/active", response_model=list[SessionResponse])
 async def list_active_sessions(
-    project_name: str,
+    project_name: str,  # pylint: disable=unused-argument
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
 ) -> list[SessionResponse]:
     """
@@ -136,7 +146,7 @@ async def list_active_sessions(
 
     Useful for detecting concurrent editing and coordinating between users.
     """
-    sessions = await app_state.get_active_sessions(project_name)
+    sessions = await app_state.get_active_sessions(authorized_project.resource.locator)
 
     return [
         SessionResponse(

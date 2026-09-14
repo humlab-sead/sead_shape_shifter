@@ -5,19 +5,10 @@ from __future__ import annotations
 import contextlib
 
 import pytest
-from fastapi.testclient import TestClient
 
 from backend.app.core.config import settings
 from backend.app.core.state_manager import get_app_state
-from backend.app.main import app
 from backend.app.services import dependency_service, documentation_service, project_service, validation_service, yaml_service
-
-
-@pytest.fixture(name="client")
-def client_fixture():
-    with TestClient(app) as client:
-        yield client
-
 
 # pylint: disable=redefined-outer-name, unused-argument, protected-access
 
@@ -53,7 +44,7 @@ def reset_services_and_state():
         app_state._project_dirty.clear()
 
 
-def test_update_raw_yaml_forces_reload(tmp_path, monkeypatch, reset_services_and_state, client):
+async def test_update_raw_yaml_forces_reload(tmp_path, monkeypatch, reset_services_and_state, authorized_client):
     """PUT /raw-yaml must invalidate cache so subsequent reads see new entities."""
 
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
@@ -65,11 +56,11 @@ def test_update_raw_yaml_forces_reload(tmp_path, monkeypatch, reset_services_and
         "site": {"type": "openpyxl", "columns": ["b"], "options": {"filename": "x.xlsx", "sheet_name": "t"}},
     }
 
-    create_resp = client.post("/api/v1/projects", json={"name": "test_project", "entities": entities_v1})
+    create_resp = await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": entities_v1})
     assert create_resp.status_code == 201
 
     # Prime ApplicationState cache (this is what used to cause staleness)
-    list_resp_v1 = client.get("/api/v1/projects/test_project/entities")
+    list_resp_v1 = await authorized_client.get("/api/v1/projects/test_project/entities")
     assert list_resp_v1.status_code == 200
     assert {e["name"] for e in list_resp_v1.json()} == {"datasheet", "sample", "site"}
 
@@ -116,27 +107,27 @@ entities:
       sheet_name: v
 """.lstrip()
 
-    update_resp = client.put("/api/v1/projects/test_project/raw-yaml", json={"yaml_content": yaml_v2})
+    update_resp = await authorized_client.put("/api/v1/projects/test_project/raw-yaml", json={"yaml_content": yaml_v2})
     assert update_resp.status_code == 200
 
     # Entity list should now reflect 5 entities (not stale 3)
-    list_resp_v2 = client.get("/api/v1/projects/test_project/entities")
+    list_resp_v2 = await authorized_client.get("/api/v1/projects/test_project/entities")
     assert list_resp_v2.status_code == 200
     assert {e["name"] for e in list_resp_v2.json()} == {"datasheet", "sample", "site", "location", "site_location"}
 
     # Dependency graph should include nodes for all entities
-    deps_resp = client.get("/api/v1/projects/test_project/dependencies")
+    deps_resp = await authorized_client.get("/api/v1/projects/test_project/dependencies")
     assert deps_resp.status_code == 200
     graph = deps_resp.json()
     assert {n["name"] for n in graph["nodes"]} == {"datasheet", "sample", "site", "location", "site_location"}
 
 
-def test_download_schema_reference_target_model_docs(tmp_path, monkeypatch, reset_services_and_state, client):
+async def test_download_schema_reference_target_model_docs(tmp_path, monkeypatch, reset_services_and_state, authorized_client):
     """GET /target-model-docs with schema-reference returns Markdown and download headers."""
 
     monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-    create_resp = client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
+    create_resp = await authorized_client.post("/api/v1/projects", json={"name": "test_project", "entities": {}})
     assert create_resp.status_code == 201
 
     yaml_with_target_model = """
@@ -156,10 +147,10 @@ metadata:
 entities: {}
 """.lstrip()
 
-    update_resp = client.put("/api/v1/projects/test_project/raw-yaml", json={"yaml_content": yaml_with_target_model})
+    update_resp = await authorized_client.put("/api/v1/projects/test_project/raw-yaml", json={"yaml_content": yaml_with_target_model})
     assert update_resp.status_code == 200
 
-    response = client.get("/api/v1/projects/test_project/target-model-docs?format=schema-reference")
+    response = await authorized_client.get("/api/v1/projects/test_project/target-model-docs?format=schema-reference")
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/markdown")

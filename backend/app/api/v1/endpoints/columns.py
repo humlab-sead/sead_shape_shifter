@@ -1,9 +1,11 @@
 """API endpoints for column introspection."""
 
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from backend.app.authorization.dependencies import require_project
+from backend.app.authorization.models import Action, AuthorizedResource
 from backend.app.services.column_introspection_service import ColumnAvailability, ColumnIntrospectionService
 from backend.app.services.project_service import ProjectService
 
@@ -14,6 +16,7 @@ router = APIRouter()
 async def get_available_columns(
     project_name: str,
     entity_name: str,
+    authorized_project: Annotated[AuthorizedResource, Depends(require_project(Action.READ))],
     remote_entity: Optional[str] = Query(None, description="Remote entity name for FK relationship"),
 ):
     """
@@ -34,7 +37,7 @@ async def get_available_columns(
         project_service = ProjectService()
         introspection_service = ColumnIntrospectionService(project_service)
 
-        result = introspection_service.get_available_columns(project_name, entity_name, remote_entity)
+        result = introspection_service.get_available_columns(authorized_project.resource.locator, entity_name, remote_entity)
 
         return result
 

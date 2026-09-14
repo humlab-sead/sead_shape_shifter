@@ -2,7 +2,7 @@
 name: shapeshifter-configuration
 description: 'Validate, review, repair, or author Shape Shifter project YAML such as shapeshifter.yml and data/projects/*.yml. Use for entity configuration, fixed/sql/csv/xlsx/entity/merged entities, identity rules, foreign keys, extra_columns, dependency cycles, directives, materialized entities, and project validation errors.'
 argument-hint: 'Path to shapeshifter.yml or describe the configuration problem'
--------------------------------------------------------------------------------
+---
 
 # Shape Shifter Configuration
 
