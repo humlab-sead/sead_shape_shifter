@@ -7,6 +7,7 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DATA_DIR="${DATA_DIR:-$ROOT_DIR/../container-data}"
 SERVICE_DIR="${ROOT_DIR}/service"
+RESOURCES_DIR="${ROOT_DIR}/resources"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -63,13 +64,13 @@ if [ -f "$DATA_DIR/backend.env" ]; then
   log_warning "backend.env already exists, leaving it unchanged"
   log_info "Edit with: nano $DATA_DIR/backend.env"
 else
-  if [ -f "$ROOT_DIR/backend.env.example" ]; then
-    cp "$ROOT_DIR/backend.env.example" "$DATA_DIR/backend.env"
+  if [ -f "$RESOURCES_DIR/backend.env.example" ]; then
+    cp "$RESOURCES_DIR/backend.env.example" "$DATA_DIR/backend.env"
     chmod 600 "$DATA_DIR/backend.env"
-    log_success "Created backend.env from backend.env.example"
+    log_success "Created backend.env from resources/backend.env.example"
     log_warning "Edit required: nano $DATA_DIR/backend.env"
   else
-    log_error "backend.env.example not found at $ROOT_DIR/backend.env.example"
+    log_error "resources/backend.env.example not found at $RESOURCES_DIR/backend.env.example"
     exit 1
   fi
 fi
@@ -81,8 +82,8 @@ chmod 700 "$DATA_DIR/.pgpass"
 if [ -f "$DATA_DIR/.pgpass/.pgpass" ]; then
   log_warning ".pgpass already exists, leaving it unchanged"
 else
-  if [ -f "$ROOT_DIR/.pgpass.example" ]; then
-    cp "$ROOT_DIR/.pgpass.example" "$DATA_DIR/.pgpass/.pgpass"
+  if [ -f "$RESOURCES_DIR/.pgpass.example" ]; then
+    cp "$RESOURCES_DIR/.pgpass.example" "$DATA_DIR/.pgpass/.pgpass"
   else
     touch "$DATA_DIR/.pgpass/.pgpass"
   fi
