@@ -461,7 +461,7 @@ class TestReconciliationService:
         """Test load creates empty config if file doesn't exist."""
         config = reconciliation_service.catalog_manager.load_catalog("nonexistent")
 
-        assert config.service_url == "http://host.docker.internal:8000"
+        assert config.service_url == "http://localhost:8000"
         assert config.entities == {}
 
     def test_load_reconciliation_config_reads_yaml(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
