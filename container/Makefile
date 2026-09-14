@@ -19,6 +19,7 @@ CONTAINER_DATA_DIR := $(abspath $(DATA_DIR))
 COMPOSE_PROJECT_NAME ?= shapeshifter
 COMPOSE_FILE := podman-compose.yml
 SCRIPTS_DIR := ./scripts
+RESOURCES_DIR := ./resources
 
 # Image source for `make build`. Use `make build-local` for a checkout build.
 GIT_REPO ?= https://github.com/humlab-sead/sead_shape_shifter.git
@@ -115,13 +116,13 @@ setup-directories: check-podman
 .PHONY: setup-env
 setup-env: check-podman
 	@if [ ! -f "$(CONTAINER_DATA_DIR)/backend.env" ]; then \
-		if [ -f "backend.env.example" ]; then \
-			cp backend.env.example "$(CONTAINER_DATA_DIR)/backend.env"; \
+		if [ -f "$(RESOURCES_DIR)/backend.env.example" ]; then \
+			cp "$(RESOURCES_DIR)/backend.env.example" "$(CONTAINER_DATA_DIR)/backend.env"; \
 			chmod 600 "$(CONTAINER_DATA_DIR)/backend.env"; \
 			echo "$(GREEN)+ Created $(CONTAINER_DATA_DIR)/backend.env$(NC)"; \
 			echo "$(YELLOW)  Edit this file and restart the container to apply changes$(NC)"; \
 		else \
-			echo "$(YELLOW)! backend.env.example not found$(NC)"; \
+			echo "$(YELLOW)! $(RESOURCES_DIR)/backend.env.example not found$(NC)"; \
 		fi \
 	else \
 		echo "$(GREEN)+ $(CONTAINER_DATA_DIR)/backend.env already exists$(NC)"; \

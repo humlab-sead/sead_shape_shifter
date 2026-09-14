@@ -56,7 +56,7 @@
 | `docs/OPERATIONS.md` (564 lines, 3766 words) | 60 `docker` mentions, 0 `podman` mentions. Paths, commands, and image names all describe the Docker path. | Area 3 rewrites it. Instruction target is 800–1800 words. |
 | `container/README.md`, `container/DEPLOYMENT.md`, `container/Makefile`, `container/scripts/setup.sh`, `container/podman-compose.yml` | Podman deployment with data at `../container-data/`. Makefile targets: `setup`, `build`, `up`, `down`, `restart`, `logs`, `status`, `ps`, `shell`, `healthcheck`, `backup`, `clean`, `prune`, `service-*`. Container name is `shape-shifter`. | These are the authoritative sources for Area 3 and Area 4 content. |
 | `container/podman-compose.yml:40` | `env_file` points at `./data/backend.env`, but `setup.sh`, `container/README.md`, and the volume mounts all use `../container-data/backend.env`. | Out of scope, but it blocks writing an accurate path in Area 3. Recorded in Risks. |
-| `container/.env.example` | Uses unprefixed names (`ENVIRONMENT`, `LOG_LEVEL`, `PROJECTS_DIR`, `LOGS_DIR`, `SECRET_KEY`) and `SHAPE_SHIFTER_DB_URL`. `backend/app/core/config.py:29` sets `env_prefix="SHAPE_SHIFTER_"` and defines `LOG_DIR`, `GLOBAL_DATA_DIR`, `GLOBAL_DATA_SOURCE_DIR`. | Out of scope, but the `SHAPE_SHIFTER_*` table in `docs/OPERATIONS.md` must be verified against `backend/app/core/config.py`, not against `.env.example`. |
+| `container/resources/.env.example` | Uses unprefixed names (`ENVIRONMENT`, `LOG_LEVEL`, `PROJECTS_DIR`, `LOGS_DIR`, `SECRET_KEY`) and `SHAPE_SHIFTER_DB_URL`. `backend/app/core/config.py:29` sets `env_prefix="SHAPE_SHIFTER_"` and defines `LOG_DIR`, `GLOBAL_DATA_DIR`, `GLOBAL_DATA_SOURCE_DIR`. | Out of scope, but the `SHAPE_SHIFTER_*` table in `docs/OPERATIONS.md` must be verified against `backend/app/core/config.py`, not against `.env.example`. |
 | `Makefile:337-349` | Root `Makefile` does `include docker/Makefile`, exports `DOCKER_DIR`, and defines `docker-patch-frontend` using `docker cp`. | Removing `docker/` breaks the root `Makefile` unless these lines are removed first. |
 | `.github/instructions/readme.instructions.md:21,30,46`; `.github/instructions/operations.instructions.md:72,73,79` | Agent instruction files name `docker/README.md` and `docker/docker-compose.yml` as trusted sources. | These must be updated in Area 2 or the instructions keep sending agents to deleted files. |
 | `docs/README.md` (302 lines) | Omits `DIAGRAMS.md`, `GLOSSARY.md`, `SQL_SAFETY_POLICY.md`, `TARGET_MODEL_GUIDE.md`, `TARGET_MODEL_SCHEMA_REFERENCE.md`, and the deployment docs. Repeats navigation at lines 228–255 and duplicates the proposal inventory at lines 118–204. | Area 1 rebuilds it as a complete map. |
@@ -84,7 +84,7 @@
 **Out of scope**
 
 - Application code, tests, runtime configuration, `backend/app/core/config.py`
-- `container/` implementation defects (`podman-compose.yml` `env_file` path, `.env.example` variable names)
+- `container/` implementation defects (`podman-compose.yml` `env_file` path, `resources/.env.example` variable names)
 - `frontend/Dockerfile` and `docker/`-era security findings; `docs/proposals/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md` owns those
 - `docs/archive/` and `docs/features/`
 - Any restructuring of `docs/CONFIGURATION_GUIDE.md`, `docs/DESIGN.md`, `docs/DEVELOPMENT.md`, or `docs/TESTING.md` beyond link repair
@@ -220,7 +220,7 @@
 - [ ] `T3.3` **Verify:** Rebuild the runtime environment variable table against `backend/app/core/config.py`.
   - **Target:** `docs/OPERATIONS.md` variable table (lines 36–60).
   - **Current → required:** variable names taken as given → each row confirmed against `backend/app/core/config.py:29-99`, including `SHAPE_SHIFTER_PROJECTS_DIR`, `SHAPE_SHIFTER_LOG_DIR`, `SHAPE_SHIFTER_GLOBAL_DATA_DIR`, `SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR`, and the `AUTHORIZATION_*` settings.
-  - **Implementation:** Correct names and defaults to match `config.py`. Do not use `container/.env.example` as the source; its unprefixed names are out of date. Note in Risks that `.env.example` disagrees, and raise that as a separate follow-up.
+  - **Implementation:** Correct names and defaults to match `config.py`. Do not use `container/resources/.env.example` as the source; its unprefixed names are out of date. Note in Risks that `.env.example` disagrees, and raise that as a separate follow-up.
   - **Validation:** `V-4`; a spot check of five rows against `config.py`.
 
 - [ ] `T3.4` **Update:** Deployment flow, rollback, and references.
@@ -417,7 +417,7 @@ No unit, integration, or contract test run is required. This phase changes no co
 - [ ] `V-7` confirms both edited instruction files name only existing paths.
 - [ ] `V-8` confirms the diff contains no application, test, or runtime configuration changes.
 - [ ] Finding 3 is closed as not reproducible with the evidence recorded.
-- [ ] New follow-up work created by this phase is recorded: the `container/podman-compose.yml` `env_file` path mismatch and the `container/.env.example` variable-name mismatch.
+- [ ] New follow-up work created by this phase is recorded: the `container/podman-compose.yml` `env_file` path mismatch and the `container/resources/.env.example` variable-name mismatch.
 
 ---
 
@@ -429,7 +429,7 @@ No unit, integration, or contract test run is required. This phase changes no co
 |---|---|
 | Deleting `docker/` removes the only deployment path if `container/` is incomplete or unverified. | Commit `container/` first (`T2.1`) and delete `docker/` in a dedicated commit (`T2.3`) so it can be reverted independently. |
 | `container/podman-compose.yml:40` points `env_file` at `./data/backend.env`, but `setup.sh` and the volume mounts use `../container-data/backend.env`. | Out of scope for this phase. Record it as follow-up before `T3.2` documents the path, and document the path that `setup.sh` and the volume mounts use. |
-| `container/.env.example` uses unprefixed variable names that `SHAPE_SHIFTER_`-prefixed settings will not read. | Out of scope. `T3.3` verifies the operations table against `backend/app/core/config.py` instead, and the mismatch is recorded as follow-up. |
+| `container/resources/.env.example` uses unprefixed variable names that `SHAPE_SHIFTER_`-prefixed settings will not read. | Out of scope. `T3.3` verifies the operations table against `backend/app/core/config.py` instead, and the mismatch is recorded as follow-up. |
 | Moving narrative out of `docs/DIAGRAMS.md` loses information that exists nowhere else. | `T5.1` requires moving prose to its owning document, not deleting it. `V-6` verifies ownership rather than absence. |
 | `docs/OPERATIONS.md` content is deleted without a home when trimming to the word target. | Move detail to `container/DEPLOYMENT.md`. Keep the deployment-agnostic invariants listed in `T3.5` in place. |
 
