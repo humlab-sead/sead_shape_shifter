@@ -1,0 +1,1 @@
+"""Arbodat data provider tests."""
