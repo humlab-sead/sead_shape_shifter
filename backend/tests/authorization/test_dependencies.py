@@ -171,7 +171,7 @@ def test_project_data_source_connection_requires_project_and_shared_source_acces
     route = next(
         route
         for route in projects_router.routes
-        if isinstance(route, APIRoute) and route.path == "/projects/{name}/data-sources" and "POST" in route.methods
+        if isinstance(route, APIRoute) and route.path == "/projects/{name}/data-sources" and "POST" in (route.methods or [])
     )
 
     requirements = {
@@ -223,7 +223,7 @@ def test_sensitive_locator_routes_declare_authorization_requirements() -> None:
             if (requirement := _authorization_requirement(dependency.call)) is not None
         ]
         if not requirements:
-            methods = ",".join(sorted(route.methods))
+            methods = ",".join(sorted(route.methods or []))
             missing_requirements.append(f"{methods} {route.path}")
 
     assert not missing_requirements, "Sensitive routes without authorization declarations:\n" + "\n".join(missing_requirements)
@@ -264,7 +264,7 @@ def test_static_data_source_subroutes_are_classified() -> None:
             continue
         declared = any(_authorization_requirement(dependency.call) is not None for dependency in route.dependant.dependencies)
         if not declared and route.path not in AUTHENTICATED_STATIC_DATA_SOURCE_PATHS:
-            methods = ",".join(sorted(route.methods))
+            methods = ",".join(sorted(route.methods or []))
             missing_classification.append(f"{methods} {route.path}")
 
     assert not missing_classification, "Unclassified static data-source routes:\n" + "\n".join(missing_classification)
