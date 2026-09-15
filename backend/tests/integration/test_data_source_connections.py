@@ -15,9 +15,11 @@ project_root: Path = find_parent_with(Path(__file__), "pyproject.toml")
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(not os.path.isfile("tests/.env"), reason="Test environment file tests/.env with DB credentials not found")
 async def test_postgresql_connection(settings: Settings):
 
-    dotenv.load_dotenv(project_root / ".env")
+    dotenv.load_dotenv("tests/test.env")
+    dotenv.load_dotenv("tests/.env", override=True)
 
     schema: DriverSchema | None = DriverSchemaRegistry.get("postgresql")
     logger.info(f"PostgreSQL Schema: {schema}")
