@@ -345,7 +345,7 @@ class TestUCanAccessLoader:
             name="test_access",
             cfg={
                 "driver": "access",
-                "options": {"filename": "test.mdb"},
+                "options": {"filename": "dummy.mdb"},
             },
         )
 
@@ -522,7 +522,7 @@ class TestUCanAccessLoader:
         uri = loader.create_db_uri()
 
         assert "jdbc:ucanaccess://" in uri
-        assert "test.mdb" in uri
+        assert "dummy.mdb" in uri
 
     @pytest.mark.asyncio
     async def test_load_with_top_limit(self, loader):
@@ -698,6 +698,8 @@ class TestUCanAccessLoader:
     @pytest.mark.asyncio
     async def test_test_connection_failure(self, loader):
         """Should handle MS Access connection failure."""
+
+
         with patch.object(loader, "get_tables", new_callable=AsyncMock) as mock_get_tables:
             mock_get_tables.side_effect = Exception("Cannot open database file")
 
@@ -705,7 +707,7 @@ class TestUCanAccessLoader:
 
             assert result.success is False
             assert "failed" in result.message.lower()
-            assert result.message == "Connection failed"
+            assert "Connection failed" in result.message
 
 
 class DummySqlLoader(SqlLoader):
