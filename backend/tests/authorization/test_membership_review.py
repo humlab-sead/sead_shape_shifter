@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import httpx
 from click.testing import CliRunner
+import pytest
 
 from backend.app.authorization.membership import HttpGroupMembershipResolver, MembershipLookupStatus
 from backend.app.authorization.models import Grant, GrantSubjectType, ResourceRecord, ResourceType
@@ -31,7 +32,7 @@ def test_http_membership_resolver_encodes_group_and_returns_members(monkeypatch)
 
 
 def test_http_membership_resolver_reports_unavailable_provider(monkeypatch) -> None:
-    def fake_get(url: str, timeout: float) -> httpx.Response:
+    def fake_get(url: str, timeout: float) -> httpx.Response:  #  pylint: disable=unused-argument
         return httpx.Response(503, request=httpx.Request("GET", url))
 
     monkeypatch.setattr(httpx, "get", fake_get)
@@ -55,6 +56,7 @@ def test_http_membership_resolver_reports_missing_group(monkeypatch) -> None:
     assert snapshot.principal_ids == frozenset()
 
 
+@pytest.mark.integration
 def test_list_grants_effective_json_includes_membership_snapshot(tmp_path, monkeypatch) -> None:
     database = tmp_path / f"authorization-{str(uuid4())[8]}.sqlite3"
     repository = SQLiteAuthorizationRepository(database)
@@ -93,7 +95,7 @@ def test_list_grants_effective_json_includes_membership_snapshot(tmp_path, monke
 
 
 def test_list_grants_strict_effective_review_fails_for_unavailable_group(tmp_path, monkeypatch) -> None:
-    database = tmp_path / "authorization.sqlite3"
+    database = tmp_path / f"authorization-{str(uuid4())[8]}.sqlite3"
     repository = SQLiteAuthorizationRepository(database)
     resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
     repository.create_resource(resource)
