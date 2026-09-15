@@ -14,12 +14,26 @@ from src.utility import find_parent_with
 project_root: Path = find_parent_with(Path(__file__), "pyproject.toml")
 
 
+def apply_env_file(monkeypatch: pytest.MonkeyPatch, path: str, *, override: bool = False) -> None:
+    """Apply env-file values through monkeypatch so the process environment is restored.
+
+    `dotenv.load_dotenv` writes into os.environ for the rest of the process, which leaks
+    deployment settings into later tests. Reading the file and setting values through
+    monkeypatch keeps the same precedence without the leak.
+    """
+    for name, value in dotenv.dotenv_values(path).items():
+        if value is None:
+            continue
+        if override or name not in os.environ:
+            monkeypatch.setenv(name, value)
+
+
 @pytest.mark.asyncio
 @pytest.mark.skipif(not os.path.isfile("tests/.env"), reason="Test environment file tests/.env with DB credentials not found")
-async def test_postgresql_connection(settings: Settings):
+async def test_postgresql_connection(settings: Settings, monkeypatch):
 
-    dotenv.load_dotenv("tests/test.env")
-    dotenv.load_dotenv("tests/.env", override=True)
+    apply_env_file(monkeypatch, "tests/test.env")
+    apply_env_file(monkeypatch, "tests/.env", override=True)
 
     schema: DriverSchema | None = DriverSchemaRegistry.get("postgresql")
     logger.info(f"PostgreSQL Schema: {schema}")

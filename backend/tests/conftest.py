@@ -1,3 +1,4 @@
+import os
 from collections.abc import AsyncIterator
 
 import pytest
@@ -39,6 +40,19 @@ def settings(monkeypatch):
     cfg = get_settings()
     yield cfg
     get_settings.cache_clear()  # avoid leaking between tests
+
+
+@pytest.fixture(autouse=True)
+def isolate_settings_environment(monkeypatch) -> None:
+    """Remove ambient SHAPE_SHIFTER_* variables so Settings tests see defaults.
+
+    Some tests load deployment environment files, such as tests/test.env, into the process
+    environment. Those values would otherwise leak into every later test that constructs
+    Settings and make the result depend on test order and on the number of test workers.
+    """
+    for name in list(os.environ):
+        if name.startswith("SHAPE_SHIFTER_"):
+            monkeypatch.delenv(name, raising=False)
 
 
 @pytest.fixture(autouse=True)
