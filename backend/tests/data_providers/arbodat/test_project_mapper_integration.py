@@ -18,7 +18,7 @@ from src.model import ShapeShiftProject
 
 # backend/tests/test_data is a symlink to the repository level tests/test_data.
 BACKEND_TESTS_DIR = Path(__file__).resolve().parents[2]
-PROJECT_PATH = BACKEND_TESTS_DIR / "test_data" / "projects" / "arbodat" / "shapeshifter.yml"
+PROJECT_PATH = Path("data/projects/arbodat/shapeshifter.yml")
 
 
 class TestProjectMapperIntegration:
@@ -38,7 +38,7 @@ class TestProjectMapperIntegration:
         assert project_path.exists(), f"Test project file not found: {project_path}"
 
         # Load as ShapeShiftProject (core model)
-        original_shape_config = ShapeShiftProject.from_file(str(project_path))
+        original_shape_config = ShapeShiftProject.from_file(str(project_path), env_file="data/test.env")
         original_cfg_dict = original_shape_config.cfg
 
         # Get config name from file
@@ -128,7 +128,7 @@ class TestProjectMapperIntegration:
 
         assert project_path.exists(), f"Test project file not found: {project_path}"
 
-        original_shape_config: ShapeShiftProject = ShapeShiftProject.from_file(str(project_path))
+        original_shape_config: ShapeShiftProject = ShapeShiftProject.from_file(str(project_path), env_file="data/test.env")
         original_cfg_dict: dict[str, dict[str, Any]] = original_shape_config.cfg
 
         # Convert to API and back
@@ -191,7 +191,7 @@ class TestProjectMapperIntegration:
     def test_arbodat_project_metadata_preservation(self):
         """Test that metadata fields are correctly set during conversion."""
         project_path: Path = PROJECT_PATH
-        original_shape_config: ShapeShiftProject = ShapeShiftProject.from_file(str(project_path))
+        original_shape_config: ShapeShiftProject = ShapeShiftProject.from_file(str(project_path), env_file="data/test.env")
         original_cfg_dict = original_shape_config.cfg
 
         project_name = "arbodat"
