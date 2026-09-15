@@ -6,10 +6,17 @@ from pathlib import Path
 import pytest
 from fastapi.routing import APIRoute
 from httpx import ASGITransport, AsyncClient
-from starlette.routing import Route
+from starlette.routing import BaseRoute, Route
 
 from backend.app.main import app
 from backend.app.middleware.proxy_auth import ProxyAuthenticationMiddleware
+
+try:
+    from fastapi.routing import (  # pylint: disable=import-outside-toplevel, ungrouped-imports; type: ignore
+        iter_route_contexts as _iter_route_contexts,
+    )
+except ImportError:  # pragma: no cover - FastAPI below 0.141 flattens app.routes on include
+    _iter_route_contexts = None
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ROUTE_INVENTORY = PROJECT_ROOT / "docs" / "AUTHORIZATION_ROUTE_INVENTORY.md"
@@ -21,12 +28,24 @@ def _concrete_path(path: str) -> str:
     return re.sub(r"\{[^}:]+(?::[^}]+)?\}", "authorization-test", path)
 
 
+def _assembled_routes() -> list[tuple[BaseRoute, str | None, set[str] | None]]:
+    """Read every route from the assembled application with its effective path and methods.
+
+    FastAPI 0.141 holds routers added with ``include_router`` in a lazy container, so
+    ``app.routes`` no longer lists the included routes and their stored path omits the include
+    prefix. Earlier FastAPI versions add the included routes to ``app.routes`` directly.
+    """
+    if _iter_route_contexts is None:
+        return [(route, route.path, route.methods) for route in app.routes if isinstance(route, (APIRoute, Route))]
+    return [(context.route, context.path, context.methods) for context in _iter_route_contexts(app.routes)]
+
+
 def _protected_route_paths() -> list[str]:
     """Return every registered HTTP route except the public health check."""
     paths = {
-        _concrete_path(route.path)
-        for route in app.routes
-        if isinstance(route, (APIRoute, Route)) and route.methods and route.path != PUBLIC_HEALTH_PATH
+        _concrete_path(path)
+        for route, path, methods in _assembled_routes()
+        if path is not None and methods and path != PUBLIC_HEALTH_PATH and isinstance(route, (APIRoute, Route))
     }
     paths.add("/docs/README.md")
     return sorted(paths)
@@ -52,10 +71,12 @@ def _documented_api_routes() -> set[tuple[str, str]]:
 def _runtime_api_routes() -> set[tuple[str, str]]:
     """Return method/path entries for the assembled FastAPI API routes."""
     routes: set[tuple[str, str]] = set()
-    for route in app.routes:
-        if not isinstance(route, (APIRoute, Route)) or not route.methods or not route.path.startswith("/api/v1/"):
+    for route, path, methods in _assembled_routes():
+        if path is None or not methods or not isinstance(route, (APIRoute, Route)):
             continue
-        routes.update((method, route.path) for method in route.methods)
+        if not path.startswith("/api/v1/"):
+            continue
+        routes.update((method, path) for method in methods)
     return routes
 
 
