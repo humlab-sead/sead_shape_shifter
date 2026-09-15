@@ -32,7 +32,7 @@ def initialize_jvm():
 def _core_project() -> ShapeShiftProject:
     """Load the backend integration test project configuration for each test."""
     config_file: str = "./backend/tests/test_data/projects/arbodat/shapeshifter.yml"
-    return ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file=".env")
+    return ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file="tests/test.env")
 
 
 #############################################################################################################
@@ -40,7 +40,6 @@ def _core_project() -> ShapeShiftProject:
 #############################################################################################################
 
 
-@pytest.mark.integration
 def test_composite_project_specification_is_satisfied_by(project: ShapeShiftProject):
 
     specification = CompositeProjectSpecification(project.cfg)
