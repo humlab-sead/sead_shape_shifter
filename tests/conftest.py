@@ -1,3 +1,4 @@
+import os
 import sys
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -21,6 +22,21 @@ def setup_test_logging():
     """Configure logging for all tests with INFO level."""
     logger.remove()
     logger.add(sys.stderr, level="INFO", format="{time} | {level} | {name}:{function}:{line} - {message}")
+
+
+@pytest.fixture(autouse=True)
+def restore_process_environment():
+    """Restore the process environment after each test.
+
+    Configuration loading applies env files with `dotenv.load_dotenv`, which writes the
+    file values into os.environ for the rest of the process. Values loaded this way, such
+    as those in tests/test.env, would otherwise reach every later test in the same
+    process and make results depend on test order and on the number of test workers.
+    """
+    original_environment = dict(os.environ)
+    yield
+    os.environ.clear()
+    os.environ.update(original_environment)
 
 
 class MockRow:
