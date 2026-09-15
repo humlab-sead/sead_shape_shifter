@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import jpype
 import pytest
+from dotenv import dotenv_values
 
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.model import ShapeShiftProject
@@ -21,14 +22,30 @@ def initialize_jvm():
     yield
 
 
-def test_access_database_csv_workflow():
+@pytest.fixture(name="project_environment")
+def _project_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Set the project environment variables for a single test.
+
+    Reads data/test.env first and the local data/.env second, so a variable defined in
+    both files takes the value from data/.env. The values are applied through monkeypatch
+    so the process environment is restored after each test.
+    """
+    for env_file, override in (("data/test.env", False), ("data/.env", True)):
+        for name, value in dotenv_values(env_file).items():
+            if value is not None and (override or name not in os.environ):
+                monkeypatch.setenv(name, value)
+
+
+def test_access_database_csv_workflow(project_environment: None, tmp_path: Path):  # noqa: ARG001 ;pylint: disable=unused-argument
     config_file: str = "./tests/test_data/projects/arbodat/shapeshifter.yml"
-    config: ShapeShiftProject = ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file=".env")
+
+    config: ShapeShiftProject = ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file=None)
 
     translate: bool = False
     target_type: str = "csv"
 
-    output_path: Path = Path("tmp/arbodat-test.xlsx") if target_type in ("xlsx", "openpyxl") else Path("tmp/arbodat-test")
+    output_extension: str = ".xlsx" if target_type in ("xlsx", "openpyxl") else ""
+    output_path: Path = tmp_path / f"arbodat-test{output_extension}"
 
     asyncio.run(asyncio.sleep(0.1))  # type: ignore ; ensure config is fully loaded;
 
