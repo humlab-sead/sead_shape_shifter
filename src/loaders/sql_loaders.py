@@ -382,10 +382,10 @@ class SqlLoader(DataLoader):
             result.metadata.update({"table_count": len(tables)})
             result.message += f", returned {len(df)} rows)"
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception as ex:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
             result.success = False
-            result.message = "Connection failed"
+            result.message = f"Connection failed {ex}"
             result.connection_time_ms = elapsed_ms
             result.metadata = {}
 
