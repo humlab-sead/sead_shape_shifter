@@ -56,7 +56,7 @@ def test_http_membership_resolver_reports_missing_group(monkeypatch) -> None:
 
 
 def test_list_grants_effective_json_includes_membership_snapshot(tmp_path, monkeypatch) -> None:
-    database = tmp_path / "authorization.sqlite3"
+    database = tmp_path / f"authorization-{str(uuid4())[8]}.sqlite3"
     repository = SQLiteAuthorizationRepository(database)
     resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
     repository.create_resource(resource)
