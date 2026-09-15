@@ -40,6 +40,7 @@ def _core_project() -> ShapeShiftProject:
 #############################################################################################################
 
 
+@pytest.mark.integration
 def test_composite_project_specification_is_satisfied_by(project: ShapeShiftProject):
 
     specification = CompositeProjectSpecification(project.cfg)
