@@ -58,7 +58,7 @@ def test_http_membership_resolver_reports_missing_group(monkeypatch) -> None:
 
 @pytest.mark.integration
 def test_list_grants_effective_json_includes_membership_snapshot(tmp_path, monkeypatch) -> None:
-    database = tmp_path / f"authorization-{str(uuid4())[8]}.sqlite3"
+    database = tmp_path / f"authorization-{str(uuid4())[:8]}.sqlite3"
     repository = SQLiteAuthorizationRepository(database)
     resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
     repository.create_resource(resource)
@@ -95,7 +95,7 @@ def test_list_grants_effective_json_includes_membership_snapshot(tmp_path, monke
 
 
 def test_list_grants_strict_effective_review_fails_for_unavailable_group(tmp_path, monkeypatch) -> None:
-    database = tmp_path / f"authorization-{str(uuid4())[8]}.sqlite3"
+    database = tmp_path / f"authorization-{str(uuid4())[:8]}.sqlite3"
     repository = SQLiteAuthorizationRepository(database)
     resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
     repository.create_resource(resource)

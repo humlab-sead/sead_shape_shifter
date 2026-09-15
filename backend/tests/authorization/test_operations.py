@@ -292,7 +292,7 @@ def test_typed_grant_cli_supports_dry_run_and_revoke(tmp_path) -> None:
 
 @pytest.mark.integration
 def test_authorization_inventory_and_application_role_cli(tmp_path) -> None:
-    database = tmp_path / "authorization.sqlite3"
+    database = tmp_path / f"authorization_{str(uuid4())[:8]}.sqlite3"
     repository = SQLiteAuthorizationRepository(database)
     resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
     repository.create_resource(resource)
