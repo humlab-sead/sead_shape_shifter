@@ -1227,7 +1227,7 @@ class ShapeShiftProject:
     @staticmethod
     def from_file(
         filename: str,
-        env_file: str = ".env",
+        env_file: str | None = ".env",
         env_prefix: str = "SHAPE_SHIFTER",
         runtime_root: str | Path | None = None,
         application_root_env_var: str = "APPLICATION_ROOT",
