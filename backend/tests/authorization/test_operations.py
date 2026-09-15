@@ -107,6 +107,7 @@ def test_manifest_inspection_and_dry_run_do_not_create_database(tmp_path) -> Non
     assert not database.exists()
 
 
+@pytest.mark.integration
 def test_migrate_manifest_applies_initial_admin_resources_and_grants(tmp_path) -> None:
     manifest = tmp_path / "manifest.json"
     manifest.write_text(
@@ -289,6 +290,7 @@ def test_typed_grant_cli_supports_dry_run_and_revoke(tmp_path) -> None:
     assert revoked.exit_code == 0
 
 
+@pytest.mark.integration
 def test_authorization_inventory_and_application_role_cli(tmp_path) -> None:
     database = tmp_path / "authorization.sqlite3"
     repository = SQLiteAuthorizationRepository(database)
