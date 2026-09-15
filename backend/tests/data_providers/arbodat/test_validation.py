@@ -1,7 +1,9 @@
+import os
 from typing import Any
 
 import jpype
 import pytest
+from dotenv import dotenv_values
 from loguru import logger
 
 from backend.app.mappers.project_mapper import ProjectMapper
@@ -29,10 +31,21 @@ def initialize_jvm():
 
 
 @pytest.fixture(scope="function", name="project")
-def _core_project() -> ShapeShiftProject:
-    """Load the backend integration test project configuration for each test."""
-    config_file: str = "./backend/tests/test_data/projects/arbodat/shapeshifter.yml"
-    return ShapeShiftProject.from_file(config_file, env_prefix="SHAPE_SHIFTER", env_file="tests/test.env")
+def _core_project(monkeypatch: pytest.MonkeyPatch) -> ShapeShiftProject:
+    """Load the backend integration test project configuration for each test.
+
+    Applies data/test.env first and the local data/.env second, so a variable defined in
+    both files takes the value from data/.env. The values are applied through monkeypatch
+    so the process environment is restored after each test.
+    """
+    for env_file, override in (("data/test.env", False), ("data/.env", True)):
+        for name, value in dotenv_values(env_file).items():
+            if value is not None and (override or name not in os.environ):
+                monkeypatch.setenv(name, value)
+
+    config_file: str = "data/projects/arbodat/shapeshifter.yml"
+
+    return ShapeShiftProject.from_file(config_file)
 
 
 #############################################################################################################
