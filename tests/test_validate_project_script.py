@@ -49,11 +49,12 @@ class TestLoadProject:
 class TestExecute:
     """Tests for execute()."""
 
-    def test_execute_returns_2_when_project_file_is_missing(self, tmp_path: Path):
+    def test_execute_returns_2_when_project_file_is_missing(self, tmp_path: Path, monkeypatch):
         """execute should stop early when the project file does not exist."""
         validate_project = load_validate_project_module()
         validate_project.setup_logging = MagicMock()
-        validate_project.click.echo = MagicMock()
+        # validate_project.click is the shared click module, so restore it after the test.
+        monkeypatch.setattr(validate_project.click, "echo", MagicMock())
 
         missing_file = tmp_path / "missing.yml"
 
@@ -70,12 +71,13 @@ class TestExecute:
         assert result == 2
         validate_project.click.echo.assert_called_once_with(f"Project file not found: {missing_file.resolve()}", err=True)
 
-    def test_execute_returns_1_when_project_load_fails(self, tmp_path: Path):
+    def test_execute_returns_1_when_project_load_fails(self, tmp_path: Path, monkeypatch):
         """execute should report project-load failures to stderr and return 1."""
         validate_project = load_validate_project_module()
         validate_project.setup_logging = MagicMock()
-        validate_project.click.echo = MagicMock()
-        validate_project.logger.exception = MagicMock()
+        # validate_project.click and .logger are the shared click and loguru modules.
+        monkeypatch.setattr(validate_project.click, "echo", MagicMock())
+        monkeypatch.setattr(validate_project.logger, "exception", MagicMock())
         validate_project.load_project = MagicMock(side_effect=ValueError("broken project"))
 
         project_file = tmp_path / "project.yml"
