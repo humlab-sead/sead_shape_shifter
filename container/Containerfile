@@ -2,7 +2,7 @@
 # Podman Containerfile for Shape Shifter
 # Builds the Vue 3 frontend and serves it plus the FastAPI backend on port 8012.
 #
-# This file mirrors the proven Docker image (docker/Dockerfile). It uses the
+# This file replaces the retired Docker image and uses the
 # same Debian-based Python runtime so binary wheels (pandas, pyarrow, psycopg,
 # jpype) resolve from the standard manylinux set, and so a real JRE is available
 # for UCanAccess (MS Access) support.

@@ -400,35 +400,6 @@ Preview early and often.
 
 ---
 
-## Identity Fields
-
-Shape Shifter uses a three-level identity model.
-
-### System ID
-
-- always named `system_id`
-- managed automatically
-- used internally for relationships
-- read-only in the editor
-
----
-
-### Public ID
-
-- target-facing identifier
-- must end with `_id`
-- used in exports and reconciliation
-
----
-
-### Business Keys
-
-- natural keys from source data
-- used for matching and deduplication
-- may be compound keys
-
----
-
 ## Working with Source Data
 
 Depending on entity type, entities can load data from:
@@ -530,7 +501,7 @@ Most fixed entities work without extra type configuration. Add `column_types` in
 - other fixed columns default to `string`
 - declare `column_types` when a column should be `int`, `float`, `bool`, or `date`
 
-Use the configuration reference for the exact YAML format and allowed values: [docs/CONFIGURATION_GUIDE.md](docs/CONFIGURATION_GUIDE.md).
+Use the configuration reference for the exact YAML format and allowed values: [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md).
 
 ---
 
@@ -937,6 +908,10 @@ Use raw YAML editing when:
 - form editing is insufficient
 - debugging configuration problems
 
+Use [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) for field names, entity types,
+identity rules, relationships, directives, and valid YAML examples. This guide
+only covers when and why to switch from form editing to YAML.
+
 ---
 
 ## YAML Editor Features
@@ -956,66 +931,6 @@ The YAML editor supports:
 - save before major edits
 - use backups before refactors
 - preview after structural changes
-
----
-
-# 13. Automation and CLI
-
-## Why Use the CLI?
-
-The command-line interface is useful for:
-
-- automation
-- CI/CD
-- batch processing
-- scheduled execution
-- headless environments
-
----
-
-## Basic Usage
-
-```bash
-python -m src.shapeshift OUTPUT_PATH --project PROJECT_FILE.yml
-```
-
----
-
-## Common Examples
-
-### Export to Excel
-
-```bash
-python -m src.shapeshift output.xlsx \
-  --project data/projects/my_project.yml \
-  --mode xlsx
-```
-
----
-
-### Validate Only
-
-```bash
-python -m src.shapeshift output.xlsx \
-  --project data/projects/my_project.yml \
-  --validate-then-exit
-```
-
----
-
-## Common CLI Options
-
-| Option                       | Purpose                                              |
-|------------------------------|------------------------------------------------------|
-| `--project` / `-p`           | Project YAML file path                               |
-| `--mode` / `-m`              | Output format: `xlsx`, `csv`, `db` (default: `xlsx`) |
-| `--default-entity` / `-de`   | Override the default entity name                     |
-| `--env-file` / `-e`          | Load environment variables from a file               |
-| `--verbose` / `-v`           | Enable detailed logs                                 |
-| `--translate` / `-t`         | Apply translation rules                              |
-| `--drop-foreign-keys` / `-d` | Remove FK columns from output                        |
-| `--log-file` / `-l`          | Write log output to a file                           |
-| `--validate-then-exit`       | Validate configuration only, then exit               |
 
 ---
 
