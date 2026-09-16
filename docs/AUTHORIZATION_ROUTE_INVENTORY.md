@@ -25,17 +25,19 @@ The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, inc
 
 ## Public And Static Paths
 
-| Method       | Path                    | Requirement  | Notes                                                                                                  |
-|--------------|-------------------------|--------------|--------------------------------------------------------------------------------------------------------|
-| `GET`        | `/api/v1/health`        | Public       | Explicit trusted-proxy middleware exception for container health checks                                |
-| `GET, HEAD`  | `/api/v1/openapi.json`  | `UNDECLARED` | FastAPI-generated OpenAPI schema; configured application path, not an unprefixed `/openapi.json` route |
-| `GET, HEAD`  | `/api/v1/docs`          | `UNDECLARED` | FastAPI-generated Swagger UI; direct application route outside `api_router`                            |
-| `GET, HEAD`  | `/docs/oauth2-redirect` | `UNDECLARED` | FastAPI-generated Swagger OAuth redirect helper; direct application route outside `api_router`         |
-| `GET, HEAD`  | `/api/v1/redoc`         | `UNDECLARED` | FastAPI-generated ReDoc UI; direct application route outside `api_router`                              |
-| Static mount | `/docs/*`               | `UNDECLARED` | Repository documentation static mount; classify before cutover                                         |
-| Static mount | `/assets/*`             | `UNDECLARED` | Present only when the production frontend build exists; classify before cutover                        |
-| `GET`        | `/{full_path:path}`     | `UNDECLARED` | Frontend SPA catch-all when the production frontend build exists                                       |
-| `GET`        | `/`                     | `UNDECLARED` | API-only root route when no frontend build exists                                                      |
+| Method       | Path                    | Requirement     | Notes                                                                                                  |
+|--------------|-------------------------|-----------------|--------------------------------------------------------------------------------------------------------|
+| `GET`        | `/api/v1/health`        | Public          | Explicit trusted-proxy middleware exception for container health checks                                |
+| `GET, HEAD`  | `/api/v1/openapi.json`  | `authenticated` | FastAPI-generated OpenAPI schema; configured application path, not an unprefixed `/openapi.json` route |
+| `GET, HEAD`  | `/api/v1/docs`          | `authenticated` | FastAPI-generated Swagger UI; direct application route outside `api_router`                            |
+| `GET, HEAD`  | `/docs/oauth2-redirect` | `authenticated` | FastAPI-generated Swagger OAuth redirect helper; direct application route outside `api_router`         |
+| `GET, HEAD`  | `/api/v1/redoc`         | `authenticated` | FastAPI-generated ReDoc UI; direct application route outside `api_router`                              |
+| Static mount | `/docs/*`               | `authenticated` | Repository documentation static mount published to authenticated principals                                         |
+| Static mount | `/assets/*`             | `authenticated` | Present only when the production frontend build exists                        |
+| `GET`        | `/{full_path:path}`     | `authenticated` | Frontend SPA catch-all when the production frontend build exists                                       |
+| `GET`        | `/`                     | `authenticated` | API-only root route when no frontend build exists                                                      |
+
+Every row above except the health check requires an authenticated principal through the trusted-proxy middleware. None of them carries `authorization_requirement` metadata, so the middleware `public_paths` set is the only control that keeps them non-public; adding a path to that set would expose it with no policy check. The `/docs/*` mount publishes the repository documentation tree, including `docs/proposals/`, to any authenticated principal. The container image builds the frontend, so a deployment serves `/assets/*` and the SPA catch-all instead of the API-only root. The health check stays public because the container, compose, and host probes call it without credentials.
 
 ## API Routes
 
@@ -153,14 +155,14 @@ The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, inc
 
 | Method   | Path                                                                                                         | Requirement    |
 |----------|--------------------------------------------------------------------------------------------------------------|----------------|
-| `POST`   | `/api/v1/suggestions/analyze`                                                                                | `UNDECLARED`   |
-| `POST`   | `/api/v1/suggestions/entity`                                                                                 | `UNDECLARED`   |
+| `POST`   | `/api/v1/suggestions/analyze`                                                                                | `authenticated` |
+| `POST`   | `/api/v1/suggestions/entity`                                                                                 | `authenticated` |
 | `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/preview`                                             | `project:read` |
 | `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/sample`                                              | `project:read` |
 | `DELETE` | `/api/v1/projects/{project_name}/preview-cache`                                                              | `project:edit` |
 | `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/foreign-keys/{fk_index}/test`                        | `project:read` |
-| `GET`    | `/api/v1/reconciliation/health`                                                                              | `UNDECLARED`   |
-| `GET`    | `/api/v1/reconciliation/manifest`                                                                            | `UNDECLARED`   |
+| `GET`    | `/api/v1/reconciliation/health`                                                                              | `authenticated` |
+| `GET`    | `/api/v1/reconciliation/manifest`                                                                            | `authenticated` |
 | `GET`    | `/api/v1/projects/{project_name}/reconciliation`                                                             | `project:read` |
 | `PUT`    | `/api/v1/projects/{project_name}/reconciliation`                                                             | `project:edit` |
 | `PUT`    | `/api/v1/projects/{project_name}/reconciliation/raw`                                                         | `project:edit` |
@@ -181,6 +183,8 @@ The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, inc
 | `DELETE` | `/api/v1/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}`               | `project:edit` |
 | `GET`    | `/api/v1/projects/{project_name}/reconciliation/available-fields/{entity_name}`                              | `project:read` |
 | `GET`    | `/api/v1/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}/mapping-count` | `project:read` |
+
+`POST /api/v1/suggestions/analyze` and `POST /api/v1/suggestions/entity` analyze client-supplied entity configuration and an optional `data_source_name`, so they carry no stored resource; a follow-up should resolve the source server-side and require shared-source read, as with `POST /api/v1/data-sources/tables`. `GET /api/v1/reconciliation/health` and `GET /api/v1/reconciliation/manifest` report reconciliation service status and its manifest and expose no project or shared-source data; the health response includes the configured service URL.
 
 ### Mapping, Execution, And Materialization
 
@@ -204,10 +208,10 @@ The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, inc
 
 | Method | Path                                  | Requirement             |
 |--------|---------------------------------------|-------------------------|
-| `GET`  | `/api/v1/ingesters`                   | `UNDECLARED`            |
+| `GET`  | `/api/v1/ingesters`                   | `authenticated`         |
 | `POST` | `/api/v1/ingesters/{key}/validate`    | `UNDECLARED`            |
 | `POST` | `/api/v1/ingesters/{key}/ingest`      | `UNDECLARED`            |
-| `GET`  | `/api/v1/filters/types`               | `UNDECLARED`            |
+| `GET`  | `/api/v1/filters/types`               | `authenticated`         |
 | `GET`  | `/api/v1/logs/{log_type}`             | `authenticated`         |
 | `GET`  | `/api/v1/logs/{log_type}/download`    | `authenticated`         |
 | `GET`  | `/api/v1/whats-new`                   | `authenticated`         |
@@ -216,6 +220,8 @@ The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, inc
 Application and error logs are global: no project-scoped log file exists, so any authenticated principal may read or download them. The `application:read_logs` action remains defined but is not required by any route.
 
 `GET /api/v1/whats-new` and `GET /api/v1/whats-new/{version}/content` return release-note metadata and markdown published in `docs/whats-new/`, so they require an authenticated principal and no project role.
+
+`GET /api/v1/ingesters` returns registered ingester metadata (key, name, description, version, and supported formats) and `GET /api/v1/filters/types` returns filter configuration schemas, so both require an authenticated principal and no project role. `POST /api/v1/ingesters/{key}/validate` and `POST /api/v1/ingesters/{key}/ingest` remain undeclared; their classification and enforcement are owned by [INGESTER_AUTHORIZATION_TASKS.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md).
 
 ## Maintenance
 
