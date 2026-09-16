@@ -48,16 +48,29 @@ async def get_authorization_service(
     return AuthorizationService(repository, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE)
 
 
-def require_project(action: Action) -> Callable:
-    """Create a dependency that authorizes a project locator for an action."""
+def require_project(action: Action, *, body_locator: bool = False) -> Callable:
+    """Create a dependency that authorizes a project locator for an action.
+
+    The locator comes from a route or query parameter named ``project_name`` or ``name``.
+    Set ``body_locator`` for a route that carries the locator only in the JSON request body.
+    """
 
     async def dependency(
+        request: Request,
         principal: Annotated[Principal, Depends(get_principal())],
         service: Annotated[AuthorizationService, Depends(get_authorization_service)],
         project_name: str | None = None,
         name: str | None = None,
     ) -> AuthorizedResource:
         locator = project_name or name
+        if locator is None and body_locator:
+            try:
+                body = await request.json()
+            except (RuntimeError, ValueError):
+                body = None
+            if isinstance(body, dict):
+                locator = body.get("project_name")
+
         resource = service.repository.get_resource_by_locator(ResourceType.PROJECT, locator) if locator is not None else None
         authorized = service.authorize(principal, action, resource) if resource is not None else None
         if authorized is None:
