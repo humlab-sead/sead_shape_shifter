@@ -3,8 +3,8 @@
 ## Phase Summary
 
 - Status: Not started
-- Related authorization plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](../MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
-- Related security-hardening phase 4 work now tracked here: [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](../MITIGATE_SECURITY_ISSUES/MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md)
+- Related authorization plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
+- Related security-hardening phase 4 work now tracked here: [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](../done/MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md)
 - Goal: define and implement authorization for the ongoing `sead_change_request` ingester without enabling operations that still lack required containment and destination checks.
 
 **Acceptance Criteria**

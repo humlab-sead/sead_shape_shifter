@@ -5,8 +5,8 @@
 - Future proposal / not yet approved
 - Scope: server-owned resource records for generated outputs, backups, uploads, and long-running operations, and the API contracts that use them
 - Goal: stop client-selected filenames and paths from acting as resource identity, so every later request resolves through a server record
-- Origin: follow-up to the closed mitigation work — [MITIGATE_SECURITY_ISSUES.md](../MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES.md), [phase plan](../MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md)
-- Related: [centralized authorization design](../MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md), [implementation task plan](../MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md), [cutover plan](../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
+- Origin: follow-up to the closed mitigation work — [MITIGATE_SECURITY_ISSUES.md](../done/MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES.md), [phase plan](../done/MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md)
+- Related: [centralized authorization design](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md), [implementation task plan](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md), [cutover plan](../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
 
 ## Summary
 
@@ -118,7 +118,7 @@ Acceptable only for a documented single-process limitation. Persisted records ar
 - Test upload creation, listing, metadata access, and data-source use by resource ID across project and shared parents.
 - Test operation ownership, parent authorization, result-resource authorization, revocation, cleanup, and restart behavior if persistence is implemented.
 - Test that API responses do not expose sensitive absolute paths or permit client-selected filesystem destinations.
-- Run focused backend tests, the full backend suite, and the filesystem-boundary and deployment checks already recorded in [SECURITY_CHECK.md](../MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md).
+- Run focused backend tests, the full backend suite, and the filesystem-boundary and deployment checks already recorded in [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md).
 
 ## Acceptance Criteria
 

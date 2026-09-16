@@ -79,13 +79,13 @@
 - Root `Makefile` docker hooks
 - `.github/instructions/readme.instructions.md`, `.github/instructions/operations.instructions.md`
 - `scripts/check_doc_links.sh` (new) and its `Makefile` wiring
-- A short note in `docs/proposals/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md` marking its `docker/` line references as historical, so they are not read as current
+- A short note in `docs/proposals/done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md` marking its `docker/` line references as historical, so they are not read as current
 
 **Out of scope**
 
 - Application code, tests, runtime configuration, `backend/app/core/config.py`
 - `container/` implementation defects; both recorded here are resolved in the current tree: `podman-compose.yml` derives `env_file` from `CONTAINER_DATA_DIR`, and `resources/backend.env.example` uses `SHAPE_SHIFTER_*` names
-- `frontend/Dockerfile` and `docker/`-era security findings; `docs/proposals/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md` owns those
+- `frontend/Dockerfile` and `docker/`-era security findings; `docs/proposals/done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md` owns those
 - `docs/archive/` and `docs/features/`
 - Any restructuring of `docs/CONFIGURATION_GUIDE.md`, `docs/DESIGN.md`, `docs/DEVELOPMENT.md`, or `docs/TESTING.md` beyond link repair
 
@@ -150,7 +150,7 @@
 
 **Objective:** `docker/` is removed and no tracked file points at it.
 
-**Affected files:** `docker/**`, `Makefile`, `.dockerignore`, `.github/instructions/`, `docs/proposals/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md`
+**Affected files:** `docker/**`, `Makefile`, `.dockerignore`, `.github/instructions/`, `docs/proposals/done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md`
 
 **Dependencies:** `container/` must be committed first. Area 3 rewrites `docs/OPERATIONS.md`, which is the last inbound reference.
 
@@ -184,7 +184,7 @@
   - **Validation:** `V-3`, `V-7`.
 
 - [ ] `T2.5` **Annotate:** Historical `docker/` references in the security proposal.
-  - **Target:** `docs/proposals/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md` (15 `docker` mentions, including lines 257, 257–263, 544, 553, 620, 639–640, 662–684, 708).
+  - **Target:** `docs/proposals/done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md` (15 `docker` mentions, including lines 257, 257–263, 544, 553, 620, 639–640, 662–684, 708).
   - **Current → required:** path references read as current → a single note at the top of the file states that `docker/` paths record the state at review time and that `container/` is now the deployment path.
   - **Implementation:** Add one note. Do not rewrite the findings; they are a record of a review.
   - **Constraints:** Do not change any security finding, severity, or recommendation.
@@ -366,7 +366,7 @@
 |---|---|---|---|---|---|
 | `V-1` | Relative link resolution across reviewed documents | `scripts/check_doc_links.sh` (`NEW`); before it exists, run the scan recorded in `Repository Findings` | `PH1-AC-1`, `PH1-AC-3`, `PH1-AC-4`, `PH1-AC-6` | Zero broken links | Fail: 4 broken links (`docs/README.md` ×3, `docs/USER_GUIDE.md` ×1) |
 | `V-2` | Document size against instruction targets | `wc -l README.md docs/README.md docs/DIAGRAMS.md && wc -w docs/OPERATIONS.md` | `PH1-AC-1`, `PH1-AC-2`, `PH1-AC-5`, `PH1-AC-6` | `README.md` < 300 lines; `docs/README.md` < 150 lines; `docs/DIAGRAMS.md` reduced; `docs/OPERATIONS.md` 800–1800 words | Fail: 502 / 302 / 1397 lines; 3766 words |
-| `V-3` | No retired `docker/` references | `git grep -n -iE 'docker/' -- ':!graphify-out' ':!CHANGELOG.md' ':!docs/archive' ':!docs/proposals/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md'` | `PH1-AC-2`, `PH1-AC-7` | No matches | Fail: 60 matches in `docs/OPERATIONS.md`, 6 in `README.md`, plus instruction files |
+| `V-3` | No retired `docker/` references | `git grep -n -iE 'docker/' -- ':!graphify-out' ':!CHANGELOG.md' ':!docs/archive' ':!docs/proposals/done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md'` | `PH1-AC-2`, `PH1-AC-7` | No matches | Fail: 60 matches in `docs/OPERATIONS.md`, 6 in `README.md`, plus instruction files |
 | `V-4` | Every named command and path exists | Cross-check each command in `docs/OPERATIONS.md` and `README.md` against `container/Makefile` and `container/scripts/` | `PH1-AC-1`, `PH1-AC-2`, `PH1-AC-7` | Every named target and path exists | Not run: no prior claim to verify |
 | `V-5` | Root `Makefile` parses after include removal | `make help` | `PH1-AC-7` | Exit code 0, help text printed | Pass: `make help` currently works |
 | `V-6` | Diagram and user-guide content ownership | Manual review against `.github/instructions/diagrams.instructions.md` and `.github/instructions/user-guide.instructions.md`; heading extraction for numbering | `PH1-AC-4`, `PH1-AC-5` | Continuous numbering; no narrative sections; no YAML semantics | Fail: sections 10 and 13 missing; sections 1–3 and 11–12 are narrative |
@@ -436,5 +436,5 @@ No unit, integration, or contract test run is required. This phase changes no co
 **Open questions**
 
 1. Should a push or PR workflow be added for the link check? `.github/workflows/` contains only `release.yml`, which performs semantic release. `T1.6` wires the check into `make lint` only; CI enforcement needs a new workflow.
-2. Is `frontend/Dockerfile` also retired? `container/Containerfile` builds the frontend itself, and `docs/proposals/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md:708` already records it as a stale standalone build. It is out of scope here, and that proposal owns the finding.
+2. Is `frontend/Dockerfile` also retired? `container/Containerfile` builds the frontend itself, and `docs/proposals/done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md:708` already records it as a stale standalone build. It is out of scope here, and that proposal owns the finding.
 3. Should `docs/GLOSSARY.md`, `docs/SQL_SAFETY_POLICY.md`, and the target model guides be reviewed for the same scope and duplication problems? They were not part of the original review and are not in scope.

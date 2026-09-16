@@ -5,7 +5,7 @@
 - Status: Done
 - Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md) (design section 5, Restrict data-source and ingester capabilities)
 - Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md) (Phase 4)
-- Related ingester plan: [INGESTER_AUTHORIZATION_TASKS.md](../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md)
+- Related ingester plan: [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md)
 - Goal: restrict server-side data-source selection and public error disclosure while keeping ingester-specific route and destination work in the dedicated ingester authorization plan.
 
 **Focus**
@@ -98,7 +98,7 @@ Avoid duplicating ingester route disposition and destination-gating work in this
 
 **Tasks**
 
-- [x] Maintain [INGESTER_AUTHORIZATION_TASKS.md](../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) as the owning document for ingester routes, roles, and destination checks.
+- [x] Maintain [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) as the owning document for ingester routes, roles, and destination checks.
 - [x] Keep this phase plan limited to data-source and error-disclosure work.
 - [x] Confirm any future ingester source, destination, and registration/write work is added only to the dedicated ingester plan.
 
@@ -113,7 +113,7 @@ There is a single active plan for ingester authorization and destination-gating 
 | Data-source inputs and disclosure surfaces | Done | Public data-source routes, service-layer resolution paths, loader paths, and public disclosure surfaces are inventoried |
 | Server-managed data sources | Done | Mapper and service validation reject unapproved destinations, environment variables, and custom connection strings |
 | Sensitive disclosure removal | Done | Stable public errors and log redaction are implemented |
-| Ingester work deferral | Done | Tracked in [INGESTER_AUTHORIZATION_TASKS.md](../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) |
+| Ingester work deferral | Done | Tracked in [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) |
 
 ## Definition Of Done
 
@@ -135,9 +135,9 @@ There is a single active plan for ingester authorization and destination-gating 
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
 | Data-source inventory | Routes, services, configuration paths, and approved destinations | Done | [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md) |
-| Server-managed data-source enforcement | Named sources, allowlists, DNS/IP validation, and egress controls | Done | [backend/app/services/data_source_policy.py](../../../../backend/app/services/data_source_policy.py), [backend/app/mappers/data_source_mapper.py](../../../../backend/app/mappers/data_source_mapper.py), [backend/app/services/data_source_service.py](../../../../backend/app/services/data_source_service.py), [backend/tests/mappers/test_data_source_mapper.py](../../../../backend/tests/mappers/test_data_source_mapper.py), [backend/tests/services/test_data_source_service.py](../../../../backend/tests/services/test_data_source_service.py) |
-| Error disclosure controls | Stable public messages, correlation IDs, and redaction | Done | [backend/app/utils/public_errors.py](../../../../backend/app/utils/public_errors.py), [backend/app/utils/error_handlers.py](../../../../backend/app/utils/error_handlers.py), [backend/app/api/v1/endpoints/data_sources.py](../../../../backend/app/api/v1/endpoints/data_sources.py), [backend/app/api/v1/endpoints/query.py](../../../../backend/app/api/v1/endpoints/query.py), [backend/app/services/data_source_service.py](../../../../backend/app/services/data_source_service.py), [backend/app/services/schema_service.py](../../../../backend/app/services/schema_service.py), [backend/tests/test_error_handlers.py](../../../../backend/tests/test_error_handlers.py), [backend/tests/test_data_source_api.py](../../../../backend/tests/test_data_source_api.py), [backend/tests/services/test_data_source_service.py](../../../../backend/tests/services/test_data_source_service.py) |
-| Ingester plan cross-reference | Dedicated plan for ingester authorization and destination checks | Done | [INGESTER_AUTHORIZATION_TASKS.md](../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) |
+| Server-managed data-source enforcement | Named sources, allowlists, DNS/IP validation, and egress controls | Done | [backend/app/services/data_source_policy.py](../../../../../backend/app/services/data_source_policy.py), [backend/app/mappers/data_source_mapper.py](../../../../../backend/app/mappers/data_source_mapper.py), [backend/app/services/data_source_service.py](../../../../../backend/app/services/data_source_service.py), [backend/tests/mappers/test_data_source_mapper.py](../../../../../backend/tests/mappers/test_data_source_mapper.py), [backend/tests/services/test_data_source_service.py](../../../../../backend/tests/services/test_data_source_service.py) |
+| Error disclosure controls | Stable public messages, correlation IDs, and redaction | Done | [backend/app/utils/public_errors.py](../../../../../backend/app/utils/public_errors.py), [backend/app/utils/error_handlers.py](../../../../../backend/app/utils/error_handlers.py), [backend/app/api/v1/endpoints/data_sources.py](../../../../../backend/app/api/v1/endpoints/data_sources.py), [backend/app/api/v1/endpoints/query.py](../../../../../backend/app/api/v1/endpoints/query.py), [backend/app/services/data_source_service.py](../../../../../backend/app/services/data_source_service.py), [backend/app/services/schema_service.py](../../../../../backend/app/services/schema_service.py), [backend/tests/test_error_handlers.py](../../../../../backend/tests/test_error_handlers.py), [backend/tests/test_data_source_api.py](../../../../../backend/tests/test_data_source_api.py), [backend/tests/services/test_data_source_service.py](../../../../../backend/tests/services/test_data_source_service.py) |
+| Ingester plan cross-reference | Dedicated plan for ingester authorization and destination checks | Done | [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) |
 
 ## Scope
 
@@ -150,7 +150,7 @@ There is a single active plan for ingester authorization and destination-gating 
 
 **Out of scope**
 
-- Ingester route disposition, source, output-folder, database-destination, and registration/write checks, which are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md).
+- Ingester route disposition, source, output-folder, database-destination, and registration/write checks, which are tracked in [INGESTER_AUTHORIZATION_TASKS.md](../../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md).
 - Filesystem boundaries, SQL policy, and DuckDB restrictions, which are owned by earlier phases.
 - Changes to the centralized authorization policy or the nginx identity contract.
 

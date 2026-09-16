@@ -6,7 +6,7 @@
 - Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md) (design §3 "Enforce filesystem boundaries")
 - Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md) (Phase 2)
 - Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](CENTRALIZED_AUTHORIZATION_SYSTEM.md)
-- Related follow-up: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
+- Related follow-up: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
 - Goal: prevent API input and project configuration from selecting or writing arbitrary server files by confining every file read, write, download, upload, and directive to approved server-owned roots
 
 **Focus**
@@ -86,7 +86,7 @@ No project-file, upload, backup, download, or directive path can escape its appr
 
 **Decision**
 
-Defer this work to [Secure Ingester Filesystem Boundaries](../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md). The ingester remains disabled for operations that lack complete source, project, output, database, authorization, and containment checks.
+Defer this work to [Secure Ingester Filesystem Boundaries](../../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md). The ingester remains disabled for operations that lack complete source, project, output, database, authorization, and containment checks.
 
 ## Progress Tracker
 
@@ -95,7 +95,7 @@ Defer this work to [Secure Ingester Filesystem Boundaries](../../CHANGE_REQUEST_
 | Approved roots and shared containment guard     | Done | Root documentation, shared guard, resolver integration, and escape-case tests are complete |
 | Execution outputs and downloads                 | Done | Output and download paths are confined and escape-case tests pass |
 | Project files, uploads, backups, and directives | Done | Project, upload, backup, materialized-value, directive, and download paths are guarded; focused escape-case tests pass |
-| Ingester boundaries                             | Deferred | Tracked in [Secure Ingester Filesystem Boundaries](../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md) |
+| Ingester boundaries                             | Deferred | Tracked in [Secure Ingester Filesystem Boundaries](../../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md) |
 
 ## Definition Of Done
 
@@ -120,12 +120,12 @@ Defer this work to [Secure Ingester Filesystem Boundaries](../../CHANGE_REQUEST_
 
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
-| Approved-roots registry            | Documented server-owned roots and per-environment values    | Done | [`docs/OPERATIONS.md`](../../../OPERATIONS.md) |
+| Approved-roots registry            | Documented server-owned roots and per-environment values    | Done | [`docs/OPERATIONS.md`](../../../../OPERATIONS.md) |
 | Containment guard and tests        | Shared path-resolution guard plus unit tests | Done   | `src/path_resolution.py`, `backend/app/utils/file_path_resolver.py` |
 | Execution and download confinement | Confined outputs and closed arbitrary download | Done         | `backend/app/services/execute_service.py`, `backend/tests/services/test_execute_service_output_paths.py` |
 | Project-file, upload, backup, and directive confinement | Root checks across file endpoints and YAML directives | Done | `backend/app/services/project/file_manager.py`, `backend/app/api/v1/endpoints/projects.py`, `backend/app/services/yaml_service.py`, `src/configuration/resolve.py` |
 | Raw YAML disposition record        | Decision on restricting or removing raw YAML mutation  | Done | Raw YAML mutation remains limited to the authorized project edit operation; paths are confined before persistence or directive resolution |
-| Ingester boundary record           | Disablement or containment evidence for ingester paths | Deferred | [`CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md`](../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md) |
+| Ingester boundary record           | Disablement or containment evidence for ingester paths | Deferred | [`CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md`](../../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md) |
 
 ## Scope
 
@@ -135,7 +135,7 @@ Defer this work to [Secure Ingester Filesystem Boundaries](../../CHANGE_REQUEST_
 - Path confinement for execution targets, downloads, uploads, backups, project files, and YAML directives (`@include`, `@load`).
 - Symlink and time-of-check/time-of-use protection.
 - Server-generated output destinations and the raw YAML mutation disposition.
-- Ingester boundary work is deferred to [`CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md`](../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md).
+- Ingester boundary work is deferred to [`CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md`](../../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md).
 
 **Out of scope**
 
@@ -143,7 +143,7 @@ Defer this work to [Secure Ingester Filesystem Boundaries](../../CHANGE_REQUEST_
 - SQL and DuckDB file-access restrictions, which are owned by Phase 3 of the parent phase plan.
 - Network egress and SSRF controls for data sources, which are owned by Phase 4.
 - Spreadsheet formula neutralization and UCanAccess hardening, which are owned by the parent proposal.
-- Stable server-owned resource identifiers for outputs, backups, uploads, and operations, which are tracked in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
+- Stable server-owned resource identifiers for outputs, backups, uploads, and operations, which are tracked in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
 
 ## Risks And Mitigations
 
