@@ -20,7 +20,9 @@ The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, inc
 | `application:create_project`        | Create a project                                           |
 | `application:manage_shared_sources` | Manage shared data sources or schema cache                 |
 | `application:read_logs`             | Defined application action for application logs; no route requires it |
+| `application:run_ingesters`         | Run a data ingester, either validation or ingestion; held through the `operator` application role |
 | `authenticated`                     | Any authenticated principal may call; no additional resource or application requirement is declared on the route. Trusted-proxy authentication still applies and any response-scoping behavior is described in the route notes |
+| `enforcement pending`               | Added after a requirement to show that the row records the intended requirement while the route still declares no `authorization_requirement` metadata |
 | `UNDECLARED`                        | No route authorization metadata; classification is pending |
 
 ## Public And Static Paths
@@ -210,22 +212,26 @@ Every row above except the health check requires an authenticated principal thro
 
 ### Ingester, Filters, Logs, And Release Notes
 
-| Method | Path                                  | Requirement             |
-|--------|---------------------------------------|-------------------------|
-| `GET`  | `/api/v1/ingesters`                   | `authenticated`         |
-| `POST` | `/api/v1/ingesters/{key}/validate`    | `UNDECLARED`            |
-| `POST` | `/api/v1/ingesters/{key}/ingest`      | `UNDECLARED`            |
-| `GET`  | `/api/v1/filters/types`               | `authenticated`         |
-| `GET`  | `/api/v1/logs/{log_type}`             | `authenticated`         |
-| `GET`  | `/api/v1/logs/{log_type}/download`    | `authenticated`         |
-| `GET`  | `/api/v1/whats-new`                   | `authenticated`         |
-| `GET`  | `/api/v1/whats-new/{version}/content` | `authenticated`         |
+| Method | Path                                  | Requirement                              |
+|--------|---------------------------------------|------------------------------------------|
+| `GET`  | `/api/v1/ingesters`                   | `authenticated`                          |
+| `POST` | `/api/v1/ingesters/{key}/validate`    | `application:run_ingesters`; enforcement pending |
+| `POST` | `/api/v1/ingesters/{key}/ingest`      | `application:run_ingesters`; enforcement pending |
+| `GET`  | `/api/v1/filters/types`               | `authenticated`                          |
+| `GET`  | `/api/v1/logs/{log_type}`             | `authenticated`                          |
+| `GET`  | `/api/v1/logs/{log_type}/download`    | `authenticated`                          |
+| `GET`  | `/api/v1/whats-new`                   | `authenticated`                          |
+| `GET`  | `/api/v1/whats-new/{version}/content` | `authenticated`                          |
 
 Application and error logs are global: no project-scoped log file exists, so any authenticated principal may read or download them. The `application:read_logs` action remains defined but is not required by any route.
 
 `GET /api/v1/whats-new` and `GET /api/v1/whats-new/{version}/content` return release-note metadata and markdown published in `docs/whats-new/`, so they require an authenticated principal and no project role.
 
-`GET /api/v1/ingesters` returns registered ingester metadata (key, name, description, version, and supported formats) and `GET /api/v1/filters/types` returns filter configuration schemas, so both require an authenticated principal and no project role. `POST /api/v1/ingesters/{key}/validate` and `POST /api/v1/ingesters/{key}/ingest` remain undeclared; their classification and enforcement are owned by [INGESTER_AUTHORIZATION_TASKS.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md).
+`GET /api/v1/ingesters` returns registered ingester metadata (key, name, description, version, and supported formats) and `GET /api/v1/filters/types` returns filter configuration schemas, so both require an authenticated principal and no project role.
+
+`POST /api/v1/ingesters/{key}/validate` and `POST /api/v1/ingesters/{key}/ingest` record `application:run_ingesters`, which the `operator` application role holds. Neither route declares that metadata yet. The two routes accept no project locator: `IngestRequest` carries a server file path in `source`, an `output_folder`, and the `do_register` and `explode` flags, so a run is not addressed to a project and cannot be authorized by `project:execute` alone. Enforcement, which must cover the source, the destination, and the database registration the operations reach, is owned by [INGESTER_AUTHORIZATION_TASKS.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md); the source and destination containment checks are owned by [INGESTER_FILESYSTEM_BOUNDARIES.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md).
+
+Principals who run and review projects are expected to run these ingesters for that work. Granting `operator` meets that expectation today. If a run must instead be limited to one project, the route needs a project locator plus `project:execute` alongside the containment checks.
 
 ## Maintenance
 

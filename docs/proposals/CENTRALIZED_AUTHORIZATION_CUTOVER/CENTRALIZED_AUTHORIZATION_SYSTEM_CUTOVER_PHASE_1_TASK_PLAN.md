@@ -78,7 +78,7 @@
   * **Constraints:** Use the requirement terms already defined in the inventory. Do not claim enforcement that the code does not perform; state handler-level behavior in the note.
   * **Validation:** `V-3`, `V-5`.
 
-* [ ] `T1.3` **Change:** Record the ingester route classification and its enforcement follow-up.
+* [x] `T1.3` **Change:** Record the ingester route classification and its enforcement follow-up.
   * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) rows for `GET /api/v1/ingesters`, `POST /api/v1/ingesters/{key}/validate`, `POST /api/v1/ingesters/{key}/ingest`.
   * **Current → required:** All three read `UNDECLARED`. Required: `authenticated` for the metadata list, and `application:run_ingesters` with project, source, and destination authorization for validation and execution, marked as enforcement pending.
   * **Implementation:** Record the required requirement from the design resource rules and add a note naming [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) as the owner of the enforcement work.
@@ -207,7 +207,7 @@ For every check, record the commit, the command output, and the reviewer in the 
 
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
-| Area 1: Record classifications | In progress | None | `T1.1` done at `64d0556a`: `uv run pytest backend/tests/authorization backend/tests/test_session_authorization.py backend/tests/test_state_manager.py`, `uv run pytest backend/tests`, `isort`, `black`, and `scripts/check_doc_links.sh` pass. `T1.2` remains for `GET /api/v1/projects` and `GET /api/v1/projects/active/name`; `T1.3` rows remain `UNDECLARED`; `T1.4` recorded |
+| Area 1: Record classifications | In progress | None | `T1.1` done at `64d0556a`: `uv run pytest backend/tests/authorization backend/tests/test_session_authorization.py backend/tests/test_state_manager.py`, `uv run pytest backend/tests`, `isort`, `black`, and `scripts/check_doc_links.sh` pass. `T1.2` remains for `GET /api/v1/projects` and `GET /api/v1/projects/active/name`; `T1.3` recorded as `application:run_ingesters`, enforcement pending; `T1.4` recorded |
 | Area 2: Enforce classification in the check | Not started | Area 1 (classification sets and inventory rows) | |
 | Area 3: Record lifecycle and background coverage | Not started | None | Independent of Areas 1 and 2 |
 | Area 4: Review and align documentation | Not started | Areas 1–3 | Reviewer `TBD` |
