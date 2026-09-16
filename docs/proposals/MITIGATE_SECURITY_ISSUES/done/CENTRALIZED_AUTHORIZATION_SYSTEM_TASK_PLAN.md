@@ -5,7 +5,7 @@
 - Status: Closed — implementation complete and archived
 - Completed proposal: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./CENTRALIZED_AUTHORIZATION_SYSTEM.md)
 - Follow-up plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
-- Deferred path-identity work: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
+- Deferred path-identity work: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
 - Parent phase: Phase 1 — Enforce Nginx Identity, Authorization, And CORS Controls
 - Goal: enforce one documented authorization policy for all Phase 1 protected resources while keeping authentication provider details replaceable
 
@@ -225,7 +225,7 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 - [x] Implemented protected routes and operations have declared authorization requirements; final production classification is tracked in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 - [x] Project sessions do not grant project access.
 - [x] Shared-source access is checked separately from project access.
-- Outputs, backups, uploads, and operations resolve through server-owned records rather than arbitrary client paths — deferred to [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../SERVER_OWNED_RESOURCE_IDENTIFIERS.md) as the follow-up completion requirement for the remaining path-identity work.
+- Outputs, backups, uploads, and operations resolve through server-owned records rather than arbitrary client paths — deferred to [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md) as the follow-up completion requirement for the remaining path-identity work.
 - [x] The reviewed-manifest workflow supports initial owners and grants; deployment review is tracked in the follow-up cutover plan.
 - [x] Resource deletion and name reuse cannot transfer grants to a new resource.
 - [x] The final project owner and final application administrator cannot be removed.

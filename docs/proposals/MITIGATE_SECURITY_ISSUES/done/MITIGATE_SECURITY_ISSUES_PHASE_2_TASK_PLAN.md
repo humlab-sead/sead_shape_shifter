@@ -6,7 +6,7 @@
 - Proposal: [MITIGATE_SECURITY_ISSUES.md](../MITIGATE_SECURITY_ISSUES.md) (design §3 "Enforce filesystem boundaries")
 - Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md](../MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md) (Phase 2)
 - Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](CENTRALIZED_AUTHORIZATION_SYSTEM.md)
-- Related follow-up: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
+- Related follow-up: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
 - Goal: prevent API input and project configuration from selecting or writing arbitrary server files by confining every file read, write, download, upload, and directive to approved server-owned roots
 
 **Focus**
@@ -143,7 +143,7 @@ Defer this work to [Secure Ingester Filesystem Boundaries](../CHANGE_REQUEST_ING
 - SQL and DuckDB file-access restrictions, which are owned by Phase 3 of the parent phase plan.
 - Network egress and SSRF controls for data sources, which are owned by Phase 4.
 - Spreadsheet formula neutralization and UCanAccess hardening, which are owned by the parent proposal.
-- Stable server-owned resource identifiers for outputs, backups, uploads, and operations, which are tracked in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
+- Stable server-owned resource identifiers for outputs, backups, uploads, and operations, which are tracked in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
 
 ## Risks And Mitigations
 
