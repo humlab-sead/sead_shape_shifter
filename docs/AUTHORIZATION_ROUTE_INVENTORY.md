@@ -19,23 +19,23 @@ The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, inc
 | `shared_data_source:read`           | Read the named shared data source or its child resource    |
 | `application:create_project`        | Create a project                                           |
 | `application:manage_shared_sources` | Manage shared data sources or schema cache                 |
-| `application:read_logs`             | View or download application logs                          |
+| `application:read_logs`             | Defined application action for application logs; no route requires it |
 | `authenticated`                     | Any authenticated principal may call; no additional resource or application requirement is declared on the route. Trusted-proxy authentication still applies and any response-scoping behavior is described in the route notes |
 | `UNDECLARED`                        | No route authorization metadata; classification is pending |
 
 ## Public And Static Paths
 
-| Method       | Path                | Requirement  | Notes                                                                           |
-|--------------|---------------------|--------------|---------------------------------------------------------------------------------|
-| `GET`        | `/api/v1/health`    | Public       | Explicit trusted-proxy middleware exception for container health checks         |
-| `GET, HEAD`  | `/api/v1/openapi.json` | `UNDECLARED` | FastAPI-generated OpenAPI schema; configured application path, not an unprefixed `/openapi.json` route |
-| `GET, HEAD`  | `/api/v1/docs`      | `UNDECLARED` | FastAPI-generated Swagger UI; direct application route outside `api_router`    |
-| `GET, HEAD`  | `/docs/oauth2-redirect` | `UNDECLARED` | FastAPI-generated Swagger OAuth redirect helper; direct application route outside `api_router` |
-| `GET, HEAD`  | `/api/v1/redoc`      | `UNDECLARED` | FastAPI-generated ReDoc UI; direct application route outside `api_router`      |
-| Static mount | `/docs/*`           | `UNDECLARED` | Repository documentation static mount; classify before cutover                  |
-| Static mount | `/assets/*`         | `UNDECLARED` | Present only when the production frontend build exists; classify before cutover |
-| `GET`        | `/{full_path:path}` | `UNDECLARED` | Frontend SPA catch-all when the production frontend build exists                |
-| `GET`        | `/`                 | `UNDECLARED` | API-only root route when no frontend build exists                               |
+| Method       | Path                    | Requirement  | Notes                                                                                                  |
+|--------------|-------------------------|--------------|--------------------------------------------------------------------------------------------------------|
+| `GET`        | `/api/v1/health`        | Public       | Explicit trusted-proxy middleware exception for container health checks                                |
+| `GET, HEAD`  | `/api/v1/openapi.json`  | `UNDECLARED` | FastAPI-generated OpenAPI schema; configured application path, not an unprefixed `/openapi.json` route |
+| `GET, HEAD`  | `/api/v1/docs`          | `UNDECLARED` | FastAPI-generated Swagger UI; direct application route outside `api_router`                            |
+| `GET, HEAD`  | `/docs/oauth2-redirect` | `UNDECLARED` | FastAPI-generated Swagger OAuth redirect helper; direct application route outside `api_router`         |
+| `GET, HEAD`  | `/api/v1/redoc`         | `UNDECLARED` | FastAPI-generated ReDoc UI; direct application route outside `api_router`                              |
+| Static mount | `/docs/*`               | `UNDECLARED` | Repository documentation static mount; classify before cutover                                         |
+| Static mount | `/assets/*`             | `UNDECLARED` | Present only when the production frontend build exists; classify before cutover                        |
+| `GET`        | `/{full_path:path}`     | `UNDECLARED` | Frontend SPA catch-all when the production frontend build exists                                       |
+| `GET`        | `/`                     | `UNDECLARED` | API-only root route when no frontend build exists                                                      |
 
 ## API Routes
 
@@ -206,10 +206,12 @@ The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, inc
 | `POST` | `/api/v1/ingesters/{key}/validate`    | `UNDECLARED`            |
 | `POST` | `/api/v1/ingesters/{key}/ingest`      | `UNDECLARED`            |
 | `GET`  | `/api/v1/filters/types`               | `UNDECLARED`            |
-| `GET`  | `/api/v1/logs/{log_type}`             | `application:read_logs` |
-| `GET`  | `/api/v1/logs/{log_type}/download`    | `application:read_logs` |
+| `GET`  | `/api/v1/logs/{log_type}`             | `authenticated`         |
+| `GET`  | `/api/v1/logs/{log_type}/download`    | `authenticated`         |
 | `GET`  | `/api/v1/whats-new`                   | `UNDECLARED`            |
 | `GET`  | `/api/v1/whats-new/{version}/content` | `UNDECLARED`            |
+
+Application and error logs are global: no project-scoped log file exists, so any authenticated principal may read or download them. The `application:read_logs` action remains defined but is not required by any route.
 
 ## Maintenance
 

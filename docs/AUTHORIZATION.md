@@ -71,6 +71,8 @@ Application roles apply across the deployment and are evaluated before resource 
 
 The current actions are `read`, `edit`, `execute`, `delete`, `manage_grants`, `create_project`, `read_logs`, `manage_shared_sources`, `read_all_shared_sources`, `run_ingesters`, `manage_all_grants`, `manage_application_roles`, and `configure_ingesters`.
 
+Application and error logs are global, and no project-scoped log exists, so both log routes require an authenticated principal and no application role. This policy change was approved on 2026-09-16 and replaces the earlier admin-only rule. The `read_logs` action remains defined, and no route requires it.
+
 Application roles do not create resource grants. They permit only their explicitly mapped actions. `admin` permits all defined actions, including resource actions. Unknown resource types, roles, and actions are denied.
 
 ## Authorization Decisions
@@ -102,6 +104,6 @@ Audit records must not contain credentials, SQL text, sensitive filesystem paths
 
 ## Current Coverage
 
-Implemented controls cover project resources and project children, shared data-source access, project references to shared sources, and application-log access. The policy is intentionally deny-by-default.
+Implemented controls cover project resources and project children, shared data-source access, project references to shared sources, and authenticated access to the global application and error logs. The policy is intentionally deny-by-default.
 
 Ingester authorization remains proposed work and is tracked in [INGESTER_AUTHORIZATION_TASKS.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md). The route inventory, administration CLI, and core operational procedures are published, but undeclared route classification remains tracked in the centralized authorization task plan.
