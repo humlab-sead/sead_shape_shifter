@@ -5,24 +5,26 @@
 # then leaves the host ready to run: make setup && make build && make up
 #
 # Usage:
-#   bash get-install.sh [--branch BRANCH] [--repo URL]
+#   bash get-install.sh [--ref REF] [--repo URL]
+#
+# REF is a branch or a release tag. --branch is accepted as an alias.
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/humlab-sead/sead_shape_shifter.git}"
-BRANCH="${BRANCH:-main}"
+REF="${REF:-${BRANCH:-main}}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --branch)
-      BRANCH="$2"
+    --ref | --branch)
+      REF="$2"
       shift 2
       ;;
     --repo)
       REPO_URL="$2"
       shift 2
       ;;
-    -h|--help)
-      echo "Usage: bash get-install.sh [--branch BRANCH] [--repo URL]"
+    -h | --help)
+      echo "Usage: bash get-install.sh [--ref REF] [--repo URL]"
       exit 0
       ;;
     *)
@@ -71,18 +73,42 @@ if (( failed )); then
   exit 1
 fi
 
+# The archive URL accepts a branch or a tag. The wildcard matches the top-level
+# directory, whose name differs between the two: GitHub strips the leading 'v'
+# from a tag, so v2.1.0 extracts to sead_shape_shifter-2.1.0/.
+ARCHIVE_URL="${REPO_URL%.git}/archive/${REF}.tar.gz"
+
 echo ""
-echo "Downloading container deployment files for branch '$BRANCH'..."
-curl -L "${REPO_URL%.git}/archive/refs/heads/${BRANCH}.tar.gz" |
-  tar -xz \
-    --wildcards \
-    --strip-components=1 \
-    "sead_shape_shifter-${BRANCH}/container/*"
+echo "Downloading container deployment files for ref '$REF'..."
+if ! curl -fsSL "$ARCHIVE_URL" | tar -xz --wildcards --strip-components=1 '*/container/*'; then
+  echo "error: could not download $ARCHIVE_URL" >&2
+  echo "info: check that '$REF' is an existing branch or tag in $REPO_URL" >&2
+  exit 1
+fi
 
 echo "Deployment files extracted."
+
+# Record the repository and ref in container/.env, so `make build` builds the
+# ref that was just downloaded instead of the default in .env.example.
+if [ -d container ]; then
+  if [ ! -f container/.env ] && [ -f container/.env.example ]; then
+    cp container/.env.example container/.env
+  fi
+  # shellcheck source=env-config.sh
+  . container/scripts/env-config.sh
+  # shellcheck source=load-env.sh
+  ENV_FILE="$PWD/container/.env" . container/scripts/load-env.sh
+  env_image="${IMAGE_NAME:-shape-shifter:latest}"
+  shapeshifter_env_file_set container/.env GIT_REPO "$REPO_URL"
+  shapeshifter_env_file_set container/.env GIT_REF "$REF"
+  shapeshifter_env_file_set container/.env IMAGE_NAME "$(shapeshifter_image_for_ref "$REF" "${env_image%%:*}")"
+  echo "Recorded GIT_REPO, GIT_REF and IMAGE_NAME in container/.env"
+fi
+
 echo ""
 echo "Next steps:"
 echo "  cd container"
+echo "  review .env               # repository, ref, image, port"
 echo "  make install-ucanaccess   # required only for MS Access data sources"
 echo "  make setup"
 echo "  nano ../container-data/backend.env"
