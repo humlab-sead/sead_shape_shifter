@@ -4,7 +4,7 @@
 
 - Status: Closed — implementation complete and archived
 - Completed proposal: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./CENTRALIZED_AUTHORIZATION_SYSTEM.md)
-- Follow-up plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
+- Follow-up plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
 - Deferred path-identity work: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
 - Parent phase: Phase 1 — Enforce Nginx Identity, Authorization, And CORS Controls
 - Goal: enforce one documented authorization policy for all Phase 1 protected resources while keeping authentication provider details replaceable
@@ -13,7 +13,7 @@
 
 - [x] The authorization policy, role model, principal contract, stable resource identity, and inheritance rules are approved and documented.
 - [x] Resource records, grants, application roles, schema versions, and audit events are stored in a dedicated SQLite database outside user-editable directories.
-- Final classification of every sensitive route and background operation, and reviewed initial grants for existing projects and shared resources, are owned by the separate [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
+- Final classification of every sensitive route and background operation, and reviewed initial grants for existing projects and shared resources, are owned by the separate [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 - [x] Cross-user, cross-project, cross-source, and role-matrix tests pass in the focused authorization suite.
 - [x] Authorization remains independent of nginx so future native authentication can use the same principal and policy contracts.
 
@@ -21,7 +21,7 @@
 
 ### Follow-up: Authorization Cutover
 
-The implementation task plan is complete. Deployment inventory, final route classification, initial grants, readiness validation, enforcement cutover, and rollback are owned by the separate [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
+The implementation task plan is complete. Deployment inventory, final route classification, initial grants, readiness validation, enforcement cutover, and rollback are owned by the separate [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 
 ### 2. Implement Authorization Foundation
 
@@ -138,11 +138,11 @@ Prove policy behavior and implementation coverage without relying on route-only 
 - [x] Add tests for SQLite migration, concurrent access, transaction rollback, backup, restore, reconciliation, and integrity checks.
 - [x] Add service-level tests that bypass route dependencies and still reject unchecked sensitive work.
 - [x] Add an automated route inventory check that reports undeclared sensitive locator routes.
-- Production route classification, deployment inventory, readiness validation, enforcement cutover, and rollback are owned by the separate [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
+- Production route classification, deployment inventory, readiness validation, enforcement cutover, and rollback are owned by the separate [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 
 **Completion Criteria**
 
-Implemented protected routes and operations pass the authorization matrix. Production route completion, reviewed resources, deployment cutover, and rollback are outside this implementation plan and are gated by [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
+Implemented protected routes and operations pass the authorization matrix. Production route completion, reviewed resources, deployment cutover, and rollback are outside this implementation plan and are gated by [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 
 ### 7. Implement Authorization Administration CLI
 
@@ -222,7 +222,7 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 
 - [x] One central policy denies unknown actions, roles, and resources by default.
 - [x] Persistent resource records, grants, roles, and audit events cannot be changed through project YAML or project file endpoints.
-- [x] Implemented protected routes and operations have declared authorization requirements; final production classification is tracked in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
+- [x] Implemented protected routes and operations have declared authorization requirements; final production classification is tracked in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 - [x] Project sessions do not grant project access.
 - [x] Shared-source access is checked separately from project access.
 - Outputs, backups, uploads, and operations resolve through server-owned records rather than arbitrary client paths — deferred to [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md) as the follow-up completion requirement for the remaining path-identity work.
@@ -245,7 +245,7 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 - Test that revocation blocks new operations and later operation access while an already-running operation retains its recorded authorization snapshot.
 - Test typed principal, group, and authenticated-`everyone` subjects, including membership changes, anonymous denial, broad-grant revocation, inheritance, and final-owner protection.
 - Test membership review separately from runtime authorization: successful provider expansion, unavailable and not-found groups, freshness reporting, strict CLI failure behavior, JSON output, and the rule that review failures do not silently change authorization decisions.
-- Cutover-specific regression, route-inventory, manifest, backup, and deployment checks are defined in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
+- Cutover-specific regression, route-inventory, manifest, backup, and deployment checks are defined in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 
 ## Deliverables
 
@@ -255,11 +255,11 @@ Approved broad-access grants are evaluated centrally, recorded against generatio
 | Authorization repository | SQLite resource records, grants, application roles, audit events, migrations, manifest operations, backups, restore, integrity checks, and reconciliation outside project-managed data | Done | [authorization repository](../../../../backend/app/authorization/repository.py) |
 | Authorization enforcement | Dependencies, service checks, operation ownership, and resource resolution | Done | [authorization dependencies](../../../../backend/app/authorization/dependencies.py) |
 | Route authorization inventory | Registered API routes and their declared authorization requirements | Done | [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md) |
-| Authorization cutover plan | Ordered route, deployment, readiness, cutover, and rollback phases | Done | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
+| Authorization cutover plan | Ordered route, deployment, readiness, cutover, and rollback phases | Done | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
 | Operator and deployment guide | Initial ownership, cutover, rollback, backup, and recovery | In progress | [OPERATIONS.md](../../../OPERATIONS.md#authorization-ownership-and-recovery) |
 | Developer guide | Protecting endpoints, services, and background operations | Done | [DEVELOPMENT.md](../../../DEVELOPMENT.md#authorization-for-protected-work) |
 | Authorization regression suite | Focused policy, route, service, and cross-resource checks for implemented routes; release-level regression and sign-off are owned by the cutover plan | Done | [authorization tests](../../../../backend/tests/authorization/) |
-| Release verification record | Tested release commit, ownership inventory, cutover, and rollback results | Not started (cutover plan) | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
+| Release verification record | Tested release commit, ownership inventory, cutover, and rollback results | Not started (cutover plan) | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
 
 ## Scope
 

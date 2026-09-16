@@ -162,7 +162,7 @@ Deferred. These features are part of the product workflow, but they must use app
 - Add CORS tests for approved and unapproved origins, including credentialed requests.
 - Add spreadsheet tests that inspect generated cells and verify that untrusted values are stored as text.
 - Run the documented reproduction cases from [`SECURITY_CHECK.md`](./SECURITY_CHECK.md) after each mitigation, using disposable databases and files only.
-- Before release, verify the deployed image, Docker port binding, reverse proxy, firewall, environment variables, database grants, mounted files, and access logs.
+- Verify the deployed image, port binding, reverse proxy, firewall, environment variables, database grants, mounted files, and access logs. This is operations work rather than development work: see [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 ## Acceptance Criteria
 
@@ -200,4 +200,4 @@ Deferred. These features are part of the product workflow, but they must use app
 
 ## Final Recommendation
 
-Treat the API as unsafe for shared or production use until nginx-authenticated identity is enforced by FastAPI, resource authorization is implemented, direct backend access is blocked, and filesystem, SQL, and secret-redaction controls are complete. Apply the containment and credential-rotation actions immediately, then deliver the remaining controls in the order above. Keep [`SECURITY_CHECK.md`](./SECURITY_CHECK.md) as the verification record and update it with results from the exact release commit. Native application authentication can follow as a separate hardening change.
+Treat the API as unsafe for shared or production use until nginx-authenticated identity is enforced by FastAPI, resource authorization is implemented, direct backend access is blocked, and filesystem, SQL, and secret-redaction controls are complete. Apply the containment and credential-rotation actions immediately, then deliver the remaining controls in the order above. Keep [`SECURITY_CHECK.md`](./SECURITY_CHECK.md) as the verification record and update it with the results of that verification. Verifying the exact release commit in the deployment is operations work, owned by [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) and [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md). Native application authentication can follow as a separate hardening change.
