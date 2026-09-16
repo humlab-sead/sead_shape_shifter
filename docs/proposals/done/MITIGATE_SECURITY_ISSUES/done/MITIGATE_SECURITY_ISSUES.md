@@ -28,7 +28,7 @@ The current API allows an untrusted caller with network access to reach sensitiv
 - Internal DuckDB queries reach the workspace without the same query guard. DuckDB table functions can read and write local files.
 - Data-source testing accepts user-controlled hosts and expands server environment variables. Raw exception messages are returned to clients ([`data_source_service.py`](../../../../../backend/app/services/data_source_service.py)).
 - Raw YAML and `@include`/`@load` directives allow project configuration to influence filesystem reads and workflow behavior ([`projects.py`](../../../../../backend/app/api/v1/endpoints/projects.py)).
-- The container mounts `.pgpass` into the application filesystem ([`docker-compose.yml`](../../../../../docker/docker-compose.yml)).
+- The container mounts `.pgpass` into the application filesystem (historically documented in the retired Docker Compose deployment).
 - Before Phase 1, CORS defaults allowed broad development-origin patterns while credentials were enabled ([`config.py`](../../../../../backend/app/core/config.py)).
 - Spreadsheet dispatch writes untrusted values as formulas, and the UCanAccess installer downloads an unpinned artifact without checksum verification ([`install-uncanccess.sh`](../../../../../scripts/install-uncanccess.sh)).
 
