@@ -3,8 +3,8 @@
 ## Phase Summary
 
 - Status: Done — release-host deployment checks deferred to the operations team
-- Proposal: [MITIGATE_SECURITY_ISSUES.md](../MITIGATE_SECURITY_ISSUES.md)
-- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md](../MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md) (Phase 5)
+- Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md)
+- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md) (Phase 5)
 - Review record: [SECURITY_CHECK.md](../SECURITY_CHECK.md)
 - Deferred work: [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) (operations team)
 - Goal: prove that the mitigations from Phases 1–4 hold on the release candidate by adding focused security regression tests, re-running the verified reproduction cases, and recording security evidence for the tested commit; deployment verification on the release host is deferred to the operations team

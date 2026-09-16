@@ -3,8 +3,8 @@
 ## Phase Summary
 
 - Status: Done
-- Proposal: [MITIGATE_SECURITY_ISSUES.md](../MITIGATE_SECURITY_ISSUES.md) (design §4 "Make database and SQL access read-only by default")
-- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md](../MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md) (Phase 3)
+- Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md) (design §4 "Make database and SQL access read-only by default")
+- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md) (Phase 3)
 - Goal: ensure every SQL and DuckDB execution path is single-statement, read-only by default, restricted to approved resources, and protected by least-privilege database and runtime controls
 
 **Focus**

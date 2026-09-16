@@ -3,7 +3,7 @@
 ## Status
 
 - Implemented Phase 1 authorization design; deployment cutover and broader Phase 1 work remain
-- Parent proposal: [Mitigate Security Issues](../MITIGATE_SECURITY_ISSUES.md)
+- Parent proposal: [Mitigate Security Issues](./MITIGATE_SECURITY_ISSUES.md)
 - Task plan: [Centralized Authorization System Task Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
 - Cutover plan: [Centralized Authorization System Cutover Plan](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
 - Related future work: [Native Application Authentication](../../future/NATIVE_APPLICATION_AUTHENTICATION.md)

@@ -2,12 +2,12 @@
 
 ## Status
 
-- Proposed security change
+- Implemented and closed: the mitigations are delivered and recorded in [SECURITY_CHECK.md](../SECURITY_CHECK.md)
 - Scope: Backend API, file access, SQL execution, configuration resolution, ingesters, deployment defaults, and security-sensitive tooling
 - Goal: Prevent unauthenticated or insufficiently authorized users from reading or writing server files, accessing databases, exposing secrets, or executing unsafe operations
-- Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
-- Deferred follow-up proposal: [Server-Owned Resource Identifiers](../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
-- Authorization task plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
+- Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./CENTRALIZED_AUTHORIZATION_SYSTEM.md)
+- Deferred follow-up proposal: [Server-Owned Resource Identifiers](../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
+- Authorization task plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
 
 ## Summary
 
@@ -22,15 +22,15 @@ This proposal recommends an emergency containment change followed by application
 The current API allows an untrusted caller with network access to reach sensitive operations:
 
 - The project-session mechanism is not user authentication. Anyone can create a session, while most routers do not require one.
-- The execution download endpoint accepts an arbitrary path and returns any readable file ([`execute.py`](../../../backend/app/api/v1/endpoints/execute.py)).
-- File and folder execution targets are resolved and created without confinement to an approved output directory ([`execute_service.py`](../../../backend/app/services/execute_service.py)).
-- SQL validation checks the first parsed statement, but the complete query string is passed to the database ([`query_service.py`](../../../backend/app/services/query_service.py)).
+- The execution download endpoint accepts an arbitrary path and returns any readable file ([`execute.py`](../../../../backend/app/api/v1/endpoints/execute.py)).
+- File and folder execution targets are resolved and created without confinement to an approved output directory ([`execute_service.py`](../../../../backend/app/services/execute_service.py)).
+- SQL validation checks the first parsed statement, but the complete query string is passed to the database ([`query_service.py`](../../../../backend/app/services/query_service.py)).
 - Internal DuckDB queries reach the workspace without the same query guard. DuckDB table functions can read and write local files.
-- Data-source testing accepts user-controlled hosts and expands server environment variables. Raw exception messages are returned to clients ([`data_source_service.py`](../../../backend/app/services/data_source_service.py)).
-- Raw YAML and `@include`/`@load` directives allow project configuration to influence filesystem reads and workflow behavior ([`projects.py`](../../../backend/app/api/v1/endpoints/projects.py)).
-- The container mounts `.pgpass` into the application filesystem ([`docker-compose.yml`](../../../docker/docker-compose.yml)).
-- Before Phase 1, CORS defaults allowed broad development-origin patterns while credentials were enabled ([`config.py`](../../../backend/app/core/config.py)).
-- Spreadsheet dispatch writes untrusted values as formulas, and the UCanAccess installer downloads an unpinned artifact without checksum verification ([`install-uncanccess.sh`](../../../scripts/install-uncanccess.sh)).
+- Data-source testing accepts user-controlled hosts and expands server environment variables. Raw exception messages are returned to clients ([`data_source_service.py`](../../../../backend/app/services/data_source_service.py)).
+- Raw YAML and `@include`/`@load` directives allow project configuration to influence filesystem reads and workflow behavior ([`projects.py`](../../../../backend/app/api/v1/endpoints/projects.py)).
+- The container mounts `.pgpass` into the application filesystem ([`docker-compose.yml`](../../../../docker/docker-compose.yml)).
+- Before Phase 1, CORS defaults allowed broad development-origin patterns while credentials were enabled ([`config.py`](../../../../backend/app/core/config.py)).
+- Spreadsheet dispatch writes untrusted values as formulas, and the UCanAccess installer downloads an unpinned artifact without checksum verification ([`install-uncanccess.sh`](../../../../scripts/install-uncanccess.sh)).
 
 The review also reports an unauthenticated data-source configuration leak, unsafe SQL identifier interpolation, public API documentation and project documentation, log injection, and several data-integrity and operational bugs. The ingester file-read and database-write paths were only partially tested because the current runtime initialization fails before those paths are reached.
 
@@ -84,7 +84,7 @@ The review's practical verification reported these results:
 
 ### 2. Enforce nginx identity and application authorization
 
-The implemented resource authorization model is documented in [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md) and its [task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md). The remaining server-owned identifier work is defined in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
+The implemented resource authorization model is documented in [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./CENTRALIZED_AUTHORIZATION_SYSTEM.md) and its [task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md). The remaining server-owned identifier work is defined in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
 
 - Keep nginx as the current authentication provider. Define how it passes a verified identity to FastAPI, using a trusted header or validated token.
 - Add FastAPI middleware or dependencies that reject requests without a verified identity. Strip or reject client-supplied identity headers and trust them only on requests that can come from nginx.
@@ -161,10 +161,12 @@ Deferred. These features are part of the product workflow, but they must use app
 - Add tests confirming that error responses do not contain passwords, environment values, connection strings, SQL text, or absolute sensitive paths.
 - Add CORS tests for approved and unapproved origins, including credentialed requests.
 - Add spreadsheet tests that inspect generated cells and verify that untrusted values are stored as text.
-- Run the documented reproduction cases from [`SECURITY_CHECK.md`](./SECURITY_CHECK.md) after each mitigation, using disposable databases and files only.
-- Verify the deployed image, port binding, reverse proxy, firewall, environment variables, database grants, mounted files, and access logs. This is operations work rather than development work: see [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
+- Run the documented reproduction cases from [`SECURITY_CHECK.md`](../SECURITY_CHECK.md) after each mitigation, using disposable databases and files only.
+- Verify the deployed image, port binding, reverse proxy, firewall, environment variables, database grants, mounted files, and access logs. This is operations work rather than development work: see [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 ## Acceptance Criteria
+
+All criteria below are met except the three marked otherwise, which are recorded as follow-ups or handed to operations.
 
 - Sensitive API endpoints return `401` or `403` without valid authentication and authorization.
 - An authenticated user cannot access another user's project, data source, upload, output, log, or backup.
@@ -173,9 +175,9 @@ Deferred. These features are part of the product workflow, but they must use app
 - Production database credentials used by the application cannot alter or destroy production data unless a separately approved operation explicitly requires it.
 - Client responses contain no raw exception text, secrets, connection strings, SQL, or sensitive absolute paths.
 - CORS accepts only configured trusted origins and uses credentials only where required.
-- Generated spreadsheets cannot execute values supplied as data.
-- The UCanAccess artifact is version-pinned and checksum-verified.
-- The full security regression suite and the re-verification cases pass on the exact release commit.
+- Generated spreadsheets cannot execute values supplied as data. — Unmet and excluded from the phase plan; recorded as a follow-up in `SECURITY_CHECK.md`.
+- The UCanAccess artifact is version-pinned and checksum-verified. — Unmet and excluded from the phase plan; recorded as a follow-up in `SECURITY_CHECK.md`.
+- The full security regression suite and the re-verification cases pass on the exact release commit. — Operations-owned: [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) and [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 ## Recommended Delivery Order
 
@@ -186,6 +188,8 @@ Deferred. These features are part of the product workflow, but they must use app
 5. Restrict data-source and ingester capabilities; then decide whether to re-enable the ingester API.
 6. Redact errors and logs, neutralize spreadsheet formulas, and harden the UCanAccess installation.
 7. Run the complete regression and deployment verification checklist.
+
+Steps 1, 5, and 7 are owned elsewhere: containment and credential rotation in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md), ingester disposition in [INGESTER_AUTHORIZATION_TASKS.md](../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md), and deployment verification in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md). The spreadsheet and UCanAccess items in step 6 are recorded as follow-ups in `SECURITY_CHECK.md`.
 
 ## Open Questions
 
@@ -200,4 +204,4 @@ Deferred. These features are part of the product workflow, but they must use app
 
 ## Final Recommendation
 
-Treat the API as unsafe for shared or production use until nginx-authenticated identity is enforced by FastAPI, resource authorization is implemented, direct backend access is blocked, and filesystem, SQL, and secret-redaction controls are complete. Apply the containment and credential-rotation actions immediately, then deliver the remaining controls in the order above. Keep [`SECURITY_CHECK.md`](./SECURITY_CHECK.md) as the verification record and update it with the results of that verification. Verifying the exact release commit in the deployment is operations work, owned by [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) and [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md). Native application authentication can follow as a separate hardening change.
+Treat the API as unsafe for shared or production use until nginx-authenticated identity is enforced by FastAPI, resource authorization is implemented, direct backend access is blocked, and filesystem, SQL, and secret-redaction controls are complete. Apply the containment and credential-rotation actions immediately, then deliver the remaining controls in the order above. Keep [`SECURITY_CHECK.md`](../SECURITY_CHECK.md) as the verification record and update it with the results of that verification. Verifying the exact release commit in the deployment is operations work, owned by [DEPLOYMENT_VERIFICATION_HANDOFF.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) and [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../../CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md). Native application authentication can follow as a separate hardening change.
