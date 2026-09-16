@@ -11,7 +11,7 @@ from backend.app.authorization.models import Action, Grant, GrantSubjectType, Pr
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
 from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings as application_settings
-from backend.app.main import app
+from backend.app.main import app, lifespan
 from backend.app.middleware.proxy_auth import ProxyAuthenticationMiddleware
 
 
@@ -20,6 +20,8 @@ async def test_authenticated_principal_cannot_cross_user_resource_boundaries(tmp
     """Reject Bob's access to Alice's project, source, schema, query, and tasks."""
     authorization_database = tmp_path / "state" / "authorization.sqlite3"
     monkeypatch.setattr(application_settings, "AUTHORIZATION_DATABASE_PATH", authorization_database)
+    # Session creation resolves application state, so startup must run before the request.
+    monkeypatch.setattr(application_settings, "PROJECTS_DIR", tmp_path)
 
     repository = SQLiteAuthorizationRepository(authorization_database)
     project = ResourceRecord(uuid4(), ResourceType.PROJECT, "alice-project")
@@ -47,15 +49,19 @@ async def test_authenticated_principal_cannot_cross_user_resource_boundaries(tmp
         ("GET", "/api/v1/projects/alice-project/tasks", None, 404),
         ("GET", "/api/v1/data-sources/alice-source.yml", None, 404),
         ("GET", "/api/v1/data-sources/alice-source/tables/sites/schema", None, 404),
+        ("POST", "/api/v1/sessions", {"project_name": "alice-project"}, 404),
         ("POST", "/api/v1/data-sources/alice-source/query/validate", {"query": "SELECT 1"}, 404),
     )
 
     try:
-        async with AsyncClient(
-            transport=ASGITransport(app=protected_app),
-            base_url="http://testserver",
-            headers={application_settings.TRUSTED_PROXY_AUTH_HEADER: "bob"},
-        ) as client:
+        async with (
+            lifespan(app),
+            AsyncClient(
+                transport=ASGITransport(app=protected_app),
+                base_url="http://testserver",
+                headers={application_settings.TRUSTED_PROXY_AUTH_HEADER: "bob"},
+            ) as client,
+        ):
             for method, path, payload, expected_status in cases:
                 response = await client.request(method, path, json=payload)
                 assert response.status_code == expected_status, f"{method} {path}: {response.text}"

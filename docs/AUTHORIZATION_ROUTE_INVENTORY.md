@@ -45,11 +45,15 @@ Every row above except the health check requires an authenticated principal thro
 
 | Method   | Path                                     | Requirement    |
 |----------|------------------------------------------|----------------|
-| `GET`    | `/api/v1/help-docs/{doc_path:path}`      | `UNDECLARED`   |
-| `POST`   | `/api/v1/sessions`                       | `UNDECLARED`   |
+| `GET`    | `/api/v1/help-docs/{doc_path:path}`      | `authenticated` |
+| `POST`   | `/api/v1/sessions`                       | `project:edit` |
 | `GET`    | `/api/v1/sessions/current`               | `project:edit` |
 | `DELETE` | `/api/v1/sessions/current`               | `project:edit` |
 | `GET`    | `/api/v1/sessions/{project_name}/active` | `project:read` |
+
+`GET /api/v1/help-docs/{doc_path:path}` serves markdown from the repository `docs/` directory, the same tree the `/docs/*` mount publishes. It rejects absolute paths and `..` segments and requires the resolved file to stay under `docs/`, so it requires an authenticated principal and no project role.
+
+`POST /api/v1/sessions` declares `project:edit` through `require_project(Action.EDIT, body_locator=True)`, which reads `project_name` from the request body because the route has no project path or query parameter.
 
 ### Projects
 
