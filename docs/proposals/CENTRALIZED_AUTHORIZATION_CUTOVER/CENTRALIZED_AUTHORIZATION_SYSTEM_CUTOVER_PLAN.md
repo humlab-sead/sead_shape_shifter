@@ -4,7 +4,7 @@
 
 This plan sequences the remaining work required to move the implemented centralized authorization system into enforced production use. The authorization repository, policy, route dependencies, service checks, administration CLI, tests, and operating procedures are implemented. Deployment inventory, final route classification, release readiness, Podman deployment verification, and cutover evidence remain.
 
-The plan is separate from the authorization design and implementation task plan. It owns the remaining inventory, migration-input, validation, cutover, and rollback tasks.
+The plan is separate from the authorization design and implementation task plan. It owns the remaining inventory, migration-input, validation, cutover, and rollback tasks, together with release verification: the exact release commit, immutable image identity, proxy and firewall exposure, PostgreSQL grants, mounts, logs, and rollback are verified here and in [DEPLOYMENT_VERIFICATION_HANDOFF.md](DEPLOYMENT_VERIFICATION_HANDOFF.md), not in a development plan.
 
 ## Problem
 

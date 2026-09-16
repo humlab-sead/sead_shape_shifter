@@ -5,11 +5,14 @@
 - Status: In progress — only the phase 0 containment and assessment work remains open
 - Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md)
 - Review record: [SECURITY_CHECK.md](./SECURITY_CHECK.md)
+- Release verification: [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) — verifies the exact release commit and is operations work, outside this plan
 - Goal: Enforce nginx-authenticated identity in FastAPI and remove the highest-severity file, database, configuration, and secret-access paths before restoring shared or production use
 
 **Acceptance Criteria**
 
-Completion requires that sensitive API operations demand a verified nginx-authenticated identity and an application-side authorization decision; that the API cannot read or write files outside approved server-owned roots; that PostgreSQL and DuckDB execution reject destructive, multi-statement, external-file, extension-loading, and network-capable operations; that client responses disclose no secrets, connection details, SQL, or sensitive filesystem paths; and that production exposure, credentials, database grants, and mounted files are verified on the exact release commit.
+Completion requires that sensitive API operations demand a verified nginx-authenticated identity and an application-side authorization decision; that the API cannot read or write files outside approved server-owned roots; that PostgreSQL and DuckDB execution reject destructive, multi-statement, external-file, extension-loading, and network-capable operations; and that client responses disclose no secrets, connection details, SQL, or sensitive filesystem paths.
+
+Deployment verification of the exact release commit is not one of these criteria. It is operations work, owned by [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 ## Work Breakdown
 
@@ -25,7 +28,7 @@ Containment and assessment while the application controls were being built: rest
 
 **Task record**
 
-Not started, and no separate task plan exists for this phase. The firewall, log review, mount, and credential checks that overlap this scope are assigned to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md).
+Not started, and no separate task plan exists for this phase. The firewall, log review, mount, and credential checks that overlap this scope are assigned to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 **Completion Criteria**
 
@@ -111,11 +114,11 @@ Prove that the mitigations hold on the release candidate and in the deployed env
 
 **Description**
 
-Focused regression suites now cover unauthenticated and cross-resource authorization on every sensitive route, filesystem boundaries, SQL and DuckDB policy including stacked statements, destructive statements, file functions, extension loading, and the read-only database role, and response and logging redaction. The verified cases in `SECURITY_CHECK.md` were re-run against disposable databases and files, the full Core and backend suites were run with unrelated failures recorded separately, and `SECURITY_CHECK.md` carries the pass/fail evidence, the finding matrix, and the tested commit. Release identity and port binding were verified on the test deployment; the remaining release-host checks — firewall rules, PostgreSQL grants, mounted-file re-inspection, log review, the authenticated access path, and rollback — are deferred to the operations team.
+Focused regression suites now cover unauthenticated and cross-resource authorization on every sensitive route, filesystem boundaries, SQL and DuckDB policy including stacked statements, destructive statements, file functions, extension loading, and the read-only database role, and response and logging redaction. The verified cases in `SECURITY_CHECK.md` were re-run against disposable databases and files, the full Core and backend suites were run with unrelated failures recorded separately, and `SECURITY_CHECK.md` carries the pass/fail evidence, the finding matrix, and the tested commit. Release identity and port binding were verified on the test deployment. Deployment verification of the exact release commit is not part of this plan: the release-host checks — firewall rules, PostgreSQL grants, mounted-file re-inspection, log review, the authenticated access path, and rollback — are operations work, owned by the handoff beside the cutover plan.
 
 **Task record**
 
-[MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md) — complete, with the release-host checks in [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md).
+[MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md) — complete. The release-host checks sit outside this plan, in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 **Completion Criteria**
 
@@ -125,16 +128,18 @@ Focused security tests, regression tests, and deployment checks pass on the exac
 
 | Area | Status | Notes |
 |---|---|---|
-| Exposure containment and impact assessment | Not started | No separate task plan; the firewall, log review, mount, and credential checks that overlap this scope are assigned to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md) |
+| Exposure containment and impact assessment | Not started | No separate task plan; the firewall, log review, mount, and credential checks that overlap this scope are assigned to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) |
 | Authentication, authorization, and CORS | Done | Proxy identity, direct-route protection, session ownership, CORS, health disclosure, cross-resource HTTP, and team-grant regressions are covered; implementation recorded in [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md) |
 | Filesystem and project configuration boundaries | Done | Archived in [MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md); ingester source and destination boundaries are deferred to [INGESTER_FILESYSTEM_BOUNDARIES.md](../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md) |
 | SQL, PostgreSQL, and DuckDB restrictions | Done | Archived in [MITIGATE_SECURITY_ISSUES_PHASE_3_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_3_TASK_PLAN.md), with results in [MITIGATE_SECURITY_ISSUES_PHASE_3_VALIDATION.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_3_VALIDATION.md) |
 | Data-source and error handling controls | Done | Data-source inventory, server-managed destinations, and public error redaction are complete; detailed work is archived in [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md) |
-| Security regression and release verification | Done | Phase 5 is complete and archived in [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md); the release-host checks are deferred to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md) |
+| Security regression and release verification | Done | Phase 5 is complete and archived in [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md); the release-host checks are operations work outside this plan, in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) |
 
 ## Definition Of Done
 
-The plan is done when the temporary exposure controls are in place or an exception is approved. FastAPI must enforce the verified nginx identity and resource authorization on every sensitive route, including routes outside the API router, and project, upload, output, backup, temporary, directive, and ingester paths must be confined to approved roots. Query validation and execution must apply the same safe policy on every database and DuckDB path, and production database access must use a least-privilege role verified against the actual grants. Data-source network destinations must be server-managed or explicitly allowlisted, and responses and logs must redact secrets, SQL, connection details, and sensitive paths. The original verified reproduction cases must fail for the intended security reason, focused tests and the relevant full test suites must pass with unrelated failures recorded, and deployment verification must be complete for the exact release commit. Remaining medium, low, and correctness findings are recorded for follow-up rather than silently treated as fixed.
+The plan is done when the temporary exposure controls are in place or an exception is approved. FastAPI must enforce the verified nginx identity and resource authorization on every sensitive route, including routes outside the API router, and project, upload, output, backup, temporary, directive, and ingester paths must be confined to approved roots. Query validation and execution must apply the same safe policy on every database and DuckDB path, and production database access must use a least-privilege role verified against the actual grants. Data-source network destinations must be server-managed or explicitly allowlisted, and responses and logs must redact secrets, SQL, connection details, and sensitive paths. The original verified reproduction cases must fail for the intended security reason, and focused tests and the relevant full test suites must pass with unrelated failures recorded. Remaining medium, low, and correctness findings are recorded for follow-up rather than silently treated as fixed.
+
+Verifying the exact release commit in the deployment is not part of this definition of done. It is operations work, owned by [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 ## Validation And Testing
 
@@ -148,13 +153,13 @@ The plan is done when the temporary exposure controls are in place or an excepti
 
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
-| Containment record | Exposure, credential, log, firewall, and proxy assessment | Not started | Overlapping checks are assigned to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md) |
+| Containment record | Exposure, credential, log, firewall, and proxy assessment | Not started | Overlapping checks are assigned to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md) |
 | Access-control implementation | Authentication, authorization, session ownership, CSRF, and CORS controls | Done | [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md), [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md); the conditional CSRF task was withdrawn because the deployment does not use cookie authentication, and the resource-identifier follow-up is a separate proposal: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md) |
 | Boundary-control implementation | Filesystem, YAML directive, upload, download, and execution-target restrictions | Done | [MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_2_TASK_PLAN.md); ingester boundaries deferred to [INGESTER_FILESYSTEM_BOUNDARIES.md](../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md) |
 | Query safety implementation | SQL policy, database role controls, DuckDB restrictions, and resource limits | Done | [MITIGATE_SECURITY_ISSUES_PHASE_3_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_3_TASK_PLAN.md), [MITIGATE_SECURITY_ISSUES_PHASE_3_VALIDATION.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_3_VALIDATION.md) |
 | Data-source and error handling controls | Server-managed destinations, approved environment-variable resolution, and public error redaction | Done | [MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_4_TASK_PLAN.md); ingester route work tracked in [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) |
 | Security regression suite | Tests for the verified review cases and bypass paths | Done | [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md); evidence and the finding matrix are in [SECURITY_CHECK.md](./SECURITY_CHECK.md) |
-| Release verification record | Results for the exact image, commit, and deployed configuration | Deferred | [SECURITY_CHECK.md](./SECURITY_CHECK.md) holds the release identity, port binding, proxy, health, and route-protection results; the release-host checks are deferred to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md) |
+| Release verification record | Results for the exact image, commit, and deployed configuration | Out of scope | Operations owns it in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md); [SECURITY_CHECK.md](./SECURITY_CHECK.md) keeps the release identity, port binding, proxy, health, and route-protection results already verified |
 
 ## Scope
 
@@ -166,6 +171,7 @@ The plan is done when the temporary exposure controls are in place or an excepti
 
 **Out of scope**
 
+- Deployment verification of the exact release commit: image identity, port binding, proxy routes, firewall rules, database grants, mounted files, logs, and rollback. The operations team owns it in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../CENTRALIZED_AUTHORIZATION_CUTOVER/DEPLOYMENT_VERIFICATION_HANDOFF.md).
 - Spreadsheet formula injection, UCanAccess supply-chain hardening, log formatting cleanup, and other medium or low findings except where they are needed for the high-severity controls.
 - Unrelated data-integrity and documentation bugs.
 - Production staffing, dates, ownership, and release scheduling.
