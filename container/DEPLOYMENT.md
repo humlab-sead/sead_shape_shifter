@@ -49,12 +49,28 @@ Run as the deployment user, from `~/container`:
 
 ```bash
 make install-ucanaccess   # only needed for MS Access data sources
-make setup                # create ~/container-data/ and backend.env
+make setup                # create .env, ~/container-data/ and backend.env
+nano .env                 # image, branch, port and frontend build arguments
 nano ../container-data/backend.env
-make build                # build the image from GitHub (GIT_REF=main)
+make build                # build the image from GitHub (repository and ref from .env)
 make up
 make healthcheck
 ```
+
+`container/.env` holds the deployment defaults shared by the Makefile, the
+scripts and the compose file: the image, the git repository and branch, the host
+port, the data directory and the frontend build arguments. `make setup` creates
+it from `.env.example`. To build from a branch, set both values so the build and
+the start agree:
+
+```bash
+GIT_REF=dev
+IMAGE_NAME=shape-shifter:dev
+```
+
+The deploy helper described below records these values automatically from its
+`--repo`, `--ref` and `--host-port` options. The ref may be a branch or a
+release tag; `--branch` is accepted as an alias.
 
 Before the first start, edit `~/container-data/backend.env` and set:
 
@@ -83,7 +99,19 @@ sudo scripts/deploy/deploy_all_environments.sh \
   prod-shape-shifter.sead.se:8013
 ```
 
-`HOST_PORT` selects the published port; the container port stays `8012`.
+Environments come from the arguments first, then from `DEPLOY_ENVIRONMENTS`,
+which can be exported or set in `container/.env`. There is no built-in
+environment list, so a run with neither stops instead of deploying somewhere
+unrequested:
+
+```bash
+DEPLOY_ENVIRONMENTS='test-shape-shifter.sead.se:8012 prod-shape-shifter.sead.se:8013' \
+  sudo -E scripts/deploy/deploy_all_environments.sh
+```
+
+`HOST_PORT` selects the published port; the container port stays `8012`. Each
+deployment records its repository, branch, port, and matching image name in
+`~/container/.env`, so later builds keep the source that was deployed.
 
 ---
 
@@ -94,6 +122,9 @@ Install an HTTPS vhost that forwards to the container:
 ```bash
 sudo container/scripts/deploy/install_nginx_reverse_proxy.sh test-shape-shifter.sead.se 8012
 ```
+
+The upstream port defaults to `HOST_PORT` from `container/.env`, so omit the
+second argument when the deployment already uses its configured port.
 
 The script renders `scripts/deploy/nginx-shape-shifter.conf.template` into
 `/etc/nginx/sites-available/`, enables it and reloads NGINX.
@@ -137,8 +168,15 @@ sudo scripts/deploy/deploy_single_environment.sh test-shape-shifter.sead.se
 make build && make restart
 ```
 
-`make build` uses `GIT_REF` (default `main`). Set `GIT_REF=v1.2.0` for a
-release tag, or `make build-local` to build from a local checkout.
+`make build` takes the repository and ref from `container/.env`, defaulting to
+`GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git` and
+`GIT_REF=main`. Set `GIT_REF=v1.2.0` for a release tag, or `make build-local` to
+build from a local checkout. A `VAR=value make build` override takes precedence
+over `.env`.
+
+`make build` tags a branch build after the ref, so `GIT_REF=dev` produces
+`shape-shifter:dev`. Keep `IMAGE_NAME` in `.env` in step with `GIT_REF`,
+otherwise `make restart` starts the previous image.
 
 ---
 

@@ -2,17 +2,24 @@
 # Deploy the project to multiple dedicated environment users.
 set -euo pipefail
 
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+# Take DEPLOY_ENVIRONMENTS from the environment, or from container/.env.
+# shellcheck source=../load-env.sh
+. "$SCRIPT_DIR/../load-env.sh"
+
 usage() {
   cat <<'EOF'
 Usage: scripts/deploy_all_environments.sh [USER:PORT ...]
 
 Deploy the project to several dedicated environment users.
 
-If no arguments are given, these defaults are used:
-  test-shape-shifter.sead.se:8012
+Environments come from the arguments first, then from DEPLOY_ENVIRONMENTS, which
+can be exported or set in container/.env. There is no built-in environment list,
+so an unconfigured run stops instead of deploying somewhere unrequested.
 
 Examples:
-  scripts/deploy_all_environments.sh
+  scripts/deploy_all_environments.sh test-shape-shifter.sead.se:8012
   scripts/deploy_all_environments.sh shapeshifter-test:8012 shapeshifter-prod:8013
   DEPLOY_ENVIRONMENTS='shapeshifter-test:8012 shapeshifter-prod:8013' scripts/deploy_all_environments.sh
 EOF
@@ -28,10 +35,10 @@ if [[ $# -gt 0 ]]; then
 elif [[ -n "${DEPLOY_ENVIRONMENTS:-}" ]]; then
   read -r -a ENVIRONMENTS <<< "$DEPLOY_ENVIRONMENTS"
 else
-  ENVIRONMENTS=("test-shape-shifter.sead.se:8012")
+  echo "No environments given." >&2
+  usage >&2
+  exit 1
 fi
-
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 for env_pair in "${ENVIRONMENTS[@]}"; do
   IFS=':' read -r USER PORT <<< "$env_pair"

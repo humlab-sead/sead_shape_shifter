@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# The upstream port is the backend's HOST_PORT, which lives in container/.env.
+# shellcheck source=../load-env.sh
+. "$SCRIPT_DIR/../load-env.sh"
+
 usage() {
   cat <<'EOF'
 Usage: scripts/install_nginx_reverse_proxy.sh <DOMAIN> [UPSTREAM_PORT]
 
 Create an NGINX vhost that proxies HTTPS traffic to the Podman service.
+
+UPSTREAM_PORT defaults to HOST_PORT from container/.env, then to 8012.
 
 Examples:
   scripts/install_nginx_reverse_proxy.sh shapeshifter.example.com 8012
@@ -19,7 +27,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
 fi
 
 DOMAIN="${1:-${DOMAIN:-}}"
-UPSTREAM_PORT="${2:-${PORT:-8012}}"
+UPSTREAM_PORT="${2:-${PORT:-${HOST_PORT:-8012}}}"
 
 if [[ -z "$DOMAIN" ]]; then
   echo "A domain name is required." >&2
@@ -32,7 +40,6 @@ if [[ "$(id -u)" -ne 0 ]]; then
   exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE_PATH="$SCRIPT_DIR/nginx-shape-shifter.conf.template"
 OUTPUT_PATH="/etc/nginx/sites-available/$DOMAIN"
 
