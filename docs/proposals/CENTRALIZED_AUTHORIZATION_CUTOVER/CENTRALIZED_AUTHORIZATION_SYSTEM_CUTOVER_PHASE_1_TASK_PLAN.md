@@ -71,7 +71,7 @@
   * **Constraints:** `body_locator` defaults to false, so no existing `require_project` caller changes behavior. The denial stays `404`; its detail becomes the shared dependency message `Resource not found`. Update any test that asserts the previous detail string. Do not read the authorization database in handler code.
   * **Validation:** `V-2`, `V-3`; add a route-metadata assertion alongside `backend/tests/authorization/test_dependencies.py::test_project_data_source_connection_requires_project_and_shared_source_access`, and a concealed-`404` case for a principal without edit access.
 
-* [ ] `T1.2` **Change:** Record authenticated-only classifications for the non-resource API rows.
+* [x] `T1.2` **Change:** Record authenticated-only classifications for the non-resource API rows.
   * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) rows: `GET /api/v1/help-docs/{doc_path:path}`, `GET /api/v1/projects`, `GET /api/v1/projects/active/name`, `POST /api/v1/suggestions/analyze`, `POST /api/v1/suggestions/entity`, `GET /api/v1/reconciliation/health`, `GET /api/v1/reconciliation/manifest`, `GET /api/v1/dispatchers`, `GET /api/v1/filters/types`, `GET /api/v1/whats-new`, `GET /api/v1/whats-new/{version}/content`.
   * **Current → required:** Each row reads `UNDECLARED`. Required: `authenticated`, with a short note stating the basis.
   * **Implementation:** Replace the requirement cell and add notes: `/projects` returns only projects readable by the principal (`ProjectService.list_authorized_projects`); `/projects/active/name` returns the deployment active project name only and is not identifier-addressed; `/suggestions/analyze` and `/suggestions/entity` introspect client-supplied entity configuration and an optional `data_source_name`, with a recorded follow-up to resolve the source server-side and require shared-source read; the remaining rows return registry metadata, service health or manifest data, filter schemas, release notes, or repository documentation.
@@ -200,6 +200,7 @@ For every check, record the commit, the command output, and the reviewer in the 
 | API route classification check | `backend/tests/authorization/test_route_authentication.py` | `T2.1`–`T2.3` | Suite fails for an undeclared API route; passes for the assembled app |
 | Session route declaration | `backend/app/api/v1/endpoints/sessions.py::create_session` | `T1.1` | `project:edit` metadata present; concealed `404` preserved |
 | Project dependency body locator | `backend/app/authorization/dependencies.py::require_project` | `T1.1` | Opt-in body locator; existing callers unchanged |
+| Active project declaration | `backend/app/api/v1/endpoints/projects.py::get_active_project_name` | `T1.2` | `project:read` metadata present; concealed `404` for an unreadable active project; `null` when no project is active |
 | Session and dependency tests | `backend/tests/test_session_authorization.py`, `backend/tests/authorization/test_dependencies.py` | `T1.1` | Declared metadata assertion and concealed-`404` case pass |
 | Documentation alignment | `docs/AUTHORIZATION.md`, `backend/app/services/project_service.py`, `backend/app/services/project/project_operations.py`, `backend/app/api/v1/endpoints/projects.py` | `T3.2`, `T4.2` | No reference to a non-existent rename path; coverage note points at the current plan |
 
@@ -207,7 +208,7 @@ For every check, record the commit, the command output, and the reviewer in the 
 
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
-| Area 1: Record classifications | In progress | None | `T1.1` done at `64d0556a`: `uv run pytest backend/tests/authorization backend/tests/test_session_authorization.py backend/tests/test_state_manager.py`, `uv run pytest backend/tests`, `isort`, `black`, and `scripts/check_doc_links.sh` pass. `T1.2` remains for `GET /api/v1/projects` and `GET /api/v1/projects/active/name`; `T1.3` recorded as `application:run_ingesters`, enforcement pending; `T1.4` recorded |
+| Area 1: Record classifications | Done | None | `T1.1` done at `64d0556a`; `T1.3` done at `e9678693`. `T1.2` and `T1.4` recorded with the rows. `GET /api/v1/projects/active/name` was classified `project:read` through a new `require_active_project` dependency instead of `authenticated`, because the route reports the deployment active project and the principal may not be able to read it. The inventory has no `UNDECLARED` row. `uv run pytest backend/tests/authorization backend/tests/api/v1/test_projects.py` passes |
 | Area 2: Enforce classification in the check | Not started | Area 1 (classification sets and inventory rows) | |
 | Area 3: Record lifecycle and background coverage | Not started | None | Independent of Areas 1 and 2 |
 | Area 4: Review and align documentation | Not started | Areas 1–3 | Reviewer `TBD` |

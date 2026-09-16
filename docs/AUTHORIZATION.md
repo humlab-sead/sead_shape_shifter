@@ -6,7 +6,7 @@ Shape Shifter uses a centralized authorization system to decide whether an authe
 
 This document describes the implemented policy. Route-by-route coverage and remaining enforcement work are tracked in [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](proposals/done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md).
 
-The current route declarations are listed in [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md). Routes marked `UNDECLARED` need classification before authorization cutover.
+The current route declarations are listed in [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md), which records a requirement for every route. The ingester validation and execution rows record `application:run_ingesters` with enforcement pending.
 
 For the authorization SQLite database location and deployment configuration, see [OPERATIONS.md](OPERATIONS.md#authorization-sqlite-store).
 
@@ -93,7 +93,7 @@ A principal needs access to both a project and a shared source when an operation
 
 - Missing proxy authentication returns `401 Authentication required`; malformed proxy identities return `401 Invalid authenticated identity`.
 - Missing application permissions return `403 Insufficient authorization`.
-- Missing or unauthorized resource-addressed project and shared-data-source requests return `404 Resource not found` to conceal resource existence. Session and operation dependencies also conceal unavailable or unauthorized records with `404`.
+- Missing or unauthorized resource-addressed project and shared-data-source requests return `404 Resource not found` to conceal resource existence. Session and operation dependencies also conceal unavailable or unauthorized records with `404`. The active-project dependency conceals an active project the principal cannot read, and reports a deployment with no active project as `null`.
 - List endpoints return only resources readable by the requesting principal.
 
 ## Audit Records

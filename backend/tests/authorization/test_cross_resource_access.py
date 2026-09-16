@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from backend.app.api.dependencies import get_active_project_locator
 from backend.app.authorization.dependencies import get_authorization_service
 from backend.app.authorization.models import Action, Grant, GrantSubjectType, Principal, ResourceRecord, ResourceType
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
@@ -37,6 +38,7 @@ async def test_authenticated_principal_cannot_cross_user_resource_boundaries(tmp
         return authorization_service
 
     app.dependency_overrides[get_authorization_service] = override_authorization_service
+    app.dependency_overrides[get_active_project_locator] = lambda: "alice-project"
     protected_app = ProxyAuthenticationMiddleware(
         app,
         enabled=True,
@@ -47,6 +49,7 @@ async def test_authenticated_principal_cannot_cross_user_resource_boundaries(tmp
     cases = (
         ("GET", "/api/v1/projects/alice-project", None, 404),
         ("GET", "/api/v1/projects/alice-project/tasks", None, 404),
+        ("GET", "/api/v1/projects/active/name", None, 404),
         ("GET", "/api/v1/data-sources/alice-source.yml", None, 404),
         ("GET", "/api/v1/data-sources/alice-source/tables/sites/schema", None, 404),
         ("POST", "/api/v1/sessions", {"project_name": "alice-project"}, 404),

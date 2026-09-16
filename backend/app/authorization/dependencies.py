@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request
 
-from backend.app.api.dependencies import require_session
+from backend.app.api.dependencies import get_active_project_locator, require_session
 from backend.app.authorization.authentication import AuthenticationAdapter
 from backend.app.authorization.models import Action, AuthorizedResource, Principal, ResourceType
 from backend.app.authorization.repository import AuthorizationRepository, SQLiteAuthorizationRepository
@@ -72,6 +72,32 @@ def require_project(action: Action, *, body_locator: bool = False) -> Callable:
                 locator = body.get("project_name")
 
         resource = service.repository.get_resource_by_locator(ResourceType.PROJECT, locator) if locator is not None else None
+        authorized = service.authorize(principal, action, resource) if resource is not None else None
+        if authorized is None:
+            raise HTTPException(status_code=404, detail="Resource not found")
+        return authorized
+
+    dependency.authorization_requirement = {"resource_type": ResourceType.PROJECT.value, "action": action.value}
+    return dependency
+
+
+def require_active_project(action: Action) -> Callable:
+    """Create a dependency that authorizes the active project for an action.
+
+    The locator comes from application state, so this factory is for routes that act on
+    whichever project the deployment has loaded instead of a project named in the request.
+    A request with no active project returns ``None``. A request for an active project the
+    principal cannot access is denied with a concealed ``404``.
+    """
+
+    async def dependency(
+        principal: Annotated[Principal, Depends(get_principal())],
+        service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+        locator: Annotated[str | None, Depends(get_active_project_locator)],
+    ) -> AuthorizedResource | None:
+        if not locator:
+            return None
+        resource = service.repository.get_resource_by_locator(ResourceType.PROJECT, locator)
         authorized = service.authorize(principal, action, resource) if resource is not None else None
         if authorized is None:
             raise HTTPException(status_code=404, detail="Resource not found")

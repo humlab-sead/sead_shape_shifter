@@ -13,6 +13,7 @@ from backend.app.authorization.dependencies import (
     authorize_shared_data_source_reference,
     get_authorization_service,
     get_principal,
+    require_active_project,
     require_application_action,
     require_project,
     require_shared_data_source,
@@ -459,7 +460,9 @@ async def restore_backup(
 
 @router.get("/projects/active/name", response_model=dict[str, str | None])
 @handle_endpoint_errors
-async def get_active_project_name() -> dict[str, str | None]:
+async def get_active_project_name(
+    authorized_project: Annotated[AuthorizedResource | None, Depends(require_active_project(Action.READ))],
+) -> dict[str, str | None]:
     """
     Get the currently active project name.
 
@@ -468,10 +471,12 @@ async def get_active_project_name() -> dict[str, str | None]:
 
     Returns:
         Dictionary with 'name' key containing the active project filename
-        (without .yml extension), or null if no project is loaded.
+        (without .yml extension), or null if no project is loaded. A principal that
+        cannot read the active project receives the concealed resource response.
     """
-    active_name: str = get_project_service().get_active_project_metadata().name
-    return {"name": active_name}
+    if authorized_project is None:
+        return {"name": None}
+    return {"name": authorized_project.resource.locator}
 
 
 @router.post("/projects/{name}/activate", response_model=Project)
