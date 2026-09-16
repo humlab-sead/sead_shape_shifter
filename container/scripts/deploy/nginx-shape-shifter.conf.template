@@ -29,7 +29,7 @@ server {
     # with the value supplied by your SSO proxy.
     #
     # auth_basic "Shape Shifter";
-    # auth_basic_user_file /etc/nginx/.htpasswd-shape-shifter;
+    # auth_basic_user_file /etc/nginx/htpasswd/shape-shifter;
 
     location / {
         proxy_pass http://shape_shifter;

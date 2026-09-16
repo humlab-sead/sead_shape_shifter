@@ -135,6 +135,12 @@ authentication method such as `auth_basic` with an htpasswd file, or replace the
 header with the value supplied by your SSO proxy. Without an authenticated user
 the API returns `401`.
 
+The site files under `resources/` use one password file per site,
+`/etc/nginx/htpasswd/shape-shifter`, and give it mode `640` with `root:www-data`
+ownership. Create and maintain those accounts as described in
+[Nginx Basic-auth users](../docs/OPERATIONS.md#nginx-basic-auth-users); the
+account name is the principal ID the application records.
+
 ---
 
 ## Systemd integration

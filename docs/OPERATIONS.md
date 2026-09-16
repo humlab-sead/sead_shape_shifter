@@ -93,6 +93,32 @@ Database connection variables (used in project YAML via `${VAR}` syntax, not pre
 | `SEAD_USER`   | _(none)_ | SEAD database user |
 | `SEAD_PORT`   | _(none)_ | SEAD database port |
 
+### Nginx Basic-auth users
+
+Nginx authenticates people, so each operator needs an account in the password file the site references. The account name becomes the principal ID the authorization system records, so add the account before granting access and remove it when someone leaves.
+
+Install the `htpasswd` command once per host, then create the file with its first account:
+
+```bash
+sudo apt install apache2-utils
+sudo install -d -m 750 -o root -g www-data /etc/nginx/htpasswd
+sudo htpasswd -c /etc/nginx/htpasswd/shape-shifter admin
+sudo chown root:www-data /etc/nginx/htpasswd/shape-shifter
+sudo chmod 640 /etc/nginx/htpasswd/shape-shifter
+```
+
+Add or change an account, remove one, and list the names:
+
+```bash
+sudo htpasswd /etc/nginx/htpasswd/shape-shifter alice        # add or change
+sudo htpasswd -D /etc/nginx/htpasswd/shape-shifter alice     # remove
+sudo cut -d: -f1 /etc/nginx/htpasswd/shape-shifter           # list names
+```
+
+Omit `-c` for a file that already exists: it recreates the file and removes the accounts in it.
+
+Use one file per site; sites that reference the same file share its accounts. Password-file edits apply to the next request, while configuration edits need `sudo nginx -t && sudo systemctl reload nginx`. The deployed site files under `container/resources/` use `/etc/nginx/htpasswd/shape-shifter`.
+
 ### Database passwords
 
 Use `~/.pgpass` instead of environment variables. Mount the file read-only into the container:
