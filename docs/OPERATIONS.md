@@ -78,7 +78,30 @@ The setup script also creates `tmp/` for disposable processing files and `backen
 
 Project saves create timestamped YAML backups before writing. Loading a project does not modify its file. Copy project backups to operator-controlled storage and retain the release, project, and backup identifiers together. Restore a project only while following the normal review and validation process.
 
-For authorization recovery, use the application authorization CLI through `make shell` or `podman exec shape-shifter`; do not edit SQLite directly because direct edits bypass audit records and final-owner protections. Create SQLite backups with the repository backup command, stop the service before restoring one, then run integrity checks and reconcile the reviewed authorization manifest before reopening access.
+For authorization administration, use `container/scripts/authorization.sh` from the deployment user's `container/` directory. The wrapper runs the tested CLI inside the deployed image and uses the persistent authorization database; do not edit SQLite directly because direct edits bypass audit records and final-owner protections.
+
+Use these commands for routine review and backup:
+
+```bash
+./scripts/authorization.sh list-grants --json
+./scripts/authorization.sh list-application-roles --json
+./scripts/authorization.sh list-audit-events --json
+./scripts/authorization.sh integrity-check
+./scripts/authorization.sh backup
+```
+
+Backups are written to the persistent `backups/` directory with a timestamped
+filename. Restore a backup by filename only:
+
+```bash
+./scripts/authorization.sh restore authorization-20260916-120000.sqlite3
+```
+
+Restore stops the application, restores the database in a one-shot container,
+runs an integrity check, and starts the application only when both operations
+succeed. If restore or validation fails, the application remains stopped for
+operator review. After a successful restore, reconcile the reviewed
+authorization manifest before reopening access.
 
 ## Release, Verification, And Rollback
 
