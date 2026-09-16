@@ -12,6 +12,7 @@ CONTAINER_NAME="${CONTAINER_NAME:-shape-shifter}"
 DATA_DIR="${DATA_DIR:-$ROOT_DIR/../container-data}"
 BACKUP_DIR="${AUTHORIZATION_BACKUP_DIR:-$DATA_DIR/backups}"
 CONTAINER_BACKUP_DIR="/app/backups"
+HOST_ACTOR="${AUTHORIZATION_ACTOR:-$(id -un)}"
 
 usage() {
     cat <<'EOF'
@@ -25,10 +26,20 @@ Wrapper options:
   --backup-dir DIR       Host directory for authorization backups
   -h, --help             Show this help message
 
+Mutating commands use the deployment host username as the default audit actor;
+pass --actor explicitly or set AUTHORIZATION_ACTOR to override it.
+
 Convenience commands:
   backup                 Create a timestamped authorization database backup
   restore BACKUP         Restore a backup after stopping the application and
                          checking the restored database before restarting it
+
+Web users (run on the deployment host):
+    The htpasswd username must exactly match the case-sensitive principal ID used
+    in authorization grants and administrator configuration.
+    sudo htpasswd /etc/nginx/htpasswd/shape-shifter USER       Add or update a user
+    sudo cut -d: -f1 /etc/nginx/htpasswd/shape-shifter         List users
+    sudo htpasswd -D /etc/nginx/htpasswd/shape-shifter USER    Delete a user
 
 Examples:
   container/scripts/authorization.sh list-grants --json
@@ -83,7 +94,25 @@ require_running_container() {
 
 run_cli() {
     require_running_container
-    podman exec -i "$CONTAINER_NAME" sead-authorization "$@"
+    local command_name="${1:-}"
+    shift || true
+    local -a command_args=("$@")
+    case "$command_name" in
+        grant|revoke|grant-application-role|revoke-application-role)
+            local has_actor=false
+            local argument
+            for argument in "${command_args[@]}"; do
+                if [[ "$argument" = "--actor" || "$argument" = --actor=* ]]; then
+                    has_actor=true
+                    break
+                fi
+            done
+            if [[ "$has_actor" = false ]]; then
+                command_args+=(--actor "$HOST_ACTOR")
+            fi
+            ;;
+    esac
+    podman exec -i "$CONTAINER_NAME" sead-authorization "$command_name" "${command_args[@]}"
 }
 
 backup_database() {
