@@ -4,26 +4,49 @@ SHELL := /bin/bash
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-CONTAINER_NAME := shape-shifter
-IMAGE_NAME ?= shape-shifter:latest
-HOST_PORT ?= 8012
+# Deployment defaults live in .env so this Makefile, podman-compose.yml, and the
+# scripts in scripts/ cannot drift apart. `make setup` copies .env.example to
+# .env; edit .env to change the image, branch, port, or frontend build args.
+#
+# Precedence for every value, highest first:
+#   1. command line   make IMAGE_NAME=shape-shifter:dev up
+#   2. environment    IMAGE_NAME=shape-shifter:dev make up
+#   3. .env
+#   4. the fallbacks below
+# The environment is captured before .env is read, because a plain assignment in
+# an included file would otherwise override the environment.
+MAKEFILE_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+ENV_FILE ?= $(MAKEFILE_DIR).env
+
+ENV_CONTAINER_NAME := $(CONTAINER_NAME)
+ENV_IMAGE_NAME := $(IMAGE_NAME)
+ENV_HOST_PORT := $(HOST_PORT)
+ENV_DATA_DIR := $(DATA_DIR)
+ENV_COMPOSE_PROJECT_NAME := $(COMPOSE_PROJECT_NAME)
+ENV_GIT_REPO := $(GIT_REPO)
+ENV_GIT_REF := $(GIT_REF)
+
+-include $(ENV_FILE)
+
+CONTAINER_NAME := $(or $(ENV_CONTAINER_NAME),$(CONTAINER_NAME),shape-shifter)
+IMAGE_NAME := $(or $(ENV_IMAGE_NAME),$(IMAGE_NAME),shape-shifter:latest)
+HOST_PORT := $(or $(ENV_HOST_PORT),$(HOST_PORT),8012)
+DATA_DIR := $(or $(ENV_DATA_DIR),$(DATA_DIR),../container-data)
+COMPOSE_PROJECT_NAME := $(or $(ENV_COMPOSE_PROJECT_NAME),$(COMPOSE_PROJECT_NAME),shapeshifter)
+GIT_REPO := $(or $(ENV_GIT_REPO),$(GIT_REPO),https://github.com/humlab-sead/sead_shape_shifter.git)
+GIT_REF := $(or $(ENV_GIT_REF),$(GIT_REF),main)
 
 # Rootless Podman keeps the deployment user, so build with the current UID/GID.
 USER_UID ?= $(shell id -u)
 USER_GID ?= $(shell id -g)
 
 # Persistent data lives beside the container directory.
-DATA_DIR ?= ../container-data
 CONTAINER_DATA_DIR := $(abspath $(DATA_DIR))
 
-COMPOSE_PROJECT_NAME ?= shapeshifter
 COMPOSE_FILE := podman-compose.yml
 SCRIPTS_DIR := ./scripts
 RESOURCES_DIR := ./resources
-
-# Image source for `make build`. Use `make build-local` for a checkout build.
-GIT_REPO ?= https://github.com/humlab-sead/sead_shape_shifter.git
-GIT_REF ?= main
+ENV_EXAMPLE := $(MAKEFILE_DIR).env.example
 
 # podman-compose reads every path from CONTAINER_DATA_DIR.
 export CONTAINER_DATA_DIR
@@ -35,6 +58,7 @@ export USER_GID
 export GIT_REPO
 export GIT_REF
 export COMPOSE_PROJECT_NAME
+export CONTAINER_NAME
 
 RED := \033[0;31m
 GREEN := \033[0;32m
@@ -48,7 +72,7 @@ help:
 	@echo ""
 	@echo "$(GREEN)First-time setup:$(NC)"
 	@echo "  make install-ucanaccess  Install UCanAccess JARs (MS Access support)"
-	@echo "  make setup               Create directories and environment files"
+	@echo "  make setup               Create .env, directories and environment files"
 	@echo ""
 	@echo "$(GREEN)Build and run:$(NC)"
 	@echo "  make build               Build image from GitHub (GIT_REF=$(GIT_REF))"
@@ -115,6 +139,17 @@ setup-directories: check-podman
 
 .PHONY: setup-env
 setup-env: check-podman
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		if [ -f "$(ENV_EXAMPLE)" ]; then \
+			cp "$(ENV_EXAMPLE)" "$(ENV_FILE)"; \
+			echo "$(GREEN)+ Created $(ENV_FILE)$(NC)"; \
+			echo "$(YELLOW)  Review the image, branch, port and frontend build args$(NC)"; \
+		else \
+			echo "$(YELLOW)! $(ENV_EXAMPLE) not found, the built-in defaults apply$(NC)"; \
+		fi \
+	else \
+		echo "$(GREEN)+ $(ENV_FILE) already exists$(NC)"; \
+	fi
 	@if [ ! -f "$(CONTAINER_DATA_DIR)/backend.env" ]; then \
 		if [ -f "$(RESOURCES_DIR)/backend.env.example" ]; then \
 			cp "$(RESOURCES_DIR)/backend.env.example" "$(CONTAINER_DATA_DIR)/backend.env"; \

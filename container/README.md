@@ -44,9 +44,10 @@ Run these as the deployment user from the `container/` directory:
 
 ```bash
 make install-ucanaccess   # only needed for MS Access data sources
-make setup                # create container-data/ and backend.env
+make setup                # create .env, container-data/ and backend.env
+nano .env                 # image, branch, port and frontend build arguments
 nano ../container-data/backend.env
-make build                # build the image from GitHub (GIT_REF=main)
+make build                # build the image from GitHub (repository and ref from .env)
 make up
 make healthcheck
 ```
@@ -80,6 +81,32 @@ Run `make help` for the complete list.
 
 ## Configuration
 
+Two files hold configuration. `container/.env` holds the deployment defaults
+shared by the Makefile, the scripts and the compose file. `backend.env` holds
+the runtime settings that the container reads on every start.
+
+### Deployment defaults: `container/.env`
+
+`make setup` copies `.env.example` to `.env` when `.env` is absent. Edit `.env`
+rather than the scripts or the Makefile. It sets the image, the git repository
+and branch, the host port, the data directory, the compose project name, the
+container name, and the frontend build arguments.
+
+Values resolve with this precedence, highest first:
+
+1. command line — `make IMAGE_NAME=shape-shifter:dev up`
+2. environment — `IMAGE_NAME=shape-shifter:dev make up`
+3. `container/.env`
+4. the fallbacks built into the Makefile
+
+`make build` tags its output from the git ref when the ref is not a release
+version, so `GIT_REF=dev` produces `shape-shifter:dev`. Set `IMAGE_NAME` to that
+same tag, otherwise `make up` starts the previous image.
+
+`.env` is not tracked by git; `.env.example` is tracked and holds the defaults.
+
+### Runtime configuration: `../container-data/backend.env`
+
 Runtime configuration lives in `../container-data/backend.env`. It is loaded by
 the container on every start, so editing it only needs `make restart`.
 
@@ -107,8 +134,9 @@ the bind-mounted data directories.
 ### Frontend build variables
 
 `VITE_*` values are compiled into the JavaScript bundle and therefore require a
-rebuild. They are passed as build arguments (see `podman-compose.yml` and
-`Containerfile`), not read from `backend.env`.
+rebuild. They come from `container/.env` and reach the build as arguments (see
+`podman-compose.yml` and `Containerfile`); they are not read from
+`backend.env`.
 
 ## Documentation
 

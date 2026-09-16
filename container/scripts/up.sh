@@ -2,6 +2,10 @@
 # Start the Shape Shifter container with podman-compose.
 set -euo pipefail
 
+# Load container/.env values that the environment has not already set.
+# shellcheck source=load-env.sh
+. "$(dirname -- "${BASH_SOURCE[0]}")/load-env.sh"
+
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 

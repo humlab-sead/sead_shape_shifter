@@ -3,6 +3,10 @@
 # Safe to run more than once; existing files are left untouched.
 set -euo pipefail
 
+# Load container/.env values that the environment has not already set.
+# shellcheck source=load-env.sh
+. "$(dirname -- "${BASH_SOURCE[0]}")/load-env.sh"
+
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DATA_DIR="${DATA_DIR:-$ROOT_DIR/../container-data}"
@@ -57,6 +61,21 @@ chmod 755 "$DATA_DIR"
 chmod 755 "$DATA_DIR"/{projects,shared,logs,output,backups,tmp,state}
 log_success "Data directory ready: $DATA_DIR"
 log_success "Subdirectories: projects, shared, logs, output, backups, tmp, state"
+
+echo
+log_info "Setting up deployment defaults..."
+if [ -f "$ROOT_DIR/.env" ]; then
+  log_warning "container/.env already exists, leaving it unchanged"
+  log_info "Edit with: nano $ROOT_DIR/.env"
+else
+  if [ -f "$ROOT_DIR/.env.example" ]; then
+    cp "$ROOT_DIR/.env.example" "$ROOT_DIR/.env"
+    log_success "Created container/.env from container/.env.example"
+    log_warning "Review the image, branch, port and frontend build args in it"
+  else
+    log_warning "container/.env.example not found, the Makefile defaults apply"
+  fi
+fi
 
 echo
 log_info "Setting up environment configuration..."

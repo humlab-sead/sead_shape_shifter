@@ -3,6 +3,10 @@
 #
 # Works with podman-compose and with Podman's compose provider.
 #
+# Default values come from container/.env, which the Makefile and the scripts in
+# scripts/ load and export before calling podman-compose. The `${VAR:-default}`
+# fallbacks below are a last resort for a direct podman-compose invocation.
+#
 # Usage (prefer the Makefile, which sets CONTAINER_DATA_DIR for you):
 #   export CONTAINER_DATA_DIR="$PWD/../container-data"
 #   podman-compose -f podman-compose.yml up -d
@@ -49,7 +53,7 @@ services:
         - VITE_ENABLE_DEBUG=${VITE_ENABLE_DEBUG:-false}
 
     image: ${IMAGE_NAME:-shape-shifter:latest}
-    container_name: shape-shifter
+    container_name: ${CONTAINER_NAME:-shape-shifter}
 
     # Rootless Podman: map the host user to the same UID/GID inside the
     # container so the non-root container user can write bind-mounted data.
