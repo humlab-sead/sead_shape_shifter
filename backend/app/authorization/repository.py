@@ -18,6 +18,9 @@ from backend.app.authorization.models import (
     ResourceType,
 )
 
+CURRENT_SCHEMA_VERSION = 4
+MINIMUM_SUPPORTED_SCHEMA_VERSION = CURRENT_SCHEMA_VERSION
+
 
 class AuthorizationRepository(Protocol):
     """Storage operations required by authorization policy evaluation."""
@@ -85,9 +88,8 @@ class SQLiteAuthorizationRepository:
         with self._connection:
             self._connection.execute("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)")
             current = self._connection.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] or 0
-            if current < 1:
-                self._connection.executescript(
-                    """
+            if current == 0:
+                self._connection.executescript("""
                     CREATE TABLE resource (
                         resource_id TEXT PRIMARY KEY,
                         resource_type TEXT NOT NULL,
@@ -99,12 +101,13 @@ class SQLiteAuthorizationRepository:
                         ON resource(resource_type, locator)
                         WHERE lifecycle_state = 'active';
                     CREATE TABLE grant_record (
-                        principal_id TEXT NOT NULL,
+                        subject_type TEXT NOT NULL,
+                        subject_id TEXT NOT NULL,
                         resource_id TEXT NOT NULL REFERENCES resource(resource_id),
                         role TEXT NOT NULL,
                         created_at TEXT NOT NULL,
                         created_by TEXT NOT NULL,
-                        PRIMARY KEY(principal_id, resource_id, role)
+                        PRIMARY KEY(subject_type, subject_id, resource_id, role)
                     );
                     CREATE TABLE application_role (
                         principal_id TEXT NOT NULL,
@@ -121,48 +124,25 @@ class SQLiteAuthorizationRepository:
                         resource_id TEXT,
                         action TEXT,
                         outcome TEXT NOT NULL,
-                        correlation_id TEXT
+                        correlation_id TEXT,
+                        subject_type TEXT,
+                        subject_id TEXT,
+                        provider TEXT,
+                        details TEXT
                     );
-                    INSERT INTO schema_version(version, applied_at) VALUES (1, CURRENT_TIMESTAMP);
-                    """
-                )
-                current = 1
-            if current < 2:
-                self._connection.executescript(
-                    """
-                    ALTER TABLE grant_record RENAME TO grant_record_v1;
-                    CREATE TABLE grant_record (
-                        subject_type TEXT NOT NULL,
-                        subject_id TEXT NOT NULL,
-                        resource_id TEXT NOT NULL REFERENCES resource(resource_id),
-                        role TEXT NOT NULL,
-                        created_at TEXT NOT NULL,
-                        created_by TEXT NOT NULL,
-                        PRIMARY KEY(subject_type, subject_id, resource_id, role)
-                    );
-                    INSERT INTO grant_record(subject_type, subject_id, resource_id, role, created_at, created_by)
-                        SELECT 'principal', principal_id, resource_id, role, created_at, created_by FROM grant_record_v1;
-                    DROP TABLE grant_record_v1;
-                    INSERT INTO schema_version(version, applied_at) VALUES (2, CURRENT_TIMESTAMP);
-                    """
-                )
-                current = 2
-            if current < 3:
-                self._connection.executescript(
-                    """
-                    ALTER TABLE audit_event ADD COLUMN subject_type TEXT;
-                    ALTER TABLE audit_event ADD COLUMN subject_id TEXT;
-                    INSERT INTO schema_version(version, applied_at) VALUES (3, CURRENT_TIMESTAMP);
-                    """
-                )
-                current = 3
-            if current < 4:
-                self._connection.executescript(
-                    """
-                    ALTER TABLE audit_event ADD COLUMN provider TEXT;
-                    ALTER TABLE audit_event ADD COLUMN details TEXT;
                     INSERT INTO schema_version(version, applied_at) VALUES (4, CURRENT_TIMESTAMP);
-                    """
+                    """)
+                return
+            if current < MINIMUM_SUPPORTED_SCHEMA_VERSION:
+                raise RuntimeError(
+                    f"Unsupported authorization database schema version {current}; "
+                    f"expected version {MINIMUM_SUPPORTED_SCHEMA_VERSION} or newer. "
+                    "Create a new authorization database."
+                )
+            if current > CURRENT_SCHEMA_VERSION:
+                raise RuntimeError(
+                    f"Authorization database schema version {current} is newer than the supported version "
+                    f"{CURRENT_SCHEMA_VERSION}."
                 )
 
     def create_resource(self, resource: ResourceRecord) -> None:
