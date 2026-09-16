@@ -2,18 +2,17 @@
 
 ## Status
 
-- Proposed follow-up to the implemented centralized authorization system
-- Parent proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md)
-- Parent phase task plan: [MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md)
-- Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
-- Related implementation plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
-- Related deployment plan: [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
+- Future proposal / not yet approved
+- Scope: server-owned resource records for generated outputs, backups, uploads, and long-running operations, and the API contracts that use them
+- Goal: stop client-selected filenames and paths from acting as resource identity, so every later request resolves through a server record
+- Origin: follow-up to the closed mitigation work — [MITIGATE_SECURITY_ISSUES.md](../MITIGATE_SECURITY_ISSUES/MITIGATE_SECURITY_ISSUES.md), [phase task plan](../MITIGATE_SECURITY_ISSUES/MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md)
+- Related: [centralized authorization design](../MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md), [implementation task plan](../MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md), [cutover plan](../MITIGATE_SECURITY_ISSUES/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
 
 ## Summary
 
 Replace client-selected filesystem names and paths with server-owned resource records for generated outputs, backups, uploads, and long-running operations. Authorization must resolve the requested resource through its stable server record before endpoint or service code obtains the internal locator.
 
-The existing authorization system provides generation-specific UUIDs, parent relationships, lifecycle states, centralized checks, and project inheritance. This proposal applies those contracts consistently to file and operation resources that currently use constrained filenames, relative paths, or in-memory operation identifiers.
+The centralized authorization system provides generation-specific UUIDs, parent relationships, lifecycle states, centralized checks, and project inheritance. This proposal applies those contracts consistently to file and operation resources that currently use constrained filenames, relative paths, or in-memory operation identifiers.
 
 ## Problem
 
@@ -119,17 +118,17 @@ Acceptable only for a documented single-process limitation. Persisted records ar
 - Test upload creation, listing, metadata access, and data-source use by resource ID across project and shared parents.
 - Test operation ownership, parent authorization, result-resource authorization, revocation, cleanup, and restart behavior if persistence is implemented.
 - Test that API responses do not expose sensitive absolute paths or permit client-selected filesystem destinations.
-- Run focused backend tests, the full backend suite, and the relevant filesystem-boundary and deployment checks from the parent security plan.
+- Run focused backend tests, the full backend suite, and the filesystem-boundary and deployment checks already recorded in [SECURITY_CHECK.md](../MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md).
 
 ## Acceptance Criteria
 
-- [ ] Outputs, backups, uploads, and operations have server-owned records with stable IDs, lifecycle state, and required parent relationships.
-- [ ] Later reads, downloads, restores, metadata operations, and operation results resolve through those records before accessing internal locators.
-- [ ] Client requests cannot select arbitrary filesystem paths as resource identities.
-- [ ] Deleted resources, stale IDs, cross-parent IDs, and filename reuse cannot disclose or transfer access.
-- [ ] Operation progress, streaming, cancellation, and result access enforce both operation ownership and current parent/resource authorization.
-- [ ] Physical paths remain internal and are not exposed in resource identifiers or sensitive error responses.
-- [ ] Focused isolation, lifecycle, traversal, and regression tests pass.
+- [ ] `P-AC-1` Outputs, backups, uploads, and operations have server-owned records with stable IDs, lifecycle state, and required parent relationships.
+- [ ] `P-AC-2` Later reads, downloads, restores, metadata operations, and operation results resolve through those records before accessing internal locators.
+- [ ] `P-AC-3` Client requests cannot select arbitrary filesystem paths as resource identities.
+- [ ] `P-AC-4` Deleted resources, stale IDs, cross-parent IDs, and filename reuse cannot disclose or transfer access.
+- [ ] `P-AC-5` Operation progress, streaming, cancellation, and result access enforce both operation ownership and current parent/resource authorization.
+- [ ] `P-AC-6` Physical paths remain internal and are not exposed in resource identifiers or sensitive error responses.
+- [ ] `P-AC-7` Focused isolation, lifecycle, traversal, and regression tests pass.
 
 ## Recommended Delivery Order
 
@@ -138,8 +137,8 @@ Acceptable only for a documented single-process limitation. Persisted records ar
 3. Implement upload records and replace filename-based metadata and data-source references.
 4. Make operation records and result references server-owned, with a documented persistence decision.
 5. Add cross-resource, stale-reference, filename-reuse, traversal, and response-disclosure tests.
-6. Update the cutover and release evidence once the parent security plan accepts the new contracts.
+6. Update the cutover and release evidence when these contracts are accepted.
 
 ## Final Recommendation
 
-Adopt server-owned resource identifiers as the completion requirement for the remaining path-identity work. Keep the implemented centralized authorization design closed in `done`; track this narrower follow-up as an independent security sub-proposal under the parent mitigation plan.
+Adopt server-owned resource identifiers as the completion requirement for the remaining path-identity work. The implemented centralized authorization design stays closed in `done`; this narrower follow-up is tracked here as an independent proposal that a later phase plan can pick up on its own.
