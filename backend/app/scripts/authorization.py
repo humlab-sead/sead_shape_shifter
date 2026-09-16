@@ -6,8 +6,15 @@ from pathlib import Path
 
 import click
 
-from backend.app.authorization.membership import HttpGroupMembershipResolver, MembershipLookupStatus
-from backend.app.authorization.models import ApplicationRole, Grant, GrantSubjectType, ResourceType
+from backend.app.authorization.membership import HttpGroupMembershipResolver, MembershipLookupStatus, MembershipSnapshot
+from backend.app.authorization.models import (
+    ApplicationRole,
+    ApplicationRoleAssignment,
+    Grant,
+    GrantSubjectType,
+    ResourceRecord,
+    ResourceType,
+)
 from backend.app.authorization.operations import (
     apply_manifest,
     backup_database,
@@ -32,15 +39,19 @@ def cli() -> None:
 @click.option("--dry-run", is_flag=True)
 def migrate(database: Path | None, manifest: Path | None, dry_run: bool) -> None:
     """Initialize the schema and optionally inspect a migration manifest."""
-    path = database or settings.AUTHORIZATION_DATABASE_PATH
+    path: Path = database or settings.AUTHORIZATION_DATABASE_PATH
     if manifest:
-        summary = inspect_manifest(manifest, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE)
+        summary: dict[str, int] = inspect_manifest(
+            manifest, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE
+        )
         click.echo(f"Manifest: {summary['resources']} resources, {summary['administrators']} administrators")
     if dry_run:
         click.echo("Dry run: no database changes made")
         return
     if manifest:
-        applied = apply_manifest(manifest, path, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE)
+        applied: dict[str, int] = apply_manifest(
+            manifest, path, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE
+        )
         click.echo(f"Applied: {applied['resources']} resources, {applied['administrators']} administrators, {applied['grants']} grants")
     else:
         initialize_database(path)
@@ -51,7 +62,7 @@ def migrate(database: Path | None, manifest: Path | None, dry_run: bool) -> None
 @click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
 def check_integrity(database: Path | None) -> None:
     """Check SQLite integrity and exit non-zero when it fails."""
-    path = database or settings.AUTHORIZATION_DATABASE_PATH
+    path: Path = database or settings.AUTHORIZATION_DATABASE_PATH
     if not integrity_check(path):
         raise click.ClickException("Authorization database failed integrity check")
     click.echo("Authorization database integrity check passed")
@@ -80,12 +91,12 @@ def restore(source: Path, database: Path | None) -> None:
 @click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
 def reconcile(manifest: Path, database: Path | None) -> None:
     """Report reviewed manifest records missing from authorization storage."""
-    result = reconcile_manifest(
+    result: dict[str, int] = reconcile_manifest(
         manifest,
         database or settings.AUTHORIZATION_DATABASE_PATH,
         allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE,
     )
-    summary = (
+    summary: str = (
         "Missing: "
         f"{result['missing_resources']} resources, "
         f"{result['missing_administrators']} administrators, "
@@ -116,10 +127,10 @@ def grant(
     dry_run: bool,
 ) -> None:
     """Add a typed resource grant with an auditable actor."""
-    path = database or settings.AUTHORIZATION_DATABASE_PATH
+    path: Path = database or settings.AUTHORIZATION_DATABASE_PATH
     repository = SQLiteAuthorizationRepository(path)
     try:
-        resource = repository.get_resource_by_locator(ResourceType(resource_type), locator)
+        resource: ResourceRecord | None = repository.get_resource_by_locator(ResourceType(resource_type), locator)
         if resource is None:
             raise click.ClickException("Active authorization resource not found")
         typed_subject = GrantSubjectType(subject_type)
@@ -161,10 +172,10 @@ def revoke(
     non_interactive: bool,
 ) -> None:
     """Revoke a typed resource grant with final-owner protection."""
-    path = database or settings.AUTHORIZATION_DATABASE_PATH
+    path: Path = database or settings.AUTHORIZATION_DATABASE_PATH
     repository = SQLiteAuthorizationRepository(path)
     try:
-        resource = repository.get_resource_by_locator(ResourceType(resource_type), locator)
+        resource: ResourceRecord | None = repository.get_resource_by_locator(ResourceType(resource_type), locator)
         if resource is None:
             raise click.ClickException("Active authorization resource not found")
         typed_subject = GrantSubjectType(subject_type)
@@ -207,14 +218,14 @@ def list_grants(
     """List typed resource grants for operator review."""
     repository = SQLiteAuthorizationRepository(database or settings.AUTHORIZATION_DATABASE_PATH)
     try:
-        grants = repository.list_all_grants()
-        group_ids = {grant.subject_id for grant in grants if grant.subject_type == GrantSubjectType.GROUP}
+        grants: list[Grant] = repository.list_all_grants()
+        group_ids: set[str] = {grant.subject_id for grant in grants if grant.subject_type == GrantSubjectType.GROUP}
         resolver = None
         snapshots = {}
         if effective and group_ids:
             if not actor:
                 raise click.ClickException("Effective group review requires --actor for audit logging")
-            lookup_url = membership_url or settings.AUTHORIZATION_MEMBERSHIP_LOOKUP_URL
+            lookup_url: str | None = membership_url or settings.AUTHORIZATION_MEMBERSHIP_LOOKUP_URL
             if not lookup_url:
                 raise click.ClickException("Effective group review requires AUTHORIZATION_MEMBERSHIP_LOOKUP_URL or --membership-url")
             try:
@@ -225,13 +236,13 @@ def list_grants(
                 )
             except ValueError as error:
                 raise click.ClickException(str(error)) from error
-            snapshots = {group_id: resolver.resolve_members(group_id) for group_id in group_ids}
+            snapshots: dict[str, MembershipSnapshot] = {group_id: resolver.resolve_members(group_id) for group_id in group_ids}
             for snapshot in snapshots.values():
                 repository.record_membership_lookup(actor, snapshot)
 
-        records = []
+        records: list[dict[str, object]] = []
         for grant_record in grants:
-            record = {
+            record: dict[str, object] = {
                 "subject_type": grant_record.subject_type.value,
                 "subject_id": grant_record.subject_id,
                 "role": grant_record.role,
@@ -254,8 +265,10 @@ def list_grants(
             for record in records:
                 click.echo(f"{record['subject_type']}:{record['subject_id']} {record['role']} {record['resource_id']}")
                 membership = record.get("membership")
-                if membership:
-                    members = ", ".join(membership["principal_ids"]) or "none"
+                if isinstance(membership, dict):
+                    principal_ids = membership.get("principal_ids")
+                    members: str = ", ".join(principal_ids) if isinstance(principal_ids, list) else "none"
+                    members = members or "none"
                     click.echo(f"  effective principals: {members}")
                     click.echo(f"  membership: {membership['status']} via {membership['provider']} at {membership['fetched_at']}")
                     if membership["error"]:
@@ -301,8 +314,8 @@ def list_application_roles(database: Path | None, as_json: bool) -> None:
     """List deployment-wide application role assignments."""
     repository = SQLiteAuthorizationRepository(database or settings.AUTHORIZATION_DATABASE_PATH)
     try:
-        assignments = repository.list_all_application_roles()
-        records = [
+        assignments: list[ApplicationRoleAssignment] = repository.list_all_application_roles()
+        records: list[dict[str, str]] = [
             {
                 "principal_id": assignment.principal_id,
                 "role": assignment.role.value,
