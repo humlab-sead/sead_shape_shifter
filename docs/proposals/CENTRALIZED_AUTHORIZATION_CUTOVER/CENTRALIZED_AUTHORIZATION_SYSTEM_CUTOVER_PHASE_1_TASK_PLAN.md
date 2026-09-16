@@ -85,7 +85,7 @@
   * **Constraints:** Do not add ingester dependencies or change ingester behavior in this phase. Do not describe ingester authorization as implemented.
   * **Validation:** `V-5`.
 
-* [ ] `T1.4` **Change:** Record exposure for the public, generated, and static rows.
+* [x] `T1.4` **Change:** Record exposure for the public, generated, and static rows.
   * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) rows: `GET, HEAD /api/v1/openapi.json`, `GET, HEAD /api/v1/docs`, `GET, HEAD /docs/oauth2-redirect`, `GET, HEAD /api/v1/redoc`, static mount `/docs/*`, static mount `/assets/*`, `GET /{full_path:path}`, `GET /`.
   * **Current → required:** All eight read `UNDECLARED`. Required: `authenticated`, since trusted-proxy middleware requires an identity for every path except `/api/v1/health`, and each row states its origin and build condition.
   * **Implementation:** Note FastAPI-generated routes, the repository documentation mount, and the three frontend-build-conditional entries. State that these paths are protected by the authentication middleware rather than by a resource dependency.
@@ -98,21 +98,21 @@
 
 **Objective:** An assembled `/api/v1` route with neither declared metadata nor a documented classification fails the test suite.
 
-* [ ] `T2.1` **Change:** Add the API route classification check.
+* [x] `T2.1` **Change:** Add the API route classification check.
   * **Target:** `backend/tests/authorization/test_route_authentication.py` (new `test_api_routes_are_classified` and its helper); pattern from `backend/tests/authorization/test_dependencies.py::test_static_data_source_subroutes_are_classified`.
   * **Current → required:** The inventory comparison only checks documented-versus-registered path sets, so a route may stay `UNDECLARED` indefinitely. Required: every assembled `/api/v1` route either exposes `authorization_requirement` metadata or appears in an explicit documented classification set.
   * **Implementation:** Factor the scan into a helper that takes the assembled routes and returns unclassified `METHOD /path` entries. Read requirements from `route.dependant.dependencies` using `getattr(dependency.call, "authorization_requirement", None)`. Add module-level constants `AUTHENTICATED_ONLY_API_PATHS` and `ENFORCEMENT_PENDING_API_PATHS` (the ingester validation and execution rows), each entry carrying a comment with its reason and, for pending rows, the owning follow-up document. Assert the unclassified list is empty and include it in the failure message.
   * **Constraints:** Keep the existing parity assertions and their failure messages. Express paths without the API prefix, matching the existing constant style.
   * **Validation:** `V-3`, `V-4`.
 
-* [ ] `T2.2` **Change:** Extend documented-route parity to non-API and mounted routes.
+* [x] `T2.2` **Change:** Extend documented-route parity to non-API and mounted routes.
   * **Target:** `backend/tests/authorization/test_route_authentication.py` (`_documented_api_routes`, `_runtime_api_routes`).
   * **Current → required:** Both helpers filter to paths starting with `/api/v1/`, so `/docs/oauth2-redirect` and the `/docs` and `/assets` mounts are documented but never compared. Required: assembled direct routes and mounts outside the API prefix must appear in the inventory, and every non-conditional documented row must exist in the assembled app.
   * **Implementation:** Add helpers for the non-API `Route` paths and for `starlette.routing.Mount` paths, and add a `CONDITIONAL_DOCUMENTED_PATHS` set for `/assets/*`, `/{full_path:path}`, and `/` so a build without a frontend bundle still passes.
   * **Constraints:** Never fail because the frontend bundle is absent. Keep the existing `/api/v1` comparison intact.
   * **Validation:** `V-3`, `V-5`.
 
-* [ ] `T2.3` **Change:** Add negative coverage for the classification check.
+* [x] `T2.3` **Change:** Add negative coverage for the classification check.
   * **Target:** `backend/tests/authorization/test_route_authentication.py`.
   * **Current → required:** No test proves the check detects an unclassified route. Required: a test that feeds the helper a synthetic route without `authorization_requirement` or a classification entry and asserts the route is reported.
   * **Implementation:** Build the synthetic route with `fastapi.routing.APIRoute` and a `dependant` carrying no authorization metadata; assert the returned list contains the synthetic `METHOD /path`.
@@ -208,8 +208,8 @@ For every check, record the commit, the command output, and the reviewer in the 
 
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
-| Area 1: Record classifications | Done | None | `T1.1` done at `64d0556a`; `T1.3` done at `e9678693`. `T1.2` and `T1.4` recorded with the rows. `GET /api/v1/projects/active/name` was classified `project:read` through a new `require_active_project` dependency instead of `authenticated`, because the route reports the deployment active project and the principal may not be able to read it. The inventory has no `UNDECLARED` row. `uv run pytest backend/tests/authorization backend/tests/api/v1/test_projects.py` passes |
-| Area 2: Enforce classification in the check | Not started | Area 1 (classification sets and inventory rows) | |
+| Area 1: Record classifications | Done | None | `T1.1` done at `64d0556a`; `T1.3` done at `e9678693`. `T1.2` and `T1.4` recorded with the rows. `GET /api/v1/projects/active/name` was classified `project:read` through a new `require_active_project` dependency instead of `authenticated`, because the route reports the deployment active project and the principal may not be able to read it. The inventory has no `UNDECLARED` row. `uv run pytest backend/tests/authorization backend/tests/api/v1/test_projects.py` passes. The `/docs/oauth2-redirect` and `/docs/*` rows are re-checked against the assembled application by the non-API parity test added in `T2.2`; the review note that completes `V-5` is `T4.1` |
+| Area 2: Enforce classification in the check | Done | Area 1 (classification sets and inventory rows) | `T2.1`-`T2.3` add `_unclassified_api_routes()`, the inventory row reader, and the non-API parity check to `backend/tests/authorization/test_route_authentication.py`. `PUBLIC_API_PATHS` was added next to the two planned constants because the health route is public rather than authenticated. The check reports nothing for the assembled app; removing `/projects` from the classification set makes it report `GET /api/v1/projects`, and the synthetic-route test passes |
 | Area 3: Record lifecycle and background coverage | Not started | None | Independent of Areas 1 and 2 |
 | Area 4: Review and align documentation | Not started | Areas 1–3 | Reviewer `TBD` |
 
