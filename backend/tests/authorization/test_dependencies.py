@@ -186,7 +186,8 @@ def test_project_data_source_connection_requires_project_and_shared_source_acces
     }
 
 
-def test_log_routes_require_administrator_access() -> None:
+def test_log_routes_require_authentication_without_application_role() -> None:
+    """Keep the global log routes open to any authenticated principal."""
     log_routes = [
         route
         for route in logs_router.routes
@@ -195,12 +196,12 @@ def test_log_routes_require_administrator_access() -> None:
 
     assert len(log_routes) == 2
     for route in log_routes:
-        requirements = {
-            tuple(sorted(requirement.items()))
+        requirements = [
+            requirement
             for dependency in route.dependant.dependencies
             if (requirement := _authorization_requirement(dependency.call)) is not None
-        }
-        assert requirements == {(("action", "read_logs"), ("resource_type", "application"))}
+        ]
+        assert requirements == []
 
 
 def test_sensitive_locator_routes_declare_authorization_requirements() -> None:

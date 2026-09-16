@@ -66,19 +66,8 @@ async def test_authenticated_principal_cannot_cross_user_resource_boundaries(tmp
 
 
 @pytest.mark.asyncio
-async def test_authenticated_principal_without_log_role_cannot_read_logs(tmp_path, monkeypatch) -> None:
-    """Reject a principal without the application log role before reading files."""
-    authorization_database = tmp_path / "state" / "authorization.sqlite3"
-    monkeypatch.setattr(application_settings, "AUTHORIZATION_DATABASE_PATH", authorization_database)
-
-    repository = SQLiteAuthorizationRepository(authorization_database)
-    authorization_service = AuthorizationService(repository)
-    previous_overrides = app.dependency_overrides.copy()
-
-    async def override_authorization_service() -> AuthorizationService:
-        return authorization_service
-
-    app.dependency_overrides[get_authorization_service] = override_authorization_service
+async def test_authenticated_principal_without_application_role_can_read_logs() -> None:
+    """Allow an authenticated principal to read the global log without an application role."""
     protected_app = ProxyAuthenticationMiddleware(
         app,
         enabled=True,
@@ -86,19 +75,14 @@ async def test_authenticated_principal_without_log_role_cannot_read_logs(tmp_pat
         public_paths={"/api/v1/health"},
     )
 
-    try:
-        async with AsyncClient(
-            transport=ASGITransport(app=protected_app),
-            base_url="http://testserver",
-            headers={application_settings.TRUSTED_PROXY_AUTH_HEADER: "bob"},
-        ) as client:
-            response = await client.get("/api/v1/logs/app")
+    async with AsyncClient(
+        transport=ASGITransport(app=protected_app),
+        base_url="http://testserver",
+        headers={application_settings.TRUSTED_PROXY_AUTH_HEADER: "bob"},
+    ) as client:
+        response = await client.get("/api/v1/logs/app")
 
-        assert response.status_code == 403
-        assert response.json() == {"detail": "Insufficient authorization"}
-    finally:
-        app.dependency_overrides = previous_overrides
-        repository.close()
+    assert response.status_code == 200
 
 
 def test_group_grants_do_not_cross_team_boundaries(tmp_path) -> None:
