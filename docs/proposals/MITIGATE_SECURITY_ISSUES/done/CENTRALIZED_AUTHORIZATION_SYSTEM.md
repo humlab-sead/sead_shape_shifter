@@ -3,10 +3,10 @@
 ## Status
 
 - Implemented Phase 1 authorization design; deployment cutover and broader Phase 1 work remain
-- Parent proposal: [Mitigate Security Issues](./MITIGATE_SECURITY_ISSUES.md)
+- Parent proposal: [Mitigate Security Issues](../MITIGATE_SECURITY_ISSUES.md)
 - Task plan: [Centralized Authorization System Task Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md)
-- Cutover plan: [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
-- Related future work: [Native Application Authentication](../future/NATIVE_APPLICATION_AUTHENTICATION.md)
+- Cutover plan: [Centralized Authorization System Cutover Plan](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
+- Related future work: [Native Application Authentication](../../future/NATIVE_APPLICATION_AUTHENTICATION.md)
 - Phase: Phase 1 — Enforce Nginx Identity, Authorization, And CORS Controls
 
 ## Summary
@@ -267,7 +267,7 @@ The route inventory should be reviewable against the registered FastAPI routes a
 
 ## Relationship To Native Application Authentication
 
-[Native Application Authentication](../future/NATIVE_APPLICATION_AUTHENTICATION.md) concerns how Shape Shifter establishes identity. This proposal concerns what an established identity may do.
+[Native Application Authentication](../../future/NATIVE_APPLICATION_AUTHENTICATION.md) concerns how Shape Shifter establishes identity. This proposal concerns what an established identity may do.
 
 The authorization system must therefore depend on a stable principal contract, not on nginx headers directly. A small authentication adapter should convert the current verified nginx identity into that principal. A future native login, token, passkey, or external identity-provider adapter must produce the same principal contract.
 

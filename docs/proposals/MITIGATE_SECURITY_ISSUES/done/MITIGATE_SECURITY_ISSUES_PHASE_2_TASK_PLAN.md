@@ -86,7 +86,7 @@ No project-file, upload, backup, download, or directive path can escape its appr
 
 **Decision**
 
-Defer this work to [Secure Ingester Filesystem Boundaries](../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md). The ingester remains disabled for operations that lack complete source, project, output, database, authorization, and containment checks.
+Defer this work to [Secure Ingester Filesystem Boundaries](../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md). The ingester remains disabled for operations that lack complete source, project, output, database, authorization, and containment checks.
 
 ## Progress Tracker
 
@@ -95,7 +95,7 @@ Defer this work to [Secure Ingester Filesystem Boundaries](../CHANGE_REQUEST_ING
 | Approved roots and shared containment guard     | Done | Root documentation, shared guard, resolver integration, and escape-case tests are complete |
 | Execution outputs and downloads                 | Done | Output and download paths are confined and escape-case tests pass |
 | Project files, uploads, backups, and directives | Done | Project, upload, backup, materialized-value, directive, and download paths are guarded; focused escape-case tests pass |
-| Ingester boundaries                             | Deferred | Tracked in [Secure Ingester Filesystem Boundaries](../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md) |
+| Ingester boundaries                             | Deferred | Tracked in [Secure Ingester Filesystem Boundaries](../../CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md) |
 
 ## Definition Of Done
 
