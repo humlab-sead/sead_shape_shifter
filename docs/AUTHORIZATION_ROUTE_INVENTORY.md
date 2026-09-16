@@ -220,4 +220,4 @@ Before merging a route change:
 3. Update [AUTHORIZATION.md](AUTHORIZATION.md) if the policy, principal contract, or denial behavior changes.
 4. Add regression coverage for the route requirement.
 
-The planned automated completeness check remains tracked in [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](proposals/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md).
+The planned automated completeness check remains tracked in [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](proposals/done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md).

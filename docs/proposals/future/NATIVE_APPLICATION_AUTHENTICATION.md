@@ -3,8 +3,8 @@
 ## Status
 
 - Future proposal / not yet approved
-- Related work: [Critical Security Mitigations](../MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES.md)
-- Authorization system: [Centralized Authorization System](../MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
+- Related work: [Critical Security Mitigations](../done/MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES.md)
+- Authorization system: [Centralized Authorization System](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
 - Implemented authorization reference: [AUTHORIZATION.md](../../AUTHORIZATION.md)
 - Goal: evaluate native application authentication after the current nginx identity and application authorization controls are complete
 
@@ -67,4 +67,4 @@ Phase 1 must remain independently releasable and must not wait for this proposal
 
 Future native authentication must preserve or strengthen the Phase 1 security properties: unauthenticated requests are rejected, resource access is authorized, sessions belong to an authenticated identity, and authentication events can be audited.
 
-The [Centralized Authorization System](../MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md) defines the stable principal contract, stored grants, resource ownership, policy decisions, and service enforcement that native authentication must preserve. Native authentication may change how a principal is established, but it must not replace or bypass those authorization controls. Any identity migration must map existing principal IDs explicitly without broadening access.
+The [Centralized Authorization System](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md) defines the stable principal contract, stored grants, resource ownership, policy decisions, and service enforcement that native authentication must preserve. Native authentication may change how a principal is established, but it must not replace or bypass those authorization controls. Any identity migration must map existing principal IDs explicitly without broadening access.

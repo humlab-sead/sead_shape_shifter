@@ -2,7 +2,7 @@
 
 **Status:** Open — assigned to the operations team
 **Opened:** 2026-09-16 (extended the same day with the containment and credential-rotation checks that the development plan left open)
-**Source plan:** [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](../MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md) (Phase 5, closed)
+**Source plan:** [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](../done/MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md) (Phase 5, closed)
 
 ## Purpose
 
@@ -38,14 +38,14 @@ The test deployment on `humlabsead` was inspected on 2026-09-15. Release identit
 - PostgreSQL: `scripts/postgres/create-readonly-role.sh` and `scripts/postgres/verify_readonly_role.sql` pass against a disposable PostgreSQL 16 (`NOINHERIT`, no role memberships, no owned objects, no schema `CREATE`). The deployed `sead_ro` account was probed with read-only catalog queries against the live `sead_staging` database on 2026-09-16: 730 of 730 relations readable, no write privilege on any relation, schema and database `CREATE` denied, no `COPY` membership.
 - The `rolinherit = t` attribute on the deployed `sead_ro` account was handed to the database administrator on 2026-09-16. It is inert while the account has no memberships. The repository role script creates the role with `NOINHERIT`.
 
-Evidence for all of the above is recorded in [SECURITY_CHECK.md](../MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#deployment-verification-record-2026-09-15).
+Evidence for all of the above is recorded in [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#deployment-verification-record-2026-09-15).
 
 ## Key References
 
 | Document | Use |
 |---|---|
-| [SECURITY_CHECK.md](../MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#deployment-verification-record-2026-09-15) | Release identity, checks performed, defects, and limitations from the 2026-09-15 run |
-| [SECURITY_CHECK.md](../MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#live-read-only-role-verification-2026-09-16) | Database grant checks and results against the live test database |
+| [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#deployment-verification-record-2026-09-15) | Release identity, checks performed, defects, and limitations from the 2026-09-15 run |
+| [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md#live-read-only-role-verification-2026-09-16) | Database grant checks and results against the live test database |
 | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-5-verify-podman-deployment-and-update-security-record) | Deployment record and release disposition that consume these results |
 | [container/DEPLOYMENT.md](../../../container/DEPLOYMENT.md) | Build, service install, and proxy setup for the Podman deployment |
 | [container/scripts/service.sh](../../../container/scripts/service.sh) | Service control actions: install, enable, disable, start, stop, restart, status, logs |
@@ -85,4 +85,4 @@ Record the command and its output for each check, then add the result to the dep
 
 - Update the Podman deployment record in [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) Phase 5 from these results.
 - Rewrite the [OPERATIONS.md](../../OPERATIONS.md#post-deployment-verification) post-deployment verification and rollback sections for Podman instead of Docker Compose.
-- Archive this handoff once the release disposition is recorded in [SECURITY_CHECK.md](../MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md).
+- Archive this handoff once the release disposition is recorded in [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md).
