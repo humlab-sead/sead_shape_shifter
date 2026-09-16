@@ -6,7 +6,7 @@ This inventory records the authorization requirement declared by every registere
 
 The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, including the generated OpenAPI, Swagger UI, and ReDoc routes. It also exposes the Swagger OAuth redirect helper at `/docs/oauth2-redirect` and the repository documentation mount at `/docs/*`. The `/assets/*`, frontend SPA catch-all, and API-only `/` route are conditional on the frontend build state described below.
 
-`UNDECLARED` means the route has no `authorization_requirement` metadata. It does not mean the route is anonymously accessible: trusted-proxy middleware requires authentication for all paths except `/api/v1/health` when enabled. Each undeclared route still needs classification before authorization cutover.
+`UNDECLARED` means the route has no `authorization_requirement` metadata. It does not mean the route is anonymously accessible: trusted-proxy middleware requires authentication for all paths except `/api/v1/health` when enabled. An undeclared route still needs classification before authorization cutover; no row currently reads `UNDECLARED`.
 
 ## Requirement Terms
 
@@ -61,7 +61,7 @@ Every row above except the health check requires an authenticated principal thro
 
 | Method   | Path                                                 | Requirement                                  |
 |----------|------------------------------------------------------|----------------------------------------------|
-| `GET`    | `/api/v1/projects`                                   | `UNDECLARED`                                 |
+| `GET`    | `/api/v1/projects`                                   | `authenticated`                              |
 | `GET`    | `/api/v1/projects/{name}`                            | `project:read`                               |
 | `POST`   | `/api/v1/projects/{name}/refresh`                    | `project:edit`                               |
 | `POST`   | `/api/v1/projects`                                   | `application:create_project`                 |
@@ -72,7 +72,7 @@ Every row above except the health check requires an authenticated principal thro
 | `POST`   | `/api/v1/projects/{name}/validate`                   | `project:read`                               |
 | `GET`    | `/api/v1/projects/{name}/backups`                    | `project:read`                               |
 | `POST`   | `/api/v1/projects/{name}/restore`                    | `project:edit`                               |
-| `GET`    | `/api/v1/projects/active/name`                       | `UNDECLARED`                                 |
+| `GET`    | `/api/v1/projects/active/name`                       | `project:read`                               |
 | `POST`   | `/api/v1/projects/{name}/activate`                   | `project:read`                               |
 | `GET`    | `/api/v1/projects/{name}/data-sources`               | `project:read`                               |
 | `POST`   | `/api/v1/projects/{name}/data-sources`               | `project:edit`; `shared_data_source:read`    |
@@ -87,6 +87,10 @@ Every row above except the health check requires an authenticated principal thro
 | `DELETE` | `/api/v1/projects/{name}/layout`                     | `project:edit`                               |
 | `POST`   | `/api/v1/projects/{name}/files`                      | `project:edit`                               |
 | `GET`    | `/api/v1/projects/{name}/files`                      | `project:read`                               |
+
+`GET /api/v1/projects` returns metadata only for projects the principal can read: `ProjectService.list_authorized_projects` requires an `active` resource record and `project:read` for each entry, so the route narrows its response instead of denying the request. Projects without an authorization record are omitted. The route declares no `authorization_requirement` metadata because the check applies to each listed entry rather than to one request; the authenticated-only classification in the automated check records that distinction.
+
+`GET /api/v1/projects/active/name` declares `project:read` on the deployment's active project through `require_active_project(Action.READ)`, which reads the locator from application state because the route carries no project path or query parameter. A request with no active project returns `{"name": null}`; a request for an active project the principal cannot read returns the concealed `404 {"detail": "Resource not found"}`. `POST /api/v1/projects/{name}/activate` requires `project:read` on the named project, so the active project is always readable by the principal that activated it.
 
 ### Entities, Directives, And Validation
 

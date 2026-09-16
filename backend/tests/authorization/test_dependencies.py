@@ -18,6 +18,7 @@ from backend.app.api.v1.endpoints.projects import (
 from backend.app.api.v1.endpoints.projects import router as projects_router
 from backend.app.api.v1.endpoints.sessions import router as sessions_router
 from backend.app.authorization.dependencies import (
+    require_active_project,
     require_application_action,
     require_operation,
     require_project,
@@ -111,6 +112,40 @@ async def test_project_dependency_reads_locator_from_body_only_when_opted_in(tmp
         await query_dependency(request, _principal(), AuthorizationService(repository))
 
     assert error.value.status_code == 404
+    repository.close()
+
+
+@pytest.mark.asyncio
+async def test_active_project_dependency_requires_read_access(tmp_path) -> None:
+    """Authorize the active project and conceal it from a principal without read access."""
+    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
+    resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
+    repository.create_resource(resource)
+    repository.add_grant(Grant("alice", resource.resource_id, "viewer", datetime.now(UTC), "admin"))
+    dependency = require_active_project(Action.READ)
+
+    authorized = await dependency(_principal(), AuthorizationService(repository), locator="project-a")
+
+    assert authorized is not None
+    assert authorized.resource.resource_id == resource.resource_id
+    assert _authorization_requirement(dependency) == {"resource_type": "project", "action": "read"}
+
+    with pytest.raises(HTTPException) as error:
+        await dependency(_principal("bob"), AuthorizationService(repository), locator="project-a")
+
+    assert error.value.status_code == 404
+    repository.close()
+
+
+@pytest.mark.asyncio
+async def test_active_project_dependency_returns_none_without_active_project(tmp_path) -> None:
+    """Return no authorized resource when the deployment has no active project."""
+    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
+    dependency = require_active_project(Action.READ)
+
+    result = await dependency(_principal(), AuthorizationService(repository), locator=None)
+
+    assert result is None
     repository.close()
 
 
@@ -226,6 +261,23 @@ def test_log_routes_require_authentication_without_application_role() -> None:
             if (requirement := _authorization_requirement(dependency.call)) is not None
         ]
         assert requirements == []
+
+
+def test_active_project_route_declares_project_read_requirement() -> None:
+    """Declare the project read requirement on the active project name route."""
+    route = next(
+        route
+        for route in projects_router.routes
+        if isinstance(route, APIRoute) and route.path == "/projects/active/name" and "GET" in (route.methods or [])
+    )
+
+    requirements = {
+        tuple(sorted(requirement.items()))
+        for dependency in route.dependant.dependencies
+        if (requirement := _authorization_requirement(dependency.call)) is not None
+    }
+
+    assert requirements == {(("action", "read"), ("resource_type", "project"))}
 
 
 def test_session_creation_declares_project_edit_requirement() -> None:
