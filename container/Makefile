@@ -103,6 +103,7 @@ help:
 	@echo "  make service-enable      Enable auto-start on boot"
 	@echo "  make service-start       Start via systemd"
 	@echo "  make service-stop        Stop via systemd"
+	@echo "  make service-restart     Restart via systemd"
 	@echo "  make service-status      Show systemd status"
 	@echo "  make service-disable     Disable auto-start"
 	@echo "  make service-logs        Follow systemd logs"
@@ -310,37 +311,40 @@ system-prune:
 # Systemd user service
 # ===========================================================================
 
+# Every target delegates to scripts/service.sh, which owns the unit name and the
+# systemd command for each action. Edit that script to change either.
+
 .PHONY: service-install
 service-install:
-	@$(SCRIPTS_DIR)/service-install.sh
+	@$(SCRIPTS_DIR)/service.sh install
 
 .PHONY: service-enable
 service-enable:
-	systemctl --user enable shape-shifter
-	@echo "$(GREEN)+ Service enabled for auto-start$(NC)"
+	@$(SCRIPTS_DIR)/service.sh enable
 
 .PHONY: service-disable
 service-disable:
-	systemctl --user disable shape-shifter
-	@echo "$(GREEN)+ Service disabled$(NC)"
+	@$(SCRIPTS_DIR)/service.sh disable
 
 .PHONY: service-start
 service-start:
-	systemctl --user start shape-shifter
-	@echo "$(GREEN)+ Service started$(NC)"
+	@$(SCRIPTS_DIR)/service.sh start
 
 .PHONY: service-stop
 service-stop:
-	systemctl --user stop shape-shifter
-	@echo "$(GREEN)+ Service stopped$(NC)"
+	@$(SCRIPTS_DIR)/service.sh stop
+
+.PHONY: service-restart
+service-restart:
+	@$(SCRIPTS_DIR)/service.sh restart
 
 .PHONY: service-status
 service-status:
-	systemctl --user status shape-shifter
+	@$(SCRIPTS_DIR)/service.sh status
 
 .PHONY: service-logs
 service-logs:
-	journalctl --user -u shape-shifter -f
+	@$(SCRIPTS_DIR)/service.sh logs
 
 # ===========================================================================
 # Utilities
