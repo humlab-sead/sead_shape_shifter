@@ -506,6 +506,11 @@ expected `sample` and `sample_taxon` package tables but received none. The test
 file is unchanged from the tested commit and the worktree changes do not touch
 the ingester package builder.
 
+**Release disposition.** The failure is accepted as unrelated and pre-existing.
+It does not exercise authentication, authorization, filesystem boundaries, SQL
+policy, DuckDB restrictions, or response redaction, so it does not block this
+security release. It remains a correctness follow-up tracked outside this phase.
+
 ### Finding matrix
 
 | Finding IDs | Result mapping |
@@ -520,6 +525,54 @@ the ingester package builder.
 | N1–N3 | Existing practical-verification evidence above; no new live database or ingester environment was available. |
 | D2–D3 | Existing dev reproduction and review evidence above; these are correctness follow-ups, not Phase 5 security pass criteria. |
 
+### PostgreSQL read-only role verification (2026-09-15)
+
+The shipped role scripts were run against a disposable PostgreSQL 16 server
+created for this check. No SEAD database was involved, and the server and
+temporary files were removed afterwards.
+
+| Step | Command | Result |
+|---|---|---|
+| Create the role | `scripts/postgres/create-readonly-role.sh --role ss_ro_test --database ss_ro_test --schema public` | Pass — created with `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS` |
+| Catalog check | `scripts/postgres/verify_readonly_role.sql` | Pass — exit 0; `rolsuper`, `rolinherit`, `rolcreatedb`, `rolcreaterole`, `rolreplication`, and `rolbypassrls` are all `f`, with no role memberships, no owned objects, and no `CREATE` on the schema |
+| Behaviour check | `scripts/postgres/test-readonly-role.sh --role ss_ro_test --database ss_ro_test --schema public --table sacrificial --column name` | Pass — exit 0; `SELECT` returned 1 row while running as the role, and `INSERT`, `UPDATE`, `DELETE`, `CREATE TABLE`, `CREATE SCHEMA`, `ALTER ROLE`, `SET ROLE postgres`, `COPY ... TO PROGRAM`, and `BEGIN; SET TRANSACTION READ WRITE; INSERT` each failed with `permission denied` |
+
+This verifies the role the repository scripts create, including the `NOINHERIT`
+attribute. The deployed account is verified separately below.
+
+### Live read-only role verification (2026-09-16)
+
+The deployed account was checked against the live test database `sead_staging`
+on `humlabsead.srv.its.umu.se:9023` as user `sead_ro`. The connection settings
+come from `tests/.env`, and
+`backend/tests/integration/test_data_source_connections.py::test_postgresql_connection`
+passes against that server.
+
+Only read-only catalog queries were used. The behaviour script described above
+was deliberately **not** run against this server: its expected-failure blocks
+include `INSERT`, `CREATE TABLE`, and `BEGIN; SET TRANSACTION READ WRITE;
+INSERT; COMMIT`, which would persist real changes if the role unexpectedly held
+the privilege the check assumes it lacks. Catalog functions answer the same
+question without changing data.
+
+| Check | Query basis | Result |
+|---|---|---|
+| Role attributes | `pg_roles` for `sead_ro` | `rolsuper`, `rolcreatedb`, `rolcreaterole`, `rolreplication`, and `rolbypassrls` are `f`; `rolinherit` is `t` |
+| Role memberships | `pg_auth_members` | 0 |
+| Read access | `has_table_privilege(..., 'SELECT')` over 730 relations in 9 non-system schemas | 730 of 730 |
+| Write access | `has_table_privilege(..., 'INSERT'/'UPDATE'/'DELETE'/'TRUNCATE')` over the same relations | 0 of 730 for each privilege |
+| Schema DDL | `has_schema_privilege(..., 'CREATE')`, `pg_namespace.nspowner` | `CREATE` denied in all 10 schemas; owns none |
+| Database DDL | `has_database_privilege(..., 'CREATE')` | Denied |
+| Object ownership | `pg_class.relowner`, `pg_proc.proowner` | 0 relations, 0 functions |
+| `COPY` to a file or program | membership in `pg_execute_server_program`, `pg_read_server_files`, `pg_write_server_files` | Not a member of any |
+| Temporary tables | `has_database_privilege(..., 'TEMPORARY')` | Allowed; session-local, and does not change persistent data |
+
+The account is read-only for persistent data, and the `COPY` and role
+operations listed in the phase task are denied. The single deviation is
+`rolinherit = t`. It is inert while the role is a member of no other role, so
+no write privilege is inherited today; the risk is latent, and it becomes a real
+write path if the role is later added to a write-capable role.
+
 ### PostgreSQL role disposition
 
 The database-side read-only checks and the Shape Shifter `SELECT` integration
@@ -527,13 +580,111 @@ test passed using `sead_ro`. This account is a pre-existing, system-wide SEAD
 user and is not dedicated to Shape Shifter. Creating or replacing it with an
 application-specific account is therefore outside this repository's scope.
 
-The `NOINHERIT` correction has been passed to the DBA. It is a database
-administration action outside Shape Shifter's control and must be tracked as a
-deployment exception or external prerequisite, not as an application defect.
+The `rolinherit` attribute is still set on the deployed account. It was
+confirmed against the live test database on 2026-09-16, together with zero role
+memberships, so the account inherits no privilege today. Setting `NOINHERIT` is
+a database administration action outside Shape Shifter's control. It was handed
+over to the database administrator on 2026-09-16 and is no longer tracked as an
+open item in this project; the correction, and any later membership grant that
+would make the attribute effective, are owned by the database administrator. The
+repository's `scripts/postgres/configure_readonly_role.sql` creates the role
+with `NOINHERIT`, so new deployments do not carry the deviation.
 
-Deployment verification is not complete: no target deployment environment,
-immutable image digest, proxy/firewall access, database-grant inspection, or
-container-log access was provided for this run.
+Deployment verification was not possible during that run. It was performed
+later on the test deployment; see the deployment verification record below.
+
+---
+
+## Deployment Verification Record (2026-09-15)
+
+The test deployment on the shared host `humlabsead` was inspected after the
+centralized authorization system and the accompanying deployment changes were
+built and started. This section records the release identity, the checks that
+passed, the defects that were found and corrected, and what remains unverified.
+
+### Release identity
+
+| Item | Value |
+|---|---|
+| Source commit | `95c3d017dca89b17ef1084d194ad7ee1b84ab99c` (`dev`), recorded in the image label `org.opencontainers.image.revision` |
+| Image | `localhost/shape-shifter:dev`, built with `GIT_REF=dev make build` |
+| Image digest | `sha256:aa320c4c89811306b15ed9fbb43474290a7e75b1becb10deadb2f3840a4d0d90` |
+| Container | `93b867cbe30b`, status `Up (healthy)` |
+| Backend port | `127.0.0.1:8012->8012/tcp` |
+| Service model | `podman-compose` run by the systemd unit `podman-compose@shapeshifter.service`, not Quadlet |
+| Reverse proxy | nginx site `test-shape-shifter.sead.se` with Basic auth and `proxy_set_header X-Authenticated-User $remote_user` |
+
+The source-commit label was added in this change. Before it, the image carried
+only the buildah version label, so no recorded value tied a deployed image to a
+source commit.
+
+The build recipe used for this deployment is not yet committed. The
+application source inside the image is exactly `95c3d017`; only the added
+labels differ. Commit `container/Containerfile` and
+`container/scripts/build.sh` so the recorded digest can be reproduced from the
+repository.
+
+### Checks performed
+
+| Check | Method | Result |
+|---|---|---|
+| Release identity matches the running container | `podman ps`, `podman inspect`, `podman image inspect` | Pass — label revision equals `dev` HEAD; digest equals the build output |
+| Port publication | `podman ps` port column and host `ss -ltn` | Pass — `127.0.0.1:8012` only |
+| LAN reachability | `curl http://172.18.134.53:8012/api/v1/projects` | Pass — connection refused |
+| Unauthenticated protected routes | `curl` without an identity header | Pass — `401` for `/api/v1/projects`, `/api/v1/docs`, `/docs`, `/api/v1/openapi.json` |
+| Public health route | `curl http://127.0.0.1:8012/api/v1/health` | `200`; returns no project, database, or filesystem data |
+| Proxy denial | `curl https://test-shape-shifter.sead.se/api/v1/projects` without Basic credentials | Pass — `401` from nginx |
+| Single worker | container command | Pass — uvicorn `--workers 1` |
+| Health check and restart policy | `podman ps`, compose file | Pass — healthy, `restart: unless-stopped`, 0 restarts |
+| Focused security suites on the release commit | listed test files below | Pass — one skipped, no failures |
+
+The focused suites re-run on `95c3d017` were `backend/tests/security`,
+`backend/tests/authorization`, `backend/tests/test_cors.py`,
+`backend/tests/test_session_authorization.py`,
+`backend/tests/services/test_execute_service_output_paths.py`, and
+`tests/configuration/test_directive_path_confinement.py`.
+
+Mounts, logging, environment variable names, and the service model were
+inspected on the container instance that ran before the image change. That
+change replaced only the image, so the container configuration was unchanged;
+re-inspection of the current container is still pending. Environment variables
+were listed by name only, and no credential value was read.
+
+### Defects found and corrected
+
+The first inspection of the running deployment found two failures.
+
+| Defect | Detail | Resolution |
+|---|---|---|
+| Image built from the wrong source | `make build` resolves `GIT_REF ?= main`, so the deployed image was built from `main` (release 2.1.0) and contained no `backend/app/authorization` package. Unauthenticated requests returned `200`, and `/api/v1/docs`, `/docs`, and `/api/v1/openapi.json` were reachable. | Rebuilt with `GIT_REF=dev`. The running image now enforces proxy authentication and returns `401` for unauthenticated requests. |
+| Backend published on all interfaces | The deployed `podman-compose.yml` used `"${HOST_PORT:-8012}:8012"`, so `172.18.134.53:8012` was reachable directly and bypassed the nginx Basic auth. | The deployed file now publishes `"127.0.0.1:${HOST_PORT:-8012}:8012"`. Direct access from the LAN address is refused. |
+
+### Limitations and residual risk
+
+- **The identity header is trusted from any source.**
+  `ProxyAuthenticationMiddleware` accepts any non-empty, printable value in
+  `X-Authenticated-User` up to 255 characters and does not check the source
+  address. Remote callers are covered because the port is on loopback and nginx
+  overwrites the header, but any local process on the host can assert an
+  identity, including a bootstrap administrator. A forged non-administrator
+  identity returned `200` with an empty project list, so per-principal filtering
+  works; the residual risk is that a local actor chooses the principal.
+  Possible mitigations, which are new controls and therefore outside this phase:
+  a source-address check, a shared secret between nginx and the application, or
+  a Unix socket.
+- **`make up` can run an older image when `IMAGE_NAME` and `GIT_REF` disagree.**
+  `make build` tags a branch build after the ref, so `GIT_REF=dev` produces
+  `shape-shifter:dev`, while `make up` starts whatever `IMAGE_NAME` names. The
+  current deployment was started with `IMAGE_NAME=shape-shifter:dev make up`.
+  Both values now live together in `container/.env`, tracked as
+  `container/.env.example`, so the mismatch is visible in one reviewed file
+  instead of hidden in script defaults. The hazard is reduced but not removed:
+  nothing yet checks that the running container's revision label matches the
+  configured ref.
+- **Not verified in this run:** firewall rules; PostgreSQL role grants; the
+  allowed-access path through nginx with a real principal; cross-resource
+  isolation with real principals; authorization database placement and grants;
+  container, proxy, and database log review; and the rollback exercise.
 
 ---
 
