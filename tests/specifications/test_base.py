@@ -308,13 +308,13 @@ class TestFieldValidator:
         """Test rule_handler returns add_error for error severity."""
         validator = ConcreteFieldValidator(project_cfg, severity="E")
 
-        assert validator.rule_handler == validator.add_error
+        assert validator.rule_handler.__func__ is validator.add_error.__func__
 
     def test_rule_handler_warning(self, project_cfg):
         """Test rule_handler returns add_warning for warning severity."""
         validator = ConcreteFieldValidator(project_cfg, severity="W")
 
-        assert validator.rule_handler == validator.add_warning
+        assert validator.rule_handler.__func__ is validator.add_warning.__func__
 
 
 class TestFieldValidatorRegistry:

@@ -699,7 +699,6 @@ class TestUCanAccessLoader:
     async def test_test_connection_failure(self, loader):
         """Should handle MS Access connection failure."""
 
-
         with patch.object(loader, "get_tables", new_callable=AsyncMock) as mock_get_tables:
             mock_get_tables.side_effect = Exception("Cannot open database file")
 
