@@ -145,16 +145,38 @@ Install the user service so the container starts on boot:
 sudo scripts/deploy/install_systemd_service.sh test-shape-shifter.sead.se
 ```
 
-The unit runs `podman-compose up -d` from `~/container` and sets
-`CONTAINER_DATA_DIR=~/container-data`. Control it with:
+The unit starts the container through `scripts/up.sh` and stops it with
+`scripts/down.sh`, the same scripts an operator runs, so a systemd start and a
+manual `make up` resolve `container/.env` identically. The unit sets no
+deployment configuration of its own: a value in the unit environment would
+override `container/.env`, because the compose tools prefer the environment over
+the file.
+
+Control it with the `service-*` targets, which call `scripts/service.sh`:
 
 ```bash
-systemctl --user status shape-shifter
-systemctl --user restart shape-shifter
+make service-status
+make service-restart
+make service-logs
 ```
+
+The script takes one action: `install`, `enable`, `disable`, `start`, `stop`,
+`restart`, `status` or `logs`. It holds the unit name, so
+`SERVICE_NAME=shape-shifter-dev scripts/service.sh status` inspects a unit with
+another name.
 
 From an admin account, target another user's session with
 `systemctl --user -M user@ start shape-shifter`.
+
+After changing `service/shape-shifter.service`, reinstall it and restart:
+
+```bash
+make service-install
+make service-restart
+```
+
+`make service-install` copies the unit file and runs `systemctl --user
+daemon-reload`, so no separate reload is needed.
 
 ---
 
