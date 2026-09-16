@@ -2,6 +2,10 @@
 # Show container status.
 set -euo pipefail
 
+# Load container/.env values that the environment has not already set.
+# shellcheck source=load-env.sh
+. "$(dirname -- "${BASH_SOURCE[0]}")/load-env.sh"
+
 CONTAINER_NAME="${CONTAINER_NAME:-shape-shifter}"
 
 echo "Container status:"

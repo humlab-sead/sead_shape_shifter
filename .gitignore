@@ -108,6 +108,8 @@ update
 csv_files
 tests/output
 **/.env*
+# container/.env.example holds non-secret deployment defaults and is tracked.
+!container/.env.example
 **/chat*.json
 bin
 *.pdf
