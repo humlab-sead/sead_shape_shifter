@@ -56,10 +56,12 @@ make install-ucanaccess   # only needed for MS Access data sources
 make setup                # create .env, container-data/ and backend.env
 nano .env                 # image, branch, port and frontend build arguments
 nano ../container-data/backend.env
-make build                # build the image from GitHub (repository and ref from .env)
-make up
+make build && make restart # rebuild the image and recreate the running container
 make healthcheck
 ```
+
+Use `make build && make restart` when rebuilding a running deployment so the
+container is recreated with the newly built image.
 
 The application is available at `http://localhost:8012/`. Set a different host
 port when several environments share a host:
