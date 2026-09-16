@@ -47,7 +47,7 @@ Ensure that sensitive operations require the verified identity authenticated by 
 - [x] Document the nginx-to-FastAPI identity contract, including the trusted header or token, failure behavior, and key or header verification.
 - [x] Configure nginx to strip client-supplied identity values and pass only the verified identity to FastAPI.
 - [x] Enforce the verified identity at the FastAPI application boundary, including routes outside `api_router`.
-- [x] Implement the [centralized authorization system](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md) for projects, shared data sources, logs, schemas, queries, and tasks by following its [completed task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md). Track the remaining upload, output, backup, and operation identifier work in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](./SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
+- [x] Implement the [centralized authorization system](./done/CENTRALIZED_AUTHORIZATION_SYSTEM.md) for projects, shared data sources, logs, schemas, queries, and tasks by following its [completed task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md). Track the remaining upload, output, backup, and operation identifier work in [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](./SERVER_OWNED_RESOURCE_IDENTIFIERS.md).
 - [x] Reject direct requests that do not come through the trusted nginx path; enforce this with Docker and network controls as well as application checks.
 - [x] Keep health checks public only when required by deployment health checks.
 - [x] Separate project editing sessions from authenticated identity and verify session ownership.
@@ -128,7 +128,7 @@ Data-source requests cannot probe or connect to unapproved destinations. Error r
 **Objective**
 
 Prove that the mitigations hold on the release candidate and in the deployed environment.
-Detailed phase-5 work is tracked in [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md).
+Detailed phase-5 work is tracked in [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md).
 
 **Tasks**
 

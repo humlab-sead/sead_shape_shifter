@@ -2,7 +2,7 @@
 
 **Status:** Open — assigned to the operations team
 **Opened:** 2026-09-16
-**Source plan:** [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md) (Phase 5)
+**Source plan:** [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](./done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md) (Phase 5, closed)
 
 ## Purpose
 

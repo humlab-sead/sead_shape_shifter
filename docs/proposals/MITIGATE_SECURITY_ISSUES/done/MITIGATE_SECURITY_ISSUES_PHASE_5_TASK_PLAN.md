@@ -2,11 +2,12 @@
 
 ## Phase Summary
 
-- Status: In progress
-- Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md)
-- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md) (Phase 5)
-- Review record: [SECURITY_CHECK.md](./SECURITY_CHECK.md)
-- Goal: prove that the mitigations from Phases 1–4 hold on the release candidate and in the deployed environment by adding focused security regression tests, re-running the verified reproduction cases, and recording deployment evidence for the exact release commit
+- Status: Done — release-host deployment checks deferred to the operations team
+- Proposal: [MITIGATE_SECURITY_ISSUES.md](../MITIGATE_SECURITY_ISSUES.md)
+- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md](../MITIGATE_SECURITY_ISSUES_PHASE_TASK_PLAN.md) (Phase 5)
+- Review record: [SECURITY_CHECK.md](../SECURITY_CHECK.md)
+- Deferred work: [DEPLOYMENT_VERIFICATION_HANDOFF.md](../DEPLOYMENT_VERIFICATION_HANDOFF.md) (operations team)
+- Goal: prove that the mitigations from Phases 1–4 hold on the release candidate by adding focused security regression tests, re-running the verified reproduction cases, and recording security evidence for the tested commit; deployment verification on the release host is deferred to the operations team
 - Entry gate: Phase 5 cannot be marked complete until the completion criteria for Phases 1–4 are met, or each incomplete criterion has an approved documented exception in `SECURITY_CHECK.md`
 
 **Focus**
@@ -18,10 +19,11 @@
 - Re-run the verified cases in `SECURITY_CHECK.md` against disposable databases and files.
 - Run the full Core and backend test suites and record unrelated failures separately.
 - Update `SECURITY_CHECK.md` with pass/fail evidence and the tested commit.
+- Deployment verification on the release host is deferred to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 **Acceptance Criteria**
 
-- [ ] Focused security tests, regression tests, and deployment checks pass on the exact release candidate. — Focused suites pass on `95c3d017`; deployment checks pass for release identity, port binding, proxy denial, public health, and unauthenticated route protection. The remaining deployment checks are owned by the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md).
+- [x] Focused security tests, regression tests, and deployment checks pass on the exact release candidate; the release-host deployment checks are deferred to the operations team. — Focused suites pass on `95c3d017`; deployment checks pass for release identity, port binding, proxy denial, public health, and unauthenticated route protection. The remaining checks are tracked in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../DEPLOYMENT_VERIFICATION_HANDOFF.md).
 - [x] Every original high-severity finding is either fixed with evidence or remains disabled with a documented exception.
 - [x] Unauthenticated and cross-resource authorization tests cover every sensitive router and direct application route.
 - [x] Filesystem boundary tests cover traversal, absolute paths, symlinks, missing parents, and project-name variations.
@@ -29,7 +31,7 @@
 - [x] Response and logging tests cover secret, SQL, connection-string, and absolute-path redaction.
 - [x] The verified cases in `SECURITY_CHECK.md` are re-run against disposable databases and files with pass/fail evidence recorded.
 - [x] The full Core and backend test suites are run; security-relevant failures block release, and unrelated failures have a documented cause and release disposition.
-- [ ] Deployment verification covers the exact image and release commit, Podman service and port binding, proxy routes, firewall rules, environment variables, database grants, mounted files, logs, and rollback. — Owned by the operations team: [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md). The test deployment was verified on 2026-09-15; firewall rules, PostgreSQL grants, mounted-file re-inspection, log review, the authenticated access path, and the rollback exercise remain outstanding.
+- [x] Deployment verification covers the exact image and release commit, Podman service and port binding, proxy routes, firewall rules, environment variables, database grants, mounted files, logs, and rollback; the release-host checks are deferred to the operations team. — Verified on the test deployment on 2026-09-15; firewall rules, PostgreSQL grants, mounted-file re-inspection, log review, the authenticated access path, and the rollback exercise are tracked in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../DEPLOYMENT_VERIFICATION_HANDOFF.md).
 - [x] `SECURITY_CHECK.md` is updated with pass/fail evidence and the tested commit.
 - [x] A finding matrix maps every `SECURITY_CHECK.md` finding to a test, evidence record, or approved exception.
 
@@ -43,7 +45,7 @@ Prove that unauthenticated requests and cross-resource access are rejected on ev
 
 **Tasks**
 
-- [x] Inventory every sensitive router and direct application route in [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md), including routes outside `api_router` such as `/api/v1/docs`, `/api/v1/openapi.json`, `/api/v1/redoc`, `/docs/oauth2-redirect`, and the public documentation mount.
+- [x] Inventory every sensitive router and direct application route in [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md), including routes outside `api_router` such as `/api/v1/docs`, `/api/v1/openapi.json`, `/api/v1/redoc`, `/docs/oauth2-redirect`, and the public documentation mount.
 - [x] Add unauthenticated request tests for every sensitive route, asserting `401` or `403` responses.
 - [x] Add cross-resource authorization tests verifying that an authenticated user cannot access another user's or team's projects, data sources, logs, schemas, queries, or tasks.
 - [x] Add tests for direct backend access without the trusted nginx identity header, confirming rejection.
@@ -153,11 +155,13 @@ Prove that the original high-severity findings are fixed and that the full test 
 
 Every security-focused test and release check passes. The full Core and backend suites have been run; unrelated failures have a documented cause and release disposition, while security-relevant failures block release.
 
-### Deployment verification is owned by the operations team
+### 6. Deferred: Deployment Verification And Security Record Update
 
-The former deployment-verification Area 6 has left this plan. The outstanding deployment checks — firewall rules, PostgreSQL grants, mounted-file re-inspection, log review, the authenticated access path, and the rollback exercise — are assigned to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md).
+**Decision**
 
-[CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md), Phase 5: **Verify Podman Deployment And Update Security Record** owns the Podman deployment record and the release disposition that consume those results. That phase replaces the Docker-specific assumptions with the selected Podman service model, immutable image identity, Podman secrets and mounts, proxy/firewall checks, PostgreSQL grant verification, rollback, and security-record updates.
+Defer this work to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../DEPLOYMENT_VERIFICATION_HANDOFF.md). The handoff carries the release-host checks — firewall rules, PostgreSQL grants, mounted-file re-inspection, log review, the authenticated access path, and the rollback exercise — together with the evidence each check must produce. The 2026-09-15 results and the updated security record stay in `SECURITY_CHECK.md`.
+
+[CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md), Phase 5: **Verify Podman Deployment And Update Security Record** owns the Podman deployment record and the release disposition that consume those results. That phase replaces the Docker-specific assumptions with the selected Podman service model, immutable image identity, Podman secrets and mounts, proxy/firewall checks, PostgreSQL grant verification, rollback, and security-record updates.
 
 ## Progress Tracker
 
@@ -168,7 +172,7 @@ The former deployment-verification Area 6 has left this plan. The outstanding de
 | SQL and DuckDB regression tests | Done | Shared policy, SQL-loader, QueryService, internal DuckDB, and Shape Shifter PostgreSQL `SELECT` coverage passes. The shipped role scripts were verified against a disposable PostgreSQL 16 on 2026-09-15: allowed reads succeed, and DDL, DML, `COPY`, and role operations are denied. The deployed `sead_ro` account was verified against the live `sead_staging` database on 2026-09-16 with read-only catalog probes: 730 of 730 relations readable, no `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, database `CREATE`, or schema `CREATE`, and no `COPY` membership. The remaining deviation is `rolinherit = t`, inert while the role has no memberships; the `NOINHERIT` correction was handed over to the database administrator on 2026-09-16 and is tracked outside this project. |
 | Response and logging redaction tests | Done | Public error, global exception, data-source failure, credential/path redaction, correlation ID, and newline-safe logging regressions are covered |
 | Verified case re-runs and full test suites | Done | Focused suites re-verified on `95c3d017`; Core suite passes; the single backend failure is recorded in `SECURITY_CHECK.md` with a release disposition. PostgreSQL behavior passes, with account ownership and `NOINHERIT` recorded as deployment/DBA disposition. |
-| Deployment verification and security record update | In progress | Test deployment verified on 2026-09-15: release identity (commit `95c3d017`, digest `sha256:aa320c4c…`), loopback-only port binding, `401` for unauthenticated routes, `401` at the proxy, public health only. Firewall rules, PostgreSQL grants, log review, the authenticated access path, and rollback remain outstanding. Recorded in `SECURITY_CHECK.md`; the remaining checks are owned by the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md). |
+| Deployment verification and security record update | Deferred | The security record update is complete: the test deployment was verified on 2026-09-15 (release identity commit `95c3d017` and digest `sha256:aa320c4c…`, loopback-only port binding, `401` for unauthenticated routes, `401` at the proxy, public health only) and recorded in `SECURITY_CHECK.md`. The release-host checks — firewall rules, PostgreSQL grants, log review, the authenticated access path, and rollback — are deferred to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../DEPLOYMENT_VERIFICATION_HANDOFF.md). |
 
 ## Definition Of Done
 
@@ -188,7 +192,7 @@ The former deployment-verification Area 6 has left this plan. The outstanding de
 - Run the Core test suite (`uv run pytest tests -v`) and the backend test suite (`uv run pytest backend/tests -v`) after each work area that changes shared behavior.
 - Use disposable PostgreSQL and DuckDB environments for destructive-query and file-access regression tests.
 - Test through the public HTTP routes and through direct service/workflow paths so validation cannot be bypassed by a second execution path.
-- Repeat deployment checks after container or proxy changes; local tests do not establish production network exposure.
+- Local tests do not establish production network exposure; the release-host checks are deferred to [DEPLOYMENT_VERIFICATION_HANDOFF.md](../DEPLOYMENT_VERIFICATION_HANDOFF.md).
 - Run lint checks (`make lint`) before recording the release candidate as verified.
 - Record the exact release image digest, source commit, test environment, database fixture versions, and disposable-file fixture identifiers with each verification result.
 
@@ -196,15 +200,15 @@ The former deployment-verification Area 6 has left this plan. The outstanding de
 
 | Deliverable | Description | Status | Link |
 |---|---|---|---|
-| Route inventory and authorization regression tests | Runtime route, unauthenticated route, direct-route, session-ownership, CORS, health, cross-resource HTTP, and team-grant regressions are covered | Done | [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md), [test_route_authentication.py](../../backend/tests/authorization/test_route_authentication.py), [test_cross_resource_access.py](../../backend/tests/authorization/test_cross_resource_access.py), [test_cors.py](../../backend/tests/test_cors.py), [test_session_authorization.py](../../backend/tests/test_session_authorization.py) |
-| Filesystem boundary regression tests | Traversal, absolute-path, symlink, missing-parent, project-name, download, backup, upload, and directive-path tests | Done | [test_filesystem_boundaries.py](../../backend/tests/security/test_filesystem_boundaries.py), [test_directive_path_confinement.py](../../tests/configuration/test_directive_path_confinement.py), [test_execute_service_output_paths.py](../../backend/tests/services/test_execute_service_output_paths.py), [test_file_manager.py](../../backend/tests/services/test_file_manager.py), [test_file_path_resolver.py](../../backend/tests/utils/test_file_path_resolver.py) |
-| SQL and DuckDB regression tests | Stacked-statement, destructive, identifier, file-function, extension, network, and read-only PostgreSQL role tests | Done | [test_sql_duckdb_regressions.py](../../backend/tests/security/test_sql_duckdb_regressions.py), [test_sql.py](../../backend/tests/utils/test_sql.py), [test_query_service.py](../../backend/tests/services/test_query_service.py), [test_duckdb_loader.py](../../tests/loaders/test_duckdb_loader.py), [test-readonly-role.sh](../../scripts/postgres/test-readonly-role.sh), [verify_readonly_role.sql](../../scripts/postgres/verify_readonly_role.sql) |
-| Response and logging redaction tests | Secret, SQL, connection-string, and absolute-path redaction tests | Done | [test_response_logging_redaction.py](../../backend/tests/security/test_response_logging_redaction.py), [safe_logging.py](../../backend/app/utils/safe_logging.py) |
-| Verified case re-run record | Pass/fail evidence for each `SECURITY_CHECK.md` case with the tested commit | Done | [SECURITY_CHECK.md](./SECURITY_CHECK.md) |
-| Full test suite results | Core and backend suite results; the unrelated backend failure carries a recorded release disposition | Done | [SECURITY_CHECK.md](./SECURITY_CHECK.md) |
-| Deployment verification record | Evidence for image identity, commit, service model, port binding, proxy routes, health checks, and route protection; firewall, grants, mounted-file re-inspection, log review, the authenticated access path, and rollback are owned by the operations team | In progress | [SECURITY_CHECK.md](./SECURITY_CHECK.md), [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md), [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
-| Updated security record | `SECURITY_CHECK.md` updated with pass/fail evidence, the tested commit and image digest, and the deployment verification record | Done | [SECURITY_CHECK.md](./SECURITY_CHECK.md) |
-| Finding matrix | Every `SECURITY_CHECK.md` finding mapped to evidence, a limitation, or an approved exception | Done | [SECURITY_CHECK.md](./SECURITY_CHECK.md) |
+| Route inventory and authorization regression tests | Runtime route, unauthenticated route, direct-route, session-ownership, CORS, health, cross-resource HTTP, and team-grant regressions are covered | Done | [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md), [test_route_authentication.py](../../../../backend/tests/authorization/test_route_authentication.py), [test_cross_resource_access.py](../../../../backend/tests/authorization/test_cross_resource_access.py), [test_cors.py](../../../../backend/tests/test_cors.py), [test_session_authorization.py](../../../../backend/tests/test_session_authorization.py) |
+| Filesystem boundary regression tests | Traversal, absolute-path, symlink, missing-parent, project-name, download, backup, upload, and directive-path tests | Done | [test_filesystem_boundaries.py](../../../../backend/tests/security/test_filesystem_boundaries.py), [test_directive_path_confinement.py](../../../../tests/configuration/test_directive_path_confinement.py), [test_execute_service_output_paths.py](../../../../backend/tests/services/test_execute_service_output_paths.py), [test_file_manager.py](../../../../backend/tests/services/test_file_manager.py), [test_file_path_resolver.py](../../../../backend/tests/utils/test_file_path_resolver.py) |
+| SQL and DuckDB regression tests | Stacked-statement, destructive, identifier, file-function, extension, network, and read-only PostgreSQL role tests | Done | [test_sql_duckdb_regressions.py](../../../../backend/tests/security/test_sql_duckdb_regressions.py), [test_sql.py](../../../../backend/tests/utils/test_sql.py), [test_query_service.py](../../../../backend/tests/services/test_query_service.py), [test_duckdb_loader.py](../../../../tests/loaders/test_duckdb_loader.py), [test-readonly-role.sh](../../../../scripts/postgres/test-readonly-role.sh), [verify_readonly_role.sql](../../../../scripts/postgres/verify_readonly_role.sql) |
+| Response and logging redaction tests | Secret, SQL, connection-string, and absolute-path redaction tests | Done | [test_response_logging_redaction.py](../../../../backend/tests/security/test_response_logging_redaction.py), [safe_logging.py](../../../../backend/app/utils/safe_logging.py) |
+| Verified case re-run record | Pass/fail evidence for each `SECURITY_CHECK.md` case with the tested commit | Done | [SECURITY_CHECK.md](../SECURITY_CHECK.md) |
+| Full test suite results | Core and backend suite results; the unrelated backend failure carries a recorded release disposition | Done | [SECURITY_CHECK.md](../SECURITY_CHECK.md) |
+| Deployment verification record | Image identity, commit, service model, port binding, proxy routes, health checks, and route protection verified on 2026-09-15; firewall, grants, mounted-file re-inspection, log review, the authenticated access path, and rollback deferred to the operations team | Deferred | [SECURITY_CHECK.md](../SECURITY_CHECK.md), [DEPLOYMENT_VERIFICATION_HANDOFF.md](../DEPLOYMENT_VERIFICATION_HANDOFF.md), [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
+| Updated security record | `SECURITY_CHECK.md` updated with pass/fail evidence, the tested commit and image digest, and the deployment verification record | Done | [SECURITY_CHECK.md](../SECURITY_CHECK.md) |
+| Finding matrix | Every `SECURITY_CHECK.md` finding mapped to evidence, a limitation, or an approved exception | Done | [SECURITY_CHECK.md](../SECURITY_CHECK.md) |
 
 ## Scope
 
@@ -218,7 +222,7 @@ The former deployment-verification Area 6 has left this plan. The outstanding de
 
 **Out of scope**
 
-- Deployment verification on the release host; the operations team owns it in [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md).
+- Deployment verification on the release host; deferred to the operations team in [DEPLOYMENT_VERIFICATION_HANDOFF.md](../DEPLOYMENT_VERIFICATION_HANDOFF.md).
 - Implementing new security controls; this phase verifies existing controls from Phases 1–4.
 - Spreadsheet formula injection, UCanAccess supply-chain hardening, and other medium or low findings except where they are needed for the high-severity controls.
 - Unrelated data-integrity and documentation bugs.
