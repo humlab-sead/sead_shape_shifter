@@ -155,10 +155,8 @@ class AddIdentityMappingSystemIdToPublicIdPolicy(PolicyBase):
 
             public_primary_keys: set[int] = self.service.get_primary_key_values(table_name, table.pk_name)
             if set(referenced_keys) - public_primary_keys:
-                logger.warning(
-                    f"Table '{table_name}' has referenced keys that are not primary keys: {', '
-                        .join(map(str, referenced_keys))}"
-                )
+                logger.warning(f"Table '{table_name}' has referenced keys that are not primary keys: {', '
+                        .join(map(str, referenced_keys))}")
 
             self.submission.data_tables[table_name] = pd.DataFrame({"system_id": referenced_keys, table.pk_name: list(referenced_keys)})
 

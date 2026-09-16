@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import httpx
-from click.testing import CliRunner
 import pytest
+from click.testing import CliRunner
 
 from backend.app.authorization.membership import HttpGroupMembershipResolver, MembershipLookupStatus
 from backend.app.authorization.models import Grant, GrantSubjectType, ResourceRecord, ResourceType

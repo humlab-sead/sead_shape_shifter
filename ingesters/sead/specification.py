@@ -202,10 +202,8 @@ class ColumnTypesSpecification(SpecificationBase):
             if all(data_table[column.column_name].isna()):
                 continue
             if (column.data_type.lower(), data_column_type.lower()) not in self.TYPE_COMPATIBILITY_MATRIX:
-                self.warn(
-                    f"type clash: {table_name}.{
-                    column.column_name} {column.data_type}<=>{data_column_type}"
-                )
+                self.warn(f"type clash: {table_name}.{
+                    column.column_name} {column.data_type}<=>{data_column_type}")
         return not self.has_errors()
 
 
@@ -228,10 +226,8 @@ class SubmissionTableTypesSpecification(SpecificationBase):
 
             if not ok_mask.all():
                 error_values = " ".join(list(set(series[~ok_mask])))[:200]
-                self.error(
-                    f"Column '{table_name}.{
-                    column.column_name}' has non-numeric values: '{error_values}'"
-                )
+                self.error(f"Column '{table_name}.{
+                    column.column_name}' has non-numeric values: '{error_values}'")
         return not self.has_errors()
 
 
@@ -240,10 +236,8 @@ class HasPrimaryKeySpecification(SpecificationBase):
     def is_satisfied_by(self, submission: Submission, *, table_name: str, **kwargs) -> bool:
         data_table: pd.DataFrame = submission.data_tables[table_name]
         if self.schema[table_name].pk_name not in data_table.columns:
-            self.error(
-                f"Primary key column '{table_name}.{
-                    self.schema[table_name].pk_name}' (table metadata) not in data columns."
-            )
+            self.error(f"Primary key column '{table_name}.{
+                    self.schema[table_name].pk_name}' (table metadata) not in data columns.")
 
         if not any(c.is_pk for c in self.schema[table_name].columns.values()):
             self.error(f"Table '{table_name}' has no column with PK constraint")
