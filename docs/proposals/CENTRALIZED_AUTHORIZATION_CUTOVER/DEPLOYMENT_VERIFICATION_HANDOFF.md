@@ -1,7 +1,7 @@
 # Handoff: Podman Deployment Verification
 
 **Status:** Open — assigned to the operations team
-**Opened:** 2026-09-16
+**Opened:** 2026-09-16 (extended the same day with the containment and credential-rotation checks that the development plan left open)
 **Source plan:** [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](../MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md) (Phase 5, closed)
 
 ## Purpose
@@ -26,6 +26,7 @@ The test deployment on `humlabsead` was inspected on 2026-09-15. Release identit
 | Container mounts, secrets, and environment variables | Partly verified — inspected on the container instance that ran before the image change; re-inspection of the current instance is pending |
 | PostgreSQL grants for the release deployment | Not verified — the repository role scripts and the shared `sead_ro` account are verified separately (see below); release-host grants and the authorization store location and permissions are open |
 | Log review (container, proxy, database) | Not verified |
+| Credential rotation after the loopback fix | Not verified — the backend briefly answered on `172.18.134.53:8012` before the port was restricted to loopback, and nothing records whether credentials reachable from that window were rotated |
 | Authenticated access and cross-resource isolation with real principals | Not verified |
 | Rollback exercise | Not verified |
 
@@ -58,6 +59,8 @@ Record the command and its output for each check, then add the result to the dep
 - [ ] **Container configuration re-inspection** — Re-inspect the running container for mounts, secrets, and environment variables (names only, no credential values). Confirm credentials appear in neither the image nor the container paths that should not hold them. Evidence: `podman inspect` output.
 - [ ] **PostgreSQL grants for the release host** — Record the grant queries and results for the release database, and the authorization SQLite store location, ownership, and file permissions. Evidence: catalog query output plus file listing.
 - [ ] **Log review** — Review container, proxy, and database logs for the release window. Confirm logs carry no credentials, connection strings, SQL text, or absolute filesystem paths, and that user-supplied newlines cannot forge a record. Evidence: log excerpts and the searches used.
+- [ ] **Credential rotation** — List the credentials that were reachable while the backend answered on the LAN address, rotate those that have not been rotated, and record the result for each. If rotation is declined, record the approved exception instead. Evidence: the credential list plus the rotation or exception record, without credential values.
+- [ ] **Endpoint containment** — Confirm that the execution, raw YAML mutation, data-source creation, and ingester endpoints no longer need separate disablement now that the proxy identity and authorization reject unauthenticated and unauthorized calls, and record the check that shows it. Evidence: request and response pairs for one representative route per group.
 - [ ] **Authenticated access with real principals** — Through the proxy with a real principal, check the allowed path, a denied path, and cross-resource isolation between two principals. Evidence: request and response pairs.
 - [ ] **Rollback exercise** — Restore the recorded image and the authorization database backup, then run the integrity and reconciliation checks. Evidence: restore commands, integrity output, and the resulting service state.
 - [ ] **Record the results** — Add the outcomes, the tested commit, the image digest, any limitation, and the exception or failed check to `SECURITY_CHECK.md`. Evidence: updated record with the date and the operator.

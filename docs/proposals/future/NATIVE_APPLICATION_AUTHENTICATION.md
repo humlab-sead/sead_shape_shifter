@@ -3,7 +3,7 @@
 ## Status
 
 - Future proposal / not yet approved
-- Related work: [Critical Security Mitigations](../MITIGATE_SECURITY_ISSUES/MITIGATE_SECURITY_ISSUES.md)
+- Related work: [Critical Security Mitigations](../MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES.md)
 - Authorization system: [Centralized Authorization System](../MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
 - Implemented authorization reference: [AUTHORIZATION.md](../../AUTHORIZATION.md)
 - Goal: evaluate native application authentication after the current nginx identity and application authorization controls are complete

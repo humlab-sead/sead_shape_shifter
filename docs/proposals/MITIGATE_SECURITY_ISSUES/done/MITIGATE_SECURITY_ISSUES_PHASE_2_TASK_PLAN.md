@@ -3,8 +3,8 @@
 ## Phase Summary
 
 - Status: Done
-- Proposal: [MITIGATE_SECURITY_ISSUES.md](../MITIGATE_SECURITY_ISSUES.md) (design §3 "Enforce filesystem boundaries")
-- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md](../MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md) (Phase 2)
+- Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md) (design §3 "Enforce filesystem boundaries")
+- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md) (Phase 2)
 - Completed authorization design: [CENTRALIZED_AUTHORIZATION_SYSTEM.md](CENTRALIZED_AUTHORIZATION_SYSTEM.md)
 - Related follow-up: [SERVER_OWNED_RESOURCE_IDENTIFIERS.md](../../future/SERVER_OWNED_RESOURCE_IDENTIFIERS.md)
 - Goal: prevent API input and project configuration from selecting or writing arbitrary server files by confining every file read, write, download, upload, and directive to approved server-owned roots

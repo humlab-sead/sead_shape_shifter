@@ -3,8 +3,8 @@
 ## Phase Summary
 
 - Status: Done
-- Proposal: [MITIGATE_SECURITY_ISSUES.md](../MITIGATE_SECURITY_ISSUES.md) (design section 5, Restrict data-source and ingester capabilities)
-- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md](../MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md) (Phase 4)
+- Proposal: [MITIGATE_SECURITY_ISSUES.md](./MITIGATE_SECURITY_ISSUES.md) (design section 5, Restrict data-source and ingester capabilities)
+- Parent phase plan: [MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md](./MITIGATE_SECURITY_ISSUES_PHASE_PLAN.md) (Phase 4)
 - Related ingester plan: [INGESTER_AUTHORIZATION_TASKS.md](../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md)
 - Goal: restrict server-side data-source selection and public error disclosure while keeping ingester-specific route and destination work in the dedicated ingester authorization plan.
 

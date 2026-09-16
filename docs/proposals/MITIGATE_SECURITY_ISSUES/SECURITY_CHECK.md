@@ -519,7 +519,7 @@ security release. It remains a correctness follow-up tracked outside this phase.
 | 1.3, 1.6 | SQL policy, QueryService, PostgreSQL-loader, identifier regression tests, and the successful Shape Shifter `SELECT` using `sead_ro`. `sead_ro` is a pre-existing system-wide SEAD user rather than a Shape Shifter-dedicated account; DBA-owned role configuration remains outside Shape Shifter scope. |
 | 1.4, D4 | Response/logging redaction, route authentication, cross-resource, and data-source API tests above. |
 | 1.5 | Protected-route test passed; real-SEAD deep-path verification remains the documented exception. |
-| 2.2, 2.3 | Existing practical-verification evidence above; not re-run in this local Phase 5 test pass. |
+| 2.2, 2.3 | Existing practical-verification evidence above; not re-run in this local Phase 5 test pass. Recorded as follow-ups when the mitigation change closed: 2.2 spreadsheet formula injection and 2.3 UCanAccess pinning and checksum verification are unmet, and `scripts/install-uncanccess.sh` still needs repair. |
 | 2.4 | CORS regression test passed. |
 | 3.1–3.10 | Existing code/repository evidence in this record; deployment-specific checks remain outstanding. |
 | N1–N3 | Existing practical-verification evidence above; no new live database or ingester environment was available. |
@@ -611,7 +611,7 @@ passed, the defects that were found and corrected, and what remains unverified.
 | Image digest | `sha256:aa320c4c89811306b15ed9fbb43474290a7e75b1becb10deadb2f3840a4d0d90` |
 | Container | `93b867cbe30b`, status `Up (healthy)` |
 | Backend port | `127.0.0.1:8012->8012/tcp` |
-| Service model | `podman-compose` run by the systemd unit `podman-compose@shapeshifter.service`, not Quadlet |
+| Service model | `podman-compose`; the installed user unit is `shape-shifter.service` (verified with `systemctl --user cat`), not Quadlet. The container that was inspected had been started manually, and its `PODMAN_SYSTEMD_UNIT` label read `podman-compose@shapeshifter.service`. |
 | Reverse proxy | nginx site `test-shape-shifter.sead.se` with Basic auth and `proxy_set_header X-Authenticated-User $remote_user` |
 
 The source-commit label was added in this change. Before it, the image carried
