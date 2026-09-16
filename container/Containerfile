@@ -153,6 +153,23 @@ FROM python:${PYTHON_VERSION}-slim
 
 WORKDIR /app
 
+# Release identity. A deployed image is matched to the tested source commit by
+# both the label below and the immutable content digest. SOURCE_COMMIT is
+# resolved by scripts/build.sh, because the build context excludes .git and the
+# commit therefore cannot be read from inside the build.
+ARG SOURCE=workdir
+ARG SOURCE_COMMIT=unknown
+ARG GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git
+ARG GIT_REF=unknown
+ARG BUILD_DATE=unknown
+
+LABEL org.opencontainers.image.title="shape-shifter" \
+      org.opencontainers.image.source="${GIT_REPO}" \
+      org.opencontainers.image.revision="${SOURCE_COMMIT}" \
+      org.opencontainers.image.version="${GIT_REF}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      sead.shapeshifter.source="${SOURCE}"
+
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Required for UCanAccess (MS Access support). JPype starts a JVM at startup.
