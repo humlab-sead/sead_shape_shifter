@@ -190,13 +190,15 @@ The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, inc
 | `GET`    | `/api/v1/projects/{project_name}/mapping/{entity_name}/{local_key_value}` | `project:read`    |
 | `PUT`    | `/api/v1/projects/{project_name}/mapping/{entity_name}/{local_key_value}` | `project:edit`    |
 | `DELETE` | `/api/v1/projects/{project_name}/mapping/{entity_name}/{local_key_value}` | `project:edit`    |
-| `GET`    | `/api/v1/dispatchers`                                                     | `UNDECLARED`      |
+| `GET`    | `/api/v1/dispatchers`                                                     | `authenticated`   |
 | `POST`   | `/api/v1/projects/{name}/execute`                                         | `project:execute` |
 | `GET`    | `/api/v1/projects/{name}/execute/download`                                | `project:read`    |
 | `GET`    | `/api/v1/projects/{project_name}/entities/{entity_name}/can-materialize`  | `project:read`    |
 | `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/materialize`      | `project:edit`    |
 | `POST`   | `/api/v1/projects/{project_name}/entities/{entity_name}/unmaterialize`    | `project:edit`    |
 | `PATCH`  | `/api/v1/projects/{project_name}/mapping/from-materialized/{entity_name}` | `project:edit`    |
+
+`GET /api/v1/dispatchers` returns only registered output-dispatcher metadata (key, target type, description, and file extension) and exposes no project data, so it requires an authenticated principal and no project role. The route that consumes those dispatchers, `POST /api/v1/projects/{name}/execute`, requires `project:execute`.
 
 ### Ingester, Filters, Logs, And Release Notes
 
@@ -208,10 +210,12 @@ The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, inc
 | `GET`  | `/api/v1/filters/types`               | `UNDECLARED`            |
 | `GET`  | `/api/v1/logs/{log_type}`             | `authenticated`         |
 | `GET`  | `/api/v1/logs/{log_type}/download`    | `authenticated`         |
-| `GET`  | `/api/v1/whats-new`                   | `UNDECLARED`            |
-| `GET`  | `/api/v1/whats-new/{version}/content` | `UNDECLARED`            |
+| `GET`  | `/api/v1/whats-new`                   | `authenticated`         |
+| `GET`  | `/api/v1/whats-new/{version}/content` | `authenticated`         |
 
 Application and error logs are global: no project-scoped log file exists, so any authenticated principal may read or download them. The `application:read_logs` action remains defined but is not required by any route.
+
+`GET /api/v1/whats-new` and `GET /api/v1/whats-new/{version}/content` return release-note metadata and markdown published in `docs/whats-new/`, so they require an authenticated principal and no project role.
 
 ## Maintenance
 
