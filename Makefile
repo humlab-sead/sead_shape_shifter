@@ -74,11 +74,15 @@ tidy:
 	@uv run black src tests backend ingesters
 
 .PHONY: lint
-lint: tidy ruff pylint check-target-model-schema-reference
+lint: tidy ruff pylint check-target-model-schema-reference check-doc-links
 
 .PHONY: check-imports
 check-imports:
 	@python scripts/check_imports.py
+
+.PHONY: check-doc-links
+check-doc-links:
+	@scripts/check_doc_links.sh
 
 ################################################################################
 # JSON Schema generation (for frontend Monaco editor autocomplete)
@@ -332,22 +336,6 @@ frontend-run:
 frontend-preview:
 	@echo "Preview production build on http://localhost:4173"
 	@cd frontend && pnpm preview
-
-################################################################################
-# Docker
-################################################################################
-
-# Include Docker recipes from docker/Makefile
-DOCKER_DIR := ./docker
-export DOCKER_DIR
-include docker/Makefile
-
-.PHONY: docker-patch-frontend
-docker-patch-frontend:
-	@echo "Rebuilding frontend and patching running container..."
-	@cd frontend && pnpm build:skip-check
-	@docker cp frontend/dist/. shape-shifter:/app/frontend/dist/
-	@echo "✓ Frontend patched in running container"
 
 ################################################################################
 # Other stuff

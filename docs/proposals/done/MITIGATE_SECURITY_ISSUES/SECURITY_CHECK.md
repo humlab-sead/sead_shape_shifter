@@ -1,5 +1,7 @@
 # Found Errors — sead_shape_shifter (main @ 961589d5, re-verified on dev @ f85fad0c)
 
+> Historical note: `docker/` paths in this report describe the deployment state at the time of the security review. The supported deployment path is now `container/` with Podman.
+
 Findings from a 4-agent review panel (reuse / security / packaging / usability)
 followed by a 3-agent verification pass (positive / neutral / hostile red-team).
 Every finding below was re-verified against the code by at least one independent
