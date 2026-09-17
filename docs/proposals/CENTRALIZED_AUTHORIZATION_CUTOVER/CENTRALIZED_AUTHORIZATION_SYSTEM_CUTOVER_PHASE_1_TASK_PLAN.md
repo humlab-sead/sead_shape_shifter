@@ -151,14 +151,14 @@
 
 **Objective:** The classification is reviewed by a named reviewer, and the maintained documentation points at the current record.
 
-* [ ] `T4.1` **Change:** Record the classification review.
+* [x] `T4.1` **Change:** Record the classification review.
   * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) review note.
   * **Current → required:** Classifications are unreviewed. Required: a dated note naming the reviewer and stating that the classifications were checked against the design resource rules and the registered route set.
-  * **Implementation:** Add the note after the lifecycle section. Reviewer: `TBD`; record the name and date before the note is written. Verify each row against `DESIGN`-level rules in the design document sections 5, 7, and 9, and against the assembled route list from `V-5`.
+  * **Implementation:** Add the note after the lifecycle section. Reviewer: `Roger Mähler`, 2026-09-17. Verify each row against the implemented policy terms in `docs/AUTHORIZATION.md` and the role and action maps in `backend/app/authorization/policy.py`, and against the assembled route list from `V-5`. The earlier reference to design document sections 5, 7, and 9 was wrong: `docs/DESIGN.md` uses unnumbered sections and `docs/REQUIREMENTS.md` sections 5 and 7 cover the technology stack and future enhancements, so the review cites the policy sources instead.
   * **Constraints:** The reviewer confirms or corrects rows; corrections follow the same terms and note style. A route that cannot be classified without a policy decision is reported and blocked, not guessed.
   * **Validation:** `V-5`.
 
-* [ ] `T4.2` **Change:** Point the authorization coverage note at the current record.
+* [x] `T4.2` **Change:** Point the authorization coverage note at the current record.
   * **Target:** `docs/AUTHORIZATION.md` ("Current Coverage").
   * **Current → required:** It says undeclared route classification remains tracked in the closed [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md). Required: it points at the cutover plan Phase 1 record and states that the inventory carries no `UNDECLARED` row after this phase.
   * **Constraints:** Keep the ingester statement accurate: ingester authorization remains proposed work owned by `INGESTER_AUTHORIZATION_TASKS.md`.
@@ -211,19 +211,19 @@ For every check, record the commit, the command output, and the reviewer in the 
 | Area 1: Record classifications | Done | None | `T1.1` done at `64d0556a`; `T1.3` done at `e9678693`. `T1.2` and `T1.4` recorded with the rows. `GET /api/v1/projects/active/name` was classified `project:read` through a new `require_active_project` dependency instead of `authenticated`, because the route reports the deployment active project and the principal may not be able to read it. The inventory has no `UNDECLARED` row. `uv run pytest backend/tests/authorization backend/tests/api/v1/test_projects.py` passes. The `/docs/oauth2-redirect` and `/docs/*` rows are re-checked against the assembled application by the non-API parity test added in `T2.2`; the review note that completes `V-5` is `T4.1` |
 | Area 2: Enforce classification in the check | Done | Area 1 (classification sets and inventory rows) | `T2.1`-`T2.3` add `_unclassified_api_routes()`, the inventory row reader, and the non-API parity check to `backend/tests/authorization/test_route_authentication.py`. `PUBLIC_API_PATHS` was added next to the two planned constants because the health route is public rather than authenticated. The check reports nothing for the assembled app; removing `/projects` from the classification set makes it report `GET /api/v1/projects`, and the synthetic-route test passes |
 | Area 3: Record lifecycle and background coverage | Done | None | `T3.1` records five lifecycle entry points and two background tasks with their authorization and evidence locations. `T3.2` replaces the two `rename_project()` docstring references and the `MetadataUpdateRequest.name` description with the file-name rule. `T3.3` re-ran the search and found the same two `create_task` sites plus one `create_operation` caller, with no `BackgroundTasks`, `run_in_executor`, or other task start, so no plan conflict arose. `V-6` is the manual review of that section |
-| Area 4: Review and align documentation | Not started | Areas 1–3 | Reviewer `TBD` |
+| Area 4: Review and align documentation | Done | Areas 1-3 | `T4.1` records the review by Roger Mähler on 2026-09-17 after checking the requirement terms against `docs/AUTHORIZATION.md`, `policy.py`, and `models.py`: 141 route rows, no `UNDECLARED` row, only defined resource-action pairs, and each application action granted by a named role. Adding the review note also corrected the plan's wrong reference to design sections 5, 7, and 9. `T4.2` points the coverage note and the purpose reference at the inventory and the cutover plan instead of the closed task plan. The pre-existing Black and isort disagreement on the `iter_route_contexts` import in `test_route_authentication.py` was resolved so the formatting checks pass |
 
 ## Definition Of Done
 
-- [ ] Every phase acceptance criterion has implementation and validation evidence recorded for the reviewed commit.
-- [ ] `docs/AUTHORIZATION_ROUTE_INVENTORY.md` contains no `UNDECLARED` row and records lifecycle entry points and background operations.
-- [ ] The classification check fails for an undeclared API route and passes for the assembled application.
-- [ ] Concealed `404` behavior for the session route and filtered project listing is unchanged, and `body_locator` defaults preserve every other `require_project` caller.
-- [ ] Ingester enforcement remains recorded as pending work owned by `INGESTER_AUTHORIZATION_TASKS.md`, and no ingester behavior changed.
-- [ ] The inventory review note names the reviewer and date, and `docs/AUTHORIZATION.md` points at the current classification record.
-- [ ] Focused tests, the full backend suite, formatting checks, and the documentation link check pass.
-- [ ] Follow-up items are recorded: ingester capability authorization, server-side source resolution for `/suggestions/*`, and the removed rename references.
-- [ ] No unresolved decision changes implementation, correctness, or validation for this phase.
+- [x] Every phase acceptance criterion has implementation and validation evidence recorded for the reviewed commit.
+- [x] `docs/AUTHORIZATION_ROUTE_INVENTORY.md` contains no `UNDECLARED` row and records lifecycle entry points and background operations.
+- [x] The classification check fails for an undeclared API route and passes for the assembled application.
+- [x] Concealed `404` behavior for the session route and filtered project listing is unchanged, and `body_locator` defaults preserve every other `require_project` caller.
+- [x] Ingester enforcement remains recorded as pending work owned by `INGESTER_AUTHORIZATION_TASKS.md`, and no ingester behavior changed.
+- [x] The inventory review note names the reviewer and date, and `docs/AUTHORIZATION.md` points at the current classification record.
+- [x] Focused tests, the full backend suite, formatting checks, and the documentation link check pass.
+- [x] Follow-up items are recorded: ingester capability authorization, server-side source resolution for `/suggestions/*`, and the removed rename references.
+- [x] No unresolved decision changes implementation, correctness, or validation for this phase.
 
 ## Risks And Open Questions
 

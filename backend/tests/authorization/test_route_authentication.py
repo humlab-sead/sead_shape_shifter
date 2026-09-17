@@ -12,9 +12,8 @@ from backend.app.main import app
 from backend.app.middleware.proxy_auth import ProxyAuthenticationMiddleware
 
 try:
-    from fastapi.routing import (
-        iter_route_contexts as _iter_route_contexts,
-    )  # pylint: disable=import-outside-toplevel, ungrouped-imports; type: ignore
+    # pylint: disable=import-outside-toplevel, ungrouped-imports
+    from fastapi.routing import iter_route_contexts as _iter_route_contexts  # type: ignore
 except ImportError:  # pragma: no cover - FastAPI below 0.141 flattens app.routes on include
     _iter_route_contexts = None
 
