@@ -16,6 +16,11 @@ schema: public
 project: disposable-project
 base_url: https://test-shape-shifter.sead.se
 
+# Optional: create a registered temporary project for endpoint containment.
+# When set, omit project above and use a template copied with the deployment.
+disposable_project_template: ""
+project_creator: ""
+
 # Used only with --authenticated.
 principal_a: alice
 principal_b: bob

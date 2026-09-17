@@ -15,6 +15,7 @@ explicitly opt-in. Record every result with the date and host.
 | `verify_logs.sh` | The container, nginx, and PostgreSQL logs for credentials, connection strings, SQL text, and filesystem paths (candidate scan for operator review). |
 | `verify_credential_rotation.sh` | The backend credentials that were reachable during the LAN-exposure window, listed by name (values never printed), plus the per-credential rotation or approved-exception record. |
 | `verify_endpoint_containment.sh` | That the execution, raw YAML, data-source creation, and ingester endpoints reject unauthenticated (401) and unauthorized (404/403) calls, so no separate disablement is needed; records the ingester enforcement gap. |
+| `setup.sh` / `teardown.sh` | Create and remove a registered disposable project and its temporary project-creator authorization role for containment checks. |
 | `verify_authenticated_access.sh` | Through the proxy, that each of two real principals reaches only its own project (allowed 200, denied 404), and that the proxy rejects requests without credentials (401). |
 | `rollback_exercise.sh` | Restores a recorded image and authorization backup, checks SQLite integrity, reconciles the authorization manifest, and verifies the resulting service health. This script changes deployment state. |
 | `run_deployment_verification.sh` | Runs the host and deployment-user checks, captures evidence and a summary, and optionally runs authenticated access and rollback. |
@@ -41,6 +42,14 @@ options override values from the YAML file. The exact options file is copied to
 `options.yml` inside the evidence directory. Keep passwords, tokens, and other
 credentials out of the file; the authenticated check prompts for passwords
 separately.
+
+To avoid a pre-existing project for endpoint containment, pass
+`--disposable-project-template` with a directory containing `shapeshifter.yml`.
+The orchestrator creates a unique project through the API, registers its
+authorization resource, loads the template, and deletes the project and its
+temporary creator role in an exit cleanup step. It uses loopback trusted-proxy
+identities and does not create nginx users or passwords. The template shipped
+with these scripts is `disposable-project/shapeshifter.yml`.
 
 Add `--authenticated` together with `--principal-a`, `--principal-b`,
 `--project-a`, and `--project-b` to run the interactive principal-isolation
@@ -78,6 +87,11 @@ sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify/verify_container_con
 # Endpoint containment (run as the deployment user against the loopback backend;
 # use an existing, disposable project so a broken check cannot write to real data).
 ./scripts/verify/verify_endpoint_containment.sh --project <existing-project>
+
+# Endpoint containment with a temporary project; cleanup is automatic.
+./scripts/verify/run_deployment_verification.sh \
+  --options-file ./deployment-verification.options.yml \
+  --disposable-project-template ./scripts/verify/disposable-project
 
 # Authenticated access and cross-resource isolation through the proxy (run as the
 # deployment user). Passwords come from PRINCIPAL_A_PASSWORD / PRINCIPAL_B_PASSWORD

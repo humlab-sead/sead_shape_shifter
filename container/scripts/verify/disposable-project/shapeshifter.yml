@@ -1,0 +1,11 @@
+metadata:
+  type: shapeshifter-project
+  name: verification-containment
+entities:
+  verification_probe:
+    type: fixed
+    columns:
+      - probe_id
+    values:
+      - [1]
+    public_id: verification_probe_id
