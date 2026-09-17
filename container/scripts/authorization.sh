@@ -112,7 +112,7 @@ run_cli() {
             fi
             ;;
     esac
-    podman exec -i "$CONTAINER_NAME" sead-authorization "$command_name" "${command_args[@]}"
+    podman exec "$CONTAINER_NAME" sead-authorization "$command_name" "${command_args[@]}"
 }
 
 backup_database() {
