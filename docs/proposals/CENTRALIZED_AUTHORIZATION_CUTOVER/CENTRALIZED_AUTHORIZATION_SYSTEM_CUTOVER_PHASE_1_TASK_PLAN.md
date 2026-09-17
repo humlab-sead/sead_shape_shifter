@@ -125,20 +125,20 @@
 
 **Objective:** The inventory states, for each lifecycle entry point and background operation, its authorization and its lifecycle or operation-record behavior.
 
-* [ ] `T3.1` **Change:** Add a lifecycle and background-operation section to the inventory.
+* [x] `T3.1` **Change:** Add a lifecycle and background-operation section to the inventory.
   * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) (new section after the route tables, before Maintenance).
   * **Current → required:** The inventory covers routes only; `PH1-AC-3` needs lifecycle entry points and protected service methods recorded. Required: a compact table recording the entry point, its authorization, its lifecycle or operation call, and the evidence location.
   * **Implementation:** Record `POST /projects` (`application:create_project`, `AuthorizationService.register_project` assigns the creator as owner), `POST /projects/{name}/copy` (source `project:read` plus `application:create_project`, `register_project` for the target), `DELETE /projects/{name}` (`project:delete`, `transition_resource` through `deleting`, back to `active` on failure, then `deleted`), `POST /data-sources` (`application:manage_shared_sources`, `register_shared_data_source`), `DELETE /data-sources/{filename}` (`application:manage_shared_sources`, `transition_resource`), the auto-reconcile background operation (`project:edit` at start, `require_operation` for progress, stream, and cancel, with `owner_principal_id` and `project_resource_id` recorded), and the session-cleanup task (no principal or protected resource; not authorization-scoped).
   * **Constraints:** Record the reviewed result that no project rename entry point exists, because `ProjectService.update_metadata` ignores `new_name` and the project name derives from the filename. State findings, not new requirements.
   * **Validation:** `V-6`.
 
-* [ ] `T3.2` **Change:** Correct the stale `rename_project()` references.
+* [x] `T3.2` **Change:** Correct the stale `rename_project()` references.
   * **Target:** `backend/app/services/project_service.py::update_metadata` docstring, `backend/app/services/project/project_operations.py::update_metadata` docstring, and the `MetadataUpdateRequest.name` description in `backend/app/api/v1/endpoints/projects.py` if it implies renaming.
   * **Current → required:** The docstrings instruct readers to "use rename_project() instead", but no such method exists. Required: state that the project name comes from the filename and that this operation does not rename the project.
   * **Constraints:** Documentation and description text only. Do not add a rename feature or change `update_metadata` behavior.
   * **Validation:** `V-8`.
 
-* [ ] `T3.3` **Change:** Confirm no additional background entry point reaches protected work.
+* [x] `T3.3` **Change:** Confirm no additional background entry point reaches protected work.
   * **Target:** `backend/app/` (`asyncio.create_task`, `BackgroundTasks`, `run_in_executor`, `operation_manager.create_operation`).
   * **Current → required:** Plan-time inspection found two `create_task` sites (`reconciliation.py::auto_reconcile_entity`, `state_manager` cleanup) and one `create_operation` caller. Required: re-run the search at the reviewed commit and record the method and result in the `T3.1` section.
   * **Implementation:** Record the search terms, the result, and the classification of each hit. Stop and report as a plan conflict if a new entry point appears; do not classify it silently.
@@ -210,7 +210,7 @@ For every check, record the commit, the command output, and the reviewer in the 
 | --- | --- | --- | --- |
 | Area 1: Record classifications | Done | None | `T1.1` done at `64d0556a`; `T1.3` done at `e9678693`. `T1.2` and `T1.4` recorded with the rows. `GET /api/v1/projects/active/name` was classified `project:read` through a new `require_active_project` dependency instead of `authenticated`, because the route reports the deployment active project and the principal may not be able to read it. The inventory has no `UNDECLARED` row. `uv run pytest backend/tests/authorization backend/tests/api/v1/test_projects.py` passes. The `/docs/oauth2-redirect` and `/docs/*` rows are re-checked against the assembled application by the non-API parity test added in `T2.2`; the review note that completes `V-5` is `T4.1` |
 | Area 2: Enforce classification in the check | Done | Area 1 (classification sets and inventory rows) | `T2.1`-`T2.3` add `_unclassified_api_routes()`, the inventory row reader, and the non-API parity check to `backend/tests/authorization/test_route_authentication.py`. `PUBLIC_API_PATHS` was added next to the two planned constants because the health route is public rather than authenticated. The check reports nothing for the assembled app; removing `/projects` from the classification set makes it report `GET /api/v1/projects`, and the synthetic-route test passes |
-| Area 3: Record lifecycle and background coverage | Not started | None | Independent of Areas 1 and 2 |
+| Area 3: Record lifecycle and background coverage | Done | None | `T3.1` records five lifecycle entry points and two background tasks with their authorization and evidence locations. `T3.2` replaces the two `rename_project()` docstring references and the `MetadataUpdateRequest.name` description with the file-name rule. `T3.3` re-ran the search and found the same two `create_task` sites plus one `create_operation` caller, with no `BackgroundTasks`, `run_in_executor`, or other task start, so no plan conflict arose. `V-6` is the manual review of that section |
 | Area 4: Review and align documentation | Not started | Areas 1–3 | Reviewer `TBD` |
 
 ## Definition Of Done
