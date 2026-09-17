@@ -13,16 +13,16 @@
 # The script never changes the container, image, or configuration.
 #
 # Run as the deployment user, for example:
-#   sudo -u test-shape-shifter.sead.se -H bash container/scripts/verify_container_config.sh
+#   sudo -u test-shape-shifter.sead.se -H bash container/scripts/verify/verify_container_config.sh
 #
 # Environment:
 #   CONTAINER_NAME  container to inspect (default: shape-shifter)
 set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=load-env.sh
-if [[ -f "$SCRIPT_DIR/load-env.sh" ]]; then
-    . "$SCRIPT_DIR/load-env.sh"
+# shellcheck source=../load-env.sh
+if [[ -f "$SCRIPT_DIR/../load-env.sh" ]]; then
+    . "$SCRIPT_DIR/../load-env.sh"
 fi
 
 CONTAINER_NAME="${CONTAINER_NAME:-shape-shifter}"
