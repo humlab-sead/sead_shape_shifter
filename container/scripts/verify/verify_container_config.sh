@@ -19,22 +19,22 @@
 #   CONTAINER_NAME  container to inspect (default: shape-shifter)
 set -euo pipefail
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+g_script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../load-env.sh
-if [[ -f "$SCRIPT_DIR/../load-env.sh" ]]; then
-    . "$SCRIPT_DIR/../load-env.sh"
+if [[ -f "$g_script_dir/../load-env.sh" ]]; then
+    . "$g_script_dir/../load-env.sh"
 fi
 
-CONTAINER_NAME="${CONTAINER_NAME:-shape-shifter}"
-failures=0
+g_container_name="${CONTAINER_NAME:-shape-shifter}"
+g_failures=0
 
 info() { printf '\n== %s ==\n' "$*"; }
 pass() { printf 'PASS  %s\n' "$*"; }
-fail() { printf 'FAIL  %s\n' "$*" >&2; failures=$((failures + 1)); }
+fail() { printf 'FAIL  %s\n' "$*" >&2; g_failures=$((g_failures + 1)); }
 warn() { printf 'WARN  %s\n' "$*"; }
 
 # Expected container destinations from podman-compose.yml.
-EXPECTED_MOUNTS=(
+g_expected_mounts=(
     /app/projects
     /app/shared
     /app/logs
@@ -48,14 +48,14 @@ EXPECTED_MOUNTS=(
 command -v podman >/dev/null || { echo "podman is required." >&2; exit 1; }
 
 info "Container state"
-state="$(podman container inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
-image="$(podman container inspect --format '{{.Config.Image}}' "$CONTAINER_NAME" 2>/dev/null || true)"
+state="$(podman container inspect --format '{{.State.Status}}' "$g_container_name" 2>/dev/null || true)"
+image="$(podman container inspect --format '{{.Config.Image}}' "$g_container_name" 2>/dev/null || true)"
 if [[ -z "$state" ]]; then
-    fail "container '$CONTAINER_NAME' not found"
-    printf 'Verification failed with %d issue(s).\n' "$failures" >&2
+    fail "container '$g_container_name' not found"
+    printf 'Verification failed with %d issue(s).\n' "$g_failures" >&2
     exit 1
 fi
-printf 'Container: %s\nState:     %s\nImage:     %s\n' "$CONTAINER_NAME" "${state:-unknown}" "${image:-unknown}"
+printf 'Container: %s\nState:     %s\nImage:     %s\n' "$g_container_name" "${state:-unknown}" "${image:-unknown}"
 if [[ "$state" != "running" ]]; then
     fail "container is not running"
 else
@@ -63,7 +63,7 @@ else
 fi
 
 info "Port publication (expect 127.0.0.1:8012 only)"
-ports="$(podman container inspect --format '{{json .NetworkSettings.Ports}}' "$CONTAINER_NAME" 2>/dev/null || true)"
+ports="$(podman container inspect --format '{{json .NetworkSettings.Ports}}' "$g_container_name" 2>/dev/null || true)"
 printf '%s\n' "${ports:-<none>}"
 if printf '%s' "$ports" | grep -Eq '"HostIp":"(0\.0\.0\.0|::|)"'; then
     fail "a published port listens on a non-loopback address"
@@ -83,9 +83,9 @@ while IFS='|' read -r source destination mode; do
     if [[ "$destination" == "/app/.pgpass" && "$mode" != "ro" ]]; then
         fail ".pgpass must be mounted read-only"
     fi
-done < <(podman container inspect --format '{{range .Mounts}}{{.Source}}|{{.Destination}}|{{.Mode}}{{println}}{{end}}' "$CONTAINER_NAME" 2>/dev/null || true)
+done < <(podman container inspect --format '{{range .Mounts}}{{.Source}}|{{.Destination}}|{{.Mode}}{{println}}{{end}}' "$g_container_name" 2>/dev/null || true)
 
-for expected in "${EXPECTED_MOUNTS[@]}"; do
+for expected in "${g_expected_mounts[@]}"; do
     [[ -n "${seen[$expected]:-}" ]] || warn "expected mount missing: $expected"
 done
 printf 'Unexpected mounts, if any, appear above; review them.\n'
@@ -98,7 +98,7 @@ while IFS= read -r name; do
     if [[ "$name" =~ (PASSWORD|SECRET|TOKEN|KEY|PASSWD|CREDENTIAL) ]]; then
         credential_like+="$name "
     fi
-done < <(podman container inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$CONTAINER_NAME" 2>/dev/null | sed 's/=.*//' | sort)
+done < <(podman container inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$g_container_name" 2>/dev/null | sed 's/=.*//' | sort)
 if [[ -n "$credential_like" ]]; then
     warn "credential-like variable names present (values not shown): $credential_like"
 else
@@ -124,8 +124,8 @@ else
 fi
 
 printf '\n'
-if [[ "$failures" -gt 0 ]]; then
-    printf 'Verification failed with %d issue(s).\n' "$failures" >&2
+if [[ "$g_failures" -gt 0 ]]; then
+    printf 'Verification failed with %d issue(s).\n' "$g_failures" >&2
     exit 1
 fi
 printf 'Container configuration re-inspection passed. Record this output with the date and host.\n'

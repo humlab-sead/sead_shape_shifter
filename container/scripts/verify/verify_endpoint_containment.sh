@@ -24,11 +24,11 @@
 #   sudo -u test-shape-shifter.sead.se -H bash container/scripts/verify/verify_endpoint_containment.sh --project <existing-project>
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://127.0.0.1:8012}"
-PROJECT="${PROJECT:-}"
-UNAUTHORIZED_PRINCIPAL="${UNAUTHORIZED_PRINCIPAL:-containment-probe@example.com}"
-IDENTITY_HEADER="${IDENTITY_HEADER:-X-Authenticated-User}"
-INGESTER_KEY="${INGESTER_KEY:-containment-probe-ingester}"
+g_base_url="${BASE_URL:-http://127.0.0.1:8012}"
+g_project="${PROJECT:-}"
+g_unauthorized_principal="${UNAUTHORIZED_PRINCIPAL:-containment-probe@example.com}"
+g_identity_header="${IDENTITY_HEADER:-X-Authenticated-User}"
+g_ingester_key="${INGESTER_KEY:-containment-probe-ingester}"
 
 usage() {
     cat <<EOF
@@ -49,17 +49,17 @@ EOF
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --base-url)              [[ $# -ge 2 ]] || { echo "--base-url requires a value." >&2; exit 2; }; BASE_URL="$2"; shift 2 ;;
-        --project)               [[ $# -ge 2 ]] || { echo "--project requires a value." >&2; exit 2; }; PROJECT="$2"; shift 2 ;;
-        --unauthorized-principal) [[ $# -ge 2 ]] || { echo "--unauthorized-principal requires a value." >&2; exit 2; }; UNAUTHORIZED_PRINCIPAL="$2"; shift 2 ;;
-        --identity-header)       [[ $# -ge 2 ]] || { echo "--identity-header requires a value." >&2; exit 2; }; IDENTITY_HEADER="$2"; shift 2 ;;
-        --ingester-key)          [[ $# -ge 2 ]] || { echo "--ingester-key requires a value." >&2; exit 2; }; INGESTER_KEY="$2"; shift 2 ;;
+        --base-url)              [[ $# -ge 2 ]] || { echo "--base-url requires a value." >&2; exit 2; }; g_base_url="$2"; shift 2 ;;
+        --project)               [[ $# -ge 2 ]] || { echo "--project requires a value." >&2; exit 2; }; g_project="$2"; shift 2 ;;
+        --unauthorized-principal) [[ $# -ge 2 ]] || { echo "--unauthorized-principal requires a value." >&2; exit 2; }; g_unauthorized_principal="$2"; shift 2 ;;
+        --identity-header)       [[ $# -ge 2 ]] || { echo "--identity-header requires a value." >&2; exit 2; }; g_identity_header="$2"; shift 2 ;;
+        --ingester-key)          [[ $# -ge 2 ]] || { echo "--ingester-key requires a value." >&2; exit 2; }; g_ingester_key="$2"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
     esac
 done
 
-[[ -n "$PROJECT" ]] || { echo "--project is required (use an existing project)." >&2; usage >&2; exit 2; }
+[[ -n "$g_project" ]] || { echo "--project is required (use an existing project)." >&2; usage >&2; exit 2; }
 
 command -v curl >/dev/null || { echo "curl is required." >&2; exit 1; }
 
@@ -70,14 +70,14 @@ tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 
 # label|method|path-template|body|expected unauthorized code
-SPECS=(
+g_specs=(
     "execution|POST|/api/v1/projects/{project}/execute|{\"dispatcher_key\":\"csv\",\"target\":\"/tmp/containment-probe\"}|404"
     "raw-yaml|PUT|/api/v1/projects/{project}/raw-yaml|{\"yaml_content\":\"probe\"}|404"
     "data-source-create|POST|/api/v1/data-sources|{\"name\":\"containment-probe\",\"driver\":\"csv\"}|403"
     "ingester|POST|/api/v1/ingesters/{key}/ingest|{\"source\":\"/tmp/containment-probe.xlsx\",\"submission_name\":\"containment-probe\",\"data_types\":\"containment-probe\"}|403"
 )
 
-expand() { printf '%s' "$1" | sed -e "s/{project}/$PROJECT/g" -e "s/{key}/$INGESTER_KEY/g"; }
+expand() { printf '%s' "$1" | sed -e "s/{project}/$g_project/g" -e "s/{key}/$g_ingester_key/g"; }
 
 # Probe one request; prints "STATUS <code>" and stores the response body excerpt.
 probe() {
@@ -86,11 +86,11 @@ probe() {
     if [[ -n "$identity" ]]; then
         if [[ -n "$body" ]]; then
             code="$(curl -sS -o "$tmpdir/body" -w '%{http_code}' -X "$method" \
-                -H 'Content-Type: application/json' -H "$IDENTITY_HEADER: $identity" \
+                -H 'Content-Type: application/json' -H "$g_identity_header: $identity" \
                 --data "$body" "$url" 2>/dev/null || true)"
         else
             code="$(curl -sS -o "$tmpdir/body" -w '%{http_code}' -X "$method" \
-                -H "$IDENTITY_HEADER: $identity" "$url" 2>/dev/null || true)"
+                -H "$g_identity_header: $identity" "$url" 2>/dev/null || true)"
         fi
     else
         if [[ -n "$body" ]]; then
@@ -107,16 +107,16 @@ body_excerpt() {
     tr '\n' ' ' < "$tmpdir/body" | cut -c1-120
 }
 
-failures=0
-unauthed_failed=()
+g_failures=0
+g_unauthed_failed=()
 
-printf 'Containment probe against: %s\n' "$BASE_URL"
+printf 'Containment probe against: %s\n' "$g_base_url"
 printf 'Project: %s\nUnauthorized principal: %s\nIdentity header: %s\nIngester key: %s\n' \
-    "$PROJECT" "$UNAUTHORIZED_PRINCIPAL" "$IDENTITY_HEADER" "$INGESTER_KEY"
+    "$g_project" "$g_unauthorized_principal" "$g_identity_header" "$g_ingester_key"
 
 info "Request and response pairs"
 
-for spec in "${SPECS[@]}"; do
+for spec in "${g_specs[@]}"; do
     label="${spec%%|*}"; rest="${spec#*|}"
     method="${rest%%|*}"; rest="${rest#*|}"
     path_template="${rest%%|*}"; rest="${rest#*|}"
@@ -124,7 +124,7 @@ for spec in "${SPECS[@]}"; do
     expected="${rest}"
 
     path="$(expand "$path_template")"
-    url="$BASE_URL$path"
+    url="$g_base_url$path"
 
     # Unauthenticated: the trusted-proxy middleware must reject with 401.
     unauth_code="$(probe "$method" "$url" "" "$body")"
@@ -136,8 +136,8 @@ for spec in "${SPECS[@]}"; do
 
     if [[ "$unauth_code" != "401" ]]; then
         printf '  unauthorized             -> skipped (unauthenticated call reached the endpoint)\n'
-        unauthed_failed+=("$label")
-        failures=$((failures + 1))
+        g_unauthed_failed+=("$label")
+        g_failures=$((g_failures + 1))
         continue
     fi
 
@@ -147,7 +147,7 @@ for spec in "${SPECS[@]}"; do
         unauthz_ok="PASS"
     else
         unauthz_ok="FAIL"
-        failures=$((failures + 1))
+        g_failures=$((g_failures + 1))
     fi
     printf '  unauthorized (%s) -> HTTP %s (expect %s)  %s\n' \
         "$UNAUTHORIZED_PRINCIPAL" "$unauthz_code" "$expected" "$unauthz_ok"
@@ -160,13 +160,13 @@ for spec in "${SPECS[@]}"; do
 done
 
 printf '\n'
-if [[ "$failures" -gt 0 ]]; then
-    if [[ "${#unauthed_failed[@]}" -gt 0 ]]; then
-        printf 'Unauthenticated calls reached the endpoint for: %s. The trusted-proxy\n' "${unauthed_failed[*]}" >&2
+if [[ "$g_failures" -gt 0 ]]; then
+    if [[ "${#g_unauthed_failed[@]}" -gt 0 ]]; then
+        printf 'Unauthenticated calls reached the endpoint for: %s. The trusted-proxy\n' "${g_unauthed_failed[*]}" >&2
         printf 'middleware is not rejecting them; do not rely on these endpoints being\n' >&2
         printf 'contained until the proxy identity is restored.\n' >&2
     fi
-    printf 'Endpoint containment check failed with %d issue(s).\n' "$failures" >&2
+    printf 'Endpoint containment check failed with %d issue(s).\n' "$g_failures" >&2
     exit 1
 fi
 printf 'Endpoint containment passed: unauthenticated and unauthorized calls are\n'

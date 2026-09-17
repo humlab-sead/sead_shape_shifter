@@ -2,24 +2,24 @@
 # Exercise rollback to a recorded image and authorization database backup.
 set -Eeuo pipefail
 
-SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-CONTAINER_DIR="$(CDPATH='' cd -- "$SCRIPT_DIR/../.." && pwd)"
+g_script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+g_container_dir="$(CDPATH='' cd -- "$g_script_dir/../.." && pwd)"
 
 # shellcheck source=../load-env.sh
 # shellcheck disable=SC1091
-. "$CONTAINER_DIR/scripts/load-env.sh"
+. "$g_container_dir/scripts/load-env.sh"
 
-CONTAINER_NAME="${CONTAINER_NAME:-shape-shifter}"
-COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-shapeshifter}"
-DATA_DIR="${DATA_DIR:-$CONTAINER_DIR/../container-data}"
-BACKUP_DIR="${AUTHORIZATION_BACKUP_DIR:-$DATA_DIR/backups}"
-HOST_PORT="${HOST_PORT:-8012}"
-EVIDENCE_DIR=""
-IMAGE=""
-AUTHORIZATION_BACKUP=""
-MANIFEST=""
-CONFIRMED=false
-EXPECTED_IMAGE_ID=""
+g_container_name="${CONTAINER_NAME:-shape-shifter}"
+g_compose_project_name="${COMPOSE_PROJECT_NAME:-shapeshifter}"
+g_data_dir="${DATA_DIR:-$g_container_dir/../container-data}"
+g_backup_dir="${AUTHORIZATION_BACKUP_DIR:-$g_data_dir/backups}"
+g_host_port="${HOST_PORT:-8012}"
+g_evidence_dir=""
+g_image=""
+g_authorization_backup=""
+g_manifest=""
+g_confirmed=false
+g_expected_image_id=""
 
 usage() {
     cat <<'EOF'
@@ -56,41 +56,41 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --image)
             [[ $# -ge 2 ]] || fail "--image requires a value"
-            IMAGE="$2"
+            g_image="$2"
             shift 2
             ;;
         --authorization-backup)
             [[ $# -ge 2 ]] || fail "--authorization-backup requires a value"
-            AUTHORIZATION_BACKUP="$2"
+            g_authorization_backup="$2"
             shift 2
             ;;
         --manifest)
             [[ $# -ge 2 ]] || fail "--manifest requires a value"
-            MANIFEST="$2"
+            g_manifest="$2"
             shift 2
             ;;
         --backup-dir)
             [[ $# -ge 2 ]] || fail "--backup-dir requires a value"
-            BACKUP_DIR="$2"
+            g_backup_dir="$2"
             shift 2
             ;;
         --evidence-dir)
             [[ $# -ge 2 ]] || fail "--evidence-dir requires a value"
-            EVIDENCE_DIR="$2"
+            g_evidence_dir="$2"
             shift 2
             ;;
         --container-name)
             [[ $# -ge 2 ]] || fail "--container-name requires a value"
-            CONTAINER_NAME="$2"
+            g_container_name="$2"
             shift 2
             ;;
         --host-port)
             [[ $# -ge 2 ]] || fail "--host-port requires a value"
-            HOST_PORT="$2"
+            g_host_port="$2"
             shift 2
             ;;
         --yes)
-            CONFIRMED=true
+            g_confirmed=true
             shift
             ;;
         -h|--help)
@@ -103,84 +103,84 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$IMAGE" ]] || { usage >&2; fail "--image is required"; }
-[[ -n "$AUTHORIZATION_BACKUP" ]] || { usage >&2; fail "--authorization-backup is required"; }
-[[ -n "$MANIFEST" ]] || { usage >&2; fail "--manifest is required"; }
+[[ -n "$g_image" ]] || { usage >&2; fail "--image is required"; }
+[[ -n "$g_authorization_backup" ]] || { usage >&2; fail "--authorization-backup is required"; }
+[[ -n "$g_manifest" ]] || { usage >&2; fail "--manifest is required"; }
 command -v podman >/dev/null || fail "podman is required"
 command -v podman-compose >/dev/null || fail "podman-compose is required"
-[[ -f "$DATA_DIR/backend.env" ]] || fail "backend environment file not found: $DATA_DIR/backend.env"
-[[ -f "$MANIFEST" ]] || fail "authorization manifest not found: $MANIFEST"
+[[ -f "$g_data_dir/backend.env" ]] || fail "backend environment file not found: $g_data_dir/backend.env"
+[[ -f "$g_manifest" ]] || fail "authorization manifest not found: $g_manifest"
 
-if [[ "$AUTHORIZATION_BACKUP" = */* ]]; then
-    BACKUP_PATH="$AUTHORIZATION_BACKUP"
+if [[ "$g_authorization_backup" = */* ]]; then
+    g_backup_path="$g_authorization_backup"
 else
-    BACKUP_PATH="$BACKUP_DIR/$AUTHORIZATION_BACKUP"
+    g_backup_path="$g_backup_dir/$g_authorization_backup"
 fi
-[[ -f "$BACKUP_PATH" ]] || fail "authorization backup not found: $BACKUP_PATH"
-[[ -f "$MANIFEST" ]] || fail "authorization manifest not found: $MANIFEST"
-BACKUP_PATH="$(CDPATH='' cd -- "$(dirname -- "$BACKUP_PATH")" && pwd)/$(basename -- "$BACKUP_PATH")"
-MANIFEST="$(CDPATH='' cd -- "$(dirname -- "$MANIFEST")" && pwd)/$(basename -- "$MANIFEST")"
+[[ -f "$g_backup_path" ]] || fail "authorization backup not found: $g_backup_path"
+[[ -f "$g_manifest" ]] || fail "authorization manifest not found: $g_manifest"
+g_backup_path="$(CDPATH='' cd -- "$(dirname -- "$g_backup_path")" && pwd)/$(basename -- "$g_backup_path")"
+g_manifest="$(CDPATH='' cd -- "$(dirname -- "$g_manifest")" && pwd)/$(basename -- "$g_manifest")"
 
-if [[ -z "$EVIDENCE_DIR" ]]; then
-    EVIDENCE_DIR="$DATA_DIR/backups/rollback-$(date +%Y%m%d-%H%M%S)"
+if [[ -z "$g_evidence_dir" ]]; then
+    g_evidence_dir="$g_data_dir/backups/rollback-$(date +%Y%m%d-%H%M%S)"
 fi
-mkdir -p "$EVIDENCE_DIR"
-EVIDENCE_LOG="$EVIDENCE_DIR/rollback-exercise.log"
-exec > >(tee -a "$EVIDENCE_LOG") 2>&1
+mkdir -p "$g_evidence_dir"
+g_evidence_log="$g_evidence_dir/rollback-exercise.log"
+exec > >(tee -a "$g_evidence_log") 2>&1
 
 printf 'Rollback exercise started: %s\n' "$(date --iso-8601=seconds)"
 printf 'Container: %s\nImage: %s\nBackup: %s\nManifest: %s\n' \
-    "$CONTAINER_NAME" "$IMAGE" "$BACKUP_PATH" "$MANIFEST"
+    "$g_container_name" "$g_image" "$g_backup_path" "$g_manifest"
 
 container_state() {
-    podman container inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || true
+    podman container inspect --format '{{.State.Status}}' "$g_container_name" 2>/dev/null || true
 }
 
 record_image_identity() {
     printf '\n== Recorded image identity ==\n'
-    podman image exists "$IMAGE" || fail "recorded image is not available locally: $IMAGE"
-    EXPECTED_IMAGE_ID="$(podman image inspect --format '{{.Id}}' "$IMAGE")"
+    podman image exists "$g_image" || fail "recorded image is not available locally: $g_image"
+    g_expected_image_id="$(podman image inspect --format '{{.Id}}' "$g_image")"
     podman image inspect --format \
-        'Image={{.Id}}\nRepoDigests={{.RepoDigests}}\nLabels={{json .Config.Labels}}' "$IMAGE"
+        'Image={{.Id}}\nRepoDigests={{.RepoDigests}}\nLabels={{json .Config.Labels}}' "$g_image"
 }
 
 compose_down() {
-    CONTAINER_DATA_DIR="$DATA_DIR" HOST_PORT="$HOST_PORT" IMAGE_NAME="$IMAGE" \
-        podman-compose -f "$CONTAINER_DIR/podman-compose.yml" \
-        -p "$COMPOSE_PROJECT_NAME" down
+    CONTAINER_DATA_DIR="$g_data_dir" HOST_PORT="$g_host_port" IMAGE_NAME="$g_image" \
+        podman-compose -f "$g_container_dir/podman-compose.yml" \
+        -p "$g_compose_project_name" down
 }
 
 compose_up() {
-    CONTAINER_DATA_DIR="$DATA_DIR" HOST_PORT="$HOST_PORT" IMAGE_NAME="$IMAGE" \
-        podman-compose -f "$CONTAINER_DIR/podman-compose.yml" \
-        -p "$COMPOSE_PROJECT_NAME" up -d
+    CONTAINER_DATA_DIR="$g_data_dir" HOST_PORT="$g_host_port" IMAGE_NAME="$g_image" \
+        podman-compose -f "$g_container_dir/podman-compose.yml" \
+        -p "$g_compose_project_name" up -d
 }
 
 run_admin() {
     podman run --rm \
-        --env-file "$DATA_DIR/backend.env" \
-        --volume "$DATA_DIR/state:/app/state:rw" \
-        "$IMAGE" sead-authorization "$@"
+        --env-file "$g_data_dir/backend.env" \
+        --volume "$g_data_dir/state:/app/state:rw" \
+        "$g_image" sead-authorization "$@"
 }
 
 run_restore() {
     podman run --rm \
-        --env-file "$DATA_DIR/backend.env" \
-        --volume "$DATA_DIR/state:/app/state:rw" \
-        --volume "$BACKUP_PATH:/app/rollback-backup:ro" \
-        "$IMAGE" sead-authorization restore /app/rollback-backup
+        --env-file "$g_data_dir/backend.env" \
+        --volume "$g_data_dir/state:/app/state:rw" \
+        --volume "$g_backup_path:/app/rollback-backup:ro" \
+        "$g_image" sead-authorization restore /app/rollback-backup
 }
 
 run_reconcile() {
     podman run --rm \
-        --env-file "$DATA_DIR/backend.env" \
-        --volume "$DATA_DIR/state:/app/state:rw" \
-        --volume "$MANIFEST:/app/rollback-manifest:ro" \
-        "$IMAGE" sead-authorization reconcile /app/rollback-manifest
+        --env-file "$g_data_dir/backend.env" \
+        --volume "$g_data_dir/state:/app/state:rw" \
+        --volume "$g_manifest:/app/rollback-manifest:ro" \
+        "$g_image" sead-authorization reconcile /app/rollback-manifest
 }
 
 wait_for_health() {
-    local health_url="http://127.0.0.1:${HOST_PORT}/api/v1/health"
+    local health_url="http://127.0.0.1:${g_host_port}/api/v1/health"
     local attempts=0
     while (( attempts < 60 )); do
         if curl --fail --silent --show-error "$health_url" >/dev/null; then
@@ -197,13 +197,13 @@ on_error() {
     local status=$?
     printf '\nRollback exercise failed with exit status %d.\n' "$status" >&2
     printf 'Service state: %s\n' "$(container_state)" >&2
-    printf 'Evidence: %s\n' "$EVIDENCE_DIR" >&2
+    printf 'Evidence: %s\n' "$g_evidence_dir" >&2
     exit "$status"
 }
 trap on_error ERR
 
-if [[ "$CONFIRMED" = false ]]; then
-    read -r -p "Stop $CONTAINER_NAME and restore the recorded rollback state? [y/N] " confirmation
+if [[ "$g_confirmed" = false ]]; then
+    read -r -p "Stop $g_container_name and restore the recorded rollback state? [y/N] " confirmation
     [[ "$confirmation" =~ ^[Yy]$ ]] || { printf 'Rollback exercise cancelled.\n'; exit 0; }
 fi
 
@@ -225,10 +225,10 @@ compose_up
 
 printf '\n== Verifying resulting service ==\n'
 wait_for_health
-actual_image_id="$(podman container inspect --format '{{.Image}}' "$CONTAINER_NAME")"
+actual_image_id="$(podman container inspect --format '{{.Image}}' "$g_container_name")"
 printf 'Running image ID: %s\n' "$actual_image_id"
-[[ "$actual_image_id" = "$EXPECTED_IMAGE_ID" ]] || fail "running image does not match the recorded image"
+[[ "$actual_image_id" = "$g_expected_image_id" ]] || fail "running image does not match the recorded image"
 printf 'Container state: %s\n' "$(container_state)"
 [[ "$(container_state)" = running ]] || fail "container is not running after rollback"
 
-printf '\nRollback exercise passed. Evidence: %s\n' "$EVIDENCE_DIR"
+printf '\nRollback exercise passed. Evidence: %s\n' "$g_evidence_dir"

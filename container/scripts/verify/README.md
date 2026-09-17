@@ -18,23 +18,29 @@ explicitly opt-in. Record every result with the date and host.
 | `verify_authenticated_access.sh` | Through the proxy, that each of two real principals reaches only its own project (allowed 200, denied 404), and that the proxy rejects requests without credentials (401). |
 | `rollback_exercise.sh` | Restores a recorded image and authorization backup, checks SQLite integrity, reconciles the authorization manifest, and verifies the resulting service health. This script changes deployment state. |
 | `run_deployment_verification.sh` | Runs the host and deployment-user checks, captures evidence and a summary, and optionally runs authenticated access and rollback. |
+| `deployment-verification.options.yml.example` | Safe template for the orchestrator's non-secret runtime options. |
 
 Run from the deployment user's `container/` directory; the firewall script can run from any account with `sudo`.
 
 The orchestrator can be run by a sudo-capable operator from this directory. It
 resolves the target user's `~/container` and rootless Podman context, runs
 deployment checks as that user, runs host checks as the operator, and writes
-the orchestration logs to `--evidence-dir`:
+the orchestration logs to `--evidence-dir`. Store a copy of the options file
+with the evidence so the run can be reproduced:
 
 ```bash
+cp ./scripts/verify/deployment-verification.options.yml.example \
+  ./deployment-verification.options.yml
+# Edit deployment-verification.options.yml, then run:
 ./scripts/verify/run_deployment_verification.sh \
-  --deploy-user test-shape-shifter.sead.se \
-  --database sead_staging \
-  --project disposable-project \
-  --base-url https://test-shape-shifter.sead.se \
-  --db-log /var/log/postgresql/postgresql.log \
-  --evidence-dir "$PWD/deployment-verification-20260917"
+  --options-file ./deployment-verification.options.yml
 ```
+
+The file is read with `yq` before command-line parsing. Explicit command-line
+options override values from the YAML file. The exact options file is copied to
+`options.yml` inside the evidence directory. Keep passwords, tokens, and other
+credentials out of the file; the authenticated check prompts for passwords
+separately.
 
 Add `--authenticated` together with `--principal-a`, `--principal-b`,
 `--project-a`, and `--project-b` to run the interactive principal-isolation
