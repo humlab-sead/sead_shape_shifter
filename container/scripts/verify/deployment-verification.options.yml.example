@@ -6,19 +6,19 @@
 # from this file.
 
 deploy_user: test-shape-shifter.sead.se
-container_dir: /home/test-shape-shifter.sead.se/container
-data_dir: /home/test-shape-shifter.sead.se/container-data
+container_dir: /data/test-shape-shifter.sead.se/container
+data_dir: /data/test-shape-shifter.sead.se/container-data
 evidence_dir: /var/tmp/shape-shifter-verification
 
 database: sead_staging
 role: sead_ro
 schema: public
-project: disposable-project
+project: ""
 base_url: https://test-shape-shifter.sead.se
 
 # Optional: create a registered temporary project for endpoint containment.
 # When set, omit project above and use a template copied with the deployment.
-disposable_project_template: ""
+disposable_project_template: /data/test-shape-shifter.sead.se/container/scripts/verify/disposable-project
 project_creator: ""
 
 # Used only with --authenticated.
