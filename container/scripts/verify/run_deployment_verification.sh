@@ -35,6 +35,7 @@ g_authorization_manifest=""
 g_host_port=""
 g_container_name=""
 g_compose_project_name=""
+g_target_path="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin"
 g_last_status=0
 g_failures=0
 g_warnings=0
@@ -225,7 +226,7 @@ g_target_verify_dir="$g_container_dir/scripts/verify"
 [[ -d "$g_target_verify_dir" ]] || fail "verification directory not found: $g_target_verify_dir"
 
 target_run() {
-    sudo -n -u "$g_deploy_user" -H -- "$@"
+    sudo -n -u "$g_deploy_user" -H env "PATH=$g_target_path" -- "$@"
 }
 
 if [[ -z "$g_data_dir" || -z "$g_host_port" || -z "$g_container_name" || -z "$g_compose_project_name" ]]; then
