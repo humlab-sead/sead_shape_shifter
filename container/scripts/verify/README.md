@@ -1,6 +1,10 @@
 # Deployment verification scripts
 
-Read-only checks for the Shape Shifter deployment on this host. Each script exits non-zero on a failed check and never changes rules, services, containers, images, or configuration. Record each script's output with the date and host.
+Read-only checks for the Shape Shifter deployment on this host. Each read-only
+script exits non-zero on a failed check and never changes rules, services,
+containers, images, or configuration. `rollback_exercise.sh` is the exception:
+it deliberately changes the deployment as a controlled rollback test and
+records its output. Record every result with the date and host.
 
 | Script | Verifies |
 | --- | --- |
@@ -11,6 +15,7 @@ Read-only checks for the Shape Shifter deployment on this host. Each script exit
 | `verify_credential_rotation.sh` | The backend credentials that were reachable during the LAN-exposure window, listed by name (values never printed), plus the per-credential rotation or approved-exception record. |
 | `verify_endpoint_containment.sh` | That the execution, raw YAML, data-source creation, and ingester endpoints reject unauthenticated (401) and unauthorized (404/403) calls, so no separate disablement is needed; records the ingester enforcement gap. |
 | `verify_authenticated_access.sh` | Through the proxy, that each of two real principals reaches only its own project (allowed 200, denied 404), and that the proxy rejects requests without credentials (401). |
+| `rollback_exercise.sh` | Restores a recorded image and authorization backup, checks SQLite integrity, reconciles the authorization manifest, and verifies the resulting service health. This script changes deployment state. |
 
 Run from the deployment user's `container/` directory; the firewall script can run from any account with `sudo`.
 
@@ -50,6 +55,15 @@ PRINCIPAL_A_PASSWORD=... PRINCIPAL_B_PASSWORD=... ./scripts/verify/verify_authen
   --base-url https://test-shape-shifter.sead.se \
   --principal-a alice --principal-b bob \
   --project-a project-alice --project-b project-bob
+
+# Rollback exercise (mutates the deployment; run only in the approved window).
+# The image must already exist locally, identified by an immutable tag or digest.
+./scripts/verify/rollback_exercise.sh \
+  --image localhost/shape-shifter@sha256:<recorded-digest> \
+  --authorization-backup "$DATA_DIR/backups/authorization-20260916-120000.sqlite3" \
+  --manifest "$DATA_DIR/authorization-manifest.yml" \
+  --evidence-dir "$DATA_DIR/backups/rollback-20260917" \
+  --yes
 ```
 
 `verify_postgres_grants.sh` authenticates to PostgreSQL via `~/.pgpass`; pass `--host`, `--port`, and `--username` when the database is not on the local socket. `verify_firewall.sh` prints the cross-host `nc` commands to run from a second machine; that step cannot run from the host itself.
