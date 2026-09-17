@@ -132,6 +132,10 @@ After each deployment, run `./scripts/verify_firewall.sh` from the deployment us
 
 The check fails when the backend listens on `0.0.0.0:8012` or any port other than the proxy is reachable from outside. Record the listener output, the firewall listing, and the cross-host result with the date and host.
 
+### Container configuration re-inspection
+
+After each deployment or image change, run `./scripts/verify_container_config.sh` from the deployment user's `container/` directory as that user, for example `sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify_container_config.sh`. The script prints the mounts, the published ports, the environment variable names (never values), and the image labels and history scan, and fails on a non-loopback port, a sensitive host mount, or a writable `.pgpass` mount. It never changes the container, image, or configuration; record its output with the date and host.
+
 To roll back, set `GIT_REF` and `IMAGE_NAME` to the last known-good release, rebuild or select the corresponding image, and run `make restart`. Keep the current authorization database unless the rollback explicitly requires restoring its recorded state. Re-run health, UI, authorization, and project-read checks after the rollback.
 
 ## Observability And References
