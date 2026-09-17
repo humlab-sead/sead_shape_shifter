@@ -2,7 +2,7 @@
 
 ## Status
 
-- Phase plan / not yet executed
+- Phase plan / Phase 1 complete; phases 2–5 not started
 - Scope: route and operation inventory, migration input, readiness validation, enforcement cutover, and Podman release verification
 - Goal: enforce the implemented authorization system in production with reviewed access records and a tested rollback
 - Source decision: [Centralized Authorization System](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
@@ -41,7 +41,7 @@ This plan covers:
 - The authorization design, policy, and persistent SQLite repository are implemented.
 - Project, child-resource, shared-source, log, session, and operation checks are implemented for the covered routes and services.
 - The administration CLI supports manifest migration, reconciliation, resource and role review, grant mutations, backup, restore, and integrity checks.
-- The maintained route inventory still contains `UNDECLARED` entries that require classification before cutover.
+- Phase 1 is complete: the maintained route inventory classifies every route and lifecycle entry, carries a dated review by Roger Mähler on 2026-09-17, and no longer contains an `UNDECLARED` row. The classification and parity checks in `backend/tests/authorization/test_route_authentication.py` enforce that state.
 - Deployment-specific projects, shared data sources, principal IDs, initial grants, and release evidence are not recorded yet.
 - The deployment documentation still describes Docker Compose; the target server uses Podman, so the image, service definition, secret injection, volume mounts, health checks, logging, and rollback workflow need a Podman deployment record.
 
@@ -87,7 +87,7 @@ Classify every registered route and background operation that production can rea
 
 **Readiness**
 
-Ready for a task plan.
+Complete on 2026-09-17; executed through the [Phase 1 task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_1_TASK_PLAN.md).
 
 ### Phase 2: Review Deployment Resources And Initial Grants
 

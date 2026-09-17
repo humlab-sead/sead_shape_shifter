@@ -286,7 +286,7 @@ Domain exceptions in `backend/app/exceptions.py` carry a human-readable message,
 
 ### Authentication and authorization
 
-Nginx authenticates users and forwards a verified identity in `X-Authenticated-User` when trusted-proxy authentication is enabled. FastAPI rejects protected requests without that identity and binds sessions to it. Resource-level project authorization remains future work. Direct backend access must be restricted to the nginx host.
+Nginx authenticates users and forwards a verified identity in `X-Authenticated-User` when trusted-proxy authentication is enabled. FastAPI rejects protected requests without that identity and binds sessions to it. Resource-level authorization is implemented for project and project-child resources, shared data sources, sessions, and operations through resource records, grants, and application roles; each route's requirement is recorded in [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md) and the implemented policy is described in [AUTHORIZATION.md](AUTHORIZATION.md). Ingester capability authorization remains proposed work. Direct backend access must be restricted to the nginx host.
 
 ### Security
 

@@ -255,6 +255,17 @@ Routes are not the only entry points that reach protected work. The table below 
 
 **Background entry-point search:** searching `backend/app/` for `asyncio.create_task`, `BackgroundTasks`, `run_in_executor`, and `operation_manager.create_operation` returns two background task starts and one operation creator: the auto-reconcile task and the session cleanup task recorded above, with `reconciliation.py::auto_reconcile_entity` as the only `create_operation` caller. No `BackgroundTasks`, `run_in_executor`, or other task start exists in the backend, so no further background entry point reaches protected work.
 
+## Classification Review
+
+Reviewed by Roger Mähler on 2026-09-17. Every route row and every lifecycle or background entry was checked against the implemented policy in [AUTHORIZATION.md](AUTHORIZATION.md), the role and action maps in `backend/app/authorization/policy.py`, the resource types and actions in `backend/app/authorization/models.py`, and the assembled route set read by `backend/tests/authorization/test_route_authentication.py`.
+
+- The inventory holds 141 route rows and no row reads `UNDECLARED`.
+- Resource requirements use only defined resource type and action pairs: `project:read` (43 rows), `project:edit` (48), `project:execute` (1), `project:delete` (1), `shared_data_source:read` (12).
+- Application requirements use only defined actions, each granted by an application role the policy defines: `create_project` through `project_creator`, and `manage_shared_sources` and `run_ingesters` through `operator`. No route requires `read_logs`.
+- The assembled application exposes no unclassified `/api/v1` route, and every documented non-API row is either served by the application or depends on the frontend build.
+
+Corrections to this review use the same requirement terms and note style. A row that needs a policy decision is reported instead of guessed.
+
 ## Maintenance
 
 Before merging a route change:
@@ -264,4 +275,4 @@ Before merging a route change:
 3. Update [AUTHORIZATION.md](AUTHORIZATION.md) if the policy, principal contract, or denial behavior changes.
 4. Add regression coverage for the route requirement.
 
-The planned automated completeness check remains tracked in [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](proposals/done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md).
+The completeness check lives in `backend/tests/authorization/test_route_authentication.py`: `test_api_routes_are_classified` requires declared metadata or a documented classification for every assembled API route, `test_route_inventory_matches_assembled_api_routes` keeps the API rows and the registered routes equal, and `test_route_inventory_matches_direct_and_mounted_routes` covers the rows outside the API prefix.
