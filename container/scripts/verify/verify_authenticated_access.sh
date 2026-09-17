@@ -28,13 +28,13 @@
 #     --project-a project-alice --project-b project-bob
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-https://test-shape-shifter.sead.se}"
-PRINCIPAL_A="${PRINCIPAL_A:-}"
-PRINCIPAL_B="${PRINCIPAL_B:-}"
-PROJECT_A="${PROJECT_A:-}"
-PROJECT_B="${PROJECT_B:-}"
-PASSWORD_A=""
-PASSWORD_B=""
+g_base_url="${BASE_URL:-https://test-shape-shifter.sead.se}"
+g_principal_a="${PRINCIPAL_A:-}"
+g_principal_b="${PRINCIPAL_B:-}"
+g_project_a="${PROJECT_A:-}"
+g_project_b="${PROJECT_B:-}"
+g_password_a=""
+g_password_b=""
 
 usage() {
     cat <<EOF
@@ -56,18 +56,18 @@ EOF
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --base-url)     [[ $# -ge 2 ]] || { echo "--base-url requires a value." >&2; exit 2; }; BASE_URL="$2"; shift 2 ;;
-        --principal-a)  [[ $# -ge 2 ]] || { echo "--principal-a requires a value." >&2; exit 2; }; PRINCIPAL_A="$2"; shift 2 ;;
-        --principal-b)  [[ $# -ge 2 ]] || { echo "--principal-b requires a value." >&2; exit 2; }; PRINCIPAL_B="$2"; shift 2 ;;
-        --project-a)    [[ $# -ge 2 ]] || { echo "--project-a requires a value." >&2; exit 2; }; PROJECT_A="$2"; shift 2 ;;
-        --project-b)    [[ $# -ge 2 ]] || { echo "--project-b requires a value." >&2; exit 2; }; PROJECT_B="$2"; shift 2 ;;
+        --base-url)     [[ $# -ge 2 ]] || { echo "--base-url requires a value." >&2; exit 2; }; g_base_url="$2"; shift 2 ;;
+        --principal-a)  [[ $# -ge 2 ]] || { echo "--principal-a requires a value." >&2; exit 2; }; g_principal_a="$2"; shift 2 ;;
+        --principal-b)  [[ $# -ge 2 ]] || { echo "--principal-b requires a value." >&2; exit 2; }; g_principal_b="$2"; shift 2 ;;
+        --project-a)    [[ $# -ge 2 ]] || { echo "--project-a requires a value." >&2; exit 2; }; g_project_a="$2"; shift 2 ;;
+        --project-b)    [[ $# -ge 2 ]] || { echo "--project-b requires a value." >&2; exit 2; }; g_project_b="$2"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
     esac
 done
 
-[[ -n "$PRINCIPAL_A" && -n "$PRINCIPAL_B" ]] || { echo "--principal-a and --principal-b are required." >&2; usage >&2; exit 2; }
-[[ -n "$PROJECT_A" && -n "$PROJECT_B" ]] || { echo "--project-a and --project-b are required." >&2; usage >&2; exit 2; }
+[[ -n "$g_principal_a" && -n "$g_principal_b" ]] || { echo "--principal-a and --principal-b are required." >&2; usage >&2; exit 2; }
+[[ -n "$g_project_a" && -n "$g_project_b" ]] || { echo "--project-a and --project-b are required." >&2; usage >&2; exit 2; }
 
 command -v curl >/dev/null || { echo "curl is required." >&2; exit 1; }
 
@@ -91,14 +91,14 @@ read_password() {
     return 1
 }
 
-read_password "principal A" PRINCIPAL_A_PASSWORD PASSWORD_A || exit 2
-read_password "principal B" PRINCIPAL_B_PASSWORD PASSWORD_B || exit 2
+read_password "principal A" PRINCIPAL_A_PASSWORD g_password_a || exit 2
+read_password "principal B" PRINCIPAL_B_PASSWORD g_password_b || exit 2
 
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 
 # label|path-template|expected status|principal (empty = no credentials)
-SPECS=(
+g_specs=(
     "proxy-auth|/api/v1/projects/{A}|401|"
     "allowed-A|/api/v1/projects/{A}|200|A"
     "denied-A|/api/v1/projects/{B}|404|A"
@@ -106,14 +106,14 @@ SPECS=(
     "denied-B|/api/v1/projects/{A}|404|B"
 )
 
-expand() { printf '%s' "$1" | sed -e "s/{A}/$PROJECT_A/g" -e "s/{B}/$PROJECT_B/g"; }
+expand() { printf '%s' "$1" | sed -e "s/{A}/$g_project_a/g" -e "s/{B}/$g_project_b/g"; }
 
 probe() {
     local url="$1" principal="$2"
     local user pass code
     case "$principal" in
-        A) user="$PRINCIPAL_A"; pass="$PASSWORD_A" ;;
-        B) user="$PRINCIPAL_B"; pass="$PASSWORD_B" ;;
+        A) user="$g_principal_a"; pass="$g_password_a" ;;
+        B) user="$g_principal_b"; pass="$g_password_b" ;;
         *) user=""; pass="" ;;
     esac
     if [[ -n "$user" ]]; then
@@ -128,29 +128,29 @@ body_excerpt() {
     tr '\n' ' ' < "$tmpdir/body" | cut -c1-120
 }
 
-failures=0
+g_failures=0
 
-printf 'Authenticated access probe through: %s\n' "$BASE_URL"
+printf 'Authenticated access probe through: %s\n' "$g_base_url"
 printf 'Principal A: %s -> project %s\nPrincipal B: %s -> project %s\n' \
-    "$PRINCIPAL_A" "$PROJECT_A" "$PRINCIPAL_B" "$PROJECT_B"
+    "$g_principal_a" "$g_project_a" "$g_principal_b" "$g_project_b"
 
 info "Request and response pairs"
 
-for spec in "${SPECS[@]}"; do
+for spec in "${g_specs[@]}"; do
     label="${spec%%|*}"; rest="${spec#*|}"
     path_template="${rest%%|*}"; rest="${rest#*|}"
     expected="${rest%%|*}"; rest="${rest#*|}"
     principal="${rest}"
 
     path="$(expand "$path_template")"
-    url="$BASE_URL$path"
+    url="$g_base_url$path"
     code="$(probe "$url" "$principal")"
 
     if [[ "$code" == "$expected" ]]; then
         verdict="PASS"
     else
         verdict="FAIL"
-        failures=$((failures + 1))
+        g_failures=$((g_failures + 1))
     fi
 
     identity="${principal:-<none>}"
@@ -160,8 +160,8 @@ for spec in "${SPECS[@]}"; do
 done
 
 printf '\n'
-if [[ "$failures" -gt 0 ]]; then
-    printf 'Authenticated access check failed with %d issue(s).\n' "$failures" >&2
+if [[ "$g_failures" -gt 0 ]]; then
+    printf 'Authenticated access check failed with %d issue(s).\n' "$g_failures" >&2
     exit 1
 fi
 printf 'Authenticated access and cross-resource isolation passed for both\n'

@@ -23,12 +23,12 @@
 # prompt, exactly like scripts/postgres/create-readonly-role.sh.
 set -euo pipefail
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+g_script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+g_root_dir="$(cd "$g_script_dir/../../.." && pwd)"
 
 # shellcheck source=../load-env.sh
-if [[ -f "$SCRIPT_DIR/../load-env.sh" ]]; then
-    . "$SCRIPT_DIR/../load-env.sh"
+if [[ -f "$g_script_dir/../load-env.sh" ]]; then
+    . "$g_script_dir/../load-env.sh"
 fi
 
 app_role="${PG_APP_ROLE:-sead_ro}"
@@ -37,13 +37,13 @@ app_schema="${PG_APP_SCHEMA:-public}"
 pg_host="${PG_HOST:-}"
 pg_port="${PG_PORT:-}"
 pg_username="${PG_USERNAME:-}"
-verify_sql="${VERIFY_READONLY_SQL:-$ROOT_DIR/scripts/postgres/verify_readonly_role.sql}"
+verify_sql="${VERIFY_READONLY_SQL:-$g_root_dir/scripts/postgres/verify_readonly_role.sql}"
 sqlite_path="${AUTHORIZATION_SQLITE_PATH:-}"
-failures=0
+g_failures=0
 
 info() { printf '\n== %s ==\n' "$*"; }
 pass() { printf 'PASS  %s\n' "$*"; }
-fail() { printf 'FAIL  %s\n' "$*" >&2; failures=$((failures + 1)); }
+fail() { printf 'FAIL  %s\n' "$*" >&2; g_failures=$((g_failures + 1)); }
 warn() { printf 'WARN  %s\n' "$*"; }
 
 usage() {
@@ -122,8 +122,8 @@ else
 fi
 
 printf '\n'
-if [[ "$failures" -gt 0 ]]; then
-    printf 'Verification failed with %d issue(s).\n' "$failures" >&2
+if [[ "$g_failures" -gt 0 ]]; then
+    printf 'Verification failed with %d issue(s).\n' "$g_failures" >&2
     exit 1
 fi
 printf 'PostgreSQL grants and SQLite store verification passed. Record this output with the date and host.\n'

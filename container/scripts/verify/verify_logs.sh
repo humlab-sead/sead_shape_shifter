@@ -18,16 +18,16 @@
 #       [--nginx-access PATH] [--nginx-error PATH] [--db-log PATH]
 set -euo pipefail
 
-CONTAINER_NAME="${CONTAINER_NAME:-shape-shifter}"
-SINCE="${SINCE:-24h}"
-NGINX_ACCESS_LOG="${NGINX_ACCESS_LOG:-/var/log/nginx/access.log}"
-NGINX_ERROR_LOG="${NGINX_ERROR_LOG:-/var/log/nginx/error.log}"
-DB_LOG="${DB_LOG:-}"
+g_container_name="${CONTAINER_NAME:-shape-shifter}"
+g_since="${SINCE:-24h}"
+g_nginx_access_log="${NGINX_ACCESS_LOG:-/var/log/nginx/access.log}"
+g_nginx_error_log="${NGINX_ERROR_LOG:-/var/log/nginx/error.log}"
+g_db_log="${DB_LOG:-}"
 
-PATTERN_CREDENTIALS='password|passwd|secret|token|api[-_]?key|bearer [a-z0-9._-]+|basic [a-z0-9+/=]+'
-PATTERN_CONNECTION='postgres(ql)?://|jdbc:postgresql|mongodb(\+srv)?://|mysql://|://[^[:space:]]*:[^[:space:]]*@'
-PATTERN_SQL='\b(select|insert|update|delete|create|drop|alter|grant|revoke|truncate|merge)\b'
-PATTERN_PATH='/(app|data|etc|home|root|var|usr|tmp|run)(/|[[:space:]]|$)'
+g_pattern_credentials='password|passwd|secret|token|api[-_]?key|bearer [a-z0-9._-]+|basic [a-z0-9+/=]+'
+g_pattern_connection='postgres(ql)?://|jdbc:postgresql|mongodb(\+srv)?://|mysql://|://[^[:space:]]*:[^[:space:]]*@'
+g_pattern_sql='\b(select|insert|update|delete|create|drop|alter|grant|revoke|truncate|merge)\b'
+g_pattern_path='/(app|data|etc|home|root|var|usr|tmp|run)(/|[[:space:]]|$)'
 
 info() { printf '\n== %s ==\n' "$*"; }
 warn() { printf 'WARN  %s\n' "$*"; }
@@ -51,11 +51,11 @@ EOF
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --since)          [[ $# -ge 2 ]] || { echo "--since requires a value." >&2; exit 2; }; SINCE="$2"; shift 2 ;;
-        --container-name) [[ $# -ge 2 ]] || { echo "--container-name requires a value." >&2; exit 2; }; CONTAINER_NAME="$2"; shift 2 ;;
-        --nginx-access)   [[ $# -ge 2 ]] || { echo "--nginx-access requires a value." >&2; exit 2; }; NGINX_ACCESS_LOG="$2"; shift 2 ;;
-        --nginx-error)    [[ $# -ge 2 ]] || { echo "--nginx-error requires a value." >&2; exit 2; }; NGINX_ERROR_LOG="$2"; shift 2 ;;
-        --db-log)         [[ $# -ge 2 ]] || { echo "--db-log requires a value." >&2; exit 2; }; DB_LOG="$2"; shift 2 ;;
+        --since)          [[ $# -ge 2 ]] || { echo "--since requires a value." >&2; exit 2; }; g_since="$2"; shift 2 ;;
+        --container-name) [[ $# -ge 2 ]] || { echo "--container-name requires a value." >&2; exit 2; }; g_container_name="$2"; shift 2 ;;
+        --nginx-access)   [[ $# -ge 2 ]] || { echo "--nginx-access requires a value." >&2; exit 2; }; g_nginx_access_log="$2"; shift 2 ;;
+        --nginx-error)    [[ $# -ge 2 ]] || { echo "--nginx-error requires a value." >&2; exit 2; }; g_nginx_error_log="$2"; shift 2 ;;
+        --db-log)         [[ $# -ge 2 ]] || { echo "--db-log requires a value." >&2; exit 2; }; g_db_log="$2"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
     esac
@@ -84,14 +84,14 @@ read_log_file() {
 
 collected=0
 
-info "Collecting logs for the last $SINCE"
-if podman logs --since "$SINCE" --timestamps "$CONTAINER_NAME" > "$container_log" 2>/dev/null; then
+info "Collecting logs for the last $g_since"
+if podman logs --since "$g_since" --timestamps "$g_container_name" > "$container_log" 2>/dev/null; then
     [[ -s "$container_log" ]] && { collected=$((collected + 1)); printf '  container: %s line(s)\n' "$(wc -l < "$container_log")"; }
 else
     warn "could not read container logs (is the container running under this user?)"
 fi
 
-for spec in "access|$NGINX_ACCESS_LOG|$nginx_access" "error|$NGINX_ERROR_LOG|$nginx_error"; do
+for spec in "access|$g_nginx_access_log|$nginx_access" "error|$g_nginx_error_log|$nginx_error"; do
     label="${spec%%|*}"
     rest="${spec#*|}"
     source="${rest%%|*}"
@@ -103,11 +103,11 @@ for spec in "access|$NGINX_ACCESS_LOG|$nginx_access" "error|$NGINX_ERROR_LOG|$ng
     fi
 done
 
-if [[ -n "$DB_LOG" ]]; then
-    if read_log_file "$DB_LOG" "$db_log"; then
+if [[ -n "$g_db_log" ]]; then
+    if read_log_file "$g_db_log" "$db_log"; then
         [[ -s "$db_log" ]] && { collected=$((collected + 1)); printf '  postgres: %s line(s)\n' "$(wc -l < "$db_log")"; }
     else
-        warn "could not read PostgreSQL log: $DB_LOG"
+        warn "could not read PostgreSQL log: $g_db_log"
     fi
 else
     printf '  postgres: skipped (pass --db-log to include it)\n'
@@ -116,19 +116,19 @@ fi
 [[ "$collected" -gt 0 ]] || warn "no log sources collected; nothing to sweep"
 
 info "Searches used"
-printf '  credentials:      %s\n' "$PATTERN_CREDENTIALS"
-printf '  connection strings: %s\n' "$PATTERN_CONNECTION"
-printf '  SQL statements:  %s\n' "$PATTERN_SQL"
-printf '  filesystem paths: %s\n' "$PATTERN_PATH"
+printf '  credentials:      %s\n' "$g_pattern_credentials"
+printf '  connection strings: %s\n' "$g_pattern_connection"
+printf '  SQL statements:  %s\n' "$g_pattern_sql"
+printf '  filesystem paths: %s\n' "$g_pattern_path"
 
 info "Candidate matches (review each; record excerpts)"
 for file in "$container_log" "$nginx_access" "$nginx_error" "$db_log"; do
     [[ -s "$file" ]] || continue
     base="$(basename "$file")"
-    grep -n -E -i "$PATTERN_CREDENTIALS" "$file" 2>/dev/null | sed "s|^|$base:credentials: |" >> "$results" || true
-    grep -n -E -i "$PATTERN_CONNECTION" "$file" 2>/dev/null | sed "s|^|$base:connection-string: |" >> "$results" || true
-    grep -n -E -i "$PATTERN_SQL" "$file" 2>/dev/null | sed "s|^|$base:sql: |" >> "$results" || true
-    grep -n -E "$PATTERN_PATH" "$file" 2>/dev/null | sed "s|^|$base:path: |" >> "$results" || true
+    grep -n -E -i "$g_pattern_credentials" "$file" 2>/dev/null | sed "s|^|$base:credentials: |" >> "$results" || true
+    grep -n -E -i "$g_pattern_connection" "$file" 2>/dev/null | sed "s|^|$base:connection-string: |" >> "$results" || true
+    grep -n -E -i "$g_pattern_sql" "$file" 2>/dev/null | sed "s|^|$base:sql: |" >> "$results" || true
+    grep -n -E "$g_pattern_path" "$file" 2>/dev/null | sed "s|^|$base:path: |" >> "$results" || true
 done
 
 matches=0

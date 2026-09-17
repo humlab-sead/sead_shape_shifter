@@ -24,17 +24,17 @@
 #   CONTAINER_NAME  container to inspect (default: shape-shifter)
 set -euo pipefail
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+g_script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../load-env.sh
-if [[ -f "$SCRIPT_DIR/../load-env.sh" ]]; then
-    . "$SCRIPT_DIR/../load-env.sh"
+if [[ -f "$g_script_dir/../load-env.sh" ]]; then
+    . "$g_script_dir/../load-env.sh"
 fi
 
-DATA_DIR="${DATA_DIR:-$SCRIPT_DIR/../../container-data}"
-CONTAINER_NAME="${CONTAINER_NAME:-shape-shifter}"
+g_data_dir="${DATA_DIR:-$g_script_dir/../../container-data}"
+g_container_name="${CONTAINER_NAME:-shape-shifter}"
 
-ROTATED=()
-DECLINED=()
+g_rotated=()
+g_declined=()
 
 usage() {
     cat <<EOF
@@ -56,10 +56,10 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --rotated)
             [[ $# -ge 2 ]] || { echo "--rotated requires a LABEL." >&2; exit 2; }
-            ROTATED+=("$2"); shift 2 ;;
+            g_rotated+=("$2"); shift 2 ;;
         --declined)
             [[ $# -ge 2 ]] || { echo "--declined requires LABEL=REASON." >&2; exit 2; }
-            DECLINED+=("$2"); shift 2 ;;
+            g_declined+=("$2"); shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
     esac
@@ -82,7 +82,7 @@ record() {
 
 # Credential-like variable names. Matches the set used by the other verify
 # scripts; values are never read.
-NAME_PATTERN='PASSWORD|SECRET|TOKEN|PASSWD|CREDENTIAL|API_KEY|PRIVATE_KEY|SIGNING'
+g_name_pattern='PASSWORD|SECRET|TOKEN|PASSWD|CREDENTIAL|API_KEY|PRIVATE_KEY|SIGNING'
 
 printf 'LAN exposure: the backend answered on the LAN address before its port was\n'
 printf 'restricted to loopback. The credentials below are the backend sources\n'
@@ -94,7 +94,7 @@ printf 'backend, and is outside this check.\n'
 info "Credential inventory (names and redacted targets only)"
 
 # 1. PostgreSQL password file.
-pgpass="$DATA_DIR/.pgpass/.pgpass"
+pgpass="$g_data_dir/.pgpass/.pgpass"
 if [[ -r "$pgpass" ]]; then
     printf 'PostgreSQL password file: %s\n' "$pgpass"
     while IFS= read -r line; do
@@ -109,12 +109,12 @@ else
 fi
 
 # 2. Runtime environment file (chmod 600; names only).
-env_file="$DATA_DIR/backend.env"
+env_file="$g_data_dir/backend.env"
 if [[ -r "$env_file" ]]; then
     printf 'Runtime environment file: %s\n' "$env_file"
     while IFS= read -r name; do
         [[ -n "$name" ]] || continue
-        if [[ "$name" =~ $NAME_PATTERN ]]; then
+        if [[ "$name" =~ $g_name_pattern ]]; then
             printf '  %s\n' "$name"
             record "env:$name" "environment variable $name"
         fi
@@ -125,18 +125,18 @@ fi
 
 # 3. Container environment variable names (podman, best effort).
 if command -v podman >/dev/null 2>&1; then
-    printf 'Container environment variable names: %s\n' "$CONTAINER_NAME"
-    container_env="$(podman container inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$CONTAINER_NAME" 2>/dev/null || true)"
+    printf 'Container environment variable names: %s\n' "$g_container_name"
+    container_env="$(podman container inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$g_container_name" 2>/dev/null || true)"
     if [[ -n "$container_env" ]]; then
         while IFS= read -r name; do
             [[ -n "$name" ]] || continue
-            if [[ "$name" =~ $NAME_PATTERN ]]; then
+            if [[ "$name" =~ $g_name_pattern ]]; then
                 printf '  %s\n' "$name"
                 record "env:$name" "environment variable $name"
             fi
         done < <(printf '%s\n' "$container_env" | sed 's/=.*//' | sort -u)
     else
-        warn "cannot read container '$CONTAINER_NAME' environment (not running under this user?)"
+        warn "cannot read container '$g_container_name' environment (not running under this user?)"
     fi
 else
     warn "podman not found; skipped container environment inspection"
@@ -150,9 +150,9 @@ fi
 
 # Index the operator's decisions.
 declare -A rotated_set=()
-for label in "${ROTATED[@]}"; do rotated_set["$label"]=1; done
+for label in "${g_rotated[@]}"; do rotated_set["$label"]=1; done
 declare -A declined_set=()
-for entry in "${DECLINED[@]}"; do
+for entry in "${g_declined[@]}"; do
     label="${entry%%=*}"
     reason="${entry#*=}"
     [[ "$reason" == "$entry" ]] && reason="(no reason recorded)"

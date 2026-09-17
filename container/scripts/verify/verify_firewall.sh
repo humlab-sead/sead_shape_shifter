@@ -17,13 +17,13 @@
 # everything else runs unprivileged.
 set -euo pipefail
 
-HOST_PORT="${1:-8012}"
-LAN_IP="${2:-}"
-failures=0
+g_host_port="${1:-8012}"
+g_lan_ip="${2:-}"
+g_failures=0
 
 info() { printf '\n== %s ==\n' "$*"; }
 pass() { printf 'PASS  %s\n' "$*"; }
-fail() { printf 'FAIL  %s\n' "$*" >&2; failures=$((failures + 1)); }
+fail() { printf 'FAIL  %s\n' "$*" >&2; g_failures=$((g_failures + 1)); }
 warn() { printf 'WARN  %s\n' "$*"; }
 
 list_with_sudo() {
@@ -36,25 +36,25 @@ list_with_sudo() {
     fi
 }
 
-if [[ -z "$LAN_IP" ]]; then
-    LAN_IP="$(ip -4 -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -n 1)"
+if [[ -z "$g_lan_ip" ]]; then
+    g_lan_ip="$(ip -4 -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -n 1)"
 fi
-if [[ -z "$LAN_IP" ]]; then
+if [[ -z "$g_lan_ip" ]]; then
     warn "No LAN address found; pass it as the second argument for the LAN refusal check."
 fi
 
-info "Listeners (expect 127.0.0.1:${HOST_PORT} for the backend, only the proxy port otherwise)"
-ss -ltn | grep -E ":(80|443|${HOST_PORT})\b" || warn "no listener found on ${HOST_PORT}, 80, or 443"
+info "Listeners (expect 127.0.0.1:${g_host_port} for the backend, only the proxy port otherwise)"
+ss -ltn | grep -E ":(80|443|${g_host_port})\b" || warn "no listener found on ${g_host_port}, 80, or 443"
 
-if ss -ltn | grep -Eq "0\.0\.0\.0:${HOST_PORT}\b"; then
-    fail "backend listens on 0.0.0.0:${HOST_PORT}; it must bind loopback only"
-elif ! ss -ltn | grep -Eq "127\.0\.0\.1:${HOST_PORT}\b"; then
-    warn "no loopback listener on ${HOST_PORT} found (is the container up?)"
+if ss -ltn | grep -Eq "0\.0\.0\.0:${g_host_port}\b"; then
+    fail "backend listens on 0.0.0.0:${g_host_port}; it must bind loopback only"
+elif ! ss -ltn | grep -Eq "127\.0\.0\.1:${g_host_port}\b"; then
+    warn "no loopback listener on ${g_host_port} found (is the container up?)"
 else
-    pass "backend listener is loopback-only on ${HOST_PORT}"
+    pass "backend listener is loopback-only on ${g_host_port}"
 fi
 
-info "Firewall rules (no rule may open ${HOST_PORT} to non-loopback traffic)"
+info "Firewall rules (no rule may open ${g_host_port} to non-loopback traffic)"
 backend=""
 for candidate in firewalld ufw nftables iptables; do
     if systemctl is-active --quiet "$candidate" 2>/dev/null; then
@@ -73,32 +73,32 @@ else
         nftables)  list_with_sudo "nft" nft list ruleset ;;
         iptables)  list_with_sudo "iptables" iptables -S ;;
     esac
-    printf 'Confirm no rule opens port %s to non-loopback traffic.\n' "$HOST_PORT"
+    printf 'Confirm no rule opens port %s to non-loopback traffic.\n' "$g_host_port"
 fi
 
 info "Connection checks"
-loopback_code="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 5 "http://127.0.0.1:${HOST_PORT}/api/v1/health" 2>/dev/null)" || true
+loopback_code="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 5 "http://127.0.0.1:${g_host_port}/api/v1/health" 2>/dev/null)" || true
 if [[ "$loopback_code" == "200" ]]; then
     pass "loopback health returned 200"
 else
     fail "loopback health returned '${loopback_code}'"
 fi
 
-if [[ -n "$LAN_IP" ]]; then
-    if curl -sS --connect-timeout 5 -o /dev/null "http://${LAN_IP}:${HOST_PORT}/api/v1/health" 2>/dev/null; then
-        fail "LAN address ${LAN_IP}:${HOST_PORT} is reachable; the backend is exposed"
+if [[ -n "$g_lan_ip" ]]; then
+    if curl -sS --connect-timeout 5 -o /dev/null "http://${g_lan_ip}:${g_host_port}/api/v1/health" 2>/dev/null; then
+        fail "LAN address ${g_lan_ip}:${g_host_port} is reachable; the backend is exposed"
     else
-        pass "LAN address ${LAN_IP}:${HOST_PORT} refused (loopback-only or firewalled)"
+        pass "LAN address ${g_lan_ip}:${g_host_port} refused (loopback-only or firewalled)"
     fi
 fi
 
 info "Cross-host check (run from a second host on the LAN)"
-printf '  nc -zvw5 %s %s   # expect refused or timed out\n' "${LAN_IP:-<host-lan-ip>}" "$HOST_PORT"
-printf '  nc -zvw5 %s 443  # the proxy should connect\n' "${LAN_IP:-<host-lan-ip>}"
+printf '  nc -zvw5 %s %s   # expect refused or timed out\n' "${g_lan_ip:-<host-lan-ip>}" "$g_host_port"
+printf '  nc -zvw5 %s 443  # the proxy should connect\n' "${g_lan_ip:-<host-lan-ip>}"
 
 printf '\n'
-if [[ "$failures" -gt 0 ]]; then
-    printf 'Verification failed with %d issue(s).\n' "$failures" >&2
+if [[ "$g_failures" -gt 0 ]]; then
+    printf 'Verification failed with %d issue(s).\n' "$g_failures" >&2
     exit 1
 fi
 printf 'Host-side verification passed. Record the listener output, firewall listing, and cross-host result.\n'

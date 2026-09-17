@@ -1,0 +1,41 @@
+# Runtime options for run_deployment_verification.sh.
+#
+# This file contains identifiers and paths only. Do not put passwords, tokens,
+# or other credentials here. Copy it to a deployment-specific file, edit the
+# values, and pass it with --options-file. Command-line options override values
+# from this file.
+
+deploy_user: test-shape-shifter.sead.se
+container_dir: /home/test-shape-shifter.sead.se/container
+data_dir: /home/test-shape-shifter.sead.se/container-data
+evidence_dir: /var/tmp/shape-shifter-verification
+
+database: sead_staging
+role: sead_ro
+schema: public
+project: disposable-project
+base_url: https://test-shape-shifter.sead.se
+
+# Used only with --authenticated.
+principal_a: alice
+principal_b: bob
+project_a: project-alice
+project_b: project-bob
+
+since: 24h
+db_log: /var/log/postgresql/postgresql.log
+service_name: shape-shifter
+
+# Keep both phases disabled unless this recorded run explicitly needs them.
+authenticated: false
+rollback: false
+
+# Required when rollback is true.
+rollback_image: ""
+authorization_backup: ""
+manifest: ""
+
+# Optional deployment overrides. Empty values use the target deployment config.
+host_port: ""
+container_name: ""
+compose_project: ""
