@@ -72,7 +72,7 @@ done
 
 command -v rsync >/dev/null || { echo "rsync is required locally." >&2; exit 1; }
 
-RSYNC_ARGS=(--archive --delete --delete-delay --human-readable --itemize-changes --exclude=/.env)
+RSYNC_ARGS=(--archive --delete --delete-delay --human-readable --itemize-changes --exclude=/.env --exclude="deployment-verification")
 if [[ "$DRY_RUN" = true ]]; then
   RSYNC_ARGS+=(--dry-run)
 fi
