@@ -236,8 +236,8 @@ For every check, record the commit, the command output, and the reviewer in the 
 
 **Open questions**
 
-- **Who reviews and signs the classification?** `TBD` (repository authorization owner). It blocks the `T4.1` review note, not the implementation. Record the name before `V-5`.
-- **Should `POST /suggestions/analyze` resolve `data_source_name` server-side and require shared-source read?** Recommended resolution: keep authenticated-only in this phase and record the follow-up, matching the accepted `POST /data-sources/tables` disposition. Changing it requires the schema service to resolve a registered source, which is a separate change.
-- **Should `/projects/active/name` conceal the active project name from principals without project read?** Recommended resolution: no in this phase, because the route is not identifier-addressed and the response carries only the deployment active project name. A `null` fallback is a response-contract change for the frontend and should be raised as follow-up if the deployment requires it.
+- **Who reviews and signs the classification?** Settled: Roger Mähler reviewed the classification on 2026-09-17, and the review note in [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) records what was checked.
+- **Should `POST /suggestions/analyze` resolve `data_source_name` server-side and require shared-source read?** Settled for this phase: the route stays `authenticated` with the follow-up recorded in the inventory, matching the accepted `POST /data-sources/tables` disposition. Changing it requires the schema service to resolve a registered source, which is a separate change.
+- **Should `/projects/active/name` conceal the active project name from principals without project read?** Settled in this phase: yes. `T1.2` classified the route `project:read` through `require_active_project(Action.READ)`, which returns the concealed `404 Resource not found` for an active project the principal cannot read and reports `null` only when no project is active. The route therefore carries `authorization_requirement` metadata like every other protected route.
 
 If verified repository state conflicts with this plan during implementation, stop and report the conflict and the evidence instead of redesigning the inventory or broadening the phase.
