@@ -101,7 +101,7 @@ class RestoreBackupRequest(BaseModel):
 class MetadataUpdateRequest(BaseModel):
     """Request to update project metadata."""
 
-    name: str | None = Field(default=None, description="Project name")
+    name: str | None = Field(default=None, description="Ignored; this operation does not rename the project")
     description: str | None = Field(default=None, description="Project description")
     version: str | None = Field(default=None, description="Project version (x.y.z format)")
     default_entity: str | None = Field(default=None, description="Default entity name")

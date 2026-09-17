@@ -237,6 +237,24 @@ Application and error logs are global: no project-scoped log file exists, so any
 
 Principals who run and review projects are expected to run these ingesters for that work. Granting `operator` meets that expectation today. If a run must instead be limited to one project, the route needs a project locator plus `project:execute` alongside the containment checks.
 
+## Lifecycle And Background Coverage
+
+Routes are not the only entry points that reach protected work. The table below records the resource lifecycle calls and the background tasks, with the authorization that guards each one. Authorization checks reject any resource whose lifecycle state is not `active`, so a resource in `deleting` or `deleted` fails every check until it returns to `active`.
+
+| Entry point | Authorization | Lifecycle or operation call | Evidence |
+|-------------|---------------|-----------------------------|----------|
+| `POST /api/v1/projects` | `application:create_project` through `require_application_action` | `ProjectService.assign_project_owner` calls `AuthorizationService.register_project`, which creates the project resource and grants the creating principal the `owner` role | `backend/app/api/v1/endpoints/projects.py::create_project`, `backend/app/services/project_service.py::assign_project_owner` |
+| `POST /api/v1/projects/{name}/copy` | `project:read` on the source project plus `application:create_project` | `assign_project_owner` calls `register_project` for the copied project | `backend/app/api/v1/endpoints/projects.py::copy_project` |
+| `DELETE /api/v1/projects/{name}` | `project:delete` through `require_project` | `transition_resource` moves the resource to `deleting`, returns it to `active` when the delete fails, and moves it to `deleted` when the delete succeeds | `backend/app/api/v1/endpoints/projects.py::delete_project` |
+| `POST /api/v1/data-sources` | `application:manage_shared_sources` through `require_application_action` | `AuthorizationService.register_shared_data_source` creates the shared-source resource and grants the creating principal the `reader` role; the created file is deleted again when registration fails | `backend/app/api/v1/endpoints/data_sources.py::create_data_source` |
+| `DELETE /api/v1/data-sources/{filename}` | `application:manage_shared_sources` through `require_application_action` | `transition_resource` moves the resource through `deleting` to `deleted`, and back to `active` when the delete fails | `backend/app/api/v1/endpoints/data_sources.py::delete_data_source` |
+| Auto-reconcile background task | `project:edit` on the route that starts it; `require_operation(Action.READ)` for progress and stream, `require_operation(Action.EDIT)` for cancel | `operation_manager.create_operation` records `owner_principal_id` and `project_resource_id`, and `asyncio.create_task` runs the reconciliation under that operation identifier | `backend/app/api/v1/endpoints/reconciliation.py::auto_reconcile_entity`, `backend/app/core/operation_manager.py::create_operation` |
+| Session cleanup task | None: the task runs outside a request and holds no principal | Releases sessions left inactive for 30 minutes; sessions and the project names they reference are application state, not authorization resources | `backend/app/core/state_manager.py::_cleanup_stale_sessions` |
+
+**Project rename:** no project rename entry point exists. `ProjectService.update_metadata` ignores its `new_name` argument because the project file name is the authoritative source for the project name, so no rename path needs a lifecycle check. The two `update_metadata` docstrings and the `MetadataUpdateRequest.name` description state this instead of pointing at a `rename_project()` method that does not exist.
+
+**Background entry-point search:** searching `backend/app/` for `asyncio.create_task`, `BackgroundTasks`, `run_in_executor`, and `operation_manager.create_operation` returns two background task starts and one operation creator: the auto-reconcile task and the session cleanup task recorded above, with `reconciliation.py::auto_reconcile_entity` as the only `create_operation` caller. No `BackgroundTasks`, `run_in_executor`, or other task start exists in the backend, so no further background entry point reaches protected work.
+
 ## Maintenance
 
 Before merging a route change:

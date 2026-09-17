@@ -274,12 +274,12 @@ class ProjectOperations:
         """
         Update project metadata.
 
-        Note: new_name parameter is ignored - use rename_project() instead.
-        The filename is the authoritative source for project name.
+        Note: this operation does not rename the project. The project file name is the
+        authoritative source for the project name, so the ``new_name`` argument is ignored.
 
         Args:
-            name: Current project name (derived from filename)
-            new_name: Ignored (use rename_project instead)
+            name: Current project name (derived from the file name)
+            new_name: Ignored; this operation does not rename a project
             description: Project description (optional)
             version: Project version (optional)
             default_entity: Default entity name (optional)
