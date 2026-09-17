@@ -9,6 +9,7 @@ Read-only checks for the Shape Shifter deployment on this host. Each script exit
 | `verify_postgres_grants.sh` | The read-only PostgreSQL role's grants in the release database and the authorization SQLite store's ownership and mode. |
 | `verify_logs.sh` | The container, nginx, and PostgreSQL logs for credentials, connection strings, SQL text, and filesystem paths (candidate scan for operator review). |
 | `verify_credential_rotation.sh` | The backend credentials that were reachable during the LAN-exposure window, listed by name (values never printed), plus the per-credential rotation or approved-exception record. |
+| `verify_endpoint_containment.sh` | That the execution, raw YAML, data-source creation, and ingester endpoints reject unauthenticated (401) and unauthorized (404/403) calls, so no separate disablement is needed; records the ingester enforcement gap. |
 
 Run from the deployment user's `container/` directory; the firewall script can run from any account with `sudo`.
 
@@ -36,6 +37,10 @@ sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify/verify_container_con
   --rotated pgpass:localhost:5432:sead_staging:sead_ro \
   --rotated env:SEAD_PASSWORD \
   --declined "env:SIMS_API_TOKEN=rotated by SIMS team, ticket 1234"
+
+# Endpoint containment (run as the deployment user against the loopback backend;
+# use an existing, disposable project so a broken check cannot write to real data).
+./scripts/verify/verify_endpoint_containment.sh --project <existing-project>
 ```
 
 `verify_postgres_grants.sh` authenticates to PostgreSQL via `~/.pgpass`; pass `--host`, `--port`, and `--username` when the database is not on the local socket. `verify_firewall.sh` prints the cross-host `nc` commands to run from a second machine; that step cannot run from the host itself.
