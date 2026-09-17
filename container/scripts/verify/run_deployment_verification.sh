@@ -14,6 +14,11 @@ g_database=""
 g_role="sead_ro"
 g_schema="public"
 g_project=""
+g_disposable_project_template=""
+g_project_creator=""
+g_disposable_project_name=""
+g_disposable_unauthorized_principal=""
+g_disposable_creator_principal=""
 g_base_url=""
 g_principal_a="${PRINCIPAL_A:-}"
 g_principal_b="${PRINCIPAL_B:-}"
@@ -47,6 +52,9 @@ Required options:
     --deploy-user USER          Local deployment user (or options file)
     --database DATABASE         Release PostgreSQL database (or options file)
     --project PROJECT           Existing disposable project (or options file)
+    --disposable-project-template DIR
+                                Create a temporary project from this template
+    --project-creator PRINCIPAL Temporary principal used to create the project
 
 Options:
     --options-file FILE         YAML runtime options file
@@ -131,6 +139,8 @@ if [[ -n "$g_options_file" ]]; then
     g_role="$(option_value '.role' "$g_role")"
     g_schema="$(option_value '.schema' "$g_schema")"
     g_project="$(option_value '.project' "$g_project")"
+    g_disposable_project_template="$(option_value '.disposable_project_template' "$g_disposable_project_template")"
+    g_project_creator="$(option_value '.project_creator' "$g_project_creator")"
     g_base_url="$(option_value '.base_url' "$g_base_url")"
     g_principal_a="$(option_value '.principal_a' "$g_principal_a")"
     g_principal_b="$(option_value '.principal_b' "$g_principal_b")"
@@ -157,6 +167,9 @@ while [[ $# -gt 0 ]]; do
         --deploy-user)          [[ $# -ge 2 ]] || fail "--deploy-user requires a value"; g_deploy_user="$2"; shift 2 ;;
         --database)             [[ $# -ge 2 ]] || fail "--database requires a value"; g_database="$2"; shift 2 ;;
         --project)              [[ $# -ge 2 ]] || fail "--project requires a value"; g_project="$2"; shift 2 ;;
+        --disposable-project-template)
+                    [[ $# -ge 2 ]] || fail "--disposable-project-template requires a value"; g_disposable_project_template="$2"; shift 2 ;;
+        --project-creator)      [[ $# -ge 2 ]] || fail "--project-creator requires a value"; g_project_creator="$2"; shift 2 ;;
         --options-file)         [[ $# -ge 2 ]] || fail "--options-file requires a value"; g_options_file="$2"; shift 2 ;;
         --container-dir)        [[ $# -ge 2 ]] || fail "--container-dir requires a value"; g_container_dir="$2"; shift 2 ;;
         --data-dir)             [[ $# -ge 2 ]] || fail "--data-dir requires a value"; g_data_dir="$2"; shift 2 ;;
@@ -186,7 +199,11 @@ done
 
 [[ -n "$g_deploy_user" ]] || { usage >&2; fail "--deploy-user is required"; }
 [[ -n "$g_database" ]] || { usage >&2; fail "--database is required"; }
-[[ -n "$g_project" ]] || { usage >&2; fail "--project is required"; }
+if [[ -z "$g_disposable_project_template" ]]; then
+    [[ -n "$g_project" ]] || { usage >&2; fail "--project is required unless --disposable-project-template is used"; }
+else
+    [[ -z "$g_project" ]] || fail "--project cannot be combined with --disposable-project-template"
+fi
 if [[ "$g_run_rollback" = true ]]; then
     [[ -n "$g_rollback_image" ]] || fail "--rollback-image is required with --rollback"
     [[ -n "$g_authorization_backup" ]] || fail "--authorization-backup is required with --rollback"
@@ -247,6 +264,49 @@ fi
 g_summary_file="$g_evidence_dir/summary.txt"
 : > "$g_summary_file"
 
+cleanup_disposable_project() {
+    local status=$?
+    trap - EXIT
+    if [[ -n "$g_disposable_project_name" ]]; then
+        printf '\n== Disposable project teardown ==\n'
+        if ! target_run "$g_target_verify_dir/teardown.sh" \
+            --api-url "http://127.0.0.1:${g_host_port}" \
+            --project-name "$g_disposable_project_name" \
+            --creator-principal "$g_disposable_creator_principal" \
+            --actor "$g_deploy_user" > "$g_evidence_dir/disposable-project-teardown.log" 2>&1; then
+            cat "$g_evidence_dir/disposable-project-teardown.log"
+            printf 'FAIL: disposable project cleanup failed; inspect the teardown evidence.\n' >&2
+            [[ "$status" -eq 0 ]] && status=1
+        else
+            cat "$g_evidence_dir/disposable-project-teardown.log"
+        fi
+    fi
+    exit "$status"
+}
+
+if [[ -n "$g_disposable_project_template" ]]; then
+    g_disposable_project_name="verification-containment-$(date +%Y%m%d%H%M%S)-$$"
+    g_disposable_creator_principal="${g_project_creator:-${g_disposable_project_name}-creator@local}"
+    g_disposable_unauthorized_principal="${g_disposable_project_name}-unauthorized@local"
+    g_project="$g_disposable_project_name"
+    if [[ "$g_disposable_project_template" != /* ]]; then
+        g_disposable_project_template="$g_container_dir/${g_disposable_project_template#./}"
+    fi
+    printf '\n== Disposable project setup ==\n'
+    if ! target_run "$g_target_verify_dir/setup.sh" \
+        --api-url "http://127.0.0.1:${g_host_port}" \
+        --project-name "$g_disposable_project_name" \
+        --template-dir "$g_disposable_project_template" \
+        --creator-principal "$g_disposable_creator_principal" \
+        --unauthorized-principal "$g_disposable_unauthorized_principal" \
+        --actor "$g_deploy_user" > "$g_evidence_dir/disposable-project-setup.log" 2>&1; then
+        cat "$g_evidence_dir/disposable-project-setup.log"
+        fail "disposable project setup failed"
+    fi
+    cat "$g_evidence_dir/disposable-project-setup.log"
+    trap cleanup_disposable_project EXIT
+fi
+
 record_result() {
     local name="$1" status="$2" log="$3"
     printf '%-32s %s\n' "$name" "$status" | tee -a "$g_summary_file"
@@ -303,8 +363,11 @@ run_target_check postgres-grants verify_postgres_grants.sh \
     --database "$g_database" --role "$g_role" --schema "$g_schema" \
     --sqlite "$g_data_dir/state/authorization.sqlite3"
 run_target_check credential-rotation verify_credential_rotation.sh
-run_target_check endpoint-containment verify_endpoint_containment.sh \
-    --base-url "http://127.0.0.1:${g_host_port}" --project "$g_project"
+endpoint_args=(--base-url "http://127.0.0.1:${g_host_port}" --project "$g_project")
+if [[ -n "$g_disposable_unauthorized_principal" ]]; then
+    endpoint_args+=(--unauthorized-principal "$g_disposable_unauthorized_principal")
+fi
+run_target_check endpoint-containment verify_endpoint_containment.sh "${endpoint_args[@]}"
 
 # Container logs require the target user's rootless Podman context. Host logs
 # are collected separately because the target user is not assumed to have sudo.
