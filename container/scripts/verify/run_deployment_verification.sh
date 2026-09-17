@@ -195,11 +195,9 @@ fi
 command -v sudo >/dev/null || fail "sudo is required"
 command -v getent >/dev/null || fail "getent is required"
 
-if [[ "$(id -u)" -ne 0 ]]; then
-    sudo -v || fail "sudo authentication failed"
-fi
+sudo -v || fail "sudo authentication failed"
 
-user_record="$(getent passwd "$g_deploy_user" || true)"
+user_record="$(getent passwd "$g_deploy_user")" || fail "getent passwd failed for deployment user: $g_deploy_user"
 [[ -n "$user_record" ]] || fail "deployment user not found: $g_deploy_user"
 g_user_home="$(printf '%s\n' "$user_record" | cut -d: -f6)"
 [[ -n "$g_user_home" && -d "$g_user_home" ]] || fail "deployment user home not found: $g_user_home"
