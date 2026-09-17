@@ -10,6 +10,7 @@ Read-only checks for the Shape Shifter deployment on this host. Each script exit
 | `verify_logs.sh` | The container, nginx, and PostgreSQL logs for credentials, connection strings, SQL text, and filesystem paths (candidate scan for operator review). |
 | `verify_credential_rotation.sh` | The backend credentials that were reachable during the LAN-exposure window, listed by name (values never printed), plus the per-credential rotation or approved-exception record. |
 | `verify_endpoint_containment.sh` | That the execution, raw YAML, data-source creation, and ingester endpoints reject unauthenticated (401) and unauthorized (404/403) calls, so no separate disablement is needed; records the ingester enforcement gap. |
+| `verify_authenticated_access.sh` | Through the proxy, that each of two real principals reaches only its own project (allowed 200, denied 404), and that the proxy rejects requests without credentials (401). |
 
 Run from the deployment user's `container/` directory; the firewall script can run from any account with `sudo`.
 
@@ -41,6 +42,14 @@ sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify/verify_container_con
 # Endpoint containment (run as the deployment user against the loopback backend;
 # use an existing, disposable project so a broken check cannot write to real data).
 ./scripts/verify/verify_endpoint_containment.sh --project <existing-project>
+
+# Authenticated access and cross-resource isolation through the proxy (run as the
+# deployment user). Passwords come from PRINCIPAL_A_PASSWORD / PRINCIPAL_B_PASSWORD
+# or from a terminal prompt. Projects must be granted to exactly one principal each.
+PRINCIPAL_A_PASSWORD=... PRINCIPAL_B_PASSWORD=... ./scripts/verify/verify_authenticated_access.sh \
+  --base-url https://test-shape-shifter.sead.se \
+  --principal-a alice --principal-b bob \
+  --project-a project-alice --project-b project-bob
 ```
 
 `verify_postgres_grants.sh` authenticates to PostgreSQL via `~/.pgpass`; pass `--host`, `--port`, and `--username` when the database is not on the local socket. `verify_firewall.sh` prints the cross-host `nc` commands to run from a second machine; that step cannot run from the host itself.
