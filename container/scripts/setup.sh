@@ -42,7 +42,8 @@ fi
 log_success "podman-compose $(podman-compose --version 2>/dev/null | head -n1)"
 
 if [ "$EUID" -eq 0 ]; then
-  log_warning "Running as root. Run setup as the dedicated environment user instead."
+  log_error "Run setup as the dedicated environment user, not root."
+  exit 1
 else
   log_success "Running as user: $(whoami) (uid $(id -u), gid $(id -g))"
 fi
@@ -59,8 +60,15 @@ log_info "Creating data directories..."
 mkdir -p "$DATA_DIR"/{projects,shared,logs,output,backups,tmp,state}
 chmod 755 "$DATA_DIR"
 chmod 755 "$DATA_DIR"/{projects,shared,logs,output,backups,tmp,state}
+runtime_owner="$(id -u):$(id -g)"
+if ! chown -R "$runtime_owner" "$DATA_DIR"/{projects,shared,logs,output,backups,tmp,state}; then
+  log_error "Could not assign writable data to $runtime_owner"
+  log_error "Fix ownership as an administrator, then rerun setup as $(whoami)."
+  exit 1
+fi
 log_success "Data directory ready: $DATA_DIR"
 log_success "Subdirectories: projects, shared, logs, output, backups, tmp, state"
+log_success "Writable bind mounts owned by $runtime_owner for userns keep-id"
 
 echo
 log_info "Setting up deployment defaults..."

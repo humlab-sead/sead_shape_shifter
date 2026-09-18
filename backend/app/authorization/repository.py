@@ -73,7 +73,11 @@ class SQLiteAuthorizationRepository:
     def __init__(self, path: Path) -> None:
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._connection = sqlite3.connect(self.path)
+        # FastAPI opens this request-scoped repository in a worker thread and uses
+        # it from the thread that runs the request, so the connection must accept
+        # calls from another thread. Access stays serialized because one instance
+        # serves one request and is closed when that request ends.
+        self._connection = sqlite3.connect(self.path, check_same_thread=False)
         self._connection.row_factory = sqlite3.Row
         self._connection.execute("PRAGMA foreign_keys = ON")
         self._connection.execute("PRAGMA journal_mode = WAL")
