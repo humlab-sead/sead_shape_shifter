@@ -73,17 +73,19 @@ fi
 
 info "Mounts (expect only the podman-compose.yml bind mounts, .pgpass read-only)"
 declare -A seen=()
-while IFS='|' read -r source destination mode; do
+while IFS='|' read -r source destination mode read_only; do
     [[ -n "$destination" ]] || continue
     seen["$destination"]=1
-    printf '  %s -> %s (%s)\n' "$source" "$destination" "${mode:-rw}"
+    mount_mode="${mode:-rw}"
+    [[ "$read_only" == "false" ]] && mount_mode="ro"
+    printf '  %s -> %s (%s)\n' "$source" "$destination" "$mount_mode"
     case "$source" in
         /etc/*|/root/*|/run/secrets*|*/\.ssh*|/var/run/*.sock) fail "sensitive host path mounted: $source" ;;
     esac
-    if [[ "$destination" == "/app/.pgpass" && "$mode" != "ro" ]]; then
+    if [[ "$destination" == "/app/.pgpass" && "$read_only" != "false" ]]; then
         fail ".pgpass must be mounted read-only"
     fi
-done < <(podman container inspect --format '{{range .Mounts}}{{.Source}}|{{.Destination}}|{{.Mode}}{{println}}{{end}}' "$g_container_name" 2>/dev/null || true)
+done < <(podman container inspect --format '{{range .Mounts}}{{.Source}}|{{.Destination}}|{{.Mode}}|{{.RW}}{{println}}{{end}}' "$g_container_name" 2>/dev/null || true)
 
 for expected in "${g_expected_mounts[@]}"; do
     [[ -n "${seen[$expected]:-}" ]] || warn "expected mount missing: $expected"

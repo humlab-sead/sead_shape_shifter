@@ -142,7 +142,7 @@ for spec in "${g_specs[@]}"; do
     fi
 
     # Unauthorized: a principal with no grant must be denied before the handler runs.
-    unauthz_code="$(probe "$method" "$url" "$UNAUTHORIZED_PRINCIPAL" "$body")"
+    unauthz_code="$(probe "$method" "$url" "$g_unauthorized_principal" "$body")"
     if [[ "$unauthz_code" == "$expected" ]]; then
         unauthz_ok="PASS"
     else
@@ -150,7 +150,7 @@ for spec in "${g_specs[@]}"; do
         g_failures=$((g_failures + 1))
     fi
     printf '  unauthorized (%s) -> HTTP %s (expect %s)  %s\n' \
-        "$UNAUTHORIZED_PRINCIPAL" "$unauthz_code" "$expected" "$unauthz_ok"
+        "$g_unauthorized_principal" "$unauthz_code" "$expected" "$unauthz_ok"
     excerpt="$(body_excerpt)"
     printf '    response body: %s\n' "$excerpt"
 
