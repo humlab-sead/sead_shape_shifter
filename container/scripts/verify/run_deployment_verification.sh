@@ -14,14 +14,17 @@ trap 'report_failure $? "${BASH_SOURCE[0]}" "$LINENO" "${BASH_COMMAND%% *}"' ERR
 g_script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 g_local_verify_dir="$g_script_dir"
 g_options_file=""
+g_evidence_dir_cli=false
 
 g_deploy_user=""
 g_container_dir=""
 g_data_dir=""
 g_evidence_dir=""
-g_database=""
-g_role="sead_ro"
-g_schema="public"
+g_pg_database=""
+g_pg_role="sead_ro"
+g_pg_schema="public"
+g_pg_host=""
+g_pg_port=""
 g_project=""
 g_disposable_project_template=""
 g_project_creator=""
@@ -48,11 +51,17 @@ g_target_path="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin"
 g_last_status=0
 g_failures=0
 g_warnings=0
+g_started_at=""
+g_report_id=""
+g_operator_id=""
+g_operator_uid=""
+g_host_id=""
+g_verification_mode="read-only"
 
 usage() {
     cat <<'EOF'
 Usage: container/scripts/verify/run_deployment_verification.sh \
-    --options-file FILE [--deploy-user USER --database DATABASE --project PROJECT] [OPTIONS]
+    --options-file FILE [--deploy-user USER --pg-database DATABASE --project PROJECT] [OPTIONS]
 
 Run the deployment verification checks for a rootless Podman environment on
 this host. Checks that need the deployment user's Podman and credential context
@@ -60,7 +69,7 @@ run through sudo as that user. Host checks run as the invoking user.
 
 Required options:
     --deploy-user USER          Local deployment user (or options file)
-    --database DATABASE         Release PostgreSQL database (or options file)
+    --pg-database DATABASE      Release PostgreSQL database (or options file)
     --project PROJECT           Existing disposable project (or options file)
     --disposable-project-template DIR
                                 Create a temporary project from this template
@@ -76,8 +85,8 @@ Options:
     --principal-b USER          Second principal for authenticated checks
     --project-a NAME            Project first principal can read
     --project-b NAME            Project second principal can read
-  --role ROLE                 PostgreSQL role (default: sead_ro)
-  --schema SCHEMA             PostgreSQL schema (default: public)
+    --pg-role ROLE              PostgreSQL role (default: sead_ro)
+    --pg-schema SCHEMA          PostgreSQL schema (default: public)
   --since DURATION            Log window (default: 24h)
   --db-log PATH               PostgreSQL log path for log review
   --service-name NAME         User systemd service (default: shape-shifter)
@@ -145,9 +154,11 @@ if [[ -n "$g_options_file" ]]; then
     g_container_dir="$(option_value '.container_dir' "$g_container_dir")"
     g_data_dir="$(option_value '.data_dir' "$g_data_dir")"
     g_evidence_dir="$(option_value '.evidence_dir' "$g_evidence_dir")"
-    g_database="$(option_value '.database' "$g_database")"
-    g_role="$(option_value '.role' "$g_role")"
-    g_schema="$(option_value '.schema' "$g_schema")"
+    g_pg_database="$(option_value '.pg_database' "$g_pg_database")"
+    g_pg_role="$(option_value '.pg_role' "$g_pg_role")"
+    g_pg_schema="$(option_value '.pg_schema' "$g_pg_schema")"
+    g_pg_host="$(option_value '.pg_host' "$g_pg_host")"
+    g_pg_port="$(option_value '.pg_port' "$g_pg_port")"
     g_project="$(option_value '.project' "$g_project")"
     g_disposable_project_template="$(option_value '.disposable_project_template' "$g_disposable_project_template")"
     g_project_creator="$(option_value '.project_creator' "$g_project_creator")"
@@ -175,22 +186,24 @@ fi
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --deploy-user)          [[ $# -ge 2 ]] || fail "--deploy-user requires a value"; g_deploy_user="$2"; shift 2 ;;
-        --database)             [[ $# -ge 2 ]] || fail "--database requires a value"; g_database="$2"; shift 2 ;;
+        --pg-database)          [[ $# -ge 2 ]] || fail "--pg-database requires a value"; g_pg_database="$2"; shift 2 ;;
         --project)              [[ $# -ge 2 ]] || fail "--project requires a value"; g_project="$2"; shift 2 ;;
+        --pg-host)              [[ $# -ge 2 ]] || fail "--pg-host requires a value"; g_pg_host="$2"; shift 2 ;;
+        --pg-port)              [[ $# -ge 2 ]] || fail "--pg-port requires a value"; g_pg_port="$2"; shift 2 ;;
         --disposable-project-template)
                     [[ $# -ge 2 ]] || fail "--disposable-project-template requires a value"; g_disposable_project_template="$2"; shift 2 ;;
         --project-creator)      [[ $# -ge 2 ]] || fail "--project-creator requires a value"; g_project_creator="$2"; shift 2 ;;
         --options-file)         [[ $# -ge 2 ]] || fail "--options-file requires a value"; g_options_file="$2"; shift 2 ;;
         --container-dir)        [[ $# -ge 2 ]] || fail "--container-dir requires a value"; g_container_dir="$2"; shift 2 ;;
         --data-dir)             [[ $# -ge 2 ]] || fail "--data-dir requires a value"; g_data_dir="$2"; shift 2 ;;
-        --evidence-dir)         [[ $# -ge 2 ]] || fail "--evidence-dir requires a value"; g_evidence_dir="$2"; shift 2 ;;
+        --evidence-dir)         [[ $# -ge 2 ]] || fail "--evidence-dir requires a value"; g_evidence_dir="$2"; g_evidence_dir_cli=true; shift 2 ;;
         --base-url)             [[ $# -ge 2 ]] || fail "--base-url requires a value"; g_base_url="$2"; shift 2 ;;
         --principal-a)          [[ $# -ge 2 ]] || fail "--principal-a requires a value"; g_principal_a="$2"; shift 2 ;;
         --principal-b)          [[ $# -ge 2 ]] || fail "--principal-b requires a value"; g_principal_b="$2"; shift 2 ;;
         --project-a)            [[ $# -ge 2 ]] || fail "--project-a requires a value"; g_project_a="$2"; shift 2 ;;
         --project-b)            [[ $# -ge 2 ]] || fail "--project-b requires a value"; g_project_b="$2"; shift 2 ;;
-        --role)                 [[ $# -ge 2 ]] || fail "--role requires a value"; g_role="$2"; shift 2 ;;
-        --schema)               [[ $# -ge 2 ]] || fail "--schema requires a value"; g_schema="$2"; shift 2 ;;
+        --pg-role)              [[ $# -ge 2 ]] || fail "--pg-role requires a value"; g_pg_role="$2"; shift 2 ;;
+        --pg-schema)            [[ $# -ge 2 ]] || fail "--pg-schema requires a value"; g_pg_schema="$2"; shift 2 ;;
         --since)                [[ $# -ge 2 ]] || fail "--since requires a value"; g_since="$2"; shift 2 ;;
         --db-log)               [[ $# -ge 2 ]] || fail "--db-log requires a value"; g_db_log="$2"; shift 2 ;;
         --service-name)         [[ $# -ge 2 ]] || fail "--service-name requires a value"; g_service_name="$2"; shift 2 ;;
@@ -208,7 +221,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$g_deploy_user" ]] || { usage >&2; fail "--deploy-user is required"; }
-[[ -n "$g_database" ]] || { usage >&2; fail "--database is required"; }
+[[ -n "$g_pg_database" ]] || { usage >&2; fail "--pg-database is required"; }
 if [[ -z "$g_disposable_project_template" ]]; then
     [[ -n "$g_project" ]] || { usage >&2; fail "--project is required unless --disposable-project-template is used"; }
 else
@@ -266,31 +279,58 @@ if [[ "$g_data_dir" != /* ]]; then
 fi
 [[ -f "$g_data_dir/backend.env" ]] || fail "backend environment file not found: $g_data_dir/backend.env"
 
-if [[ -z "$g_evidence_dir" ]]; then
-    g_evidence_dir="$PWD/deployment-verification-$(date +%Y%m%d-%H%M%S)"
+if [[ "$g_evidence_dir_cli" != true ]]; then
+    g_evidence_root="${g_evidence_dir:-$PWD/deployment-verification}"
+    g_evidence_dir="$g_evidence_root/$(date -u +%Y%m%dT%H%M%SZ)-$$"
 fi
 mkdir -p "$g_evidence_dir"
 if [[ -n "$g_options_file" ]]; then
-    cp -- "$g_options_file" "$g_evidence_dir/options.yml"
+    cp -- "$g_options_file" "$g_evidence_dir/deployment-verification.options.yml"
 fi
 g_summary_file="$g_evidence_dir/summary.txt"
 : > "$g_summary_file"
+g_started_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+g_report_id="deployment-verification-$(date -u '+%Y%m%dT%H%M%SZ')-$$"
+g_operator_id="$(id -un)"
+g_operator_uid="$(id -u)"
+g_host_id="$(hostname -s)"
+if [[ "$g_run_authenticated" = true ]]; then
+    g_verification_mode+=", authenticated"
+fi
+if [[ "$g_run_rollback" = true ]]; then
+    g_verification_mode+=", rollback"
+fi
+
+write_report_header() {
+    cat <<EOF | tee -a "$g_summary_file"
+Shape Shifter deployment verification report
+Report ID:       $g_report_id
+Started (UTC):   $g_started_at
+Operator:        $g_operator_id (uid $g_operator_uid)
+Host:            $g_host_id
+Target user:     $g_deploy_user
+Container:       $g_container_name
+Verification:    $g_verification_mode
+Evidence:        $g_evidence_dir
+
+Results
+-------
+EOF
+}
 
 cleanup_disposable_project() {
     local status=$?
     trap - EXIT
     if [[ -n "$g_disposable_project_name" ]]; then
-        printf '\n== Disposable project teardown ==\n'
         if ! target_run "$g_target_verify_dir/teardown.sh" \
             --api-url "http://127.0.0.1:${g_host_port}" \
             --project-name "$g_disposable_project_name" \
             --creator-principal "$g_disposable_creator_principal" \
             --actor "$g_deploy_user" > "$g_evidence_dir/disposable-project-teardown.log" 2>&1; then
-            cat "$g_evidence_dir/disposable-project-teardown.log"
             printf 'FAIL: disposable project cleanup failed; inspect the teardown evidence.\n' >&2
             [[ "$status" -eq 0 ]] && status=1
         else
-            cat "$g_evidence_dir/disposable-project-teardown.log"
+            printf 'Disposable project cleanup: PASS\n'
         fi
     fi
     exit "$status"
@@ -304,7 +344,6 @@ if [[ -n "$g_disposable_project_template" ]]; then
     if [[ "$g_disposable_project_template" != /* ]]; then
         g_disposable_project_template="$g_container_dir/${g_disposable_project_template#./}"
     fi
-    printf '\n== Disposable project setup ==\n'
     if ! target_run "$g_target_verify_dir/setup.sh" \
         --api-url "http://127.0.0.1:${g_host_port}" \
         --project-name "$g_disposable_project_name" \
@@ -312,10 +351,9 @@ if [[ -n "$g_disposable_project_template" ]]; then
         --creator-principal "$g_disposable_creator_principal" \
         --unauthorized-principal "$g_disposable_unauthorized_principal" \
         --actor "$g_deploy_user" > "$g_evidence_dir/disposable-project-setup.log" 2>&1; then
-        cat "$g_evidence_dir/disposable-project-setup.log"
         fail "disposable project setup failed"
     fi
-    cat "$g_evidence_dir/disposable-project-setup.log"
+    printf 'Disposable project setup: PASS\n'
     trap cleanup_disposable_project EXIT
 fi
 
@@ -325,18 +363,17 @@ record_result() {
     if [[ "$status" != PASS* ]]; then
         g_failures=$((g_failures + 1))
     fi
-    printf 'Evidence: %s\n' "$log"
+    printf 'Evidence: %s\n' "$log" | tee -a "$g_summary_file"
 }
 
 run_target_check() {
     local name="$1" script="$2" log status
     shift 2
     log="$g_evidence_dir/${name}.log"
-    printf '\n== %s ==\n' "$name"
-    if target_run "$g_target_verify_dir/$script" "$@" 2>&1 | tee "$log"; then
+    if target_run "$g_target_verify_dir/$script" "$@" > "$log" 2>&1; then
         status=0
     else
-        status="${PIPESTATUS[0]}"
+        status="$?"
     fi
     if [[ "$status" -eq 0 ]]; then
         record_result "$name" PASS "$log"
@@ -351,11 +388,10 @@ run_host_check() {
     local name="$1" script="$2" log status
     shift 2
     log="$g_evidence_dir/${name}.log"
-    printf '\n== %s ==\n' "$name"
-    if "$g_local_verify_dir/$script" "$@" 2>&1 | tee "$log"; then
+    if "$g_local_verify_dir/$script" "$@" > "$log" 2>&1; then
         status=0
     else
-        status="${PIPESTATUS[0]}"
+        status="$?"
     fi
     if [[ "$status" -eq 0 ]]; then
         record_result "$name" PASS "$log"
@@ -365,15 +401,15 @@ run_host_check() {
     return 0
 }
 
-printf 'Deployment verification for %s\n' "$g_deploy_user" | tee "$g_summary_file"
-printf 'Container: %s\nData: %s\nPort: %s\nOptions: %s\nEvidence: %s\n' \
-    "$g_container_dir" "$g_data_dir" "${g_host_port:-deployment-config}" "${g_options_file:-<cli/defaults>}" "$g_evidence_dir" | tee -a "$g_summary_file"
+write_report_header
 
 run_host_check firewall verify_firewall.sh "$g_host_port"
 run_target_check container-config verify_container_config.sh
-run_target_check postgres-grants verify_postgres_grants.sh \
-    --database "$g_database" --role "$g_role" --schema "$g_schema" \
-    --sqlite "$g_data_dir/state/authorization.sqlite3"
+postgres_grants_args=(--database "$g_pg_database" --role "$g_pg_role" --schema "$g_pg_schema" \
+    --sqlite "$g_data_dir/state/authorization.sqlite3")
+[[ -z "$g_pg_host" ]] || postgres_grants_args+=(--host "$g_pg_host")
+[[ -z "$g_pg_port" ]] || postgres_grants_args+=(--port "$g_pg_port")
+run_target_check postgres-grants verify_postgres_grants.sh "${postgres_grants_args[@]}"
 run_target_check credential-rotation verify_credential_rotation.sh
 endpoint_args=(--base-url "http://127.0.0.1:${g_host_port}" --project "$g_project")
 if [[ -n "$g_disposable_unauthorized_principal" ]]; then
@@ -407,7 +443,7 @@ if [[ "$g_run_rollback" = true ]]; then
     service_was_active=false
     if target_run systemctl --user is-active --quiet "$g_service_name"; then
         service_was_active=true
-        printf '\n== Stopping user service before rollback ==\n'
+        printf 'Rollback preparation: stopping user service\n'
         target_run systemctl --user stop "$g_service_name"
     fi
 
@@ -424,7 +460,7 @@ if [[ "$g_run_rollback" = true ]]; then
 
     rollback_status="$g_last_status"
     if [[ "$service_was_active" = true && "$rollback_status" -eq 0 ]]; then
-        printf '\n== Restarting user service ==\n'
+        printf 'Rollback service restart: '
         if target_run systemctl --user start "$g_service_name"; then
             printf 'User service restarted: %s\n' "$g_service_name"
         else
@@ -434,12 +470,11 @@ if [[ "$g_run_rollback" = true ]]; then
         warn "user service remains stopped because verification failed"
     fi
 else
-    printf '\nRollback skipped. Use --rollback only during the approved rollback window.\n'
+    printf 'Rollback: SKIPPED (not requested)\n'
 fi
 
-printf '\n== Summary ==\n'
-cat "$g_summary_file"
-printf 'Warnings: %d\nFailures: %d\nEvidence: %s\n' "$g_warnings" "$g_failures" "$g_evidence_dir"
+printf '\nFinal status: %s\nWarnings: %d\nFailures: %d\n' \
+    "$([[ "$g_failures" -eq 0 ]] && printf PASS || printf FAIL)" "$g_warnings" "$g_failures" | tee -a "$g_summary_file"
 
 if [[ "$g_failures" -gt 0 ]]; then
     exit 1
