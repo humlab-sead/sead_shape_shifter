@@ -19,6 +19,7 @@
 set -euo pipefail
 
 g_container_name="${CONTAINER_NAME:-shape-shifter}"
+g_container_user="${CONTAINER_USER:-}"
 g_since="${SINCE:-24h}"
 g_nginx_access_log="${NGINX_ACCESS_LOG:-/var/log/nginx/access.log}"
 g_nginx_error_log="${NGINX_ERROR_LOG:-/var/log/nginx/error.log}"
@@ -39,6 +40,7 @@ Usage: $(basename -- "$0") [OPTIONS]
 Options:
   --since DURATION      Release window start for podman logs (default: 24h)
   --container-name NAME Container to read logs from (default: shape-shifter)
+    --container-user USER Run podman logs as the container's rootless user
   --nginx-access PATH   nginx access log (default: /var/log/nginx/access.log)
   --nginx-error PATH    nginx error log (default: /var/log/nginx/error.log)
   --db-log PATH         PostgreSQL server log to sweep (optional)
@@ -53,6 +55,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --since)          [[ $# -ge 2 ]] || { echo "--since requires a value." >&2; exit 2; }; g_since="$2"; shift 2 ;;
         --container-name) [[ $# -ge 2 ]] || { echo "--container-name requires a value." >&2; exit 2; }; g_container_name="$2"; shift 2 ;;
+        --container-user) [[ $# -ge 2 ]] || { echo "--container-user requires a value." >&2; exit 2; }; g_container_user="$2"; shift 2 ;;
         --nginx-access)   [[ $# -ge 2 ]] || { echo "--nginx-access requires a value." >&2; exit 2; }; g_nginx_access_log="$2"; shift 2 ;;
         --nginx-error)    [[ $# -ge 2 ]] || { echo "--nginx-error requires a value." >&2; exit 2; }; g_nginx_error_log="$2"; shift 2 ;;
         --db-log)         [[ $# -ge 2 ]] || { echo "--db-log requires a value." >&2; exit 2; }; g_db_log="$2"; shift 2 ;;
@@ -85,7 +88,12 @@ read_log_file() {
 collected=0
 
 info "Collecting logs for the last $g_since"
-if podman logs --since "$g_since" --timestamps "$g_container_name" > "$container_log" 2>/dev/null; then
+if [[ -n "$g_container_user" ]]; then
+    container_log_command=(sudo -n -u "$g_container_user" -H podman logs --since "$g_since" --timestamps "$g_container_name")
+else
+    container_log_command=(podman logs --since "$g_since" --timestamps "$g_container_name")
+fi
+if "${container_log_command[@]}" > "$container_log" 2>/dev/null; then
     [[ -s "$container_log" ]] && { collected=$((collected + 1)); printf '  container: %s line(s)\n' "$(wc -l < "$container_log")"; }
 else
     warn "could not read container logs (is the container running under this user?)"
