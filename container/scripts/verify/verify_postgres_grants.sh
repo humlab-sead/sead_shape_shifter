@@ -3,7 +3,7 @@
 #
 # Two pieces of evidence, matching the handoff check "PostgreSQL grants for the
 # release host":
-#   1. Catalog queries — runs scripts/postgres/verify_readonly_role.sql against
+#   1. Catalog queries — runs verify_readonly_role.sql from this directory against
 #      the release database, which fails unless the role can SELECT every table
 #      in the schema, has no elevated role attributes, no role memberships, no
 #      owned objects, no schema CREATE, and no write or privilege-management
@@ -24,7 +24,6 @@
 set -euo pipefail
 
 g_script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-g_root_dir="$(cd "$g_script_dir/../../.." && pwd)"
 
 # shellcheck source=../load-env.sh
 if [[ -f "$g_script_dir/../load-env.sh" ]]; then
@@ -37,7 +36,7 @@ app_schema="${PG_APP_SCHEMA:-public}"
 pg_host="${PG_HOST:-}"
 pg_port="${PG_PORT:-}"
 pg_username="${PG_USERNAME:-}"
-verify_sql="${VERIFY_READONLY_SQL:-$g_root_dir/scripts/postgres/verify_readonly_role.sql}"
+verify_sql="${VERIFY_READONLY_SQL:-$g_script_dir/verify_readonly_role.sql}"
 sqlite_path="${AUTHORIZATION_SQLITE_PATH:-}"
 g_failures=0
 
