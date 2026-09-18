@@ -8,11 +8,13 @@
 deploy_user: test-shape-shifter.sead.se
 container_dir: /data/test-shape-shifter.sead.se/container
 data_dir: /data/test-shape-shifter.sead.se/container-data
-evidence_dir: /var/tmp/shape-shifter-verification
+evidence_dir: ""
 
-database: sead_staging
-role: sead_ro
-schema: public
+pg_database: ""
+pg_role: ""
+pg_schema: ""
+pg_host: ""
+pg_port: ""
 project: ""
 base_url: https://test-shape-shifter.sead.se
 
