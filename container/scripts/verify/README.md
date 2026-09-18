@@ -25,9 +25,13 @@ Run from the deployment user's `container/` directory; the firewall script can r
 
 The orchestrator can be run by a sudo-capable operator from this directory. It
 resolves the target user's `~/container` and rootless Podman context, runs
-deployment checks as that user, runs host checks as the operator, and writes
-the orchestration logs to `--evidence-dir`. Store a copy of the options file
-with the evidence so the run can be reproduced:
+deployment checks as that user, runs host checks as the operator, and writes a
+concise report to `summary.txt` in a timestamped run directory under
+`deployment-verification/`. Detailed check output is stored in separate
+evidence files. The current options file is copied into the run directory as
+`deployment-verification.options.yml` alongside the report. Pass
+`--evidence-dir` to use that directory exactly; an `evidence_dir` value in the
+options file is treated as the parent directory for the timestamped run.
 
 ```bash
 cp ./scripts/verify/deployment-verification.options.yml.example \
@@ -38,8 +42,7 @@ cp ./scripts/verify/deployment-verification.options.yml.example \
 ```
 
 The file is read with `yq` before command-line parsing. Explicit command-line
-options override values from the YAML file. The exact options file is copied to
-`options.yml` inside the evidence directory. Keep passwords, tokens, and other
+options override values from the YAML file. Keep passwords, tokens, and other
 credentials out of the file; the authenticated check prompts for passwords
 separately.
 
