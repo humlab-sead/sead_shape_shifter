@@ -420,7 +420,7 @@ run_target_check endpoint-containment verify_endpoint_containment.sh "${endpoint
 # Container logs require the target user's rootless Podman context. Host logs
 # are collected separately because the target user is not assumed to have sudo.
 run_target_check container-logs verify_logs.sh --since "$g_since" --container-name "$g_container_name"
-host_log_args=(--since "$g_since" --container-name "$g_container_name")
+host_log_args=(--since "$g_since" --container-name "$g_container_name" --container-user "$g_deploy_user")
 [[ -n "$g_db_log" ]] && host_log_args+=(--db-log "$g_db_log")
 run_host_check host-logs verify_logs.sh "${host_log_args[@]}"
 
