@@ -2,6 +2,15 @@
 # Delete a disposable project and its temporary authorization creator role.
 set -Eeuo pipefail
 
+# Report where a command failed before set -e ends the script. Diagnostic only:
+# fail helpers, EXIT cleanup, and exit codes are unchanged. Only the command
+# word is printed; arguments can carry credentials.
+report_failure() {
+    local status="$1" source_file="$2" line="$3" failed_command="$4"
+    printf 'error: %s:%s: %s failed with exit code %s\n' "$source_file" "$line" "$failed_command" "$status" >&2
+}
+trap 'report_failure $? "${BASH_SOURCE[0]}" "$LINENO" "${BASH_COMMAND%% *}"' ERR
+
 SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 AUTHORIZATION_SCRIPT="$SCRIPT_DIR/../authorization.sh"
 

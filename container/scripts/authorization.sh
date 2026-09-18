@@ -14,6 +14,11 @@ BACKUP_DIR="${AUTHORIZATION_BACKUP_DIR:-$DATA_DIR/backups}"
 CONTAINER_BACKUP_DIR="/app/backups"
 HOST_ACTOR="${AUTHORIZATION_ACTOR:-$(id -un)}"
 
+# The image installs locked dependencies only (uv sync --no-install-project), so
+# the [project.scripts] entry points do not exist inside it. Run the same CLI as
+# a module instead: the image sets PYTHONPATH=/app and has python on PATH.
+CONTAINER_CLI=(python -m backend.app.scripts.authorization)
+
 usage() {
     cat <<'EOF'
 Usage: container/scripts/authorization.sh [OPTIONS] COMMAND [ARGUMENTS...]
@@ -112,14 +117,14 @@ run_cli() {
             fi
             ;;
     esac
-    podman exec "$CONTAINER_NAME" sead-authorization "$command_name" "${command_args[@]}"
+    podman exec "$CONTAINER_NAME" "${CONTAINER_CLI[@]}" "$command_name" "${command_args[@]}"
 }
 
 backup_database() {
     require_running_container
     mkdir -p "$BACKUP_DIR"
     local backup_name="authorization-$(date +%Y%m%d-%H%M%S).sqlite3"
-    podman exec -i "$CONTAINER_NAME" sead-authorization backup "$CONTAINER_BACKUP_DIR/$backup_name"
+    podman exec -i "$CONTAINER_NAME" "${CONTAINER_CLI[@]}" backup "$CONTAINER_BACKUP_DIR/$backup_name"
     echo "Authorization backup written to $BACKUP_DIR/$backup_name"
 }
 
@@ -145,7 +150,7 @@ restore_database() {
         --env-file "$DATA_DIR/backend.env" \
         --volume "$DATA_DIR/state:/app/state:rw" \
         --volume "$BACKUP_DIR:$CONTAINER_BACKUP_DIR:rw" \
-        "$running_image" sead-authorization restore "$CONTAINER_BACKUP_DIR/$backup_name"; then
+        "$running_image" "${CONTAINER_CLI[@]}" restore "$CONTAINER_BACKUP_DIR/$backup_name"; then
         echo "Restore failed; $CONTAINER_NAME remains stopped." >&2
         exit 1
     fi
@@ -154,7 +159,7 @@ restore_database() {
         --env-file "$DATA_DIR/backend.env" \
         --volume "$DATA_DIR/state:/app/state:rw" \
         --volume "$BACKUP_DIR:$CONTAINER_BACKUP_DIR:rw" \
-        "$running_image" sead-authorization integrity-check; then
+        "$running_image" "${CONTAINER_CLI[@]}" integrity-check; then
         echo "Integrity check failed; $CONTAINER_NAME remains stopped." >&2
         exit 1
     fi

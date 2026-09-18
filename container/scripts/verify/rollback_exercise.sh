@@ -20,6 +20,10 @@ g_authorization_backup=""
 g_manifest=""
 g_confirmed=false
 g_expected_image_id=""
+# The image installs dependencies only, so the [project.scripts] entry points do
+# not exist inside it. Run the same CLI as a module: the image sets
+# PYTHONPATH=/app and has python on PATH.
+g_container_cli=(python -m backend.app.scripts.authorization)
 
 usage() {
     cat <<'EOF'
@@ -160,7 +164,7 @@ run_admin() {
     podman run --rm \
         --env-file "$g_data_dir/backend.env" \
         --volume "$g_data_dir/state:/app/state:rw" \
-        "$g_image" sead-authorization "$@"
+        "$g_image" "${g_container_cli[@]}" "$@"
 }
 
 run_restore() {
@@ -168,7 +172,7 @@ run_restore() {
         --env-file "$g_data_dir/backend.env" \
         --volume "$g_data_dir/state:/app/state:rw" \
         --volume "$g_backup_path:/app/rollback-backup:ro" \
-        "$g_image" sead-authorization restore /app/rollback-backup
+        "$g_image" "${g_container_cli[@]}" restore /app/rollback-backup
 }
 
 run_reconcile() {
@@ -176,7 +180,7 @@ run_reconcile() {
         --env-file "$g_data_dir/backend.env" \
         --volume "$g_data_dir/state:/app/state:rw" \
         --volume "$g_manifest:/app/rollback-manifest:ro" \
-        "$g_image" sead-authorization reconcile /app/rollback-manifest
+        "$g_image" "${g_container_cli[@]}" reconcile /app/rollback-manifest
 }
 
 wait_for_health() {
@@ -193,14 +197,17 @@ wait_for_health() {
     fail "health check timed out: $health_url"
 }
 
+# Report the failing command, then the state needed to diagnose the rollback.
+# Diagnostic only: the exit status and the evidence path behaviour are unchanged.
 on_error() {
-    local status=$?
-    printf '\nRollback exercise failed with exit status %d.\n' "$status" >&2
+    local status="$1" source_file="$2" line="$3" failed_command="$4"
+    printf '\nCommand failed: %s:%s: %s (exit %s)\n' "$source_file" "$line" "$failed_command" "$status" >&2
+    printf 'Rollback exercise failed with exit status %d.\n' "$status" >&2
     printf 'Service state: %s\n' "$(container_state)" >&2
     printf 'Evidence: %s\n' "$g_evidence_dir" >&2
     exit "$status"
 }
-trap on_error ERR
+trap 'on_error $? "${BASH_SOURCE[0]}" "$LINENO" "${BASH_COMMAND%% *}"' ERR
 
 if [[ "$g_confirmed" = false ]]; then
     read -r -p "Stop $g_container_name and restore the recorded rollback state? [y/N] " confirmation

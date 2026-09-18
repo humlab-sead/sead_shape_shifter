@@ -2,6 +2,15 @@
 # Create a disposable project and its temporary authorization creator role.
 set -Eeuo pipefail
 
+# Report where a command failed before set -e ends the script. Diagnostic only:
+# fail helpers, EXIT cleanup, and exit codes are unchanged. Only the command
+# word is printed; arguments can carry credentials.
+report_failure() {
+    local status="$1" source_file="$2" line="$3" failed_command="$4"
+    printf 'error: %s:%s: %s failed with exit code %s\n' "$source_file" "$line" "$failed_command" "$status" >&2
+}
+trap 'report_failure $? "${BASH_SOURCE[0]}" "$LINENO" "${BASH_COMMAND%% *}"' ERR
+
 SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 AUTHORIZATION_SCRIPT="$SCRIPT_DIR/../authorization.sh"
 
@@ -82,7 +91,9 @@ project_name_pattern='^[A-Za-z0-9][A-Za-z0-9_-]*$'
 existing_roles_file="$(mktemp)"
 trap 'rm -f "$existing_roles_file"' RETURN
 if "$AUTHORIZATION_SCRIPT" list-application-roles --json > "$existing_roles_file"; then
-    if PRINCIPAL="$G_CREATOR_PRINCIPAL" yq -e '.[] | select(.principal_id == strenv(PRINCIPAL) and .role == "project_creator")' "$existing_roles_file" >/dev/null; then
+    # mikefarah yq exits 1 with "no matches found" when the temporary principal
+    # has no role yet, which is the expected case; keep that message out of the log.
+    if PRINCIPAL="$G_CREATOR_PRINCIPAL" yq -e '.[] | select(.principal_id == strenv(PRINCIPAL) and .role == "project_creator")' "$existing_roles_file" >/dev/null 2>&1; then
         fail "creator principal already has project_creator; use a unique temporary principal"
     fi
 else
@@ -93,8 +104,9 @@ template_file="$(mktemp)"
 request_file="$(mktemp)"
 trap 'rm -f "$existing_roles_file" "$template_file" "$request_file"' RETURN
 
-# shellcheck disable=SC2016
-yq eval --arg project "$G_PROJECT_NAME" '.metadata.name = $project' \
+# yq on the deployment host is mikefarah yq v4, which has no --arg flag: pass the
+# project name through the environment and read it with strenv().
+PROJECT="$G_PROJECT_NAME" yq eval '.metadata.name = strenv(PROJECT)' \
     "$G_TEMPLATE_DIR/shapeshifter.yml" > "$template_file"
 python3 - "$template_file" "$request_file" <<'PY'
 import json

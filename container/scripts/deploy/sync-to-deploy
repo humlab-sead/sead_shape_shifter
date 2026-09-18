@@ -17,11 +17,13 @@ Usage: container/scripts/deploy/sync-to-deploy [--dry-run]
 Synchronize the local container/ directory to the deployment user's
 container directory. With no DEPLOY_HOST, synchronize on the current host.
 With DEPLOY_HOST, use DEPLOY_SSH_USER for SSH transport. Files removed
-locally are removed from the target, and the target files are owned by
-DEPLOY_USER.
+locally are removed from the target. The target files are owned by
+DEPLOY_USER and grouped to that user's primary group; the source group is
+not copied.
 
 Defaults:
   owner: DEPLOY_USER=test-shape-shifter.sead.se
+  group: primary group of DEPLOY_USER (from the passwd entry)
   host: DEPLOY_HOST (empty means the current host)
   SSH user: DEPLOY_SSH_USER=$USER (remote mode only)
   path: REMOTE_DIR=container (relative to the remote user's home)
@@ -72,7 +74,9 @@ done
 
 command -v rsync >/dev/null || { echo "rsync is required locally." >&2; exit 1; }
 
-RSYNC_ARGS=(--archive --delete --delete-delay --human-readable --itemize-changes --exclude=/.env --exclude="deployment-verification")
+# --no-group keeps the source group off the target; the deployment user's own
+# group is applied after the transfer.
+RSYNC_ARGS=(--archive --no-group --delete --delete-delay --human-readable --itemize-changes --exclude=/.env --exclude="deployment-verification")
 if [[ "$DRY_RUN" = true ]]; then
   RSYNC_ARGS+=(--dry-run)
 fi
@@ -80,24 +84,28 @@ fi
 if [[ -z "$DEPLOY_HOST" ]]; then
   command -v getent >/dev/null || { echo "getent is required for local sync." >&2; exit 1; }
   command -v sudo >/dev/null || { echo "sudo is required for local sync." >&2; exit 1; }
-  DEPLOY_HOME="$(getent passwd "$DEPLOY_USER" | cut -d: -f6)"
-  [[ -n "$DEPLOY_HOME" ]] || { echo "Cannot resolve local user: $DEPLOY_USER" >&2; exit 1; }
+  deploy_record="$(getent passwd "$DEPLOY_USER")"
+  [[ -n "$deploy_record" ]] || { echo "Cannot resolve local user: $DEPLOY_USER" >&2; exit 1; }
+  DEPLOY_HOME="$(printf '%s\n' "$deploy_record" | cut -d: -f6)"
+  DEPLOY_GID="$(printf '%s\n' "$deploy_record" | cut -d: -f4)"
   DESTINATION="$DEPLOY_HOME/${REMOTE_DIR%/}/"
   printf 'Synchronizing %s/ to local %s\n' "$CONTAINER_DIR" "$DESTINATION"
   sudo rsync "${RSYNC_ARGS[@]}" "$CONTAINER_DIR/" "$DESTINATION"
-  [[ "$DRY_RUN" = true ]] || sudo chown -R "$DEPLOY_USER" "$DESTINATION"
+  [[ "$DRY_RUN" = true ]] || sudo chown -R "$DEPLOY_USER:$DEPLOY_GID" "$DESTINATION"
 else
   command -v ssh >/dev/null || { echo "ssh is required for remote sync." >&2; exit 1; }
   [[ -n "$DEPLOY_SSH_USER" ]] || { echo "DEPLOY_SSH_USER is required for remote sync." >&2; exit 1; }
   TARGET="${DEPLOY_SSH_USER}@${DEPLOY_HOST}"
-  DEPLOY_HOME="$(ssh "$TARGET" "getent passwd '$DEPLOY_USER' | cut -d: -f6")"
-  [[ -n "$DEPLOY_HOME" ]] || { echo "Cannot resolve remote user: $DEPLOY_USER" >&2; exit 1; }
+  deploy_record="$(ssh "$TARGET" "getent passwd '$DEPLOY_USER'")"
+  [[ -n "$deploy_record" ]] || { echo "Cannot resolve remote user: $DEPLOY_USER" >&2; exit 1; }
+  DEPLOY_HOME="$(printf '%s\n' "$deploy_record" | cut -d: -f6)"
+  DEPLOY_GID="$(printf '%s\n' "$deploy_record" | cut -d: -f4)"
   DESTINATION="$DEPLOY_HOME/${REMOTE_DIR%/}/"
   printf 'Synchronizing %s/ to %s:%s\n' "$CONTAINER_DIR" "$TARGET" "$DESTINATION"
   rsync "${RSYNC_ARGS[@]}" --rsync-path="sudo -n rsync" "$CONTAINER_DIR/" "$TARGET:$DESTINATION"
   if [[ "$DRY_RUN" = false ]]; then
-    ssh "$TARGET" "sudo -n chown -R '$DEPLOY_USER' '$DESTINATION'"
+    ssh "$TARGET" "sudo -n chown -R '$DEPLOY_USER:$DEPLOY_GID' '$DESTINATION'"
   fi
 fi
 
-printf 'Synchronized files are owned by %s.\n' "$DEPLOY_USER"
+printf 'Synchronized files are owned by %s:%s.\n' "$DEPLOY_USER" "$DEPLOY_GID"
