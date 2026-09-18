@@ -2,18 +2,18 @@
 # Synchronize the local container deployment files to the test environment.
 set -euo pipefail
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-CONTAINER_DIR="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
-DEPLOY_USER="${DEPLOY_USER:-test-shape-shifter.sead.se}"
-DEPLOY_HOST="${DEPLOY_HOST:-}"
-DEPLOY_SSH_USER="${DEPLOY_SSH_USER:-${USER:-}}"
-REMOTE_DIR="${REMOTE_DIR:-container}"
-DRY_RUN=false
+g_script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+g_container_dir="$(CDPATH= cd -- "$g_script_dir/../.." && pwd)"
+g_deploy_user="${DEPLOY_USER:-test-shape-shifter.sead.se}"
+g_deploy_host="${DEPLOY_HOST:-}"
+g_deploy_ssh_user="${DEPLOY_SSH_USER:-${USER:-}}"
+g_remote_dir="${REMOTE_DIR:-container}"
+g_dry_run=false
 
 usage() {
   cat <<'EOF'
 Usage: container/scripts/deploy/sync-to-deploy [--dry-run]
-
+§
 Synchronize the local container/ directory to the deployment user's
 container directory. With no DEPLOY_HOST, synchronize on the current host.
 With DEPLOY_HOST, use DEPLOY_SSH_USER for SSH transport. Files removed
@@ -27,9 +27,9 @@ Defaults:
   host: DEPLOY_HOST (empty means the current host)
   SSH user: DEPLOY_SSH_USER=$USER (remote mode only)
   path: REMOTE_DIR=container (relative to the remote user's home)
-
+§
 Options:
-  --deploy-user USER       Target owner. Default: $DEPLOY_USER
+  --deploy-user USER       Target owner. Default: $g_deploy_user
   --deploy-host HOST       SSH host; empty means the current host
   --deploy-ssh-user USER   SSH transport account for remote mode
   --remote-dir DIR         Target directory relative to the owner's home
@@ -48,25 +48,25 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --deploy-user)
       [[ $# -ge 2 ]] || { echo "--deploy-user requires a value." >&2; exit 1; }
-      DEPLOY_USER="$2"
+      g_deploy_user="$2"
       shift 2
       ;;
     --deploy-host)
       [[ $# -ge 2 ]] || { echo "--deploy-host requires a value." >&2; exit 1; }
-      DEPLOY_HOST="$2"
+      g_deploy_host="$2"
       shift 2
       ;;
     --deploy-ssh-user)
       [[ $# -ge 2 ]] || { echo "--deploy-ssh-user requires a value." >&2; exit 1; }
-      DEPLOY_SSH_USER="$2"
+      g_deploy_ssh_user="$2"
       shift 2
       ;;
     --remote-dir)
       [[ $# -ge 2 ]] || { echo "--remote-dir requires a value." >&2; exit 1; }
-      REMOTE_DIR="$2"
+      g_remote_dir="$2"
       shift 2
       ;;
-    --dry-run) DRY_RUN=true; shift ;;
+    --dry-run) g_dry_run=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
   esac
@@ -77,35 +77,35 @@ command -v rsync >/dev/null || { echo "rsync is required locally." >&2; exit 1; 
 # --no-group keeps the source group off the target; the deployment user's own
 # group is applied after the transfer.
 RSYNC_ARGS=(--archive --no-group --delete --delete-delay --human-readable --itemize-changes --exclude=/.env --exclude="deployment-verification")
-if [[ "$DRY_RUN" = true ]]; then
+if [[ "$g_dry_run" = true ]]; then
   RSYNC_ARGS+=(--dry-run)
 fi
 
-if [[ -z "$DEPLOY_HOST" ]]; then
+if [[ -z "$g_deploy_host" ]]; then
   command -v getent >/dev/null || { echo "getent is required for local sync." >&2; exit 1; }
   command -v sudo >/dev/null || { echo "sudo is required for local sync." >&2; exit 1; }
-  deploy_record="$(getent passwd "$DEPLOY_USER")"
-  [[ -n "$deploy_record" ]] || { echo "Cannot resolve local user: $DEPLOY_USER" >&2; exit 1; }
-  DEPLOY_HOME="$(printf '%s\n' "$deploy_record" | cut -d: -f6)"
-  DEPLOY_GID="$(printf '%s\n' "$deploy_record" | cut -d: -f4)"
-  DESTINATION="$DEPLOY_HOME/${REMOTE_DIR%/}/"
-  printf 'Synchronizing %s/ to local %s\n' "$CONTAINER_DIR" "$DESTINATION"
-  sudo rsync "${RSYNC_ARGS[@]}" "$CONTAINER_DIR/" "$DESTINATION"
-  [[ "$DRY_RUN" = true ]] || sudo chown -R "$DEPLOY_USER:$DEPLOY_GID" "$DESTINATION"
+  deploy_record="$(getent passwd "$g_deploy_user")"
+  [[ -n "$deploy_record" ]] || { echo "Cannot resolve local user: $g_deploy_user" >&2; exit 1; }
+  deploy_home="$(printf '%s\n' "$deploy_record" | cut -d: -f6)"
+  deploy_gid="$(printf '%s\n' "$deploy_record" | cut -d: -f4)"
+  destination="$deploy_home/${g_remote_dir%/}/"
+  printf 'Synchronizing %s/ to local %s\n' "$g_container_dir" "$destination"
+  sudo rsync "${RSYNC_ARGS[@]}" "$g_container_dir/" "$destination"
+  [[ "$g_dry_run" = true ]] || sudo chown -R "$g_deploy_user:$deploy_gid" "$destination"
 else
   command -v ssh >/dev/null || { echo "ssh is required for remote sync." >&2; exit 1; }
-  [[ -n "$DEPLOY_SSH_USER" ]] || { echo "DEPLOY_SSH_USER is required for remote sync." >&2; exit 1; }
-  TARGET="${DEPLOY_SSH_USER}@${DEPLOY_HOST}"
-  deploy_record="$(ssh "$TARGET" "getent passwd '$DEPLOY_USER'")"
-  [[ -n "$deploy_record" ]] || { echo "Cannot resolve remote user: $DEPLOY_USER" >&2; exit 1; }
-  DEPLOY_HOME="$(printf '%s\n' "$deploy_record" | cut -d: -f6)"
-  DEPLOY_GID="$(printf '%s\n' "$deploy_record" | cut -d: -f4)"
-  DESTINATION="$DEPLOY_HOME/${REMOTE_DIR%/}/"
-  printf 'Synchronizing %s/ to %s:%s\n' "$CONTAINER_DIR" "$TARGET" "$DESTINATION"
-  rsync "${RSYNC_ARGS[@]}" --rsync-path="sudo -n rsync" "$CONTAINER_DIR/" "$TARGET:$DESTINATION"
-  if [[ "$DRY_RUN" = false ]]; then
-    ssh "$TARGET" "sudo -n chown -R '$DEPLOY_USER:$DEPLOY_GID' '$DESTINATION'"
+  [[ -n "$g_deploy_ssh_user" ]] || { echo "g_deploy_ssh_user is required for remote sync." >&2; exit 1; }
+  TARGET="${g_deploy_ssh_user}@${g_deploy_host}"
+  deploy_record="$(ssh "$TARGET" "getent passwd '$g_deploy_user'")"
+  [[ -n "$deploy_record" ]] || { echo "Cannot resolve remote user: $g_deploy_user" >&2; exit 1; }
+  deploy_home="$(printf '%s\n' "$deploy_record" | cut -d: -f6)"
+  deploy_gid="$(printf '%s\n' "$deploy_record" | cut -d: -f4)"
+  destination="$deploy_home/${g_remote_dir%/}/"
+  printf 'Synchronizing %s/ to %s:%s\n' "$g_container_dir" "$TARGET" "$destination"
+  rsync "${RSYNC_ARGS[@]}" --rsync-path="sudo -n rsync" "$g_container_dir/" "$TARGET:$destination"
+  if [[ "$g_dry_run" = false ]]; then
+    ssh "$TARGET" "sudo -n chown -R '$g_deploy_user:$deploy_gid' '$destination'"
   fi
 fi
 
-printf 'Synchronized files are owned by %s:%s.\n' "$DEPLOY_USER" "$DEPLOY_GID"
+printf 'Synchronized files are owned by %s:%s.\n' "$g_deploy_user" "$deploy_gid"
