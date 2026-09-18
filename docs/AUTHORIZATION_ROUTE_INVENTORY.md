@@ -219,8 +219,8 @@ Every row above except the health check requires an authenticated principal thro
 | Method | Path                                  | Requirement                              |
 |--------|---------------------------------------|------------------------------------------|
 | `GET`  | `/api/v1/ingesters`                   | `authenticated`                          |
-| `POST` | `/api/v1/ingesters/{key}/validate`    | `application:run_ingesters`; enforcement pending |
-| `POST` | `/api/v1/ingesters/{key}/ingest`      | `application:run_ingesters`; enforcement pending |
+| `POST` | `/api/v1/ingesters/{key}/validate`    | `application:run_ingesters`                  |
+| `POST` | `/api/v1/ingesters/{key}/ingest`      | `application:run_ingesters`                  |
 | `GET`  | `/api/v1/filters/types`               | `authenticated`                          |
 | `GET`  | `/api/v1/logs/{log_type}`             | `authenticated`                          |
 | `GET`  | `/api/v1/logs/{log_type}/download`    | `authenticated`                          |
@@ -233,7 +233,7 @@ Application and error logs are global: no project-scoped log file exists, so any
 
 `GET /api/v1/ingesters` returns registered ingester metadata (key, name, description, version, and supported formats) and `GET /api/v1/filters/types` returns filter configuration schemas, so both require an authenticated principal and no project role.
 
-`POST /api/v1/ingesters/{key}/validate` and `POST /api/v1/ingesters/{key}/ingest` record `application:run_ingesters`, which the `operator` application role holds. Neither route declares that metadata yet. The two routes accept no project locator: `IngestRequest` carries a server file path in `source`, an `output_folder`, and the `do_register` and `explode` flags, so a run is not addressed to a project and cannot be authorized by `project:execute` alone. Enforcement, which must cover the source, the destination, and the database registration the operations reach, is owned by [INGESTER_AUTHORIZATION_TASKS.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md); the source and destination containment checks are owned by [INGESTER_FILESYSTEM_BOUNDARIES.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md).
+`POST /api/v1/ingesters/{key}/validate` and `POST /api/v1/ingesters/{key}/ingest` require `application:run_ingesters`, which the `operator` application role holds, before the handler looks up or runs the requested ingester. The two routes accept no project locator: `IngestRequest` carries a server file path in `source`, an `output_folder`, and the `do_register` and `explode` flags, so a run is not addressed to a project and cannot be authorized by `project:execute` alone. Source, destination, and database registration containment checks remain owned by [INGESTER_AUTHORIZATION_TASKS.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) and [INGESTER_FILESYSTEM_BOUNDARIES.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md).
 
 Principals who run and review projects are expected to run these ingesters for that work. Granting `operator` meets that expectation today. If a run must instead be limited to one project, the route needs a project locator plus `project:execute` alongside the containment checks.
 

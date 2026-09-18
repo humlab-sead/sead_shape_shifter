@@ -56,21 +56,11 @@ AUTHENTICATED_ONLY_API_PATHS: frozenset[str] = frozenset(
     }
 )
 
-# API routes whose requirement is recorded but not enforced. AUTHORIZATION_ROUTE_INVENTORY.md
-# documents them as application:run_ingesters and names INGESTER_AUTHORIZATION_TASKS.md and
-# INGESTER_FILESYSTEM_BOUNDARIES.md as the owners of the enforcement and containment work.
-ENFORCEMENT_PENDING_API_PATHS: frozenset[str] = frozenset(
-    {
-        "/ingesters/{key}/ingest",
-        "/ingesters/{key}/validate",
-    }
-)
-
 # Documented non-API and mounted paths that depend on the frontend build state. An API-only
 # runtime does not serve them, so the parity check does not require them to exist.
 CONDITIONAL_DOCUMENTED_PATHS: frozenset[str] = frozenset({"/", "/assets/*", "/{full_path:path}"})
 
-CLASSIFIED_API_PATHS: frozenset[str] = PUBLIC_API_PATHS | AUTHENTICATED_ONLY_API_PATHS | ENFORCEMENT_PENDING_API_PATHS
+CLASSIFIED_API_PATHS: frozenset[str] = PUBLIC_API_PATHS | AUTHENTICATED_ONLY_API_PATHS
 
 
 def _concrete_path(path: str) -> str:
