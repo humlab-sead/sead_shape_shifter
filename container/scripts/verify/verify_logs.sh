@@ -26,7 +26,7 @@ g_db_log="${DB_LOG:-}"
 
 g_pattern_credentials='password|passwd|secret|token|api[-_]?key|bearer [a-z0-9._-]+|basic [a-z0-9+/=]+'
 g_pattern_connection='postgres(ql)?://|jdbc:postgresql|mongodb(\+srv)?://|mysql://|://[^[:space:]]*:[^[:space:]]*@'
-g_pattern_sql='\b(select|insert|update|delete|create|drop|alter|grant|revoke|truncate|merge)\b'
+g_pattern_sql='\b(select[[:space:]].*[[:space:]]from|insert[[:space:]]+into|update[[:space:]]+[^[:space:]]+[[:space:]]+set|delete[[:space:]]+from|create[[:space:]]+(table|index|schema)|drop[[:space:]]+(table|index|schema)|alter[[:space:]]+table|grant[[:space:]]+|revoke[[:space:]]+|truncate[[:space:]]+|merge[[:space:]]+into)\b'
 g_pattern_path='/(app|data|etc|home|root|var|usr|tmp|run)(/|[[:space:]]|$)'
 
 info() { printf '\n== %s ==\n' "$*"; }
