@@ -20,7 +20,7 @@ The current API-only runtime exposes 136 HTTP route entries under `/api/v1`, inc
 | `application:create_project`        | Create a project                                           |
 | `application:manage_shared_sources` | Manage shared data sources or schema cache                 |
 | `application:read_logs`             | Defined application action for application logs; no route requires it |
-| `application:run_ingesters`         | Run a data ingester, either validation or ingestion; held through the `operator` application role |
+| `application:run_ingesters`         | Run a data ingester, either validation or ingestion; held through the `operator` deployment role |
 | `authenticated`                     | Any authenticated principal may call; no additional resource or application requirement is declared on the route. Trusted-proxy authentication still applies and any response-scoping behavior is described in the route notes |
 | `enforcement pending`               | Added after a requirement to show that the row records the intended requirement while the route still declares no `authorization_requirement` metadata |
 | `UNDECLARED`                        | No route authorization metadata; classification is pending |
@@ -233,7 +233,7 @@ Application and error logs are global: no project-scoped log file exists, so any
 
 `GET /api/v1/ingesters` returns registered ingester metadata (key, name, description, version, and supported formats) and `GET /api/v1/filters/types` returns filter configuration schemas, so both require an authenticated principal and no project role.
 
-`POST /api/v1/ingesters/{key}/validate` and `POST /api/v1/ingesters/{key}/ingest` require `application:run_ingesters`, which the `operator` application role holds, before the handler looks up or runs the requested ingester. The two routes accept no project locator: `IngestRequest` carries a server file path in `source`, an `output_folder`, and the `do_register` and `explode` flags, so a run is not addressed to a project and cannot be authorized by `project:execute` alone. Source, destination, and database registration containment checks remain owned by [INGESTER_AUTHORIZATION_TASKS.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) and [INGESTER_FILESYSTEM_BOUNDARIES.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md).
+`POST /api/v1/ingesters/{key}/validate` and `POST /api/v1/ingesters/{key}/ingest` require `application:run_ingesters`, which the `operator` deployment role holds, before the handler looks up or runs the requested ingester. The two routes accept no project locator: `IngestRequest` carries a server file path in `source`, an `output_folder`, and the `do_register` and `explode` flags, so a run is not addressed to a project and cannot be authorized by `project:execute` alone. Source, destination, and database registration containment checks remain owned by [INGESTER_AUTHORIZATION_TASKS.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) and [INGESTER_FILESYSTEM_BOUNDARIES.md](proposals/CHANGE_REQUEST_INGESTER/INGESTER_FILESYSTEM_BOUNDARIES.md).
 
 Principals who run and review projects are expected to run these ingesters for that work. Granting `operator` meets that expectation today. If a run must instead be limited to one project, the route needs a project locator plus `project:execute` alongside the containment checks.
 
@@ -261,7 +261,7 @@ Reviewed by Roger Mähler on 2026-09-17. Every route row and every lifecycle or 
 
 - The inventory holds 141 route rows and no row reads `UNDECLARED`.
 - Resource requirements use only defined resource type and action pairs: `project:read` (43 rows), `project:edit` (48), `project:execute` (1), `project:delete` (1), `shared_data_source:read` (12).
-- Application requirements use only defined actions, each granted by an application role the policy defines: `create_project` through `project_creator`, and `manage_shared_sources` and `run_ingesters` through `operator`. No route requires `read_logs`.
+- Application requirements use only defined actions, each granted by a deployment role the policy defines: `create_project` through `project_creator`, and `manage_shared_sources` and `run_ingesters` through `operator`. No route requires `read_logs`.
 - The assembled application exposes no unclassified `/api/v1` route, and every documented non-API row is either served by the application or depends on the frontend build.
 
 Corrections to this review use the same requirement terms and note style. A row that needs a policy decision is reported instead of guessed.

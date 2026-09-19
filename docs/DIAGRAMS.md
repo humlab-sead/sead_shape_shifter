@@ -156,7 +156,7 @@ flowchart TD
 
 ## Authorization Model
 
-A principal receives access through deployment-wide application roles and through grants on resources. A grant names one typed subject, one resource, and one role. A grant on a parent resource applies to its children; a grant on a child does not apply to its parent. The policy is described in [AUTHORIZATION.md](AUTHORIZATION.md), which lists the roles and the actions each role allows in the [resource roles](AUTHORIZATION.md#resource-roles) and [application roles](AUTHORIZATION.md#application-roles) tables.
+A principal receives access through deployment-wide roles and through grants on resources. A grant names one typed subject, one resource, and one role. A grant on a parent resource applies to its children; a grant on a child does not apply to its parent. The policy is described in [AUTHORIZATION.md](AUTHORIZATION.md), which lists the roles and the actions each role allows in the [resource roles](AUTHORIZATION.md#resource-roles) and [deployment roles](AUTHORIZATION.md#deployment-roles) tables.
 
 ### Grants And Resources
 
@@ -202,13 +202,13 @@ The fixed `authenticated` subject ID means every authenticated principal. Anonym
 
 ### Authorization Decision
 
-The decision below applies to a resource-addressed request. An application-scoped request checks only the application role.
+The decision below applies to a resource-addressed request. A deployment-scoped request checks only the deployment role.
 
 ```mermaid
 flowchart TD
     Request["Principal, action, resource"] --> Lifecycle{"Resource active?"}
     Lifecycle -->|"No"| Denied["Denied"]
-    Lifecycle -->|"Yes"| ApplicationRole{"Application role allows the action?"}
+    Lifecycle -->|"Yes"| DeploymentRole{"Deployment role allows the action?"}
     ApplicationRole -->|"Yes"| Allowed["Allowed"]
     ApplicationRole -->|"No"| Ancestors["Include the resource and its parent resources"]
     Ancestors --> Grants["Match grants for the principal, verified\ngroups, and authenticated everyone when enabled"]
@@ -222,13 +222,13 @@ flowchart TD
     classDef denied fill:#ffe0e0,stroke:#d64545,color:#4a1f1f;
 
     class Request input;
-    class Lifecycle,ApplicationRole,Ancestors,Grants,ResourceRole step;
+    class Lifecycle,DeploymentRole,Ancestors,Grants,ResourceRole step;
     class Allowed result;
     class Denied denied;
 ```
 
-A missing proxy identity returns `401`. A missing application role returns `403`. A denied resource request returns `404 Resource not found` so the response does not reveal whether the resource exists.
+A missing proxy identity returns `401`. A missing deployment role returns `403`. A denied resource request returns `404 Resource not found` so the response does not reveal whether the resource exists.
 
 ### Reviewing Recorded Relationships
 
-The `sead-authorization` commands print the relationships recorded in a deployment authorization database: `list-resources` for resources and lifecycle states, `list-grants` for grants, `list-application-roles` for application roles, and `list-audit-events` for recorded changes. Use `list-grants --effective --actor <principal>` to expand group subjects through the configured membership provider.
+The `sead-authorization` commands print the relationships recorded in a deployment authorization database: `list-resources` for resources and lifecycle states, `list-grants` for grants, `list-application-roles` for deployment roles, and `list-audit-events` for recorded changes. Use `list-grants --effective --actor <principal>` to expand group subjects through the configured membership provider.

@@ -34,7 +34,11 @@ class ResourceType(StrEnum):
 
 
 class ApplicationRole(StrEnum):
-    """Deployment-wide roles."""
+    """Roles that apply across the deployment.
+
+    The stored ``application_role`` table, the audit event types, and the ``sead-authorization``
+    command names keep the earlier "application role" wording.
+    """
 
     PROJECT_CREATOR = "project_creator"
     OPERATOR = "operator"

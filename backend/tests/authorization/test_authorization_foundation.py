@@ -40,7 +40,7 @@ def test_resource_role_policy_covers_every_action_and_resource_type() -> None:
                 assert policy.allows_resource_role(resource_type, role, action) is (action in allowed_actions)
 
 
-def test_application_role_policy_covers_every_action() -> None:
+def test_deployment_role_policy_covers_every_action() -> None:
     policy = AuthorizationPolicy()
     expected_permissions = {
         ApplicationRole.PROJECT_CREATOR: {Action.CREATE_PROJECT},
@@ -51,7 +51,7 @@ def test_application_role_policy_covers_every_action() -> None:
     for role in (*ApplicationRole, "unknown"):
         allowed_actions = expected_permissions.get(role, set())
         for action in Action:
-            assert policy.allows_application_role(role, action) is (action in allowed_actions)
+            assert policy.allows_deployment_role(role, action) is (action in allowed_actions)
 
 
 def test_unknown_role_and_action_are_denied(tmp_path) -> None:
