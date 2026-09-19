@@ -163,7 +163,7 @@ def require_application_action(action: Action) -> Callable:
         service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     ) -> Principal:
         if not any(
-            service.policy.allows_application_role(role, action)
+            service.policy.allows_deployment_role(role, action)
             for role in service.repository.list_application_roles(principal.principal_id)
         ):
             raise HTTPException(status_code=403, detail="Insufficient authorization")

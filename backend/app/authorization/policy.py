@@ -13,7 +13,15 @@ SHARED_SOURCE_ROLE_ACTIONS: dict[str, frozenset[Action]] = {
     "reader": frozenset({Action.READ}),
 }
 
-APPLICATION_ROLE_ACTIONS: dict[ApplicationRole, frozenset[Action]] = {
+# Child resources use the same role table as their parent resource type.
+RESOURCE_ROLE_ACTIONS: dict[ResourceType, dict[str, frozenset[Action]]] = {
+    ResourceType.PROJECT: PROJECT_ROLE_ACTIONS,
+    ResourceType.PROJECT_CHILD: PROJECT_ROLE_ACTIONS,
+    ResourceType.SHARED_DATA_SOURCE: SHARED_SOURCE_ROLE_ACTIONS,
+    ResourceType.SHARED_DATA_SOURCE_CHILD: SHARED_SOURCE_ROLE_ACTIONS,
+}
+
+DEPLOYMENT_ROLE_ACTIONS: dict[ApplicationRole, frozenset[Action]] = {
     ApplicationRole.PROJECT_CREATOR: frozenset({Action.CREATE_PROJECT}),
     ApplicationRole.OPERATOR: frozenset({Action.READ_ALL_SHARED_SOURCES, Action.MANAGE_SHARED_SOURCES, Action.RUN_INGESTERS}),
     ApplicationRole.ADMIN: frozenset(Action),
@@ -25,16 +33,13 @@ class AuthorizationPolicy:
 
     def allows_resource_role(self, resource_type: ResourceType, role: str, action: Action) -> bool:
         """Return whether a resource role permits an action for its resource type."""
-        if resource_type in {ResourceType.PROJECT, ResourceType.PROJECT_CHILD}:
-            return action in PROJECT_ROLE_ACTIONS.get(role, frozenset())
-        if resource_type in {ResourceType.SHARED_DATA_SOURCE, ResourceType.SHARED_DATA_SOURCE_CHILD}:
-            return action in SHARED_SOURCE_ROLE_ACTIONS.get(role, frozenset())
-        return False
+        role_actions = RESOURCE_ROLE_ACTIONS.get(resource_type, {})
+        return action in role_actions.get(role, frozenset())
 
-    def allows_application_role(self, role: str, action: Action) -> bool:
-        """Return whether an application role permits an application action."""
+    def allows_deployment_role(self, role: str, action: Action) -> bool:
+        """Return whether a deployment role permits an action."""
         try:
-            application_role = ApplicationRole(role)
+            deployment_role = ApplicationRole(role)
         except ValueError:
             return False
-        return action in APPLICATION_ROLE_ACTIONS.get(application_role, frozenset())
+        return action in DEPLOYMENT_ROLE_ACTIONS.get(deployment_role, frozenset())

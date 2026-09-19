@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Shape Shifter uses a centralized authorization system to decide whether an authenticated principal may perform an action on a protected resource. Resource records, grants, application roles, and authorization audit events are stored outside project-managed data in the configured SQLite authorization database.
+Shape Shifter uses a centralized authorization system to decide whether an authenticated principal may perform an action on a protected resource. Resource records, grants, deployment roles, and authorization audit events are stored outside project-managed data in the configured SQLite authorization database.
 
 This document describes the implemented policy. Route-by-route coverage and the remaining enforcement work are tracked in [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md) and sequenced by the [cutover plan](proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md).
 
@@ -61,21 +61,23 @@ Broad subjects may receive `viewer`, `editor`, or `executor` as approved by oper
 
 Runtime group matching and operator membership review use separate interfaces. nginx may provide verified group IDs for the current request, but it cannot enumerate all members of a group. Effective review requires a trusted membership lookup URL containing `{group_id}`. The identity provider remains authoritative; SQLite stores grants and review audit events, not group membership. This phase queries the provider directly and does not cache membership snapshots.
 
-## Application Roles
+## Deployment Roles
 
-Application roles apply across the deployment and are evaluated before resource grants.
+Deployment roles apply across the deployment and are evaluated before resource grants. A deployment role is not attached to a resource and does not inherit from a parent resource.
 
 | Role              | Allowed actions                                                     |
 |-------------------|---------------------------------------------------------------------|
 | `project_creator` | `create_project`                                                    |
 | `operator`        | `read_all_shared_sources`, `manage_shared_sources`, `run_ingesters` |
-| `admin`           | Every defined application action                                    |
+| `admin`           | Every defined action                                                |
 
 The current actions are `read`, `edit`, `execute`, `delete`, `manage_grants`, `create_project`, `read_logs`, `manage_shared_sources`, `read_all_shared_sources`, `run_ingesters`, `manage_all_grants`, `manage_application_roles`, and `configure_ingesters`.
 
-Application and error logs are global, and no project-scoped log exists, so both log routes require an authenticated principal and no application role. This policy change was approved on 2026-09-16 and replaces the earlier admin-only rule. The `read_logs` action remains defined, and no route requires it.
+Application and error logs are global, and no project-scoped log exists, so both log routes require an authenticated principal and no deployment role. This policy change was approved on 2026-09-16 and replaces the earlier admin-only rule. The `read_logs` action remains defined, and no route requires it.
 
-Application roles do not create resource grants. They permit only their explicitly mapped actions. `admin` permits all defined actions, including resource actions. Unknown resource types, roles, and actions are denied.
+Deployment roles do not create resource grants. They permit only their explicitly mapped actions. `admin` permits all defined actions, including resource actions. Unknown resource types, roles, and actions are denied.
+
+The stored `application_role` table, the `application_role_created` and `application_role_revoked` audit event types, and the `sead-authorization` command names keep the earlier `application role` wording. Calling these roles deployment roles does not change stored data.
 
 ## Authorization Decisions
 
@@ -85,7 +87,7 @@ FastAPI dependencies enforce common checks before protected endpoint code runs:
 
 - `require_project()` resolves and authorizes a project.
 - `require_shared_data_source()` resolves and authorizes a shared data source.
-- `require_application_action()` authorizes an application role.
+- `require_application_action()` authorizes a deployment role.
 - `require_authorized_session()` requires both session ownership and current project authorization.
 - `require_operation()` requires operation ownership and current authorization for its recorded project.
 
@@ -94,13 +96,13 @@ A principal needs access to both a project and a shared source when an operation
 ## Denial Behavior
 
 - Missing proxy authentication returns `401 Authentication required`; malformed proxy identities return `401 Invalid authenticated identity`.
-- Missing application permissions return `403 Insufficient authorization`.
+- Missing deployment-role permissions return `403 Insufficient authorization`.
 - Missing or unauthorized resource-addressed project and shared-data-source requests return `404 Resource not found` to conceal resource existence. Session and operation dependencies also conceal unavailable or unauthorized records with `404`. The active-project dependency conceals an active project the principal cannot read, and reports a deployment with no active project as `null`.
 - List endpoints return only resources readable by the requesting principal.
 
 ## Audit Records
 
-The authorization database records grant creation and revocation, application-role creation and revocation, resource lifecycle changes, bootstrap administrator creation, and membership review lookups. Each record contains an event ID, timestamp, actor principal ID, event type, optional resource UUID, action, outcome, optional correlation ID, optional typed subject (`subject_type` and `subject_id`), and optional provider/details fields. Broad grants and membership review results are therefore identifiable in the audit log.
+The authorization database records grant creation and revocation, deployment-role creation and revocation, resource lifecycle changes, bootstrap administrator creation, and membership review lookups. Each record contains an event ID, timestamp, actor principal ID, event type, optional resource UUID, action, outcome, optional correlation ID, optional typed subject (`subject_type` and `subject_id`), and optional provider/details fields. Broad grants and membership review results are therefore identifiable in the audit log.
 
 Audit records must not contain credentials, SQL text, sensitive filesystem paths, or secret configuration. They are written through the authorization repository with the associated mutation. Operators can review them with `sead-authorization list-audit-events`, using `--json` for automation; do not query or alter the database directly.
 

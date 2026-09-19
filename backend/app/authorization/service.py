@@ -27,9 +27,7 @@ class AuthorizationService:
         if resource.lifecycle_state != "active":
             return False
 
-        if any(
-            self.policy.allows_application_role(role, action) for role in self.repository.list_application_roles(principal.principal_id)
-        ):
+        if any(self.policy.allows_deployment_role(role, action) for role in self.repository.list_application_roles(principal.principal_id)):
             return True
 
         resource_ids = self._resource_and_ancestors(resource)
@@ -48,7 +46,7 @@ class AuthorizationService:
     def can_perform_application_action(self, principal: Principal, action: Action) -> bool:
         """Return whether a principal holds an application role that allows an action."""
         return any(
-            self.policy.allows_application_role(role, action) for role in self.repository.list_application_roles(principal.principal_id)
+            self.policy.allows_deployment_role(role, action) for role in self.repository.list_application_roles(principal.principal_id)
         )
 
     def register_project(self, principal: Principal, locator: str) -> ResourceRecord:
