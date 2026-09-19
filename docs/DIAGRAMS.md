@@ -1,6 +1,6 @@
 # Shape Shifter Diagrams
 
-Current diagrams for the system structure, transformation flow, user workflow, and deployment model. The written architecture and operational details live in [DESIGN.md](DESIGN.md) and [OPERATIONS.md](OPERATIONS.md).
+Current diagrams for the system structure, transformation flow, user workflow, deployment model, and authorization model. The written architecture and operational details live in [DESIGN.md](DESIGN.md) and [OPERATIONS.md](OPERATIONS.md).
 
 ## System Architecture
 
@@ -153,3 +153,82 @@ flowchart TD
     class Registry registry;
     class Loader,Validator,Transform,Ingester,Pipeline component;
 ```
+
+## Authorization Model
+
+A principal receives access through deployment-wide application roles and through grants on resources. A grant names one typed subject, one resource, and one role. A grant on a parent resource applies to its children; a grant on a child does not apply to its parent. The policy is described in [AUTHORIZATION.md](AUTHORIZATION.md), which lists the roles and the actions each role allows in the [resource roles](AUTHORIZATION.md#resource-roles) and [application roles](AUTHORIZATION.md#application-roles) tables.
+
+### Grants And Resources
+
+```mermaid
+flowchart LR
+    subgraph Subjects["Grant subjects"]
+        Principal["Principal\ncase-sensitive principal_id"]
+        Group["Verified group\nfrom trusted provider"]
+        Everyone["Authenticated everyone\nfixed subject_id: authenticated"]
+    end
+
+    Grant["Grant\nsubject, resource, role"]
+
+    Principal --> Grant
+    Group --> Grant
+    Everyone --> Grant
+
+    subgraph Resources["Protected resources"]
+        Project["project"]
+        ProjectChild["project_child"]
+        SharedSource["shared_data_source"]
+        SharedChild["shared_data_source_child"]
+    end
+
+    Grant --> Project
+    Grant --> ProjectChild
+    Grant --> SharedSource
+    Grant --> SharedChild
+
+    Project -->|"inherited by"| ProjectChild
+    SharedSource -->|"inherited by"| SharedChild
+
+    classDef subject fill:#eef4f1,stroke:#527568,color:#1f302a;
+    classDef grant fill:#fff7d6,stroke:#b28a2d,color:#3b3020;
+    classDef resource fill:#e7eef5,stroke:#58728c,color:#243241;
+
+    class Principal,Group,Everyone subject;
+    class Grant grant;
+    class Project,ProjectChild,SharedSource,SharedChild resource;
+```
+
+The fixed `authenticated` subject ID means every authenticated principal. Anonymous requests are still denied, and authenticated-`everyone` matching is disabled unless enabled in deployment configuration.
+
+### Authorization Decision
+
+The decision below applies to a resource-addressed request. An application-scoped request checks only the application role.
+
+```mermaid
+flowchart TD
+    Request["Principal, action, resource"] --> Lifecycle{"Resource active?"}
+    Lifecycle -->|"No"| Denied["Denied"]
+    Lifecycle -->|"Yes"| ApplicationRole{"Application role allows the action?"}
+    ApplicationRole -->|"Yes"| Allowed["Allowed"]
+    ApplicationRole -->|"No"| Ancestors["Include the resource and its parent resources"]
+    Ancestors --> Grants["Match grants for the principal, verified\ngroups, and authenticated everyone when enabled"]
+    Grants --> ResourceRole{"Grant role allows the action\nfor the resource type?"}
+    ResourceRole -->|"Yes"| Allowed
+    ResourceRole -->|"No"| Denied
+
+    classDef input fill:#f5efe3,stroke:#9b8153,color:#3b3020;
+    classDef step fill:#e7eef5,stroke:#58728c,color:#243241;
+    classDef result fill:#e1f1e7,stroke:#5c9670,color:#233b2b;
+    classDef denied fill:#ffe0e0,stroke:#d64545,color:#4a1f1f;
+
+    class Request input;
+    class Lifecycle,ApplicationRole,Ancestors,Grants,ResourceRole step;
+    class Allowed result;
+    class Denied denied;
+```
+
+A missing proxy identity returns `401`. A missing application role returns `403`. A denied resource request returns `404 Resource not found` so the response does not reveal whether the resource exists.
+
+### Reviewing Recorded Relationships
+
+The `sead-authorization` commands print the relationships recorded in a deployment authorization database: `list-resources` for resources and lifecycle states, `list-grants` for grants, `list-application-roles` for application roles, and `list-audit-events` for recorded changes. Use `list-grants --effective --actor <principal>` to expand group subjects through the configured membership provider.

@@ -8,6 +8,8 @@ This document describes the implemented policy. Route-by-route coverage and the 
 
 The current route declarations are listed in [AUTHORIZATION_ROUTE_INVENTORY.md](AUTHORIZATION_ROUTE_INVENTORY.md), which records a requirement for every route. The ingester validation and execution rows record `application:run_ingesters` with enforcement pending.
 
+The relationships between subjects, grants, resources, roles, and actions are shown in the [authorization diagrams](DIAGRAMS.md#authorization-model). The `sead-authorization list-resources`, `list-grants`, and `list-application-roles` commands print the relationships recorded in a deployment's authorization database.
+
 For the authorization SQLite database location and deployment configuration, see [OPERATIONS.md](OPERATIONS.md#authorization-sqlite-store).
 
 ## Principals
