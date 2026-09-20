@@ -139,3 +139,4 @@ graphify-out/cost.json
 graphify-out/manifest.json 
 # Optional: commit cache for speed, skip to keep repo small.
 graphify-out/cache/
+secrets
