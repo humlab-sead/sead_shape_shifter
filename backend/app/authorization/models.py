@@ -42,6 +42,7 @@ class ApplicationRole(StrEnum):
 
     PROJECT_CREATOR = "project_creator"
     OPERATOR = "operator"
+    PROJECT_MAINTAINER = "project_maintainer"
     ADMIN = "admin"
 
 
