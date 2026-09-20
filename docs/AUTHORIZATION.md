@@ -41,7 +41,7 @@ Each protected resource has a server-owned UUID, resource type, current locator,
 
 A grant assigns a resource role to one typed subject and one resource UUID. Subjects are `principal`, `group`, or authenticated `everyone`. Project names and shared data-source filenames are locators, not authorization identities. Deleting a resource and reusing its locator creates a new UUID, so it cannot inherit old grants.
 
-Direct-principal grants use `principal_id` in legacy manifests or `subject_type: principal` and `subject_id` in typed manifests. Group grants use verified group IDs supplied by the trusted authentication provider. In Phase 1, nginx supplies them through the configured trusted group header, and group matching is disabled unless that source is explicitly enabled. Membership is never inferred from client request fields. `everyone` means every authenticated principal and uses the fixed subject ID `authenticated`; anonymous requests are still denied. Authenticated-`everyone` matching is disabled unless explicitly enabled in deployment configuration.
+Direct-principal grants use `principal_id` in legacy manifests or `subject_type: principal` and `subject_id` in typed manifests. Group grants use verified group IDs supplied by the trusted authentication provider. In Phase 1, nginx supplies them through the configured trusted group header, and group matching is disabled unless that source is explicitly enabled. A site that authenticates with `auth_basic` has no group claim of its own, so the header comes from a membership file; see [NGINX group header](OPERATIONS.md#nginx-group-header). Membership is never inferred from client request fields. `everyone` means every authenticated principal and uses the fixed subject ID `authenticated`; anonymous requests are still denied. Authenticated-`everyone` matching is disabled unless explicitly enabled in deployment configuration.
 
 Resource access is denied unless the resource is active and a policy rule permits the action. A grant on a parent resource applies to its children. For example, a project grant can authorize work on a project child resource. Child grants do not grant access to a parent.
 
@@ -65,11 +65,14 @@ Runtime group matching and operator membership review use separate interfaces. n
 
 Deployment roles apply across the deployment and are evaluated before resource grants. A deployment role is not attached to a resource and does not inherit from a parent resource.
 
-| Role              | Allowed actions                                                     |
-|-------------------|---------------------------------------------------------------------|
-| `project_creator` | `create_project`                                                    |
-| `operator`        | `read_all_shared_sources`, `manage_shared_sources`, `run_ingesters` |
-| `admin`           | Every defined action                                                |
+| Role                 | Allowed actions                                                     |
+|----------------------|---------------------------------------------------------------------|
+| `project_creator`    | `create_project`                                                    |
+| `operator`           | `read_all_shared_sources`, `manage_shared_sources`, `run_ingesters` |
+| `project_maintainer` | `read`, `edit`, `execute`                                           |
+| `admin`              | Every defined action                                                |
+
+A principal that should maintain any project without holding a grant for it receives `project_maintainer`. It permits `read`, `edit`, and `execute` on every project and project child resource, so it also covers projects created later without new grants. It does not permit `delete`, `manage_grants`, `manage_all_grants`, `manage_application_roles`, `manage_shared_sources`, `configure_ingesters`, or `read_logs`; use `admin` for those.
 
 The current actions are `read`, `edit`, `execute`, `delete`, `manage_grants`, `create_project`, `read_logs`, `manage_shared_sources`, `read_all_shared_sources`, `run_ingesters`, `manage_all_grants`, `manage_application_roles`, and `configure_ingesters`.
 

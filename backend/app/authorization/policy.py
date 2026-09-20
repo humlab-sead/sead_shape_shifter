@@ -24,6 +24,7 @@ RESOURCE_ROLE_ACTIONS: dict[ResourceType, dict[str, frozenset[Action]]] = {
 DEPLOYMENT_ROLE_ACTIONS: dict[ApplicationRole, frozenset[Action]] = {
     ApplicationRole.PROJECT_CREATOR: frozenset({Action.CREATE_PROJECT}),
     ApplicationRole.OPERATOR: frozenset({Action.READ_ALL_SHARED_SOURCES, Action.MANAGE_SHARED_SOURCES, Action.RUN_INGESTERS}),
+    ApplicationRole.PROJECT_MAINTAINER: frozenset({Action.READ, Action.EDIT, Action.EXECUTE}),
     ApplicationRole.ADMIN: frozenset(Action),
 }
 
