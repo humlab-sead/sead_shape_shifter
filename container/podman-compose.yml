@@ -3,18 +3,21 @@
 #
 # Works with podman-compose and with Podman's compose provider.
 #
-# Default values come from container/.env, which the Makefile and the scripts in
-# scripts/ load and export before calling podman-compose. The `${VAR:-default}`
-# fallbacks below are a last resort for a direct podman-compose invocation.
+# The Makefile and lifecycle scripts load CONFIG_DIR/deployment.env and export
+# absolute CONFIG_DIR and CONTAINER_DATA_DIR values before calling podman-compose.
+# Direct podman-compose invocation is unsupported unless those variables are
+# explicitly exported by the operator.
 #
-# Usage (prefer the Makefile, which sets CONTAINER_DATA_DIR for you):
-#   export CONTAINER_DATA_DIR="$PWD/../container-data"
+# Usage (prefer the Makefile, which sets both paths for you):
+#   export CONFIG_DIR="$HOME/config"
+#   export CONTAINER_DATA_DIR="$HOME/container-data"
 #   podman-compose -f podman-compose.yml up -d
 #   podman-compose -f podman-compose.yml logs -f
 #   podman-compose -f podman-compose.yml down
 #
-# Every path is driven by CONTAINER_DATA_DIR so the file works no matter which
-# directory the compose command runs from.
+# Runtime configuration is driven by CONFIG_DIR and mutable state by
+# CONTAINER_DATA_DIR, so the file works no matter which directory Compose runs
+# from.
 # ==============================================================================
 
 # podman-compose creates a pod for the project by default. Podman refuses to
@@ -64,8 +67,8 @@ services:
       - "127.0.0.1:${HOST_PORT:-8012}:8012"
 
     env_file:
-      # Runtime configuration written by scripts/setup.sh (chmod 600).
-      - ${CONTAINER_DATA_DIR:-../container-data}/backend.env
+      # Runtime configuration provisioned under CONFIG_DIR (chmod 600).
+      - ${CONFIG_DIR}/backend.env
 
     # Allow the container to reach services that listen on the host, matching
     # the host.docker.internal URLs used by backend.env examples.
@@ -76,19 +79,19 @@ services:
       - shape-shifter-network
 
     volumes:
-      - ${CONTAINER_DATA_DIR:-../container-data}/projects:/app/projects:rw
-      - ${CONTAINER_DATA_DIR:-../container-data}/shared:/app/shared:rw
-      - ${CONTAINER_DATA_DIR:-../container-data}/logs:/app/logs:rw
-      - ${CONTAINER_DATA_DIR:-../container-data}/output:/app/output:rw
-      - ${CONTAINER_DATA_DIR:-../container-data}/backups:/app/backups:rw
-      - ${CONTAINER_DATA_DIR:-../container-data}/tmp:/app/tmp:rw
+      - ${CONTAINER_DATA_DIR}/projects:/app/projects:rw
+      - ${CONTAINER_DATA_DIR}/shared:/app/shared:rw
+      - ${CONTAINER_DATA_DIR}/logs:/app/logs:rw
+      - ${CONTAINER_DATA_DIR}/output:/app/output:rw
+      - ${CONTAINER_DATA_DIR}/backups:/app/backups:rw
+      - ${CONTAINER_DATA_DIR}/tmp:/app/tmp:rw
 
       # Authorization database (SQLite). Must persist across container rebuilds.
-      - ${CONTAINER_DATA_DIR:-../container-data}/state:/app/state:rw
+      - ${CONTAINER_DATA_DIR}/state:/app/state:rw
 
       # PostgreSQL password file. Mounted read-only as a file, not a directory,
       # because libpq expects PGPASSFILE to point at a file.
-      - ${CONTAINER_DATA_DIR:-../container-data}/.pgpass/.pgpass:/app/.pgpass:ro
+      - ${CONFIG_DIR}/.pgpass/.pgpass:/app/.pgpass:ro
 
     restart: unless-stopped
 

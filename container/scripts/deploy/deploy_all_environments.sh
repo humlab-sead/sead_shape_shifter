@@ -2,9 +2,9 @@
 # Deploy the project to multiple dedicated environment users.
 set -euo pipefail
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
-# Take DEPLOY_ENVIRONMENTS from the environment, or from container/.env.
+# Take DEPLOY_ENVIRONMENTS from the environment, or from CONFIG_DIR/deployment.env.
 # shellcheck source=../load-env.sh
 . "$SCRIPT_DIR/../load-env.sh"
 
@@ -15,8 +15,9 @@ Usage: scripts/deploy_all_environments.sh [USER:PORT ...]
 Deploy the project to several dedicated environment users.
 
 Environments come from the arguments first, then from DEPLOY_ENVIRONMENTS, which
-can be exported or set in container/.env. There is no built-in environment list,
-so an unconfigured run stops instead of deploying somewhere unrequested.
+can be exported or set in CONFIG_DIR/deployment.env. There is no built-in
+environment list, so an unconfigured run stops instead of deploying somewhere
+unrequested.
 
 Examples:
   scripts/deploy_all_environments.sh test-shape-shifter.sead.se:8012
@@ -50,7 +51,8 @@ for env_pair in "${ENVIRONMENTS[@]}"; do
   echo "Deploying to: $USER (port $PORT)"
   HOST_PORT="$PORT" bash "$SCRIPT_DIR/deploy_single_environment.sh" "$USER"
   echo "Configured and started for $USER"
-  echo "  Config: sudo -u $USER nano ~/container-data/backend.env"
-  echo "  Status: sudo -u $USER systemctl --user status shape-shifter"
+  echo "  Settings: sudo -u $USER nano ~/config/deployment.env"
+  echo "  Runtime:  sudo -u $USER nano ~/config/backend.env"
+  echo "  Status:   sudo -u $USER systemctl --user status shape-shifter"
   echo
 done

@@ -24,6 +24,7 @@ This plan covers:
 
 - completing the registered-route and background-operation inventory;
 - reviewing project and shared-data-source resource records and locators;
+- establishing the target environment configuration layout before manifest application;
 - confirming trusted-proxy principal IDs used for administrators and grants;
 - preparing, reviewing, applying, and reconciling the initial authorization manifest;
 - running focused and full regression validation;
@@ -131,6 +132,54 @@ Produce the deployment's authorization inputs without modifying project YAML.
 
 Requires named deployment identities and resource owners.
 
+### Phase 2A: Establish Target Environment Configuration Layout
+
+**Goal**
+
+Move deployment-specific configuration and authorization inputs to the external `config` directory while keeping mutable runtime data in `container-data` and deployment code in the replaceable `container` checkout.
+
+**Focus**
+
+- Establish the `container` / `config` / `container-data` path contract for Make, Compose, lifecycle scripts, systemd, and deployment helpers.
+- Provision target configuration and authorization inputs without repository-local secrets or runtime files under `container`.
+- Preserve the interim UCanAccess build dependency under `container/lib/ucanaccess`.
+- Verify that configuration and data survive replacement of the `container` checkout.
+
+**Depends On**
+
+- Phase 1 route and operation inventory.
+- Phase 2 manifest review may be completed before this phase; the reviewed manifest is provisioned into the target `config` directory as part of this phase.
+
+**Outputs**
+
+- A validated target configuration contract and three-directory deployment layout.
+- Target-provisioned deployment, runtime, authorization, and credential files owned by the deployment user.
+- A replacement-tested `container` checkout with preserved `config` and `container-data`.
+
+**Acceptance Criteria**
+
+- `PH2A-AC-1` (supplemental prerequisite; task-plan `CFG-AC-1` through `CFG-AC-3`) Make, Compose, lifecycle scripts, systemd, and deployment helpers resolve the target `config` and `container-data` paths without requiring live configuration under `container`.
+- `PH2A-AC-2` (supplemental prerequisite; task-plan `CFG-AC-4` and `CFG-AC-5`) Authorization credentials, groups, and manifest are read from target `config`; the deployment user owns all of `~/config`; setup preserves existing files and applies restrictive credential permissions.
+- `PH2A-AC-3` (supplemental prerequisite; task-plan `CFG-AC-6` and `CFG-AC-7`) The replacement-tested image build preserves UCanAccess support from `container/lib/ucanaccess`, while runtime configuration, authorization state, credentials, and backups remain in their designated locations.
+- `PH2A-AC-4` (supplemental prerequisite; task-plan `CFG-AC-8`) Deployment documentation and verification commands describe the three-directory layout and do not present retired paths as current practice.
+
+**Validation Milestones**
+
+- `VM-2A.1` Temporary Make, loader, Compose, and systemd checks resolve identical absolute configuration and data paths (covers `PH2A-AC-1`).
+- `VM-2A.2` Fresh setup, idempotence, authorization bootstrap, and permission checks pass with a temporary target `config` directory (covers `PH2A-AC-2`).
+- `VM-2A.3` Local and configured GitHub/ref builds succeed with UCanAccess under `container/lib/ucanaccess`, and replacement preserves `config` and `container-data` (covers `PH2A-AC-3`).
+- `VM-2A.4` Documentation and stale-path review pass (covers `PH2A-AC-4`).
+
+**Task-Plan Handoff**
+
+- Execute [Target Environment Configuration Layout Task Plan](./TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md).
+- Fixed decisions: the deployment user owns all of `~/config`; UCanAccess remains under `container/lib/ucanaccess` as an interim build-dependency exception; no fallback to `container/.env`, `secrets/.env`, or `container-data/backend.env` is required.
+- Phase 2A is a prerequisite for Phase 3 manifest application and reconciliation, but it is not a prerequisite for completing the Phase 2 manifest review.
+
+**Readiness**
+
+Ready for the linked task plan; Phase 3 remains blocked until this phase is complete.
+
 ### Phase 3: Validate Migration And Cutover Readiness
 
 **Goal**
@@ -148,6 +197,7 @@ Prove that the reviewed authorization state and the release candidate are ready 
 **Depends On**
 
 - The Phase 2 reviewed manifest and confirmed principal IDs.
+- Phase 2A target configuration layout and authorization input provisioning.
 - A release candidate built from the intended commit.
 
 **Outputs**
@@ -177,7 +227,7 @@ Prove that the reviewed authorization state and the release candidate are ready 
 
 **Readiness**
 
-Ready for a task plan once the Phase 2 manifest is reviewed.
+Ready for a task plan once the Phase 2 manifest is reviewed and Phase 2A configuration migration is complete.
 
 ### Phase 4: Execute And Record Enforcement Cutover
 
