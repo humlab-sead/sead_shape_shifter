@@ -46,6 +46,13 @@ Web users (run on the deployment host):
     sudo cut -d: -f1 /etc/nginx/htpasswd/shape-shifter         List users
     sudo htpasswd -D /etc/nginx/htpasswd/shape-shifter USER    Delete a user
 
+Group membership (run on the proxy host):
+    NGINX derives the group header from the authenticated user name and this file.
+    One line per member: "USER GROUP[,GROUP...];". Group IDs are case-sensitive and
+    must match the IDs used in group grants.
+    sudoedit /etc/nginx/authz/groups.d/shape-shifter.conf      Edit membership
+    sudo nginx -t && sudo systemctl reload nginx               Apply the change
+
 Examples:
   container/scripts/authorization.sh list-grants --json
   container/scripts/authorization.sh list-audit-events --json

@@ -1,3 +1,18 @@
+# Authorization group membership. Basic auth has no group claim of its own, so
+# the group header the backend reads is derived from the authenticated user name.
+# The included membership file holds one line per member, for example:
+#
+#     roger    sead-admins,strucke-editors;
+#
+# Membership lives in /etc/nginx/authz/groups.d/. The wildcard tolerates a
+# missing directory or no matching file, so the header is empty until members
+# are added. After editing membership:
+#   sudo nginx -t && sudo systemctl reload nginx
+map $remote_user $authz_groups {
+    default "";
+    include /etc/nginx/authz/groups.d/*.conf;
+}
+
 upstream shape_shifter {
     server 127.0.0.1:__UPSTREAM_PORT__;
 }
@@ -28,6 +43,10 @@ server {
     # htpasswd file) and NGINX will populate $remote_user, or replace the header
     # with the value supplied by your SSO proxy.
     #
+    # To use group grants, also set SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED=true
+    # and SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_HEADER=X-Authenticated-Groups on the
+    # backend. See docs/OPERATIONS.md for the membership file format.
+    #
     # auth_basic "Shape Shifter";
     # auth_basic_user_file /etc/nginx/htpasswd/shape-shifter;
 
@@ -39,6 +58,10 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Authenticated-User $remote_user;
+
+        # Authorization groups for this user; empty when the user is in none.
+        proxy_set_header X-Authenticated-Groups $authz_groups;
+
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_connect_timeout 60s;

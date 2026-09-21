@@ -9,6 +9,7 @@ Runbook for operators and maintainers of deployed Shape Shifter environments. Th
 - Project state is file-backed YAML. Do not edit one project concurrently from multiple operator sessions.
 - The application serves plain HTTP. Terminate TLS at the NGINX reverse proxy or another trusted upstream.
 - NGINX is the authentication boundary. It must authenticate the user, overwrite `X-Authenticated-User` with the verified identity, and proxy to the application port.
+- Group grants need group IDs from the proxy. On a site that authenticates with `auth_basic`, NGINX derives `X-Authenticated-Groups` from the user name and a membership file, so a membership change needs a reload and is not recorded in the authorization audit log. See [NGINX group header](#nginx-group-header).
 - `/api/v1/health` is the only unauthenticated API path. Keep the application port private to the proxy host.
 - Java is required when projects use MS Access sources. Install UCanAccess with `make install-ucanaccess` from `container/` when the deployment image does not already contain the required JARs.
 
@@ -44,6 +45,7 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from `../contain
 | `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED` | `false` | Require the identity forwarded by NGINX. |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_HEADER` | `X-Authenticated-User` | Verified proxy identity header. |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED` | `false` | Accept verified group IDs from the proxy. |
+| `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_HEADER` | `X-Authenticated-Groups` | Verified proxy group header. |
 | `SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH` | `state/authorization.sqlite3` | Authorization SQLite database. |
 | `SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS` | `[]` | Initial administrator principal IDs; required in production. |
 | `SHAPE_SHIFTER_AUTHORIZATION_MEMBERSHIP_LOOKUP_URL` | `null` | Trusted membership endpoint template. |
@@ -59,6 +61,56 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from `../contain
 | `SHAPE_SHIFTER_MATERIALIZATION_INLINE_THRESHOLD` | `20` | Row threshold for inline materialized data. |
 
 Set `SEAD_HOST`, `SEAD_PORT`, `SEAD_DBNAME`, and `SEAD_USER` through the project data-source configuration when required. Keep PostgreSQL passwords in `../container-data/.pgpass/.pgpass` with mode `600`, not in project YAML or `backend.env`. `VITE_*` values are build-time settings in `container/.env` and require a new image build.
+
+### NGINX Group Header
+
+Group grants match the group IDs the backend receives from the trusted proxy. A site that authenticates with `auth_basic` has no group claim of its own, so NGINX derives the header from the authenticated user name and a membership file.
+
+Create the membership directory and file on the proxy host:
+
+```bash
+sudo mkdir -p /etc/nginx/authz/groups.d
+sudo tee /etc/nginx/authz/groups.d/shape-shifter.conf >/dev/null <<'EOF'
+roger    sead-admins;
+riia     strucke-editors,riia-projects;
+EOF
+```
+
+One line per member: the htpasswd user name, then the group IDs, separated by commas and ending with a semicolon. Group IDs are case-sensitive and must match the IDs used in group grants. A user with no line receives no groups; a missing directory or no matching file is accepted, so the header stays empty until members are added and the site still starts.
+
+The site configuration maps the user name to the header and forwards it:
+
+```nginx
+map $remote_user $authz_groups {
+    default "";
+    include /etc/nginx/authz/groups.d/*.conf;
+}
+
+location / {
+    # ...
+    proxy_set_header X-Authenticated-Groups $authz_groups;
+}
+```
+
+`container/scripts/deploy/nginx-shape-shifter.conf.template` and the site files under `container/resources/` already contain both blocks. Enable the header on the backend in `../container-data/backend.env`:
+
+```bash
+SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED=true
+SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_HEADER=X-Authenticated-Groups
+```
+
+Check the configuration and reload NGINX after any membership change:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Notes:
+
+- `proxy_set_header` replaces any header the client sent, so a caller cannot assert its own groups. A user without a membership line receives no groups, and grants that require a group stop matching.
+- Membership lives in this file, so a change takes effect on reload and is not recorded in the authorization audit log. Review membership from this file.
+- `list-grants --effective` expands group members only when `SHAPE_SHIFTER_AUTHORIZATION_MEMBERSHIP_LOOKUP_URL` points at a membership endpoint. NGINX does not provide one, so grant reviews on a Basic-auth site read membership from this file.
+- Group subjects cannot hold `owner`; keep a named principal as the project owner.
 
 ## Data Layout And Backups
 

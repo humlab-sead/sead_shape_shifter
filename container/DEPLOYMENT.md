@@ -135,11 +135,20 @@ authentication method such as `auth_basic` with an htpasswd file, or replace the
 header with the value supplied by your SSO proxy. Without an authenticated user
 the API returns `401`.
 
+Group grants need a second header. `auth_basic` supplies no group claim, so the
+template derives `X-Authenticated-Groups` from `$remote_user` and the membership
+file `/etc/nginx/authz/groups.d/*.conf`. Create that directory and file on the
+proxy host, set `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED=true` and
+`SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_HEADER=X-Authenticated-Groups` in
+`../container-data/backend.env`, then run `sudo nginx -t` before reloading. See
+[NGINX group header](../docs/OPERATIONS.md#nginx-group-header) for the file
+format and the limits of this approach.
+
 The site files under `resources/` use one password file per site,
 `/etc/nginx/htpasswd/shape-shifter`, and give it mode `640` with `root:www-data`
-ownership. Create and maintain those accounts as described in
-[Nginx Basic-auth users](../docs/OPERATIONS.md#nginx-basic-auth-users); the
-account name is the principal ID the application records.
+ownership. Create and maintain those accounts with the commands in
+`container/scripts/authorization.sh --help`; the account name is the principal ID
+the application records.
 
 ---
 
