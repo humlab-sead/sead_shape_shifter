@@ -10,6 +10,7 @@ container lifecycle helpers, see the Makefile and `scripts/`.
 - **Multiple environments**: repeat the single-environment steps, or use
   `scripts/deploy/deploy_all_environments.sh`
 - **NGINX**: [NGINX reverse proxy](#nginx-reverse-proxy)
+- **Authorization inputs**: [Authorization inputs](#authorization-inputs)
 - **Auto-start**: [Systemd integration](#systemd-integration)
 - **Diagnostics**: `make status`, `make healthcheck`, `make logs`
 
@@ -149,6 +150,62 @@ The site files under `resources/` use one password file per site,
 ownership. Create and maintain those accounts with the commands in
 `container/scripts/authorization.sh --help`; the account name is the principal ID
 the application records.
+
+---
+
+## Authorization inputs
+
+`scripts/deploy/bootstrap-authentication-and-authorization.sh` reads every input
+from the deployment user's configuration directory, `~/config`, and never from
+the checkout or a repository secrets folder:
+
+| File | Contents | Mode |
+| --- | --- | --- |
+| `~/config/authorization.env` | NGINX credentials, principal rosters, audit actor, manifest filename | `600` |
+| `~/config/authorization-manifest.yaml` | Approved authorization policy | `600` |
+| `~/config/groups.d/shape-shifter.conf` | NGINX group membership | `600` |
+
+The deployment user owns all of `~/config`, which has mode `700`, so only that
+user and root can read the files. `authorization.env` contains credentials and is
+never mounted into the container: the container receives `backend.env` and
+`.pgpass/.pgpass` only.
+
+Provision the inputs by hand. Deployment tooling deliberately does not copy
+policy or generate passwords, so the operator installs the approved files:
+
+```bash
+sudo -u test-shape-shifter.sead.se -H bash
+cd ~/config
+mkdir -p groups.d
+install -m 600 ~/container/resources/authorization.env.example authorization.env
+install -m 600 /path/to/approved-manifest.yaml authorization-manifest.yaml
+install -m 600 /path/to/shape-shifter.conf groups.d/shape-shifter.conf
+```
+
+Edit `authorization.env` so `AUTHORIZATION_MANIFEST` names the installed
+manifest. A relative name resolves inside `~/config`; an absolute path is only
+for a deliberate alternate layout.
+
+The manifest is policy data, while `authorization.env` holds the credentials that
+bootstrap NGINX accounts and deployment roles.
+
+Before running the bootstrap, set
+`SHAPE_SHIFTER_AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE=true` in
+`~/config/backend.env`, because the reviewed manifest grants `everyone` reader
+access to the shared data sources.
+
+Then run the bootstrap as root. It validates `authorization.env`, the manifest,
+and the group file before it writes the htpasswd file, installs group membership,
+or assigns roles, so a missing or unreadable input stops the run without changing
+any account or policy:
+
+```bash
+sudo CONFIG_DIR=$HOME/config ~/container/scripts/deploy/bootstrap-authentication-and-authorization.sh
+```
+
+The reviewed manifest is authored in the repository under
+`resources/authorization/`. Install the approved revision under `~/config`; the
+bootstrap never reads the repository copy.
 
 ---
 

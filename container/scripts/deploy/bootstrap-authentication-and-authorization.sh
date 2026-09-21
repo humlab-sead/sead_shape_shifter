@@ -1,13 +1,37 @@
 #!/bin/bash
+# Install nginx authentication, group membership, per-principal deployment
+# roles, and the reviewed authorization manifest for one target environment.
+#
+# Everything is read from the target configuration directory, never from this
+# checkout or the repository secrets folder:
+#   CONFIG_DIR/authorization.env            credentials, rosters, actor, manifest
+#   CONFIG_DIR/authorization-manifest.yaml  reviewed policy manifest
+#   CONFIG_DIR/groups.d/shape-shifter.conf  nginx group membership
+#
+# CONFIG_DIR defaults to the sibling of the checkout this script belongs to,
+# which is ~/config when the checkout is ~/container; set CONFIG_DIR to use
+# another layout. AUTHORIZATION_MANIFEST names a file below CONFIG_DIR, and an
+# absolute path is accepted only when an operator configures one deliberately.
+#
+# Run as root, because the script writes the htpasswd file and the nginx group
+# file. Every input is validated before any account, role, or file is changed.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd -- "$SCRIPT_DIR/../../.." && pwd)"
-ENV_FILE="$REPO_DIR/secrets/.env"
+CHECKOUT_DIR="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+CONFIG_DIR="${CONFIG_DIR:-$(cd -- "$CHECKOUT_DIR/.." && pwd)/config}"
+
+ENV_FILE="$CONFIG_DIR/authorization.env"
+GROUPS_FILE="$CONFIG_DIR/groups.d/shape-shifter.conf"
+HTPASSWD_FILE="/etc/nginx/htpasswd/shape-shifter"
+
+fail() {
+    echo "$*" >&2
+    exit 1
+}
 
 if [[ ! -r "$ENV_FILE" ]]; then
-    echo "Missing secret configuration: $ENV_FILE" >&2
-    exit 1
+    fail "Missing authorization configuration: $ENV_FILE"
 fi
 
 # shellcheck disable=SC1090
@@ -20,26 +44,32 @@ source "$ENV_FILE"
 : "${PROJECT_CREATOR_AND_OPERATOR:?PROJECT_CREATOR_AND_OPERATOR is required in $ENV_FILE}"
 : "${DEPLOY_USER:?DEPLOY_USER is required in $ENV_FILE}"
 : "${AUTHORIZATION_ACTOR:?AUTHORIZATION_ACTOR is required in $ENV_FILE}"
+
 if [[ -z "${AUTHORIZATION_MANIFEST:-}" ]]; then
-    echo "AUTHORIZATION_MANIFEST is required in $ENV_FILE" >&2
-    exit 1
+    fail "AUTHORIZATION_MANIFEST is required in $ENV_FILE"
 fi
 if [[ "$AUTHORIZATION_MANIFEST" != /* ]]; then
-    AUTHORIZATION_MANIFEST="$REPO_DIR/$AUTHORIZATION_MANIFEST"
+    AUTHORIZATION_MANIFEST="$CONFIG_DIR/$AUTHORIZATION_MANIFEST"
 fi
 
 if [[ ! -r "$AUTHORIZATION_MANIFEST" ]]; then
-    echo "Authorization manifest is not readable: $AUTHORIZATION_MANIFEST" >&2
-    exit 1
+    fail "Authorization manifest is not readable: $AUTHORIZATION_MANIFEST"
 fi
 
-HTPASSWD_FILE="/etc/nginx/htpasswd/shape-shifter"
-HTPASSWD_OPTIONS=(-c)
+if [[ ! -r "$GROUPS_FILE" ]]; then
+    fail "Group membership file is not readable: $GROUPS_FILE"
+fi
+
+DEPLOY_DIR="/data/$DEPLOY_USER/container"
+if [[ ! -d "$DEPLOY_DIR" ]]; then
+    fail "Deployment directory does not exist: $DEPLOY_DIR"
+fi
 
 if [[ $EUID -ne 0 ]]; then
-    echo "This script must be run as root (i.e. use sudo)" >&2
-    exit 1
+    fail "This script must be run as root (i.e. use sudo)"
 fi
+
+HTPASSWD_OPTIONS=(-c)
 
 htpasswd "${HTPASSWD_OPTIONS[@]}" "$HTPASSWD_FILE" "$ADMIN_AUTH_USER" <<< "$ADMIN_AUTH_PASSWORD"
 HTPASSWD_OPTIONS=()
@@ -53,20 +83,21 @@ chmod 640 "$HTPASSWD_FILE"
 
 # Keep the trusted administrator group available for future resource grants.
 install -D -m 640 -o root -g www-data \
-    "$REPO_DIR/secrets/groups.d/shape-shifter.conf" \
+    "$GROUPS_FILE" \
     /etc/nginx/authz/groups.d/shape-shifter.conf
 
-DEPLOY_DIR="/data/$DEPLOY_USER/container"
-if [[ ! -d "$DEPLOY_DIR" ]]; then
-    echo "Deployment directory does not exist: $DEPLOY_DIR" >&2
-    exit 1
-fi
+# The wrapper resolves its configuration from CONFIG_DIR, so pass the directory
+# this script validated instead of letting the deploy user's home decide.
+run_authorization() {
+    sudo -u "$DEPLOY_USER" -- env "CONFIG_DIR=$CONFIG_DIR" \
+        "$DEPLOY_DIR/scripts/authorization.sh" "$@"
+}
 
 grant_application_role() {
     local principal_id="$1"
     local role="$2"
 
-    sudo -u "$DEPLOY_USER" -- "$DEPLOY_DIR/scripts/authorization.sh" grant-application-role \
+    run_authorization grant-application-role \
         --principal-id "$principal_id" \
         --role "$role" \
         --actor "$AUTHORIZATION_ACTOR"
@@ -83,4 +114,5 @@ done
 
 grant_application_role "$ADMIN_AUTH_USER" admin
 
-sudo -u "$DEPLOY_USER" -- "$DEPLOY_DIR/scripts/authorization.sh" import-manifest "$AUTHORIZATION_MANIFEST"
+sudo -u "$DEPLOY_USER" -- env "CONFIG_DIR=$CONFIG_DIR" \
+    "$DEPLOY_DIR/scripts/authorization.sh" import-manifest "$AUTHORIZATION_MANIFEST"
