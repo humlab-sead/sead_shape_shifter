@@ -2,21 +2,23 @@
 # Start the Shape Shifter container with podman-compose.
 set -euo pipefail
 
-# Load container/.env values that the environment has not already set.
+# Load CONFIG_DIR/deployment.env values that the environment has not already set.
 # shellcheck source=load-env.sh
 . "$(dirname -- "${BASH_SOURCE[0]}")/load-env.sh"
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(
+  CDPATH=''
+  cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
+)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-DATA_DIR="${DATA_DIR:-$ROOT_DIR/../container-data}"
 export CONTAINER_DATA_DIR="${CONTAINER_DATA_DIR:-$DATA_DIR}"
 export HOST_PORT="${HOST_PORT:-8012}"
 export IMAGE_NAME="${IMAGE_NAME:-shape-shifter:latest}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-shapeshifter}"
 
-if [ ! -f "$CONTAINER_DATA_DIR/backend.env" ]; then
-  echo "error: $CONTAINER_DATA_DIR/backend.env is missing. Run 'make setup' first." >&2
+if [ ! -f "$CONFIG_DIR/backend.env" ]; then
+  echo "error: $CONFIG_DIR/backend.env is missing. Run 'make setup' first." >&2
   exit 1
 fi
 
