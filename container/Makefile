@@ -172,6 +172,7 @@ setup-directories: check-podman
 .PHONY: setup-env
 setup-env: check-podman
 	@mkdir -p "$(CONFIG_DIR)"; \
+	chmod 700 "$(CONFIG_DIR)"; \
 	if [ ! -f "$(CONFIG_DIR)/deployment.env" ]; then \
 		if [ -f "$(ENV_EXAMPLE)" ]; then \
 			cp "$(ENV_EXAMPLE)" "$(CONFIG_DIR)/deployment.env"; \
@@ -289,6 +290,12 @@ validate: check-podman
 	@test -f $(COMPOSE_FILE) && echo "$(GREEN)+ $(COMPOSE_FILE) present$(NC)" || { echo "$(RED)x $(COMPOSE_FILE) missing$(NC)"; exit 1; }
 	@CONFIG_DIR="$(CONFIG_DIR)" CONTAINER_DATA_DIR="$(CONTAINER_DATA_DIR)" podman-compose -f $(COMPOSE_FILE) config >/dev/null && echo "$(GREEN)+ Compose configuration is valid$(NC)"
 	@test -d "$(CONFIG_DIR)" && echo "$(GREEN)+ Config directory exists$(NC)" || echo "$(YELLOW)! Config directory missing (run make setup)$(NC)"
+	@mode=$$(stat -c '%a' "$(CONFIG_DIR)" 2>/dev/null || true); \
+	if [ "$$mode" = "700" ]; then \
+		echo "$(GREEN)+ Config directory is private (700)$(NC)"; \
+	elif [ -n "$$mode" ]; then \
+		echo "$(YELLOW)! Config directory mode is $$mode; credentials need 700: chmod 700 $(CONFIG_DIR)$(NC)"; \
+	fi
 	@test -f "$(CONFIG_DIR)/deployment.env" && echo "$(GREEN)+ Deployment settings exist$(NC)" || echo "$(YELLOW)! $(CONFIG_DIR)/deployment.env missing (the built-in defaults apply)$(NC)"
 	@test -d "$(CONTAINER_DATA_DIR)" && echo "$(GREEN)+ Data directory exists$(NC)" || echo "$(YELLOW)! Data directory missing (run make setup)$(NC)"
 	@test -f "$(CONFIG_DIR)/backend.env" && echo "$(GREEN)+ Environment file exists$(NC)" || echo "$(YELLOW)! Environment file missing (run make setup)$(NC)"

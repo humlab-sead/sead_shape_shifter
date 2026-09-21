@@ -97,7 +97,10 @@ if [ -d container ]; then
   # shellcheck source=load-env.sh
   . container/scripts/load-env.sh
   deployment_env="$CONFIG_DIR/deployment.env"
+  # The directory holds credentials and policy, so keep it private to the
+  # deployment user, matching scripts/setup.sh.
   mkdir -p "$CONFIG_DIR"
+  chmod 700 "$CONFIG_DIR"
   if [ ! -f "$deployment_env" ] && [ -f container/.env.example ]; then
     cp container/.env.example "$deployment_env"
   fi
