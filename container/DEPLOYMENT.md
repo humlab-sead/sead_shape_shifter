@@ -272,6 +272,35 @@ over `.env`.
 `shape-shifter:dev`. Keep `IMAGE_NAME` in `.env` in step with `GIT_REF`,
 otherwise `make restart` starts the previous image.
 
+### Replacing the checkout
+
+`~/container` is replaceable: it holds code and the build context, so a release
+can be unpacked over it while `~/config` and `~/container-data` stay in place.
+
+```bash
+# As the admin account, unpack the release archive over the deployment directory
+sudo tar -xzf shape-shifter-release.tar.gz -C /data/test-shape-shifter.sead.se
+
+# Confirm the preserved directories are still there
+sudo -u test-shape-shifter.sead.se ls ~/config ~/container-data
+
+# As the deployment user, rebuild and restart from the configured values
+cd ~/container
+make build && make restart && make healthcheck
+```
+
+The replacement checkout must contain the UCanAccess build dependency under
+`lib/ucanaccess`; `make install-ucanaccess` downloads it and `make validate`
+reports whether it is present. A workdir build stages the installed dependency
+into its build context, so both build modes use the same copy.
+
+Image identity keeps following the configured values: `make build` reads
+`GIT_REF`, `GIT_REPO`, and `IMAGE_NAME` from `~/config/deployment.env`, passes the
+deployment user's UID/GID, cache-busts branch builds only, and tags a release tag
+with its own name. Configuration, credentials, project data, logs, backups, and
+the authorization database all live outside the checkout, so replacing it leaves
+them unchanged.
+
 ---
 
 ## Diagnostics
