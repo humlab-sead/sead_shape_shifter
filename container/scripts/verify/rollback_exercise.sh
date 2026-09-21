@@ -11,6 +11,7 @@ g_container_dir="$(CDPATH='' cd -- "$g_script_dir/../.." && pwd)"
 
 g_container_name="${CONTAINER_NAME:-shape-shifter}"
 g_compose_project_name="${COMPOSE_PROJECT_NAME:-shapeshifter}"
+g_config_dir="${CONFIG_DIR:-$g_container_dir/../config}"
 g_data_dir="${DATA_DIR:-$g_container_dir/../container-data}"
 g_backup_dir="${AUTHORIZATION_BACKUP_DIR:-$g_data_dir/backups}"
 g_host_port="${HOST_PORT:-8012}"
@@ -48,6 +49,10 @@ Options:
 
 The service remains stopped when restore, integrity, reconciliation, or startup
 verification fails. Run this as the deployment user from container/.
+
+Runtime configuration is read from CONFIG_DIR/backend.env and mutable data and
+state from DATA_DIR. Both default to the home-root siblings config and
+container-data, and can be overridden with CONFIG_DIR and DATA_DIR.
 EOF
 }
 
@@ -112,7 +117,7 @@ done
 [[ -n "$g_manifest" ]] || { usage >&2; fail "--manifest is required"; }
 command -v podman >/dev/null || fail "podman is required"
 command -v podman-compose >/dev/null || fail "podman-compose is required"
-[[ -f "$g_data_dir/backend.env" ]] || fail "backend environment file not found: $g_data_dir/backend.env"
+[[ -f "$g_config_dir/backend.env" ]] || fail "backend environment file not found: $g_config_dir/backend.env"
 [[ -f "$g_manifest" ]] || fail "authorization manifest not found: $g_manifest"
 
 if [[ "$g_authorization_backup" = */* ]]; then
@@ -149,27 +154,27 @@ record_image_identity() {
 }
 
 compose_down() {
-    CONTAINER_DATA_DIR="$g_data_dir" HOST_PORT="$g_host_port" IMAGE_NAME="$g_image" \
+    CONFIG_DIR="$g_config_dir" CONTAINER_DATA_DIR="$g_data_dir" HOST_PORT="$g_host_port" IMAGE_NAME="$g_image" \
         podman-compose -f "$g_container_dir/podman-compose.yml" \
         -p "$g_compose_project_name" down
 }
 
 compose_up() {
-    CONTAINER_DATA_DIR="$g_data_dir" HOST_PORT="$g_host_port" IMAGE_NAME="$g_image" \
+    CONFIG_DIR="$g_config_dir" CONTAINER_DATA_DIR="$g_data_dir" HOST_PORT="$g_host_port" IMAGE_NAME="$g_image" \
         podman-compose -f "$g_container_dir/podman-compose.yml" \
         -p "$g_compose_project_name" up -d
 }
 
 run_admin() {
     podman run --rm \
-        --env-file "$g_data_dir/backend.env" \
+        --env-file "$g_config_dir/backend.env" \
         --volume "$g_data_dir/state:/app/state:rw" \
         "$g_image" "${g_container_cli[@]}" "$@"
 }
 
 run_restore() {
     podman run --rm \
-        --env-file "$g_data_dir/backend.env" \
+        --env-file "$g_config_dir/backend.env" \
         --volume "$g_data_dir/state:/app/state:rw" \
         --volume "$g_backup_path:/app/rollback-backup:ro" \
         "$g_image" "${g_container_cli[@]}" restore /app/rollback-backup
@@ -177,7 +182,7 @@ run_restore() {
 
 run_reconcile() {
     podman run --rm \
-        --env-file "$g_data_dir/backend.env" \
+        --env-file "$g_config_dir/backend.env" \
         --volume "$g_data_dir/state:/app/state:rw" \
         --volume "$g_manifest:/app/rollback-manifest:ro" \
         "$g_image" "${g_container_cli[@]}" reconcile /app/rollback-manifest

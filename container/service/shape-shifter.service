@@ -6,12 +6,12 @@ After=network-online.target
 
 [Service]
 # Start the container through the same scripts an operator uses, so a systemd
-# start and a manual `make up` resolve container/.env identically.
+# start and a manual `make up` resolve CONFIG_DIR/deployment.env identically.
 #
-# This unit deliberately sets no IMAGE_NAME, HOST_PORT, COMPOSE_PROJECT_NAME or
-# DATA_DIR. A value in the service environment overrides container/.env, and
-# systemd's environment wins over that file, so setting them here would silently
-# start an image and port other than the configured ones.
+# This unit deliberately sets no IMAGE_NAME, HOST_PORT, COMPOSE_PROJECT_NAME,
+# CONFIG_DIR, or DATA_DIR. The shared loader resolves the canonical home-root
+# layout, and systemd's environment wins over deployment.env when explicitly
+# configured by the operator.
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=%h/container

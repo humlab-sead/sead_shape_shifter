@@ -1,27 +1,47 @@
 #!/usr/bin/env bash
-# Back up the deployment data: projects, shared data, environment and state.
+# Back up the deployment: mutable data, state and runtime configuration.
+#
+# The archive keeps the two ownership groups apart, in the same layout the
+# deployment uses: mutable data and state under the archive root, runtime
+# configuration under config/. Files are copied with their modes, so the
+# credential files keep their restrictive permissions.
+#
+# Operator-provisioned authorization inputs (authorization.env, the manifest and
+# groups.d/) are not copied. The live authorization policy is held in the
+# backed-up state database, and those input files are provisioned by hand.
 set -euo pipefail
 
-# Load container/.env values that the environment has not already set.
+# Load CONFIG_DIR/deployment.env values that the environment has not already
+# set, and resolve the CONFIG_DIR and DATA_DIR defaults.
 # shellcheck source=load-env.sh
 . "$(dirname -- "${BASH_SOURCE[0]}")/load-env.sh"
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-DATA_DIR="${DATA_DIR:-$ROOT_DIR/../container-data}"
-
 timestamp="$(date +%Y%m%d_%H%M%S)"
 backup_dir="${DATA_DIR}/backups/backup_${timestamp}"
-mkdir -p "$backup_dir"
+config_backup_dir="${backup_dir}/config"
+mkdir -p "$config_backup_dir"
+chmod 700 "$backup_dir" "$config_backup_dir"
 
 echo "Creating backup: ${backup_dir}"
-cp -r "${DATA_DIR}/projects" "$backup_dir/" 2>/dev/null || true
-cp -r "${DATA_DIR}/shared" "$backup_dir/" 2>/dev/null || true
-cp -r "${DATA_DIR}/state" "$backup_dir/" 2>/dev/null || true
-cp "${DATA_DIR}/backend.env" "$backup_dir/" 2>/dev/null || true
-if [ -f "${DATA_DIR}/.pgpass/.pgpass" ]; then
-  mkdir -p "$backup_dir/.pgpass"
-  cp "${DATA_DIR}/.pgpass/.pgpass" "$backup_dir/.pgpass/" 2>/dev/null || true
+for data_item in projects shared state; do
+  cp -r "${DATA_DIR}/${data_item}" "$backup_dir/" 2>/dev/null || true
+done
+
+echo "Copying runtime configuration from ${CONFIG_DIR}"
+for config_file in deployment.env backend.env; do
+  if [ -f "${CONFIG_DIR}/${config_file}" ]; then
+    cp -p "${CONFIG_DIR}/${config_file}" "${config_backup_dir}/"
+    echo "  ${config_file}"
+  fi
+done
+
+# The PostgreSQL password file is mounted as a file, so it keeps its own
+# directory in the archive.
+if [ -f "${CONFIG_DIR}/.pgpass/.pgpass" ]; then
+  mkdir -p "${config_backup_dir}/.pgpass"
+  chmod 700 "${config_backup_dir}/.pgpass"
+  cp -p "${CONFIG_DIR}/.pgpass/.pgpass" "${config_backup_dir}/.pgpass/"
+  echo "  .pgpass/.pgpass"
 fi
 
 echo "Backup complete"

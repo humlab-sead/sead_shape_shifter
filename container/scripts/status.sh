@@ -2,7 +2,8 @@
 # Show container status.
 set -euo pipefail
 
-# Load container/.env values that the environment has not already set.
+# Load CONFIG_DIR/deployment.env values that the environment has not already
+# set, so the container name matches the deployed environment.
 # shellcheck source=load-env.sh
 . "$(dirname -- "${BASH_SOURCE[0]}")/load-env.sh"
 
