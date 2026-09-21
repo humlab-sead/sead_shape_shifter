@@ -38,6 +38,10 @@ Convenience commands:
   backup                 Create a timestamped authorization database backup
   restore BACKUP         Restore a backup after stopping the application and
                          checking the restored database before restarting it
+    import-manifest FILE   Import a host-side JSON or YAML manifest into the
+                                                 running container
+    export-manifest FILE   Export active top-level resources and grants from the
+                                                 running container as JSON or YAML
 
 Web users (run on the deployment host):
     The htpasswd username must exactly match the case-sensitive principal ID used
@@ -175,6 +179,29 @@ restore_database() {
     echo "Authorization database restored and $CONTAINER_NAME restarted."
 }
 
+import_manifest() {
+    local manifest_path="${1:-}"
+    [[ -n "$manifest_path" ]] || { echo "import-manifest requires a manifest path." >&2; exit 1; }
+    [[ -f "$manifest_path" ]] || { echo "Manifest not found: $manifest_path" >&2; exit 1; }
+    [[ "${2:-}" = "" ]] || { echo "import-manifest accepts exactly one manifest path." >&2; exit 1; }
+    require_running_container
+    podman exec -i "$CONTAINER_NAME" "${CONTAINER_CLI[@]}" migrate --manifest /dev/stdin < "$manifest_path"
+}
+
+export_manifest() {
+    local manifest_path="${1:-}"
+    [[ -n "$manifest_path" ]] || { echo "export-manifest requires a manifest path." >&2; exit 1; }
+    [[ ! -d "$manifest_path" ]] || { echo "Export path must be a file: $manifest_path" >&2; exit 1; }
+    [[ "${2:-}" = "" ]] || { echo "export-manifest accepts exactly one manifest path." >&2; exit 1; }
+    require_running_container
+    local extension="${manifest_path##*.}"
+    [[ "$extension" = "$manifest_path" ]] && extension="json"
+    local container_manifest_path="/tmp/authorization-export-$$.$extension"
+    trap 'podman exec "$CONTAINER_NAME" rm -f "$container_manifest_path" >/dev/null 2>&1 || true' RETURN
+    podman exec "$CONTAINER_NAME" "${CONTAINER_CLI[@]}" export-manifest "$container_manifest_path"
+    podman cp "$CONTAINER_NAME:$container_manifest_path" "$manifest_path"
+}
+
 [[ $# -gt 0 ]] || { usage >&2; exit 1; }
 
 case "$1" in
@@ -186,6 +213,14 @@ case "$1" in
     restore)
         shift
         restore_database "$@"
+        ;;
+    import-manifest)
+        shift
+        import_manifest "$@"
+        ;;
+    export-manifest)
+        shift
+        export_manifest "$@"
         ;;
     *)
         run_cli "$@"

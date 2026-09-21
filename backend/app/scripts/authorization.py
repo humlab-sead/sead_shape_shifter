@@ -18,6 +18,7 @@ from backend.app.authorization.models import (
 from backend.app.authorization.operations import (
     apply_manifest,
     backup_database,
+    export_manifest,
     initialize_database,
     inspect_manifest,
     integrity_check,
@@ -105,6 +106,17 @@ def reconcile(manifest: Path, database: Path | None) -> None:
     click.echo(summary)
     if any(result.values()):
         raise click.ClickException(f"{summary}\nAuthorization resources do not match the reviewed manifest")
+
+
+@cli.command("export-manifest")
+@click.argument("manifest", type=click.Path(path_type=Path))
+@click.option("--database", type=click.Path(exists=True, path_type=Path), default=None)
+def export_manifest_command(manifest: Path, database: Path | None) -> None:
+    """Export active top-level resources and grants as a migration manifest."""
+    result = export_manifest(manifest, database or settings.AUTHORIZATION_DATABASE_PATH)
+    click.echo(
+        f"Exported: {result['resources']} resources, {result['administrators']} administrators, {result['grants']} grants"
+    )
 
 
 @cli.command("grant")

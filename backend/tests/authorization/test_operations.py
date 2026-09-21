@@ -12,6 +12,7 @@ from backend.app.authorization.models import Grant, GrantSubjectType, ResourceRe
 from backend.app.authorization.operations import (
     apply_manifest,
     backup_database,
+    export_manifest,
     initialize_database,
     inspect_manifest,
     integrity_check,
@@ -122,6 +123,23 @@ def test_manifest_inspection_accepts_yaml(tmp_path) -> None:
     )
 
     assert inspect_manifest(manifest) == {"resources": 1, "administrators": 1}
+
+
+def test_export_manifest_writes_yaml_for_active_top_level_resources(tmp_path) -> None:
+    database = tmp_path / "authorization.sqlite3"
+    repository = SQLiteAuthorizationRepository(database)
+    project = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
+    child = ResourceRecord(uuid4(), ResourceType.PROJECT_CHILD, "project-a:entity", parent_resource_id=project.resource_id)
+    repository.create_resource(project)
+    repository.create_resource(child)
+    repository.add_application_role("alice", "admin", "test")
+    repository.add_grant(Grant("alice", project.resource_id, "owner", datetime.now(UTC), "test"))
+    repository.close()
+
+    manifest = tmp_path / "exported.yaml"
+    assert export_manifest(manifest, database) == {"resources": 1, "administrators": 1, "grants": 1}
+    assert inspect_manifest(manifest) == {"resources": 1, "administrators": 1}
+    assert "project-a:entity" not in manifest.read_text(encoding="utf-8")
 
 
 @pytest.mark.integration
