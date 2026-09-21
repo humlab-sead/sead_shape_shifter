@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
+
 from backend.app.authorization.models import Grant, GrantSubjectType, ResourceRecord, ResourceType
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
 
@@ -106,11 +109,15 @@ def initialize_database(path: Path) -> None:
 
 def _load_manifest(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        content = path.read_text(encoding="utf-8")
+        if path.suffix.lower() in {".yaml", ".yml"}:
+            value = YAML(typ="safe").load(content)
+        else:
+            value = json.loads(content)
+    except (OSError, json.JSONDecodeError, YAMLError) as exc:
         raise ValueError(f"Invalid authorization manifest: {exc}") from exc
     if not isinstance(value, dict):
-        raise ValueError("Authorization manifest must contain a JSON object")
+        raise ValueError("Authorization manifest must contain an object")
     return value
 
 

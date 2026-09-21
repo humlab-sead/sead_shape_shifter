@@ -107,6 +107,23 @@ def test_manifest_inspection_and_dry_run_do_not_create_database(tmp_path) -> Non
     assert not database.exists()
 
 
+def test_manifest_inspection_accepts_yaml(tmp_path) -> None:
+    manifest = tmp_path / "manifest.yaml"
+    manifest.write_text(
+        "administrators:\n"
+        "  - alice\n"
+        "resources:\n"
+        "  - resource_type: project\n"
+        "    locator: project-a\n"
+        "    grants:\n"
+        "      - principal_id: alice\n"
+        "        role: owner\n",
+        encoding="utf-8",
+    )
+
+    assert inspect_manifest(manifest) == {"resources": 1, "administrators": 1}
+
+
 @pytest.mark.integration
 def test_migrate_manifest_applies_initial_admin_resources_and_grants(tmp_path) -> None:
     manifest = tmp_path / "manifest.json"
