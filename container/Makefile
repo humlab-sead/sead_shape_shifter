@@ -4,34 +4,50 @@ SHELL := /bin/bash
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-# Deployment defaults live in .env so this Makefile, podman-compose.yml, and the
-# scripts in scripts/ cannot drift apart. `make setup` copies .env.example to
-# .env; edit .env to change the image, branch, port, or frontend build args.
+# Deployment defaults live in CONFIG_DIR/deployment.env so this Makefile,
+# podman-compose.yml, and the scripts in scripts/ cannot drift apart. The
+# canonical deployment layout keeps config and mutable data next to the
+# checkout: ~/config and ~/container-data for the user that owns ~/container.
+# Explicit path overrides remain available for tests and controlled alternate
+# layouts. Nothing is read from, or written to, the checkout itself.
 #
 # Precedence for every value, highest first:
 #   1. command line   make IMAGE_NAME=shape-shifter:dev up
 #   2. environment    IMAGE_NAME=shape-shifter:dev make up
-#   3. .env
+#   3. CONFIG_DIR/deployment.env
 #   4. the fallbacks below
-# The environment is captured before .env is read, because a plain assignment in
-# an included file would otherwise override the environment.
+# The environment is captured before deployment.env is read, because a plain
+# assignment in the included file would otherwise override the environment.
 MAKEFILE_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-ENV_FILE ?= $(MAKEFILE_DIR).env
+CHECKOUT_DIR := $(patsubst %/,%,$(MAKEFILE_DIR))
+CHECKOUT_PARENT := $(dir $(CHECKOUT_DIR))
 
+# Resolve a possibly relative path into an absolute one. A relative override
+# names a path next to the checkout, so DATA_DIR=container-data means the
+# sibling of the checkout directory. scripts/load-env.sh applies the same rule,
+# and the two must stay in step or `make up` and a direct script call would use
+# different directories.
+resolve_path = $(if $(filter /%,$(1)),$(1),$(CHECKOUT_PARENT)$(patsubst ./%,%,$(1)))
+
+ENV_CONFIG_DIR := $(CONFIG_DIR)
+ENV_DATA_DIR := $(DATA_DIR)
+ENV_CONTAINER_DATA_DIR := $(CONTAINER_DATA_DIR)
 ENV_CONTAINER_NAME := $(CONTAINER_NAME)
 ENV_IMAGE_NAME := $(IMAGE_NAME)
 ENV_HOST_PORT := $(HOST_PORT)
-ENV_DATA_DIR := $(DATA_DIR)
 ENV_COMPOSE_PROJECT_NAME := $(COMPOSE_PROJECT_NAME)
 ENV_GIT_REPO := $(GIT_REPO)
 ENV_GIT_REF := $(GIT_REF)
 
+ENV_FILE ?= $(if $(ENV_CONFIG_DIR),$(call resolve_path,$(ENV_CONFIG_DIR))/deployment.env,$(HOME)/config/deployment.env)
+
 -include $(ENV_FILE)
 
+CONFIG_DIR := $(or $(ENV_CONFIG_DIR),$(CONFIG_DIR),$(HOME)/config)
 CONTAINER_NAME := $(or $(ENV_CONTAINER_NAME),$(CONTAINER_NAME),shape-shifter)
 IMAGE_NAME := $(or $(ENV_IMAGE_NAME),$(IMAGE_NAME),shape-shifter:latest)
 HOST_PORT := $(or $(ENV_HOST_PORT),$(HOST_PORT),8012)
-DATA_DIR := $(or $(ENV_DATA_DIR),$(DATA_DIR),../container-data)
+DATA_DIR := $(or $(ENV_DATA_DIR),$(DATA_DIR),$(HOME)/container-data)
 COMPOSE_PROJECT_NAME := $(or $(ENV_COMPOSE_PROJECT_NAME),$(COMPOSE_PROJECT_NAME),shapeshifter)
 GIT_REPO := $(or $(ENV_GIT_REPO),$(GIT_REPO),https://github.com/humlab-sead/sead_shape_shifter.git)
 GIT_REF := $(or $(ENV_GIT_REF),$(GIT_REF),main)
@@ -40,15 +56,22 @@ GIT_REF := $(or $(ENV_GIT_REF),$(GIT_REF),main)
 USER_UID ?= $(shell id -u)
 USER_GID ?= $(shell id -g)
 
-# Persistent data lives beside the container directory.
-CONTAINER_DATA_DIR := $(abspath $(DATA_DIR))
+# Resolve the deployment paths, then export them. `override` is required because
+# a command-line variable cannot otherwise be reassigned from a makefile.
+# CONTAINER_DATA_DIR is the name podman-compose.yml mounts: it follows DATA_DIR
+# unless the caller set it explicitly.
+override CONFIG_DIR := $(call resolve_path,$(CONFIG_DIR))
+override DATA_DIR := $(call resolve_path,$(DATA_DIR))
+override CONTAINER_DATA_DIR := $(call resolve_path,$(or $(ENV_CONTAINER_DATA_DIR),$(CONTAINER_DATA_DIR),$(DATA_DIR)))
 
 COMPOSE_FILE := podman-compose.yml
 SCRIPTS_DIR := ./scripts
 RESOURCES_DIR := ./resources
 ENV_EXAMPLE := $(MAKEFILE_DIR).env.example
 
-# podman-compose reads every path from CONTAINER_DATA_DIR.
+# podman-compose reads runtime configuration from CONFIG_DIR and mutable data
+# from CONTAINER_DATA_DIR.
+export CONFIG_DIR
 export CONTAINER_DATA_DIR
 export DATA_DIR
 export HOST_PORT
@@ -72,7 +95,7 @@ help:
 	@echo ""
 	@echo "$(GREEN)First-time setup:$(NC)"
 	@echo "  make install-ucanaccess  Install UCanAccess JARs (MS Access support)"
-	@echo "  make setup               Create .env, directories and environment files"
+	@echo "  make setup               Create config, data directories and environment files"
 	@echo ""
 	@echo "$(GREEN)Build and run:$(NC)"
 	@echo "  make build               Build image from GitHub (GIT_REF=$(GIT_REF))"
@@ -93,7 +116,7 @@ help:
 	@echo ""
 	@echo "$(GREEN)Maintenance:$(NC)"
 	@echo "  make backup              Back up data, configuration and state"
-	@echo "  make update-env          Edit the environment file"
+	@echo "  make update-env          Edit the runtime environment file"
 	@echo "  make clean               Remove the container (keep data)"
 	@echo "  make prune               Remove the container and image"
 	@echo "  make system-prune        Full Podman system prune (removes all unused)"
@@ -130,38 +153,41 @@ check-podman:
 
 .PHONY: setup
 setup: check-podman
-	@DATA_DIR="$(CONTAINER_DATA_DIR)" $(SCRIPTS_DIR)/setup.sh
+	@CONFIG_DIR="$(CONFIG_DIR)" DATA_DIR="$(CONTAINER_DATA_DIR)" $(SCRIPTS_DIR)/setup.sh
 
 .PHONY: setup-directories
 setup-directories: check-podman
-	@mkdir -p "$(CONTAINER_DATA_DIR)"/{projects,shared,logs,output,backups,tmp,state}
+	@mkdir -p "$(CONFIG_DIR)" "$(CONTAINER_DATA_DIR)"/{projects,shared,logs,output,backups,tmp,state}
+	@chmod 700 "$(CONFIG_DIR)"
 	@chmod 755 "$(CONTAINER_DATA_DIR)"
+	@echo "$(GREEN)+ Created config directory in $(CONFIG_DIR)$(NC)"
 	@echo "$(GREEN)+ Created data directories in $(CONTAINER_DATA_DIR)$(NC)"
 
 .PHONY: setup-env
 setup-env: check-podman
-	@if [ ! -f "$(ENV_FILE)" ]; then \
+	@mkdir -p "$(CONFIG_DIR)"; \
+	if [ ! -f "$(CONFIG_DIR)/deployment.env" ]; then \
 		if [ -f "$(ENV_EXAMPLE)" ]; then \
-			cp "$(ENV_EXAMPLE)" "$(ENV_FILE)"; \
-			echo "$(GREEN)+ Created $(ENV_FILE)$(NC)"; \
+			cp "$(ENV_EXAMPLE)" "$(CONFIG_DIR)/deployment.env"; \
+			echo "$(GREEN)+ Created $(CONFIG_DIR)/deployment.env$(NC)"; \
 			echo "$(YELLOW)  Review the image, branch, port and frontend build args$(NC)"; \
 		else \
 			echo "$(YELLOW)! $(ENV_EXAMPLE) not found, the built-in defaults apply$(NC)"; \
 		fi \
 	else \
-		echo "$(GREEN)+ $(ENV_FILE) already exists$(NC)"; \
+		echo "$(GREEN)+ $(CONFIG_DIR)/deployment.env already exists$(NC)"; \
 	fi
-	@if [ ! -f "$(CONTAINER_DATA_DIR)/backend.env" ]; then \
+	@if [ ! -f "$(CONFIG_DIR)/backend.env" ]; then \
 		if [ -f "$(RESOURCES_DIR)/backend.env.example" ]; then \
-			cp "$(RESOURCES_DIR)/backend.env.example" "$(CONTAINER_DATA_DIR)/backend.env"; \
-			chmod 600 "$(CONTAINER_DATA_DIR)/backend.env"; \
-			echo "$(GREEN)+ Created $(CONTAINER_DATA_DIR)/backend.env$(NC)"; \
+			cp "$(RESOURCES_DIR)/backend.env.example" "$(CONFIG_DIR)/backend.env"; \
+			chmod 600 "$(CONFIG_DIR)/backend.env"; \
+			echo "$(GREEN)+ Created $(CONFIG_DIR)/backend.env$(NC)"; \
 			echo "$(YELLOW)  Edit this file and restart the container to apply changes$(NC)"; \
 		else \
 			echo "$(YELLOW)! $(RESOURCES_DIR)/backend.env.example not found$(NC)"; \
 		fi \
 	else \
-		echo "$(GREEN)+ $(CONTAINER_DATA_DIR)/backend.env already exists$(NC)"; \
+		echo "$(GREEN)+ $(CONFIG_DIR)/backend.env already exists$(NC)"; \
 	fi
 
 .PHONY: install-ucanaccess
@@ -230,7 +256,7 @@ healthcheck:
 
 .PHONY: config
 config:
-	@CONTAINER_DATA_DIR="$(CONTAINER_DATA_DIR)" podman-compose -f $(COMPOSE_FILE) config
+	@CONFIG_DIR="$(CONFIG_DIR)" CONTAINER_DATA_DIR="$(CONTAINER_DATA_DIR)" podman-compose -f $(COMPOSE_FILE) config
 
 # ===========================================================================
 # Validation
@@ -241,10 +267,11 @@ validate: check-podman
 	@echo "$(BLUE)Validating setup...$(NC)"
 	@test -f Containerfile && echo "$(GREEN)+ Containerfile present$(NC)" || { echo "$(RED)x Containerfile missing$(NC)"; exit 1; }
 	@test -f $(COMPOSE_FILE) && echo "$(GREEN)+ $(COMPOSE_FILE) present$(NC)" || { echo "$(RED)x $(COMPOSE_FILE) missing$(NC)"; exit 1; }
-	@CONTAINER_DATA_DIR="$(CONTAINER_DATA_DIR)" podman-compose -f $(COMPOSE_FILE) config >/dev/null && echo "$(GREEN)+ Compose configuration is valid$(NC)"
+	@CONFIG_DIR="$(CONFIG_DIR)" CONTAINER_DATA_DIR="$(CONTAINER_DATA_DIR)" podman-compose -f $(COMPOSE_FILE) config >/dev/null && echo "$(GREEN)+ Compose configuration is valid$(NC)"
+	@test -d "$(CONFIG_DIR)" && echo "$(GREEN)+ Config directory exists$(NC)" || echo "$(YELLOW)! Config directory missing (run make setup)$(NC)"
 	@test -d "$(CONTAINER_DATA_DIR)" && echo "$(GREEN)+ Data directory exists$(NC)" || echo "$(YELLOW)! Data directory missing (run make setup)$(NC)"
-	@test -f "$(CONTAINER_DATA_DIR)/backend.env" && echo "$(GREEN)+ Environment file exists$(NC)" || echo "$(YELLOW)! Environment file missing (run make setup)$(NC)"
-	@test -d "$(CONTAINER_DATA_DIR)/.pgpass" -a -f "$(CONTAINER_DATA_DIR)/.pgpass/.pgpass" && echo "$(GREEN)+ .pgpass file exists$(NC)" || echo "$(YELLOW)! .pgpass file missing (run make setup)$(NC)"
+	@test -f "$(CONFIG_DIR)/backend.env" && echo "$(GREEN)+ Environment file exists$(NC)" || echo "$(YELLOW)! Environment file missing (run make setup)$(NC)"
+	@test -d "$(CONFIG_DIR)/.pgpass" -a -f "$(CONFIG_DIR)/.pgpass/.pgpass" && echo "$(GREEN)+ .pgpass file exists$(NC)" || echo "$(YELLOW)! .pgpass file missing (run make setup)$(NC)"
 	@test -d lib/ucanaccess && echo "$(GREEN)+ UCanAccess JARs present$(NC)" || echo "$(YELLOW)! lib/ucanaccess missing (run make install-ucanaccess)$(NC)"
 	@podman info >/dev/null 2>&1 && echo "$(GREEN)+ Podman is accessible$(NC)" || { echo "$(RED)x Podman is not accessible$(NC)"; exit 1; }
 	@echo "$(GREEN)+ Validation complete$(NC)"
@@ -275,13 +302,13 @@ test: validate up
 
 .PHONY: backup
 backup:
-	@DATA_DIR="$(CONTAINER_DATA_DIR)" $(SCRIPTS_DIR)/backup.sh
+	@CONFIG_DIR="$(CONFIG_DIR)" DATA_DIR="$(CONTAINER_DATA_DIR)" $(SCRIPTS_DIR)/backup.sh
 
 .PHONY: update-env
 update-env:
 	@echo "$(BLUE)Opening environment file...$(NC)"
 	@echo "$(YELLOW)After editing, run: make restart$(NC)"
-	${EDITOR:-nano} "$(CONTAINER_DATA_DIR)/backend.env"
+	${EDITOR:-nano} "$(CONFIG_DIR)/backend.env"
 
 .PHONY: clean
 clean: down
@@ -357,7 +384,8 @@ info:
 	@echo "Image:          $(IMAGE_NAME)"
 	@echo "Port:           $(HOST_PORT)"
 	@echo "User UID/GID:   $(USER_UID)/$(USER_GID)"
-	@echo "Data dir:       $(CONTAINER_DATA_DIR)"
+	@echo "Config dir:      $(CONFIG_DIR)"
+	@echo "Data dir:        $(CONTAINER_DATA_DIR)"
 	@echo "Git ref:        $(GIT_REF)"
 	@echo ""
 	@echo "$(BLUE)=== Podman ===$(NC)"
@@ -373,4 +401,4 @@ version:
 .PHONY: env-vars
 env-vars:
 	@echo "$(BLUE)Current environment variables:$(NC)"
-	@env | grep -E "^(USER_UID|USER_GID|HOST_PORT|DATA_DIR|CONTAINER_DATA_DIR|IMAGE_NAME|GIT_REF|PWD)" || echo "None set"
+	@env | grep -E "^(USER_UID|USER_GID|HOST_PORT|CONFIG_DIR|DATA_DIR|CONTAINER_DATA_DIR|IMAGE_NAME|GIT_REF|PWD)" || echo "None set"
