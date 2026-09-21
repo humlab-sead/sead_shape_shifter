@@ -15,7 +15,7 @@ Runbook for operators and maintainers of deployed Shape Shifter environments. Th
 
 ## Deployment Entry Points
 
-Run the deployment as a dedicated Linux user from `~/container`. The persistent data directory defaults to `~/container-data` and is controlled by `DATA_DIR`. The supported first-start sequence is:
+Run the deployment as a dedicated Linux user from `~/container`. Configuration defaults to `~/config` and persistent data to `~/container-data`; `CONFIG_DIR` and `DATA_DIR` select both, and the checkout holds neither. The supported first-start sequence is:
 
 ```bash
 make setup
@@ -26,11 +26,14 @@ make healthcheck
 
 Use [container/DEPLOYMENT.md](../container/DEPLOYMENT.md) for dedicated users, lingering, multiple environments, deployment helpers, NGINX installation, systemd services, and release or branch selection. Use [container/README.md](../container/README.md) for the complete Makefile command reference.
 
-Each environment records its repository, ref, image, port, and data directory in `container/.env`. A build from `GIT_REF=dev` produces a `shape-shifter:dev` image; keep `IMAGE_NAME` aligned with that ref before `make up`. Image labels record the source commit, ref, repository, and build date.
+Each environment records its repository, ref, image, port, and path overrides in `~/config/deployment.env`. A build from `GIT_REF=dev` produces a `shape-shifter:dev` image; keep `IMAGE_NAME` aligned with that ref before `make up`. Image labels record the source commit, ref, repository, and build date.
 
 ## Runtime Configuration
 
-Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from `../container-data/backend.env`. The authoritative defaults are defined in `backend/app/core/config.py`.
+Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from
+`~/config/backend.env`, which `podman-compose.yml` passes as the service
+`env_file`. The authoritative defaults are defined in
+`backend/app/core/config.py`.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -60,7 +63,11 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from `../contain
 | `SHAPE_SHIFTER_ENABLED_INGESTERS` | `null` | Enabled ingester keys; null means all discovered ingesters. |
 | `SHAPE_SHIFTER_MATERIALIZATION_INLINE_THRESHOLD` | `20` | Row threshold for inline materialized data. |
 
-Set `SEAD_HOST`, `SEAD_PORT`, `SEAD_DBNAME`, and `SEAD_USER` through the project data-source configuration when required. Keep PostgreSQL passwords in `../container-data/.pgpass/.pgpass` with mode `600`, not in project YAML or `backend.env`. `VITE_*` values are build-time settings in `container/.env` and require a new image build.
+Set `SEAD_HOST`, `SEAD_PORT`, `SEAD_DBNAME`, and `SEAD_USER` through the project
+data-source configuration when required. Keep PostgreSQL passwords in
+`~/config/.pgpass/.pgpass` with mode `600`, not in project YAML or `backend.env`.
+`VITE_*` values are build-time settings in `~/config/deployment.env` and require
+a new image build.
 
 ### NGINX Group Header
 
@@ -92,7 +99,7 @@ location / {
 }
 ```
 
-`container/scripts/deploy/nginx-shape-shifter.conf.template` and the site files under `container/resources/` already contain both blocks. Enable the header on the backend in `../container-data/backend.env`:
+`container/scripts/deploy/nginx-shape-shifter.conf.template` and the site files under `container/resources/` already contain both blocks. Enable the header on the backend in `~/config/backend.env`:
 
 ```bash
 SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED=true
@@ -114,7 +121,8 @@ Notes:
 
 ## Data Layout And Backups
 
-`container/podman-compose.yml` mounts the following paths from `CONTAINER_DATA_DIR` into the application:
+`container/podman-compose.yml` mounts the following paths. Runtime configuration
+comes from `CONFIG_DIR` and every mutable path from `CONTAINER_DATA_DIR`:
 
 | Host path | Container path | Contents |
 |---|---|---|
@@ -123,10 +131,18 @@ Notes:
 | `logs/` | `/app/logs/` | Rotated application logs. |
 | `output/` | `/app/output/` | Execution output. |
 | `backups/` | `/app/backups/` | Pre-save project backups. |
-| `.pgpass/.pgpass` | `/app/.pgpass:ro` | PostgreSQL credentials. |
 | `state/` | `/app/state/` | Authorization SQLite database. |
+| `CONFIG_DIR/backend.env` | service `env_file` | Runtime settings. |
+| `CONFIG_DIR/.pgpass/.pgpass` | `/app/.pgpass:ro` | PostgreSQL credentials. |
 
-The setup script also creates `tmp/` for disposable processing files and `backend.env` for runtime settings. Keep `backend.env` and `.pgpass/.pgpass` readable only by the deployment user. The authorization database is single-host state; do not place it on a shared network filesystem or use it from multiple application hosts.
+The setup script also creates `tmp/` for disposable processing files. It writes
+the runtime settings and the PostgreSQL credentials into `CONFIG_DIR`, never into
+the checkout, and leaves existing files alone. Keep `backend.env` and
+`.pgpass/.pgpass` readable only by the deployment user, and keep `CONFIG_DIR` at
+mode `700`; the authorization inputs in the same directory hold credentials and
+are not mounted into the container. The authorization database is single-host
+state; do not place it on a shared network filesystem or use it from multiple
+application hosts.
 
 Project saves create timestamped YAML backups before writing. Loading a project does not modify its file. Copy project backups to operator-controlled storage and retain the release, project, and backup identifiers together. Restore a project only while following the normal review and validation process.
 
@@ -157,7 +173,7 @@ authorization manifest before reopening access.
 
 ## Release, Verification, And Rollback
 
-The release workflow creates version tags and release notes but does not build or deploy images. An operator selects a branch or release tag in `container/.env`, runs `make build`, and restarts with `make restart`. Record the source ref, image digest, authorization database backup, manifest revision, and rollback owner in the deployment record.
+The release workflow creates version tags and release notes but does not build or deploy images. An operator selects a branch or release tag in `~/config/deployment.env`, runs `make build`, and restarts with `make restart`. Record the source ref, image digest, authorization database backup, manifest revision, and rollback owner in the deployment record.
 
 After deployment:
 

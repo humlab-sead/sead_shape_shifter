@@ -35,11 +35,12 @@ sudo useradd -r -m -s /bin/bash "$USER_NAME"
 sudo loginctl enable-linger "$USER_NAME"
 ```
 
-The deployment user's home directory holds two folders:
+The deployment user's home directory holds three sibling directories:
 
 ```text
-~/container/         deployment files and build context
-~/container-data/    persistent data and configuration
+~/container/         replaceable code and build context
+~/config/            environment configuration, credentials and policy
+~/container-data/    persistent runtime data and state
 ```
 
 ---
@@ -50,19 +51,19 @@ Run as the deployment user, from `~/container`:
 
 ```bash
 make install-ucanaccess   # only needed for MS Access data sources
-make setup                # create .env, ~/container-data/ and backend.env
-nano .env                 # image, branch, port and frontend build arguments
-nano ../container-data/backend.env
-make build                # build the image from GitHub (repository and ref from .env)
+make setup                # create ~/config, ~/container-data and the templates
+nano ~/config/deployment.env   # image, branch, port and frontend build arguments
+nano ~/config/backend.env      # runtime settings
+make build                # build the image from GitHub (repository and ref from ~/config/deployment.env)
 make up
 make healthcheck
 ```
 
-`container/.env` holds the deployment defaults shared by the Makefile, the
-scripts and the compose file: the image, the git repository and branch, the host
-port, the data directory and the frontend build arguments. `make setup` creates
-it from `.env.example`. To build from a branch, set both values so the build and
-the start agree:
+`~/config/deployment.env` holds the deployment defaults shared by the Makefile,
+the scripts and the compose file: the image, the git repository and branch, the
+host port, the path overrides and the frontend build arguments. `make setup`
+creates it from `container/.env.example` and leaves an existing file alone. To
+build from a branch, set both values so the build and the start agree:
 
 ```bash
 GIT_REF=dev
@@ -73,15 +74,16 @@ The deploy helper described below records these values automatically from its
 `--repo`, `--ref` and `--host-port` options. The ref may be a branch or a
 release tag; `--branch` is accepted as an alias.
 
-Before the first start, edit `~/container-data/backend.env` and set:
+Before the first start, edit `~/config/backend.env` and set:
 
 - `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED=true`
 - `SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS='["admin@example.com"]'`
 - `SHAPE_SHIFTER_ALLOWED_ORIGINS` for the public host name
 - `SEAD_HOST`, `SEAD_PORT`, `SEAD_DBNAME`, `SEAD_USER` for the database
 
-PostgreSQL passwords belong in `~/container-data/.pgpass/.pgpass` (mode 600),
-not in `backend.env`.
+PostgreSQL passwords belong in `~/config/.pgpass/.pgpass` (mode 600), not in
+`backend.env`. The authorization inputs described below belong in the same
+directory.
 
 To run the whole flow from an admin account, use the deploy helper:
 
@@ -101,9 +103,9 @@ sudo scripts/deploy/deploy_all_environments.sh \
 ```
 
 Environments come from the arguments first, then from `DEPLOY_ENVIRONMENTS`,
-which can be exported or set in `container/.env`. There is no built-in
-environment list, so a run with neither stops instead of deploying somewhere
-unrequested:
+which can be exported or set in the invoking user's
+`~/config/deployment.env`. There is no built-in environment list, so a run with
+neither stops instead of deploying somewhere unrequested:
 
 ```bash
 DEPLOY_ENVIRONMENTS='test-shape-shifter.sead.se:8012 prod-shape-shifter.sead.se:8013' \
@@ -111,8 +113,9 @@ DEPLOY_ENVIRONMENTS='test-shape-shifter.sead.se:8012 prod-shape-shifter.sead.se:
 ```
 
 `HOST_PORT` selects the published port; the container port stays `8012`. Each
-deployment records its repository, branch, port, and matching image name in
-`~/container/.env`, so later builds keep the source that was deployed.
+deployment records its repository, branch, port, and matching image name in its
+own `~/config/deployment.env`, so later builds keep the source that was
+deployed and a refresh of `~/container` leaves the settings in place.
 
 ---
 
@@ -124,8 +127,11 @@ Install an HTTPS vhost that forwards to the container:
 sudo container/scripts/deploy/install_nginx_reverse_proxy.sh test-shape-shifter.sead.se 8012
 ```
 
-The upstream port defaults to `HOST_PORT` from `container/.env`, so omit the
-second argument when the deployment already uses its configured port.
+The upstream port defaults to `HOST_PORT` from the invoking user's
+`~/config/deployment.env`, so omit the second argument when the deployment
+already uses its configured port. Run the helper as the deployment user
+(`sudo -u <user>`) or name that user's configuration directory with
+`CONFIG_DIR=/data/<user>/config`.
 
 The script renders `scripts/deploy/nginx-shape-shifter.conf.template` into
 `/etc/nginx/sites-available/`, enables it and reloads NGINX.
@@ -141,7 +147,7 @@ template derives `X-Authenticated-Groups` from `$remote_user` and the membership
 file `/etc/nginx/authz/groups.d/*.conf`. Create that directory and file on the
 proxy host, set `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED=true` and
 `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_HEADER=X-Authenticated-Groups` in
-`../container-data/backend.env`, then run `sudo nginx -t` before reloading. See
+`~/config/backend.env`, then run `sudo nginx -t` before reloading. See
 [NGINX group header](../docs/OPERATIONS.md#nginx-group-header) for the file
 format and the limits of this approach.
 
@@ -219,10 +225,11 @@ sudo scripts/deploy/install_systemd_service.sh test-shape-shifter.sead.se
 
 The unit starts the container through `scripts/up.sh` and stops it with
 `scripts/down.sh`, the same scripts an operator runs, so a systemd start and a
-manual `make up` resolve `container/.env` identically. The unit sets no
+manual `make up` resolve `~/config/deployment.env` identically. The unit sets no
 deployment configuration of its own: a value in the unit environment would
-override `container/.env`, because the compose tools prefer the environment over
-the file.
+override the deployment file, because the compose tools prefer the environment
+over the file. The unit only fixes `WorkingDirectory=%h/container`, so the code
+that runs is the code in the checkout.
 
 Control it with the `service-*` targets, which call `scripts/service.sh`:
 
@@ -262,15 +269,15 @@ sudo scripts/deploy/deploy_single_environment.sh test-shape-shifter.sead.se
 make build && make restart
 ```
 
-`make build` takes the repository and ref from `container/.env`, defaulting to
-`GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git` and
-`GIT_REF=main`. Set `GIT_REF=v1.2.0` for a release tag, or `make build-local` to
-build from a local checkout. A `VAR=value make build` override takes precedence
-over `.env`.
+`make build` takes the repository and ref from `~/config/deployment.env`,
+defaulting to `GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git`
+and `GIT_REF=main`. Set `GIT_REF=v1.2.0` for a release tag, or `make build-local`
+to build from a local checkout. A `VAR=value make build` override takes
+precedence over `~/config/deployment.env`.
 
 `make build` tags a branch build after the ref, so `GIT_REF=dev` produces
-`shape-shifter:dev`. Keep `IMAGE_NAME` in `.env` in step with `GIT_REF`,
-otherwise `make restart` starts the previous image.
+`shape-shifter:dev`. Keep `IMAGE_NAME` in `~/config/deployment.env` in step with
+`GIT_REF`, otherwise `make restart` starts the previous image.
 
 ### Replacing the checkout
 
