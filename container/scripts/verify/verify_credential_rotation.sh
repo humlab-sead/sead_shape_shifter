@@ -20,7 +20,7 @@
 #   sudo -u test-shape-shifter.sead.se -H bash container/scripts/verify/verify_credential_rotation.sh
 #
 # Environment:
-#   DATA_DIR        deployment data directory (default: ../container-data)
+#   CONFIG_DIR      deployment configuration directory (default: ../config)
 #   CONTAINER_NAME  container to inspect (default: shape-shifter)
 set -euo pipefail
 
@@ -30,7 +30,7 @@ if [[ -f "$g_script_dir/../load-env.sh" ]]; then
     . "$g_script_dir/../load-env.sh"
 fi
 
-g_data_dir="${DATA_DIR:-$g_script_dir/../../container-data}"
+g_config_dir="${CONFIG_DIR:-$g_script_dir/../../config}"
 g_container_name="${CONTAINER_NAME:-shape-shifter}"
 
 g_rotated=()
@@ -94,7 +94,7 @@ printf 'backend, and is outside this check.\n'
 info "Credential inventory (names and redacted targets only)"
 
 # 1. PostgreSQL password file.
-pgpass="$g_data_dir/.pgpass/.pgpass"
+pgpass="$g_config_dir/.pgpass/.pgpass"
 if [[ -r "$pgpass" ]]; then
     printf 'PostgreSQL password file: %s\n' "$pgpass"
     while IFS= read -r line; do
@@ -109,7 +109,7 @@ else
 fi
 
 # 2. Runtime environment file (chmod 600; names only).
-env_file="$g_data_dir/backend.env"
+env_file="$g_config_dir/backend.env"
 if [[ -r "$env_file" ]]; then
     printf 'Runtime environment file: %s\n' "$env_file"
     while IFS= read -r name; do

@@ -2,14 +2,14 @@
 # Run authorization administration commands against the deployed container.
 set -euo pipefail
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=load-env.sh
 . "$SCRIPT_DIR/load-env.sh"
 
 CONTAINER_NAME="${CONTAINER_NAME:-shape-shifter}"
-DATA_DIR="${DATA_DIR:-$ROOT_DIR/../container-data}"
+# load-env.sh resolves CONFIG_DIR (runtime configuration and credentials) and
+# DATA_DIR (mutable data, state and backups) into absolute paths.
 BACKUP_DIR="${AUTHORIZATION_BACKUP_DIR:-$DATA_DIR/backups}"
 CONTAINER_BACKUP_DIR="/app/backups"
 HOST_ACTOR="${AUTHORIZATION_ACTOR:-$(id -un)}"
@@ -158,7 +158,7 @@ restore_database() {
 
     podman stop "$CONTAINER_NAME"
     if ! podman run --rm \
-        --env-file "$DATA_DIR/backend.env" \
+        --env-file "$CONFIG_DIR/backend.env" \
         --volume "$DATA_DIR/state:/app/state:rw" \
         --volume "$BACKUP_DIR:$CONTAINER_BACKUP_DIR:rw" \
         "$running_image" "${CONTAINER_CLI[@]}" restore "$CONTAINER_BACKUP_DIR/$backup_name"; then
@@ -167,7 +167,7 @@ restore_database() {
     fi
 
     if ! podman run --rm \
-        --env-file "$DATA_DIR/backend.env" \
+        --env-file "$CONFIG_DIR/backend.env" \
         --volume "$DATA_DIR/state:/app/state:rw" \
         --volume "$BACKUP_DIR:$CONTAINER_BACKUP_DIR:rw" \
         "$running_image" "${CONTAINER_CLI[@]}" integrity-check; then
