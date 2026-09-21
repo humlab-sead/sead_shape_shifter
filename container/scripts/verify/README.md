@@ -109,7 +109,7 @@ PRINCIPAL_A_PASSWORD=... PRINCIPAL_B_PASSWORD=... ./scripts/verify/verify_authen
 ./scripts/verify/rollback_exercise.sh \
   --image localhost/shape-shifter@sha256:<recorded-digest> \
   --authorization-backup "$DATA_DIR/backups/authorization-20260916-120000.sqlite3" \
-  --manifest "$DATA_DIR/authorization-manifest.yml" \
+  --manifest "$CONFIG_DIR/authorization-manifest.yml" \
   --evidence-dir "$DATA_DIR/backups/rollback-20260917" \
   --yes
 ```

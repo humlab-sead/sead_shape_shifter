@@ -18,6 +18,7 @@ g_evidence_dir_cli=false
 
 g_deploy_user=""
 g_container_dir=""
+g_config_dir=""
 g_data_dir=""
 g_evidence_dir=""
 g_pg_database=""
@@ -77,9 +78,10 @@ Required options:
 
 Options:
     --options-file FILE         YAML runtime options file
-  --container-dir DIR         Deployment container directory (default: USER home/container)
-  --data-dir DIR              Deployment data directory (default: resolved from container/.env)
-  --evidence-dir DIR          Local directory for orchestration output
+    --container-dir DIR         Deployment container directory (default: USER home/container)
+    --config-dir DIR            Deployment configuration directory (default: USER home/config)
+    --data-dir DIR              Deployment data directory (default: USER home/container-data)
+    --evidence-dir DIR          Local directory for orchestration output
   --base-url URL              Proxy URL for authenticated checks
     --principal-a USER          First principal for authenticated checks
     --principal-b USER          Second principal for authenticated checks
@@ -152,6 +154,7 @@ if [[ -n "$g_options_file" ]]; then
 
     g_deploy_user="$(option_value '.deploy_user' "$g_deploy_user")"
     g_container_dir="$(option_value '.container_dir' "$g_container_dir")"
+    g_config_dir="$(option_value '.config_dir' "$g_config_dir")"
     g_data_dir="$(option_value '.data_dir' "$g_data_dir")"
     g_evidence_dir="$(option_value '.evidence_dir' "$g_evidence_dir")"
     g_pg_database="$(option_value '.pg_database' "$g_pg_database")"
@@ -195,6 +198,7 @@ while [[ $# -gt 0 ]]; do
         --project-creator)      [[ $# -ge 2 ]] || fail "--project-creator requires a value"; g_project_creator="$2"; shift 2 ;;
         --options-file)         [[ $# -ge 2 ]] || fail "--options-file requires a value"; g_options_file="$2"; shift 2 ;;
         --container-dir)        [[ $# -ge 2 ]] || fail "--container-dir requires a value"; g_container_dir="$2"; shift 2 ;;
+        --config-dir)           [[ $# -ge 2 ]] || fail "--config-dir requires a value"; g_config_dir="$2"; shift 2 ;;
         --data-dir)             [[ $# -ge 2 ]] || fail "--data-dir requires a value"; g_data_dir="$2"; shift 2 ;;
         --evidence-dir)         [[ $# -ge 2 ]] || fail "--evidence-dir requires a value"; g_evidence_dir="$2"; g_evidence_dir_cli=true; shift 2 ;;
         --base-url)             [[ $# -ge 2 ]] || fail "--base-url requires a value"; g_base_url="$2"; shift 2 ;;
@@ -253,7 +257,7 @@ target_run() {
     sudo -n -u "$g_deploy_user" -H env -- "PATH=$g_target_path" "$@"
 }
 
-if [[ -z "$g_data_dir" || -z "$g_host_port" || -z "$g_container_name" || -z "$g_compose_project_name" ]]; then
+if [[ -z "$g_config_dir" || -z "$g_data_dir" || -z "$g_host_port" || -z "$g_container_name" || -z "$g_compose_project_name" ]]; then
     # shellcheck disable=SC2016
     mapfile -t target_config < <(
         target_run bash -c '
@@ -261,23 +265,28 @@ if [[ -z "$g_data_dir" || -z "$g_host_port" || -z "$g_container_name" || -z "$g_
             cd -- "$1"
             . scripts/load-env.sh
             printf "%s\n" \
+                "${CONFIG_DIR:-$PWD/../config}" \
                 "${DATA_DIR:-$PWD/../container-data}" \
                 "${HOST_PORT:-8012}" \
                 "${CONTAINER_NAME:-shape-shifter}" \
                 "${COMPOSE_PROJECT_NAME:-shapeshifter}"
         ' _ "$g_container_dir"
     )
-    [[ "${#target_config[@]}" -eq 4 ]] || fail "could not resolve deployment configuration"
-    g_data_dir="${g_data_dir:-${target_config[0]}}"
-    g_host_port="${g_host_port:-${target_config[1]}}"
-    g_container_name="${g_container_name:-${target_config[2]}}"
-    g_compose_project_name="${g_compose_project_name:-${target_config[3]}}"
+    [[ "${#target_config[@]}" -eq 5 ]] || fail "could not resolve deployment configuration"
+    g_config_dir="${g_config_dir:-${target_config[0]}}"
+    g_data_dir="${g_data_dir:-${target_config[1]}}"
+    g_host_port="${g_host_port:-${target_config[2]}}"
+    g_container_name="${g_container_name:-${target_config[3]}}"
+    g_compose_project_name="${g_compose_project_name:-${target_config[4]}}"
 fi
 
+if [[ "$g_config_dir" != /* ]]; then
+    g_config_dir="$g_container_dir/${g_config_dir#./}"
+fi
 if [[ "$g_data_dir" != /* ]]; then
     g_data_dir="$g_container_dir/${g_data_dir#./}"
 fi
-[[ -f "$g_data_dir/backend.env" ]] || fail "backend environment file not found: $g_data_dir/backend.env"
+[[ -f "$g_config_dir/backend.env" ]] || fail "backend environment file not found: $g_config_dir/backend.env"
 
 if [[ "$g_evidence_dir_cli" != true ]]; then
     g_evidence_root="${g_evidence_dir:-$PWD/deployment-verification}"

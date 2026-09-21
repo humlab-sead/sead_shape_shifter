@@ -131,6 +131,12 @@ help:
 	@echo "  make service-disable     Disable auto-start"
 	@echo "  make service-logs        Follow systemd logs"
 	@echo ""
+	@echo "$(GREEN)Configuration$(NC) (make info shows the resolved values):"
+	@echo "  Config dir       $(CONFIG_DIR)"
+	@echo "  Data dir         $(CONTAINER_DATA_DIR)"
+	@echo "  Deployment env   $(CONFIG_DIR)/deployment.env"
+	@echo "  Runtime env      $(CONFIG_DIR)/backend.env"
+	@echo ""
 	@echo "$(YELLOW)Quick start:$(NC)"
 	@echo "  make setup && make build && make up"
 	@echo "  curl http://localhost:$(HOST_PORT)/api/v1/health"
@@ -188,6 +194,20 @@ setup-env: check-podman
 		fi \
 	else \
 		echo "$(GREEN)+ $(CONFIG_DIR)/backend.env already exists$(NC)"; \
+	fi
+	@mkdir -p "$(CONFIG_DIR)/.pgpass"; \
+	chmod 700 "$(CONFIG_DIR)/.pgpass"; \
+	if [ ! -f "$(CONFIG_DIR)/.pgpass/.pgpass" ]; then \
+		if [ -f "$(RESOURCES_DIR)/.pgpass.example" ]; then \
+			cp "$(RESOURCES_DIR)/.pgpass.example" "$(CONFIG_DIR)/.pgpass/.pgpass"; \
+		else \
+			touch "$(CONFIG_DIR)/.pgpass/.pgpass"; \
+		fi; \
+		chmod 600 "$(CONFIG_DIR)/.pgpass/.pgpass"; \
+		echo "$(GREEN)+ Created $(CONFIG_DIR)/.pgpass/.pgpass$(NC)"; \
+		echo "$(YELLOW)  Edit this file with the PostgreSQL credentials$(NC)"; \
+	else \
+		echo "$(GREEN)+ $(CONFIG_DIR)/.pgpass/.pgpass already exists$(NC)"; \
 	fi
 
 .PHONY: install-ucanaccess
@@ -269,6 +289,7 @@ validate: check-podman
 	@test -f $(COMPOSE_FILE) && echo "$(GREEN)+ $(COMPOSE_FILE) present$(NC)" || { echo "$(RED)x $(COMPOSE_FILE) missing$(NC)"; exit 1; }
 	@CONFIG_DIR="$(CONFIG_DIR)" CONTAINER_DATA_DIR="$(CONTAINER_DATA_DIR)" podman-compose -f $(COMPOSE_FILE) config >/dev/null && echo "$(GREEN)+ Compose configuration is valid$(NC)"
 	@test -d "$(CONFIG_DIR)" && echo "$(GREEN)+ Config directory exists$(NC)" || echo "$(YELLOW)! Config directory missing (run make setup)$(NC)"
+	@test -f "$(CONFIG_DIR)/deployment.env" && echo "$(GREEN)+ Deployment settings exist$(NC)" || echo "$(YELLOW)! $(CONFIG_DIR)/deployment.env missing (the built-in defaults apply)$(NC)"
 	@test -d "$(CONTAINER_DATA_DIR)" && echo "$(GREEN)+ Data directory exists$(NC)" || echo "$(YELLOW)! Data directory missing (run make setup)$(NC)"
 	@test -f "$(CONFIG_DIR)/backend.env" && echo "$(GREEN)+ Environment file exists$(NC)" || echo "$(YELLOW)! Environment file missing (run make setup)$(NC)"
 	@test -d "$(CONFIG_DIR)/.pgpass" -a -f "$(CONFIG_DIR)/.pgpass/.pgpass" && echo "$(GREEN)+ .pgpass file exists$(NC)" || echo "$(YELLOW)! .pgpass file missing (run make setup)$(NC)"
@@ -384,8 +405,8 @@ info:
 	@echo "Image:          $(IMAGE_NAME)"
 	@echo "Port:           $(HOST_PORT)"
 	@echo "User UID/GID:   $(USER_UID)/$(USER_GID)"
-	@echo "Config dir:      $(CONFIG_DIR)"
-	@echo "Data dir:        $(CONTAINER_DATA_DIR)"
+	@echo "Config dir:     $(CONFIG_DIR)"
+	@echo "Data dir:       $(CONTAINER_DATA_DIR)"
 	@echo "Git ref:        $(GIT_REF)"
 	@echo ""
 	@echo "$(BLUE)=== Podman ===$(NC)"
