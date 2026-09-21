@@ -224,17 +224,17 @@ The normal deployment layout requires these three sibling directories under the 
 
 **Dependencies:** Areas 1–4.
 
-* [ ] `T5.1` **Change:** Provision and preserve sibling `config` during deployment archive replacement.
+* [x] `T5.1` **Change:** Provision and preserve sibling `config` during deployment archive replacement.
   * **Target:** `container/scripts/deploy/deploy_single_environment.sh` and `deploy_all_environments.sh`.
   * **Current → required:** The single-environment helper writes deployment defaults to `~/container/.env` and tells operators to edit `~/container-data/backend.env`. It must create or preserve `~/config`, record defaults in `~/config/deployment.env`, and preserve both `~/config` and `~/container-data` when replacing `~/container`.
   * **Constraints:** Do not use a test user, hostname, or port as a code-level default beyond the generic application default. Do not overwrite target credentials, policy, data, or state.
   * **Validation:** `V-18`.
-* [ ] `T5.2` **Change:** Resolve nginx and systemd configuration from the target config contract.
+* [x] `T5.2` **Change:** Resolve nginx and systemd configuration from the target config contract.
   * **Target:** `install_nginx_reverse_proxy.sh`, `install_systemd_service.sh`, `container/service/shape-shifter.service`.
   * **Current → required:** Nginx and systemd instructions refer to checkout-local `.env` values and paths. They must use the configured `CONFIG_DIR`/`deployment.env` and continue to execute code from `container`.
   * **Constraints:** Keep nginx credentials and authorization group installation on the host; do not mount or copy all config into the application image.
   * **Validation:** `V-18`, `V-19`.
-* [ ] `T5.3` **Change:** Rewrite deployment documentation and cutover references.
+* [x] `T5.3` **Change:** Rewrite deployment documentation and cutover references.
   * **Target:** `container/README.md`, `container/DEPLOYMENT.md`, `docs/OPERATIONS.md`, `docs/proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md`, and relevant inventory/status records.
   * **Current → required:** Documentation describes `container/.env`, `container-data/backend.env`, and a two-directory layout. It must describe the three-directory layout, provisioning order, permissions, replacement workflow, and authorization manifest location.
   * **Constraints:** Mark the old development layout as retired rather than documenting compatibility behavior.
@@ -276,9 +276,9 @@ The normal deployment layout requires these three sibling directories under the 
 | `V-15` | UCanAccess install path | Run `make -C container install-ucanaccess` and inspect files | `CFG-AC-6` | JARs are stored under `container/lib/ucanaccess`, the documented interim location | Passed 2026-09-21: the target downloaded 3.18 MB from SourceForge into `container/lib/ucanaccess`, and the resulting six-JAR set is byte-identical to the previous install. The installer now stages the download before replacing the installed copy, so a failed download no longer removes the dependency |
 | `V-16` | Build modes | Run `make -C container build-local` and the configured GitHub/ref build with the required UCanAccess files under `container/lib/ucanaccess` | `CFG-AC-6` | Both builds succeed and the image contains the expected `/app/lib` dependency files | Passed 2026-09-21: `make build-local` and the configured `GIT_REF=main` GitHub build both succeeded with temporary image tags, and both images carry the six nested JARs under `/app/lib/ucanaccess`. With the repository-root copy removed beforehand, the workdir build staged the dependency from `container/lib/ucanaccess` into its build context and reproduced it byte-for-byte |
 | `V-17` | Replacement test | Replace a disposable `container` checkout from the same release archive while retaining config/data, then run `make up`, health check, and authorization inspection | `CFG-AC-2`, `CFG-AC-6`, `CFG-AC-7` | Service starts with preserved configuration, data, database, and manifest policy | Passed 2026-09-21: a fresh copy of `container` with a separate `config` and `container-data` started through `make up`, answered `/api/v1/health` with `200`, and passed `authorization.sh integrity-check` against `container-data/state/authorization.sqlite3` while a sentinel file in the preserved data directory stayed in place. The disposable container, layout, and temporary images were removed afterwards |
-| `V-18` | Deployment helper test | Run `deploy_single_environment.sh --no-build` for a disposable user/home and inspect resulting sibling directories | `CFG-AC-1`, `CFG-AC-2`, `CFG-AC-3` | Helper creates/preserves config and data and writes no live settings into container | Not run during planning |
-| `V-19` | Systemd/nginx path test | Render/install generated unit and nginx configuration with a temporary deployment config; inspect paths and port values | `CFG-AC-3`, `CFG-AC-7` | Services use the target config values and continue to execute code from container | Not run during planning |
-| `V-20` | Documentation/path review | Search deployment docs and execute every documented path-bearing command in a disposable environment | `CFG-AC-8` | Docs describe the three-directory layout and no retired path as current practice | Not run during planning |
+| `V-18` | Deployment helper test | Run `deploy_single_environment.sh --no-build` for a disposable user/home and inspect resulting sibling directories | `CFG-AC-1`, `CFG-AC-2`, `CFG-AC-3` | Helper creates/preserves config and data and writes no live settings into container | Partially run 2026-09-21: `get-install.sh` was exercised end to end against a local release archive in a disposable home; it extracted the deployment files, recorded `GIT_REPO`, `GIT_REF`, and `IMAGE_NAME` in `~/config/deployment.env`, created no `container/.env`, and printed the new paths. The provisioning block of `deploy_single_environment.sh` then ran in the same layout and recorded `GIT_REPO`, `GIT_REF`, `IMAGE_NAME`, and `HOST_PORT` in `~/config/deployment.env` with all three sibling directories present. The root-only `sudo -u` wrapper was not executed because this account has no root access |
+| `V-19` | Systemd/nginx path test | Render/install generated unit and nginx configuration with a temporary deployment config; inspect paths and port values | `CFG-AC-3`, `CFG-AC-7` | Services use the target config values and continue to execute code from container | Partially run 2026-09-21: `HOST_PORT` resolved to `8013` from a temporary `CONFIG_DIR/deployment.env`, and rendering `nginx-shape-shifter.conf.template` with that value produced `server 127.0.0.1:8013` for the requested domain. The systemd unit sets `WorkingDirectory=%h/container`, starts `scripts/up.sh`, stops `scripts/down.sh`, and defines no deployment value. Installing the vhost and the unit was not performed because those steps need root plus live NGINX and systemd sessions |
+| `V-20` | Documentation/path review | Search deployment docs and execute every documented path-bearing command in a disposable environment | `CFG-AC-8` | Docs describe the three-directory layout and no retired path as current practice | Partially run 2026-09-21: in a disposable canonical layout, `make setup`, `make config`, `make validate`, and `make info` ran with the default `~/config` and `~/container-data`; the rendered Compose file took `env_file` from `~/config/backend.env` and the read-only `.pgpass` from `~/config/.pgpass/.pgpass`; every path the documentation names existed after setup; and `scripts/check_doc_links.sh` reported valid links. Steps that need root or a live deployment were not executed |
 
 ## Deliverables
 
@@ -301,20 +301,24 @@ The normal deployment layout requires these three sibling directories under the 
 | Area 2: Setup and runtime operations | Done | Area 1 | Setup provisions `config/` and `container-data/` from generic templates without writing into the checkout; backup keeps data under `DATA_DIR` and configuration under `CONFIG_DIR/config`, and the authorization, rollback, and credential-rotation checks read `CONFIG_DIR/backend.env` and `CONFIG_DIR/.pgpass/.pgpass`. Validated with `V-5`–`V-10`, of which `V-8` and `V-10` are partial (no running container on this host; remaining retired paths belong to Areas 3–5) |
 | Area 3: Authorization bootstrap inputs | Done | Areas 1–2 | The bootstrap resolves `CONFIG_DIR` to the checkout's sibling, reads `authorization.env`, `authorization-manifest.yaml` and `groups.d/shape-shifter.conf` only from there, validates them before any change, and passes the same `CONFIG_DIR` to the wrapper. `container/resources/authorization.env.example` and the new *Authorization inputs* section in `container/DEPLOYMENT.md` document operator provisioning; the inventory and status records name the target paths. Validated with `V-11`–`V-14`, of which `V-13` is partial (the container wrapper needs a running deployment) |
 | Area 4: Checkout build dependencies | Done | Area 1 | UCanAccess stays under `container/lib/ucanaccess` as the single installed copy. `build.sh` stages it into the repository-root build context when that context has no copy, so workdir and standalone builds use the same dependency, and it reads deployment settings from `CONFIG_DIR/deployment.env`. `install-ucanaccess.sh` now replaces the installed copy only after a successful download. `container/DEPLOYMENT.md` documents checkout replacement. Validated with `V-15`–`V-17` |
-| Area 5: Deployment helpers and documentation | Not started | Areas 1–4 | Update only after executable behavior is stable |
+| Area 5: Deployment helpers and documentation | Done | Areas 1–4 | `deploy_single_environment.sh`, `deploy_all_environments.sh`, `get-install.sh`, and `rebuild-image.sh` provision `~/config` and keep it and `~/container-data` out of any checkout refresh; `rebuild-image.sh` no longer defaults to a test deployment user and its `--dry-run` flag now reports instead of acting; the nginx and systemd helpers name the resolved config contract. `container/README.md`, `container/DEPLOYMENT.md`, and `docs/OPERATIONS.md` describe the three-directory layout and mark the old paths as retired. Validated with `V-18`–`V-20`, all partial because the root-only and live-service steps could not run from this account |
 
 ## Definition Of Done
 
-- [ ] `CFG-AC-1` through `CFG-AC-8` have implementation and validation evidence.
-- [ ] No compatibility fallback reads `container/.env`, `secrets/.env`, or `container-data/backend.env`.
-- [ ] `container` can be replaced without changing `config` or `container-data`.
-- [ ] Makefile and Compose resolve paths for at least two distinct target layouts without source edits.
-- [ ] Setup is idempotent and applies documented permissions to credentials, policy, and runtime files.
-- [ ] Authorization bootstrap imports the reviewed YAML manifest from the target config directory and reconciliation passes.
-- [ ] Local and GitHub image builds preserve application content and UCanAccess support; UCanAccess remains the documented interim exception to the external configuration layout.
+- [x] `CFG-AC-1` through `CFG-AC-8` have implementation and validation evidence.
+- [x] No compatibility fallback reads `container/.env`, `secrets/.env`, or `container-data/backend.env`.
+- [x] `container` can be replaced without changing `config` or `container-data`.
+- [x] Makefile and Compose resolve paths for at least two distinct target layouts without source edits.
+- [x] Setup is idempotent and applies documented permissions to credentials, policy, and runtime files.
+- [x] Authorization bootstrap imports the reviewed YAML manifest from the target config directory and reconciliation passes.
+- [x] Local and GitHub image builds preserve application content and UCanAccess support; UCanAccess remains the documented interim exception to the external configuration layout.
 - [ ] Runtime, backup, restore, systemd, nginx, deployment verification, and documentation checks pass.
-- [ ] The cutover phase plan links this migration before Phase 3 is executed.
-- [ ] No project YAML, shared data, authorization policy, or unrelated worktree changes were modified by the migration.
+- [x] The cutover phase plan links this migration before Phase 3 is executed.
+- [x] No project YAML, shared data, authorization policy, or unrelated worktree changes were modified by the migration.
+
+The open item needs a live deployment and root access: the authorization restore
+path (`V-8`) and the NGINX and systemd installation steps (`V-19`) were verified
+by path inspection only. Record their results on the target host before Phase 3.
 
 ## Risks And Open Questions
 
