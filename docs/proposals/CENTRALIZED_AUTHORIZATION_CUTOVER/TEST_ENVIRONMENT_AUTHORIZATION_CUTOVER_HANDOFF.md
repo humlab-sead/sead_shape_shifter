@@ -1,6 +1,6 @@
 # Handoff: Test Environment Authorization Cutover
 
-**Status:** Authorization applied in the test target environment; safe deployment verification, systemd ownership, external HTTPS reachability, privileged firewall inspection, same-LAN exception acceptance, authenticated access, cleanup, and rollback passed
+**Status:** Authorization applied in the test target environment; release image rebuilt from `dev`; reviewed project and shared data content provisioned and listed by the application; safe deployment verification, systemd ownership, external HTTPS reachability, privileged firewall inspection, same-LAN exception acceptance, authenticated access, cleanup, and rollback passed
 **Opened:** 2026-09-22
 **Branch:** `authorization-system-cutover` (all commits pushed to `origin`)
 **Environment:** host `humlabsead`, deployment user `test-shape-shifter.sead.se` (uid/gid 1021), container `shape-shifter` published on `127.0.0.1:8012`, proxy `https://test-shape-shifter.sead.se`
@@ -8,11 +8,11 @@
 
 ## Purpose
 
-Record the live centralized-authorization cutover in the test target environment. The deployment layout, authorization behavior, cleanup, rollback, and in-scope credential rotation have been verified; the remaining operational follow-up is deciding whether the reviewed project content should be provisioned or the policy regenerated for this environment.
+Record the live centralized-authorization cutover in the test target environment. The deployment layout, authorization behavior, cleanup, rollback, and in-scope credential rotation have been verified, and the reviewed project and shared data content is now provisioned; the remaining follow-up is confirming the configuration-dependent shared data sources.
 
 ## Current State
 
-The test host runs the three-directory layout: `~/container` for replaceable code, `~/config` for configuration and policy (mode `700`, files `600`), and `~/container-data` for mutable data. The current deployed image is the earlier test baseline identified below; the final release image will be built from `dev` after this branch is merged. `http://127.0.0.1:8012/api/v1/health` answered `200` with `{"status":"healthy","version":"2.1.0","environment":"production"}` on 2026-09-22.
+The test host runs the three-directory layout: `~/container` for replaceable code, `~/config` for configuration and policy (mode `700`, files `600`), and `~/container-data` for mutable data. The deployed image is now the release build from merged `dev`; the earlier `d27b072c` baseline image remains on the host as the rollback target. `http://127.0.0.1:8012/api/v1/health` answered `200` with `{"status":"healthy","version":"2.1.0","environment":"production"}` on 2026-09-22, last confirmed at 10:59:17Z on the release image.
 
 | Item | State |
 |---|---|
@@ -43,14 +43,19 @@ The following checks were run on 2026-09-22 without repeating the completed Phas
 
 | Check | Result |
 |---|---|
-| Full backend regression | Passed: `.venv/bin/pytest backend/tests -q`; all collected tests passed with the repository's existing skips and one unrelated JPype deprecation warning |
+| Full backend regression | Passed at `e38f4bc6` and rerun at the post-merge `dev` revision `dbff5ab95459652354c040b9d4fec6e2ead94f96`: `.venv/bin/pytest backend/tests -q`; all collected tests passed with the repository's existing skips and one unrelated JPype deprecation warning |
 | Reviewed manifest identity | SHA-256 `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90`; authoritative content is 3 administrators (`admin`, `roger`, `rebecka`), 32 resources, and 32 grants |
-| Deployed image identity | Running image `localhost/shape-shifter:test`, image ID `4762be65496839738800b5034cf487faafaf4bda6c3dceb2e608d00fe5e4700b`, OCI source revision `d27b072c26e026fe9049a14558ffbaf0ffecda98` |
-| Current checkout identity | `e38f4bc67b289dd23f6995f38ff70ccc79a32bf0`; branch baseline tests passed, but the final release image is intentionally deferred until merge to `dev` |
+| Release image identity | `shape-shifter:dev`, image ID `6a487db722883da0eb0c3cfdc00444c07dea1edaf7d59b15643227576acc04a8`, built 2026-09-22 10:55:15Z from `github`, OCI source revision `dbff5ab95459652354c040b9d4fec6e2ead94f96`, OCI version `dev` |
+| Release image source revision | `dbff5ab95459652354c040b9d4fec6e2ead94f96` equals the `dev` merge commit for PR #495 and the checkout revision where the focused authorization and full backend suites passed |
+| Configuration revision | `GIT_REF=dev`, `IMAGE_NAME=shape-shifter:dev`, `GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git`, recorded in `/data/test-shape-shifter.sead.se/config/deployment.env` by the deploy script |
+| Baseline image identity (retained) | `localhost/shape-shifter:test`, image ID `4762be65496839738800b5034cf487faafaf4bda6c3dceb2e608d00fe5e4700b`, OCI source revision `d27b072c26e026fe9049a14558ffbaf0ffecda98`, built from checkout `e38f4bc67b289dd23f6995f38ff70ccc79a32bf0` |
 | Authorization inventory | 51 retained resources: 36 active and 15 deleted; 53 retained grants; 25 application-role rows, including 3 `admin` roles. Historical/deleted rows explain why raw store totals exceed the 32 reviewed active records |
 | Manifest reconciliation | Passed using a one-shot container with the host manifest mounted read-only: `Missing: 0 resources, 0 administrators, 0 grants` |
 | Administrator access | Passed: `admin` received HTTP 200 for `GET /api/v1/projects` through `https://test-shape-shifter.sead.se`; credentials and response contents were not recorded |
+| Release-image integrity and reconciliation | Passed on `shape-shifter:dev`: `authorization.sh integrity-check` reported `Authorization database integrity check passed`, and reconciliation against the reviewed manifest staged inside the container reported `Missing: 0 resources, 0 administrators, 0 grants` |
 | Readiness backup | `authorization-20260922-110641.sqlite3`, SHA-256 `9ebf2f2229807cf56ce32cc2d2a7c7fe0c67f67553c3d606833dc71cd9ae8b3e`; writable-copy integrity check passed |
+| Release-image backup | `authorization-20260922-130050.sqlite3`, SHA-256 `9ebf2f2229807cf56ce32cc2d2a7c7fe0c67f67553c3d606833dc71cd9ae8b3e`; byte-identical to the readiness backup, so authorization state did not change across the image switch |
+| Provisioned target content | All 26 reviewed project locators resolve to a `shapeshifter.yml` under `container-data/projects`, and all 6 reviewed shared data sources are listed by `GET /api/v1/data-sources`: `arbodat-data-options`, `arbodat-lookup-options`, `bugscep_data_20250608`, `bulgaria-arbodat-lookup-options`, `digidiggie_tng-options`, and `sead-options` |
 
 Facts recorded on 2026-09-22:
 
@@ -59,7 +64,7 @@ Facts recorded on 2026-09-22:
 - Reviewed manifest: [resources/authorization/test-initial-manifest.yaml](../../../resources/authorization/test-initial-manifest.yaml) holds 32 resources (26 project, 6 shared_data_source), 32 grants (26 `owner` for one principal each, 6 `reader` for `everyone`/`authenticated`), and 3 administrators (`admin`, `roger`, `rebecka`).
 - `SHAPE_SHIFTER_AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE=true` is set in `~/config/backend.env` and is live in the container; without it the six `everyone` grants are refused at import time.
 - Inventory before cleanup: `list-resources` returned 51 rows (36 with lifecycle `active`, 15 `deleted`) and `list-grants` returned 51 rows. The four temporary `project:verification-containment-<timestamp>` resources were then deleted through the application; they are now deleted lifecycle records and excluded from `export-manifest`.
-- Project content: `container-data/projects` holds only `verification-projects/` (those four containment projects and `archived/`); a search under `/data` to depth 5 found none of the reviewed project names. The reviewed manifest therefore names 26 projects and 6 shared data sources that this deployment does not hold.
+- Target content: all 26 reviewed project locators resolve to a `shapeshifter.yml`, and all 6 reviewed shared data sources appear in the application's listing. `arbodat-data-options`, `arbodat-lookup-options`, `bugscep_data_20250608`, and `digidiggie_tng-options` reference `ArchBotDaten.mdb`, `ArchBotStrukDat.mdb`, `bugsdata_20250608.mdb`, and `Digidiggie_v7_kbw.accdb`, all present in `container-data/shared/shared-data`. `bulgaria-arbodat-lookup-options` is accepted with the `access` driver and no `filename`, and `sead-options` is listed with `${SEAD_HOST}`, `${SEAD_PORT}`, `${SEAD_DBNAME}`, and `${SEAD_USER}` stored verbatim, resolved from `config/backend.env` at use time.
 - Enforcement check, `container/scripts/verify/verify_authenticated_access.sh`, passed with Bruno and Phil using temporary colon-qualified projects: unauthenticated access returned `401`, each principal received `200` for its granted project, and each other project's request returned the concealed `404` response.
 - Credential rotation check passed with exit code `0`; the final record marked `authorization:ADMIN_AUTH_PASSWORD` and `authorization:AUTH_PASSWORD` as rotated. PostgreSQL `.pgpass` was reported as explicitly out of scope.
 
@@ -117,12 +122,13 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 - `make restart` can print `rootless netns: kill network process: permission denied` while removing the network. It is a teardown warning, `podman-compose down` still exits zero, and `up` recreates the network.
 - The four containment resources were removed through the application and are now deleted lifecycle records; `export-manifest` excludes them.
 - `verify_authenticated_access.sh` requires each project to be granted to exactly one principal, and neither principal may be a bootstrap administrator.
-- The reviewed manifest still names project content that is not present in this deployment. The authenticated check used temporary colon-qualified projects and therefore verifies grant enforcement, not the availability of the reviewed project dataset.
-- The deployed image is based on `d27b072c`, while the current repository checkout is `e38f4bc6`. This is retained as baseline evidence; no feature-branch rebuild is planned. Build and verify the final release image after merging to `dev` before claiming release-candidate parity.
+- All 6 reviewed shared data sources are listed by the application, but two are unproven in use: `sead-options` is stored with `${SEAD_*}` references that resolve from `config/backend.env` and the matching `.pgpass` entry, and `bulgaria-arbodat-lookup-options` declares the `access` driver with no `filename`. The authenticated access check used temporary colon-qualified projects, so it verifies grant enforcement rather than access to the reviewed dataset.
+- The release image is built from merged `dev` at `dbff5ab95459652354c040b9d4fec6e2ead94f96`, so its recorded source revision matches the checkout where the focused and full backend suites passed. The earlier `d27b072c` image built from checkout `e38f4bc6` remains on the host as the rollback target and is no longer the running image.
 
 ## Open Decisions
 
-- Where the 26 projects and 6 shared data sources come from, or whether this environment keeps a regenerated manifest instead.
+- Whether `sead-options` connects, since the `SEAD_*` values live in `config/backend.env` and the listing does not prove them.
+- Whether the recorded credential rotation is still an acceptable evidence level, given the check records labels and the operator's assertion rather than verifying a value changed, and no rotated value is retained in the repository.
 - Whether `deleted`-lifecycle rows and the `@local` grants should be removed from the store or kept as history. Current state keeps them; `export-manifest` and `reconcile` ignore deleted resources.
 - Whether the remaining work stays on `authorization-system-cutover` or moves to a new branch.
 
