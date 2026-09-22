@@ -27,18 +27,21 @@ The orchestrator can be run by a sudo-capable operator from this directory. It
 resolves the target user's `~/container` and rootless Podman context, runs
 deployment checks as that user, runs host checks as the operator, and writes a
 concise report to `summary.txt` in a timestamped run directory under
-`deployment-verification/`. Detailed check output is stored in separate
-evidence files. The current options file is copied into the run directory as
-`deployment-verification.options.yml` alongside the report. Pass
+`~/container-data/deployment-verification/`, next to the rest of the deployment's
+writable paths and outside the replaceable checkout. The container mounts only
+`projects/`, `shared/`, `logs/`, `output/`, `backups/`, `tmp/`, and `state/`, so
+that directory stays off the container's filesystem. Detailed check output is
+stored in separate evidence files. The current options file is copied into the run
+directory as `deployment-verification.options.yml` alongside the report. Pass
 `--evidence-dir` to use that directory exactly; an `evidence_dir` value in the
 options file is treated as the parent directory for the timestamped run.
 
 ```bash
 cp ./scripts/verify/deployment-verification.options.yml.example \
-  ./deployment-verification.options.yml
-# Edit deployment-verification.options.yml, then run:
+  ~/config/deployment-verification.options.yml
+# Edit ~/config/deployment-verification.options.yml, then run:
 ./scripts/verify/run_deployment_verification.sh \
-  --options-file ./deployment-verification.options.yml
+  --options-file ~/config/deployment-verification.options.yml
 ```
 
 The file is read with `yq` before command-line parsing. Explicit command-line
@@ -93,7 +96,7 @@ sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify/verify_container_con
 
 # Endpoint containment with a temporary project; cleanup is automatic.
 ./scripts/verify/run_deployment_verification.sh \
-  --options-file ./deployment-verification.options.yml \
+  --options-file ~/config/deployment-verification.options.yml \
   --disposable-project-template ./scripts/verify/disposable-project
 
 # Authenticated access and cross-resource isolation through the proxy (run as the
