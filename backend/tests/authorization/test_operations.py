@@ -125,6 +125,25 @@ def test_manifest_inspection_accepts_yaml(tmp_path) -> None:
     assert inspect_manifest(manifest) == {"resources": 1, "administrators": 1}
 
 
+def test_manifest_inspection_accepts_yaml_without_an_extension(tmp_path) -> None:
+    # The deployment wrapper streams the manifest through stdin, so the CLI reads
+    # it from a path like /dev/stdin that has no extension to select a parser.
+    manifest = tmp_path / "manifest"
+    manifest.write_text(
+        "administrators:\n"
+        "  - alice\n"
+        "resources:\n"
+        "  - resource_type: project\n"
+        "    locator: project-a\n"
+        "    grants:\n"
+        "      - principal_id: alice\n"
+        "        role: owner\n",
+        encoding="utf-8",
+    )
+
+    assert inspect_manifest(manifest) == {"resources": 1, "administrators": 1}
+
+
 def test_export_manifest_writes_yaml_for_active_top_level_resources(tmp_path) -> None:
     database = tmp_path / "authorization.sqlite3"
     repository = SQLiteAuthorizationRepository(database)

@@ -166,12 +166,22 @@ def initialize_database(path: Path) -> None:
 
 
 def _load_manifest(path: Path) -> dict[str, Any]:
+    """Read a manifest as JSON or YAML and check that it holds an object."""
     try:
         content = path.read_text(encoding="utf-8")
-        if path.suffix.lower() in {".yaml", ".yml"}:
+        suffix = path.suffix.lower()
+        if suffix in {".yaml", ".yml"}:
             value = YAML(typ="safe").load(content)
-        else:
+        elif suffix == ".json":
             value = json.loads(content)
+        else:
+            # The deployment wrapper streams the reviewed manifest through stdin,
+            # which the CLI sees as /dev/stdin. That name carries no extension, so
+            # choose the parser from the content instead.
+            try:
+                value = json.loads(content)
+            except json.JSONDecodeError:
+                value = YAML(typ="safe").load(content)
     except (OSError, json.JSONDecodeError, YAMLError) as exc:
         raise ValueError(f"Invalid authorization manifest: {exc}") from exc
     if not isinstance(value, dict):
