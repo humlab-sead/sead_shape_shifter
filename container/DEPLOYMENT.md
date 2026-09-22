@@ -308,6 +308,24 @@ with its own name. Configuration, credentials, project data, logs, backups, and
 the authorization database all live outside the checkout, so replacing it leaves
 them unchanged.
 
+### Migrating from the retired two-directory layout
+
+Earlier deployments kept their settings in `container/.env`, where `DATA_DIR` was
+spelled relative to the checkout, so the file held `DATA_DIR=../container-data`.
+In `~/config/deployment.env` a relative value names a path *beside* the checkout,
+so the same directory drops the leading `../`:
+
+```text
+container/.env                  ~/config/deployment.env
+DATA_DIR=../container-data  ->  DATA_DIR=container-data
+```
+
+Keeping the old spelling resolves one level above the deployment directory, and
+`make up` then stops with a missing data directory. Migrate by moving
+`container/.env` to `~/config/deployment.env`, moving `container-data/backend.env`
+and `container-data/.pgpass/.pgpass` into `~/config`, and rewriting any relative
+override that still starts with `../` or `./`.
+
 ---
 
 ## Diagnostics
