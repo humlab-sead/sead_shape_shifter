@@ -2,7 +2,8 @@
 
 ## Status
 
-- Phase plan / Phases 1, 2, 2A, and 3 complete; Phase 4 ready for its task plan; Phase 5 not started
+- Phase plan / Phases 1, 2, 2A, 3, and 4 complete; Phase 5 not started
+- **Phase 4 completion 2026-09-22:** [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md) records the release, manifest, and backup identifiers, the route-inventory, ownership, and audit results, the access checks, and a passing rollback exercise with a byte-identical restore. `PH4-AC-1` to `PH4-AC-5` are met and `VM-4.1` to `VM-4.4` are covered. Phase 5 prerequisites are satisfied by that record.
 - Scope: route and operation inventory, migration input, readiness validation, an authorization-enabled deployment ready for user acceptance testing, and Podman release verification
 - Goal: deliver and record an authorization-enabled deployment on the new server that is ready for user acceptance testing, together with the operator procedures and documentation needed to run, verify, and roll it back
 - **Scope change 2026-09-22:** flipping production traffic and users from the old server to the new server is out of scope. It repoints DNS and the reverse proxy, migrates users, and depends on user acceptance testing this project does not own, so it moves to [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
@@ -53,6 +54,7 @@ This plan covers:
 - The test-target inventory records 26 migration-source projects, 6 shared data sources, confirmed nginx principal IDs and owners/readers, and the reviewed initial manifest. The reviewed project and shared-data content is provisioned on the target, and `sead-options` is verified against the live database. Release and readiness evidence is recorded in the test-environment cutover handoff, and the completed Phase 3 task plan is archived under `done/`.
 - The new server `humlabsead.srv.its.umu.se` hosts the authorization-enabled deployment, while the old server continues to run the previous setup. The two never mix: the new server is never provisioned with the pre-authorization deployment, so no partially enforced or mixed-identity period exists there.
 - Production DNS still targets the old server, and no record exists yet for the production or staging web names. Repointing them is a separate decision with an owner outside this plan.
+- Phase 4 is complete. The deployment record identifies the release, manifest, backup, and rollback owner; the blocking checks, access checks, and audit review are recorded; and the rollback exercise passed with a state-neutral restore. The record also states what is not verified, including that symmetric cross-resource isolation could not be tested, because `bruno` is the only reviewed project owner who is not a global reader.
 - The identity model changes with the move. The previous setup used a single nginx user that never reached the application. The new deployment authenticates individual principals and evaluates grants per request, so accounts and grants must exist for real users before any user moves.
 - The deployment documentation describes the Podman layout, so the runbook rewrite an earlier draft of this plan expected is largely complete.
 
@@ -286,7 +288,7 @@ Deliver an authorization-enabled deployment on the new server that a user accept
 
 **Readiness**
 
-Ready for a task plan. The deployment host is the new server and the rollback decision owner is named.
+Complete on 2026-09-22. The task plan is [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md) and the resulting record is [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md).
 
 ### Phase 5: Verify Podman Deployment And Update Security Record
 

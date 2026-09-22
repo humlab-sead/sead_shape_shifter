@@ -154,18 +154,18 @@
 
 **Tasks:**
 
-* [ ] `T4.8` **Change:** Assemble the evidence pack.
+* [x] `T4.8` **Change:** Assemble the evidence pack.
   * **Target:** Deployment record.
   * **Current -> required:** Phase 3 evidence exists as a completion record; acceptance needs a condensed statement of what is verified, what is not, and how to exercise it.
   * **Implementation:** Record the verified claims with their commands and results, the known limitations (`bulgaria-arbodat-lookup-options` declares no data file; the container reaches host services only as `host.docker.internal`; PostgreSQL credential rotation is out of scope by decision), and the steps a tester follows to exercise the system.
   * **Constraints:** Do not state or imply that user acceptance criteria are owned here, and do not present unverified checks as passed.
-  * **Validation:** `V-4.10`.
-* [ ] `T4.9` **Change:** Update the phase plan status.
+  * **Validation:** `V-4.10`. The record gained *What Is Not Verified* and *How To Exercise The Deployment* alongside the per-task detail sections, so a tester can act without reading the Phase 3 archive. Limitations are stated as limitations, and acceptance ownership stays outside this record.
+* [x] `T4.9` **Change:** Update the phase plan status.
   * **Target:** `CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md`.
   * **Current -> required:** The plan still shows Phase 4 as not started.
   * **Implementation:** Mark Phase 4 complete with its evidence, confirm Phase 5 prerequisites, and leave the production flip reference intact.
   * **Constraints:** Change only the status and completion statements; do not re-scope the plan in this task.
-  * **Validation:** `V-4.10`.
+  * **Validation:** `V-4.10`. The plan status now reads "Phases 1, 2, 2A, 3, and 4 complete; Phase 5 not started", the Phase 4 readiness line records the outcome and links the record, and the scope change of 2026-09-22 and the production flip reference are unchanged.
 
 **Completion evidence:** The record is self-contained, links every result, states the limitations, and the phase plan reflects the outcome.
 
@@ -202,11 +202,11 @@
 
 | Deliverable | Description | Status | Link |
 | --- | --- | --- | --- |
-| Deployment record | Release, manifest, backup, owner, access results, audit summary, rollback outcome, limitations | In progress | `UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md` (new, this folder) |
+| Deployment record | Release, manifest, backup, owner, access results, audit summary, rollback outcome, limitations | Done | `UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md` (new, this folder) |
 | Blocking-check evidence | Route inventory, ownership, and audit results | Done | Deployment record, *Resource inventory detail* and *Audit-trail detail* |
 | Rollback evidence | Transcript directory from the rollback exercise | Done | `<DATA_DIR>/backups/rollback-exercise.log` (the run used `--evidence-dir <DATA_DIR>/backups`, so the transcript is one fixed-name log rather than a timestamped directory) |
 | Post-check backup | Timestamped authorization backup with checksum | Done | `<DATA_DIR>/backups/authorization-20260922-164454.sqlite3` |
-| Phase plan status update | Phase 4 complete, Phase 5 prerequisites confirmed | Not started | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
+| Phase plan status update | Phase 4 complete, Phase 5 prerequisites confirmed | Done | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
 
 ## Progress Tracker
 
@@ -215,7 +215,7 @@
 | Area 1: Record the deployment identity | Done | Identity re-confirmed on the running container; the deployed manifest checksum matches the reviewed manifest |
 | Area 2: Re-run the blocking pre-acceptance checks | Done | `T4.3`, `T4.4`, and `T4.5` complete; `PH4-AC-5` holds with no unowned or missing resource |
 | Area 3: Re-verify access and exercise the procedures | Done | `T4.6` and `T4.7` complete; the service unit still needs a restart after the standalone rollback exercise |
-| Area 4: Assemble the acceptance evidence and record the result | Not started | Depends on Areas 1–3 |
+| Area 4: Assemble the acceptance evidence and record the result | Done | `T4.8` and `T4.9` complete; the record is self-contained and the phase plan reflects the outcome |
 
 ## Definition Of Done
 
@@ -224,9 +224,9 @@
 - [x] `PH4-AC-3` has migration and administrative-mutation audit events recorded with counts and types.
 - [x] `PH4-AC-4` has a rollback transcript with integrity and reconciliation outcomes, or a recorded rollback-owner decision.
 - [x] `PH4-AC-5` has route-inventory, classification, and ownership results recorded, with any blocker named.
-- [ ] The evidence pack states what is verified, what is not, and how a tester exercises the system, without claiming ownership of acceptance criteria.
-- [ ] `scripts/check_doc_links.sh` and `git diff --check` pass, and no credential values appear in the record.
-- [ ] The phase plan status reflects the outcome, and the production flip remains referenced to its own proposal.
+- [x] The evidence pack states what is verified, what is not, and how a tester exercises the system, without claiming ownership of acceptance criteria.
+- [x] `scripts/check_doc_links.sh` and `git diff --check` pass, and no credential values appear in the record.
+- [x] The phase plan status reflects the outcome, and the production flip remains referenced to its own proposal.
 
 ## Risks And Open Questions
 
