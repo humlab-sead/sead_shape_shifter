@@ -8,7 +8,7 @@
 
 ## Purpose
 
-Record the live centralized-authorization cutover in the test target environment. The deployment layout, authorization behavior, cleanup, and rollback have been verified; the remaining operational follow-up is credential rotation and deciding whether the reviewed project content should be provisioned or the policy regenerated for this environment.
+Record the live centralized-authorization cutover in the test target environment. The deployment layout, authorization behavior, cleanup, rollback, and in-scope credential rotation have been verified; the remaining operational follow-up is deciding whether the reviewed project content should be provisioned or the policy regenerated for this environment.
 
 ## Current State
 
@@ -35,6 +35,7 @@ The test host runs the three-directory layout: `~/container` for replaceable cod
 | Privileged firewall inspection | Passed 2026-09-22: nftables input policy is `drop`; approved rules expose proxy ports `80/443` only, and no rule accepts `8012` |
 | Authenticated positive access | Passed 2026-09-22 with Bruno and Phil using colon-qualified project locators: each principal received `200` for its granted project and concealed `404` for the other project's request; unauthenticated access returned `401` |
 | Rollback exercise | Passed 2026-09-22: the recorded image and authorization backup restored successfully, integrity and manifest reconciliation reported zero missing records, and the restarted service returned health `200` |
+| In-scope credential rotation | Passed 2026-09-22: `ADMIN_AUTH_PASSWORD` and `AUTH_PASSWORD` were recorded as rotated; PostgreSQL `.pgpass` rotation is out of scope |
 
 Facts recorded on 2026-09-22:
 
@@ -45,6 +46,7 @@ Facts recorded on 2026-09-22:
 - Inventory before cleanup: `list-resources` returned 51 rows (36 with lifecycle `active`, 15 `deleted`) and `list-grants` returned 51 rows. The four temporary `project:verification-containment-<timestamp>` resources were then deleted through the application; they are now deleted lifecycle records and excluded from `export-manifest`.
 - Project content: `container-data/projects` holds only `verification-projects/` (those four containment projects and `archived/`); `container-data/backups` is empty; a search under `/data` to depth 5 found none of the reviewed project names. The reviewed manifest therefore names 26 projects and 6 shared data sources that this deployment does not hold.
 - Enforcement check, `container/scripts/verify/verify_authenticated_access.sh`, passed with Bruno and Phil using temporary colon-qualified projects: unauthenticated access returned `401`, each principal received `200` for its granted project, and each other project's request returned the concealed `404` response.
+- Credential rotation check passed with exit code `0`; the final record marked `authorization:ADMIN_AUTH_PASSWORD` and `authorization:AUTH_PASSWORD` as rotated. PostgreSQL `.pgpass` was reported as explicitly out of scope.
 
 ### Commands that act as the deployment user
 
@@ -88,11 +90,9 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 
 ## Next Actions
 
-1. **Rotate exposed credentials.** Rotate the administrator and shared authentication credentials, then update the target `~/config/authorization.env`, NGINX htpasswd, and in-scope protected configuration without recording secret values. PostgreSQL credential rotation is out of scope for this system and is excluded from this follow-up.
+1. **Decide where the project content comes from.** The reviewed manifest names 26 projects and 6 shared data sources that this deployment does not hold. Either provision that content under `container-data/projects` and `container-data/shared`, or regenerate the policy for the content this environment actually has.
 
-2. **Decide where the project content comes from.** The reviewed manifest names 26 projects and 6 shared data sources that this deployment does not hold. Either provision that content under `container-data/projects` and `container-data/shared`, or regenerate the policy for the content this environment actually has.
-
-3. **Retain the completed verification evidence.** The rollback evidence is under `container-data/backups/rollback-20260922-103540`; the same-LAN exception remains accepted because no second host is available on the target LAN.
+2. **Retain the completed verification evidence.** The rollback evidence is under `container-data/backups/rollback-20260922-103540`; the credential-rotation output records the two in-scope passwords as rotated, and the same-LAN exception remains accepted because no second host is available on the target LAN.
 
 ## Risks
 
