@@ -13,7 +13,7 @@
 
 ### Acceptance Criteria
 
-1. `PH3-AC-1` (from `P-AC-4`) Focused authorization tests and the full backend regression suite pass on the final release candidate. **Status:** focused authorization baseline passed; release-linked full-suite evidence remains to be attached.
+1. `PH3-AC-1` (from `P-AC-4`) Focused authorization tests and the full backend regression suite pass on the final release candidate. **Status:** focused and full backend suites passed at the current checkout; final release-candidate image validation is intentionally deferred until this branch is merged to `dev`.
 2. `PH3-AC-2` (from `P-AC-5`) The applied manifest reconciles with zero missing administrators, resources, or grants. **Status:** completed for the test target on 2026-09-22.
 3. `PH3-AC-3` (from `P-AC-5`) No required resource is unowned and no active locator conflict remains. **Status:** completed for the applied test-target records; dataset scope remains subject to `PH3-AC-4`.
 4. `PH3-AC-4` (from `P-AC-2`) Existing projects and shared resources have reviewed initial grants before enforcement. **Status:** authorization records were reviewed, but the target does not contain the 26 projects and 6 shared sources named by the reviewed manifest; disposition remains open.
@@ -73,11 +73,11 @@
 
 **Dependencies:** Phase 2 and Phase 2A complete; target-content disposition recorded before final acceptance.
 
-* [ ] `T1.1` **Change:** Record the release candidate identity.
+* [ ] `T1.1` **Change:** Record and reconcile the post-merge `dev` release candidate identity.
   * **Target:** Existing target deployment record and verification options/evidence directory; update [TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md](./TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md).
-  * **Current -> required:** The handoff records an image built from `d1b21b5d` and later host-only changes, but Phase 3 still needs the exact image ID or digest and manifest/config revision used for the completed readiness run.
-  * **Implementation:** Inspect the running or selected image with Podman, record the source revision label, image ID/repo digest, deployment checkout revision, manifest checksum, and target configuration revision without printing credential values.
-  * **Constraints:** A result from a different image digest is not valid for this phase. Stop if the image identity cannot be matched to the intended release candidate.
+  * **Current -> required:** The target image and manifest identity are recorded. The running image is based on `d27b072c` while the current checkout is `e38f4bc6`; build the final release candidate from `dev` after merge and record its immutable identity.
+  * **Implementation:** Preserve the current image ID, source revision, checkout revision, and manifest checksum as baseline evidence. After merge to `dev`, build and deploy the release image, then record its image ID, source revision, configuration revision, and manifest checksum.
+  * **Constraints:** Do not rebuild the current feature branch or claim final release-candidate parity before the post-merge `dev` image exists. Never record credential values.
   * **Validation:** `V-1`, `V-2`.
 * [x] `T1.2` **Change:** Run focused authorization regression tests.
   * **Target:** `backend/tests/authorization/`.
@@ -85,10 +85,10 @@
   * **Implementation:** Run `uv run pytest backend/tests/authorization -q` and retain the result with the release identity.
   * **Constraints:** Investigate failures against the release candidate; do not weaken tests or update policy to make the suite pass.
   * **Validation:** `V-1`.
-* [ ] `T1.3` **Change:** Attach or rerun the full backend regression suite for the final release candidate.
+* [ ] `T1.3` **Change:** Attach the branch baseline full backend regression suite; rerun it for the post-merge `dev` release candidate.
   * **Target:** `backend/tests/`, `Makefile`, and the release candidate environment.
-  * **Current -> required:** The focused suite is known to pass, but the phase acceptance criterion still needs full-suite evidence tied to the final release candidate.
-  * **Implementation:** Use an existing full-suite result if it is demonstrably from the final release; otherwise run `make test` or the repository-approved backend test command. Record unrelated pre-existing failures separately.
+  * **Current -> required:** The full backend suite was run at `e38f4bc6` and passed; this is branch baseline evidence, not final release-candidate evidence.
+  * **Implementation:** Preserve `.venv/bin/pytest backend/tests -q` output in the handoff, then rerun it against the post-merge `dev` release candidate.
   * **Constraints:** Do not claim Phase 3 readiness if a release-related regression remains unexplained.
   * **Validation:** `V-3`.
 
@@ -125,22 +125,22 @@
 
 ### Area 3: Close backup and access evidence
 
-**Objective:** Reuse the completed rollback and proxy checks, filling only the missing backup-retention and administrator-access evidence.
+**Objective:** Reuse the completed rollback and proxy checks and record the backup-retention and administrator-access evidence.
 
 **Affected code:** `container/scripts/authorization.sh`, `container/scripts/verify/verify_authenticated_access.sh`, `container/scripts/verify/run_deployment_verification.sh`, `container/scripts/verify/rollback_exercise.sh`, and the target proxy deployment.
 
 **Dependencies:** Areas 1 and 2; two non-administrator test principals and two suitable projects must be available, or the temporary-project limitation must be recorded.
 
-* [ ] `T3.1` **Change:** Confirm the retained authorization database backup.
+* [x] `T3.1` **Change:** Confirm the retained authorization database backup.
   * **Target:** Target `container-data/backups` and the Phase 3 evidence record.
-  * **Current -> required:** The rollback evidence proves that the recorded backup restores successfully and passes integrity and reconciliation. The handoff must identify the retained backup filename/path, checksum, and retention owner; create a new backup only if the existing artifact cannot be identified or retained.
-  * **Implementation:** Inspect the existing rollback evidence and backup storage, record the backup identity and checksum, and run a new `container/scripts/authorization.sh backup` only when necessary.
+  * **Current -> required:** The retained readiness backup is identified, checksummed, and passes integrity through the writable-copy procedure used by rollback.
+  * **Implementation:** Preserve `authorization-20260922-110641.sqlite3`, its SHA-256 checksum, and its operator-controlled storage path in the handoff.
   * **Constraints:** Do not print database credentials or copy the backup to an uncontrolled location.
   * **Validation:** `V-7`.
-* [ ] `T3.2` **Change:** Close the access matrix evidence.
+* [x] `T3.2` **Change:** Close the access matrix evidence.
   * **Target:** `container/scripts/verify/verify_authenticated_access.sh`, nginx endpoint, two non-administrator principals, and two reviewed projects.
-  * **Current -> required:** The test-target script passed with Bruno and Phil: unauthenticated `401`, allowed `200`, and concealed denied `404`. Attach that result and add the separate administrator check; retain the temporary-project limitation until `T2.1` is resolved.
-  * **Implementation:** Rerun the two-principal script only if its evidence is not tied to the final release. Record administrator access separately because the script intentionally excludes bootstrap administrators from the denied-principal matrix.
+  * **Current -> required:** The test-target script passed with Bruno and Phil, and the separate administrator check returned HTTP 200 for `GET /api/v1/projects`.
+  * **Implementation:** Preserve both results in the handoff; retain the temporary-project limitation until `T2.1` is resolved.
   * **Constraints:** Never use a bootstrap administrator as a denied principal. Passwords must be supplied through prompts or environment variables and must not enter evidence logs.
   * **Validation:** `V-8`.
 * [x] `T3.3` **Change:** Review the non-mutating deployment verification evidence.
@@ -160,10 +160,10 @@
 
 **Dependencies:** Areas 1-3 complete; no unresolved release, identity, resource, backup, or access-check failure.
 
-* [ ] `T4.1` **Change:** Update the cutover handoff with Phase 3 results.
+* [x] `T4.1` **Change:** Update the cutover handoff with Phase 3 results.
   * **Target:** `docs/proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md`.
-  * **Current -> required:** The handoff contains later live evidence but does not organize it as a Phase 3 readiness record tied to this plan's validation IDs.
-  * **Implementation:** Record the release identity, test commands and results, manifest counts, reconciliation result, conflict/ownership result, backup path and integrity result, access matrix, target-content disposition, limitations, and reviewer/date.
+  * **Current -> required:** The handoff now contains the Phase 3 release, regression, manifest, reconciliation, backup, access, and target-content evidence; the image-parity and dataset limitations remain explicit.
+  * **Implementation:** Preserve the recorded release identity, test commands and results, manifest counts, reconciliation result, conflict/ownership result, backup path and integrity result, access matrix, target-content disposition, limitations, and reviewer/date.
   * **Constraints:** Do not record passwords, `.pgpass` contents, or unredacted command output containing secrets.
   * **Validation:** `V-9`, `V-10`.
 * [ ] `T4.2` **Change:** Confirm Phase 4 handoff readiness.
@@ -179,25 +179,25 @@
 
 | Criterion | Task IDs | Validation IDs | Expected evidence |
 | --- | --- | --- | --- |
-| `PH3-AC-1` | `T1.1`, `T1.2`, `T1.3` | `V-1`, `V-2`, `V-3` | Exact release identity is recorded; focused authorization and full backend regression suites pass | In progress: focused suite passed; release-linked full-suite evidence remains |
+| `PH3-AC-1` | `T1.1`, `T1.2`, `T1.3` | `V-1`, `V-2`, `V-3` | Exact release identity is recorded; focused authorization and full backend regression suites pass | Partially complete: branch baseline tests pass; final evidence awaits the post-merge `dev` image |
 | `PH3-AC-2` | `T2.2`, `T2.3` | `V-5`, `V-6` | Reviewed manifest applies and reconciliation reports zero missing administrators, resources, and grants | Complete for the test target |
 | `PH3-AC-3` | `T2.1`, `T2.3` | `V-4`, `V-6` | Resource inventory has no unresolved active locator conflict and every reviewed resource has an owner or reader | Complete for applied records; content scope remains open |
 | `PH3-AC-4` | `T2.1`, `T2.3`, `T3.2` | `V-4`, `V-6`, `V-8` | Target content disposition is approved; reviewed projects and shared sources have the recorded grants before enforcement | Open: reviewed content is absent from the test target |
-| `PH3-AC-5` | `T3.1` | `V-7` | Backup is integrity-checked, checksummed, retained, and stored at a recorded operator-controlled path | In progress: rollback backup passed; retention details remain |
-| `PH3-AC-6` | `T3.2`, `T3.3` | `V-8`, `V-9` | Administrator, owner, denied-principal, and unauthenticated requests return the expected outcomes | In progress: owner/denied/isolation passed; administrator evidence remains |
+| `PH3-AC-5` | `T3.1` | `V-7` | Backup is integrity-checked, checksummed, retained, and stored at a recorded operator-controlled path | Complete: backup identity, checksum, path, and integrity result recorded |
+| `PH3-AC-6` | `T3.2`, `T3.3` | `V-8`, `V-9` | Administrator, owner, denied-principal, and unauthenticated requests return the expected outcomes | Complete for recorded test-target access checks; reviewed-dataset availability remains open |
 
 ## Validation And Testing
 
 | ID | Check and target | Command or method | Covers | Expected result | Baseline |
 | --- | --- | --- | --- | --- | --- |
 | `V-1` | Focused authorization suite | `.venv/bin/pytest backend/tests/authorization -q` | `PH3-AC-1` | All collected tests pass; existing skipped tests remain explained | Passed during planning on 2026-09-22; one test skipped |
-| `V-2` | Release identity inspection | `podman image inspect` and `podman container inspect` for the selected image/container; compare source revision label, image ID/digest, checkout revision, and manifest checksum | `PH3-AC-1` | Running or selected image matches the release candidate and reviewed manifest | Existing handoff identifies the image and source revision; immutable image/config/manifest linkage still needs explicit recording |
-| `V-3` | Full backend regression | `make test` or the approved backend equivalent `uv run pytest backend/tests -q` on the release candidate | `PH3-AC-1` | Full backend suite passes with no unexplained release-related failure | Not recorded in the handoff; attach an existing final-release result or rerun |
+| `V-2` | Release identity inspection | `podman image inspect` and `podman container inspect` for the selected image/container; compare source revision label, image ID/digest, checkout revision, and manifest checksum | `PH3-AC-1` | Post-merge `dev` image matches the release candidate and reviewed manifest | Baseline image ID, OCI revision `d27b072c`, current checkout `e38f4bc6`, and manifest checksum recorded; final image is deferred until merge to `dev` |
+| `V-3` | Full backend regression | `.venv/bin/pytest backend/tests -q` | `PH3-AC-1` | Full backend suite passes with no unexplained release-related failure on the post-merge `dev` image | Branch baseline passed at `e38f4bc6`; rerun is deferred until the release image is built after merge |
 | `V-4` | Target-content and inventory gate | Compare target project/shared-data locators with [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md), record provision-or-regenerate decision, and compare against `list-resources --json` | `PH3-AC-3`, `PH3-AC-4` | Every required resource has a reviewed grant, or the approved regenerated manifest replaces the old inventory before migration | Not run during planning; target content gap remains open |
-| `V-5` | Manifest dry-run and application | Review the existing CLI dry-run/import output; rerun against `$CONFIG_DIR/authorization-manifest.yaml` only if the manifest or release changed | `PH3-AC-2`, `PH3-AC-3` | Expected administrator/resource/grant counts are applied to the configured store | Complete on the test target; handoff records 32 resources, 32 grants, and the applied administrator state; count discrepancy requires one final manifest-count correction |
+| `V-5` | Manifest dry-run and application | Review the existing CLI dry-run/import output; rerun against `$CONFIG_DIR/authorization-manifest.yaml` only if the manifest or release changed | `PH3-AC-2`, `PH3-AC-3` | Expected administrator/resource/grant counts are applied to the configured store | Complete on the test target; handoff records 32 resources, 3 administrators, and 32 grants |
 | `V-6` | Integrity and reconciliation | Review the existing `authorization.sh integrity-check` and reconciliation output; rerun only after a relevant state change | `PH3-AC-2`, `PH3-AC-3`, `PH3-AC-4` | Integrity passes and reconciliation reports zero missing records; no active resource is unowned or conflicting | Complete on 2026-09-22 with zero missing records |
-| `V-7` | Backup and backup integrity | Review the rollback restore/integrity evidence, identify the retained backup, and record its checksum/path; create a new backup only if the existing artifact cannot be retained | `PH3-AC-5` | Backup is readable, integrity-checked, recoverable, and retained in operator-controlled storage | Restore and rollback passed; retention path/checksum still needs explicit handoff entry |
-| `V-8` | Authenticated access matrix | Review `verify_authenticated_access.sh` output for Bruno and Phil; add the separate administrator and current-dataset decision | `PH3-AC-4`, `PH3-AC-6` | Unauthenticated `401`, allowed `200`, concealed denied `404`, and administrator access match the reviewed grants | Owner/denied/isolation passed on 2026-09-22 using temporary projects; administrator and reviewed-content scope remain |
+| `V-7` | Backup and backup integrity | Review the rollback restore/integrity evidence, identify the retained backup, and record its checksum/path; create a new backup only if the existing artifact cannot be retained | `PH3-AC-5` | Backup is readable, integrity-checked, recoverable, and retained in operator-controlled storage | Passed for `authorization-20260922-110641.sqlite3`; checksum and writable-copy integrity result recorded |
+| `V-8` | Authenticated access matrix | Review `verify_authenticated_access.sh` output for Bruno and Phil and the separate administrator probe | `PH3-AC-4`, `PH3-AC-6` | Unauthenticated `401`, allowed `200`, concealed denied `404`, and administrator access match the reviewed grants | Passed: Bruno/Phil isolation plus administrator `GET /api/v1/projects` HTTP 200; reviewed-content scope remains |
 | `V-9` | Deployment verification evidence | Review the existing `run_deployment_verification.sh` evidence under `DATA_DIR/deployment-verification/`; rerun only if release identity differs | `PH3-AC-6` | Dated report records health, protected-route denial, authenticated outcomes, and limitations without secrets | Core live checks, rollback, firewall, external HTTPS, and credential rotation passed on 2026-09-22 |
 | `V-10` | Handoff and Phase 4 readiness review | Manual review of the updated test handoff, evidence directory, backup identity, release identity, and rollback-owner decision; run `scripts/check_doc_links.sh` | All criteria and Phase 4 handoff | Every result is linked, limitations are explicit, and Phase 4 inputs are complete | Not run for this plan; handoff update is a planned deliverable |
 
@@ -215,19 +215,19 @@
 
 | Area | Status | Dependencies | Notes |
 | --- | --- | --- | --- |
-| Area 1: Release-candidate evidence closeout | In progress | Phase 2 and Phase 2A | Focused authorization tests passed; record immutable image/config/manifest identity and attach or rerun the full-suite result |
+| Area 1: Release-candidate evidence closeout | Blocked pending merge | Phase 2 and Phase 2A; merge to `dev` | Branch tests passed; build the final image from merged `dev` and rerun narrow release checks |
 | Area 2: Manifest and target-content evidence | Partially complete | Area 1 | Import, integrity, and zero-missing reconciliation passed; decide whether absent reviewed content is provisioned or the policy is regenerated |
-| Area 3: Backup and access evidence | Partially complete | Areas 1-2 | Rollback, owner/denied isolation, firewall, HTTPS, and credential rotation passed; record retained backup details and administrator access |
-| Area 4: Test-target readiness handoff | Not started | Areas 1-3 | Consolidate existing evidence and explicitly state whether the current test dataset is ready for Phase 4 |
+| Area 3: Backup and access evidence | Done | Areas 1-2 | Rollback, backup integrity, owner/denied isolation, administrator access, firewall, HTTPS, and credential rotation passed |
+| Area 4: Test-target readiness handoff | In progress | Areas 1-3 | Handoff updated with fresh evidence; post-merge release image and dataset decisions remain |
 
 ## Definition Of Done
 
 - [x] `PH3-AC-2` has a dry-run, applied manifest, integrity check, and reconciliation result reporting zero missing records for the test target.
 - [x] `PH3-AC-3` has a recorded locator-conflict check and no unowned applied resource for the test target.
-- [ ] `PH3-AC-1` has focused authorization and full backend regression evidence tied to the selected release candidate.
+- [ ] `PH3-AC-1` has focused authorization and full backend regression evidence tied to the post-merge `dev` release candidate.
 - [ ] `PH3-AC-4` has an approved target-content disposition and reviewed grants for the resources actually subject to enforcement.
-- [ ] `PH3-AC-5` has the already-tested backup's checksum, storage path, and retention owner recorded.
-- [ ] `PH3-AC-6` has administrator, project-owner, denied-principal, and unauthenticated access results recorded through the proxy.
+- [x] `PH3-AC-5` has the already-tested backup's checksum, storage path, and retention owner recorded.
+- [x] `PH3-AC-6` has administrator, project-owner, denied-principal, and unauthenticated access results recorded through the proxy.
 - [ ] The release identity, manifest revision, configuration revision, and evidence timestamps are recorded together.
 - [ ] The cutover handoff links every validation result and names the rollback decision owner.
 - [ ] Documentation links and shell syntax checks pass, and no credentials appear in evidence.
@@ -237,7 +237,7 @@
 
 - **Target content is absent.** The reviewed manifest names 26 projects and 6 shared data sources that the test deployment does not currently mount. Provision the reviewed content or regenerate and re-review the policy before claiming `PH3-AC-4`.
 - **Release drift.** A passing test or reconciliation result is invalid after the image, checkout, manifest, or target configuration changes. Record immutable identity for every run.
-- **Administrator-count discrepancy.** The handoff summary reports 2 administrators, while the reviewed manifest and detailed handoff facts report 3 (`admin`, `roger`, and `rebecka`). Resolve this against the applied database and final manifest before closing `PH3-AC-1` or `PH3-AC-2`.
+- **Administrator-count discrepancy.** The earlier handoff summary reported 2 administrators, while the reviewed manifest, applied role inventory, and detailed handoff facts report 3 (`admin`, `roger`, and `rebecka`). The summary and Phase 3 evidence now use the verified count of 3.
 - **Temporary-project access evidence is limited.** The existing Bruno/Phil check proves enforcement and concealment but not access to the reviewed dataset. Keep that distinction in the handoff.
 - **Backup retention.** Keep the readiness backup until Phase 4 acceptance or the rollback window closes; record the owner and location.
 - **Same-LAN limitation.** The target is a virtual server with no second host on the target LAN. Preserve the accepted exception and compensating loopback, firewall, and external HTTPS checks.
