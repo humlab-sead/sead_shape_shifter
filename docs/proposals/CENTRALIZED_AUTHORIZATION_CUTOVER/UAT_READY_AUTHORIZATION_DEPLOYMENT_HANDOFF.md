@@ -1,6 +1,6 @@
 # Handoff: UAT-Ready Authorization Deployment
 
-**Status:** Phase 4 complete on 2026-09-22. All four task areas are done and `PH4-AC-1` to `PH4-AC-5` are met. One step remains before this is treated as final: the corrected access-check script has not yet run on the deployment host, so its in-container role lookup is unverified.
+**Status:** Phase 4 complete on 2026-09-22. All four task areas are done and `PH4-AC-1` to `PH4-AC-5` are met. One step remains before this is treated as final: the corrected access-check script has not yet run on the deployment host, because the fix must first land on `dev` and reach the target through `sync-to-deploy`.
 **Opened:** 2026-09-22
 **Environment:** host `humlabsead.srv.its.umu.se`, deployment user `test-shape-shifter.sead.se` (uid/gid 1021), container `shape-shifter` published on `127.0.0.1:8012`, proxy `https://test-shape-shifter.sead.se`
 **Source plans:** [Phase 4 task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md), [Phase 3 task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_3_TASK_PLAN.md), [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
@@ -65,7 +65,8 @@ This deployment runs the authorization system from the outset. The old server co
 | Pre-rollback backup (`V-4.8`) | `scripts/authorization.sh backup`, then `sha256sum` | `authorization-20260922-164454.sqlite3`, SHA-256 `9ebf2f22…8b3e`, byte-identical to all three earlier backups of the day |
 | Rollback exercise (`V-4.9`) | `scripts/verify/rollback_exercise.sh --image shape-shifter:dev --authorization-backup … --manifest ~/config/authorization-manifest.yaml --evidence-dir … --yes` | Passed: integrity passed, reconciliation `Missing: 0 resources, 0 administrators, 0 grants`, recorded image restarted, running image ID equals the recorded image ID, health `200` |
 | Service supervision restored after the rollback | `make service-restart`, then loopback health | `Service restarted`; `{"status":"healthy","version":"2.1.0","environment":"production","timestamp":"2026-09-22T14:55:32.576269Z"}` |
-| Probe-script role handling corrected | `bash -n`, `shellcheck`, and a local harness against a stand-in proxy | See *Access-check detail*; the in-container role lookup itself is unverified until the check is re-run on the deployment host |
+| Probe-script role handling corrected | `bash -n`, `shellcheck -S warning`, a local harness against a stand-in proxy, and the extracted role-lookup snippet run against a real authorization store | See *Access-check detail*. The snippet returned `project_maintainer` for `riia`, nothing for `bruno`, and `admin` for `admin`, matching the deployment's role shape. Reaching the target needs a `dev` merge and a sync |
+| Evidence logs filed | Copied from gitignored `tmp/` into the deployment evidence directory | `list-audit-events.log`, `list-resources.log`, and `list-grants.log` are under `<DATA_DIR>/deployment-verification/phase-4/` |
 
 ### Resource inventory detail
 
@@ -173,7 +174,9 @@ Complete. The four required outcomes are recorded in *Access-check detail*: unau
 
 The probe script was corrected in the same session. It now reads each principal's deployment roles from the deployed policy before probing, prints them as a principal-scope block, expects `200` for a denied probe when the principal holds a role that grants read, labels that probe as an expected privileged read, and states how many isolation directions were actually verified. When the roles cannot be read it says so and keeps the `404` expectation, so a privileged principal still fails rather than passing silently.
 
-The corrections passed `bash -n`, `shellcheck -S warning`, and a local harness that exercised three cases: a privileged principal as B, two unprivileged principals, and an unreadable scope. The in-container role lookup itself was not exercised, because it needs the deployment host, so re-running the check is the remaining verification.
+The corrections passed `bash -n`, `shellcheck -S warning`, a local harness that exercised three cases (a privileged principal as B, two unprivileged principals, and an unreadable scope), and the extracted role-lookup snippet run against a real authorization store, where it returned `project_maintainer` for `riia`, nothing for `bruno`, and `admin` for `admin`.
+
+**The deployment host still runs the old script.** `~/container` is a synced copy maintained by `container/scripts/deploy/sync-to-deploy`, not a git checkout, and the deployment user cannot read this checkout, so the fix reaches the target only after it lands on `dev` and the tree is re-synced. A re-run on 2026-09-22 confirmed this: the output had no principal-scope block and repeated the original failure. No image rebuild is needed, because the script runs on the host.
 
 ### `T4.7` / `V-4.8`, `V-4.9` — backup and rollback exercise
 
@@ -184,7 +187,7 @@ The supervision follow-up is done. `make service-restart` reported `Service rest
 ## What Is Not Verified
 
 - **Symmetric cross-resource isolation.** Only one of the two directions was verified, because `riia` holds `project_maintainer`. The other direction is an expected privileged read. Nothing here shows that two scope-limited principals cannot reach each other's projects, because the deployment has no such pair.
-- **The corrected probe script against the live deployment.** The role lookup that runs inside the container has not executed there; only the surrounding logic was tested locally.
+- **The corrected probe script against the live deployment.** The target's `~/container` is a synced copy updated by `container/scripts/deploy/sync-to-deploy`, not a git checkout, so the fix reaches it only after it lands on `dev` and the tree is re-synced. Until then the target runs the old script, which reports a privileged read as an isolation failure. The logic and the role-lookup snippet are verified locally, but the `podman exec` invocation of the snippet has not run on the target.
 - **`bulgaria-arbodat-lookup-options`.** It cannot connect as deployed, and that failure is expected until the data source is removed or its file is provisioned.
 - **Functional correctness of the application.** This record covers authorization behaviour and operator procedures. Whether transformations, ingesters, and loaders produce correct output is not assessed here and belongs to the acceptance owners.
 - **Production.** Nothing here was verified on the production host, and the production flip is out of scope.
@@ -210,13 +213,12 @@ The supervision follow-up is done. `make service-restart` reported `Service rest
 
 ## Next Actions
 
-1. **Re-run the access check on the deployment host.** The role handling is corrected and locally tested, but the in-container lookup that reads the deployment roles has not run against the live container. Record the new transcript as the `V-4.7` evidence; it should report the principal scope and `1 of 2` isolation directions.
+1. **Land the probe-script fix on `dev`, sync the target tree, then re-run the access check.** `~/container` is a synced copy, so the fix must reach `dev` and be synced with `container/scripts/deploy/sync-to-deploy` before the target can use it. No image rebuild is needed. Record the new transcript as the `V-4.7` evidence; it should report the principal scope and `1 of 2` isolation directions.
 2. **Settle the tester accounts, then apply any grants before the window opens.** Decide which account each tester uses, apply the grants, re-record the manifest checksum, and take a fresh backup. A rollback discards anything granted after the backup, so this must finish before acceptance starts.
-3. **Move the audit, resource, and grant logs out of `tmp/`.** They are gitignored where they are. Copy them to `<DATA_DIR>/deployment-verification/` beside the rollback transcript, so the recorded runs stay with the deployment.
-4. **Correct or confirm the Phase 3 cleanup statement.** The audit trail does not show the 2026-09-22 deletions it describes.
-5. **Decide `bulgaria-arbodat-lookup-options`.** Remove it or provision the missing file; it cannot connect as deployed.
-6. **Hand this record to the user acceptance test owners.** It states what is verified and what is not; acceptance criteria are theirs to author and apply.
-7. **Do not repoint production DNS or the reverse proxy.** The flip is a separate decision with its own proposal and owners.
+3. **Correct or confirm the Phase 3 cleanup statement.** The audit trail does not show the 2026-09-22 deletions it describes.
+4. **Decide `bulgaria-arbodat-lookup-options`.** Remove it or provision the missing file; it cannot connect as deployed.
+5. **Hand this record to the user acceptance test owners.** It states what is verified and what is not; acceptance criteria are theirs to author and apply.
+6. **Do not repoint production DNS or the reverse proxy.** The flip is a separate decision with its own proposal and owners.
 
 ## Risks
 
