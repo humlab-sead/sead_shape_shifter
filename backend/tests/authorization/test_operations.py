@@ -126,8 +126,8 @@ def test_manifest_inspection_accepts_yaml(tmp_path) -> None:
 
 
 def test_manifest_inspection_accepts_yaml_without_an_extension(tmp_path) -> None:
-    # The deployment wrapper streams the manifest through stdin, so the CLI reads
-    # it from a path like /dev/stdin that has no extension to select a parser.
+    # A manifest streamed through stdin reaches the CLI as a path like
+    # /dev/stdin, which has no extension to select a parser.
     manifest = tmp_path / "manifest"
     manifest.write_text(
         "administrators:\n"

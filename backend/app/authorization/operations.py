@@ -175,9 +175,9 @@ def _load_manifest(path: Path) -> dict[str, Any]:
         elif suffix == ".json":
             value = json.loads(content)
         else:
-            # The deployment wrapper streams the reviewed manifest through stdin,
-            # which the CLI sees as /dev/stdin. That name carries no extension, so
-            # choose the parser from the content instead.
+            # A manifest can arrive through a pipe, for example as
+            # --manifest /dev/stdin. Such a path carries no extension, so choose
+            # the parser from the content instead of the name.
             try:
                 value = json.loads(content)
             except json.JSONDecodeError:

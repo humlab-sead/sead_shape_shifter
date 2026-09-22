@@ -185,7 +185,17 @@ import_manifest() {
     [[ -f "$manifest_path" ]] || { echo "Manifest not found: $manifest_path" >&2; exit 1; }
     [[ "${2:-}" = "" ]] || { echo "import-manifest accepts exactly one manifest path." >&2; exit 1; }
     require_running_container
-    podman exec -i "$CONTAINER_NAME" "${CONTAINER_CLI[@]}" migrate --manifest /dev/stdin < "$manifest_path"
+    # The migrate command reads the manifest twice: once to summarize it and once
+    # to apply it. A stream cannot be read twice, so place the manifest inside the
+    # container first. tee creates it as the container's own user, which is the
+    # user that reads it, and the name keeps the extension that selects the JSON
+    # or YAML parser.
+    local extension="${manifest_path##*.}"
+    [[ "$extension" = "$manifest_path" ]] && extension="yaml"
+    local container_manifest_path="/tmp/authorization-import-$$.$extension"
+    trap 'podman exec "$CONTAINER_NAME" rm -f "$container_manifest_path" >/dev/null 2>&1 || true' RETURN
+    podman exec -i "$CONTAINER_NAME" tee "$container_manifest_path" < "$manifest_path" >/dev/null
+    podman exec "$CONTAINER_NAME" "${CONTAINER_CLI[@]}" migrate --manifest "$container_manifest_path"
 }
 
 export_manifest() {
