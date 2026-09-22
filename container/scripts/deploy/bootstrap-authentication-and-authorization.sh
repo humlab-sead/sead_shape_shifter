@@ -26,7 +26,7 @@ GROUPS_FILE="$CONFIG_DIR/groups.d/shape-shifter.conf"
 HTPASSWD_FILE="/etc/nginx/htpasswd/shape-shifter"
 
 fail() {
-    echo "$*" >&2
+    printf '%s\n' "$@" >&2
     exit 1
 }
 
@@ -65,8 +65,33 @@ if [[ ! -d "$DEPLOY_DIR" ]]; then
     fail "Deployment directory does not exist: $DEPLOY_DIR"
 fi
 
+DEPLOY_UID="$(id -u "$DEPLOY_USER")"
+CONTAINER_NAME="${CONTAINER_NAME:-shape-shifter}"
+# The deployment user's Podman lives under their own user manifest, so run the
+# wrapper with the target user's home and runtime directory. Without them podman
+# looks in the wrong storage and reports the running container as absent.
+TARGET_PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin"
+
+target_run() {
+    # The -- marker must precede the assignments: some env implementations
+    # (uutils coreutils) reject -- after variable assignments.
+    sudo -u "$DEPLOY_USER" -H env -- \
+        "PATH=$TARGET_PATH" \
+        "XDG_RUNTIME_DIR=/run/user/$DEPLOY_UID" \
+        "CONFIG_DIR=$CONFIG_DIR" \
+        "$@"
+}
+
+# The role assignments and the manifest import act on the running container, so
+# confirm it is reachable before any account, group, or role changes.
 if [[ $EUID -ne 0 ]]; then
     fail "This script must be run as root (i.e. use sudo)"
+fi
+
+container_status="$(target_run podman container inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
+if [[ "$container_status" != running ]]; then
+    fail "Container '$CONTAINER_NAME' is not running for $DEPLOY_USER (status: ${container_status:-unknown}). Start it as that user, then rerun this script:" \
+        "  sudo -u $DEPLOY_USER -H bash -lc 'cd ~/container && make up'"
 fi
 
 HTPASSWD_OPTIONS=(-c)
@@ -89,8 +114,7 @@ install -D -m 640 -o root -g www-data \
 # The wrapper resolves its configuration from CONFIG_DIR, so pass the directory
 # this script validated instead of letting the deploy user's home decide.
 run_authorization() {
-    sudo -u "$DEPLOY_USER" -- env "CONFIG_DIR=$CONFIG_DIR" \
-        "$DEPLOY_DIR/scripts/authorization.sh" "$@"
+    target_run "$DEPLOY_DIR/scripts/authorization.sh" "$@"
 }
 
 grant_application_role() {
@@ -114,5 +138,8 @@ done
 
 grant_application_role "$ADMIN_AUTH_USER" admin
 
-sudo -u "$DEPLOY_USER" -- env "CONFIG_DIR=$CONFIG_DIR" \
+sudo -u "$DEPLOY_USER" -H env -- \
+    "PATH=$TARGET_PATH" \
+    "XDG_RUNTIME_DIR=/run/user/$DEPLOY_UID" \
+    "CONFIG_DIR=$CONFIG_DIR" \
     "$DEPLOY_DIR/scripts/authorization.sh" import-manifest "$AUTHORIZATION_MANIFEST"
