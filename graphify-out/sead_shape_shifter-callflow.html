@@ -60,7 +60,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
 <div class="container">
 
 <h1>sead_shape_shifter — Complete Call Flow &amp; Architecture Documentation</h1>
-<p class="subtitle">Generated from graphify knowledge graph: 19155 nodes, 42971 edges, 791 communities. Commit: ba66941</p>
+<p class="subtitle">Generated from graphify knowledge graph: 19155 nodes, 42971 edges, 793 communities. Commit: 662284d</p>
 
 <div class="nav">
     <a href="#overview">Architecture Overview</a>
@@ -90,7 +90,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
 flowchart LR
     EXTRACT_PIPELINE_5F350230("Extraction Pipeline<br/><small>387 nodes</small>")
     class EXTRACT_PIPELINE_5F350230 module;
-    BUILD_GRAPH_321CBB04("Graph Build<br/><small>1581 nodes</small>")
+    BUILD_GRAPH_321CBB04("Graph Build<br/><small>1544 nodes</small>")
     class BUILD_GRAPH_321CBB04 module;
     ANALYSIS_CLUSTERING_C79796DA("Analysis &amp; Clustering<br/><small>355 nodes</small>")
     class ANALYSIS_CLUSTERING_C79796DA module;
@@ -100,15 +100,15 @@ flowchart LR
     class CLI_SKILLS_9964CBB8 module;
     INGEST_CACHE_UPDATE_FF457338("Ingestion &amp; Updates<br/><small>592 nodes</small>")
     class INGEST_CACHE_UPDATE_FF457338 module;
-    SERVE_API_35EC8E86("Serving API<br/><small>3042 nodes</small>")
+    SERVE_API_35EC8E86("Serving API<br/><small>3114 nodes</small>")
     class SERVE_API_35EC8E86 module;
     SECURITY_GLOBAL_5B9C6A04("Security &amp; Global Graph<br/><small>368 nodes</small>")
     class SECURITY_GLOBAL_5B9C6A04 module;
-    TESTS_FIXTURES_B84B1DCC("Tests &amp; Fixtures<br/><small>10365 nodes</small>")
+    TESTS_FIXTURES_B84B1DCC("Tests &amp; Fixtures<br/><small>10322 nodes</small>")
     class TESTS_FIXTURES_B84B1DCC module;
     FORMULAENGINE_4BD28E67("FormulaEngine<br/><small>92 nodes</small>")
     class FORMULAENGINE_4BD28E67 module;
-    TESTCLIENT_AA59EB0A("TestClient<br/><small>58 nodes</small>")
+    TESTCLIENT_AA59EB0A("TestClient<br/><small>44 nodes</small>")
     class TESTCLIENT_AA59EB0A module;
     USER_GUIDE_MD_82745035("USER_GUIDE.md<br/><small>38 nodes</small>")
     class USER_GUIDE_MD_82745035 module;
@@ -116,20 +116,20 @@ flowchart LR
     class SHAPE_SHIFTER_DESIGN_FCB65A35 module;
     DSL_PY_244A277D("dsl.py<br/><small>33 nodes</small>")
     class DSL_PY_244A277D module;
-    OTHER_D0941E68("Other<br/><small>1834 nodes</small>")
+    OTHER_D0941E68("Other<br/><small>1856 nodes</small>")
     class OTHER_D0941E68 module;
-    SERVE_API_35EC8E86 -->|imports x591| TESTS_FIXTURES_B84B1DCC
-    TESTS_FIXTURES_B84B1DCC -->|imports x317| SERVE_API_35EC8E86
-    BUILD_GRAPH_321CBB04 -->|calls x205| TESTS_FIXTURES_B84B1DCC
-    SERVE_API_35EC8E86 -->|imports x130| INGEST_CACHE_UPDATE_FF457338
-    TESTS_FIXTURES_B84B1DCC -->|method x123| EXTRACT_PIPELINE_5F350230
-    SERVE_API_35EC8E86 -->|method x104| BUILD_GRAPH_321CBB04
+    SERVE_API_35EC8E86 -->|imports x612| TESTS_FIXTURES_B84B1DCC
+    TESTS_FIXTURES_B84B1DCC -->|imports x328| SERVE_API_35EC8E86
+    BUILD_GRAPH_321CBB04 -->|calls x212| TESTS_FIXTURES_B84B1DCC
+    SERVE_API_35EC8E86 -->|imports x126| INGEST_CACHE_UPDATE_FF457338
+    TESTS_FIXTURES_B84B1DCC -->|method x122| EXTRACT_PIPELINE_5F350230
     TESTS_FIXTURES_B84B1DCC -->|imports x104| BUILD_GRAPH_321CBB04
+    SERVE_API_35EC8E86 -->|method x95| BUILD_GRAPH_321CBB04
     INGEST_CACHE_UPDATE_FF457338 -->|imports x91| TESTS_FIXTURES_B84B1DCC
     ANALYSIS_CLUSTERING_C79796DA -->|imports x83| TESTS_FIXTURES_B84B1DCC
+    TESTS_FIXTURES_B84B1DCC -->|method x80| OTHER_D0941E68
     INGEST_CACHE_UPDATE_FF457338 -->|imports x74| SERVE_API_35EC8E86
-    OTHER_D0941E68 -->|contains x72| TESTS_FIXTURES_B84B1DCC
-    TESTS_FIXTURES_B84B1DCC -->|method x69| OTHER_D0941E68
+    OTHER_D0941E68 -->|contains x71| TESTS_FIXTURES_B84B1DCC
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
     classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
@@ -146,7 +146,7 @@ flowchart LR
     <h4>Architecture Layers</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>Layer</th><th>Nodes</th><th>Communities</th></tr>
-      <tr><td>Extraction Pipeline</td><td>387</td><td><code>11, 130, 50, 241, 137, 498, 202, 592</code></td></tr><tr><td>Graph Build</td><td>1581</td><td><code>23, 15, 90, 44, 52, 3, 112, 280, 129, 72, 38, 134, 140, 141, 79, 143, 186, 207, 266, 292, 105, 150, 242, 162, 163, 198, 124, 538, 185, 197, 200, 201, 165, 251, 233, 333, 376, 305, 422, 277, 336, 299, 320, 322, 329, 352, 391, 420, 361, 449, 586, 460, 608, 375, 383, 393, 579, 581, 640, 753, 755, 756, 757, 784</code></td></tr><tr><td>Analysis &amp; Clustering</td><td>355</td><td><code>46, 54, 190, 148, 159, 156, 274, 317, 401, 313, 487, 496, 748, 497, 493, 760, 567</code></td></tr><tr><td>Outputs &amp; Docs</td><td>164</td><td><code>63, 204, 224, 331, 289, 319, 303, 153, 745</code></td></tr><tr><td>CLI &amp; Skill Installers</td><td>209</td><td><code>175, 248, 325, 179, 193, 221, 290, 456, 470, 525, 564, 635, 787, 788, 794, 796</code></td></tr><tr><td>Ingestion &amp; Updates</td><td>592</td><td><code>30, 7, 45, 78, 276, 418, 668</code></td></tr><tr><td>Serving API</td><td>3042</td><td><code>502, 529, 0, 132, 342, 83, 8, 49, 75, 40, 22, 293, 161, 59, 184, 24, 88, 92, 171, 109, 128, 166, 173, 365, 203, 208, 491, 228, 240, 265, 278, 589, 291, 326, 364, 334, 335, 346, 398, 370, 467, 507, 519, 537, 543, 546, 555</code></td></tr><tr><td>Security &amp; Global Graph</td><td>368</td><td><code>120, 20, 328</code></td></tr><tr><td>Tests &amp; Fixtures</td><td>10365</td><td><code>4, 21, 53, 1, 5, 16, 189, 145, 29, 243, 85, 33, 482, 39, 9, 590, 206, 55, 127, 116, 17, 56, 10, 13, 36, 98, 18, 27, 74, 51, 99, 14, 41, 411, 28, 210, 96, 2, 104, 215, 374, 118, 26, 239, 71, 121, 35, 479, 66, 12, 31, 37, 64, 142, 6, 188, 107, 139, 47, 101, 169, 262, 32, 57, 82, 155, 58, 117, 504, 114, 65, 102, 73, 505, 285, 80, 89, 42, 60, 136, 86, 25, 252, 68, 182, 91, 94, 97, 103, 106, 154, 164, 87, 110, 111, 345, 354, 367, 70, 108, 123, 126, 138, 19, 135, 736, 220, 226, 238, 146, 178, 67, 751, 93, 149, 158, 157, 232, 312, 349, 48, 147, 151, 183, 119, 160, 167, 256, 258, 260, 267, 191, 192, 196, 306, 43, 170, 205, 211, 263, 180, 212, 218, 222, 227, 318, 347, 359, 225, 230, 231, 234, 255, 272, 282, 350, 144, 187, 287, 34, 341, 421, 246, 247, 257, 264, 288, 309, 314, 330, 355, 521, 254, 268, 271, 400, 115, 270, 283, 424, 76, 295, 465, 131, 286, 300, 302, 304, 307, 310, 362, 369, 382, 392, 469, 488, 522, 531, 351, 477, 527, 311, 339, 340, 344, 353, 357, 363, 366, 368, 380, 381, 476, 540, 571, 582, 583, 585, 638, 81, 389, 396, 413, 486, 740, 284, 399, 402, 405, 408, 409, 410, 412, 414, 415, 416, 417, 419, 454, 596, 599, 61, 629, 407, 455, 458, 485, 523, 569, 749, 457, 499, 500, 501, 566, 568, 570, 572, 575, 576, 62, 752, 511, 512, 528, 577, 578, 588, 647, 648, 649, 721, 759, 761, 763, 532, 533, 176, 547, 548, 549, 550, 587, 597, 600, 602, 603, 604, 605, 606, 607, 610, 612, 617, 619, 632, 633, 634, 636, 637, 639, 641, 642, 643, 644, 645, 651, 652, 653, 722, 723, 724, 725, 726, 727, 728, 729, 730, 731, 732, 733, 734, 735, 737, 738, 739, 741, 742, 743, 744, 746, 767, 768, 769, 770, 774, 775, 776, 777, 778, 779, 791, 792, 656, 657, 658, 659, 677, 678, 679, 680, 689, 691, 693</code></td></tr><tr><td>FormulaEngine</td><td>92</td><td><code>100</code></td></tr><tr><td>TestClient</td><td>58</td><td><code>69</code></td></tr><tr><td>USER_GUIDE.md</td><td>38</td><td><code>122</code></td></tr><tr><td>Shape Shifter - Design</td><td>37</td><td><code>172</code></td></tr><tr><td>dsl.py</td><td>33</td><td><code>113</code></td></tr><tr><td>Other</td><td>1834</td><td><code>195, 199, 95, 125, 133, 216, 152, 77, 261, 84, 281, 181, 229, 273, 194, 209, 245, 316, 217, 219, 388, 249, 337, 244, 250, 279, 259, 298, 395, 269, 275, 372, 253, 294, 296, 315, 390, 406, 447, 613, 297, 301, 308, 371, 598, 762, 321, 323, 324, 327, 332, 360, 236, 338, 343, 348, 356, 358, 394, 397, 377, 378, 384, 385, 386, 387, 461, 466, 235, 237, 403, 404, 423, 425, 426, 427, 428, 429, 430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 448, 450, 451, 452, 453, 462, 468, 494, 495, 574, 595, 620, 174, 373, 459, 463, 464, 503, 513, 517, 541, 601, 611, 754, 471, 472, 473, 474, 475, 478, 480, 481, 483, 484, 489, 530, 565, 747, 750, 379, 492, 508, 509, 510, 573, 580, 593, 773, 490, 514, 515, 516, 518, 524, 526, 609, 771, 772, 506, 534, 535, 536, 542, 584, 591, 594, 614, 615, 618, 621, 622, 623, 624, 625, 626, 627, 628, 631, 765, 766, 785, 786, 168, 177, 520, 539, 544, 545, 551, 552, 553, 554, 556, 557, 558, 559, 560, 561, 562, 563, 616, 646, 650, 654, 793, 795, 804, 213, 214, 223, 630, 655, 660, 661, 662, 663, 664, 665, 666, 667, 669, 670, 671, 672, 673, 674, 675, 676, 681, 682, 683, 684, 685, 686, 687, 688, 690, 692, 694, 695, 696, 697, 698, 699, 700, 701, 702, 703, 704, 705, 706, 707, 708, 709, 710, 711, 712, 713, 714, 715, 716, 717, 718, 719, 720, 758</code></td></tr>
+      <tr><td>Extraction Pipeline</td><td>387</td><td><code>11, 130, 50, 241, 137, 498, 202, 592</code></td></tr><tr><td>Graph Build</td><td>1544</td><td><code>23, 15, 90, 44, 52, 3, 112, 207, 280, 72, 38, 134, 140, 141, 79, 143, 186, 266, 105, 150, 242, 162, 163, 198, 124, 538, 185, 292, 197, 200, 201, 165, 251, 233, 333, 376, 422, 277, 336, 299, 320, 322, 329, 352, 391, 420, 361, 449, 586, 589, 460, 608, 375, 383, 393, 579, 581, 640, 753, 755, 756, 757, 784</code></td></tr><tr><td>Analysis &amp; Clustering</td><td>355</td><td><code>46, 54, 190, 148, 159, 156, 274, 317, 401, 313, 487, 496, 748, 497, 493, 760, 567</code></td></tr><tr><td>Outputs &amp; Docs</td><td>164</td><td><code>63, 204, 224, 331, 289, 319, 303, 153, 745</code></td></tr><tr><td>CLI &amp; Skill Installers</td><td>209</td><td><code>175, 248, 325, 179, 193, 221, 290, 456, 470, 525, 564, 635, 787, 788, 794, 796</code></td></tr><tr><td>Ingestion &amp; Updates</td><td>592</td><td><code>30, 7, 45, 78, 276, 418, 668</code></td></tr><tr><td>Serving API</td><td>3114</td><td><code>0, 529, 502, 132, 342, 83, 8, 49, 75, 40, 22, 293, 161, 59, 184, 24, 285, 88, 92, 171, 109, 128, 166, 173, 365, 203, 208, 491, 228, 240, 265, 278, 291, 326, 364, 334, 335, 346, 398, 370, 467, 507, 519, 537, 543, 546, 555</code></td></tr><tr><td>Security &amp; Global Graph</td><td>368</td><td><code>120, 20, 328</code></td></tr><tr><td>Tests &amp; Fixtures</td><td>10322</td><td><code>4, 21, 53, 1, 5, 16, 189, 145, 29, 243, 85, 33, 482, 39, 9, 590, 206, 55, 127, 116, 17, 18, 56, 10, 13, 36, 98, 27, 74, 51, 99, 14, 41, 411, 28, 210, 96, 104, 374, 118, 26, 239, 71, 121, 35, 479, 66, 12, 31, 37, 64, 142, 6, 188, 107, 139, 2, 47, 101, 32, 82, 155, 58, 117, 504, 57, 114, 65, 102, 73, 178, 505, 80, 89, 42, 61, 169, 60, 136, 86, 25, 252, 68, 182, 91, 94, 97, 103, 106, 154, 164, 87, 110, 111, 345, 354, 367, 70, 108, 123, 126, 138, 19, 135, 736, 129, 220, 226, 238, 146, 67, 751, 93, 149, 158, 157, 232, 312, 349, 48, 147, 151, 183, 119, 160, 167, 256, 258, 260, 267, 191, 192, 196, 306, 43, 170, 205, 211, 263, 180, 212, 218, 222, 227, 318, 347, 359, 225, 230, 231, 234, 255, 262, 272, 282, 305, 350, 144, 187, 287, 34, 341, 421, 246, 247, 257, 264, 288, 309, 314, 330, 355, 521, 254, 268, 271, 400, 115, 270, 283, 424, 76, 295, 465, 131, 286, 300, 302, 304, 307, 310, 323, 362, 369, 382, 392, 469, 488, 522, 531, 351, 477, 527, 311, 339, 340, 344, 353, 357, 363, 366, 368, 380, 381, 476, 540, 571, 582, 583, 585, 638, 81, 389, 396, 413, 486, 740, 284, 399, 402, 405, 408, 409, 410, 412, 414, 415, 416, 417, 419, 454, 596, 599, 629, 407, 455, 458, 485, 523, 569, 749, 457, 499, 500, 501, 566, 568, 570, 572, 575, 576, 62, 752, 511, 512, 528, 577, 578, 588, 647, 648, 649, 721, 759, 761, 763, 532, 533, 176, 547, 548, 549, 550, 587, 597, 600, 602, 603, 604, 605, 606, 607, 610, 612, 617, 619, 632, 633, 634, 636, 637, 639, 641, 642, 643, 644, 645, 651, 652, 653, 722, 723, 724, 725, 726, 727, 728, 729, 730, 731, 732, 733, 734, 735, 737, 738, 739, 741, 742, 743, 744, 746, 767, 768, 769, 770, 774, 775, 776, 777, 778, 779, 791, 792, 656, 657, 658, 659, 677, 678, 679, 680, 689, 691, 693</code></td></tr><tr><td>FormulaEngine</td><td>92</td><td><code>100</code></td></tr><tr><td>TestClient</td><td>44</td><td><code>69</code></td></tr><tr><td>USER_GUIDE.md</td><td>38</td><td><code>122</code></td></tr><tr><td>Shape Shifter - Design</td><td>37</td><td><code>172</code></td></tr><tr><td>dsl.py</td><td>33</td><td><code>113</code></td></tr><tr><td>Other</td><td>1856</td><td><code>195, 199, 95, 125, 133, 216, 152, 77, 261, 84, 281, 181, 229, 273, 194, 209, 245, 316, 215, 217, 219, 388, 249, 337, 244, 250, 279, 259, 298, 395, 269, 275, 372, 253, 294, 296, 315, 390, 406, 447, 613, 297, 301, 308, 371, 598, 762, 321, 324, 327, 332, 360, 236, 338, 343, 348, 356, 358, 394, 397, 377, 378, 384, 385, 386, 387, 461, 466, 235, 237, 403, 404, 423, 425, 426, 427, 428, 429, 430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 448, 450, 451, 452, 453, 462, 468, 494, 495, 574, 595, 620, 174, 373, 459, 463, 464, 503, 513, 517, 541, 601, 611, 754, 764, 780, 471, 472, 473, 474, 475, 478, 480, 481, 483, 484, 489, 530, 565, 747, 750, 379, 492, 508, 509, 510, 573, 580, 593, 773, 490, 514, 515, 516, 518, 524, 526, 609, 771, 772, 506, 534, 535, 536, 542, 584, 591, 594, 614, 615, 618, 621, 622, 623, 624, 625, 626, 627, 628, 631, 765, 766, 785, 786, 168, 177, 520, 539, 544, 545, 551, 552, 553, 554, 556, 557, 558, 559, 560, 561, 562, 563, 616, 646, 650, 654, 793, 795, 804, 213, 214, 223, 630, 655, 660, 661, 662, 663, 664, 665, 666, 667, 669, 670, 671, 672, 673, 674, 675, 676, 681, 682, 683, 684, 685, 686, 687, 688, 690, 692, 694, 695, 696, 697, 698, 699, 700, 701, 702, 703, 704, 705, 706, 707, 708, 709, 710, 711, 712, 713, 714, 715, 716, 717, 718, 719, 720, 758</code></td></tr>
     </table>
   </div>
   <div class="card">
@@ -158,7 +158,7 @@ flowchart LR
   <div class="card">
     <h4>Graph Report Highlights</h4>
     <ul>
-      <li>19155 nodes · 42971 edges · 791 communities (675 shown, 116 thin omitted)</li>
+      <li>19155 nodes · 42971 edges · 793 communities (677 shown, 116 thin omitted)</li>
       <li>Extraction: 75% EXTRACTED · 25% INFERRED · 0% AMBIGUOUS · INFERRED: 10723 edges (avg confidence: 0.51)</li>
       <li>Token cost: 0 input · 0 output</li>
       <li>1. `TableConfig` - 694 edges</li>
@@ -519,12 +519,12 @@ flowchart LR
 
 <!-- ====== 3. Graph Build ====== -->
 <h2 id="build-graph">3. Graph Build</h2>
-<p>Graph Build groups implementation around frontend, schemas, backend, entityschemajson, mostly in src/schemas/entitySchema.json, src/schemas/targetModelSchema.json, src/schemas/projectSchema.json. This section covers 1581 nodes and 2508 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Graph Build groups implementation around frontend, schemas, backend, entityschemajson, mostly in src/schemas/entitySchema.json, src/schemas/targetModelSchema.json, src/schemas/projectSchema.json. This section covers 1544 nodes and 2408 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Graph Build (1581 nodes, 2508 edges)
+    %% Section: Graph Build (1544 nodes, 2408 edges)
     subgraph build_graph_backend_app_exceptions_py_8cf79583["backend/app/exceptions.py"]
         app_exceptions_domainexception_init_644fb332("__init__()<br/><small>backend/app/exceptions.py</small>")
         app_exceptions_schemaintrospectionerror_init_a58a1729("__init__()<br/><small>backend/app/exceptions.py</small>")
@@ -541,10 +541,12 @@ flowchart LR
         services_suggestion_service_suggestionservice_95e82425("SuggestionService<br/><small>app/services/suggestion_service.py</small>")
         services_suggestion_service_get_suggestion_servi_a1df94c5("get_suggestion_service()<br/><small>app/services/suggestion_service.py</small>")
     end
+    subgraph build_graph_ingesters_sead_metadata_py_31fe8eb5["ingesters/sead/metadata.py"]
+        sead_metadata_seadschema_b5e0ad6c("SeadSchema<br/><small>ingesters/sead/metadata.py</small>")
+        sead_metadata_table_ad10248a("Table<br/><small>ingesters/sead/metadata.py</small>")
+    end
     models_filter_schema_filterfieldmetadataresponse_619ae408("FilterFieldMetadataResponse<br/><small>app/models/filter_schema.py</small>")
-    services_schema_service_schemacache_cbd7391a("SchemaCache<br/><small>app/services/schema_service.py</small>")
     app_error_tips_get_tips_06f84f5a("get_tips()<br/><small>backend/app/error_tips.py</small>")
-    sead_metadata_seadschema_b5e0ad6c("SeadSchema<br/><small>ingesters/sead/metadata.py</small>")
     sead_submission_submission_50f2f866("Submission<br/><small>ingesters/sead/submission.py</small>")
     services_test_entity_generator_service_testentit_b215f2e7("TestEntityGeneratorService<br/><small>tests/services/test_entity_generator_service.py</small>")
     services_test_schema_service_testschemaintrospec_6ae87932("TestSchemaIntrospectionService<br/><small>tests/services/test_schema_service.py</small>")
@@ -557,7 +559,7 @@ flowchart LR
     app_error_tips_get_tips_06f84f5a -->|calls| app_exceptions_domainexception_init_644fb332
     app_exceptions_domainexception_init_644fb332 -->|calls| app_exceptions_schemaintrospectionerror_init_a58a1729
     app_exceptions_domainexception_to_dict_d9cc71a2 -->|calls| app_exceptions_domainexception_to_json_safe_49066d2f
-    %% Omitted for readability: 1563 nodes, 0 edges
+    %% Omitted for readability: 1526 nodes, 0 edges
     class app_exceptions_domainexception_init_644fb332 function;
     class app_exceptions_schemaintrospectionerror_init_a58a1729 function;
     class app_exceptions_domainexception_to_dict_d9cc71a2 function;
@@ -568,10 +570,10 @@ flowchart LR
     class endpoints_suggestions_suggest_for_entity_fe84090f function;
     class services_suggestion_service_suggestionservice_95e82425 klass;
     class services_suggestion_service_get_suggestion_servi_a1df94c5 function;
-    class models_filter_schema_filterfieldmetadataresponse_619ae408 klass;
-    class services_schema_service_schemacache_cbd7391a klass;
-    class app_error_tips_get_tips_06f84f5a function;
     class sead_metadata_seadschema_b5e0ad6c klass;
+    class sead_metadata_table_ad10248a klass;
+    class models_filter_schema_filterfieldmetadataresponse_619ae408 klass;
+    class app_error_tips_get_tips_06f84f5a function;
     class sead_submission_submission_50f2f866 klass;
     class services_test_entity_generator_service_testentit_b215f2e7 test;
     class services_test_schema_service_testschemaintrospec_6ae87932 test;
@@ -856,7 +858,7 @@ flowchart LR
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x943, calls x303, references x299, explains x256. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x937, calls x287, references x282, explains x245. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -2282,12 +2284,12 @@ flowchart LR
 
 <!-- ====== 8. Serving API ====== -->
 <h2 id="serve-api">8. Serving API</h2>
-<p>Serving API groups implementation around backend, app, test, tests, mostly in app/services/project_service.py, v1/endpoints/projects.py, backend/tests/test_state_manager.py. This section covers 3042 nodes and 8699 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Serving API groups implementation around backend, app, test, tests, mostly in app/services/project_service.py, v1/endpoints/projects.py, backend/tests/test_state_manager.py. This section covers 3114 nodes and 8775 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Serving API (3042 nodes, 8699 edges)
+    %% Section: Serving API (3114 nodes, 8775 edges)
     subgraph serve_api_v1_endpoints_data_sources_py_2327750f["v1/endpoints/data_sources.py"]
         endpoints_data_sources_list_drivers_ea9dc9bb("list_drivers()<br/><small>v1/endpoints/data_sources.py</small>")
         endpoints_data_sources_list_data_sources_1d3bfd65("list_data_sources()<br/><small>v1/endpoints/data_sources.py</small>")
@@ -2326,7 +2328,7 @@ flowchart LR
     backend_app_models_init_py_models_init_69ea22ef -->|imports| models_driver_schema_fieldmetadataresponse_bfa9e457
     backend_app_models_init_py_models_init_69ea22ef -->|imports| models_project_project_2814b5b4
     backend_app_models_init_py_models_init_69ea22ef -->|imports| models_project_projectmetadata_1bae61ce
-    %% Omitted for readability: 3024 nodes, 0 edges
+    %% Omitted for readability: 3096 nodes, 0 edges
     class endpoints_data_sources_list_drivers_ea9dc9bb function;
     class endpoints_data_sources_list_data_sources_1d3bfd65 function;
     class endpoints_data_sources_list_data_source_files_69180e6d function;
@@ -2368,243 +2370,243 @@ flowchart LR
 </tr>
 <tr>
   <td>1</td>
-  <td><code>dependencies.py</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
+  <td><code>projects.py</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
   <td><span class="tag tag-class">Module</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>ApplicationState</code><br><small style="color:var(--muted)">app/core/state_manager.py</small><br><code>FastAPI</code><br><small style="color:var(--muted)">backend/app/main.py</small><br><code>get_app_state()</code><br><small style="color:var(--muted)">app/core/state_manager.py</small><br>+3 more</td>
-  <td>Module file in app/api/dependencies.py.</td>
+  <td><code>api.py</code><br><small style="color:var(--muted)">api/v1/api.py</small></td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>BadRequestError</code><br><small style="color:var(--muted)">app/utils/exceptions.py</small><br>+20 more</td>
+  <td>Module file in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>2</td>
-  <td><code>get_data_source_service()</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
+  <td><code>_project_directory()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>data_sources.py</code><br><small style="color:var(--muted)">v1/endpoints/data_sources.py</small><br><code>test_data_source_api.py</code><br><small style="color:var(--muted)">backend/tests/test_data_source_api.py</small></td>
-  <td>get_data_source_service() node in app/api/dependencies.py.</td>
+  <td><code>_resolve_target_model_path()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small><br><code>BadRequestError</code><br><small style="color:var(--muted)">app/utils/exceptions.py</small><br><code>get_project_raw_yaml()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small><br>+4 more</td>
+  <td>_project_directory() node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>3</td>
-  <td><code>DataSourceService</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
+  <td><code>Path</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>ApplicationState</code><br><small style="color:var(--muted)">app/core/state_manager.py</small><br><code>ProjectSession</code><br><small style="color:var(--muted)">app/core/state_manager.py</small></td>
-  <td>DataSourceService node in app/api/dependencies.py.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>Path node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>4</td>
-  <td><code>get_schema_service()</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
+  <td><code>_authorize_referenced_shared_data_sources()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>schema.py</code><br><small style="color:var(--muted)">v1/endpoints/schema.py</small><br><code>test_schema_endpoints.py</code><br><small style="color:var(--muted)">api/v1/test_schema_endpoints.py</small></td>
-  <td>get_schema_service() node in app/api/dependencies.py.</td>
+  <td><code>data source reference()</code><br><small style="color:var(--muted)">app/authorization/dependencies.py</small><br><code>update_project()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small><br><code>update_project_raw_yaml()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td>_authorize_referenced_shared_data_sources() node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>5</td>
-  <td><code>SchemaIntrospectionService</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
+  <td><code>Principal</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>ApplicationState</code><br><small style="color:var(--muted)">app/core/state_manager.py</small><br><code>ProjectSession</code><br><small style="color:var(--muted)">app/core/state_manager.py</small></td>
-  <td>SchemaIntrospectionService node in app/api/dependencies.py.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>Principal node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>6</td>
-  <td><code>get_session_id()</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
+  <td><code>AuthorizationService</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>get_session_id() node in app/api/dependencies.py.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>AuthorizationService node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>7</td>
-  <td><code>Header</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
+  <td><code>ProjectCreateRequest</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>ApplicationState</code><br><small style="color:var(--muted)">app/core/state_manager.py</small><br><code>ProjectSession</code><br><small style="color:var(--muted)">app/core/state_manager.py</small></td>
-  <td>Header node in app/api/dependencies.py.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>ProjectCreateRequest node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>8</td>
-  <td><code>Cookie</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
+  <td><code>ProjectUpdateRequest</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>ApplicationState</code><br><small style="color:var(--muted)">app/core/state_manager.py</small><br><code>ProjectSession</code><br><small style="color:var(--muted)">app/core/state_manager.py</small></td>
-  <td>Cookie node in app/api/dependencies.py.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>ProjectUpdateRequest node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>9</td>
-  <td><code>UUID</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
+  <td><code>BackupInfo</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
-  <td><code>dependencies.py</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><code>ApplicationState</code><br><small style="color:var(--muted)">app/core/state_manager.py</small><br><code>ProjectSession</code><br><small style="color:var(--muted)">app/core/state_manager.py</small></td>
-  <td>UUID node in app/api/dependencies.py.</td>
+  <td>External entry / no inbound edge</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>BackupInfo node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>10</td>
-  <td><code>get_authenticated_user()</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
+  <td><code>RawYamlUpdateRequest</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>sessions.py</code><br><small style="color:var(--muted)">v1/endpoints/sessions.py</small></td>
-  <td>get_authenticated_user() node in app/api/dependencies.py.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>RawYamlUpdateRequest node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>11</td>
-  <td><code>Request</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>RestoreBackupRequest</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-hook">UI</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>ApplicationState</code><br><small style="color:var(--muted)">app/core/state_manager.py</small><br><code>ProjectSession</code><br><small style="color:var(--muted)">app/core/state_manager.py</small></td>
-  <td>Request node in app/api/dependencies.py.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>RestoreBackupRequest node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>12</td>
-  <td><code>get_current_session()</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
+  <td><code>MetadataUpdateRequest</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>test_session_authorization.py</code><br><small style="color:var(--muted)">backend/tests/test_session_authorization.py</small><br><code>to authenticated user()</code><br><small style="color:var(--muted)">backend/tests/test_session_authorization.py</small><br><code>user is rejected()</code><br><small style="color:var(--muted)">backend/tests/test_session_authorization.py</small></td>
-  <td>get_current_session() node in app/api/dependencies.py.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>MetadataUpdateRequest node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>13</td>
-  <td><code>Depends</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>list_projects()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>ApplicationState</code><br><small style="color:var(--muted)">app/core/state_manager.py</small><br><code>ProjectSession</code><br><small style="color:var(--muted)">app/core/state_manager.py</small></td>
-  <td>Depends node in app/api/dependencies.py.</td>
+  <td><code>get_project_service()</code><br><small style="color:var(--muted)">app/services/project_service.py</small></td>
+  <td>list_projects() node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>14</td>
-  <td><code>ApplicationState</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
+  <td><code>Depends</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>ApplicationState</code><br><small style="color:var(--muted)">app/core/state_manager.py</small><br><code>ProjectSession</code><br><small style="color:var(--muted)">app/core/state_manager.py</small></td>
-  <td>ApplicationState node in app/api/dependencies.py.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>Depends node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>15</td>
-  <td><code>get_app_state</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
+  <td><code>get_principal</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>ApplicationState</code><br><small style="color:var(--muted)">app/core/state_manager.py</small><br><code>ProjectSession</code><br><small style="color:var(--muted)">app/core/state_manager.py</small></td>
-  <td>get_app_state node in app/api/dependencies.py.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>get_principal node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>16</td>
-  <td><code>ProjectSession</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>get_authorization_service</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>ApplicationState</code><br><small style="color:var(--muted)">app/core/state_manager.py</small><br><code>ProjectSession</code><br><small style="color:var(--muted)">app/core/state_manager.py</small></td>
-  <td>ProjectSession node in app/api/dependencies.py.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>get_authorization_service node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>17</td>
-  <td><code>require_session()</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
+  <td><code>ProjectMetadata</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>sessions.py</code><br><small style="color:var(--muted)">v1/endpoints/sessions.py</small></td>
-  <td>require_session() node in app/api/dependencies.py.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+11 more</td>
+  <td>ProjectMetadata node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>18</td>
-  <td><code>API Dependencies  Provides dependency injection functions for FastAPI endpoints.</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>get_project()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for API Dependencies  Provides dependency injection functions for FastAPI endpoints..</td>
+  <td><code>get_project_service()</code><br><small style="color:var(--muted)">app/services/project_service.py</small></td>
+  <td>get_project() node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>19</td>
-  <td><code>Get DataSourceService instance.      Creates service for managing global data so</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>AuthorizedResource</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Get DataSourceService instance.      Creates service for managing global data so.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>AuthorizedResource node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>20</td>
-  <td><code>Get SchemaIntrospectionService instance.      Creates service with current confi</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>require_project</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Get SchemaIntrospectionService instance.      Creates service with current confi.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>require_project node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>21</td>
-  <td><code>Extract session ID from header or cookie.</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>READ</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Extract session ID from header or cookie..</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>READ node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>22</td>
-  <td><code>Return the identity asserted by the trusted proxy, when proxy authentication is</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>Project</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Return the identity asserted by the trusted proxy, when proxy authentication is.</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>Project node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>23</td>
-  <td><code>Get current editing session (optional).</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>refresh_project()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Get current editing session (optional)..</td>
+  <td><code>get_project_service()</code><br><small style="color:var(--muted)">app/services/project_service.py</small></td>
+  <td>refresh_project() node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>24</td>
-  <td><code>Require an active session.</code><br><small style="color:var(--muted)">app/api/dependencies.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>EDIT</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Require an active session..</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>EDIT node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>25</td>
-  <td><code>api.py</code><br><small style="color:var(--muted)">api/v1/api.py</small></td>
-  <td><span class="tag tag-endpoint">API</span></td>
+  <td><code>create_project()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>columns.py</code><br><small style="color:var(--muted)">v1/endpoints/columns.py</small><br><code>data_sources.py</code><br><small style="color:var(--muted)">v1/endpoints/data_sources.py</small><br><code>directives.py</code><br><small style="color:var(--muted)">v1/endpoints/directives.py</small><br>+16 more</td>
-  <td>Module file in api/v1/api.py.</td>
+  <td><code>delete_project()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small><br><code>get_project_service()</code><br><small style="color:var(--muted)">app/services/project_service.py</small></td>
+  <td>create_project() node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>26</td>
-  <td><code>API v1 router configuration.</code><br><small style="color:var(--muted)">api/v1/api.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>require_application_action</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for API v1 router configuration..</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>require_application_action node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>27</td>
-  <td><code>health.py</code><br><small style="color:var(--muted)">v1/endpoints/health.py</small></td>
-  <td><span class="tag tag-class">Module</span></td>
-  <td><code>api.py</code><br><small style="color:var(--muted)">api/v1/api.py</small></td>
-  <td><code>FastAPI</code><br><small style="color:var(--muted)">backend/app/main.py</small></td>
-  <td>Module file in v1/endpoints/health.py.</td>
+  <td><code>update_project()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>shared data sources()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><code>get_project_service()</code><br><small style="color:var(--muted)">app/services/project_service.py</small></td>
+  <td>update_project() node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>28</td>
-  <td><code>HealthResponse</code><br><small style="color:var(--muted)">v1/endpoints/health.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>update_project_metadata()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>HealthResponse node in v1/endpoints/health.py.</td>
+  <td><code>get_project_service()</code><br><small style="color:var(--muted)">app/services/project_service.py</small></td>
+  <td>update_project_metadata() node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>29</td>
-  <td><code>health_check()</code><br><small style="color:var(--muted)">v1/endpoints/health.py</small></td>
+  <td><code>delete_project()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>health_check() node in v1/endpoints/health.py.</td>
+  <td><code>create_project()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><code>copy_project()</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small><br><code>get_project_service()</code><br><small style="color:var(--muted)">app/services/project_service.py</small></td>
+  <td>delete_project() node in v1/endpoints/projects.py.</td>
 </tr>
 <tr>
   <td>30</td>
-  <td><code>Health check endpoint.</code><br><small style="color:var(--muted)">v1/endpoints/health.py</small></td>
-  <td><span class="tag tag-func">Concept</span></td>
+  <td><code>DELETE</code><br><small style="color:var(--muted)">v1/endpoints/projects.py</small></td>
+  <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Design note for Health check endpoint..</td>
+  <td><code>Action</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>AuthorizedResource</code><br><small style="color:var(--muted)">app/authorization/models.py</small><br><code>DocumentationService</code><br><small style="color:var(--muted)">app/services/documentation_service.py</small><br>+10 more</td>
+  <td>DELETE node in v1/endpoints/projects.py.</td>
 </tr>
 </table>
 
@@ -2615,17 +2617,17 @@ flowchart LR
       <tr><th>File</th><th>Coverage</th></tr>
       <tr><td><code>app/services/project_service.py</code></td><td>109 nodes</td></tr>
 <tr><td><code>v1/endpoints/projects.py</code></td><td>104 nodes</td></tr>
-<tr><td><code>backend/tests/test_state_manager.py</code></td><td>93 nodes</td></tr>
+<tr><td><code>backend/tests/test_state_manager.py</code></td><td>91 nodes</td></tr>
 <tr><td><code>tests/services/test_materialization_service.py</code></td><td>76 nodes</td></tr>
 <tr><td><code>backend/tests/test_reconciliation_client.py</code></td><td>76 nodes</td></tr>
-<tr><td><code>app/core/state_manager.py</code></td><td>69 nodes</td></tr>
 <tr><td><code>app/services/materialization_service.py</code></td><td>66 nodes</td></tr>
 <tr><td><code>v1/endpoints/reconciliation.py</code></td><td>65 nodes</td></tr>
+<tr><td><code>tests/services/test_validation_service.py</code></td><td>65 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: references x1164, explains x1047, contains x894, calls x746. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: references x1161, explains x1065, contains x941, calls x724. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -2718,7 +2720,7 @@ flowchart LR
   <td><code>Settings</code><br><small style="color:var(--muted)">app/core/config.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
-  <td><code>_resolve_under_root()</code><br><small style="color:var(--muted)">app/core/config.py</small><br><code>against repository root()</code><br><small style="color:var(--muted)">backend/tests/test_config.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/mappers/entity_config_mapper.py</small><br>+46 more</td>
+  <td><code>_resolve_under_root()</code><br><small style="color:var(--muted)">app/core/config.py</small><br><code>against repository root()</code><br><small style="color:var(--muted)">backend/tests/test_config.py</small><br><code>Any</code><br><small style="color:var(--muted)">app/utils/file_path_resolver.py</small><br>+46 more</td>
   <td>Settings node in app/core/config.py.</td>
 </tr>
 <tr>
@@ -2979,12 +2981,12 @@ flowchart LR
 
 <!-- ====== 10. Tests & Fixtures ====== -->
 <h2 id="tests-fixtures">10. Tests &amp; Fixtures</h2>
-<p>Tests &amp; Fixtures groups implementation around test, tests, backend, services, mostly in tests/model/test_model.py, tests/specifications/test_entity.py, tests/services/test_project_service.py. This section covers 10365 nodes and 19796 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Tests &amp; Fixtures groups implementation around test, tests, backend, services, mostly in tests/model/test_model.py, tests/specifications/test_entity.py, tests/services/test_project_service.py. This section covers 10322 nodes and 19843 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Tests &amp; Fixtures (10365 nodes, 19796 edges)
+    %% Section: Tests &amp; Fixtures (10322 nodes, 19843 edges)
     subgraph tests_fixtures_v1_endpoints_preview_py_10578af2["v1/endpoints/preview.py"]
         endpoints_preview_raise_fd_validation_error_0b912fff("_raise_fd_validation_error()<br/><small>v1/endpoints/preview.py</small>")
         endpoints_preview_get_entity_sample_dba54eb9("get_entity_sample()<br/><small>v1/endpoints/preview.py</small>")
@@ -3023,7 +3025,7 @@ flowchart LR
     endpoints_preview_raise_fk_constraint_validation_e213f30f -->|calls| endpoints_preview_test_foreign_key_join_a23455b5
     endpoints_preview_get_preview_service_e8f20f8e -->|calls| services_shapeshift_service_get_shapeshift_servi_fc4cc424
     src_extract_subsetservice_c5f11e2a -->|uses| src_model_tableconfig_76325215
-    %% Omitted for readability: 10347 nodes, 0 edges
+    %% Omitted for readability: 10304 nodes, 0 edges
     class endpoints_preview_raise_fd_validation_error_0b912fff function;
     class endpoints_preview_get_entity_sample_dba54eb9 function;
     class endpoints_preview_preview_entity_71def0a1 function;
@@ -3067,8 +3069,8 @@ flowchart LR
   <td>1</td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
-  <td><code>AnotherEntityReconciliationSourceResolver</code><br><small style="color:var(--muted)">services/reconciliation/resolvers.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/dispatch.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br>+84 more</td>
-  <td><code>Any</code><br><small style="color:var(--muted)">tests/loaders/test_sql_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/specifications/project.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/transforms/filter.py</small><br>+401 more</td>
+  <td><code>AnotherEntityReconciliationSourceResolver</code><br><small style="color:var(--muted)">services/reconciliation/resolvers.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/excel_loaders.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/loaders/base_loader.py</small><br>+85 more</td>
+  <td><code>Any</code><br><small style="color:var(--muted)">src/transforms/filter.py</small><br><code>Any</code><br><small style="color:var(--muted)">src/specifications/project.py</small><br><code>Any</code><br><small style="color:var(--muted)">tests/loaders/test_sql_loaders.py</small><br>+398 more</td>
   <td>Reads, resolves, or persists project configuration.</td>
 </tr>
 <tr>
@@ -3081,14 +3083,6 @@ flowchart LR
 </tr>
 <tr>
   <td>3</td>
-  <td><code>.values()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><code>get_target_facing_columns()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>get_target_facing_foreign_key_targets()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>.values() node in src/model.py.</td>
-</tr>
-<tr>
-  <td>4</td>
   <td><code>.sql_query()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3096,7 +3090,7 @@ flowchart LR
   <td>.sql_query() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>5</td>
+  <td>4</td>
   <td><code>.surrogate_id()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3104,7 +3098,7 @@ flowchart LR
   <td>.surrogate_id() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>6</td>
+  <td>5</td>
   <td><code>.system_id()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3112,7 +3106,7 @@ flowchart LR
   <td>.system_id() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>7</td>
+  <td>6</td>
   <td><code>.materialized()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3120,7 +3114,7 @@ flowchart LR
   <td>.materialized() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>8</td>
+  <td>7</td>
   <td><code>.is_materialized()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3128,7 +3122,7 @@ flowchart LR
   <td>.is_materialized() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>9</td>
+  <td>8</td>
   <td><code>.check_column_names()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3136,7 +3130,7 @@ flowchart LR
   <td>.check_column_names() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>10</td>
+  <td>9</td>
   <td><code>.auto_detect_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3144,7 +3138,7 @@ flowchart LR
   <td>.auto_detect_columns() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>11</td>
+  <td>10</td>
   <td><code>.data_source()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3152,7 +3146,7 @@ flowchart LR
   <td>.data_source() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>12</td>
+  <td>11</td>
   <td><code>.safe_keys()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3160,7 +3154,7 @@ flowchart LR
   <td>.safe_keys() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>13</td>
+  <td>12</td>
   <td><code>.column_types()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3168,7 +3162,7 @@ flowchart LR
   <td>.column_types() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>14</td>
+  <td>13</td>
   <td><code>.safe_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3176,7 +3170,7 @@ flowchart LR
   <td>.safe_columns() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>15</td>
+  <td>14</td>
   <td><code>.drop_duplicates()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3184,7 +3178,7 @@ flowchart LR
   <td>.drop_duplicates() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>16</td>
+  <td>15</td>
   <td><code>.depends_on()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3192,7 +3186,7 @@ flowchart LR
   <td>.depends_on() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>17</td>
+  <td>16</td>
   <td><code>.dependent_entities()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3200,7 +3194,7 @@ flowchart LR
   <td>.dependent_entities() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>18</td>
+  <td>17</td>
   <td><code>.query()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3208,7 +3202,7 @@ flowchart LR
   <td>.query() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>19</td>
+  <td>18</td>
   <td><code>.has_append()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3216,7 +3210,7 @@ flowchart LR
   <td>.has_append() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>20</td>
+  <td>19</td>
   <td><code>.keys_and_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3224,7 +3218,7 @@ flowchart LR
   <td>.keys_and_columns() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>21</td>
+  <td>20</td>
   <td><code>.identity_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3232,7 +3226,7 @@ flowchart LR
   <td>.identity_columns() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>22</td>
+  <td>21</td>
   <td><code>.values_column_order()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3240,7 +3234,7 @@ flowchart LR
   <td>.values_column_order() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>23</td>
+  <td>22</td>
   <td><code>.unnest_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3248,7 +3242,7 @@ flowchart LR
   <td>.unnest_columns() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>24</td>
+  <td>23</td>
   <td><code>.surviving_unnest_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3256,7 +3250,7 @@ flowchart LR
   <td>.surviving_unnest_columns() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>25</td>
+  <td>24</td>
   <td><code>.append_mode()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3264,7 +3258,7 @@ flowchart LR
   <td>.append_mode() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>26</td>
+  <td>25</td>
   <td><code>.fk_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3272,7 +3266,7 @@ flowchart LR
   <td>.fk_columns() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>27</td>
+  <td>26</td>
   <td><code>.extra_fk_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3280,7 +3274,7 @@ flowchart LR
   <td>.extra_fk_columns() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>28</td>
+  <td>27</td>
   <td><code>.is_drop_duplicate_dependent_on_unnesting()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3288,20 +3282,28 @@ flowchart LR
   <td>.is_drop_duplicate_dependent_on_unnesting() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>29</td>
-  <td><code>.get_target_facing_foreign_key_targets()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td>28</td>
+  <td><code>.get_key_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small><br><code>values()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td>No direct outbound edge</td>
-  <td>.get_target_facing_foreign_key_targets() node in src/model.py.</td>
+  <td>.get_key_columns() node in src/model.py.</td>
+</tr>
+<tr>
+  <td>29</td>
+  <td><code>.hash()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>Caches analysis results or computes cache keys.</td>
 </tr>
 <tr>
   <td>30</td>
-  <td><code>.get_target_facing_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>TableConfig</code><br><small style="color:var(--muted)">src/model.py</small><br><code>values()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><code>Configuration for a database table. Read-Only. Wraps table setting from entities</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><span class="tag tag-func">Concept</span></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>.get_target_facing_columns() node in src/model.py.</td>
+  <td>Design note for Configuration for a database table. Read-Only. Wraps table setting from entities.</td>
 </tr>
 </table>
 
@@ -3322,7 +3324,7 @@ flowchart LR
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: calls x3984, explains x3967, method x3199, contains x2179. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: calls x4015, explains x3958, method x3176, contains x2134. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -3680,23 +3682,18 @@ flowchart LR
 
 <!-- ====== 12. TestClient ====== -->
 <h2 id="testclient">12. TestClient</h2>
-<p>TestClient groups implementation around modelpy, get, column, columns, mostly in src/model.py. This section covers 58 nodes and 58 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>TestClient groups implementation around modelpy, get, options, columns, mostly in src/model.py. This section covers 44 nodes and 44 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: TestClient (58 nodes, 58 edges)
-    src_model_tableconfig_keys_b4af17d4("keys()<br/><small>src/model.py</small>")
-    src_model_tableconfig_apply_column_renaming_4ec1c23b("apply_column_renaming()<br/><small>src/model.py</small>")
+    %% Section: TestClient (44 nodes, 44 edges)
+    src_model_tableconfig_values_d126c8c1("values()<br/><small>src/model.py</small>")
     src_model_tableconfig_create_append_config_2cbdace8("create_append_config()<br/><small>src/model.py</small>")
-    src_model_shapeshiftproject_table_names_2bd3679c("table_names()<br/><small>src/model.py</small>")
-    src_model_shapeshiftproject_tables_27c56cb4("tables()<br/><small>src/model.py</small>")
-    src_model_tableconfig_extra_column_names_8b9e4417("extra_column_names()<br/><small>src/model.py</small>")
-    src_model_tableconfig_get_columns_5a341c44("get_columns()<br/><small>src/model.py</small>")
-    src_model_tableconfig_get_source_public_id_a9f440e1("get_source_public_id()<br/><small>src/model.py</small>")
+    src_model_tableconfig_get_target_facing_columns_ff838c09("get_target_facing_columns()<br/><small>src/model.py</small>")
+    src_model_tableconfig_get_target_facing_foreign_ede414f5("get_target_facing_foreign_key_targets()<br/><small>src/model.py</small>")
     src_model_tableconfig_get_sub_table_configs_2d474623("get_sub_table_configs()<br/><small>src/model.py</small>")
     src_model_py_any_f36c8a6e("Any<br/><small>src/model.py</small>")
-    src_model_py_dataframe_6f248a35("DataFrame<br/><small>src/model.py</small>")
     src_model_py_self_21015300("Self<br/><small>src/model.py</small>")
     src_model_foreignkeyconstraints_init_2321ce13("__init__()<br/><small>src/model.py</small>")
     src_model_foreignkeyconfig_init_8d9428d4("__init__()<br/><small>src/model.py</small>")
@@ -3704,26 +3701,21 @@ flowchart LR
     src_model_tableconfig_init_11b6c0b1("__init__()<br/><small>src/model.py</small>")
     src_model_shapeshiftproject_init_2f47eb8d("__init__()<br/><small>src/model.py</small>")
     src_model_datasourceconfig_init_fac07461("__init__()<br/><small>src/model.py</small>")
-    src_model_tableconfig_keys_b4af17d4 -->|calls| src_model_shapeshiftproject_table_names_2bd3679c
-    src_model_tableconfig_keys_b4af17d4 -->|calls| src_model_shapeshiftproject_tables_27c56cb4
-    src_model_tableconfig_keys_b4af17d4 -->|calls| src_model_tableconfig_apply_column_renaming_4ec1c23b
-    src_model_tableconfig_keys_b4af17d4 -->|calls| src_model_tableconfig_create_append_config_2cbdace8
-    src_model_tableconfig_keys_b4af17d4 -->|calls| src_model_tableconfig_extra_column_names_8b9e4417
-    src_model_tableconfig_keys_b4af17d4 -->|calls| src_model_tableconfig_get_columns_5a341c44
-    src_model_tableconfig_apply_column_renaming_4ec1c23b -->|calls| src_model_tableconfig_get_source_public_id_a9f440e1
+    src_model_tableconfig_append_configs_80fc0bae("append_configs()<br/><small>src/model.py</small>")
+    src_model_tableconfig_branches_d8d25228("branches()<br/><small>src/model.py</small>")
+    src_model_shapeshiftproject_data_sources_65b675b1("data_sources()<br/><small>src/model.py</small>")
+    src_model_tableconfig_drop_empty_rows_f2e901bc("drop_empty_rows()<br/><small>src/model.py</small>")
+    src_model_shapeshiftproject_entities_b0e001f5("entities()<br/><small>src/model.py</small>")
+    src_model_tableconfig_values_d126c8c1 -->|calls| src_model_tableconfig_get_target_facing_columns_ff838c09
+    src_model_tableconfig_values_d126c8c1 -->|calls| src_model_tableconfig_get_target_facing_foreign_ede414f5
     src_model_tableconfig_create_append_config_2cbdace8 -->|calls| src_model_tableconfig_get_sub_table_configs_2d474623
-    %% Omitted for readability: 40 nodes, 0 edges
-    class src_model_tableconfig_keys_b4af17d4 function;
-    class src_model_tableconfig_apply_column_renaming_4ec1c23b function;
+    %% Omitted for readability: 26 nodes, 0 edges
+    class src_model_tableconfig_values_d126c8c1 function;
     class src_model_tableconfig_create_append_config_2cbdace8 function;
-    class src_model_shapeshiftproject_table_names_2bd3679c function;
-    class src_model_shapeshiftproject_tables_27c56cb4 function;
-    class src_model_tableconfig_extra_column_names_8b9e4417 function;
-    class src_model_tableconfig_get_columns_5a341c44 function;
-    class src_model_tableconfig_get_source_public_id_a9f440e1 function;
+    class src_model_tableconfig_get_target_facing_columns_ff838c09 function;
+    class src_model_tableconfig_get_target_facing_foreign_ede414f5 function;
     class src_model_tableconfig_get_sub_table_configs_2d474623 function;
     class src_model_py_any_f36c8a6e klass;
-    class src_model_py_dataframe_6f248a35 klass;
     class src_model_py_self_21015300 klass;
     class src_model_foreignkeyconstraints_init_2321ce13 function;
     class src_model_foreignkeyconfig_init_8d9428d4 function;
@@ -3731,6 +3723,11 @@ flowchart LR
     class src_model_tableconfig_init_11b6c0b1 function;
     class src_model_shapeshiftproject_init_2f47eb8d function;
     class src_model_datasourceconfig_init_fac07461 function;
+    class src_model_tableconfig_append_configs_80fc0bae function;
+    class src_model_tableconfig_branches_d8d25228 function;
+    class src_model_shapeshiftproject_data_sources_65b675b1 function;
+    class src_model_tableconfig_drop_empty_rows_f2e901bc function;
+    class src_model_shapeshiftproject_entities_b0e001f5 function;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
     classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
@@ -3786,14 +3783,6 @@ flowchart LR
 </tr>
 <tr>
   <td>5</td>
-  <td><code>DataFrame</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>DataFrame node in src/model.py.</td>
-</tr>
-<tr>
-  <td>6</td>
   <td><code>.__init__()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -3801,7 +3790,7 @@ flowchart LR
   <td>.__init__() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>7</td>
+  <td>6</td>
   <td><code>.source_state()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -3809,7 +3798,7 @@ flowchart LR
   <td>.source_state() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>8</td>
+  <td>7</td>
   <td><code>.__init__()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -3817,12 +3806,20 @@ flowchart LR
   <td>.__init__() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>9</td>
+  <td>8</td>
   <td><code>.project_options()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
   <td>.project_options() node in src/model.py.</td>
+</tr>
+<tr>
+  <td>9</td>
+  <td><code>.values()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>get_target_facing_columns()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>get_target_facing_foreign_key_targets()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td>.values() node in src/model.py.</td>
 </tr>
 <tr>
   <td>10</td>
@@ -3834,14 +3831,6 @@ flowchart LR
 </tr>
 <tr>
   <td>11</td>
-  <td><code>.keys()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>apply_column_renaming()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>create_append_config()</code><br><small style="color:var(--muted)">src/model.py</small><br><code>extra_column_names()</code><br><small style="color:var(--muted)">src/model.py</small><br>+3 more</td>
-  <td>.keys() node in src/model.py.</td>
-</tr>
-<tr>
-  <td>12</td>
   <td><code>.extra_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -3849,15 +3838,7 @@ flowchart LR
   <td>.extra_columns() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>13</td>
-  <td><code>.extra_column_names()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>keys()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.extra_column_names() node in src/model.py.</td>
-</tr>
-<tr>
-  <td>14</td>
+  <td>12</td>
   <td><code>.drop_empty_rows()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -3865,7 +3846,7 @@ flowchart LR
   <td>.drop_empty_rows() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>15</td>
+  <td>13</td>
   <td><code>.append_configs()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -3873,7 +3854,7 @@ flowchart LR
   <td>Reads, resolves, or persists project configuration.</td>
 </tr>
 <tr>
-  <td>16</td>
+  <td>14</td>
   <td><code>.branches()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -3881,7 +3862,7 @@ flowchart LR
   <td>.branches() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>17</td>
+  <td>15</td>
   <td><code>.replacements()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -3889,7 +3870,7 @@ flowchart LR
   <td>.replacements() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>18</td>
+  <td>16</td>
   <td><code>.filters()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -3897,7 +3878,7 @@ flowchart LR
   <td>.filters() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>19</td>
+  <td>17</td>
   <td><code>.options()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -3905,71 +3886,31 @@ flowchart LR
   <td>.options() node in src/model.py.</td>
 </tr>
 <tr>
-  <td>20</td>
-  <td><code>.is_unnested()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>.is_unnested() node in src/model.py.</td>
-</tr>
-<tr>
-  <td>21</td>
-  <td><code>.get_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>keys()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.get_columns() node in src/model.py.</td>
-</tr>
-<tr>
-  <td>22</td>
-  <td><code>.drop_fk_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>.drop_fk_columns() node in src/model.py.</td>
-</tr>
-<tr>
-  <td>23</td>
-  <td><code>.add_system_id_column()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>.add_system_id_column() node in src/model.py.</td>
-</tr>
-<tr>
-  <td>24</td>
-  <td><code>.add_public_id_column()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>.add_public_id_column() node in src/model.py.</td>
-</tr>
-<tr>
-  <td>25</td>
-  <td><code>.apply_column_renaming()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>keys()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><code>get_source_public_id()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>.apply_column_renaming() node in src/model.py.</td>
-</tr>
-<tr>
-  <td>26</td>
-  <td><code>.get_source_public_id()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>apply_column_renaming()</code><br><small style="color:var(--muted)">src/model.py</small></td>
-  <td>No direct outbound edge</td>
-  <td>.get_source_public_id() node in src/model.py.</td>
-</tr>
-<tr>
-  <td>27</td>
+  <td>18</td>
   <td><code>.create_append_config()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>keys()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td>External entry / no inbound edge</td>
   <td><code>get_sub_table_configs()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td>Reads, resolves, or persists project configuration.</td>
 </tr>
 <tr>
-  <td>28</td>
+  <td>19</td>
+  <td><code>.get_target_facing_foreign_key_targets()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>values()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>.get_target_facing_foreign_key_targets() node in src/model.py.</td>
+</tr>
+<tr>
+  <td>20</td>
+  <td><code>.get_target_facing_columns()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>values()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td>No direct outbound edge</td>
+  <td>.get_target_facing_columns() node in src/model.py.</td>
+</tr>
+<tr>
+  <td>21</td>
   <td><code>.get_sub_table_configs()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>create_append_config()</code><br><small style="color:var(--muted)">src/model.py</small></td>
@@ -3977,7 +3918,7 @@ flowchart LR
   <td>Reads, resolves, or persists project configuration.</td>
 </tr>
 <tr>
-  <td>29</td>
+  <td>22</td>
   <td><code>Self</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -3985,12 +3926,68 @@ flowchart LR
   <td>Self node in src/model.py.</td>
 </tr>
 <tr>
-  <td>30</td>
+  <td>23</td>
   <td><code>.__init__()</code><br><small style="color:var(--muted)">src/model.py</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
   <td>.__init__() node in src/model.py.</td>
+</tr>
+<tr>
+  <td>24</td>
+  <td><code>.entities()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.entities() node in src/model.py.</td>
+</tr>
+<tr>
+  <td>25</td>
+  <td><code>.options()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.options() node in src/model.py.</td>
+</tr>
+<tr>
+  <td>26</td>
+  <td><code>.data_sources()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.data_sources() node in src/model.py.</td>
+</tr>
+<tr>
+  <td>27</td>
+  <td><code>.ingesters()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Turns a local path or remote repository into analysis context.</td>
+</tr>
+<tr>
+  <td>28</td>
+  <td><code>.get_ingester_config()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Reads, resolves, or persists project configuration.</td>
+</tr>
+<tr>
+  <td>29</td>
+  <td><code>.__init__()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.__init__() node in src/model.py.</td>
+</tr>
+<tr>
+  <td>30</td>
+  <td><code>.options()</code><br><small style="color:var(--muted)">src/model.py</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>.options() node in src/model.py.</td>
 </tr>
 </table>
 
@@ -3999,12 +3996,12 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>src/model.py</code></td><td>58 nodes</td></tr>
+      <tr><td><code>src/model.py</code></td><td>44 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: references x31, explains x19, calls x8. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: references x27, explains x14, calls x3. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -5047,12 +5044,12 @@ flowchart LR
 
 <!-- ====== 16. Other ====== -->
 <h2 id="other">16. Other</h2>
-<p>Other groups implementation around docs, new, guidemd, whats, mostly in CHANGELOG.md, docs/sead/05_constraints.sql, docs/USER_GUIDE.md. This section covers 1834 nodes and 1888 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Other groups implementation around docs, new, guidemd, whats, mostly in CHANGELOG.md, docs/sead/05_constraints.sql, docs/USER_GUIDE.md. This section covers 1856 nodes and 1910 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Other (1834 nodes, 1888 edges)
+    %% Section: Other (1856 nodes, 1910 edges)
     subgraph other_app_mappers_reconciliation_mapper_py_fdd97315["app/mappers/reconciliation_mapper.py"]
         mappers_reconciliation_mapper_reconciliationmapp_8a97734f("source_to_domain()<br/><small>app/mappers/reconciliation_mapper.py</small>")
         mappers_reconciliation_mapper_reconciliationmapp_895c4b05("entity_mapping_to_domain()<br/><small>app/mappers/reconciliation_mapper.py</small>")
@@ -5086,7 +5083,7 @@ flowchart LR
     mappers_reconciliation_mapper_reconciliationmapp_f8b20e00 -->|calls| mappers_reconciliation_mapper_reconciliationmapp_69f4e8c2
     mappers_reconciliation_mapper_reconciliationmapp_895c4b05 -->|calls| mappers_reconciliation_mapper_reconciliationmapp_72a69e4d
     mappers_reconciliation_mapper_reconciliationmapp_69f4e8c2 -->|calls| mappers_reconciliation_mapper_reconciliationmapp_f8b025c9
-    %% Omitted for readability: 1816 nodes, 0 edges
+    %% Omitted for readability: 1838 nodes, 0 edges
     class mappers_reconciliation_mapper_reconciliationmapp_8a97734f function;
     class mappers_reconciliation_mapper_reconciliationmapp_895c4b05 function;
     class mappers_reconciliation_mapper_reconciliationmapp_8e5b3e3f function;
@@ -5380,12 +5377,12 @@ flowchart LR
 <tr><td><code>docs/CONFIGURATION_GUIDE.md</code></td><td>58 nodes</td></tr>
 <tr><td><code>proposals/SHAPESHIFTER_PROJECT_AI_ADVISOR/SHAPESHIFTER_PROJECT_AI_ADVISOR.md</code></td><td>56 nodes</td></tr>
 <tr><td><code>docs/other/RECONCILIATION_SETUP_GUIDE.md</code></td><td>54 nodes</td></tr>
-<tr><td><code>docs/REQUIREMENTS.md</code></td><td>32 nodes</td></tr>
+<tr><td><code>src/model.py</code></td><td>33 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x1343, calls x179, references x159, defines x76. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x1345, calls x186, references x165, explains x82. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -5399,7 +5396,7 @@ flowchart LR
       <tr><td>Nodes</td><td>19155</td></tr>
       <tr><td>Edges</td><td>42971</td></tr>
       <tr><td>Hyperedges</td><td>0</td></tr>
-      <tr><td>Communities</td><td>791</td></tr>
+      <tr><td>Communities</td><td>793</td></tr>
       <tr><td>Documented Sections</td><td>15</td></tr>
     </table>
   </div>
@@ -5415,7 +5412,7 @@ flowchart LR
 
 <div style="text-align:center; padding:40px 0; color: var(--muted); font-size:0.9rem;">
   <p>sead_shape_shifter — Architecture Documentation</p>
-  <p>Generated: 2026-09-21 18:11 UTC · graphify callflow-html</p>
+  <p>Generated: 2026-09-22 02:07 UTC · graphify callflow-html</p>
 </div>
 
 </div><!-- .container -->

@@ -81,8 +81,9 @@ Options:
     --container-dir DIR         Deployment container directory (default: USER home/container)
     --config-dir DIR            Deployment configuration directory (default: USER home/config)
     --data-dir DIR              Deployment data directory (default: USER home/container-data)
-    --evidence-dir DIR          Local directory for orchestration output
-  --base-url URL              Proxy URL for authenticated checks
+    --evidence-dir DIR          Directory for orchestration output
+                                (default: DATA_DIR/deployment-verification)
+    --base-url URL              Proxy URL for authenticated checks
     --principal-a USER          First principal for authenticated checks
     --principal-b USER          Second principal for authenticated checks
     --project-a NAME            Project first principal can read
@@ -289,10 +290,14 @@ fi
 [[ -f "$g_config_dir/backend.env" ]] || fail "backend environment file not found: $g_config_dir/backend.env"
 
 if [[ "$g_evidence_dir_cli" != true ]]; then
-    g_evidence_root="${g_evidence_dir:-$PWD/deployment-verification}"
-    g_evidence_dir="$g_evidence_root/$(date -u +%Y%m%dT%H%M%SZ)-$$"
+    # Run output is operational state, so it belongs in the data directory with
+    # the rest of the deployment's writable paths, not in the replaceable
+    # checkout. The container mounts only the enumerated data subdirectories, so
+    # a sibling of them stays off the container's filesystem.
+    g_evidence_root="${g_evidence_dir:-$g_data_dir/deployment-verification}"
+    g_evidence_dir="$g_evidence_root/$(date -u '+%Y%m%dT%H%M%SZ')-$$"
 fi
-mkdir -p "$g_evidence_dir"
+mkdir -p "$g_evidence_dir" || fail "cannot create the evidence directory: $g_evidence_dir (pass --evidence-dir with a path this account can write)"
 if [[ -n "$g_options_file" ]]; then
     cp -- "$g_options_file" "$g_evidence_dir/deployment-verification.options.yml"
 fi

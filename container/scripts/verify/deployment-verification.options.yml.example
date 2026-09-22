@@ -1,13 +1,21 @@
 # Runtime options for run_deployment_verification.sh.
 #
 # This file contains identifiers and paths only. Do not put passwords, tokens,
-# or other credentials here. Copy it to a deployment-specific file, edit the
-# values, and pass it with --options-file. Command-line options override values
-# from this file.
+# or other credentials here. Copy it out of the checkout into the target's
+# configuration directory, edit the values, and pass it with --options-file:
+#
+#   cp ./scripts/verify/deployment-verification.options.yml.example \
+#     ~/config/deployment-verification.options.yml
+#
+# Command-line options override values from this file.
 
 deploy_user: test-shape-shifter.sead.se
 container_dir: /data/test-shape-shifter.sead.se/container
 data_dir: /data/test-shape-shifter.sead.se/container-data
+
+# Parent directory for the timestamped run directory. Leave empty to use
+# data_dir/deployment-verification, which keeps the evidence out of the
+# replaceable checkout and off the container's filesystem.
 evidence_dir: ""
 
 pg_database: ""
