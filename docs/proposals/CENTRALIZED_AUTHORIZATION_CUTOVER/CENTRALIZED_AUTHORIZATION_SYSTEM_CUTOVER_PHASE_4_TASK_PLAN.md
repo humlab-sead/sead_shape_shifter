@@ -104,12 +104,12 @@
   * **Implementation:** Run the focused authorization suite and this module at the deployed revision, and retain the result with the release identity.
   * **Constraints:** A mismatch between the runtime routes and the inventory blocks acceptance; do not edit the inventory to pass the check.
   * **Validation:** `V-4.4`. Ran 2026-09-22: `.venv/bin/pytest backend/tests/authorization` reported 192 passed and 1 skipped, and `git diff --stat dbff5ab9..HEAD -- backend src tests` shows only `container/DEPLOYMENT.md` differing, so the deployed revision's application code and tests are unchanged.
-* [ ] `T4.4` **Change:** Review resources and grants for unowned or conflicting records.
+* [x] `T4.4` **Change:** Review resources and grants for unowned or conflicting records.
   * **Target:** Deployment store through `container/scripts/authorization.sh`.
   * **Current -> required:** Reviewed on 2026-09-22 for the applied records; re-run against the current store so the acceptance evidence is current.
   * **Implementation:** Run `list-resources --json` and `list-grants --json`, and confirm every active resource has a grant and no active locator conflicts. Record counts, and explain retained `deleted` rows rather than omitting them.
   * **Constraints:** Resolve conflicts by correcting configuration, never by editing project YAML to create ownership.
-  * **Validation:** `V-4.5`. Resource list reviewed 2026-09-22: 36 active resources (30 project, 6 shared data source) and 15 deleted. All 32 reviewed manifest locators are active, and four active `verification-containment-*` projects are not in the manifest. Grant review is pending.
+  * **Validation:** `V-4.5`. Resource list reviewed 2026-09-22: 36 active resources (30 project, 6 shared data source) and 15 deleted. All 32 reviewed manifest locators are active, and four active `verification-containment-*` projects are not in the manifest. Grant review found 53 grants, every active resource carries at least one, and no grant points at a missing resource, so `PH4-AC-5` holds.
 * [x] `T4.5` **Change:** Confirm the audit trail covers migration and later mutations.
   * **Target:** `container/scripts/authorization.sh list-audit-events --json`.
   * **Current -> required:** The audit table exists; its coverage is not recorded as acceptance evidence.
@@ -211,7 +211,7 @@
 | Area | Status | Notes |
 | --- | --- | --- |
 | Area 1: Record the deployment identity | Done | Identity re-confirmed on the running container; the deployed manifest checksum matches the reviewed manifest |
-| Area 2: Re-run the blocking pre-acceptance checks | In progress | `T4.3` and `T4.5` complete; `T4.4` needs the grant review |
+| Area 2: Re-run the blocking pre-acceptance checks | Done | `T4.3`, `T4.4`, and `T4.5` complete; `PH4-AC-5` holds with no unowned or missing resource |
 | Area 3: Re-verify access and exercise the procedures | Not started | Uses the now-provisioned reviewed projects |
 | Area 4: Assemble the acceptance evidence and record the result | Not started | Depends on Areas 1–3 |
 
