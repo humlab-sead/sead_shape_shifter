@@ -3,7 +3,7 @@
 ## Status
 
 - Phase plan / Phases 1, 2, 2A, 3, and 4 complete; Phase 5 not started
-- **Phase 4 completion 2026-09-22:** [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md) records the release, manifest, and backup identifiers, the route-inventory, ownership, and audit results, the access checks, and a passing rollback exercise with a byte-identical restore. `PH4-AC-1` to `PH4-AC-5` are met and `VM-4.1` to `VM-4.4` are covered. Phase 5 prerequisites are satisfied by that record. The post-fix re-run of the corrected access-check script was skipped because the principal passwords were not available from the workstation used, and the residual risk is accepted; the record states this under *Post-Fix Re-Run Skipped (Accepted Risk)*, and two cleanups are deferred until after the acceptance window under *Cleanup Deferred Until After Acceptance*.
+- **Phase 4 completion 2026-09-22:** [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./done/UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md) records the release, manifest, and backup identifiers, the route-inventory, ownership, and audit results, the access checks, and a passing rollback exercise with a byte-identical restore. `PH4-AC-1` to `PH4-AC-5` are met and `VM-4.1` to `VM-4.4` are covered. Phase 5 prerequisites are satisfied by that record. The post-fix re-run of the corrected access-check script was skipped because the principal passwords were not available from the workstation used, and the residual risk is accepted; the record states this under *Post-Fix Re-Run Skipped (Accepted Risk)*, and two cleanups are deferred until after the acceptance window under *Cleanup Deferred Until After Acceptance*.
 - Scope: route and operation inventory, migration input, readiness validation, an authorization-enabled deployment ready for user acceptance testing, and Podman release verification
 - Goal: deliver and record an authorization-enabled deployment on the new server that is ready for user acceptance testing, together with the operator procedures and documentation needed to run, verify, and roll it back
 - **Scope change 2026-09-22:** flipping production traffic and users from the old server to the new server is out of scope. It repoints DNS and the reverse proxy, migrates users, and depends on user acceptance testing this project does not own, so it moves to [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
@@ -288,7 +288,7 @@ Deliver an authorization-enabled deployment on the new server that a user accept
 
 **Readiness**
 
-Complete on 2026-09-22. The task plan is [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md) and the resulting record is [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md).
+Complete on 2026-09-22. The task plan is [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md) and the resulting record is [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./done/UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md).
 
 ### Phase 5: Verify Podman Deployment And Update Security Record
 
