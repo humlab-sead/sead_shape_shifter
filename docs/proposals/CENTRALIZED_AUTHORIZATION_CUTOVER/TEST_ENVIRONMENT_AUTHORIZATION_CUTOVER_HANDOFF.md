@@ -88,7 +88,7 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 
 ## Next Actions
 
-1. **Rotate exposed credentials.** Rotate the administrator and shared authentication credentials, then update the target `~/config/authorization.env`, NGINX htpasswd, and protected configuration without recording secret values.
+1. **Rotate exposed credentials.** Rotate the administrator and shared authentication credentials, then update the target `~/config/authorization.env`, NGINX htpasswd, and in-scope protected configuration without recording secret values. PostgreSQL credential rotation is out of scope for this system and is excluded from this follow-up.
 
 2. **Decide where the project content comes from.** The reviewed manifest names 26 projects and 6 shared data sources that this deployment does not hold. Either provision that content under `container-data/projects` and `container-data/shared`, or regenerate the policy for the content this environment actually has.
 
