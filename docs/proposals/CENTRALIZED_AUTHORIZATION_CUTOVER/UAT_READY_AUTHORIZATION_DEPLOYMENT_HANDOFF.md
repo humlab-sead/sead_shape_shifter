@@ -52,6 +52,12 @@ This deployment runs the authorization system from the outset. The old server co
 | Inventory and reconciliation (Phase 3, still current) | `container/scripts/authorization.sh integrity-check` and `reconcile` | Integrity passed; `Missing: 0 resources, 0 administrators, 0 grants` |
 | Provisioned content (Phase 3, still current) | Locator walk and `GET /api/v1/data-sources` | 26 of 26 project locators resolve; all 6 shared data sources listed |
 | Shared data source connection (Phase 3, still current) | `POST /api/v1/data-sources/sead-options/test` | `success: true`, 167 tables, 112 ms |
+| Audit-trail coverage (`V-4.6`) | `scripts/authorization.sh list-audit-events --json` | 144 events from 2026-09-17 19:08 to 2026-09-22 07:45: `grant_created` 53, `application_role_created` 43, `resource_lifecycle_changed` 30, `application_role_revoked` 18; every event `allowed` |
+
+### Audit-trail detail
+
+- **Migration is covered.** Actor `migration` wrote 34 events in a 78 ms window at 2026-09-22T05:48:04: 26 `owner` grants, 6 `reader` grants, and 2 administrator role creations. The 26 owner and 6 reader grants match the reviewed manifest exactly, and the 2 role creations together with the earlier bootstrap-created administrator are consistent with the three recorded administrators.
+- **Later mutations are covered.** Two `grant_created` events by actor `verification-check` at 07:44 to 07:45 recorded the temporary-project grants used by the earlier access check.
 
 ## Pending Verification
 
@@ -79,11 +85,7 @@ Record the counts, and explain any retained `deleted` rows rather than omitting 
 
 ### `T4.5` / `V-4.6` — audit-trail coverage
 
-```bash
-scripts/authorization.sh list-audit-events --json
-```
-
-Record the event count and the `event_type` distribution. Migration events appear with actor `migration`; later administrative mutations appear with the acting principal.
+Complete. See *Audit-trail detail* above. Run `scripts/authorization.sh list-application-roles` if you need to confirm which principal holds each application role, since role events do not record it.
 
 ### `T4.6` / `V-4.7` — access checks with reviewed projects
 
@@ -143,6 +145,9 @@ The script leaves the service stopped when a step fails. Redeploy the recorded r
 - **Reviewed projects may lack owners for real users.** `bruno` and `riia` own reviewed projects, but the wider user population may not. If a tester's principal owns nothing, they will see denied responses that are correct but unhelpful.
 - **Shared-source grants are broad.** Every authenticated principal can read the six shared data sources. That is intended for the current manifest and worth confirming for the acceptance population.
 - **Host services are reachable only as `host.docker.internal`.** A host-side connection check to a host database succeeds while the container fails, which misleads diagnosis.
+- **Audit events carry no correlation ID.** All 144 events have `correlation_id: null`, so an event cannot be tied to the request that caused it.
+- **Application-role events do not record the principal.** `application_role_created` and `application_role_revoked` record the role as `action` and the acting principal, but leave `subject_id` null. `backend/app/authorization/repository.py::add_application_role` and `remove_application_role` confirm this, so the trail cannot answer who received or lost a role.
+- **The trail records mutations, not access decisions.** Every event is an `allowed` mutation; denied requests are not audited, so the trail cannot be used to review refusals. Testers asking "can you show who was denied" will find no answer here.
 - **PostgreSQL credential rotation is out of scope** by decision, covering every PostgreSQL database including the SEAD database.
 
 ## Open Decisions
