@@ -88,9 +88,9 @@ g_name_pattern='PASSWORD|SECRET|TOKEN|PASSWD|CREDENTIAL|API_KEY|PRIVATE_KEY|SIGN
 printf 'LAN exposure: the backend answered on the LAN address before its port was\n'
 printf 'restricted to loopback. The credentials below are the backend sources\n'
 printf 'present now; confirm with the running image revision that the same sources\n'
-printf 'existed during the exposure window. The nginx Basic auth file\n'
-printf '/etc/nginx/htpasswd/shape-shifter was bypassed, not reachable through the\n'
-printf 'backend, and is outside this check.\n'
+printf 'existed during the exposure window. The NGINX htpasswd file is derived\n'
+printf 'from authorization.env; this check records the source password names\n'
+printf 'and never reads or prints their values.\n'
 
 info "Credential inventory (names and redacted targets only)"
 
@@ -115,6 +115,22 @@ if [[ -r "$env_file" ]]; then
     done < <(sed 's/=.*//' "$env_file" | grep -Ev '^[[:space:]]*(#|$)' || true)
 else
     warn "cannot read runtime environment file: $env_file"
+fi
+
+authorization_env_file="$g_config_dir/authorization.env"
+if [[ -r "$authorization_env_file" ]]; then
+    printf 'Authorization environment file: %s\n' "$authorization_env_file"
+    while IFS= read -r name; do
+        [[ -n "$name" ]] || continue
+        case "$name" in
+            AUTH_PASSWORD|ADMIN_AUTH_PASSWORD)
+                printf '  %s\n' "$name"
+                record "authorization:$name" "authorization environment variable $name"
+                ;;
+        esac
+    done < <(sed 's/=.*//' "$authorization_env_file" | grep -Ev '^[[:space:]]*(#|$)' || true)
+else
+    warn "cannot read authorization environment file: $authorization_env_file"
 fi
 
 # 3. Container environment variable names (podman, best effort).
