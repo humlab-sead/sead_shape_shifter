@@ -1172,7 +1172,7 @@ options: {}
         assert result.metadata.default_entity == "sample"
 
     def test_update_metadata_new_name_ignored(self, service: ProjectService, sample_project_with_files: Path):
-        """Test that new_name parameter is ignored (use rename instead)."""
+        """Test that new_name is ignored because the file name sets the project name."""
         result = service.update_metadata("test_project", new_name="different_name", description="Test")
 
         # Name should NOT change (filename is source of truth)

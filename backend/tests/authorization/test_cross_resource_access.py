@@ -6,12 +6,13 @@ from uuid import uuid4
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from backend.app.api.dependencies import get_active_project_locator
 from backend.app.authorization.dependencies import get_authorization_service
 from backend.app.authorization.models import Action, Grant, GrantSubjectType, Principal, ResourceRecord, ResourceType
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
 from backend.app.authorization.service import AuthorizationService
 from backend.app.core.config import settings as application_settings
-from backend.app.main import app
+from backend.app.main import app, lifespan
 from backend.app.middleware.proxy_auth import ProxyAuthenticationMiddleware
 
 
@@ -20,6 +21,8 @@ async def test_authenticated_principal_cannot_cross_user_resource_boundaries(tmp
     """Reject Bob's access to Alice's project, source, schema, query, and tasks."""
     authorization_database = tmp_path / "state" / "authorization.sqlite3"
     monkeypatch.setattr(application_settings, "AUTHORIZATION_DATABASE_PATH", authorization_database)
+    # Session creation resolves application state, so startup must run before the request.
+    monkeypatch.setattr(application_settings, "PROJECTS_DIR", tmp_path)
 
     repository = SQLiteAuthorizationRepository(authorization_database)
     project = ResourceRecord(uuid4(), ResourceType.PROJECT, "alice-project")
@@ -35,6 +38,7 @@ async def test_authenticated_principal_cannot_cross_user_resource_boundaries(tmp
         return authorization_service
 
     app.dependency_overrides[get_authorization_service] = override_authorization_service
+    app.dependency_overrides[get_active_project_locator] = lambda: "alice-project"
     protected_app = ProxyAuthenticationMiddleware(
         app,
         enabled=True,
@@ -45,17 +49,22 @@ async def test_authenticated_principal_cannot_cross_user_resource_boundaries(tmp
     cases = (
         ("GET", "/api/v1/projects/alice-project", None, 404),
         ("GET", "/api/v1/projects/alice-project/tasks", None, 404),
+        ("GET", "/api/v1/projects/active/name", None, 404),
         ("GET", "/api/v1/data-sources/alice-source.yml", None, 404),
         ("GET", "/api/v1/data-sources/alice-source/tables/sites/schema", None, 404),
+        ("POST", "/api/v1/sessions", {"project_name": "alice-project"}, 404),
         ("POST", "/api/v1/data-sources/alice-source/query/validate", {"query": "SELECT 1"}, 404),
     )
 
     try:
-        async with AsyncClient(
-            transport=ASGITransport(app=protected_app),
-            base_url="http://testserver",
-            headers={application_settings.TRUSTED_PROXY_AUTH_HEADER: "bob"},
-        ) as client:
+        async with (
+            lifespan(app),
+            AsyncClient(
+                transport=ASGITransport(app=protected_app),
+                base_url="http://testserver",
+                headers={application_settings.TRUSTED_PROXY_AUTH_HEADER: "bob"},
+            ) as client,
+        ):
             for method, path, payload, expected_status in cases:
                 response = await client.request(method, path, json=payload)
                 assert response.status_code == expected_status, f"{method} {path}: {response.text}"
@@ -66,19 +75,8 @@ async def test_authenticated_principal_cannot_cross_user_resource_boundaries(tmp
 
 
 @pytest.mark.asyncio
-async def test_authenticated_principal_without_log_role_cannot_read_logs(tmp_path, monkeypatch) -> None:
-    """Reject a principal without the application log role before reading files."""
-    authorization_database = tmp_path / "state" / "authorization.sqlite3"
-    monkeypatch.setattr(application_settings, "AUTHORIZATION_DATABASE_PATH", authorization_database)
-
-    repository = SQLiteAuthorizationRepository(authorization_database)
-    authorization_service = AuthorizationService(repository)
-    previous_overrides = app.dependency_overrides.copy()
-
-    async def override_authorization_service() -> AuthorizationService:
-        return authorization_service
-
-    app.dependency_overrides[get_authorization_service] = override_authorization_service
+async def test_authenticated_principal_without_application_role_can_read_logs() -> None:
+    """Allow an authenticated principal to read the global log without an application role."""
     protected_app = ProxyAuthenticationMiddleware(
         app,
         enabled=True,
@@ -86,19 +84,14 @@ async def test_authenticated_principal_without_log_role_cannot_read_logs(tmp_pat
         public_paths={"/api/v1/health"},
     )
 
-    try:
-        async with AsyncClient(
-            transport=ASGITransport(app=protected_app),
-            base_url="http://testserver",
-            headers={application_settings.TRUSTED_PROXY_AUTH_HEADER: "bob"},
-        ) as client:
-            response = await client.get("/api/v1/logs/app")
+    async with AsyncClient(
+        transport=ASGITransport(app=protected_app),
+        base_url="http://testserver",
+        headers={application_settings.TRUSTED_PROXY_AUTH_HEADER: "bob"},
+    ) as client:
+        response = await client.get("/api/v1/logs/app")
 
-        assert response.status_code == 403
-        assert response.json() == {"detail": "Insufficient authorization"}
-    finally:
-        app.dependency_overrides = previous_overrides
-        repository.close()
+    assert response.status_code == 200
 
 
 def test_group_grants_do_not_cross_team_boundaries(tmp_path) -> None:

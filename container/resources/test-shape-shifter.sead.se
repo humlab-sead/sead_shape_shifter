@@ -27,6 +27,21 @@ map $http_upgrade $connection_upgrade {
     ''      close;
 }
 
+# Authorization group membership. Basic auth has no group claim of its own, so
+# the group header the backend reads is derived from the authenticated user name.
+# The included membership file holds one line per member, for example:
+#
+#     roger    sead-admins,strucke-editors;
+#
+# Membership lives in /etc/nginx/authz/groups.d/. The wildcard tolerates a
+# missing directory or no matching file, so the header is empty until members
+# are added. After editing membership:
+#   sudo nginx -t && sudo systemctl reload nginx
+map $remote_user $authz_groups {
+    default "";
+    include /etc/nginx/authz/groups.d/*.conf;
+}
+
 upstream shape_shifter_test {
     server 127.0.0.1:8012;
 }
@@ -90,6 +105,9 @@ server {
 
         # Identity handed to FastAPI. $remote_user is set by auth_basic above.
         proxy_set_header X-Authenticated-User $remote_user;
+
+        # Authorization groups for this user; empty when the user is in none.
+        proxy_set_header X-Authenticated-Groups $authz_groups;
 
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;

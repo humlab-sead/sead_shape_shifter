@@ -6,23 +6,27 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 
-from backend.app.authorization.dependencies import require_application_action
-from backend.app.authorization.models import Action
+from backend.app.authorization.dependencies import get_principal
 from backend.app.core.config import get_settings
 
 router = APIRouter()
-logs_reader_dependency = require_application_action(Action.READ_LOGS)
+
+# Application and error logs are global; no project-scoped log exists, so any
+# authenticated principal may read them.
+logs_authenticated_dependency = get_principal()
 
 LogType = Literal["app", "error"]
 
 
-@router.get("/logs/{log_type}", dependencies=[Depends(logs_reader_dependency)])
+@router.get("/logs/{log_type}", dependencies=[Depends(logs_authenticated_dependency)])
 async def get_logs(
     log_type: LogType,
     lines: int = Query(default=500, ge=1, le=10000, description="Number of lines to fetch from end of file"),
     level: str | None = Query(default=None, description="Filter by log level (INFO, WARNING, ERROR, etc.)"),
 ) -> dict[str, list[str] | int]:
     """Fetch application logs.
+
+    Requires an authenticated principal and no application role, because the log is global.
 
     Args:
         log_type: Type of log file ('app' or 'error')
@@ -65,9 +69,11 @@ async def get_logs(
         raise HTTPException(status_code=500, detail=f"Failed to read log file: {str(e)}") from e
 
 
-@router.get("/logs/{log_type}/download", dependencies=[Depends(logs_reader_dependency)])
+@router.get("/logs/{log_type}/download", dependencies=[Depends(logs_authenticated_dependency)])
 async def download_logs(log_type: LogType) -> dict[str, str]:
     """Get download path for log file.
+
+    Requires an authenticated principal and no application role, because the log is global.
 
     Args:
         log_type: Type of log file ('app' or 'error')

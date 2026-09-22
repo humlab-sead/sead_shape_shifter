@@ -5,10 +5,10 @@
 #     # shellcheck source=env-config.sh
 #     . "$(dirname "${BASH_SOURCE[0]}")/env-config.sh"
 #
-# It complements load-env.sh, which reads container/.env into the environment.
-# This file derives values from a git ref and writes values into .env, so a
-# deployment keeps the repository, branch, image and port it was created with
-# instead of falling back to the defaults on the next `make build`.
+# It complements load-env.sh, which reads CONFIG_DIR/deployment.env into the
+# environment. This file derives values from a git ref and writes values into
+# that file, so a deployment keeps the repository, branch, image and port it was
+# created with instead of falling back to the defaults on the next `make build`.
 
 # Prints the image tag that scripts/build.sh publishes for a git ref:
 #   v1.2.0          a release tag keeps its own name

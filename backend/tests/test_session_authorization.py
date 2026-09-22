@@ -10,7 +10,7 @@ from fastapi import HTTPException, Response
 from backend.app.api.dependencies import get_current_session
 from backend.app.api.v1.endpoints.sessions import SessionCreateRequest, create_session
 from backend.app.authorization.dependencies import require_authorized_session
-from backend.app.authorization.models import Action, Grant, Principal, ResourceRecord, ResourceType
+from backend.app.authorization.models import Action, AuthorizedResource, Grant, Principal, ResourceRecord, ResourceType
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
 from backend.app.authorization.service import AuthorizationService
 from backend.app.core.state_manager import ApplicationState, ProjectSession
@@ -75,7 +75,7 @@ async def test_create_session_requires_project_edit_access_and_records_principal
         Response(),
         app_state,
         _principal(),
-        AuthorizationService(repository),
+        AuthorizedResource(_principal(), Action.EDIT, resource),
     )
 
     assert result.project_name == "project"

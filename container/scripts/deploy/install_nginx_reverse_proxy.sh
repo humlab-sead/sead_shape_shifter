@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# The upstream port is the backend's HOST_PORT, which lives in container/.env.
+# The upstream port is the backend's HOST_PORT, which lives in
+# CONFIG_DIR/deployment.env.
 # shellcheck source=../load-env.sh
 . "$SCRIPT_DIR/../load-env.sh"
 
@@ -13,11 +14,17 @@ Usage: scripts/install_nginx_reverse_proxy.sh <DOMAIN> [UPSTREAM_PORT]
 
 Create an NGINX vhost that proxies HTTPS traffic to the Podman service.
 
-UPSTREAM_PORT defaults to HOST_PORT from container/.env, then to 8012.
+UPSTREAM_PORT defaults to HOST_PORT from CONFIG_DIR/deployment.env, then to 8012.
+CONFIG_DIR defaults to the invoking user's ~/config, so either run this as the
+deployment user or name that user's config directory:
+  sudo CONFIG_DIR=/data/<user>/config scripts/deploy/install_nginx_reverse_proxy.sh ...
+
+The site file is rendered from nginx-shape-shifter.conf.template in this
+directory, and the application itself keeps running from ~/container.
 
 Examples:
-  scripts/install_nginx_reverse_proxy.sh shapeshifter.example.com 8012
-  DOMAIN=shapeshifter.example.com PORT=8012 scripts/install_nginx_reverse_proxy.sh
+  sudo -u test-shape-shifter.sead.se scripts/deploy/install_nginx_reverse_proxy.sh shapeshifter.example.com 8012
+  DOMAIN=shapeshifter.example.com PORT=8012 scripts/deploy/install_nginx_reverse_proxy.sh
 EOF
 }
 

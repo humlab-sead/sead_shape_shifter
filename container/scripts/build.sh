@@ -12,7 +12,8 @@
 
 set -euo pipefail
 
-# Load container/.env values that the environment has not already set.
+# Load CONFIG_DIR/deployment.env values that the environment has not already
+# set.
 # shellcheck source=load-env.sh
 . "$(dirname -- "${BASH_SOURCE[0]}")/load-env.sh"
 # shellcheck source=env-config.sh
@@ -29,8 +30,8 @@ RESET='\e[0m'
 g_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 g_script_file="$(basename "${BASH_SOURCE[0]}")"
 
-# Defaults. GIT_REPO, GIT_REF and IMAGE_NAME come from container/.env when it
-# sets them; the command-line options below still override those values.
+# Defaults. GIT_REPO, GIT_REF and IMAGE_NAME come from CONFIG_DIR/deployment.env
+# when it sets them; the command-line options below still override those values.
 g_git_repo="${GIT_REPO:-https://github.com/humlab-sead/sead_shape_shifter.git}"
 g_git_ref="${GIT_REF:-}"
 _shapeshifter_image="${IMAGE_NAME:-shape-shifter:latest}"
@@ -260,15 +261,26 @@ fi
 
 g_build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# The Containerfile copies lib/ from the build context. Create an empty lib/ when
-# the UCanAccess JARs are absent so the build still succeeds (MS Access data
-# sources will be unavailable until scripts/install-ucanaccess.sh has been run).
-if [ ! -d "$g_build_context/lib" ]; then
+# UCanAccess is installed beside the Containerfile in container/lib/ucanaccess.
+# A standalone bundle uses the container directory as its build context, so the
+# Containerfile reads the dependency directly. A workdir build uses the
+# repository root as its build context, so the dependency is staged there when
+# it is absent, which keeps both build modes on the one installed copy. An
+# existing context copy is left alone; MS Access sources need the JARs, and the
+# build still succeeds without them.
+g_dependency_dir="$g_script_dir/lib"
+g_context_lib_dir="$g_build_context/lib"
+if [ -d "$g_dependency_dir/ucanaccess" ] && [ ! -d "$g_context_lib_dir/ucanaccess" ]; then
+    echo "Staging UCanAccess from $g_dependency_dir into $g_context_lib_dir"
+    mkdir -p "$g_context_lib_dir"
+    cp -R "$g_dependency_dir/." "$g_context_lib_dir/"
+fi
+if [ ! -d "$g_context_lib_dir" ]; then
     echo "warning: no lib/ directory in build context; creating an empty one"
     echo "warning: MS Access support needs lib/ucanaccess - run scripts/install-ucanaccess.sh"
-    mkdir -p "$g_build_context/lib"
+    mkdir -p "$g_context_lib_dir"
 fi
-if [ ! -d "$g_build_context/lib/ucanaccess" ]; then
+if [ ! -d "$g_context_lib_dir/ucanaccess" ]; then
     echo "warning: lib/ucanaccess not found - MS Access data sources will not load"
 fi
 
@@ -292,6 +304,7 @@ if [ ${#g_additional_tags[@]} -gt 0 ]; then
 fi
 echo "Containerfile:   $g_containerfile"
 echo "Build Context:   $g_build_context"
+echo "UCanAccess:      $g_context_lib_dir/ucanaccess"
 echo "User UID:        $g_user_uid"
 echo "User GID:        $g_user_gid"
 echo "No Cache:        ${g_no_cache:-false}"
@@ -361,7 +374,7 @@ echo -e "${GREEN}Digest:${RESET} ${g_image_digest:-unknown}"
 if [ -n "${IMAGE_NAME:-}" ] && [ "$IMAGE_NAME" != "$g_image_name:$g_image_tag" ]; then
     echo ""
     echo -e "${YELLOW}!${RESET} Built ${g_image_name}:${g_image_tag}, but IMAGE_NAME is '${IMAGE_NAME}'."
-    echo -e "${YELLOW}!${RESET} 'make up' starts IMAGE_NAME. Set that value in container/.env to match, or run:"
+    echo -e "${YELLOW}!${RESET} 'make up' starts IMAGE_NAME. Set that value in CONFIG_DIR/deployment.env to match, or run:"
     echo -e "${YELLOW}!${RESET}   IMAGE_NAME=${g_image_name}:${g_image_tag} make up"
 fi
 

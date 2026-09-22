@@ -1,7 +1,8 @@
 # ==============================================================================
 # PostgreSQL password file template (.pgpass)
 # ==============================================================================
-# Copy this file to container-data/.pgpass/.pgpass and add real credentials.
+# Copy this file to config/.pgpass/.pgpass, next to the checkout, and add real
+# credentials.
 #
 # Format: hostname:port:database:username:password
 #
@@ -13,7 +14,7 @@
 # Wildcards (*) can be used for any field except the password.
 #
 # Security:
-#   chmod 600 container-data/.pgpass/.pgpass
+#   chmod 600 config/.pgpass/.pgpass
 #   Never commit the real file.
 #
 # Documentation: https://www.postgresql.org/docs/current/libpq-pgpass.html

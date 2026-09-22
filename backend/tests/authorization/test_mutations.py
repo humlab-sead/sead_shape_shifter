@@ -93,4 +93,23 @@ def test_concurrent_repository_connections_preserve_independent_grants(tmp_path)
 
     repository = SQLiteAuthorizationRepository(database)
     assert {grant.principal_id for principal_id in principal_ids for grant in repository.list_grants(principal_id)} == set(principal_ids)
+
+
+def test_repository_opened_in_worker_thread_is_usable_from_another_thread(tmp_path) -> None:
+    """FastAPI opens the request repository in a worker thread and uses it elsewhere.
+
+    The request-scoped repository is created by a synchronous dependency, which runs
+    in a worker thread, while the handler that reads and writes through it runs in a
+    different thread. The connection must therefore accept calls from another thread.
+    """
+    database = tmp_path / "authorization.sqlite3"
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        repository = executor.submit(SQLiteAuthorizationRepository, database).result()
+
+    resource = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
+    repository.create_resource(resource)
+
+    assert repository.get_resource_by_locator(ResourceType.PROJECT, "project-a") == resource
+    repository.close()
     repository.close()

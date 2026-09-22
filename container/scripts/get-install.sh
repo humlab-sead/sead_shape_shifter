@@ -88,29 +88,35 @@ fi
 
 echo "Deployment files extracted."
 
-# Record the repository and ref in container/.env, so `make build` builds the
-# ref that was just downloaded instead of the default in .env.example.
+# Record the repository and ref in CONFIG_DIR/deployment.env, so `make build`
+# builds the ref that was just downloaded instead of the default in
+# .env.example. The file lives beside the checkout, outside it.
 if [ -d container ]; then
-  if [ ! -f container/.env ] && [ -f container/.env.example ]; then
-    cp container/.env.example container/.env
-  fi
   # shellcheck source=env-config.sh
   . container/scripts/env-config.sh
   # shellcheck source=load-env.sh
-  ENV_FILE="$PWD/container/.env" . container/scripts/load-env.sh
+  . container/scripts/load-env.sh
+  deployment_env="$CONFIG_DIR/deployment.env"
+  # The directory holds credentials and policy, so keep it private to the
+  # deployment user, matching scripts/setup.sh.
+  mkdir -p "$CONFIG_DIR"
+  chmod 700 "$CONFIG_DIR"
+  if [ ! -f "$deployment_env" ] && [ -f container/.env.example ]; then
+    cp container/.env.example "$deployment_env"
+  fi
   env_image="${IMAGE_NAME:-shape-shifter:latest}"
-  shapeshifter_env_file_set container/.env GIT_REPO "$REPO_URL"
-  shapeshifter_env_file_set container/.env GIT_REF "$REF"
-  shapeshifter_env_file_set container/.env IMAGE_NAME "$(shapeshifter_image_for_ref "$REF" "${env_image%%:*}")"
-  echo "Recorded GIT_REPO, GIT_REF and IMAGE_NAME in container/.env"
+  shapeshifter_env_file_set "$deployment_env" GIT_REPO "$REPO_URL"
+  shapeshifter_env_file_set "$deployment_env" GIT_REF "$REF"
+  shapeshifter_env_file_set "$deployment_env" IMAGE_NAME "$(shapeshifter_image_for_ref "$REF" "${env_image%%:*}")"
+  echo "Recorded GIT_REPO, GIT_REF and IMAGE_NAME in $deployment_env"
 fi
 
 echo ""
 echo "Next steps:"
 echo "  cd container"
-echo "  review .env               # repository, ref, image, port"
-echo "  make install-ucanaccess   # required only for MS Access data sources"
+echo "  review ~/config/deployment.env   # repository, ref, image, port"
+echo "  make install-ucanaccess           # required only for MS Access data sources"
 echo "  make setup"
-echo "  nano ../container-data/backend.env"
+echo "  nano ~/config/backend.env"
 echo "  make build"
 echo "  make up"

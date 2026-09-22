@@ -7,7 +7,10 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from backend.app.authorization.models import Grant, GrantSubjectType, ResourceRecord, ResourceType
+from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
+
+from backend.app.authorization.models import ApplicationRole, Grant, GrantSubjectType, ResourceRecord, ResourceType
 from backend.app.authorization.repository import SQLiteAuthorizationRepository
 
 
@@ -98,6 +101,60 @@ def reconcile_manifest(path: Path, database: Path, *, allow_authenticated_everyo
         repository.close()
 
 
+def export_manifest(path: Path, database: Path) -> dict[str, int]:
+    """Export active top-level authorization resources and grants as a manifest."""
+    repository = SQLiteAuthorizationRepository(database)
+    try:
+        administrators = sorted(
+            {assignment.principal_id for assignment in repository.list_all_application_roles() if assignment.role == ApplicationRole.ADMIN}
+        )
+        grants_by_resource = {}
+        for grant in repository.list_all_grants():
+            grants_by_resource.setdefault(grant.resource_id, []).append(grant)
+
+        resources = []
+        for resource in repository.list_resources():
+            if resource.lifecycle_state != "active" or resource.resource_type not in {
+                ResourceType.PROJECT,
+                ResourceType.SHARED_DATA_SOURCE,
+            }:
+                continue
+            grants = sorted(
+                grants_by_resource.get(resource.resource_id, []),
+                key=lambda grant: (grant.subject_type.value, grant.subject_id, grant.role),
+            )
+            resources.append(
+                {
+                    "resource_type": resource.resource_type.value,
+                    "locator": resource.locator,
+                    "grants": [
+                        {
+                            "subject_type": grant.subject_type.value,
+                            "subject_id": grant.subject_id,
+                            "role": grant.role,
+                        }
+                        for grant in grants
+                    ],
+                }
+            )
+    finally:
+        repository.close()
+
+    manifest = {"administrators": administrators, "resources": resources}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        if path.suffix.lower() in {".yaml", ".yml"}:
+            yaml = YAML()
+            yaml.default_flow_style = False
+            with path.open("w", encoding="utf-8") as output:
+                yaml.dump(manifest, output)
+        else:
+            path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    except (OSError, YAMLError) as exc:
+        raise ValueError(f"Unable to write authorization manifest: {exc}") from exc
+    return {"resources": len(resources), "administrators": len(administrators), "grants": sum(len(r["grants"]) for r in resources)}
+
+
 def initialize_database(path: Path) -> None:
     """Create or migrate the authorization database schema."""
     repository = SQLiteAuthorizationRepository(path)
@@ -105,12 +162,26 @@ def initialize_database(path: Path) -> None:
 
 
 def _load_manifest(path: Path) -> dict[str, Any]:
+    """Read a manifest as JSON or YAML and check that it holds an object."""
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        content = path.read_text(encoding="utf-8")
+        suffix = path.suffix.lower()
+        if suffix in {".yaml", ".yml"}:
+            value = YAML(typ="safe").load(content)
+        elif suffix == ".json":
+            value = json.loads(content)
+        else:
+            # A manifest can arrive through a pipe, for example as
+            # --manifest /dev/stdin. Such a path carries no extension, so choose
+            # the parser from the content instead of the name.
+            try:
+                value = json.loads(content)
+            except json.JSONDecodeError:
+                value = YAML(typ="safe").load(content)
+    except (OSError, json.JSONDecodeError, YAMLError) as exc:
         raise ValueError(f"Invalid authorization manifest: {exc}") from exc
     if not isinstance(value, dict):
-        raise ValueError("Authorization manifest must contain a JSON object")
+        raise ValueError("Authorization manifest must contain an object")
     return value
 
 

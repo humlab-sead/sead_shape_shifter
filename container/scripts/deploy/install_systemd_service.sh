@@ -9,6 +9,10 @@ Usage: scripts/deploy/install_systemd_service.sh [USER]
 Install and enable the Shape Shifter user systemd service for a configured
 environment user (run as root).
 
+The unit runs the lifecycle scripts in ~/container, which read configuration from
+the sibling ~/config directory, so no deployment value is stored in the unit
+itself.
+
 Examples:
   scripts/deploy/install_systemd_service.sh test-shape-shifter.sead.se
   USER=test-shape-shifter.sead.se scripts/deploy/install_systemd_service.sh
