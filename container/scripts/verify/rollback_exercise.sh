@@ -162,11 +162,13 @@ compose_down() {
 compose_up() {
     CONFIG_DIR="$g_config_dir" CONTAINER_DATA_DIR="$g_data_dir" HOST_PORT="$g_host_port" IMAGE_NAME="$g_image" \
         podman-compose -f "$g_container_dir/podman-compose.yml" \
-        -p "$g_compose_project_name" up -d
+    -p "$g_compose_project_name" up -d --no-build
 }
 
 run_admin() {
     podman run --rm \
+        --user 0 \
+        --workdir /app \
         --env-file "$g_config_dir/backend.env" \
         --volume "$g_data_dir/state:/app/state:rw" \
         "$g_image" "${g_container_cli[@]}" "$@"
@@ -174,14 +176,19 @@ run_admin() {
 
 run_restore() {
     podman run --rm \
+        --user 0 \
+        --workdir /app \
         --env-file "$g_config_dir/backend.env" \
         --volume "$g_data_dir/state:/app/state:rw" \
         --volume "$g_backup_path:/app/rollback-backup:ro" \
-        "$g_image" "${g_container_cli[@]}" restore /app/rollback-backup
+    "$g_image" sh -c \
+    'cp /app/rollback-backup /tmp/rollback.sqlite3 && python -m backend.app.scripts.authorization restore /tmp/rollback.sqlite3'
 }
 
 run_reconcile() {
     podman run --rm \
+        --user 0 \
+        --workdir /app \
         --env-file "$g_config_dir/backend.env" \
         --volume "$g_data_dir/state:/app/state:rw" \
         --volume "$g_manifest:/app/rollback-manifest:ro" \
