@@ -1,6 +1,6 @@
 # Handoff: Podman Deployment Verification
 
-**Status:** Test-release disposition ready — two non-blocking verification failures are tracked in GitHub issues; authenticated-access and rollback exercises remain pending
+**Status:** Test-release disposition ready — one non-blocking verification failure (host-log review) is tracked in a GitHub issue; the credential-rotation item is resolved as an approved exception. The authenticated-access and rollback exercises were completed on 2026-09-22 during the centralized-authorization cutover Phase 4 and are recorded below.
 **Opened:** 2026-09-16 (extended the same day with the containment and credential-rotation checks that the development plan left open)
 **Verification runs:** 2026-09-18 on `humlabsead`; latest run `20260918T210002Z-3878349`
 **Source plan:** [MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md](../done/MITIGATE_SECURITY_ISSUES/done/MITIGATE_SECURITY_ISSUES_PHASE_5_TASK_PLAN.md) (Phase 5, closed)
@@ -29,8 +29,8 @@ The test deployment on `humlabsead` was inspected again on 2026-09-18. The lates
 | Endpoint containment | Verified on 2026-09-18 for execution, raw YAML, data-source creation, and ingester routes |
 | Log review (container, proxy, database) | Failed on host-log review: PostgreSQL log access was unavailable and candidate matches require operator review; container-log review passed. Confirmed and recorded as a non-blocking GitHub issue. |
 | Credential rotation after the loopback fix | Resolved as an approved exception on 2026-09-22: PostgreSQL credential rotation is out of scope for every PostgreSQL database, including the SEAD database, so the `sead_ro` `.pgpass` credential is not rotated. Previously recorded as a non-blocking GitHub issue. |
-| Authenticated access and cross-resource isolation with real principals | Not run in the recorded read-only runs |
-| Rollback exercise | Not run in the recorded read-only runs |
+| Authenticated access and cross-resource isolation with real principals | Completed 2026-09-22 in the cutover Phase 4: `401` unauthenticated, owner `200`, another principal's project concealed `404`, administrator `200`; the symmetric isolation direction is masked by `project_maintainer` |
+| Rollback exercise | Completed 2026-09-22 in the cutover Phase 4: image and authorization database restored, integrity passed, reconciliation zero-missing, health `200` |
 
 ## Completed Work
 
@@ -65,9 +65,9 @@ The verification command and outputs are recorded in the dated run directories u
 - [x] **Endpoint containment** — Passed in the latest read-only run.
 - [x] **Record the results** — Dated reports and detailed logs are recorded in the deployment-verification output directory.
 - [!] **Log review** — Host-log review failed because the PostgreSQL log could not be read and candidate matches require review; tracked in a non-blocking GitHub issue.
-- [!] **Credential rotation** — The `sead_ro` `.pgpass` row remains pending rotation or an approved exception; tracked in a non-blocking GitHub issue.
-- [ ] **Authenticated access with real principals** — Run through the proxy and record allowed, denied, and cross-resource requests.
-- [ ] **Rollback exercise** — Restore the recorded image and authorization database backup, then run integrity and reconciliation checks.
+- [x] **Credential rotation** — Resolved as an approved exception on 2026-09-22: PostgreSQL credential rotation is out of scope for every PostgreSQL database, including the SEAD database, so the `sead_ro` `.pgpass` credential is not rotated.
+- [x] **Authenticated access with real principals** — Passed 2026-09-22: proxy `401` unauthenticated, owner `200`, another principal's project concealed `404`, administrator `200`. Both runs are filed as `/data/test-shape-shifter.sead.se/container-data/deployment-verification/phase-4/verify-authenticated-access.log`; see [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md) *Access-check detail*.
+- [x] **Rollback exercise** — Passed 2026-09-22 16:48:11: the recorded image and authorization database were restored, integrity passed, reconciliation reported `Missing: 0 resources, 0 administrators, 0 grants`, and health returned `200`. Transcript `container-data/backups/rollback-exercise.log`; see [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md) *Rollback detail*.
 
 ## Risks
 

@@ -1,13 +1,13 @@
 # Handoff: UAT-Ready Authorization Deployment
 
-**Status:** Phase 4 complete on 2026-09-22. All four task areas are done and `PH4-AC-1` to `PH4-AC-5` are met. One step remains before this is treated as final: the corrected access-check script has not yet run on the deployment host, because the fix must first land on `dev` and reach the target through `sync-to-deploy`.
+**Status:** Phase 4 complete and closed on 2026-09-22. All four task areas are done and `PH4-AC-1` to `PH4-AC-5` are met. The corrected access-check script was merged to `dev` in PR #500 and reached the deployment host at 19:09, after both recorded runs. The post-fix re-run was skipped, and the residual risk is accepted; see *Post-Fix Re-Run Skipped (Accepted Risk)*.
 **Opened:** 2026-09-22
 **Environment:** host `humlabsead.srv.its.umu.se`, deployment user `test-shape-shifter.sead.se` (uid/gid 1021), container `shape-shifter` published on `127.0.0.1:8012`, proxy `https://test-shape-shifter.sead.se`
 **Source plans:** [Phase 4 task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md), [Phase 3 task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_3_TASK_PLAN.md), [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
 
 ## Purpose
 
-Record the authorization-enabled deployment on the new server so that a user acceptance test can be run against it without reading the Phase 3 archive. This record states what is verified, what is not, and how a tester exercises the system. It does not decide acceptance; that belongs to the user acceptance test owners.
+Record the authorization-enabled deployment on the new server so that a user acceptance test can be run against it without reading the Phase 3 archive. This record states what is verified, what is not, and how a tester exercises the system. It does not decide acceptance; that belongs to Riia Chmielowski (`riia`), the user acceptance test owner.
 
 ## Current State
 
@@ -60,13 +60,13 @@ This deployment runs the authorization system from the outset. The old server co
 | Release identity re-confirmed (`V-4.1`, `V-4.2`) | `make info`, `podman image inspect` | Image `shape-shifter:dev`, ID `6a487db7...04a8`, revision `dbff5ab9...4f96`, `GIT_REF=dev`, container port `8012`, uid/gid `1021/1021` |
 | Deployed manifest matches the reviewed manifest (`V-4.3`) | `sha256sum ~/config/authorization-manifest.yaml` | `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90`, identical to the repository copy |
 | Resource inventory and grants (`V-4.5`) | `scripts/authorization.sh list-resources --json` and `list-grants --json` | 51 resources (36 active, 15 deleted) and 53 grants (47 principal, 6 `everyone`). Every active resource has at least one grant, and no grant points at a missing resource |
-| Access checks with reviewed projects (`V-4.7`) | `container/scripts/verify/verify_authenticated_access.sh` and the administrator probe | Unauthenticated `401`; `bruno` reading his own project `200`; `bruno` reading `Glykou_etal_2021` concealed `404`; `riia` reading her own project `200`; `admin` listing projects `200`. The remaining probe is invalid, not a defect: see *Access-check detail* |
+| Access checks with reviewed projects (`V-4.7`) | `container/scripts/verify/verify_authenticated_access.sh` and the administrator probe | Unauthenticated `401`; `bruno` reading his own project `200`; `bruno` reading `Glykou_etal_2021` concealed `404`; `riia` reading her own project `200`; `admin` listing projects `200`. The remaining probe is invalid, not a defect: see *Access-check detail*. Both runs are filed as `<DATA_DIR>/deployment-verification/phase-4/verify-authenticated-access.log` |
 | Live deployment roles (`V-4.7`) | `scripts/authorization.sh list-application-roles --json` | 3 administrators (`admin`, `roger`, `rebecka`), 4 `project_maintainer` principals (`roger`, `rebecka`, `riia`, `mattias`), 5 `project_creator` plus `operator` principals, and 4 temporary-project creators |
 | Pre-rollback backup (`V-4.8`) | `scripts/authorization.sh backup`, then `sha256sum` | `authorization-20260922-164454.sqlite3`, SHA-256 `9ebf2f22…8b3e`, byte-identical to all three earlier backups of the day |
 | Rollback exercise (`V-4.9`) | `scripts/verify/rollback_exercise.sh --image shape-shifter:dev --authorization-backup … --manifest ~/config/authorization-manifest.yaml --evidence-dir … --yes` | Passed: integrity passed, reconciliation `Missing: 0 resources, 0 administrators, 0 grants`, recorded image restarted, running image ID equals the recorded image ID, health `200` |
 | Service supervision restored after the rollback | `make service-restart`, then loopback health | `Service restarted`; `{"status":"healthy","version":"2.1.0","environment":"production","timestamp":"2026-09-22T14:55:32.576269Z"}` |
-| Probe-script role handling corrected | `bash -n`, `shellcheck -S warning`, a local harness against a stand-in proxy, and the extracted role-lookup snippet run against a real authorization store | See *Access-check detail*. The snippet returned `project_maintainer` for `riia`, nothing for `bruno`, and `admin` for `admin`, matching the deployment's role shape. Reaching the target needs a `dev` merge and a sync |
-| Evidence logs filed | Copied from gitignored `tmp/` into the deployment evidence directory | `list-audit-events.log`, `list-resources.log`, and `list-grants.log` are under `<DATA_DIR>/deployment-verification/phase-4/` |
+| Probe-script role handling corrected | `bash -n`, `shellcheck -S warning`, a local harness against a stand-in proxy, and the extracted role-lookup snippet run against a real authorization store | See *Access-check detail*. The snippet returned `project_maintainer` for `riia`, nothing for `bruno`, and `admin` for `admin`, matching the deployment's role shape. The correction was merged to `dev` in PR #500 and synced to the target with `container/scripts/deploy/sync-to-deploy`, so the deployment host now carries the corrected script; no image rebuild was needed |
+| Evidence logs filed | Copied from gitignored `tmp/` into the deployment evidence directory, plus the access-check transcript recovered from the session record | `list-audit-events.log`, `list-resources.log`, `list-grants.log`, and `verify-authenticated-access.log` are under `<DATA_DIR>/deployment-verification/phase-4/` |
 | Tester accounts decided | Decision recorded 2026-09-22 | **No grant changes.** Testers use a gatekeeper account (`roger`, `rebecka`, `riia`, `mattias`, each seeing all 26 projects) or `bruno` (6). The four accounts that own no reviewed project are not used for content acceptance. This matches reviewed Decisions 7, 8, and 10, so the manifest checksum, the backup lineage, and the rollback position all stay valid |
 | `bulgaria-arbodat-lookup-options` removed | `rm -f` on the deployment-host definition | The directory holds five definitions and the application lists five. See *Shared data source decision* |
 
@@ -94,7 +94,7 @@ They are temporary verification projects from 2026-09-18 that were never removed
 
 ### Access-check detail
 
-The check ran on 2026-09-22 through the proxy with `bruno` as principal A and `riia` as principal B, using reviewed projects `Bruno-Strucke-v2-test` and `Glykou_etal_2021`.
+The check ran twice on 2026-09-22 through the proxy with `bruno` as principal A and `riia` as principal B, using reviewed projects `Bruno-Strucke-v2-test` and `Glykou_etal_2021`: at 16:37 local from a terminal prompt, and at 17:01 local with the passwords supplied through the environment. Both runs produced identical output. The raw transcript of both is filed as `<DATA_DIR>/deployment-verification/phase-4/verify-authenticated-access.log`. It predates the corrected script, which reached the host at 19:09.
 
 | Probe | Status | Expected |
 |---|---|---|
@@ -213,7 +213,7 @@ The probe script was corrected in the same session. It now reads each principal'
 
 The corrections passed `bash -n`, `shellcheck -S warning`, a local harness that exercised three cases (a privileged principal as B, two unprivileged principals, and an unreadable scope), and the extracted role-lookup snippet run against a real authorization store, where it returned `project_maintainer` for `riia`, nothing for `bruno`, and `admin` for `admin`.
 
-**The deployment host still runs the old script.** `~/container` is a synced copy maintained by `container/scripts/deploy/sync-to-deploy`, not a git checkout, and the deployment user cannot read this checkout, so the fix reaches the target only after it lands on `dev` and the tree is re-synced. A re-run on 2026-09-22 confirmed this: the output had no principal-scope block and repeated the original failure. No image rebuild is needed, because the script runs on the host.
+**The deployment host now carries the corrected script.** The fix was merged to `dev` in PR #500 and synced with `container/scripts/deploy/sync-to-deploy`, so `~/container` holds it. The last host transcript is the pre-fix re-run on 2026-09-22, which had no principal-scope block and repeated the original failure. No post-fix re-run has been made, so the in-container role lookup is still unconfirmed on the target. No image rebuild is needed, because the script runs on the host.
 
 ### `T4.7` / `V-4.8`, `V-4.9` — backup and rollback exercise
 
@@ -221,10 +221,23 @@ Complete. The pre-rollback backup, its checksum, and the full exercise transcrip
 
 The supervision follow-up is done. `make service-restart` reported `Service restarted` and the loopback health check returned `{"status":"healthy","version":"2.1.0","environment":"production","timestamp":"2026-09-22T14:55:32.576269Z"}`, so the container is again aligned with the unit's own start path. A second health check at 14:59:14 returned the same healthy response.
 
+## Post-Fix Re-Run Skipped (Accepted Risk)
+
+The corrected access-check script (commit `5ea5e534`) was merged to `dev` in PR #500 and reached the deployment host at 2026-09-22 19:09:21, after both recorded runs. The post-fix re-run was **skipped**: the script prompts for the principal passwords, and the operator has no access to them from the workstation used for this work.
+
+The residual risk is accepted, for these reasons:
+
+- `PH4-AC-2` does not depend on it. The four required outcomes are demonstrated by two raw runs, filed as `<DATA_DIR>/deployment-verification/phase-4/verify-authenticated-access.log`.
+- The untested part is the correction, not the deployment's access behaviour. Only the in-container role lookup is unexercised — the part that turns the expected `200` on the `denied-B` probe into a labelled privileged read.
+- The correction cannot fail silently. When the role lookup fails, the script reports that the roles could not be read and keeps the `404` expectation, so a privileged principal still reports a failure rather than passing.
+- The change affects evidence reporting only. It alters no authorization policy, grant, route, or image, so the recorded release identity, manifest checksum, and backup lineage are unaffected.
+
+Accepted 2026-09-22 by Roger Mähler. A later run would only make the transcript self-labelling; it would not change a recorded result.
+
 ## What Is Not Verified
 
 - **Symmetric cross-resource isolation.** Only one of the two directions was verified, because `riia` holds `project_maintainer`. The other direction is an expected privileged read. Nothing here shows that two scope-limited principals cannot reach each other's projects, because the deployment has no such pair.
-- **The corrected probe script against the live deployment.** The target's `~/container` is a synced copy updated by `container/scripts/deploy/sync-to-deploy`, not a git checkout, so the fix reaches it only after it lands on `dev` and the tree is re-synced. Until then the target runs the old script, which reports a privileged read as an isolation failure. The logic and the role-lookup snippet are verified locally, but the `podman exec` invocation of the snippet has not run on the target.
+- **The corrected probe script against the live deployment.** The fix was merged to `dev` in PR #500 and reached the target at 19:09. Neither filed run used it: both pre-fix runs finished by 17:01, and the proxy recorded no request after 18:38, so the corrected script never executed against the deployment. No transcript therefore shows the in-container role lookup, the principal-scope block, or the `1 of 2` isolation-direction count. The re-run was skipped and the risk accepted; see *Post-Fix Re-Run Skipped (Accepted Risk)*.
 - **The five-source listing through the API.** The definition file is gone from `container-data/shared/data-sources`, which is the directory `GET /api/v1/data-sources` enumerates, but the listing itself was not re-run after the removal.
 - **Functional correctness of the application.** This record covers authorization behaviour and operator procedures. Whether transformations, ingesters, and loaders produce correct output is not assessed here and belongs to the acceptance owners.
 - **Production.** Nothing here was verified on the production host, and the production flip is out of scope.
@@ -250,23 +263,23 @@ The supervision follow-up is done. `make service-restart` reported `Service rest
 
 ## Next Actions
 
-1. **Land the probe-script fix on `dev`, sync the target tree, then re-run the access check.** `~/container` is a synced copy, so the fix must reach `dev` and be synced with `container/scripts/deploy/sync-to-deploy` before the target can use it. No image rebuild is needed. Record the new transcript as the `V-4.7` evidence; it should report the principal scope and `1 of 2` isolation directions.
+1. **Do not treat the post-fix re-run as a closing condition.** It was skipped because the principal passwords are not available from the workstation used for this work, and the residual risk is accepted; see *Post-Fix Re-Run Skipped (Accepted Risk)*. If the passwords become available while the deployment is still in the acceptance window, running the check would replace the labelled `FAIL` line with a principal-scope block, but no acceptance criterion depends on it.
 2. **Take a fresh backup when the window opens.** No grant changes follow from the tester-account decision, but acceptance can still change shared data, because every non-administrator holds `operator`. Record a backup at the point acceptance starts and add no grants during it; the existing backups are already byte-identical, so this is a checkpoint rather than a repair.
 3. **Correct or confirm the Phase 3 cleanup statement.** The audit trail does not show the 2026-09-22 deletions it describes.
 4. **Drop `bulgaria-arbodat-lookup-options` from the three records that still name it.** The reviewed manifest, the deployed manifest, and the inventory should lose the entry together as one reviewed change, so a future import cannot recreate the resource. This was left out of the removal deliberately, because editing the manifest invalidates the checksum acceptance relies on.
-5. **Hand this record to the user acceptance test owners.** It states what is verified and what is not; acceptance criteria are theirs to author and apply.
+5. **Hand this record to the user acceptance test owner, Riia Chmielowski (`riia`).** It states what is verified and what is not; acceptance criteria are hers to author and apply.
 6. **Do not repoint production DNS or the reverse proxy.** The flip is a separate decision with its own proposal and owners.
 
 ## Risks
 
-- **Four orphan authorization resources exist and are inert.** `verification-containment-20260918121347-3074400`, `...122102-3084527`, `...122806-3094124`, and `...123353-3101909` are active and owned, but their stored locators are bare names while the projects on disk map to `verification-projects:…`. That mismatch hides them from the project list for every principal, administrators included, so they cannot be seen or used. They are tidiness debt rather than an acceptance problem. Cleaning them up means deleting the projects through the application, outside the acceptance window, because the CLI has no lifecycle command.
+- **Four orphan authorization resources exist and are inert.** `verification-containment-20260918121347-3074400`, `...122102-3084527`, `...122806-3094124`, and `...123353-3101909` are active and owned, but their stored locators are bare names while the projects on disk map to `verification-projects:…`. That mismatch hides them from the project list for every principal, administrators included, so they cannot be seen or used. They are tidiness debt rather than an acceptance problem. Cleaning them up means deleting the projects through the application, outside the acceptance window, because the CLI has no lifecycle command; see *Cleanup Deferred Until After Acceptance*.
 - **The Phase 3 cleanup claim is not corroborated by the audit trail.** No `resource_lifecycle_changed` event is dated 2026-09-22. The most consistent explanation is a restore rather than a missing deletion: the database has been byte-identical since 09:55:16, and a rollback restore at `rollback-20260922-103540` rewrote it before that, so a deletion made between 09:55 and 10:35 would have been reverted together with its audit events and never reapplied. That reconstruction fits the observation but is not proven, so correct the Phase 3 handoff or explain the difference before relying on it as evidence.
 - **A standalone rollback exercise leaves the service unit out of step.** The script drives `podman-compose` directly, so the container is recreated outside `shape-shifter.service` while the unit still reports `active (exited)`. Run `make service-restart` afterwards, or use `run_deployment_verification.sh`, which manages the unit itself.
 - **`bulgaria-arbodat-lookup-options` was removed, but three records still name it.** The definition was deleted on 2026-09-22, so the application lists five shared data sources, yet the reviewed manifest, the deployed manifest, and the inventory still declare the resource and its grant. The authorization resource is an inert orphan, and a future manifest import would not remove it. See *Shared data source decision*.
 - **Acceptance is not read-only against shared data.** Every non-administrator holds `operator`, which permits `manage_shared_sources` and `run_ingesters`, so a tester can change shared data sources. Take the backup after any grant change and before the window opens.
 - **The rollback discards later grants.** Any grant added inside the acceptance window is lost on restore.
 - **Most accounts see either everything or nothing, by decision.** `roger`, `rebecka`, `riia`, and `mattias` hold `project_maintainer` and read every project, so a tester using one of those accounts cannot experience isolation. The remaining accounts (`bruno`, `athena`, `ershad`, `phil`, `victoria`) hold only `project_creator` and `operator`, and of those only `bruno` owns any reviewed project, so the other four would see an empty list. Acceptance content is exercised through a gatekeeper account or through `bruno`; see *Tester accounts*.
-- **The probe script previously misreported a privileged read as an isolation failure.** Corrected on 2026-09-22. `verify_authenticated_access.sh` now reads each principal's deployment roles from the deployed policy, prints a principal-scope block, expects `200` and adds a note for a denied probe whose principal holds a read-granting role, and reports how many isolation directions were verified. It still fails when the roles cannot be read and a principal turns out to be privileged. Locally tested only; the in-container lookup needs a deployment-host run to confirm.
+- **The probe script previously misreported a privileged read as an isolation failure.** Corrected on 2026-09-22, merged to `dev` in PR #500, and synced to the target. `verify_authenticated_access.sh` now reads each principal's deployment roles from the deployed policy, prints a principal-scope block, expects `200` and adds a note for a denied probe whose principal holds a read-granting role, and reports how many isolation directions were verified. It still fails when the roles cannot be read and a principal turns out to be privileged. The corrected script is deployed but was never run on the target, so its in-container role lookup is unconfirmed there; the re-run was skipped and the risk accepted on 2026-09-22, see *Post-Fix Re-Run Skipped (Accepted Risk)*.
 - **Shared-source grants are broad.** Every authenticated principal can read the five remaining shared data sources. That is intended for the current manifest and worth confirming for the acceptance population.
 - **Host services are reachable only as `host.docker.internal`.** A host-side connection check to a host database succeeds while the container fails, which misleads diagnosis.
 - **Audit events carry no correlation ID.** All 144 events have `correlation_id: null`, so an event cannot be tied to the request that caused it.
@@ -279,19 +292,40 @@ The supervision follow-up is done. `make service-restart` reported `Service rest
 Resolved on 2026-09-22:
 
 - **The four `verification-containment-*` resources need no action.** They are inert orphan records hidden by a locator/name mismatch; see *Resource inventory detail*.
-- **The probe script is fixed.** It reads deployment roles, labels a privileged read, and states how many isolation directions were verified.
+- **The probe script is fixed, merged, and deployed.** It reads deployment roles, labels a privileged read, and states how many isolation directions were verified. It was merged to `dev` in PR #500 and reached the target at 19:09.
+- **The post-fix re-run is skipped and its risk accepted.** The principal passwords are not available from the workstation used for this work, so the correction has never executed against the deployment. The residual risk is accepted; see *Post-Fix Re-Run Skipped (Accepted Risk)*.
 - **No symmetric isolation transcript is required.** The four required outcomes are recorded. If reviewers ask for one, produce it with real scoped grants on two reviewed projects rather than the temporary-project fixture path, which would add to the orphan pile.
 - **Tester accounts: no grant changes.** Acceptance content is exercised through a gatekeeper account (`roger`, `rebecka`, `riia`, `mattias`) or `bruno`; the four accounts that own no reviewed project are not used for it. This matches reviewed Decisions 7, 8, and 10, and keeps the manifest checksum, the backup lineage, and the rollback position valid. See *Tester accounts*.
 - **`bulgaria-arbodat-lookup-options` is removed, not provisioned.** The legacy file enumeration contains no Bulgarian dataset and nothing referenced the source. See *Shared data source decision*.
 - **Grant sequencing, should grants ever be added.** Settle the list, grant, re-record the manifest checksum, take a fresh backup, and only then open the acceptance window, because a rollback discards anything granted afterwards.
+- **User acceptance testing is owned by Riia Chmielowski (`riia`).** Assigned 2026-09-22. `riia` holds `project_maintainer`, `project_creator`, and `operator`, so that account reads every project and cannot experience cross-project isolation; see *Tester accounts*. Roger Mähler remains the rollback decision owner.
 
 Still open:
 
-- Whether to drop `bulgaria-arbodat-lookup-options` from the reviewed manifest, the deployed manifest, and the inventory as one reviewed change, so a future import cannot recreate the resource. This was left out of the removal deliberately, because editing the manifest invalidates the checksum this record relies on as acceptance evidence.
-- Who owns and executes user acceptance testing, and against which criteria? Unassigned as of 2026-09-22; this record names Roger Mähler as the rollback owner only.
-- Whether to raise the audit-tooling gaps as an issue: null `correlation_id` on every event, role events that omit the principal, and unaudited denials. The organization's OAuth restrictions block issue creation from the coding agent, so an operator must file it.
+- Whether to drop `bulgaria-arbodat-lookup-options` from the reviewed manifest, the deployed manifest, and the inventory as one reviewed change, so a future import cannot recreate the resource. Deferred until after the acceptance window, because editing the manifest changes the checksum `V-4.3` relies on; see *Cleanup Deferred Until After Acceptance*.
+- Which acceptance criteria apply, and who reviews the observed results against them. Outside this record: the owner is assigned (Riia Chmielowski, `riia`), and the criteria are hers to author and apply.
+- Whether to raise the audit-tooling gaps as an issue: null `correlation_id` on every event, role events that omit the principal, and unaudited denials. Not raised at this time; recorded here so the gap is not lost.
+
+## Cleanup Deferred Until After Acceptance
+
+Two cleanups are deliberately deferred, because each would invalidate evidence this record relies on. Run them after the acceptance window closes, never during it.
+
+| Cleanup | Action | Evidence it would disturb |
+|---|---|---|
+| The four `verification-containment-*` temporary projects and their authorization records | Delete the projects through the application, then drop the orphan authorization resources | The audit trail (144 events, none dated 2026-09-22), the resource counts (`V-4.5`), and the byte-identical backup lineage (`V-4.8`) |
+| `bulgaria-arbodat-lookup-options` in the reviewed manifest (`resources/authorization/test-initial-manifest.yaml`), the deployed manifest (`~/config/authorization-manifest.yaml`), and `secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md` | Drop the entry from all three together | `V-4.3`, which records the deployed manifest checksum `43c03186…fb90` as identical to the reviewed copy |
+
+**No low-risk cleanup is available now.** Every option above either writes to the authorization store or changes a manifest checksum, so each one invalidates evidence recorded for acceptance.
+
+**Post-acceptance sequence**
+
+1. Close the acceptance window and stop changing shared data.
+2. Take a fresh backup with `container/scripts/authorization.sh backup`, and record its path and checksum.
+3. Delete the four temporary projects through the application.
+4. Drop `bulgaria-arbodat-lookup-options` from the three records, so a future import cannot recreate it. This does not remove the existing orphan authorization resource: the CLI has no delete or lifecycle command, and a manifest import does not remove resources. Removing the orphan needs a direct write to the authorization store, which is why it stays deferred.
+5. Re-record the manifest checksum, the resource and grant counts, and the audit-event count in this record.
 
 ## Suggested Follow-Up Documents
 
-- The user acceptance test record, owned outside this project.
+- The user acceptance test record, owned by Riia Chmielowski (`riia`) and kept separate from this record.
 - A Phase 5 task plan for the Podman deployment verification and the updated security record, once this record is complete.
