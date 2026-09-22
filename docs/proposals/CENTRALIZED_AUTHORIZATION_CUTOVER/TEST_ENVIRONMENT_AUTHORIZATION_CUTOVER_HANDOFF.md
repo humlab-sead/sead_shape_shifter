@@ -4,7 +4,7 @@
 **Opened:** 2026-09-22
 **Branch:** `authorization-system-cutover` (all commits pushed to `origin`)
 **Environment:** host `humlabsead`, deployment user `test-shape-shifter.sead.se` (uid/gid 1021), container `shape-shifter` published on `127.0.0.1:8012`, proxy `https://test-shape-shifter.sead.se`
-**Source plans:** [TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md](./done/TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md), [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md)
+**Source plans:** [TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md](./done/TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md), [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md), [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_3_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_3_TASK_PLAN.md)
 
 ## Purpose
 
@@ -12,13 +12,13 @@ Record the live centralized-authorization cutover in the test target environment
 
 ## Current State
 
-The test host runs the three-directory layout: `~/container` for replaceable code, `~/config` for configuration and policy (mode `700`, files `600`), and `~/container-data` for mutable data. The image was built with source commit `d1b21b5d` (tags `shape-shifter:test` and `shape-shifter:authorization-system-cutover-20260922`); the later commit `d27b072c` changed only host scripts and comments, so the running image already contains the container-side behavior described below. `http://127.0.0.1:8012/api/v1/health` answered `200` with `{"status":"healthy","version":"2.1.0","environment":"production"}` on 2026-09-22.
+The test host runs the three-directory layout: `~/container` for replaceable code, `~/config` for configuration and policy (mode `700`, files `600`), and `~/container-data` for mutable data. The current deployed image is the earlier test baseline identified below; the final release image will be built from `dev` after this branch is merged. `http://127.0.0.1:8012/api/v1/health` answered `200` with `{"status":"healthy","version":"2.1.0","environment":"production"}` on 2026-09-22.
 
 | Item | State |
 |---|---|
 | Layout, image build, container health | Done |
 | htpasswd accounts (11) and application roles (19) | Applied |
-| Reviewed manifest import | Applied: `32 resources, 2 administrators, 32 grants` |
+| Reviewed manifest import | Applied: `32 resources, 3 administrators, 32 grants` |
 | Store matches the reviewed manifest | Confirmed for all 32 reviewed resources and 32 reviewed grants |
 | Denial and concealment for non-granted projects | Confirmed: unauthenticated `401`, non-granted project `404` with `{"detail":"Resource not found"}` |
 | Positive access for a granted project | Passed 2026-09-22 with Bruno and Phil using colon-qualified project locators |
@@ -37,6 +37,21 @@ The test host runs the three-directory layout: `~/container` for replaceable cod
 | Rollback exercise | Passed 2026-09-22: the recorded image and authorization backup restored successfully, integrity and manifest reconciliation reported zero missing records, and the restarted service returned health `200` |
 | In-scope credential rotation | Passed 2026-09-22: `ADMIN_AUTH_PASSWORD` and `AUTH_PASSWORD` were recorded as rotated; PostgreSQL `.pgpass` rotation is out of scope |
 
+### Phase 3 closeout evidence
+
+The following checks were run on 2026-09-22 without repeating the completed Phase 1, Phase 2, or Phase 2A migration and layout work:
+
+| Check | Result |
+|---|---|
+| Full backend regression | Passed: `.venv/bin/pytest backend/tests -q`; all collected tests passed with the repository's existing skips and one unrelated JPype deprecation warning |
+| Reviewed manifest identity | SHA-256 `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90`; authoritative content is 3 administrators (`admin`, `roger`, `rebecka`), 32 resources, and 32 grants |
+| Deployed image identity | Running image `localhost/shape-shifter:test`, image ID `4762be65496839738800b5034cf487faafaf4bda6c3dceb2e608d00fe5e4700b`, OCI source revision `d27b072c26e026fe9049a14558ffbaf0ffecda98` |
+| Current checkout identity | `e38f4bc67b289dd23f6995f38ff70ccc79a32bf0`; branch baseline tests passed, but the final release image is intentionally deferred until merge to `dev` |
+| Authorization inventory | 51 retained resources: 36 active and 15 deleted; 53 retained grants; 25 application-role rows, including 3 `admin` roles. Historical/deleted rows explain why raw store totals exceed the 32 reviewed active records |
+| Manifest reconciliation | Passed using a one-shot container with the host manifest mounted read-only: `Missing: 0 resources, 0 administrators, 0 grants` |
+| Administrator access | Passed: `admin` received HTTP 200 for `GET /api/v1/projects` through `https://test-shape-shifter.sead.se`; credentials and response contents were not recorded |
+| Readiness backup | `authorization-20260922-110641.sqlite3`, SHA-256 `9ebf2f2229807cf56ce32cc2d2a7c7fe0c67f67553c3d606833dc71cd9ae8b3e`; writable-copy integrity check passed |
+
 Facts recorded on 2026-09-22:
 
 - Accounts: `admin`, `roger`, `riia`, `rebecka`, `mattias`, `ershad`, `phil`, `athena`, `victoria`, `bruno`, `rooster`.
@@ -44,7 +59,7 @@ Facts recorded on 2026-09-22:
 - Reviewed manifest: [resources/authorization/test-initial-manifest.yaml](../../../resources/authorization/test-initial-manifest.yaml) holds 32 resources (26 project, 6 shared_data_source), 32 grants (26 `owner` for one principal each, 6 `reader` for `everyone`/`authenticated`), and 3 administrators (`admin`, `roger`, `rebecka`).
 - `SHAPE_SHIFTER_AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE=true` is set in `~/config/backend.env` and is live in the container; without it the six `everyone` grants are refused at import time.
 - Inventory before cleanup: `list-resources` returned 51 rows (36 with lifecycle `active`, 15 `deleted`) and `list-grants` returned 51 rows. The four temporary `project:verification-containment-<timestamp>` resources were then deleted through the application; they are now deleted lifecycle records and excluded from `export-manifest`.
-- Project content: `container-data/projects` holds only `verification-projects/` (those four containment projects and `archived/`); `container-data/backups` is empty; a search under `/data` to depth 5 found none of the reviewed project names. The reviewed manifest therefore names 26 projects and 6 shared data sources that this deployment does not hold.
+- Project content: `container-data/projects` holds only `verification-projects/` (those four containment projects and `archived/`); a search under `/data` to depth 5 found none of the reviewed project names. The reviewed manifest therefore names 26 projects and 6 shared data sources that this deployment does not hold.
 - Enforcement check, `container/scripts/verify/verify_authenticated_access.sh`, passed with Bruno and Phil using temporary colon-qualified projects: unauthenticated access returned `401`, each principal received `200` for its granted project, and each other project's request returned the concealed `404` response.
 - Credential rotation check passed with exit code `0`; the final record marked `authorization:ADMIN_AUTH_PASSWORD` and `authorization:AUTH_PASSWORD` as rotated. PostgreSQL `.pgpass` was reported as explicitly out of scope.
 
@@ -103,6 +118,7 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 - The four containment resources were removed through the application and are now deleted lifecycle records; `export-manifest` excludes them.
 - `verify_authenticated_access.sh` requires each project to be granted to exactly one principal, and neither principal may be a bootstrap administrator.
 - The reviewed manifest still names project content that is not present in this deployment. The authenticated check used temporary colon-qualified projects and therefore verifies grant enforcement, not the availability of the reviewed project dataset.
+- The deployed image is based on `d27b072c`, while the current repository checkout is `e38f4bc6`. This is retained as baseline evidence; no feature-branch rebuild is planned. Build and verify the final release image after merging to `dev` before claiming release-candidate parity.
 
 ## Open Decisions
 
