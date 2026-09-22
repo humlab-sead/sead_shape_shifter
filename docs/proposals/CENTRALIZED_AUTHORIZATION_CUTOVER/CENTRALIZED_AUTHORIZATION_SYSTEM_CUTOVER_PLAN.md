@@ -2,7 +2,7 @@
 
 ## Status
 
-- Phase plan / Phases 1, 2, and 2A complete; Phase 3 ready for its task plan; Phases 4–5 not started
+- Phase plan / Phases 1, 2, 2A, and 3 complete; Phase 4 ready for its task plan; Phase 5 not started
 - Scope: route and operation inventory, migration input, readiness validation, enforcement cutover, and Podman release verification
 - Goal: enforce the implemented authorization system in production with reviewed access records and a tested rollback
 - Source decision: [Centralized Authorization System](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
@@ -43,7 +43,7 @@ This plan covers:
 - Project, child-resource, shared-source, log, session, and operation checks are implemented for the covered routes and services.
 - The administration CLI supports manifest migration, reconciliation, resource and role review, grant mutations, backup, restore, and integrity checks.
 - Phase 1 is complete: the maintained route inventory classifies every route and lifecycle entry, carries a dated review by Roger Mähler on 2026-09-17, and no longer contains an `UNDECLARED` row. The classification and parity checks in `backend/tests/authorization/test_route_authentication.py` enforce that state.
-- The test-target inventory records 26 migration-source projects, 6 shared data sources, confirmed nginx principal IDs and owners/readers, and the reviewed initial manifest. The target-content gap is recorded as an operational follow-up; release evidence is recorded in the test-environment cutover handoff.
+- The test-target inventory records 26 migration-source projects, 6 shared data sources, confirmed nginx principal IDs and owners/readers, and the reviewed initial manifest. The reviewed project and shared-data content is now provisioned on the target. Release and readiness evidence is recorded in the test-environment cutover handoff, and the completed Phase 3 task plan is archived under `done/`.
 - The deployment documentation still describes Docker Compose; the target server uses Podman, so the image, service definition, secret injection, volume mounts, health checks, logging, and rollback workflow need a Podman deployment record.
 
 ## Phase Plan
