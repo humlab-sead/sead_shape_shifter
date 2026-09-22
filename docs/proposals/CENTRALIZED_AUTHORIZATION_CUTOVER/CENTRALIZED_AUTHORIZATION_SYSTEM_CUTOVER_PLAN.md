@@ -2,9 +2,11 @@
 
 ## Status
 
-- Phase plan / Phases 1, 2, 2A, and 3 complete; Phase 4 ready for its task plan; Phase 5 not started
-- Scope: route and operation inventory, migration input, readiness validation, enforcement cutover, and Podman release verification
-- Goal: enforce the implemented authorization system in production with reviewed access records and a tested rollback
+- Phase plan / Phases 1, 2, 2A, 3, and 4 complete; Phase 5 not started
+- **Phase 4 completion 2026-09-22:** [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md) records the release, manifest, and backup identifiers, the route-inventory, ownership, and audit results, the access checks, and a passing rollback exercise with a byte-identical restore. `PH4-AC-1` to `PH4-AC-5` are met and `VM-4.1` to `VM-4.4` are covered. Phase 5 prerequisites are satisfied by that record.
+- Scope: route and operation inventory, migration input, readiness validation, an authorization-enabled deployment ready for user acceptance testing, and Podman release verification
+- Goal: deliver and record an authorization-enabled deployment on the new server that is ready for user acceptance testing, together with the operator procedures and documentation needed to run, verify, and roll it back
+- **Scope change 2026-09-22:** flipping production traffic and users from the old server to the new server is out of scope. It repoints DNS and the reverse proxy, migrates users, and depends on user acceptance testing this project does not own, so it moves to [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
 - Source decision: [Centralized Authorization System](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
 - Related: [Deployment Verification Handoff](./DEPLOYMENT_VERIFICATION_HANDOFF.md), [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md)
 
@@ -12,11 +14,11 @@
 
 The authorization repository, policy, route dependencies, service checks, administration CLI, tests, and operating procedures are implemented. What remains is work only a deployment can finish: classify every reachable route and background operation, review the deployment's resources and grants, validate the migration, enable enforcement on a tested release, and record the result.
 
-This plan owns that sequence, the migration input, the rollback decision, and release verification. Authorization design stays in the source decision document, and deployment check details stay in the handoff.
+This plan owns that sequence, the migration input, the rollback decision, and release verification, up to and including a deployment a user acceptance test can be run against. Authorization design stays in the source decision document, deployment check details stay in the handoff, and moving users to the new server is a separate decision.
 
 ## Problem
 
-Authorization enforcement denies requests as soon as protected routes are enabled. Cutover is unsafe until every sensitive route and background operation has a declared requirement and every deployed resource has reviewed ownership and access grants. Cutover also needs a tested backup, a named rollback decision, and results recorded from the exact release being enabled.
+Authorization enforcement denies requests as soon as protected routes are enabled. The new server runs that enforcement from the outset, so it cannot be handed to users for acceptance testing until every sensitive route and background operation has a declared requirement and every deployed resource has reviewed ownership and access grants. It also needs a tested backup, a named rollback decision, and results recorded from the exact release being enabled.
 
 ## Scope
 
@@ -29,13 +31,19 @@ This plan covers:
 - preparing, reviewing, applying, and reconciling the initial authorization manifest;
 - running focused and full regression validation;
 - building and deploying the exact release with Podman;
-- recording release, backup, rollback, and post-deployment access results.
+- recording release, backup, rollback, and post-deployment access results for the new server;
+- documenting and exercising the operator procedures for deployment, access management, backup, restore, and rollback;
+- assembling the evidence a user acceptance test needs, without authoring or owning its acceptance criteria.
 
 ## Non-Goals
 
 - New authorization policy design.
 - Native authentication or replacement of the nginx identity provider.
 - Ingester capability authorization beyond classifying its current routes and recording follow-up work.
+- Authoring or owning user acceptance test criteria, and executing user acceptance testing.
+- Repointing production DNS or the reverse proxy from the old server to the new server.
+- Migrating production users, accounts, or grants to the new server.
+- Selecting the production Podman service model.
 
 ## Current Position
 
@@ -43,8 +51,12 @@ This plan covers:
 - Project, child-resource, shared-source, log, session, and operation checks are implemented for the covered routes and services.
 - The administration CLI supports manifest migration, reconciliation, resource and role review, grant mutations, backup, restore, and integrity checks.
 - Phase 1 is complete: the maintained route inventory classifies every route and lifecycle entry, carries a dated review by Roger Mähler on 2026-09-17, and no longer contains an `UNDECLARED` row. The classification and parity checks in `backend/tests/authorization/test_route_authentication.py` enforce that state.
-- The test-target inventory records 26 migration-source projects, 6 shared data sources, confirmed nginx principal IDs and owners/readers, and the reviewed initial manifest. The reviewed project and shared-data content is now provisioned on the target. Release and readiness evidence is recorded in the test-environment cutover handoff, and the completed Phase 3 task plan is archived under `done/`.
-- The deployment documentation still describes Docker Compose; the target server uses Podman, so the image, service definition, secret injection, volume mounts, health checks, logging, and rollback workflow need a Podman deployment record.
+- The test-target inventory records 26 migration-source projects, 6 shared data sources, confirmed nginx principal IDs and owners/readers, and the reviewed initial manifest. The reviewed project and shared-data content is provisioned on the target, and `sead-options` is verified against the live database. Release and readiness evidence is recorded in the test-environment cutover handoff, and the completed Phase 3 task plan is archived under `done/`.
+- The new server `humlabsead.srv.its.umu.se` hosts the authorization-enabled deployment, while the old server continues to run the previous setup. The two never mix: the new server is never provisioned with the pre-authorization deployment, so no partially enforced or mixed-identity period exists there.
+- Production DNS still targets the old server, and no record exists yet for the production or staging web names. Repointing them is a separate decision with an owner outside this plan.
+- Phase 4 is complete. The deployment record identifies the release, manifest, backup, and rollback owner; the blocking checks, access checks, and audit review are recorded; and the rollback exercise passed with a state-neutral restore. The record also states what is not verified, including that symmetric cross-resource isolation could not be tested, because `bruno` is the only reviewed project owner who is not a global reader.
+- The identity model changes with the move. The previous setup used a single nginx user that never reached the application. The new deployment authenticates individual principals and evaluates grants per request, so accounts and grants must exist for real users before any user moves.
+- The deployment documentation describes the Podman layout, so the runbook rewrite an earlier draft of this plan expected is largely complete.
 
 ## Phase Plan
 
@@ -229,29 +241,29 @@ Prove that the reviewed authorization state and the release candidate are ready 
 
 Ready for a Phase 3 task plan. Phase 2's reviewed manifest and confirmed principals are complete, and Phase 2A's target configuration migration is complete. Phase 3 must still record its own release-candidate regression, backup, migration, reconciliation, and access-check evidence before it can be marked complete.
 
-### Phase 4: Execute And Record Enforcement Cutover
+### Phase 4: Deliver And Record The UAT-Ready Deployment
 
 **Goal**
 
-Enable the tested release and preserve a repeatable rollback path.
+Deliver an authorization-enabled deployment on the new server that a user acceptance test can be run against, and record it with its operator procedures exercised.
 
 **Focus**
 
 - Record the release commit, manifest revision, authorization database backup, and rollback decision owner.
-- Deploy the release with authorization enforcement enabled for the classified routes.
-- Repeat post-deployment access checks and inspect authorization audit records.
-- If cutover fails, stop the service, restore the recorded backup with the documented procedure, restart, run integrity checks, and reconcile the manifest.
-- Record the cutover result, exceptions, any rollback result, and follow-up work.
+- Confirm the new server runs the recorded release with enforcement active for the classified routes.
+- Repeat access checks and inspect authorization audit records against that deployment.
+- Exercise the documented backup, restore, and rollback procedures against the deployment, and record what a rollback discards.
+- Assemble the evidence a user acceptance test needs, and record the deployment result, exceptions, and limitations.
 
 **Depends On**
 
 - Phases 1–3 complete, including the stored backup and access-check results.
-- A release build whose commit and image digest are recorded.
+- A release build on the new server whose commit and image digest are recorded.
 - A named rollback decision owner.
 
 **Outputs**
 
-- A cutover record with the enabled release, the results, and the rollback outcome for Phase 5.
+- A deployment record with the release identity, the results, the exercised procedures, and the evidence pack for user acceptance testing.
 
 **Acceptance Criteria**
 
@@ -259,7 +271,7 @@ Enable the tested release and preserve a repeatable rollback path.
 - `PH4-AC-2` (from `P-AC-7`) Post-deployment checks confirm expected administrator, owner, and denied-principal behavior.
 - `PH4-AC-3` (from `P-AC-7`) Authorization audit records exist for the migration and later administrative mutations.
 - `PH4-AC-4` (from `P-AC-8`) A rollback restores a valid authorization database, and reconciliation completes afterward.
-- `PH4-AC-5` (from `P-AC-1`, `P-AC-2`) An unclassified route, unowned resource, identity mismatch, or failed check blocks cutover instead of being accepted without review.
+- `PH4-AC-5` (from `P-AC-1`, `P-AC-2`) An unclassified route, unowned resource, identity mismatch, or failed check blocks the deployment from being presented for acceptance instead of being accepted without review.
 
 **Validation Milestones**
 
@@ -271,11 +283,12 @@ Enable the tested release and preserve a repeatable rollback path.
 **Task-Plan Handoff**
 
 - Source criteria: `PH4-AC-1` to `PH4-AC-5`; fixed constraint: the rollback backup records the state at backup time, so grants added afterwards are lost on rollback.
-- The task plan must name the rollback procedure and its owner, the audit inspection, and the blocking-check records.
+- The task plan must name the export and inspection commands, the audit inspection, the blocking-check records, the exercised procedures, and the evidence pack handed to the user acceptance test owners.
+- Moving users to the new server is not part of this phase.
 
 **Readiness**
 
-Requires a named rollback decision owner.
+Complete on 2026-09-22. The task plan is [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md) and the resulting record is [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md).
 
 ### Phase 5: Verify Podman Deployment And Update Security Record
 
@@ -285,19 +298,18 @@ Verify the authorization release in the Podman deployment and record security re
 
 **Focus**
 
-- Select and document the Podman service model for the server, with systemd Quadlet as the recommended production option unless the deployment owner approves another supported model.
 - Confirm release identity: an immutable image identified by its source commit and image digest, never a mutable `latest` tag.
 - Confirm exposure: the backend is published on loopback only, the reverse proxy is the only external entry point, client identity headers are removed and replaced, and firewall rules plus Podman network settings restrict direct access.
 - Confirm secrets and mounts: Podman-compatible secret injection, reviewed mounts, no credentials in the image, logs, client-controlled settings, or unintended container paths, and no sensitive host files exposed to the container.
 - Confirm deployment behavior: health checks, restart behavior, the single-worker requirement, logs, PostgreSQL role grants, authorization database location, and project and shared-data mounts.
-- Rewrite the deployment runbook and operator artifacts for Podman, covering workflow, commands, paths, service lifecycle, health checks, logs, and rollback.
+- Confirm the deployment runbook and operator artifacts describe the deployed layout, commands, paths, service lifecycle, health checks, logs, and rollback.
 - Run post-deployment allowed and denied access checks, review container, proxy, and database logs, and exercise rollback with the recorded image, service definition, database backup, and integrity and reconciliation checks.
 - Update `SECURITY_CHECK.md` with the tested commit, image digest, results, limitations, and approved exceptions.
 
 **Depends On**
 
-- Phases 1–4 complete, including the reviewed manifest, the stored backup, and the cutover record.
-- A selected deployment host and an approved Podman service model.
+- Phases 1–4 complete, including the reviewed manifest, the stored backup, and the deployment record.
+- The new server deployment from Phase 4, including its release identity and rollback result.
 - The deployment check results tracked in [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md).
 
 **Outputs**
@@ -324,29 +336,30 @@ Verify the authorization release in the Podman deployment and record security re
 **Task-Plan Handoff**
 
 - Source criteria: `PH5-AC-1` to `PH5-AC-6`; fixed constraint: a result recorded for one image digest carries no weight for another.
-- The task plan must define the selected Podman service model, exact host and container paths, secret mechanism, proxy and firewall inspection method, database-grant queries, image identity commands, and rollback procedure.
-- Stop before deployment if the host, service model, proxy configuration, firewall access, or database administrator results are unavailable.
+- The task plan must define the exact host and container paths, secret mechanism, proxy and firewall inspection method, database-grant queries, image identity commands, and rollback procedure.
+- Stop before deployment if the host, proxy configuration, firewall access, or database administrator results are unavailable.
 
 **Readiness**
 
-Requires a named deployment host, an approved Podman service model, and access to the reverse proxy, firewall, container runtime, and PostgreSQL grant information.
+Ready for a task plan. The deployment host is the new server. The production Podman service model is deferred to [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md), and these checks apply to the deployment as installed.
 
 ## Cross-Phase Rules
 
 - Do not enable enforcement while a sensitive route or background operation remains unclassified.
 - Do not modify project YAML to assign authorization ownership or grants.
 - Treat the reviewed manifest and the generation-specific resource records as the source of migration input.
-- Keep the backup created for readiness testing available until the deployment is accepted or the rollback window closes.
-- Record unresolved deployment facts as explicit blockers; do not infer principal ownership from filenames, project metadata, or request data.
-- Keep the current authorization policy unchanged during cutover unless a separate approved design change is made.
+- Keep the backup created for readiness testing available until user acceptance testing concludes or the fallback to the old server is no longer available.
+- Do not repoint production DNS or the reverse proxy from the old server to the new server under this plan; the flip is owned by [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
+- Do not provision the new server with the pre-authorization deployment, so the two identity models never coexist there.
+- Keep the current authorization policy unchanged during deployment unless a separate approved design change is made.
 
 ## Validation Strategy
 
 - Compare the route inventory with registered FastAPI routes and the production deployment shape.
 - Run the automated inventory check, the focused authorization tests, and the full backend regression suite before release approval.
 - Inspect and apply the manifest with dry-run and reconciliation checks.
-- Run database integrity checks before and after backup, restore, and cutover.
-- Run allowed and denied access checks with known deployment principals before and after cutover.
+- Run database integrity checks before and after backup, restore, and deployment.
+- Run allowed and denied access checks with known deployment principals before and after deploying the recorded release to the new server.
 - For the Podman deployment, inspect the image digest, service definition, published ports, network and firewall exposure, proxy identity handling, secrets, mounts, environment variables, grants, logs, health checks, rollback, and exception records.
 
 Exact test and inspection commands belong in the phase task plans.
@@ -368,11 +381,11 @@ Exact test and inspection commands belong in the phase task plans.
 
 These decisions block phases, and [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md) tracks their current state.
 
-- Which host and environment carry the release deployment? Resolve before Phase 5.
-- Who owns the rollback decision, and how long does the pre-cutover backup stay available? Resolve before Phase 4.
-- Who approves an exception when a check cannot be performed? Resolve before Phase 4.
+- Which deployment user serves the production instance once users move to the new server? Resolve in [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
+- Who owns and executes user acceptance testing, and against which criteria? Resolve before any user moves to the new server.
+- Who owns the production flip, the DNS and proxy repoint, and user migration? Resolve in [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
 - Does the deployment keep the shared `sead_ro` account or use an application-specific read-only account? The database administrator owns this decision; resolve before Phase 5.
 
 ## Final Recommendation
 
-Treat this plan as the gate for authorization enforcement cutover. Complete the phases in order, and block production enforcement until every acceptance criterion passes or an explicitly reviewed exception is recorded.
+Treat this plan as the gate for a deployment ready for user acceptance testing, not for moving users. Complete the phases in order, and do not present a deployment for acceptance until every acceptance criterion passes or an explicitly reviewed exception is recorded. The rollback decision owner is Roger Mähler. Moving production users to the new server is a separate decision, covered by [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
