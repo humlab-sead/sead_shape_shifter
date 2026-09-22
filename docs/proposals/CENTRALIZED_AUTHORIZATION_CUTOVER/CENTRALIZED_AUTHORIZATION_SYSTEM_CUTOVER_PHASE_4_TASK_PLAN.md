@@ -135,12 +135,12 @@
   * **Implementation:** Run `verify_authenticated_access.sh` with two reviewed projects and their granting principals, and add the administrator probe for a protected list route. Confirm unauthenticated `401`, allowed `200`, and concealed denied `404`.
   * **Constraints:** Do not grant ownership to make a check pass. Where a reviewed project has no owner, use the temporary-project path and record that it proves enforcement rather than dataset availability.
   * **Validation:** `V-4.7`. Run 2026-09-22 with `bruno` and `riia` against `Bruno-Strucke-v2-test` and `Glykou_etal_2021`: unauthenticated `401`, `bruno` on his own project `200`, `bruno` on `Glykou_etal_2021` concealed `404`, `riia` on her own project `200`, `admin` on the project list `200`. The script's `riia` on `Bruno-Strucke-v2-test` probe reports `200` where it expects `404`; that is a test-selection error, not an access defect, because `riia` holds `project_maintainer`, which grants `READ` on every project in `backend/app/authorization/policy.py`, and `AuthorizationService.is_allowed()` consults deployment roles before resource grants. No reviewed pair can supply a well-formed isolation probe: `roger` and `rebecka` hold `admin`, `riia` holds `project_maintainer`, and `bruno` is the only reviewed owner who is not a global reader. The four required outcomes are recorded in the deployment record.
-* [ ] `T4.7` **Change:** Exercise backup, restore, and rollback against the deployment.
+* [x] `T4.7` **Change:** Exercise backup, restore, and rollback against the deployment.
   * **Target:** `container/scripts/verify/rollback_exercise.sh`, run as the deployment user from `<HOME>/container`.
   * **Current -> required:** Rollback was exercised on 2026-09-22; the acceptance evidence needs a current transcript with the recorded image and backup.
   * **Implementation:** Create a post-acceptance backup with `container/scripts/authorization.sh backup`, record its path and SHA-256, then run the rollback exercise with `--image`, `--authorization-backup`, `--manifest`, and `--evidence-dir`. Record the transcript and confirm integrity, reconciliation, image identity, and health. Redeploy the recorded release afterwards.
   * **Constraints:** The script leaves the service stopped when a step fails; do not proceed past a failed rollback without the rollback owner's decision. Verify a copy when a check needs a writable database, never the retained backup.
-  * **Validation:** `V-4.8`, `V-4.9`.
+  * **Validation:** `V-4.8`, `V-4.9`. Run 2026-09-22 16:48:11. Backup `authorization-20260922-164454.sqlite3`, SHA-256 `9ebf2f22…8b3e`, byte-identical to the three earlier backups of the day, so the restore was state-neutral. Transcript `container-data/backups/rollback-exercise.log`: image `6a487db7…04a8` with revision `dbff5ab9…4f96`, integrity check passed, reconciliation `Missing: 0 resources, 0 administrators, 0 grants`, recorded image restarted, running image ID equal to the recorded image ID, container `running`, health `200`. The exercise starts the container with `podman-compose` outside `shape-shifter.service`, so `make service-restart` is still needed to realign the unit.
 
 **Completion evidence:** Access checks return the expected statuses with reviewed projects, and the rollback transcript shows integrity and reconciliation passing.
 
@@ -202,10 +202,10 @@
 
 | Deliverable | Description | Status | Link |
 | --- | --- | --- | --- |
-| Deployment record | Release, manifest, backup, owner, access results, audit summary, rollback outcome, limitations | Not started | `UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md` (new, this folder) |
-| Blocking-check evidence | Route inventory, ownership, and audit results | Not started | Deployment record |
-| Rollback evidence | Transcript directory from the rollback exercise | Not started | `<DATA_DIR>/backups/rollback-<timestamp>` |
-| Post-acceptance backup | Timestamped authorization backup with checksum | Not started | `<DATA_DIR>/backups` |
+| Deployment record | Release, manifest, backup, owner, access results, audit summary, rollback outcome, limitations | In progress | `UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md` (new, this folder) |
+| Blocking-check evidence | Route inventory, ownership, and audit results | Done | Deployment record, *Resource inventory detail* and *Audit-trail detail* |
+| Rollback evidence | Transcript directory from the rollback exercise | Done | `<DATA_DIR>/backups/rollback-exercise.log` (the run used `--evidence-dir <DATA_DIR>/backups`, so the transcript is one fixed-name log rather than a timestamped directory) |
+| Post-check backup | Timestamped authorization backup with checksum | Done | `<DATA_DIR>/backups/authorization-20260922-164454.sqlite3` |
 | Phase plan status update | Phase 4 complete, Phase 5 prerequisites confirmed | Not started | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) |
 
 ## Progress Tracker
@@ -214,15 +214,15 @@
 | --- | --- | --- |
 | Area 1: Record the deployment identity | Done | Identity re-confirmed on the running container; the deployed manifest checksum matches the reviewed manifest |
 | Area 2: Re-run the blocking pre-acceptance checks | Done | `T4.3`, `T4.4`, and `T4.5` complete; `PH4-AC-5` holds with no unowned or missing resource |
-| Area 3: Re-verify access and exercise the procedures | In progress | `T4.6` complete; `T4.7` outstanding |
+| Area 3: Re-verify access and exercise the procedures | Done | `T4.6` and `T4.7` complete; the service unit still needs a restart after the standalone rollback exercise |
 | Area 4: Assemble the acceptance evidence and record the result | Not started | Depends on Areas 1–3 |
 
 ## Definition Of Done
 
-- [ ] `PH4-AC-1` has the release image, revision, manifest checksum, backup path and checksum, and rollback owner recorded together.
+- [x] `PH4-AC-1` has the release image, revision, manifest checksum, backup path and checksum, and rollback owner recorded together.
 - [x] `PH4-AC-2` has administrator, owner, denied-principal, and unauthenticated results recorded using reviewed projects.
 - [ ] `PH4-AC-3` has migration and administrative-mutation audit events recorded with counts and types.
-- [ ] `PH4-AC-4` has a rollback transcript with integrity and reconciliation outcomes, or a recorded rollback-owner decision.
+- [x] `PH4-AC-4` has a rollback transcript with integrity and reconciliation outcomes, or a recorded rollback-owner decision.
 - [ ] `PH4-AC-5` has route-inventory, classification, and ownership results recorded, with any blocker named.
 - [ ] The evidence pack states what is verified, what is not, and how a tester exercises the system, without claiming ownership of acceptance criteria.
 - [ ] `scripts/check_doc_links.sh` and `git diff --check` pass, and no credential values appear in the record.
@@ -231,8 +231,9 @@
 ## Risks And Open Questions
 
 - **The rollback discards later grants.** The backup captures state at backup time. Sequence any grant change outside the acceptance window, and state the discard rule in the record.
+- **A standalone rollback exercise leaves the service unit out of step.** `rollback_exercise.sh` drives `podman-compose` directly rather than through `shape-shifter.service`, and the unit is `Type=oneshot` with `RemainAfterExit=yes`, so systemd keeps reporting it active while the running container was recreated outside it. Run `make service-restart` afterwards, or use `run_deployment_verification.sh`, which manages the unit.
 - **Acceptance criteria are owned elsewhere.** This phase supplies evidence, not a pass or fail judgement. Record the distinction so the record is not read as an acceptance decision.
-- **Reviewed projects may still lack owners.** If a reviewed project has no granting principal, the access check falls back to temporary projects, which proves enforcement rather than dataset availability, and the record must say so.
+- **Reviewed projects may still lack owners.** If a reviewed project has no granting principal, the access check falls back to temporary projects, which proves enforcement rather than dataset availability, and the record must say so. No reviewed project lacks an owner, but a second problem replaces the fallback case: every reviewed owner except `bruno` holds a deployment role that grants read on all projects, so no reviewed pair can produce the symmetric isolation probe. Recorder: the deployment record states this and the four required outcomes are recorded.
 - **Host services are reachable only through the gateway alias.** Any deployment-side connection check against a host database must use `host.docker.internal`; a host-side success is not evidence for the container.
 - **One data source remains unproven.** `bulgaria-arbodat-lookup-options` is listed by the application but declares no data file. Whether that is intentional is unconfirmed and belongs in the limitations.
 - **The production flip has its own owner and questions.** UAT ownership, the DNS and proxy repoint, and user migration are recorded in [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md), not here.
