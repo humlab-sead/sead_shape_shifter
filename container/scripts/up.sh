@@ -53,7 +53,7 @@ echo "Starting container..."
 podman-compose \
   -f podman-compose.yml \
   -p "${COMPOSE_PROJECT_NAME}" \
-  up -d
+  up -d --no-build
 
 echo "Container started"
 echo ""
