@@ -37,7 +37,7 @@ class SessionResponse(BaseModel):
 
 @router.post("", response_model=SessionResponse, status_code=201)
 async def create_session(
-    request: SessionCreateRequest,
+    request: SessionCreateRequest,  # pylint: disable=unused-argument
     response: Response,
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
     principal: Annotated[Principal, Depends(get_principal())],

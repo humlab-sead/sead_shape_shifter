@@ -8,9 +8,9 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 
-from backend.app.ingesters.protocol import IngesterConfig
 from backend.app.api.v1.endpoints.ingesters import ingester_operator_dependency
 from backend.app.authorization.models import Principal
+from backend.app.ingesters.protocol import IngesterConfig
 from backend.app.ingesters.registry import get_ingester_registry
 from backend.app.main import app
 from backend.app.models.ingester import IngestRequest, IngestResponse, ValidateRequest, ValidateResponse

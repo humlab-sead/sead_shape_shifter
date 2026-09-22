@@ -106,11 +106,7 @@ def export_manifest(path: Path, database: Path) -> dict[str, int]:
     repository = SQLiteAuthorizationRepository(database)
     try:
         administrators = sorted(
-            {
-                assignment.principal_id
-                for assignment in repository.list_all_application_roles()
-                if assignment.role == ApplicationRole.ADMIN
-            }
+            {assignment.principal_id for assignment in repository.list_all_application_roles() if assignment.role == ApplicationRole.ADMIN}
         )
         grants_by_resource = {}
         for grant in repository.list_all_grants():
