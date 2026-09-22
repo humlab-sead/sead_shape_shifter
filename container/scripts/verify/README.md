@@ -126,7 +126,8 @@ running container before reconciliation, so the manifest does not need to be
 mounted into the application. The NGINX syntax check is skipped when
 non-interactive sudo is unavailable; run `sudo nginx -t` separately as an
 operator. Cleanup, authenticated access, and rollback are disabled unless
-their explicit options are supplied:
+their explicit options are supplied. The bundle derives `XDG_RUNTIME_DIR`
+from the deployment user's UID when `sudo -u` does not preserve it:
 
 ```bash
 ./scripts/verify/complete_test_deployment_verification.sh \
