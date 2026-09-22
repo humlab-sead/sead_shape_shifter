@@ -3,7 +3,7 @@
 ## Phase Summary
 
 - **Document type:** Deployment configuration migration task plan
-- **Status:** Implementation complete; live deployment verification recorded with exceptions
+- **Status:** Closed; implementation and live deployment verification complete with documented validation limitations
 - **Source proposal:** [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
 - **Related phase:** Phase 2 resource and manifest preparation; prerequisite to Phase 3 migration readiness
 - **Goal:** Require the deployment user's `~/config`, `~/container`, and `~/container-data` sibling directories, move deployment-specific configuration and authorization inputs into `~/config`, and keep `~/container` replaceable and effectively read-only.
@@ -302,7 +302,7 @@ The normal deployment layout requires these three sibling directories under the 
 | Area 2: Setup and runtime operations | Done | Area 1 | Setup provisions `config/` and `container-data/` from generic templates without writing into the checkout; backup keeps data under `DATA_DIR` and configuration under `CONFIG_DIR/config`, and the authorization, rollback, and credential-rotation checks read `CONFIG_DIR/backend.env` and `CONFIG_DIR/.pgpass/.pgpass`. Validated with `V-5`–`V-10`, of which `V-8` and `V-10` are partial (no running container on this host; remaining retired paths belong to Areas 3–5) |
 | Area 3: Authorization bootstrap inputs | Done | Areas 1–2 | The bootstrap resolves `CONFIG_DIR` to the checkout's sibling, reads `authorization.env`, `authorization-manifest.yaml` and `groups.d/shape-shifter.conf` only from there, validates them before any change, and passes the same `CONFIG_DIR` to the wrapper. `container/resources/authorization.env.example` and the new *Authorization inputs* section in `container/DEPLOYMENT.md` document operator provisioning; the inventory and status records name the target paths. Validated with `V-11`–`V-14`, of which `V-13` is partial (the container wrapper needs a running deployment) |
 | Area 4: Checkout build dependencies | Done | Area 1 | UCanAccess stays under `container/lib/ucanaccess` as the single installed copy. `build.sh` stages it into the repository-root build context when that context has no copy, so workdir and standalone builds use the same dependency, and it reads deployment settings from `CONFIG_DIR/deployment.env`. `install-ucanaccess.sh` now replaces the installed copy only after a successful download. `container/DEPLOYMENT.md` documents checkout replacement. Validated with `V-15`–`V-17` |
-| Area 5: Deployment helpers and documentation | Done | Areas 1–4 | `deploy_single_environment.sh`, `deploy_all_environments.sh`, `get-install.sh`, and `rebuild-image.sh` provision `~/config` and keep it and `~/container-data` out of any checkout refresh; every helper that creates `~/config` now sets mode `700`, and `make validate` reports the mode so a wrong one is visible before the bootstrap needs it; `rebuild-image.sh` no longer defaults to a test deployment user and its `--dry-run` flag now reports instead of acting; the nginx and systemd helpers name the resolved config contract. `container/README.md`, `container/DEPLOYMENT.md`, and `docs/OPERATIONS.md` describe the three-directory layout and mark the old paths as retired. `V-18`–`V-20` remain partial where root or live-service access is required; `V-21` records successful live reconciliation, systemd ownership through `scripts/up.sh --no-build`, NGINX syntax validation, external HTTPS reachability, privileged firewall inspection, accepted same-LAN exception, authenticated isolation, cleanup, and rollback |
+| Area 5: Deployment helpers and documentation | Done | Areas 1–4 | `deploy_single_environment.sh`, `deploy_all_environments.sh`, `get-install.sh`, and `rebuild-image.sh` provision `~/config` and keep it and `~/container-data` out of any checkout refresh; every helper that creates `~/config` now sets mode `700`, and `make validate` reports the mode so a wrong one is visible before the bootstrap needs it; `rebuild-image.sh` no longer defaults to a test deployment user and its `--dry-run` flag now reports instead of acting; the nginx and systemd helpers name the resolved config contract. `container/README.md`, `container/DEPLOYMENT.md`, and `docs/OPERATIONS.md` describe the three-directory layout and mark the old paths as retired. `V-18`–`V-20` remain partial because disposable root-only installation checks were unavailable; the live target evidence in `V-21` covers the deployed helper, systemd, NGINX, verification, firewall, authentication, cleanup, and rollback behavior |
 
 **Follow-up after merge.** The deployment verification orchestrator writes its run directories to `CONTAINER_DATA_DIR/deployment-verification/` instead of `$PWD/deployment-verification/`, and operators copy its options file to `~/config/deployment-verification.options.yml`. Run output therefore stays out of the replaceable checkout and off the container's filesystem, which the container achieves by mounting only the enumerated data subdirectories.
 
@@ -319,13 +319,19 @@ The normal deployment layout requires these three sibling directories under the 
 - [x] The cutover phase plan links this migration before Phase 3 is executed.
 - [x] No project YAML, shared data, authorization policy, or unrelated worktree changes were modified by the migration.
 
+**Closure note.** The plan is closed because all implementation deliverables and
+target acceptance checks are complete. `V-18`–`V-20` retain their partial labels
+for the unexecuted disposable root-only steps; this is a validation limitation,
+not an identified implementation failure.
+
 The live target checks in `V-21` confirm health, authentication denial and
 positive grant enforcement, loopback publication, container configuration,
 authorization database integrity, manifest reconciliation, NGINX syntax,
 external HTTPS reachability, cleanup, rollback, and firewall policy. Same-LAN
 testing is not available for this virtual server and is recorded as an accepted
 environment limitation. Credential rotation and the source of the reviewed
-project content remain operational follow-up, not blockers for this layout plan.
+project content remain operational follow-up; credential rotation is complete and
+the project-content decision is outside this layout plan.
 
 ## Risks And Open Questions
 
