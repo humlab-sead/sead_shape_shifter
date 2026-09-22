@@ -110,12 +110,12 @@
   * **Implementation:** Run `list-resources --json` and `list-grants --json`, and confirm every active resource has a grant and no active locator conflicts. Record counts, and explain retained `deleted` rows rather than omitting them.
   * **Constraints:** Resolve conflicts by correcting configuration, never by editing project YAML to create ownership.
   * **Validation:** `V-4.5`.
-* [ ] `T4.5` **Change:** Confirm the audit trail covers migration and later mutations.
+* [x] `T4.5` **Change:** Confirm the audit trail covers migration and later mutations.
   * **Target:** `container/scripts/authorization.sh list-audit-events --json`.
   * **Current -> required:** The audit table exists; its coverage is not recorded as acceptance evidence.
   * **Implementation:** Record the event count, the `event_type` distribution, and confirm events with actor `migration` for provisioning plus any later administrative mutations.
   * **Constraints:** A missing migration audit record blocks acceptance and is not a documentation gap.
-  * **Validation:** `V-4.6`.
+  * **Validation:** `V-4.6`. Ran 2026-09-22: 144 events, of which 34 came from actor `migration` (26 owner grants, 6 reader grants, 2 administrator roles) and 2 later ones recorded temporary-project grants. All events are `allowed` mutations; `correlation_id` is null on every event and role events omit the principal, both recorded as limitations.
 
 **Completion evidence:** All three checks pass, or the failing check is recorded as an acceptance blocker with its owner.
 
@@ -211,7 +211,7 @@
 | Area | Status | Notes |
 | --- | --- | --- |
 | Area 1: Record the deployment identity | In progress | Identity recorded in the deployment record; re-confirmation on the running container pending |
-| Area 2: Re-run the blocking pre-acceptance checks | In progress | `T4.3` complete; `T4.4` and `T4.5` pending target-side runs |
+| Area 2: Re-run the blocking pre-acceptance checks | In progress | `T4.3` and `T4.5` complete; `T4.4` pending target-side runs |
 | Area 3: Re-verify access and exercise the procedures | Not started | Uses the now-provisioned reviewed projects |
 | Area 4: Assemble the acceptance evidence and record the result | Not started | Depends on Areas 1–3 |
 
