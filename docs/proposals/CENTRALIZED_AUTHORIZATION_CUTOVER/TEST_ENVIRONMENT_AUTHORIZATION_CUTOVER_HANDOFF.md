@@ -8,7 +8,7 @@
 
 ## Purpose
 
-Record the live centralized-authorization cutover in the test target environment. The deployment layout, authorization behavior, cleanup, rollback, and in-scope credential rotation have been verified, and the reviewed project and shared data content is now provisioned; the remaining follow-up is confirming the configuration-dependent shared data sources.
+Record the live centralized-authorization cutover in the test target environment. The deployment layout, authorization behavior, cleanup, rollback, and in-scope credential rotation have been verified, and the reviewed project and shared data content is now provisioned. All six shared data sources are listed by the application, and `sead-options` is verified against the live database; the remaining follow-up is confirming whether `bulgaria-arbodat-lookup-options` is complete without a data file.
 
 ## Current State
 
@@ -57,6 +57,7 @@ The following checks were run on 2026-09-22 without repeating the completed Phas
 | Readiness backup | `authorization-20260922-110641.sqlite3`, SHA-256 `9ebf2f2229807cf56ce32cc2d2a7c7fe0c67f67553c3d606833dc71cd9ae8b3e`; writable-copy integrity check passed |
 | Release-image backup | `authorization-20260922-130050.sqlite3`, SHA-256 `9ebf2f2229807cf56ce32cc2d2a7c7fe0c67f67553c3d606833dc71cd9ae8b3e`; byte-identical to the readiness backup, so authorization state did not change across the image switch |
 | Provisioned target content | All 26 reviewed project locators resolve to a `shapeshifter.yml` under `container-data/projects`, and all 6 reviewed shared data sources are listed by `GET /api/v1/data-sources`: `arbodat-data-options`, `arbodat-lookup-options`, `bugscep_data_20250608`, `bulgaria-arbodat-lookup-options`, `digidiggie_tng-options`, and `sead-options` |
+| Shared data source connection | `sead-options` verified on 2026-09-22: `POST /api/v1/data-sources/sead-options/test` returned `success: true`, 167 tables, 112 ms, with `SEAD_HOST=host.docker.internal` |
 
 Facts recorded on 2026-09-22:
 
@@ -65,7 +66,7 @@ Facts recorded on 2026-09-22:
 - Reviewed manifest: [resources/authorization/test-initial-manifest.yaml](../../../resources/authorization/test-initial-manifest.yaml) holds 32 resources (26 project, 6 shared_data_source), 32 grants (26 `owner` for one principal each, 6 `reader` for `everyone`/`authenticated`), and 3 administrators (`admin`, `roger`, `rebecka`).
 - `SHAPE_SHIFTER_AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE=true` is set in `~/config/backend.env` and is live in the container; without it the six `everyone` grants are refused at import time.
 - Inventory before cleanup: `list-resources` returned 51 rows (36 with lifecycle `active`, 15 `deleted`) and `list-grants` returned 51 rows. The four temporary `project:verification-containment-<timestamp>` resources were then deleted through the application; they are now deleted lifecycle records and excluded from `export-manifest`.
-- Target content: all 26 reviewed project locators resolve to a `shapeshifter.yml`, and all 6 reviewed shared data sources appear in the application's listing. `arbodat-data-options`, `arbodat-lookup-options`, `bugscep_data_20250608`, and `digidiggie_tng-options` reference `ArchBotDaten.mdb`, `ArchBotStrukDat.mdb`, `bugsdata_20250608.mdb`, and `Digidiggie_v7_kbw.accdb`, all present in `container-data/shared/shared-data`. `bulgaria-arbodat-lookup-options` is accepted with the `access` driver and no `filename`, and `sead-options` is listed with `${SEAD_HOST}`, `${SEAD_PORT}`, `${SEAD_DBNAME}`, and `${SEAD_USER}` stored verbatim, resolved from `config/backend.env` at use time.
+- Target content: all 26 reviewed project locators resolve to a `shapeshifter.yml`, and all 6 reviewed shared data sources appear in the application's listing. `arbodat-data-options`, `arbodat-lookup-options`, `bugscep_data_20250608`, and `digidiggie_tng-options` reference `ArchBotDaten.mdb`, `ArchBotStrukDat.mdb`, `bugsdata_20250608.mdb`, and `Digidiggie_v7_kbw.accdb`, all present in `container-data/shared/shared-data`. `bulgaria-arbodat-lookup-options` is accepted with the `access` driver and no `filename`, and `sead-options` resolves `${SEAD_HOST}`, `${SEAD_PORT}`, `${SEAD_DBNAME}`, and `${SEAD_USER}` from `config/backend.env`, where `SEAD_HOST` is `host.docker.internal` because the container cannot reach the host's LAN address.
 - Enforcement check, `container/scripts/verify/verify_authenticated_access.sh`, passed with Bruno and Phil using temporary colon-qualified projects: unauthenticated access returned `401`, each principal received `200` for its granted project, and each other project's request returned the concealed `404` response.
 - Credential rotation check passed with exit code `0`; the final record marked `authorization:ADMIN_AUTH_PASSWORD` and `authorization:AUTH_PASSWORD` as rotated. That record is an operator attestation: the check lists labels and never verifies that a value changed. On 2026-09-22 PostgreSQL rotation was decided out of scope for every PostgreSQL database, including the SEAD database, so no PostgreSQL credential is rotated or re-checked.
 
@@ -111,7 +112,7 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 
 ## Next Actions
 
-1. **Confirm the configuration-dependent data sources.** The reviewed projects and shared data sources are provisioned. `sead-options` still needs working `SEAD_*` values in `config/backend.env`, and `bulgaria-arbodat-lookup-options` declares no data file.
+1. **Confirm the remaining configuration-dependent data source.** `sead-options` is verified against the live database. `bulgaria-arbodat-lookup-options` still declares the `access` driver with no data file, so confirm whether that is intentional.
 
 2. **Retain the completed verification evidence.** The rollback evidence is under `container-data/backups/rollback-20260922-103540`; the credential-rotation output records the two in-scope passwords as rotated and PostgreSQL rotation is out of scope by decision, and the same-LAN exception remains accepted because no second host is available on the target LAN.
 
@@ -123,16 +124,16 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 - `make restart` can print `rootless netns: kill network process: permission denied` while removing the network. It is a teardown warning, `podman-compose down` still exits zero, and `up` recreates the network.
 - The four containment resources were removed through the application and are now deleted lifecycle records; `export-manifest` excludes them.
 - `verify_authenticated_access.sh` requires each project to be granted to exactly one principal, and neither principal may be a bootstrap administrator.
-- All 6 reviewed shared data sources are listed by the application, but two are unproven in use: `sead-options` is stored with `${SEAD_*}` references that resolve from `config/backend.env` and the matching `.pgpass` entry, and `bulgaria-arbodat-lookup-options` declares the `access` driver with no `filename`. The authenticated access check used temporary colon-qualified projects, so it verifies grant enforcement rather than access to the reviewed dataset.
+- `bulgaria-arbodat-lookup-options` remains unproven in use: the application lists it, but it declares the `access` driver with no `filename`. The authenticated access check used temporary colon-qualified projects, so it verifies grant enforcement rather than access to the reviewed dataset.
+- **Container-to-host services need the gateway alias.** The container cannot reach the host's LAN address, so host services must be addressed as `host.docker.internal`. Host-side checks against the LAN address succeed and therefore give a false positive. See [container/DEPLOYMENT.md](../../../container/DEPLOYMENT.md).
 - The release image is built from merged `dev` at `dbff5ab95459652354c040b9d4fec6e2ead94f96`, so its recorded source revision matches the checkout where the focused and full backend suites passed. The earlier `d27b072c` image built from checkout `e38f4bc6` remains on the host as the rollback target and is no longer the running image.
 
 ## Open Decisions
 
-- Whether `sead-options` connects, since the `SEAD_*` values live in `config/backend.env` and the listing does not prove them.
 - Whether the recorded rotation of the NGINX and application passwords is an acceptable evidence level, given the check records labels and the operator's assertion rather than verifying a value changed, and no rotated value is retained in the repository. PostgreSQL rotation is settled: out of scope by decision.
 - Whether `deleted`-lifecycle rows and the `@local` grants should be removed from the store or kept as history. Current state keeps them; `export-manifest` and `reconcile` ignore deleted resources.
 - Whether the remaining work stays on `authorization-system-cutover` or moves to a new branch.
 
 ## Suggested Follow-Up Documents
 
-- A Phase 4 task plan for post-cutover operations, including the `sead-options` connection confirmation and the access checks on the release image.
+- A Phase 4 task plan for post-cutover operations, including the `bulgaria-arbodat-lookup-options` data-file confirmation and the access checks on the release image.
