@@ -102,10 +102,13 @@ if [[ "$container_status" != running ]]; then
         "  sudo -u $DEPLOY_USER -H bash -lc 'cd ~/container && make up'"
 fi
 
-HTPASSWD_OPTIONS=(-c)
+# -i reads the password from stdin. Without it htpasswd prompts on the terminal
+# and ignores the here-string, so the script would wait for input instead of
+# setting the configured passwords.
+HTPASSWD_OPTIONS=(-i -c)
 
 htpasswd "${HTPASSWD_OPTIONS[@]}" "$HTPASSWD_FILE" "$ADMIN_AUTH_USER" <<< "$ADMIN_AUTH_PASSWORD"
-HTPASSWD_OPTIONS=()
+HTPASSWD_OPTIONS=(-i)
 
 for user in $AUTH_USERS; do
     htpasswd "${HTPASSWD_OPTIONS[@]}" "$HTPASSWD_FILE" "$user" <<< "$AUTH_PASSWORD"
