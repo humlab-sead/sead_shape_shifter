@@ -73,18 +73,18 @@
 
 **Tasks:**
 
-* [ ] `T4.1` **Change:** Record the release and configuration identity from the running deployment.
+* [x] `T4.1` **Change:** Record the release and configuration identity from the running deployment.
   * **Target:** Deployment record (new handoff in this folder, marked `NEW`); `<CONFIG_DIR>/deployment.env`.
   * **Current -> required:** The Phase 3 handoff records identity in prose; the acceptance evidence needs it stated as an input set with commands.
   * **Implementation:** Record `make info` output, the image ID, the `org.opencontainers.image.revision` label, `GIT_REF`, and `IMAGE_NAME`. Confirm the revision matches the commit the focused and full backend suites passed on.
   * **Constraints:** Record identifiers only; never record credential values or `.pgpass` contents.
-  * **Validation:** `V-4.1`, `V-4.2`.
-* [ ] `T4.2` **Change:** Record the manifest, backup, and decision owners.
+  * **Validation:** `V-4.1`, `V-4.2`. Re-confirmed 2026-09-22 against the running container: image `shape-shifter:dev`, ID `6a487db7...04a8`, revision `dbff5ab9...4f96`, `GIT_REF=dev`, container port `8012`, uid/gid `1021/1021`.
+* [x] `T4.2` **Change:** Record the manifest, backup, and decision owners.
   * **Target:** Deployment record.
   * **Current -> required:** Recorded in the Phase 3 handoff, but not as a single acceptance input set.
   * **Implementation:** Record the manifest path and SHA-256, the readiness backup path and SHA-256, the post-acceptance backup path once taken, the rollback decision owner (Roger Mähler), and the rollback's discard rule.
   * **Constraints:** State the rollback rule explicitly: grants added after the backup are lost on restore.
-  * **Validation:** `V-4.3`.
+  * **Validation:** `V-4.3`. Ran 2026-09-22: the deployed manifest's SHA-256 is `43c03186...fb90`, identical to the reviewed manifest in the repository, so the running policy is the reviewed policy.
 
 **Completion evidence:** Every acceptance input has an immutable identifier and a recorded command that produced it.
 
@@ -109,7 +109,7 @@
   * **Current -> required:** Reviewed on 2026-09-22 for the applied records; re-run against the current store so the acceptance evidence is current.
   * **Implementation:** Run `list-resources --json` and `list-grants --json`, and confirm every active resource has a grant and no active locator conflicts. Record counts, and explain retained `deleted` rows rather than omitting them.
   * **Constraints:** Resolve conflicts by correcting configuration, never by editing project YAML to create ownership.
-  * **Validation:** `V-4.5`.
+  * **Validation:** `V-4.5`. Resource list reviewed 2026-09-22: 36 active resources (30 project, 6 shared data source) and 15 deleted. All 32 reviewed manifest locators are active, and four active `verification-containment-*` projects are not in the manifest. Grant review is pending.
 * [x] `T4.5` **Change:** Confirm the audit trail covers migration and later mutations.
   * **Target:** `container/scripts/authorization.sh list-audit-events --json`.
   * **Current -> required:** The audit table exists; its coverage is not recorded as acceptance evidence.
@@ -210,8 +210,8 @@
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Area 1: Record the deployment identity | In progress | Identity recorded in the deployment record; re-confirmation on the running container pending |
-| Area 2: Re-run the blocking pre-acceptance checks | In progress | `T4.3` and `T4.5` complete; `T4.4` pending target-side runs |
+| Area 1: Record the deployment identity | Done | Identity re-confirmed on the running container; the deployed manifest checksum matches the reviewed manifest |
+| Area 2: Re-run the blocking pre-acceptance checks | In progress | `T4.3` and `T4.5` complete; `T4.4` needs the grant review |
 | Area 3: Re-verify access and exercise the procedures | Not started | Uses the now-provisioned reviewed projects |
 | Area 4: Assemble the acceptance evidence and record the result | Not started | Depends on Areas 1–3 |
 

@@ -30,7 +30,7 @@ This deployment runs the authorization system from the outset. The old server co
 | Data directory | `/data/test-shape-shifter.sead.se/container-data` | `make info` |
 | Rollback decision owner | Roger Mähler | Recorded 2026-09-22 |
 
-**Provenance note:** these values were observed from the running deployment on 2026-09-22 by the operator, before the most recent service restart. `V-4.1` and `V-4.2` re-confirm them against the currently running container. No credential values or `.pgpass` contents are recorded anywhere in this document.
+**Provenance note:** these values were re-confirmed against the running container on 2026-09-22: `podman image inspect` returned the image ID and revision recorded above, and `make info` returned the configured values. The deployed manifest's SHA-256 is `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90`, identical to the reviewed manifest in the repository, so the running policy is the reviewed policy. No credential values or `.pgpass` contents are recorded anywhere in this document.
 
 ### Recorded backups
 
@@ -53,6 +53,22 @@ This deployment runs the authorization system from the outset. The old server co
 | Provisioned content (Phase 3, still current) | Locator walk and `GET /api/v1/data-sources` | 26 of 26 project locators resolve; all 6 shared data sources listed |
 | Shared data source connection (Phase 3, still current) | `POST /api/v1/data-sources/sead-options/test` | `success: true`, 167 tables, 112 ms |
 | Audit-trail coverage (`V-4.6`) | `scripts/authorization.sh list-audit-events --json` | 144 events from 2026-09-17 19:08 to 2026-09-22 07:45: `grant_created` 53, `application_role_created` 43, `resource_lifecycle_changed` 30, `application_role_revoked` 18; every event `allowed` |
+| Release identity re-confirmed (`V-4.1`, `V-4.2`) | `make info`, `podman image inspect` | Image `shape-shifter:dev`, ID `6a487db7...04a8`, revision `dbff5ab9...4f96`, `GIT_REF=dev`, container port `8012`, uid/gid `1021/1021` |
+| Deployed manifest matches the reviewed manifest (`V-4.3`) | `sha256sum ~/config/authorization-manifest.yaml` | `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90`, identical to the repository copy |
+| Resource inventory (`V-4.5`, grants pending) | `scripts/authorization.sh list-resources --json` | 51 records: 36 active (30 project, 6 shared data source), 15 deleted. All 32 reviewed manifest locators are active |
+
+### Resource inventory detail
+
+All 32 reviewed manifest locators (26 project, 6 shared data source) are active, so no reviewed resource is missing. Four further resources are active that are **not** in the reviewed manifest:
+
+- `verification-containment-20260918121347-3074400`
+- `verification-containment-20260918122102-3084527`
+- `verification-containment-20260918122806-3094124`
+- `verification-containment-20260918123353-3101909`
+
+They are temporary verification projects from 2026-09-18 that were never removed. Nineteen `verification-containment-*` resources exist in total; fifteen are deleted and these four are active. Whether case users should see them, and whether to remove them, is an open decision below.
+
+**Audit trail and the cleanup claim.** All 30 `resource_lifecycle_changed` events are dated 2026-09-18, and none is dated 2026-09-22. The current audit trail therefore does not corroborate the Phase 3 handoff's statement that four temporary projects were deleted on 2026-09-22. A rollback restore rewrites the whole database, so a later restore could have reverted both the deletions and their audit events; the sequence is not reconstructed here, and the observable state is what this record uses.
 
 ### Audit-trail detail
 
@@ -63,25 +79,19 @@ This deployment runs the authorization system from the outset. The old server co
 
 Each item below needs the deployment user or an authenticated administrator. Commands are read-only unless stated.
 
-### `T4.1` / `T4.2` — re-confirm identity and record the deployed manifest checksum
+### `T4.1` / `T4.2` — deployment identity
+
+Complete. See *Deployment identity* and *Completed Work* above. The deployed manifest checksum matches the reviewed manifest.
+
+### `T4.4` / `V-4.5` — grant review
+
+Resource review is complete; grant review remains:
 
 ```bash
-sudo -iu test-shape-shifter.sead.se
-cd ~/container
-make info
-podman image inspect shape-shifter:dev --format '{{.Id}}'
-podman image inspect shape-shifter:dev --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'
-sha256sum ~/config/authorization-manifest.yaml
-```
-
-### `T4.4` / `V-4.5` — resource and grant review
-
-```bash
-scripts/authorization.sh list-resources --json
 scripts/authorization.sh list-grants --json
 ```
 
-Record the counts, and explain any retained `deleted` rows rather than omitting them. Every active resource must have a grant, with no active locator conflict.
+Confirm that each of the four active `verification-containment-*` resources above carries at least one grant, so that no active resource is unowned.
 
 ### `T4.5` / `V-4.6` — audit-trail coverage
 
@@ -134,12 +144,16 @@ The script leaves the service stopped when a step fails. Redeploy the recorded r
 
 ## Next Actions
 
-1. **Complete the pending verification above.** Nothing in this record should be treated as acceptance evidence until each command has been run against the currently running container and its output pasted back here.
-2. **Hand this record to the user acceptance test owners.** It states what is verified and what is not; acceptance criteria are theirs to author and apply.
-3. **Do not repoint production DNS or the reverse proxy.** The flip is a separate decision with its own proposal and owners.
+1. **Decide the four active verification projects.** Remove them, or record why UAT should tolerate them, and say which. This is the first item because it is visible to testers.
+2. **Complete the pending verification above**, starting with `list-grants --json`. Nothing in this record should be treated as acceptance evidence until each command has been run against the currently running container and its output recorded here.
+3. **Correct or confirm the Phase 3 cleanup statement.** The audit trail does not show the 2026-09-22 deletions it describes.
+4. **Hand this record to the user acceptance test owners.** It states what is verified and what is not; acceptance criteria are theirs to author and apply.
+5. **Do not repoint production DNS or the reverse proxy.** The flip is a separate decision with its own proposal and owners.
 
 ## Risks
 
+- **Four stale verification projects are active.** `verification-containment-20260918121347-3074400`, `...122102-3084527`, `...122806-3094124`, and `...123353-3101909` are active but are not in the reviewed manifest. Testers will see them, and they carry grants to artificial `@local` principals and to `bruno` and `riia`. Resolve or explicitly accept them before the acceptance run.
+- **The Phase 3 cleanup claim is not corroborated by the audit trail.** No `resource_lifecycle_changed` event is dated 2026-09-22. Correct the Phase 3 handoff or explain the difference before relying on it as evidence.
 - **`bulgaria-arbodat-lookup-options` remains unproven.** The application lists it, but it declares the `access` driver with no data file. Whether that is intentional is unconfirmed, and UAT users may notice it before we do.
 - **The rollback discards later grants.** Any grant added inside the acceptance window is lost on restore.
 - **Reviewed projects may lack owners for real users.** `bruno` and `riia` own reviewed projects, but the wider user population may not. If a tester's principal owns nothing, they will see denied responses that are correct but unhelpful.
@@ -152,6 +166,7 @@ The script leaves the service stopped when a step fails. Redeploy the recorded r
 
 ## Open Decisions
 
+- Whether the four active `verification-containment-*` projects should be deleted before acceptance, or accepted as visible clutter.
 - Who owns and executes user acceptance testing, and against which criteria?
 - Whether `bulgaria-arbodat-lookup-options` is complete as provisioned.
 - Whether the reviewed projects need owners assigned for the acceptance population, or whether access is exercised through `bruno` and `riia` only.
