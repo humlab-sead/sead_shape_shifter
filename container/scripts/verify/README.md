@@ -123,8 +123,10 @@ PRINCIPAL_A_PASSWORD=... PRINCIPAL_B_PASSWORD=... ./scripts/verify/verify_authen
 For the remaining test-environment cutover checks, run the bundle as the
 deployment user from `~/container`. It stages the host-side manifest into the
 running container before reconciliation, so the manifest does not need to be
-mounted into the application. Cleanup, authenticated access, and rollback are
-disabled unless their explicit options are supplied:
+mounted into the application. The NGINX syntax check is skipped when
+non-interactive sudo is unavailable; run `sudo nginx -t` separately as an
+operator. Cleanup, authenticated access, and rollback are disabled unless
+their explicit options are supplied:
 
 ```bash
 ./scripts/verify/complete_test_deployment_verification.sh \
