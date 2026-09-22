@@ -100,6 +100,11 @@ elif sudo -n -v >/dev/null 2>&1; then
 else
     printf '%s\n' 'WARN  NGINX configuration check skipped; run sudo nginx -t as an operator'
 fi
+if [[ -z "${XDG_RUNTIME_DIR:-}" ]]; then
+    XDG_RUNTIME_DIR="/run/user/$(id -u)"
+    export XDG_RUNTIME_DIR
+fi
+[[ -d "$XDG_RUNTIME_DIR" ]] || fail "user runtime directory is unavailable: $XDG_RUNTIME_DIR"
 systemctl --user is-active --quiet "$SERVICE_NAME" || fail "user service is not active: $SERVICE_NAME"
 printf 'User service is active: %s\n' "$SERVICE_NAME"
 
