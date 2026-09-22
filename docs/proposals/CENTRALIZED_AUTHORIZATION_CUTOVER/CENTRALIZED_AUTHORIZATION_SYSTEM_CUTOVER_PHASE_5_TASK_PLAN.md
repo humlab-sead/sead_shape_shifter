@@ -5,7 +5,7 @@
 - **Prerequisite records:** [UAT-ready deployment record](./done/UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md), [Podman deployment verification handoff](./DEPLOYMENT_VERIFICATION_HANDOFF.md), [test environment cutover handoff](./TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md)
 - **Related, not required:** [Release Cycle Evidence And Locking](../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md). That proposal owns evidence tooling, result locking, and run deltas. This phase uses the scripts that exist and does not wait for it.
 - **Goal:** Verify the authorization release in the Podman deployment and record security results for that release.
-- **Plan readiness:** Validated. Every command below exists in the repository or in the recorded operator output. The image identity is settled: no registry is available, so the release unit records the image ID plus the OCI labels as the image digest, and states the missing registry digest. One dependency sits outside the plan: whether an operator with the principal passwords is available.
+- **Plan readiness:** Validated. Every command below exists in the repository or in the recorded operator output. The release unit is frozen and its identity is confirmed on the host. One dependency sits outside the plan: whether an operator with the principal passwords is available.
 - **Dependencies:** Phases 1–4 complete; the frozen release unit decided; Roger Mähler named as the rollback decision owner.
 
 ## Acceptance Criteria
@@ -19,7 +19,7 @@
 
 ## Fixed Constraints
 
-- **The image identity has no registry digest, by decision.** No image registry is configured: GitHub Container Registry use is paused pending a billing review, and a locally hosted registry with CI/CD builds is under consideration. The release unit therefore records the image ID plus the OCI `revision`, `version`, and `source` labels, and the image ID is recorded as the image digest. It is the digest of the image configuration, which references the layer diff IDs, so it is content-derived; it is not a manifest digest. `PH5-AC-1` is satisfied by that identity, and every result that cites it states that no registry digest was available.
+- **The image identity is confirmed and carries a locally computed manifest digest.** Planning assumed a locally built image would have no digest and that the image ID would stand in for one. The host reports `localhost/shape-shifter@sha256:7ff51b2b…`, so no substitute is needed. The identity is the image ID `6a487db7…04a8`, the manifest digest `sha256:7ff51b2b…`, and the OCI `revision` label `dbff5ab9…4f96`. The `localhost/` prefix shows the image was never pushed, so nothing outside the host vouches for the manifest and a digest computed elsewhere is not guaranteed to match; the `revision` label is the identity that travels across hosts. `PH5-AC-1` is satisfied by the commit and the manifest digest, both matching the running container.
 - **The release unit is frozen before any check runs.** Record the source commit, image identity, manifest revision and checksum, configuration revision, and deployment target first. Do not rebuild the image, edit the manifest, or change the deployment layout while the phase runs. Reopening the release unit invalidates every result already recorded for it.
 - **Results do not carry across image identities.** A result recorded for one image carries no weight for another. Cite a prior result only when the frozen identity matches the one that result was recorded against; otherwise re-run the check.
 - **This phase is trimmed to its delta.** Checks whose last result was recorded against the frozen identity are cited, not repeated. Re-running an already-satisfied check is not required by this plan.
@@ -34,6 +34,7 @@
 
 | Evidence | Finding | Planning implication |
 | --- | --- | --- |
+| Host read 2026-09-22 | `make info`, `config/deployment.env`, `sha256sum` on the deployed manifest, and `podman image inspect` returned image ID `6a487db7…04a8`, manifest digest `localhost/shape-shifter@sha256:7ff51b2b…`, OCI revision `dbff5ab9…4f96`, and a deployed manifest checksum identical to the reviewed copy | The frozen release unit equals the image Phase 4 verified, so those results stay citable and this phase keeps its small delta |
 | [UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md](./done/UAT_READY_AUTHORIZATION_DEPLOYMENT_HANDOFF.md) | Records image `shape-shifter:dev`, image ID `6a487db7…04a8`, revision `dbff5ab9…4f96`, manifest SHA-256 `43c03186…fb90`, 144 audit events, 36 active resources, 53 grants, and a passing rollback exercise at 16:48:11 with reconciliation `Missing: 0 resources, 0 administrators, 0 grants` | These are the results to cite when the frozen image identity matches. The record states an image ID, not a registry digest |
 | [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md) | The 2026-09-18 run `20260918T210002Z-3878349` verified firewall, port publication, proxy denial, container configuration, PostgreSQL grants, authorization database placement, and endpoint containment; the host-log review failed and is tracked as a non-blocking GitHub issue. That run recorded baseline commit `95c3d017` and digest `sha256:aa320c4c…` | Those results describe a different image, so they cannot be cited for the frozen unit. The host-log review is the one security check still open |
 | `container/scripts/verify/run_deployment_verification.sh` | Orchestrator. Writes `summary.txt`, one `<check>.log` per check, and a copy of the options file into a timestamped directory under `<DATA_DIR>/deployment-verification/`. Runs firewall, container configuration, PostgreSQL grants, log, credential, and endpoint-containment checks; authenticated access and rollback are opt-in via `--authenticated` and `--rollback` | This is the closest thing to a single capture entry point. It reads no image digest and no authorization inventory |
@@ -56,7 +57,7 @@
 
 - Freezing the release unit and recording its identity.
 - Re-running the checks the frozen identity invalidates: exposure, container configuration, PostgreSQL grants and authorization database placement, proxy identity-header handling, access checks, and route classification.
-- Recording the image ID, the OCI labels, and the absence of a registry digest as the frozen unit's identity.
+- Recording the image ID, the manifest digest, and the OCI labels as the frozen unit's identity.
 - Closing or recording a disposition for the outstanding host-log review.
 - Updating `SECURITY_CHECK.md` with the tested commit, identity, results, limitations, and approved exceptions.
 
@@ -82,20 +83,20 @@
 
 **Tasks:**
 
-* [ ] `T5.1` **Change:** Freeze the release unit and record the deployment target.
+* [x] `T5.1` **Change:** Freeze the release unit and record the deployment target.
   * **Target:** Deployment record (`PODMAN_DEPLOYMENT_RECORD.md`, new, in this folder).
   * **Current -> required:** The Phase 4 record captures identity for acceptance; this phase needs identity frozen as a precondition, with the commitment not to rebuild or reconfigure during the phase.
   * **Implementation:** Record the source commit, `GIT_REF`, `IMAGE_NAME`, the manifest path and SHA-256, the configuration directory and data directory, host, deployment user, container name, published port, and proxy hostname. State that the image is not rebuilt and the layout is not changed for the duration of the phase.
   * **Constraints:** Record identifiers only. Do not record credential values.
-  * **Validation:** `V-5.1`.
-* [ ] `T5.2` **Change:** Record the immutable image identity.
+  * **Validation:** `V-5.1`. Complete 2026-09-22 in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md): the source commit `dbff5ab9…4f96`, the unchanged application code and tests at that revision, the reviewed manifest checksum `43c03186…fb90`, and the deployment target from `make info` and `config/deployment.env` are recorded. The deployed manifest checksum matches the reviewed copy.
+* [x] `T5.2` **Change:** Record the immutable image identity.
   * **Target:** Deployment record.
   * **Current -> required:** `PH5-AC-1` requires a source commit and an image digest. No registry is configured, so no manifest digest exists; the identity must be recorded explicitly and its limitation stated.
-  * **Implementation:** As the deployment user, read `podman image inspect --format '{{.Id}}'` and the `org.opencontainers.image.revision`, `.version`, and `.source` labels for the frozen image, confirm the image ID matches the one the running container uses, and read `{{json .RepoDigests}}` to evidence that it is empty. Record the values, and state that no registry digest was available because no registry is configured.
-  * **Constraints:** Do not push the image to a registry in this phase. Do not treat a tag as identity. State the absence of a registry digest wherever the identity is cited.
-  * **Validation:** `V-5.2`.
+  * **Implementation:** As the deployment user, read `podman image inspect --format '{{.Id}}'`, `{{json .RepoDigests}}`, and the `org.opencontainers.image.revision`, `.version`, and `.source` labels for the frozen image, and confirm the image ID matches the one the running container uses. Record the image ID, the manifest digest, and the labels, and state that the digest is computed locally because the image was never pushed.
+  * **Constraints:** Do not push the image to a registry in this phase. Do not treat a tag as identity. State the digest's local provenance wherever the identity is cited.
+  * **Validation:** `V-5.2`. Complete 2026-09-22: the host returned image ID `6a487db7…04a8`, the manifest digest `localhost/shape-shifter@sha256:7ff51b2b…` from `.RepoDigests`, and the OCI `revision` label `dbff5ab9…4f96`; the running container uses the same image ID. `.RepoDigests` was not empty, contrary to the plan's assumption, so no substitute identity is needed. Recorded in [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md).
 
-**Completion evidence:** The deployment record states every release-unit field, records the image ID and OCI labels as the identity, and states that no registry digest was available.
+**Completion evidence:** The deployment record states every release-unit field, records the image ID, the manifest digest, and the OCI labels as the identity, and states that the digest was computed locally.
 
 ### Area 2: Re-verify exposure, container configuration, and grants
 
@@ -213,7 +214,7 @@
 
 | Criterion | Task IDs | Validation IDs | Expected evidence |
 | --- | --- | --- | --- |
-| `PH5-AC-1` | `T5.1`, `T5.2` | `V-5.1`, `V-5.2` | Frozen release unit recorded, with the image ID as the image digest, the OCI labels, and the absence of a registry digest stated |
+| `PH5-AC-1` | `T5.1`, `T5.2` | `V-5.1`, `V-5.2` | Frozen release unit recorded with the image ID, the manifest digest, and the OCI labels, all matching the running container |
 | `PH5-AC-2` | `T5.3`, `T5.6` | `V-5.3`, `V-5.6` | Listener, firewall, and proxy-boundary output for the frozen unit |
 | `PH5-AC-3` | `T5.7`, `T5.8`, `T5.9` | `V-5.7`, `V-5.8`, `V-5.9` | Deployed proxy overwrite lines, access-check transcript with principal scope, route-classification result |
 | `PH5-AC-4` | `T5.4`, `T5.5`, `T5.11` | `V-5.4`, `V-5.5`, `V-5.12` | Container configuration, grant, and log-review results with no credential values |
@@ -225,7 +226,7 @@
 | ID | Check and target | Command or method | Covers | Expected result |
 | --- | --- | --- | --- | --- |
 | `V-5.1` | Release unit recorded | Read `~/config/deployment.env`, the manifest checksum, and the container identity | `PH5-AC-1` | Every release-unit field recorded, with the freeze stated |
-| `V-5.2` | Image identity | `podman image inspect --format '{{.Id}}'` and the OCI `revision`, `version`, and `source` labels as the deployment user, plus `.RepoDigests` to evidence its absence | `PH5-AC-1` | Image ID and labels recorded and matching the running container; `.RepoDigests` empty; the absence of a registry digest stated |
+| `V-5.2` | Image identity | `podman image inspect --format '{{.Id}}'`, `{{json .RepoDigests}}`, and the OCI `revision`, `version`, and `source` labels as the deployment user | `PH5-AC-1` | Image ID, manifest digest, and labels recorded and matching the running container; the digest stated as locally computed |
 | `V-5.3` | Exposure | `./scripts/verify/verify_firewall.sh` | `PH5-AC-2` | Backend on loopback only; no rule exposes the backend port |
 | `V-5.4` | Container configuration | `sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify/verify_container_config.sh` | `PH5-AC-4` | Ports, mounts, and environment names recorded; no credential value, no writable sensitive mount |
 | `V-5.5` | Grants and store placement | `./scripts/verify/verify_postgres_grants.sh --database sead_staging --role sead_ro --schema public --sqlite "$DATA_DIR/state/authorization.sqlite3"` | `PH5-AC-4` | Read-only grants as approved; store location and mode within the allowed directories |
@@ -242,7 +243,7 @@
 
 | Deliverable | Description | Status | Link |
 | --- | --- | --- | --- |
-| Podman deployment record | Frozen release unit, image identity, per-check results, limitations, and dispositions | Not started | `PODMAN_DEPLOYMENT_RECORD.md` (new, this folder) |
+| Podman deployment record | Frozen release unit, image identity, per-check results, limitations, and dispositions | In progress | [PODMAN_DEPLOYMENT_RECORD.md](./PODMAN_DEPLOYMENT_RECORD.md) (new, this folder) |
 | Exposure and configuration evidence | Firewall, container configuration, and grant results for the frozen unit | Not started | Deployment record, and the run directory under `<DATA_DIR>/deployment-verification/` |
 | Proxy identity evidence | Deployed proxy overwrite lines and the effective configuration excerpt | Not started | Deployment record |
 | Access-check transcript | Corrected-script output with principal scope and isolation-direction count | Not started | Deployment record and the phase evidence directory |
@@ -255,7 +256,7 @@
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Area 1: Freeze the release unit and record its identity | Not started | Identity decided: image ID plus the OCI labels, with the missing registry digest stated |
+| Area 1: Freeze the release unit and record its identity | Done | Frozen unit confirmed on the host: image ID `6a487db7…04a8`, manifest digest `sha256:7ff51b2b…`, revision `dbff5ab9…4f96`, deployed manifest checksum `43c03186…fb90`. It equals the unit Phase 4 verified |
 | Area 2: Re-verify exposure, container configuration, and grants | Not started | Evidence from 2026-09-18 describes a different image and cannot be cited |
 | Area 3: Confirm proxy identity handling and access behavior | Not started | The corrected access-check script has never run on the host |
 | Area 4: Confirm backup, restore, and rollback for the frozen unit | Not started | May be satisfied by citing the 2026-09-22 exercise when the image identity matches |
@@ -263,7 +264,7 @@
 
 ## Definition Of Done
 
-- [ ] `PH5-AC-1` has the frozen source commit, the image ID recorded as the image digest, the OCI `revision`, `version`, and `source` labels, and a statement that no registry digest was available.
+- [x] `PH5-AC-1` has the frozen source commit, the image ID, the manifest digest, and the OCI `revision`, `version`, and `source` labels, with the digest stated as locally computed.
 - [ ] `PH5-AC-2` has listener, firewall, and proxy-boundary evidence recorded for the frozen unit.
 - [ ] `PH5-AC-3` has the deployed proxy overwrite evidenced, the access checks returning the expected statuses, and the route-classification suite passing at the frozen revision.
 - [ ] `PH5-AC-4` has container configuration, grant, and log-review results recorded, with no credential value anywhere.
@@ -274,7 +275,7 @@
 
 ## Risks And Open Questions
 
-- **The identity carries no registry guarantee, by decision.** No registry is configured. The recorded identity is the image ID — the digest of the image configuration, which references the layer diff IDs — plus the OCI `revision`, `version`, and `source` labels. That is content-derived but it is not a manifest digest, and it does not prove what a registry served, so every result that cites the identity states the substitution. Standing up a local registry with CI/CD builds would restore the stronger guarantee; that is a separate decision, not part of this phase.
+- **The manifest digest is local evidence only.** No registry is configured: GitHub Container Registry use is paused pending a billing review, and a locally hosted registry with CI/CD builds is under consideration. The `localhost/` repository prefix shows the image was never pushed, so nothing outside the host vouches for the manifest digest, and a digest computed on another host is not guaranteed to match. Cite the OCI `revision` label as the cross-host identity and the manifest digest as evidence about this deployment. Standing up a registry would add provenance; that is a separate decision.
 - **The authenticated check needs an operator with the passwords.** Phase 4 closed with the corrected-script re-run skipped for exactly this reason, and the residual risk accepted. If no operator with the passwords is available, the risk carries forward unchanged and must be restated rather than silently dropped.
 - **The frozen unit can be reopened.** Any image rebuild, manifest edit, or layout change invalidates every result recorded for it. Reopen deliberately and re-run the invalidated checks; do not verify a moving target.
 - **Two evidence locations may both hold results.** The Phase 4 record cites `<DATA_DIR>/deployment-verification/phase-4/`, the orchestrator writes timestamped run directories under `<DATA_DIR>/deployment-verification/`, and the 2026-09-18 run used a different root. Record which source each result came from, and prefer citing a locked artifact over prose.
