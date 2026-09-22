@@ -5,11 +5,12 @@
 # credential value is ever printed.
 #
 # The LAN exposure happened when the backend was published on every interface
-# before its port was restricted to loopback. The credentials in play were the
-# backend's own: the PostgreSQL password file and any credential-like variable
-# in the runtime environment. This script lists those sources (names only),
-# then emits a rotation record the operator completes by saving the output and
-# passing --rotated / --declined on a later run for each row.
+# before its port was restricted to loopback. This script covers NGINX/application
+# credentials and credential-like variables in the runtime environment. PostgreSQL
+# credential rotation is outside this system's scope and is reported separately.
+# The script lists in-scope sources (names only), then emits a rotation record
+# the operator completes by saving the output and passing --rotated / --declined
+# on a later run for each row.
 #
 # The script reads only. It never changes a credential, file, container, image,
 # or configuration, and it never prints a credential value. Exits non-zero while
@@ -93,22 +94,15 @@ printf 'backend, and is outside this check.\n'
 
 info "Credential inventory (names and redacted targets only)"
 
-# 1. PostgreSQL password file.
+# PostgreSQL credential rotation is intentionally outside this check's scope.
 pgpass="$g_config_dir/.pgpass/.pgpass"
 if [[ -r "$pgpass" ]]; then
-    printf 'PostgreSQL password file: %s\n' "$pgpass"
-    while IFS= read -r line; do
-        [[ -n "$line" ]] || continue
-        case "$line" in '#'*) continue ;; esac
-        target="${line%:*}"   # host:port:database:username; the password field is removed
-        printf '  %s:***\n' "$target"
-        record "pgpass:$target" "PostgreSQL password for $target"
-    done < "$pgpass"
+    printf 'PostgreSQL password file: %s (rotation out of scope)\n' "$pgpass"
 else
-    warn "cannot read PostgreSQL password file: $pgpass"
+    printf 'PostgreSQL password file: %s (rotation out of scope; not readable)\n' "$pgpass"
 fi
 
-# 2. Runtime environment file (chmod 600; names only).
+# Runtime environment file (chmod 600; names only).
 env_file="$g_config_dir/backend.env"
 if [[ -r "$env_file" ]]; then
     printf 'Runtime environment file: %s\n' "$env_file"
