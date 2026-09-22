@@ -22,6 +22,26 @@ if [ ! -f "$CONFIG_DIR/backend.env" ]; then
   exit 1
 fi
 
+# The compose mounts resolve from these values, and podman reports only
+# "statfs <path>: no such file or directory" when one is wrong. Name the
+# setting instead, because a relative path override that was carried over from
+# the retired container/.env resolves one level too high.
+if [ ! -d "$CONTAINER_DATA_DIR" ]; then
+  echo "error: data directory does not exist: $CONTAINER_DATA_DIR" >&2
+  echo "       CONFIG_DIR=$CONFIG_DIR" >&2
+  echo "       A relative DATA_DIR names a path beside the checkout. Run 'make setup', or correct" >&2
+  echo "       DATA_DIR in $CONFIG_DIR/deployment.env." >&2
+  exit 1
+fi
+
+for data_subdir in projects shared logs output backups tmp state; do
+  if [ ! -d "$CONTAINER_DATA_DIR/$data_subdir" ]; then
+    echo "error: data directory is incomplete: $CONTAINER_DATA_DIR/$data_subdir is missing" >&2
+    echo "       Run 'make setup' to create the data directories." >&2
+    exit 1
+  fi
+done
+
 if ! podman image exists "$IMAGE_NAME"; then
   echo "error: image $IMAGE_NAME not found. Run 'make build' first." >&2
   exit 1
