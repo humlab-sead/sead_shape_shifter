@@ -15,7 +15,7 @@ usage() {
 Usage: container/scripts/deploy/sync-to-deploy [--dry-run]
 §
 Synchronize the local container/ directory to the deployment user's
-container directory. With no DEPLOY_HOST, synchronize on the current host.
+container directory and install/reload its systemd user unit. With no DEPLOY_HOST, synchronize on the current host.
 With DEPLOY_HOST, use DEPLOY_SSH_USER for SSH transport. Files removed
 locally are removed from the target. The target files are owned by
 DEPLOY_USER and grouped to that user's primary group; the source group is
@@ -28,6 +28,9 @@ Defaults:
   SSH user: DEPLOY_SSH_USER=$USER (remote mode only)
   path: REMOTE_DIR=container (relative to the remote user's home)
 §
+The service is not restarted or enabled by this command. Use the service
+commands separately after reviewing the synchronized files.
+
 Options:
   --deploy-user USER       Target owner. Default: $g_deploy_user
   --deploy-host HOST       SSH host; empty means the current host
@@ -91,7 +94,15 @@ if [[ -z "$g_deploy_host" ]]; then
   destination="$deploy_home/${g_remote_dir%/}/"
   printf 'Synchronizing %s/ to local %s\n' "$g_container_dir" "$destination"
   sudo rsync "${RSYNC_ARGS[@]}" "$g_container_dir/" "$destination"
-  [[ "$g_dry_run" = true ]] || sudo chown -R "$g_deploy_user:$deploy_gid" "$destination"
+  if [[ "$g_dry_run" = false ]]; then
+    sudo chown -R "$g_deploy_user:$deploy_gid" "$destination"
+    sudo install -d -o "$g_deploy_user" -g "$deploy_gid" -m 700 "$deploy_home/.config/systemd/user"
+    sudo install -o "$g_deploy_user" -g "$deploy_gid" -m 644 \
+      "$g_container_dir/service/shape-shifter.service" \
+      "$deploy_home/.config/systemd/user/shape-shifter.service"
+    sudo -u "$g_deploy_user" -H env XDG_RUNTIME_DIR="/run/user/$(id -u "$g_deploy_user")" \
+      systemctl --user daemon-reload
+  fi
 else
   command -v ssh >/dev/null || { echo "ssh is required for remote sync." >&2; exit 1; }
   [[ -n "$g_deploy_ssh_user" ]] || { echo "g_deploy_ssh_user is required for remote sync." >&2; exit 1; }
@@ -105,7 +116,12 @@ else
   rsync "${RSYNC_ARGS[@]}" --rsync-path="sudo -n rsync" "$g_container_dir/" "$TARGET:$destination"
   if [[ "$g_dry_run" = false ]]; then
     ssh "$TARGET" "sudo -n chown -R '$g_deploy_user:$deploy_gid' '$destination'"
+    ssh "$TARGET" "sudo -n install -d -o '$g_deploy_user' -g '$deploy_gid' -m 700 '$deploy_home/.config/systemd/user'"
+    ssh "$TARGET" "sudo -n install -o '$g_deploy_user' -g '$deploy_gid' -m 644 '$destination/service/shape-shifter.service' '$deploy_home/.config/systemd/user/shape-shifter.service'"
+    deploy_uid="$(ssh "$TARGET" "id -u '$g_deploy_user'")"
+    ssh "$TARGET" "sudo -n -u '$g_deploy_user' -H env XDG_RUNTIME_DIR=/run/user/$deploy_uid systemctl --user daemon-reload"
   fi
 fi
 
 printf 'Synchronized files are owned by %s:%s.\n' "$g_deploy_user" "$deploy_gid"
+[[ "$g_dry_run" = true ]] || printf 'Systemd unit installed and user daemon reloaded for %s.\n' "$g_deploy_user"

@@ -1,6 +1,6 @@
 # Handoff: Test Environment Authorization Cutover
 
-**Status:** Authorization applied in the test target environment; the authenticated-access check is blocked by missing project data; four leftover verification resources are pending cleanup
+**Status:** Authorization applied in the test target environment; safe deployment verification, systemd ownership, and external HTTPS reachability passed; authenticated access, cleanup, rollback, and privileged firewall inspection remain open
 **Opened:** 2026-09-22
 **Branch:** `authorization-system-cutover` (all commits pushed to `origin`)
 **Environment:** host `humlabsead`, deployment user `test-shape-shifter.sead.se` (uid/gid 1021), container `shape-shifter` published on `127.0.0.1:8012`, proxy `https://test-shape-shifter.sead.se`
@@ -27,7 +27,10 @@ The test host runs the three-directory layout: `~/container` for replaceable cod
 | Live loopback health and protected-route denial | Verified 2026-09-22: loopback health `200`; public protected route `401` |
 | Live port containment and container configuration | Verified 2026-09-22: backend on `127.0.0.1:8012` only; LAN bypass refused; configuration inspection passed |
 | Live authorization database integrity | Verified 2026-09-22 through `authorization.sh integrity-check` |
-| Live manifest reconciliation | Not run: configured manifest filename is known, but the manifest file was not available at the host path exposed to this shell |
+| Live manifest reconciliation | Verified 2026-09-22: `Missing: 0 resources, 0 administrators, 0 grants` |
+| NGINX syntax and external HTTPS reachability | Verified 2026-09-22: `sudo nginx -t` passed; `test-shape-shifter.sead.se` resolved to `130.239.34.54` and port `443` was open |
+| Safe deployment verification and systemd ownership | Verified 2026-09-22: the bundle passed loopback health, loopback-only publication, container state and mount checks, authorization integrity, manifest reconciliation, and systemd `active (exited)` status; the loaded unit invokes `~/container/scripts/up.sh` with the prebuilt image and no build |
+| Same-LAN connectivity check | Not available: the target is a virtual server and no computer on the target LAN is available; local loopback-only binding and external HTTPS checks were recorded instead |
 
 Facts recorded on 2026-09-22:
 
@@ -60,7 +63,7 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
   - `d1b21b5d` detect the manifest format from content when the path has no recognised extension, with a test for the extension-less case.
   - `d27b072c` place the imported manifest inside the container, because `migrate` reads it twice and a stdin stream cannot be read twice.
 - Bootstrap run to completion on 2026-09-22: htpasswd accounts, nginx group file, 19 application-role grants, and the manifest import, ending with `Authorization database ready: /app/state/authorization.sqlite3`.
-- Post-deployment checks re-run on 2026-09-22: loopback health returned `200`, the public protected route returned `401`, the backend listener was loopback-only, the LAN address refused direct access, container configuration passed, and authorization database integrity passed. The firewall rule listing still needs an operator with `sudo` access.
+- Post-deployment checks re-run on 2026-09-22: loopback health returned `200`, the public protected route returned `401`, the backend listener was loopback-only, container configuration passed, authorization database integrity passed, manifest reconciliation reported no missing records, `sudo nginx -t` passed, and external HTTPS port `443` was open. The safe verification bundle also confirmed the container was running, published only `127.0.0.1:8012`, and was owned by the systemd user service through `scripts/up.sh` with `--no-build`. Same-LAN testing is unavailable for this virtual server; the firewall rule listing still needs an operator with `sudo` access.
 - Repository memory (`/memories/repo/container-deployment-layout.md`) records the host-specific lessons: working directory for `sudo -u`, `XDG_RUNTIME_DIR`, `htpasswd -i`, the two-read manifest import, and which kind of change needs an image rebuild.
 
 ## Key References

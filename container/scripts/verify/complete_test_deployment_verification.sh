@@ -18,8 +18,10 @@ PROJECT_B="${PROJECT_B:-}"
 PRINCIPAL_A="${PRINCIPAL_A:-}"
 PRINCIPAL_B="${PRINCIPAL_B:-}"
 CLEANUP_PREFIX=""
+declare -a KEEP_PROJECTS=()
 ADMIN_USER="admin"
 RUN_AUTHENTICATED=false
+RUN_GRANT_ACCESS=false
 RUN_CLEANUP=false
 RUN_ROLLBACK=false
 ROLLBACK_IMAGE=""
@@ -43,7 +45,9 @@ Options:
   --principal-a USER          Principal A
   --principal-b USER          Principal B
   --authenticated             Run the principal isolation check
+    --grant-access              Grant viewer access to project-a/project-b first
   --cleanup-prefix PREFIX     Delete active project resources with this prefix
+    --keep-project NAME         Exclude a project from prefix cleanup (repeatable)
   --admin-user USER           Admin proxy user for cleanup (default: $ADMIN_USER)
   --rollback                  Run the state-changing rollback exercise
   --rollback-image IMAGE      Recorded image for rollback
@@ -71,7 +75,9 @@ while [[ $# -gt 0 ]]; do
         --principal-a)           [[ $# -ge 2 ]] || fail "--principal-a requires a value"; PRINCIPAL_A="$2"; shift 2 ;;
         --principal-b)           [[ $# -ge 2 ]] || fail "--principal-b requires a value"; PRINCIPAL_B="$2"; shift 2 ;;
         --authenticated)         RUN_AUTHENTICATED=true; shift ;;
+        --grant-access)          RUN_GRANT_ACCESS=true; shift ;;
         --cleanup-prefix)        [[ $# -ge 2 ]] || fail "--cleanup-prefix requires a value"; CLEANUP_PREFIX="$2"; RUN_CLEANUP=true; shift 2 ;;
+        --keep-project)          [[ $# -ge 2 ]] || fail "--keep-project requires a value"; KEEP_PROJECTS+=("$2"); shift 2 ;;
         --admin-user)            [[ $# -ge 2 ]] || fail "--admin-user requires a value"; ADMIN_USER="$2"; shift 2 ;;
         --rollback)              RUN_ROLLBACK=true; shift ;;
         --rollback-image)        [[ $# -ge 2 ]] || fail "--rollback-image requires a value"; ROLLBACK_IMAGE="$2"; shift 2 ;;
@@ -81,6 +87,9 @@ while [[ $# -gt 0 ]]; do
         *)                        fail "unknown option: $1" ;;
     esac
 done
+
+[[ "$RUN_GRANT_ACCESS" = false || "$RUN_AUTHENTICATED" = true ]] ||
+    fail "--grant-access requires --authenticated"
 
 command -v podman >/dev/null || fail "podman is required"
 command -v curl >/dev/null || fail "curl is required"
@@ -120,6 +129,19 @@ printf '\n== Manifest reconciliation ==\n'
 if [[ "$RUN_AUTHENTICATED" = true ]]; then
     [[ -n "$PROJECT_A" && -n "$PROJECT_B" ]] || fail "authenticated access requires both projects"
     [[ -n "$PRINCIPAL_A" && -n "$PRINCIPAL_B" ]] || fail "authenticated access requires both principals"
+    if [[ "$RUN_GRANT_ACCESS" = true ]]; then
+        [[ "$PRINCIPAL_A" != "$PRINCIPAL_B" ]] || fail "authenticated principals must be different"
+        [[ "$PROJECT_A" != "$PROJECT_B" ]] || fail "authenticated projects must be different"
+        printf '\n== Fixture grants ==\n'
+        "$CONTAINER_DIR/scripts/authorization.sh" grant \
+            --resource-type project --locator "$PROJECT_A" \
+            --subject-type principal --subject-id "$PRINCIPAL_A" \
+            --role viewer --actor verification-check
+        "$CONTAINER_DIR/scripts/authorization.sh" grant \
+            --resource-type project --locator "$PROJECT_B" \
+            --subject-type principal --subject-id "$PRINCIPAL_B" \
+            --role viewer --actor verification-check
+    fi
     printf '\n== Authenticated access ==\n'
     "$SCRIPT_DIR/verify_authenticated_access.sh" \
         --base-url "$BASE_URL" \
@@ -140,6 +162,17 @@ if [[ "$RUN_CLEANUP" = true ]]; then
             jq -r --arg prefix "$CLEANUP_PREFIX" \
                 '.[] | select(.resource_type == "project" and .lifecycle_state == "active" and (.locator | startswith($prefix))) | .locator'
     )
+    if ((${#KEEP_PROJECTS[@]} > 0)); then
+        filtered_projects=()
+        for project in "${projects[@]}"; do
+            keep=false
+            for keep_project in "${KEEP_PROJECTS[@]}"; do
+                [[ "$project" = "$keep_project" ]] && keep=true
+            done
+            [[ "$keep" = false ]] && filtered_projects+=("$project")
+        done
+        projects=("${filtered_projects[@]}")
+    fi
     ((${#projects[@]} > 0)) || fail "no active project matches cleanup prefix: $CLEANUP_PREFIX"
     printf 'Projects selected for deletion:\n'
     printf '  %s\n' "${projects[@]}"
@@ -149,10 +182,11 @@ if [[ "$RUN_CLEANUP" = true ]]; then
     fi
     for project in "${projects[@]}"; do
         encoded_project="$(jq -rn --arg value "$project" '$value | @uri')"
-        curl -fsS -u "$ADMIN_USER:$admin_password" \
-            -X DELETE -o /dev/null \
-            -w "$project -> HTTP %{http_code}\n" \
-            "$BASE_URL/api/v1/projects/$encoded_project"
+        response_code="$(curl -sS -u "$ADMIN_USER:$admin_password" \
+            -X DELETE -o /dev/null -w '%{http_code}' \
+            "$BASE_URL/api/v1/projects/$encoded_project")"
+        printf '%s -> HTTP %s\n' "$project" "$response_code"
+        [[ "$response_code" = 204 ]] || fail "cleanup failed for $project (HTTP $response_code)"
     done
     unset admin_password
 else

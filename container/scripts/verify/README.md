@@ -139,6 +139,19 @@ from the deployment user's UID when `sudo -u` does not preserve it:
   --principal-a bruno --project-a PROJECT_A \
   --principal-b riia --project-b PROJECT_B
 
+# Grant two fixture projects, test isolation, and retain them while deleting
+# other active resources with the same prefix.
+./scripts/verify/complete_test_deployment_verification.sh \
+  --manifest "$HOME/config/authorization-manifest.yaml" \
+  --authenticated --grant-access \
+  --principal-a bruno \
+  --project-a verification-projects:verification-containment-20260918121347-3074400 \
+  --principal-b riia \
+  --project-b verification-projects:verification-containment-20260918122102-3084527 \
+  --cleanup-prefix verification-projects: \
+  --keep-project verification-projects:verification-containment-20260918121347-3074400 \
+  --keep-project verification-projects:verification-containment-20260918122102-3084527
+
 ./scripts/verify/complete_test_deployment_verification.sh \
   --manifest "$HOME/config/authorization-manifest.yaml" \
   --cleanup-prefix verification-containment-
