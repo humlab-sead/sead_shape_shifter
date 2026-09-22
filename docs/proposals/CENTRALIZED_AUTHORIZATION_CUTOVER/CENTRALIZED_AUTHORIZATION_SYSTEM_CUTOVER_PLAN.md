@@ -8,7 +8,7 @@
 - Goal: deliver and record an authorization-enabled deployment on the new server that is ready for user acceptance testing, together with the operator procedures and documentation needed to run, verify, and roll it back
 - **Scope change 2026-09-22:** flipping production traffic and users from the old server to the new server is out of scope. It repoints DNS and the reverse proxy, migrates users, and depends on user acceptance testing this project does not own, so it moves to [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md).
 - Source decision: [Centralized Authorization System](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
-- Related: [Deployment Verification Handoff](./DEPLOYMENT_VERIFICATION_HANDOFF.md), [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md)
+- Related: [Deployment Verification Handoff](./DEPLOYMENT_VERIFICATION_HANDOFF.md), [SECURITY_CHECK.md](../done/MITIGATE_SECURITY_ISSUES/SECURITY_CHECK.md), [Release Cycle Evidence And Locking](../RELEASE_CYCLE_EVIDENCE_AND_LOCKING/README.md)
 
 ## Summary
 
@@ -341,7 +341,7 @@ Verify the authorization release in the Podman deployment and record security re
 
 **Readiness**
 
-Ready for a task plan. The deployment host is the new server. The production Podman service model is deferred to [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md), and these checks apply to the deployment as installed.
+Ready for a task plan. The task plan is [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_5_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_5_TASK_PLAN.md), trimmed to the checks the frozen release unit invalidates. The deployment host is the new server. The production Podman service model is deferred to [PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md](../future/PRODUCTION_FLIP_TO_AUTHORIZED_SERVER.md), and these checks apply to the deployment as installed.
 
 ## Cross-Phase Rules
 
