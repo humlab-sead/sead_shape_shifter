@@ -129,12 +129,12 @@
 
 **Tasks:**
 
-* [ ] `T4.6` **Change:** Re-run access checks using reviewed projects.
+* [x] `T4.6` **Change:** Re-run access checks using reviewed projects.
   * **Target:** Proxy endpoint `https://test-shape-shifter.sead.se`.
   * **Current -> required:** The recorded check used temporary colon-qualified projects because the reviewed content was absent; it is now provisioned.
   * **Implementation:** Run `verify_authenticated_access.sh` with two reviewed projects and their granting principals, and add the administrator probe for a protected list route. Confirm unauthenticated `401`, allowed `200`, and concealed denied `404`.
   * **Constraints:** Do not grant ownership to make a check pass. Where a reviewed project has no owner, use the temporary-project path and record that it proves enforcement rather than dataset availability.
-  * **Validation:** `V-4.7`.
+  * **Validation:** `V-4.7`. Run 2026-09-22 with `bruno` and `riia` against `Bruno-Strucke-v2-test` and `Glykou_etal_2021`: unauthenticated `401`, `bruno` on his own project `200`, `bruno` on `Glykou_etal_2021` concealed `404`, `riia` on her own project `200`, `admin` on the project list `200`. The script's `riia` on `Bruno-Strucke-v2-test` probe reports `200` where it expects `404`; that is a test-selection error, not an access defect, because `riia` holds `project_maintainer`, which grants `READ` on every project in `backend/app/authorization/policy.py`, and `AuthorizationService.is_allowed()` consults deployment roles before resource grants. No reviewed pair can supply a well-formed isolation probe: `roger` and `rebecka` hold `admin`, `riia` holds `project_maintainer`, and `bruno` is the only reviewed owner who is not a global reader. The four required outcomes are recorded in the deployment record.
 * [ ] `T4.7` **Change:** Exercise backup, restore, and rollback against the deployment.
   * **Target:** `container/scripts/verify/rollback_exercise.sh`, run as the deployment user from `<HOME>/container`.
   * **Current -> required:** Rollback was exercised on 2026-09-22; the acceptance evidence needs a current transcript with the recorded image and backup.
@@ -194,6 +194,8 @@
 | `V-4.9` | Rollback exercise | `container/scripts/verify/rollback_exercise.sh --image --authorization-backup --manifest --evidence-dir` | `PH4-AC-4` | Image and database restored, integrity passes, reconciliation zero-missing, health `200` |
 | `V-4.10` | Record review | Manual review of the deployment record, then `scripts/check_doc_links.sh` and `git diff --check` | All criteria | Every result linked, limitations explicit, no credential values present |
 
+`V-4.7` note: the symmetric-isolation probe in `verify_authenticated_access.sh` cannot pass on the reviewed roster, because every reviewed project owner except `bruno` holds a deployment role that grants read. The four required outcomes are met; the probe result and its cause are recorded in the deployment record.
+
 **Phase milestone mapping:** `VM-4.1` is covered by `V-4.1`, `V-4.2`, `V-4.3`, and `V-4.8`; `VM-4.2` by `V-4.6` and `V-4.7`; `VM-4.3` by `V-4.9`; `VM-4.4` by `V-4.4` and `V-4.5`.
 
 ## Deliverables
@@ -212,13 +214,13 @@
 | --- | --- | --- |
 | Area 1: Record the deployment identity | Done | Identity re-confirmed on the running container; the deployed manifest checksum matches the reviewed manifest |
 | Area 2: Re-run the blocking pre-acceptance checks | Done | `T4.3`, `T4.4`, and `T4.5` complete; `PH4-AC-5` holds with no unowned or missing resource |
-| Area 3: Re-verify access and exercise the procedures | Not started | Uses the now-provisioned reviewed projects |
+| Area 3: Re-verify access and exercise the procedures | In progress | `T4.6` complete; `T4.7` outstanding |
 | Area 4: Assemble the acceptance evidence and record the result | Not started | Depends on Areas 1–3 |
 
 ## Definition Of Done
 
 - [ ] `PH4-AC-1` has the release image, revision, manifest checksum, backup path and checksum, and rollback owner recorded together.
-- [ ] `PH4-AC-2` has administrator, owner, denied-principal, and unauthenticated results recorded using reviewed projects.
+- [x] `PH4-AC-2` has administrator, owner, denied-principal, and unauthenticated results recorded using reviewed projects.
 - [ ] `PH4-AC-3` has migration and administrative-mutation audit events recorded with counts and types.
 - [ ] `PH4-AC-4` has a rollback transcript with integrity and reconciliation outcomes, or a recorded rollback-owner decision.
 - [ ] `PH4-AC-5` has route-inventory, classification, and ownership results recorded, with any blocker named.
