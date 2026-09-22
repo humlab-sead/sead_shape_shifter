@@ -55,7 +55,7 @@ This deployment runs the authorization system from the outset. The old server co
 | Audit-trail coverage (`V-4.6`) | `scripts/authorization.sh list-audit-events --json` | 144 events from 2026-09-17 19:08 to 2026-09-22 07:45: `grant_created` 53, `application_role_created` 43, `resource_lifecycle_changed` 30, `application_role_revoked` 18; every event `allowed` |
 | Release identity re-confirmed (`V-4.1`, `V-4.2`) | `make info`, `podman image inspect` | Image `shape-shifter:dev`, ID `6a487db7...04a8`, revision `dbff5ab9...4f96`, `GIT_REF=dev`, container port `8012`, uid/gid `1021/1021` |
 | Deployed manifest matches the reviewed manifest (`V-4.3`) | `sha256sum ~/config/authorization-manifest.yaml` | `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90`, identical to the repository copy |
-| Resource inventory (`V-4.5`, grants pending) | `scripts/authorization.sh list-resources --json` | 51 records: 36 active (30 project, 6 shared data source), 15 deleted. All 32 reviewed manifest locators are active |
+| Resource inventory and grants (`V-4.5`) | `scripts/authorization.sh list-resources --json` and `list-grants --json` | 51 resources (36 active, 15 deleted) and 53 grants (47 principal, 6 `everyone`). Every active resource has at least one grant, and no grant points at a missing resource |
 
 ### Resource inventory detail
 
@@ -66,7 +66,9 @@ All 32 reviewed manifest locators (26 project, 6 shared data source) are active,
 - `verification-containment-20260918122806-3094124`
 - `verification-containment-20260918123353-3101909`
 
-They are temporary verification projects from 2026-09-18 that were never removed. Nineteen `verification-containment-*` resources exist in total; fifteen are deleted and these four are active. Whether case users should see them, and whether to remove them, is an open decision below.
+They are temporary verification projects from 2026-09-18 that were never removed. Nineteen `verification-containment-*` resources exist in total; fifteen are deleted and these four are active.
+
+**Ownership holds.** Every active resource has at least one grant: the 26 reviewed projects each have one `owner` grant, the 6 shared data sources each have an `everyone`/`authenticated` `reader` grant, and each of the four leftovers has an `owner` grant to its artificial `…-creator@local` principal. Two of the four also carry `viewer` grants to `bruno` and `riia`, which are the two later mutations the audit trail records. No active resource is unowned, so `PH4-AC-5` is not violated. The leftovers are a visibility and tidiness problem for testers, not an unowned-resource defect.
 
 **Audit trail and the cleanup claim.** All 30 `resource_lifecycle_changed` events are dated 2026-09-18, and none is dated 2026-09-22. The current audit trail therefore does not corroborate the Phase 3 handoff's statement that four temporary projects were deleted on 2026-09-22. A rollback restore rewrites the whole database, so a later restore could have reverted both the deletions and their audit events; the sequence is not reconstructed here, and the observable state is what this record uses.
 
@@ -83,15 +85,9 @@ Each item below needs the deployment user or an authenticated administrator. Com
 
 Complete. See *Deployment identity* and *Completed Work* above. The deployed manifest checksum matches the reviewed manifest.
 
-### `T4.4` / `V-4.5` — grant review
+### `T4.4` / `V-4.5` — resource and grant review
 
-Resource review is complete; grant review remains:
-
-```bash
-scripts/authorization.sh list-grants --json
-```
-
-Confirm that each of the four active `verification-containment-*` resources above carries at least one grant, so that no active resource is unowned.
+Complete. See *Resource inventory detail* above. Every active resource carries a grant and no grant points at a missing resource.
 
 ### `T4.5` / `V-4.6` — audit-trail coverage
 
@@ -152,7 +148,7 @@ The script leaves the service stopped when a step fails. Redeploy the recorded r
 
 ## Risks
 
-- **Four stale verification projects are active.** `verification-containment-20260918121347-3074400`, `...122102-3084527`, `...122806-3094124`, and `...123353-3101909` are active but are not in the reviewed manifest. Testers will see them, and they carry grants to artificial `@local` principals and to `bruno` and `riia`. Resolve or explicitly accept them before the acceptance run.
+- **Four stale verification projects are active, and they are owned.** `verification-containment-20260918121347-3074400`, `...122102-3084527`, `...122806-3094124`, and `...123353-3101909` are active but are not in the reviewed manifest. Each carries an `owner` grant to an artificial `@local` principal, and two also grant `bruno` and `riia` viewer access, so nothing is unowned. Testers will still see them in the project list, so decide whether to remove them before the acceptance run or to record why they may stay.
 - **The Phase 3 cleanup claim is not corroborated by the audit trail.** No `resource_lifecycle_changed` event is dated 2026-09-22. Correct the Phase 3 handoff or explain the difference before relying on it as evidence.
 - **`bulgaria-arbodat-lookup-options` remains unproven.** The application lists it, but it declares the `access` driver with no data file. Whether that is intentional is unconfirmed, and UAT users may notice it before we do.
 - **The rollback discards later grants.** Any grant added inside the acceptance window is lost on restore.
