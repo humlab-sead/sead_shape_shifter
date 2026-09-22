@@ -170,12 +170,14 @@
     "testing.gutterEnabled": true,
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#438d96",
+        "activityBar.activeBorder": "#e7e7e7",
         "activityBar.background": "#438d96",
         "activityBar.foreground": "#e7e7e7",
         "activityBar.inactiveForeground": "#e7e7e799",
         "activityBarBadge.background": "#e1bdde",
         "activityBarBadge.foreground": "#15202b",
         "activityBarTop.activeBackground": "#438d96",
+        "activityBarTop.activeBorder": "#e7e7e7",
         "activityBarTop.background": "#438d96",
         "activityBarTop.foreground": "#e7e7e7",
         "activityBarTop.inactiveForeground": "#e7e7e799",
@@ -192,9 +194,7 @@
         "titleBar.activeBackground": "#336c73",
         "titleBar.activeForeground": "#e7e7e7",
         "titleBar.inactiveBackground": "#336c7399",
-        "titleBar.inactiveForeground": "#e7e7e799",
-        "activityBar.activeBorder": "#e7e7e7",
-        "activityBarTop.activeBorder": "#e7e7e7"
+        "titleBar.inactiveForeground": "#e7e7e799"
     },
     "workbench.tree.indent": 18,
     "yaml.format.bracketSpacing": false,

@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request
 
-from backend.app.api.dependencies import require_session
+from backend.app.api.dependencies import get_active_project_locator, require_session
 from backend.app.authorization.authentication import AuthenticationAdapter
 from backend.app.authorization.models import Action, AuthorizedResource, Principal, ResourceType
 from backend.app.authorization.repository import AuthorizationRepository, SQLiteAuthorizationRepository
@@ -48,17 +48,56 @@ async def get_authorization_service(
     return AuthorizationService(repository, allow_authenticated_everyone=settings.AUTHORIZATION_ALLOW_AUTHENTICATED_EVERYONE)
 
 
-def require_project(action: Action) -> Callable:
-    """Create a dependency that authorizes a project locator for an action."""
+def require_project(action: Action, *, body_locator: bool = False) -> Callable:
+    """Create a dependency that authorizes a project locator for an action.
+
+    The locator comes from a route or query parameter named ``project_name`` or ``name``.
+    Set ``body_locator`` for a route that carries the locator only in the JSON request body.
+    """
 
     async def dependency(
+        request: Request,
         principal: Annotated[Principal, Depends(get_principal())],
         service: Annotated[AuthorizationService, Depends(get_authorization_service)],
         project_name: str | None = None,
         name: str | None = None,
     ) -> AuthorizedResource:
         locator = project_name or name
+        if locator is None and body_locator:
+            try:
+                body = await request.json()
+            except (RuntimeError, ValueError):
+                body = None
+            if isinstance(body, dict):
+                locator = body.get("project_name")
+
         resource = service.repository.get_resource_by_locator(ResourceType.PROJECT, locator) if locator is not None else None
+        authorized = service.authorize(principal, action, resource) if resource is not None else None
+        if authorized is None:
+            raise HTTPException(status_code=404, detail="Resource not found")
+        return authorized
+
+    dependency.authorization_requirement = {"resource_type": ResourceType.PROJECT.value, "action": action.value}
+    return dependency
+
+
+def require_active_project(action: Action) -> Callable:
+    """Create a dependency that authorizes the active project for an action.
+
+    The locator comes from application state, so this factory is for routes that act on
+    whichever project the deployment has loaded instead of a project named in the request.
+    A request with no active project returns ``None``. A request for an active project the
+    principal cannot access is denied with a concealed ``404``.
+    """
+
+    async def dependency(
+        principal: Annotated[Principal, Depends(get_principal())],
+        service: Annotated[AuthorizationService, Depends(get_authorization_service)],
+        locator: Annotated[str | None, Depends(get_active_project_locator)],
+    ) -> AuthorizedResource | None:
+        if not locator:
+            return None
+        resource = service.repository.get_resource_by_locator(ResourceType.PROJECT, locator)
         authorized = service.authorize(principal, action, resource) if resource is not None else None
         if authorized is None:
             raise HTTPException(status_code=404, detail="Resource not found")
@@ -124,7 +163,7 @@ def require_application_action(action: Action) -> Callable:
         service: Annotated[AuthorizationService, Depends(get_authorization_service)],
     ) -> Principal:
         if not any(
-            service.policy.allows_application_role(role, action)
+            service.policy.allows_deployment_role(role, action)
             for role in service.repository.list_application_roles(principal.principal_id)
         ):
             raise HTTPException(status_code=403, detail="Insufficient authorization")

@@ -38,7 +38,7 @@ from loguru import logger
 
 from backend.app.core.config import Settings
 from backend.app.ingesters.registry import IngesterRegistry, get_ingester_registry
-from backend.app.models.ingester import IngestRequest, IngesterMetadataResponse, ValidateRequest
+from backend.app.models.ingester import IngesterMetadataResponse, IngestRequest, ValidateRequest
 from backend.app.services.ingester_service import get_ingester_service
 
 # Discover ingesters on module load (before CLI commands run)
@@ -55,7 +55,7 @@ def discover_ingesters() -> IngesterRegistry:
 def setup_logging(verbose: bool = False) -> None:
     """Configure logging for CLI."""
     logger.remove()
-    level: Literal['DEBUG'] | Literal['INFO'] = "DEBUG" if verbose else "INFO"
+    level: Literal["DEBUG"] | Literal["INFO"] = "DEBUG" if verbose else "INFO"
     logger.add(sys.stderr, level=level, format="<level>{level: <8}</level> | <level>{message}</level>")
 
 

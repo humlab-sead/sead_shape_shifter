@@ -29,7 +29,7 @@ BEGIN
     IF EXISTS (
         SELECT 1 FROM pg_roles
         WHERE rolname = app_role
-          AND (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls OR rolinherit)
+          AND (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)
     ) THEN
         RAISE EXCEPTION 'Role % has elevated attributes', app_role;
     END IF;

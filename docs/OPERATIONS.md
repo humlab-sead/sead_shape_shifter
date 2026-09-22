@@ -9,12 +9,13 @@ Runbook for operators and maintainers of deployed Shape Shifter environments. Th
 - Project state is file-backed YAML. Do not edit one project concurrently from multiple operator sessions.
 - The application serves plain HTTP. Terminate TLS at the NGINX reverse proxy or another trusted upstream.
 - NGINX is the authentication boundary. It must authenticate the user, overwrite `X-Authenticated-User` with the verified identity, and proxy to the application port.
+- Group grants need group IDs from the proxy. On a site that authenticates with `auth_basic`, NGINX derives `X-Authenticated-Groups` from the user name and a membership file, so a membership change needs a reload and is not recorded in the authorization audit log. See [NGINX group header](#nginx-group-header).
 - `/api/v1/health` is the only unauthenticated API path. Keep the application port private to the proxy host.
 - Java is required when projects use MS Access sources. Install UCanAccess with `make install-ucanaccess` from `container/` when the deployment image does not already contain the required JARs.
 
 ## Deployment Entry Points
 
-Run the deployment as a dedicated Linux user from `~/container`. The persistent data directory defaults to `~/container-data` and is controlled by `DATA_DIR`. The supported first-start sequence is:
+Run the deployment as a dedicated Linux user from `~/container`. Configuration defaults to `~/config` and persistent data to `~/container-data`; `CONFIG_DIR` and `DATA_DIR` select both, and the checkout holds neither. The supported first-start sequence is:
 
 ```bash
 make setup
@@ -25,11 +26,14 @@ make healthcheck
 
 Use [container/DEPLOYMENT.md](../container/DEPLOYMENT.md) for dedicated users, lingering, multiple environments, deployment helpers, NGINX installation, systemd services, and release or branch selection. Use [container/README.md](../container/README.md) for the complete Makefile command reference.
 
-Each environment records its repository, ref, image, port, and data directory in `container/.env`. A build from `GIT_REF=dev` produces a `shape-shifter:dev` image; keep `IMAGE_NAME` aligned with that ref before `make up`. Image labels record the source commit, ref, repository, and build date.
+Each environment records its repository, ref, image, port, and path overrides in `~/config/deployment.env`. A build from `GIT_REF=dev` produces a `shape-shifter:dev` image; keep `IMAGE_NAME` aligned with that ref before `make up`. Image labels record the source commit, ref, repository, and build date.
 
 ## Runtime Configuration
 
-Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from `../container-data/backend.env`. The authoritative defaults are defined in `backend/app/core/config.py`.
+Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from
+`~/config/backend.env`, which `podman-compose.yml` passes as the service
+`env_file`. The authoritative defaults are defined in
+`backend/app/core/config.py`.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -44,6 +48,7 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from `../contain
 | `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED` | `false` | Require the identity forwarded by NGINX. |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_HEADER` | `X-Authenticated-User` | Verified proxy identity header. |
 | `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED` | `false` | Accept verified group IDs from the proxy. |
+| `SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_HEADER` | `X-Authenticated-Groups` | Verified proxy group header. |
 | `SHAPE_SHIFTER_AUTHORIZATION_DATABASE_PATH` | `state/authorization.sqlite3` | Authorization SQLite database. |
 | `SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS` | `[]` | Initial administrator principal IDs; required in production. |
 | `SHAPE_SHIFTER_AUTHORIZATION_MEMBERSHIP_LOOKUP_URL` | `null` | Trusted membership endpoint template. |
@@ -58,11 +63,66 @@ Backend settings use the `SHAPE_SHIFTER_` prefix and are loaded from `../contain
 | `SHAPE_SHIFTER_ENABLED_INGESTERS` | `null` | Enabled ingester keys; null means all discovered ingesters. |
 | `SHAPE_SHIFTER_MATERIALIZATION_INLINE_THRESHOLD` | `20` | Row threshold for inline materialized data. |
 
-Set `SEAD_HOST`, `SEAD_PORT`, `SEAD_DBNAME`, and `SEAD_USER` through the project data-source configuration when required. Keep PostgreSQL passwords in `../container-data/.pgpass/.pgpass` with mode `600`, not in project YAML or `backend.env`. `VITE_*` values are build-time settings in `container/.env` and require a new image build.
+Set `SEAD_HOST`, `SEAD_PORT`, `SEAD_DBNAME`, and `SEAD_USER` through the project
+data-source configuration when required. Keep PostgreSQL passwords in
+`~/config/.pgpass/.pgpass` with mode `600`, not in project YAML or `backend.env`.
+`VITE_*` values are build-time settings in `~/config/deployment.env` and require
+a new image build.
+
+### NGINX Group Header
+
+Group grants match the group IDs the backend receives from the trusted proxy. A site that authenticates with `auth_basic` has no group claim of its own, so NGINX derives the header from the authenticated user name and a membership file.
+
+Create the membership directory and file on the proxy host:
+
+```bash
+sudo mkdir -p /etc/nginx/authz/groups.d
+sudo tee /etc/nginx/authz/groups.d/shape-shifter.conf >/dev/null <<'EOF'
+roger    sead-admins;
+riia     strucke-editors,riia-projects;
+EOF
+```
+
+One line per member: the htpasswd user name, then the group IDs, separated by commas and ending with a semicolon. Group IDs are case-sensitive and must match the IDs used in group grants. A user with no line receives no groups; a missing directory or no matching file is accepted, so the header stays empty until members are added and the site still starts.
+
+The site configuration maps the user name to the header and forwards it:
+
+```nginx
+map $remote_user $authz_groups {
+    default "";
+    include /etc/nginx/authz/groups.d/*.conf;
+}
+
+location / {
+    # ...
+    proxy_set_header X-Authenticated-Groups $authz_groups;
+}
+```
+
+`container/scripts/deploy/nginx-shape-shifter.conf.template` and the site files under `container/resources/` already contain both blocks. Enable the header on the backend in `~/config/backend.env`:
+
+```bash
+SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_ENABLED=true
+SHAPE_SHIFTER_TRUSTED_PROXY_GROUPS_HEADER=X-Authenticated-Groups
+```
+
+Check the configuration and reload NGINX after any membership change:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Notes:
+
+- `proxy_set_header` replaces any header the client sent, so a caller cannot assert its own groups. A user without a membership line receives no groups, and grants that require a group stop matching.
+- Membership lives in this file, so a change takes effect on reload and is not recorded in the authorization audit log. Review membership from this file.
+- `list-grants --effective` expands group members only when `SHAPE_SHIFTER_AUTHORIZATION_MEMBERSHIP_LOOKUP_URL` points at a membership endpoint. NGINX does not provide one, so grant reviews on a Basic-auth site read membership from this file.
+- Group subjects cannot hold `owner`; keep a named principal as the project owner.
 
 ## Data Layout And Backups
 
-`container/podman-compose.yml` mounts the following paths from `CONTAINER_DATA_DIR` into the application:
+`container/podman-compose.yml` mounts the following paths. Runtime configuration
+comes from `CONFIG_DIR` and every mutable path from `CONTAINER_DATA_DIR`:
 
 | Host path | Container path | Contents |
 |---|---|---|
@@ -71,10 +131,18 @@ Set `SEAD_HOST`, `SEAD_PORT`, `SEAD_DBNAME`, and `SEAD_USER` through the project
 | `logs/` | `/app/logs/` | Rotated application logs. |
 | `output/` | `/app/output/` | Execution output. |
 | `backups/` | `/app/backups/` | Pre-save project backups. |
-| `.pgpass/.pgpass` | `/app/.pgpass:ro` | PostgreSQL credentials. |
 | `state/` | `/app/state/` | Authorization SQLite database. |
+| `CONFIG_DIR/backend.env` | service `env_file` | Runtime settings. |
+| `CONFIG_DIR/.pgpass/.pgpass` | `/app/.pgpass:ro` | PostgreSQL credentials. |
 
-The setup script also creates `tmp/` for disposable processing files and `backend.env` for runtime settings. Keep `backend.env` and `.pgpass/.pgpass` readable only by the deployment user. The authorization database is single-host state; do not place it on a shared network filesystem or use it from multiple application hosts.
+The setup script also creates `tmp/` for disposable processing files. It writes
+the runtime settings and the PostgreSQL credentials into `CONFIG_DIR`, never into
+the checkout, and leaves existing files alone. Keep `backend.env` and
+`.pgpass/.pgpass` readable only by the deployment user, and keep `CONFIG_DIR` at
+mode `700`; the authorization inputs in the same directory hold credentials and
+are not mounted into the container. The authorization database is single-host
+state; do not place it on a shared network filesystem or use it from multiple
+application hosts.
 
 Project saves create timestamped YAML backups before writing. Loading a project does not modify its file. Copy project backups to operator-controlled storage and retain the release, project, and backup identifiers together. Restore a project only while following the normal review and validation process.
 
@@ -105,7 +173,7 @@ authorization manifest before reopening access.
 
 ## Release, Verification, And Rollback
 
-The release workflow creates version tags and release notes but does not build or deploy images. An operator selects a branch or release tag in `container/.env`, runs `make build`, and restarts with `make restart`. Record the source ref, image digest, authorization database backup, manifest revision, and rollback owner in the deployment record.
+The release workflow creates version tags and release notes but does not build or deploy images. An operator selects a branch or release tag in `~/config/deployment.env`, runs `make build`, and restarts with `make restart`. Record the source ref, image digest, authorization database backup, manifest revision, and rollback owner in the deployment record.
 
 After deployment:
 
@@ -121,6 +189,20 @@ Confirm the UI loads, the project list is available, API documentation is reacha
 ```bash
 podman inspect shape-shifter --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'
 ```
+
+### Firewall and network exposure verification
+
+After each deployment, run `./scripts/verify/verify_firewall.sh` from the deployment user's `container/` directory. The script prints the listeners, the firewall rules for the active backend, and the loopback and LAN-address connection checks, then prints the cross-host commands to run from a second machine. The firewall-listing step needs `sudo`; the script never changes rules or service state.
+
+```bash
+./scripts/verify/verify_firewall.sh
+```
+
+The check fails when the backend listens on `0.0.0.0:8012` or any port other than the proxy is reachable from outside. Record the listener output, the firewall listing, and the cross-host result with the date and host.
+
+### Container configuration re-inspection
+
+After each deployment or image change, run `./scripts/verify/verify_container_config.sh` from the deployment user's `container/` directory as that user, for example `sudo -u test-shape-shifter.sead.se -H bash ./scripts/verify/verify_container_config.sh`. The script prints the mounts, the published ports, the environment variable names (never values), and the image labels and history scan, and fails on a non-loopback port, a sensitive host mount, or a writable `.pgpass` mount. It never changes the container, image, or configuration; record its output with the date and host.
 
 To roll back, set `GIT_REF` and `IMAGE_NAME` to the last known-good release, rebuild or select the corresponding image, and run `make restart`. Keep the current authorization database unless the rollback explicitly requires restoring its recorded state. Re-run health, UI, authorization, and project-read checks after the rollback.
 

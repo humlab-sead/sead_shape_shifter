@@ -40,18 +40,39 @@ def test_resource_role_policy_covers_every_action_and_resource_type() -> None:
                 assert policy.allows_resource_role(resource_type, role, action) is (action in allowed_actions)
 
 
-def test_application_role_policy_covers_every_action() -> None:
+def test_deployment_role_policy_covers_every_action() -> None:
     policy = AuthorizationPolicy()
     expected_permissions = {
         ApplicationRole.PROJECT_CREATOR: {Action.CREATE_PROJECT},
         ApplicationRole.OPERATOR: {Action.READ_ALL_SHARED_SOURCES, Action.MANAGE_SHARED_SOURCES, Action.RUN_INGESTERS},
+        ApplicationRole.PROJECT_MAINTAINER: {Action.READ, Action.EDIT, Action.EXECUTE},
         ApplicationRole.ADMIN: set(Action),
     }
 
     for role in (*ApplicationRole, "unknown"):
         allowed_actions = expected_permissions.get(role, set())
         for action in Action:
-            assert policy.allows_application_role(role, action) is (action in allowed_actions)
+            assert policy.allows_deployment_role(role, action) is (action in allowed_actions)
+
+
+def test_project_maintainer_edits_any_project_without_a_grant(tmp_path) -> None:
+    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
+    project = ResourceRecord(uuid4(), ResourceType.PROJECT, "project-a")
+    output = ResourceRecord(uuid4(), ResourceType.PROJECT_CHILD, "output-1", parent_resource_id=project.resource_id)
+    repository.create_resource(project)
+    repository.create_resource(output)
+    repository.add_application_role("alice", ApplicationRole.PROJECT_MAINTAINER.value, "admin")
+
+    service = AuthorizationService(repository)
+
+    assert service.is_allowed(_principal(), Action.READ, project)
+    assert service.is_allowed(_principal(), Action.EDIT, project)
+    assert service.is_allowed(_principal(), Action.EXECUTE, output)
+    assert not service.is_allowed(_principal(), Action.DELETE, project)
+    assert not service.is_allowed(_principal(), Action.MANAGE_GRANTS, project)
+    assert not service.is_allowed(_principal(), Action.MANAGE_APPLICATION_ROLES, project)
+
+    repository.close()
 
 
 def test_unknown_role_and_action_are_denied(tmp_path) -> None:

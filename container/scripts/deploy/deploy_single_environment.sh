@@ -3,7 +3,8 @@
 #
 # Run as root (or a sudo-capable admin) on the deployment host. The script
 # fetches the container/ deployment files into the user's home directory
-# (~/container), keeps ~/container-data intact, and runs the initial setup.
+# (~/container), keeps the sibling ~/config and ~/container-data directories
+# intact, and runs the initial setup.
 set -euo pipefail
 
 usage() {
@@ -21,7 +22,9 @@ Options:
   -h, --help            Show this help message
 
 The repository, ref, host port, and the matching image name are written to
-~/container/.env, so later `make build` and `make up` runs keep using them.
+~/config/deployment.env, so later `make build` and `make up` runs keep using
+them. The ~/config and ~/container-data directories are never removed: only
+~/container is refreshed from the archive.
 
 Examples:
   scripts/deploy_single_environment.sh test-shape-shifter.sead.se
@@ -85,18 +88,20 @@ fi
 cd ~/container
 bash scripts/setup.sh
 
-# Record the repository, branch, image and port in container/.env, so later
-# `make build` and `make up` runs use the source this deploy fetched instead of
-# the defaults in .env.example.
+# Record the repository, branch, image and port in CONFIG_DIR/deployment.env,
+# so later `make build` and `make up` runs use the source this deploy fetched
+# instead of the defaults in .env.example. The file lives outside the checkout,
+# so it survives a later refresh of the deployment files.
 . scripts/env-config.sh
 . scripts/load-env.sh
+deployment_env="$CONFIG_DIR/deployment.env"
 env_image="${IMAGE_NAME:-shape-shifter:latest}"
-shapeshifter_env_file_set .env GIT_REPO "$DEPLOY_REPO"
-shapeshifter_env_file_set .env GIT_REF "$DEPLOY_REF"
-shapeshifter_env_file_set .env IMAGE_NAME "$(shapeshifter_image_for_ref "$DEPLOY_REF" "${env_image%%:*}")"
-shapeshifter_env_file_set .env HOST_PORT "$DEPLOY_PORT"
+shapeshifter_env_file_set "$deployment_env" GIT_REPO "$DEPLOY_REPO"
+shapeshifter_env_file_set "$deployment_env" GIT_REF "$DEPLOY_REF"
+shapeshifter_env_file_set "$deployment_env" IMAGE_NAME "$(shapeshifter_image_for_ref "$DEPLOY_REF" "${env_image%%:*}")"
+shapeshifter_env_file_set "$deployment_env" HOST_PORT "$DEPLOY_PORT"
 '
-echo "Recorded GIT_REPO, GIT_REF, IMAGE_NAME and HOST_PORT in ~/container/.env"
+echo "Recorded GIT_REPO, GIT_REF, IMAGE_NAME and HOST_PORT in ~/config/deployment.env"
 
 if [[ "$DO_BUILD" = true ]]; then
   echo "Building and starting the container..."
@@ -110,7 +115,8 @@ fi
 
 echo
 echo "Deployment for $USER is configured."
-echo "Edit the environment file before first use:"
-echo "  sudo -u $USER nano ~/container-data/backend.env"
-echo "Then verify the service with:"
+echo "Review the deployment settings and runtime environment before first use:"
+echo "  sudo -u $USER nano ~/config/deployment.env"
+echo "  sudo -u $USER nano ~/config/backend.env"
+echo "Provision the authorization inputs described in container/DEPLOYMENT.md, then verify with:"
 echo "  curl http://localhost:$HOST_PORT/api/v1/health"

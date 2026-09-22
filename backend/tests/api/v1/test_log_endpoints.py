@@ -6,38 +6,16 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from backend.app.api.v1.endpoints import logs
-from backend.app.authorization.dependencies import get_authorization_service
-from backend.app.authorization.repository import SQLiteAuthorizationRepository
-from backend.app.authorization.service import AuthorizationService
 from backend.app.main import app
 
 
-@pytest.fixture(name="authorization_repository")
-def _authorization_repository(tmp_path):
-    """Create an isolated authorization store with one administrator."""
-    repository = SQLiteAuthorizationRepository(tmp_path / "authorization.sqlite3")
-    repository.add_application_role("alice", "admin", "bootstrap")
-    yield repository
-    repository.close()
-
-
 @pytest.fixture(name="log_dependencies")
-def _log_dependencies(tmp_path, monkeypatch, authorization_repository: SQLiteAuthorizationRepository):
-    """Provide temporary log files while retaining real authorization checks."""
+def _log_dependencies(tmp_path, monkeypatch):
+    """Provide temporary log files for the global log endpoints."""
     (tmp_path / "app.log").write_text("2026-09-07 | INFO     | Application started\n", encoding="utf-8")
     (tmp_path / "error.log").write_text("2026-09-07 | ERROR    | Request failed\n", encoding="utf-8")
     monkeypatch.setattr(logs, "get_settings", lambda: SimpleNamespace(LOG_DIR=tmp_path))
-
-    async def override_get_authorization_service():
-        repository = SQLiteAuthorizationRepository(authorization_repository.path)
-        try:
-            yield AuthorizationService(repository)
-        finally:
-            repository.close()
-
-    app.dependency_overrides[get_authorization_service] = override_get_authorization_service
     yield
-    app.dependency_overrides.clear()
 
 
 def _client_for_principal(principal_id: str | None) -> AsyncClient:
@@ -65,19 +43,19 @@ async def test_log_endpoints_require_authentication(
 
 @pytest.mark.parametrize("path", ["/api/v1/logs/app", "/api/v1/logs/app/download"])
 @pytest.mark.asyncio
-async def test_log_endpoints_reject_non_administrators(
+async def test_log_endpoints_allow_authenticated_principals_without_application_roles(
     log_dependencies,  # pylint: disable=unused-argument
     path: str,
 ) -> None:
+    """Serve the global log to an authenticated principal that holds no application role."""
     async with _client_for_principal("bob") as client:
         response = await client.get(path)
 
-    assert response.status_code == 403
-    assert response.json() == {"detail": "Insufficient authorization"}
+    assert response.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_administrator_can_read_and_download_logs(
+async def test_authenticated_principal_can_read_and_download_logs(
     log_dependencies,  # pylint: disable=unused-argument
 ) -> None:
     async with _client_for_principal("alice") as client:

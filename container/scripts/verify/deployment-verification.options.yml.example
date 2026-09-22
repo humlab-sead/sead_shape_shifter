@@ -1,0 +1,56 @@
+# Runtime options for run_deployment_verification.sh.
+#
+# This file contains identifiers and paths only. Do not put passwords, tokens,
+# or other credentials here. Copy it out of the checkout into the target's
+# configuration directory, edit the values, and pass it with --options-file:
+#
+#   cp ./scripts/verify/deployment-verification.options.yml.example \
+#     ~/config/deployment-verification.options.yml
+#
+# Command-line options override values from this file.
+
+deploy_user: test-shape-shifter.sead.se
+container_dir: /data/test-shape-shifter.sead.se/container
+data_dir: /data/test-shape-shifter.sead.se/container-data
+
+# Parent directory for the timestamped run directory. Leave empty to use
+# data_dir/deployment-verification, which keeps the evidence out of the
+# replaceable checkout and off the container's filesystem.
+evidence_dir: ""
+
+pg_database: ""
+pg_role: ""
+pg_schema: ""
+pg_host: ""
+pg_port: ""
+project: ""
+base_url: https://test-shape-shifter.sead.se
+
+# Optional: create a registered temporary project for endpoint containment.
+# When set, omit project above and use a template copied with the deployment.
+disposable_project_template: /data/test-shape-shifter.sead.se/container/scripts/verify/disposable-project
+project_creator: ""
+
+# Used only with --authenticated.
+principal_a: alice
+principal_b: bob
+project_a: project-alice
+project_b: project-bob
+
+since: 24h
+db_log: /var/log/postgresql/postgresql.log
+service_name: shape-shifter
+
+# Keep both phases disabled unless this recorded run explicitly needs them.
+authenticated: false
+rollback: false
+
+# Required when rollback is true.
+rollback_image: ""
+authorization_backup: ""
+manifest: ""
+
+# Optional deployment overrides. Empty values use the target deployment config.
+host_port: ""
+container_name: ""
+compose_project: ""
