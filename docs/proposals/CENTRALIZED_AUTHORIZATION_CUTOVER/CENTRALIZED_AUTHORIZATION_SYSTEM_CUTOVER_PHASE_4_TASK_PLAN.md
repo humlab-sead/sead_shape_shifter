@@ -214,7 +214,7 @@
 | --- | --- | --- |
 | Area 1: Record the deployment identity | Done | Identity re-confirmed on the running container; the deployed manifest checksum matches the reviewed manifest |
 | Area 2: Re-run the blocking pre-acceptance checks | Done | `T4.3`, `T4.4`, and `T4.5` complete; `PH4-AC-5` holds with no unowned or missing resource |
-| Area 3: Re-verify access and exercise the procedures | Done | `T4.6` and `T4.7` complete; the service unit still needs a restart after the standalone rollback exercise |
+| Area 3: Re-verify access and exercise the procedures | Done | `T4.6` and `T4.7` complete, including the service restart that realigned the unit after the standalone rollback exercise |
 | Area 4: Assemble the acceptance evidence and record the result | Done | `T4.8` and `T4.9` complete; the record is self-contained and the phase plan reflects the outcome |
 
 ## Definition Of Done
