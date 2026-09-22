@@ -77,7 +77,7 @@ release tag; `--branch` is accepted as an alias.
 Before the first start, edit `~/config/backend.env` and set:
 
 - `SHAPE_SHIFTER_TRUSTED_PROXY_AUTH_ENABLED=true`
-- `SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS='["admin@example.com"]'`
+- `SHAPE_SHIFTER_AUTHORIZATION_BOOTSTRAP_ADMIN_PRINCIPALS=["admin@example.com"]`
 - `SHAPE_SHIFTER_ALLOWED_ORIGINS` for the public host name
 - `SEAD_HOST`, `SEAD_PORT`, `SEAD_DBNAME`, `SEAD_USER` for the database
 
