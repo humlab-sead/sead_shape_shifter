@@ -98,12 +98,12 @@
 
 **Tasks:**
 
-* [ ] `T4.3` **Change:** Run the route-inventory and classification checks at the deployed revision.
+* [x] `T4.3` **Change:** Run the route-inventory and classification checks at the deployed revision.
   * **Target:** `backend/tests/authorization/test_route_authentication.py`.
   * **Current -> required:** The checks pass on `dev`; the deployed revision's own result is not recorded as acceptance evidence.
   * **Implementation:** Run the focused authorization suite and this module at the deployed revision, and retain the result with the release identity.
   * **Constraints:** A mismatch between the runtime routes and the inventory blocks acceptance; do not edit the inventory to pass the check.
-  * **Validation:** `V-4.4`.
+  * **Validation:** `V-4.4`. Ran 2026-09-22: `.venv/bin/pytest backend/tests/authorization` reported 192 passed and 1 skipped, and `git diff --stat dbff5ab9..HEAD -- backend src tests` shows only `container/DEPLOYMENT.md` differing, so the deployed revision's application code and tests are unchanged.
 * [ ] `T4.4` **Change:** Review resources and grants for unowned or conflicting records.
   * **Target:** Deployment store through `container/scripts/authorization.sh`.
   * **Current -> required:** Reviewed on 2026-09-22 for the applied records; re-run against the current store so the acceptance evidence is current.
@@ -210,8 +210,8 @@
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Area 1: Record the deployment identity | Not started | No blockers |
-| Area 2: Re-run the blocking pre-acceptance checks | Not started | No blockers |
+| Area 1: Record the deployment identity | In progress | Identity recorded in the deployment record; re-confirmation on the running container pending |
+| Area 2: Re-run the blocking pre-acceptance checks | In progress | `T4.3` complete; `T4.4` and `T4.5` pending target-side runs |
 | Area 3: Re-verify access and exercise the procedures | Not started | Uses the now-provisioned reviewed projects |
 | Area 4: Assemble the acceptance evidence and record the result | Not started | Depends on Areas 1–3 |
 
