@@ -35,7 +35,8 @@ The test host runs the three-directory layout: `~/container` for replaceable cod
 | Privileged firewall inspection | Passed 2026-09-22: nftables input policy is `drop`; approved rules expose proxy ports `80/443` only, and no rule accepts `8012` |
 | Authenticated positive access | Passed 2026-09-22 with Bruno and Phil using colon-qualified project locators: each principal received `200` for its granted project and concealed `404` for the other project's request; unauthenticated access returned `401` |
 | Rollback exercise | Passed 2026-09-22: the recorded image and authorization backup restored successfully, integrity and manifest reconciliation reported zero missing records, and the restarted service returned health `200` |
-| In-scope credential rotation | Passed 2026-09-22: `ADMIN_AUTH_PASSWORD` and `AUTH_PASSWORD` were recorded as rotated; PostgreSQL `.pgpass` rotation is out of scope |
+| In-scope credential rotation | Passed 2026-09-22: `ADMIN_AUTH_PASSWORD` and `AUTH_PASSWORD` were recorded as rotated. PostgreSQL rotation is out of scope by decision for every PostgreSQL database, including the SEAD database |
+| Rollback and exception owner | Roger Mähler is the named rollback decision owner and approves exceptions for unavailable checks, recorded 2026-09-22 |
 
 ### Phase 3 closeout evidence
 
@@ -66,7 +67,7 @@ Facts recorded on 2026-09-22:
 - Inventory before cleanup: `list-resources` returned 51 rows (36 with lifecycle `active`, 15 `deleted`) and `list-grants` returned 51 rows. The four temporary `project:verification-containment-<timestamp>` resources were then deleted through the application; they are now deleted lifecycle records and excluded from `export-manifest`.
 - Target content: all 26 reviewed project locators resolve to a `shapeshifter.yml`, and all 6 reviewed shared data sources appear in the application's listing. `arbodat-data-options`, `arbodat-lookup-options`, `bugscep_data_20250608`, and `digidiggie_tng-options` reference `ArchBotDaten.mdb`, `ArchBotStrukDat.mdb`, `bugsdata_20250608.mdb`, and `Digidiggie_v7_kbw.accdb`, all present in `container-data/shared/shared-data`. `bulgaria-arbodat-lookup-options` is accepted with the `access` driver and no `filename`, and `sead-options` is listed with `${SEAD_HOST}`, `${SEAD_PORT}`, `${SEAD_DBNAME}`, and `${SEAD_USER}` stored verbatim, resolved from `config/backend.env` at use time.
 - Enforcement check, `container/scripts/verify/verify_authenticated_access.sh`, passed with Bruno and Phil using temporary colon-qualified projects: unauthenticated access returned `401`, each principal received `200` for its granted project, and each other project's request returned the concealed `404` response.
-- Credential rotation check passed with exit code `0`; the final record marked `authorization:ADMIN_AUTH_PASSWORD` and `authorization:AUTH_PASSWORD` as rotated. PostgreSQL `.pgpass` was reported as explicitly out of scope.
+- Credential rotation check passed with exit code `0`; the final record marked `authorization:ADMIN_AUTH_PASSWORD` and `authorization:AUTH_PASSWORD` as rotated. That record is an operator attestation: the check lists labels and never verifies that a value changed. On 2026-09-22 PostgreSQL rotation was decided out of scope for every PostgreSQL database, including the SEAD database, so no PostgreSQL credential is rotated or re-checked.
 
 ### Commands that act as the deployment user
 
@@ -110,9 +111,9 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 
 ## Next Actions
 
-1. **Decide where the project content comes from.** The reviewed manifest names 26 projects and 6 shared data sources that this deployment does not hold. Either provision that content under `container-data/projects` and `container-data/shared`, or regenerate the policy for the content this environment actually has.
+1. **Confirm the configuration-dependent data sources.** The reviewed projects and shared data sources are provisioned. `sead-options` still needs working `SEAD_*` values in `config/backend.env`, and `bulgaria-arbodat-lookup-options` declares no data file.
 
-2. **Retain the completed verification evidence.** The rollback evidence is under `container-data/backups/rollback-20260922-103540`; the credential-rotation output records the two in-scope passwords as rotated, and the same-LAN exception remains accepted because no second host is available on the target LAN.
+2. **Retain the completed verification evidence.** The rollback evidence is under `container-data/backups/rollback-20260922-103540`; the credential-rotation output records the two in-scope passwords as rotated and PostgreSQL rotation is out of scope by decision, and the same-LAN exception remains accepted because no second host is available on the target LAN.
 
 ## Risks
 
@@ -128,10 +129,10 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 ## Open Decisions
 
 - Whether `sead-options` connects, since the `SEAD_*` values live in `config/backend.env` and the listing does not prove them.
-- Whether the recorded credential rotation is still an acceptable evidence level, given the check records labels and the operator's assertion rather than verifying a value changed, and no rotated value is retained in the repository.
+- Whether the recorded rotation of the NGINX and application passwords is an acceptable evidence level, given the check records labels and the operator's assertion rather than verifying a value changed, and no rotated value is retained in the repository. PostgreSQL rotation is settled: out of scope by decision.
 - Whether `deleted`-lifecycle rows and the `@local` grants should be removed from the store or kept as history. Current state keeps them; `export-manifest` and `reconcile` ignore deleted resources.
 - Whether the remaining work stays on `authorization-system-cutover` or moves to a new branch.
 
 ## Suggested Follow-Up Documents
 
-- A task plan for bringing the project and shared-data content into the test environment, if that direction is chosen.
+- A Phase 4 task plan for post-cutover operations, including the `sead-options` connection confirmation and the access checks on the release image.

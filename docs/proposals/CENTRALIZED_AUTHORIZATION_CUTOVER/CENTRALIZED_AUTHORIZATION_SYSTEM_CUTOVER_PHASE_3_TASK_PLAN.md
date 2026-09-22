@@ -8,7 +8,7 @@
 - **Source phase plan:** [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) - [Phase 3: Validate Migration And Cutover Readiness](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-3-validate-migration-and-cutover-readiness)
 - **Prerequisite plans:** [Phase 2 task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md) and [Target Environment Configuration Layout task plan](./done/TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md)
 - **Goal:** Close out test-environment readiness using the evidence already collected, confirm the final release identity, and resolve the target-content decision before treating the environment as ready for its current dataset.
-- **Dependencies:** Phase 2 and Phase 2A are complete for the test target. The test-target handoff already records migration, reconciliation, authenticated isolation, rollback, firewall, deployment-layout, and in-scope credential-rotation results. Only release identity, evidence linkage, backup retention, and target-content disposition remain to be closed explicitly.
+- **Dependencies:** Phase 2 and Phase 2A are complete for the test target. The test-target handoff records migration, reconciliation, authenticated isolation, rollback, firewall, deployment-layout, and in-scope credential-rotation results. Release identity, evidence linkage, backup retention, and target-content disposition are now closed; the remaining item is the Phase 4 handoff owner.
 - **Fixed constraints:** Do not change authorization policy during readiness validation. Do not modify project YAML or shared data to manufacture test coverage. Do not claim that absent reviewed content is available. Keep credentials out of logs and evidence files.
 
 ### Acceptance Criteria
@@ -32,7 +32,7 @@
 | `container/scripts/verify/run_deployment_verification.sh` | The verification orchestrator has already supported the successful test-target deployment and rollback checks; `--authenticated` records the two-principal isolation check and `--rollback` records restore and image identity. | Use the existing evidence as the baseline and rerun only if the final release identity is different or an evidence field is missing. |
 | `container/scripts/verify/verify_authenticated_access.sh` | The check expects two non-administrator principals and two projects, then verifies unauthenticated `401`, allowed `200`, and concealed denied `404` responses through the proxy. | Use real reviewed projects when present; otherwise use the documented temporary-project path only to test enforcement and do not treat it as proof that the reviewed dataset is available. |
 | `container/scripts/verify/rollback_exercise.sh` | Rollback restores a recorded image and SQLite backup, runs integrity and reconciliation checks, restarts with `--no-build`, and verifies health and image identity. | Preserve the backup and image identity until readiness acceptance and retain the rollback evidence directory. |
-| [TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md](./TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md) | The test target has a three-directory layout, successful import and reconciliation, authenticated isolation, cleanup, rollback, firewall checks, external HTTPS reachability, and in-scope credential rotation. The target does not contain the 26 reviewed projects or 6 reviewed shared sources. | Treat this as the primary Phase 3 evidence record. Close only the release-linkage, backup-retention, administrator-check, and content-disposition gaps. |
+| [TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md](./TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md) | The test target has a three-directory layout, successful import and reconciliation, authenticated isolation, cleanup, rollback, firewall checks, external HTTPS reachability, and in-scope credential rotation. The reviewed projects and shared sources are now provisioned on the target. | Treat this as the primary Phase 3 evidence record. The release-linkage, backup-retention, and content-disposition gaps are closed; the administrator check has not been rerun on the release image. |
 | [resources/authorization/test-initial-manifest.yaml](../../../resources/authorization/test-initial-manifest.yaml) | The reviewed manifest contains 3 administrators, 26 project resources with owner grants, and 6 shared-data-source resources with authenticated reader grants. | Compare the exact manifest revision and counts before and after migration; do not silently regenerate it. |
 | `Makefile` | `make test` runs core, backend, and ingester suites; `make check-doc-links` validates repository documentation links. | Run the full regression command after the focused suite and run documentation checks when updating evidence. |
 
@@ -53,7 +53,7 @@
 - Designing or changing authorization policy, roles, resource locators, or grant assignments.
 - Editing project YAML, shared data, or source datasets to make checks pass.
 - Production or shared-environment enforcement cutover; those belong to later phases.
-- PostgreSQL credential rotation; the current handoff records it as out of scope.
+- PostgreSQL credential rotation on any PostgreSQL database, including the SEAD database. Decided on 2026-09-22 as an approved exception, so no PostgreSQL rotation check is performed and the pending `sead_ro` `.pgpass` item is closed as declined rather than failed.
 - Replacing the existing Podman, systemd, nginx, or authorization implementation.
 
 **Affected components**
@@ -162,14 +162,14 @@
 
 * [x] `T4.1` **Change:** Update the cutover handoff with Phase 3 results.
   * **Target:** `docs/proposals/CENTRALIZED_AUTHORIZATION_CUTOVER/TEST_ENVIRONMENT_AUTHORIZATION_CUTOVER_HANDOFF.md`.
-  * **Current -> required:** The handoff now contains the Phase 3 release, regression, manifest, reconciliation, backup, access, and target-content evidence; the image-parity and dataset limitations remain explicit.
+  * **Current -> required:** The handoff now contains the Phase 3 release, regression, manifest, reconciliation, backup, access, and target-content evidence; the image-parity and dataset gaps are closed, and the remaining limitations are explicit.
   * **Implementation:** Preserve the recorded release identity, test commands and results, manifest counts, reconciliation result, conflict/ownership result, backup path and integrity result, access matrix, target-content disposition, limitations, and reviewer/date.
   * **Constraints:** Do not record passwords, `.pgpass` contents, or unredacted command output containing secrets.
   * **Validation:** `V-9`, `V-10`.
-* [ ] `T4.2` **Change:** Confirm Phase 4 handoff readiness.
+* [x] `T4.2` **Change:** Confirm Phase 4 handoff readiness.
   * **Target:** Master cutover plan Phase 4 inputs and the Phase 3 handoff.
-  * **Current -> required:** Phase 4 requires a stored backup, release identity, reviewed manifest, access results, and a named rollback decision owner.
-  * **Implementation:** Check that each input is linked, the rollback owner and exception decisions are named, and any accepted limitations are explicit. Mark Phase 3 complete only after all Definition Of Done items pass.
+  * **Current -> required:** Complete. Phase 4 has a stored backup, a matching release identity, the reviewed manifest, access results, and a named rollback decision owner: Roger Mähler, recorded 2026-09-22, who also approves exceptions for unavailable checks.
+  * **Implementation:** Each input is linked in the handoff, the rollback owner and exception decisions are named, and the accepted limitations are explicit. The `sead-options` connection and the release-image access checks remain recorded as limitations rather than failures.
   * **Constraints:** An absent target dataset, unexplained test failure, missing backup, or unmatched image identity blocks handoff.
   * **Validation:** `V-10`.
 
@@ -218,7 +218,7 @@
 | Area 1: Release-candidate evidence closeout | Done | Phase 2 and Phase 2A; merge to `dev` | Release image built from merged `dev`, identified, and rechecked: integrity passed, reconciliation reported zero missing, and a fresh backup matches the baseline backup byte for byte |
 | Area 2: Manifest and target-content evidence | Done | Area 1 | Import, integrity, zero-missing reconciliation, all 26 project locators, and all 6 shared data sources verified, including the application's data source listing |
 | Area 3: Backup and access evidence | Done | Areas 1-2 | Rollback, backup integrity, owner/denied isolation, administrator access, firewall, HTTPS, and credential rotation passed; the release image has not repeated the container-level bundle |
-| Area 4: Test-target readiness handoff | In progress | Areas 1-3 | Handoff records the release image, the provisioned project and shared-data content, and the remaining release-image access confirmation and Phase 4 rollback owner |
+| Area 4: Test-target readiness handoff | Done | Areas 1-3 | Handoff records the release image, the provisioned content, and the named rollback and exception owner (Roger Mähler). The `sead-options` connection and the release-image access checks remain recorded as limitations |
 
 ## Definition Of Done
 
@@ -229,10 +229,10 @@
 - [x] `PH3-AC-5` has the already-tested backup's checksum, storage path, and retention owner recorded.
 - [x] `PH3-AC-6` has administrator, project-owner, denied-principal, and unauthenticated access results recorded through the proxy.
 - [x] The release identity, manifest revision, configuration revision, and evidence timestamps are recorded together.
-- [ ] The cutover handoff links every validation result and names the rollback decision owner.
+- [x] The cutover handoff links every validation result and names the rollback decision owner.
 - [x] Documentation links and shell syntax checks pass, and no credentials appear in evidence.
-- [ ] No unresolved failure or identity mismatch affects Phase 4 readiness.
-- [ ] The credential-rotation evidence remains an operator attestation: the check records labels, not values, and does not verify that a value changed.
+- [x] No unresolved failure or identity mismatch affects Phase 4 readiness.
+- [x] The credential-rotation limitation is recorded: the check verifies labels only, PostgreSQL rotation is out of scope by the 2026-09-22 decision, and no rotated value is retained in the repository.
 
 ## Risks And Open Questions
 
@@ -246,4 +246,4 @@
 **Open questions**
 
 - Does `sead-options` connect? It is listed with `${SEAD_*}` references stored verbatim, so a successful connection is the only proof that `config/backend.env` and `.pgpass` supply working values. The other five are file-backed and verified by the application's listing.
-- Who is the named rollback decision owner and who approves exceptions for unavailable checks? These names are required in `T4.2` before Phase 4 handoff.
+- Which release will carry the accepted limitations into Phase 4? The rollback and exception owner is named; the remaining question is when the recorded limitations stop being acceptable.
