@@ -4,11 +4,11 @@
 
 - **Document type:** Deployment configuration migration task plan
 - **Status:** Closed; implementation and live deployment verification complete with documented validation limitations
-- **Source proposal:** [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
+- **Source proposal:** [Centralized Authorization System Cutover Plan](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
 - **Related phase:** Phase 2 resource and manifest preparation; prerequisite to Phase 3 migration readiness
 - **Goal:** Require the deployment user's `~/config`, `~/container`, and `~/container-data` sibling directories, move deployment-specific configuration and authorization inputs into `~/config`, and keep `~/container` replaceable and effectively read-only.
 - **Planning decision:** This is a separate deployment-layout change, not a redefinition of authorization Phase 3. The master cutover plan should reference this plan as a prerequisite before Phase 3 execution.
-- **Dependencies:** The existing authorization manifest and principal roster are reviewed in [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md). The target deployment is not released to end users, so no backward-compatible path fallback is required.
+- **Dependencies:** The existing authorization manifest and principal roster are reviewed in [TEST_DEPLOYMENT_RESOURCE_INVENTORY.md](../../../../secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md). The target deployment is not released to end users, so no backward-compatible path fallback is required.
 
 ### Acceptance Criteria
 

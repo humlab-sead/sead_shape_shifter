@@ -2,12 +2,13 @@
 
 ## Phase Summary
 
-- **Source decision document:** [Centralized Authorization System](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
-- **Source phase plan:** [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) — [Phase 1: Complete Route And Operation Inventory](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-1-complete-route-and-operation-inventory)
+- **Status:** Closed; all task items and Definition Of Done criteria are complete
+- **Source decision document:** [Centralized Authorization System](../../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
+- **Source phase plan:** [Centralized Authorization System Cutover Plan](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) — [Phase 1: Complete Route And Operation Inventory](../CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md#phase-1-complete-route-and-operation-inventory)
 - **Goal:** Classify every registered route and background operation that production can reach, and make the route inventory the checked record of that classification.
 - **Readiness:** Validated
 - **Dependencies:** None. The phase plan records `Depends On: No prior phase` and `Readiness: Ready for a task plan`.
-- **Constraints:** Compare against the registered route set, not a hand-maintained list (phase handoff). Ingester capability authorization beyond classification is out of phase scope (phase non-goal) and stays with [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md). Do not change authorization policy, grants, or project YAML.
+- **Constraints:** Compare against the registered route set, not a hand-maintained list (phase handoff). Ingester capability authorization beyond classification is out of phase scope (phase non-goal) and stays with [INGESTER_AUTHORIZATION_TASKS.md](../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md). Do not change authorization policy, grants, or project YAML.
 
 **Acceptance Criteria**
 
@@ -22,7 +23,7 @@
 
 | Evidence | Finding | Planning implication |
 |---|---|---|
-| [docs/AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) | 23 rows carry `UNDECLARED`: 8 public/static/direct-application rows and 15 `/api/v1` rows | All 23 rows need a recorded classification; this file is the maintained artifact to update |
+| [docs/AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md) | 23 rows carry `UNDECLARED`: 8 public/static/direct-application rows and 15 `/api/v1` rows | All 23 rows need a recorded classification; this file is the maintained artifact to update |
 | `backend/tests/authorization/test_route_authentication.py::test_route_inventory_matches_assembled_api_routes` | Compares documented `/api/v1` method/path pairs with the assembled app, but passes while a row stays `UNDECLARED` | A classification check must be added for `PH1-AC-1` and `PH1-AC-4` |
 | `backend/tests/authorization/test_dependencies.py::test_static_data_source_subroutes_are_classified` and `AUTHENTICATED_STATIC_DATA_SOURCE_PATHS` | Established pattern: declared metadata **or** an explicit authenticated-only set, currently limited to `/data-sources*` | Extend this pattern to the remaining routes instead of inventing a new mechanism |
 | `backend/app/authorization/dependencies.py` | `require_project`, `require_shared_data_source`, `require_application_action`, `require_authorized_session`, `require_operation` attach `authorization_requirement` metadata | Use existing factories; `require_shared_data_source` already resolves a body-supplied locator |
@@ -43,7 +44,7 @@
 
 **In scope**
 
-- Classification of the 23 `UNDECLARED` rows in [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md).
+- Classification of the 23 `UNDECLARED` rows in [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md).
 - The one code change the classification requires: a declared `project:edit` requirement on `POST /api/v1/sessions`.
 - Extension of the automated route check so an unclassified API route fails the suite.
 - Inventory sections recording lifecycle entry points and background operations, plus the classification review note.
@@ -51,7 +52,7 @@
 
 **Out of scope**
 
-- Ingester capability authorization (project, source, database, destination): owned by [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md). This phase records the classification and the follow-up only.
+- Ingester capability authorization (project, source, database, destination): owned by [INGESTER_AUTHORIZATION_TASKS.md](../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md). This phase records the classification and the follow-up only.
 - Deployment work: manifest preparation (Phase 2), readiness validation (Phase 3), enforcement cutover (Phase 4), Podman verification (Phase 5).
 - New authorization policy, roles, or actions; project YAML changes; frontend changes.
 - Adding a project rename feature.
@@ -72,21 +73,21 @@
   * **Validation:** `V-2`, `V-3`; add a route-metadata assertion alongside `backend/tests/authorization/test_dependencies.py::test_project_data_source_connection_requires_project_and_shared_source_access`, and a concealed-`404` case for a principal without edit access.
 
 * [x] `T1.2` **Change:** Record authenticated-only classifications for the non-resource API rows.
-  * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) rows: `GET /api/v1/help-docs/{doc_path:path}`, `GET /api/v1/projects`, `GET /api/v1/projects/active/name`, `POST /api/v1/suggestions/analyze`, `POST /api/v1/suggestions/entity`, `GET /api/v1/reconciliation/health`, `GET /api/v1/reconciliation/manifest`, `GET /api/v1/dispatchers`, `GET /api/v1/filters/types`, `GET /api/v1/whats-new`, `GET /api/v1/whats-new/{version}/content`.
+  * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md) rows: `GET /api/v1/help-docs/{doc_path:path}`, `GET /api/v1/projects`, `GET /api/v1/projects/active/name`, `POST /api/v1/suggestions/analyze`, `POST /api/v1/suggestions/entity`, `GET /api/v1/reconciliation/health`, `GET /api/v1/reconciliation/manifest`, `GET /api/v1/dispatchers`, `GET /api/v1/filters/types`, `GET /api/v1/whats-new`, `GET /api/v1/whats-new/{version}/content`.
   * **Current → required:** Each row reads `UNDECLARED`. Required: `authenticated`, with a short note stating the basis.
   * **Implementation:** Replace the requirement cell and add notes: `/projects` returns only projects readable by the principal (`ProjectService.list_authorized_projects`); `/projects/active/name` returns the deployment active project name only and is not identifier-addressed; `/suggestions/analyze` and `/suggestions/entity` introspect client-supplied entity configuration and an optional `data_source_name`, with a recorded follow-up to resolve the source server-side and require shared-source read; the remaining rows return registry metadata, service health or manifest data, filter schemas, release notes, or repository documentation.
   * **Constraints:** Use the requirement terms already defined in the inventory. Do not claim enforcement that the code does not perform; state handler-level behavior in the note.
   * **Validation:** `V-3`, `V-5`.
 
 * [x] `T1.3` **Change:** Record the ingester route classification and its enforcement follow-up.
-  * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) rows for `GET /api/v1/ingesters`, `POST /api/v1/ingesters/{key}/validate`, `POST /api/v1/ingesters/{key}/ingest`.
+  * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md) rows for `GET /api/v1/ingesters`, `POST /api/v1/ingesters/{key}/validate`, `POST /api/v1/ingesters/{key}/ingest`.
   * **Current → required:** All three read `UNDECLARED`. Required: `authenticated` for the metadata list, and `application:run_ingesters` with project, source, and destination authorization for validation and execution, marked as enforcement pending.
-  * **Implementation:** Record the required requirement from the design resource rules and add a note naming [INGESTER_AUTHORIZATION_TASKS.md](../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) as the owner of the enforcement work.
+  * **Implementation:** Record the required requirement from the design resource rules and add a note naming [INGESTER_AUTHORIZATION_TASKS.md](../../CHANGE_REQUEST_INGESTER/INGESTER_AUTHORIZATION_TASKS.md) as the owner of the enforcement work.
   * **Constraints:** Do not add ingester dependencies or change ingester behavior in this phase. Do not describe ingester authorization as implemented.
   * **Validation:** `V-5`.
 
 * [x] `T1.4` **Change:** Record exposure for the public, generated, and static rows.
-  * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) rows: `GET, HEAD /api/v1/openapi.json`, `GET, HEAD /api/v1/docs`, `GET, HEAD /docs/oauth2-redirect`, `GET, HEAD /api/v1/redoc`, static mount `/docs/*`, static mount `/assets/*`, `GET /{full_path:path}`, `GET /`.
+  * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md) rows: `GET, HEAD /api/v1/openapi.json`, `GET, HEAD /api/v1/docs`, `GET, HEAD /docs/oauth2-redirect`, `GET, HEAD /api/v1/redoc`, static mount `/docs/*`, static mount `/assets/*`, `GET /{full_path:path}`, `GET /`.
   * **Current → required:** All eight read `UNDECLARED`. Required: `authenticated`, since trusted-proxy middleware requires an identity for every path except `/api/v1/health`, and each row states its origin and build condition.
   * **Implementation:** Note FastAPI-generated routes, the repository documentation mount, and the three frontend-build-conditional entries. State that these paths are protected by the authentication middleware rather than by a resource dependency.
   * **Constraints:** Do not classify any of these rows `Public`; the health route is the only public path.
@@ -126,7 +127,7 @@
 **Objective:** The inventory states, for each lifecycle entry point and background operation, its authorization and its lifecycle or operation-record behavior.
 
 * [x] `T3.1` **Change:** Add a lifecycle and background-operation section to the inventory.
-  * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) (new section after the route tables, before Maintenance).
+  * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md) (new section after the route tables, before Maintenance).
   * **Current → required:** The inventory covers routes only; `PH1-AC-3` needs lifecycle entry points and protected service methods recorded. Required: a compact table recording the entry point, its authorization, its lifecycle or operation call, and the evidence location.
   * **Implementation:** Record `POST /projects` (`application:create_project`, `AuthorizationService.register_project` assigns the creator as owner), `POST /projects/{name}/copy` (source `project:read` plus `application:create_project`, `register_project` for the target), `DELETE /projects/{name}` (`project:delete`, `transition_resource` through `deleting`, back to `active` on failure, then `deleted`), `POST /data-sources` (`application:manage_shared_sources`, `register_shared_data_source`), `DELETE /data-sources/{filename}` (`application:manage_shared_sources`, `transition_resource`), the auto-reconcile background operation (`project:edit` at start, `require_operation` for progress, stream, and cancel, with `owner_principal_id` and `project_resource_id` recorded), and the session-cleanup task (no principal or protected resource; not authorization-scoped).
   * **Constraints:** Record the reviewed result that no project rename entry point exists, because `ProjectService.update_metadata` ignores `new_name` and the project name derives from the filename. State findings, not new requirements.
@@ -152,7 +153,7 @@
 **Objective:** The classification is reviewed by a named reviewer, and the maintained documentation points at the current record.
 
 * [x] `T4.1` **Change:** Record the classification review.
-  * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) review note.
+  * **Target:** [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md) review note.
   * **Current → required:** Classifications are unreviewed. Required: a dated note naming the reviewer and stating that the classifications were checked against the design resource rules and the registered route set.
   * **Implementation:** Add the note after the lifecycle section. Reviewer: `Roger Mähler`, 2026-09-17. Verify each row against the implemented policy terms in `docs/AUTHORIZATION.md` and the role and action maps in `backend/app/authorization/policy.py`, and against the assembled route list from `V-5`. The earlier reference to design document sections 5, 7, and 9 was wrong: `docs/DESIGN.md` uses unnumbered sections and `docs/REQUIREMENTS.md` sections 5 and 7 cover the technology stack and future enhancements, so the review cites the policy sources instead.
   * **Constraints:** The reviewer confirms or corrects rows; corrections follow the same terms and note style. A route that cannot be classified without a policy decision is reported and blocked, not guessed.
@@ -160,7 +161,7 @@
 
 * [x] `T4.2` **Change:** Point the authorization coverage note at the current record.
   * **Target:** `docs/AUTHORIZATION.md` ("Current Coverage").
-  * **Current → required:** It says undeclared route classification remains tracked in the closed [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md). Required: it points at the cutover plan Phase 1 record and states that the inventory carries no `UNDECLARED` row after this phase.
+  * **Current → required:** It says undeclared route classification remains tracked in the closed [CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md](../../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM_TASK_PLAN.md). Required: it points at the cutover plan Phase 1 record and states that the inventory carries no `UNDECLARED` row after this phase.
   * **Constraints:** Keep the ingester statement accurate: ingester authorization remains proposed work owned by `INGESTER_AUTHORIZATION_TASKS.md`.
   * **Validation:** `V-9`.
 
@@ -236,7 +237,7 @@ For every check, record the commit, the command output, and the reviewer in the 
 
 **Open questions**
 
-- **Who reviews and signs the classification?** Settled: Roger Mähler reviewed the classification on 2026-09-17, and the review note in [AUTHORIZATION_ROUTE_INVENTORY.md](../../AUTHORIZATION_ROUTE_INVENTORY.md) records what was checked.
+- **Who reviews and signs the classification?** Settled: Roger Mähler reviewed the classification on 2026-09-17, and the review note in [AUTHORIZATION_ROUTE_INVENTORY.md](../../../AUTHORIZATION_ROUTE_INVENTORY.md) records what was checked.
 - **Should `POST /suggestions/analyze` resolve `data_source_name` server-side and require shared-source read?** Settled for this phase: the route stays `authenticated` with the follow-up recorded in the inventory, matching the accepted `POST /data-sources/tables` disposition. Changing it requires the schema service to resolve a registered source, which is a separate change.
 - **Should `/projects/active/name` conceal the active project name from principals without project read?** Settled in this phase: yes. `T1.2` classified the route `project:read` through `require_active_project(Action.READ)`, which returns the concealed `404 Resource not found` for an active project the principal cannot read and reports `null` only when no project is active. The route therefore carries `authorization_requirement` metadata like every other protected route.
 
