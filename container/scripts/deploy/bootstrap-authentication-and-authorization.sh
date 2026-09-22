@@ -65,6 +65,12 @@ if [[ ! -d "$DEPLOY_DIR" ]]; then
     fail "Deployment directory does not exist: $DEPLOY_DIR"
 fi
 
+# sudo switches user but keeps the caller's working directory. The deployment
+# user cannot always read the directory this script was started from, which
+# makes sudo -u fail with "cannot chdir". Move somewhere that user can read
+# before switching; every remaining path in this script is absolute.
+cd -- "$DEPLOY_DIR" || fail "Cannot enter deployment directory: $DEPLOY_DIR"
+
 DEPLOY_UID="$(id -u "$DEPLOY_USER")"
 CONTAINER_NAME="${CONTAINER_NAME:-shape-shifter}"
 # The deployment user's Podman lives under their own user manifest, so run the
@@ -88,9 +94,11 @@ if [[ $EUID -ne 0 ]]; then
     fail "This script must be run as root (i.e. use sudo)"
 fi
 
-container_status="$(target_run podman container inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
+container_status="$(target_run podman container inspect --format '{{.State.Status}}' "$CONTAINER_NAME" 2>&1 || true)"
 if [[ "$container_status" != running ]]; then
-    fail "Container '$CONTAINER_NAME' is not running for $DEPLOY_USER (status: ${container_status:-unknown}). Start it as that user, then rerun this script:" \
+    fail "Container '$CONTAINER_NAME' is not running for $DEPLOY_USER. podman reported:" \
+        "  $container_status" \
+        "Start it as that user, then rerun this script:" \
         "  sudo -u $DEPLOY_USER -H bash -lc 'cd ~/container && make up'"
 fi
 
