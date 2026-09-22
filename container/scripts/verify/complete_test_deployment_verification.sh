@@ -93,9 +93,15 @@ printf '== Safe deployment checks ==\n'
 "$CONTAINER_DIR/scripts/authorization.sh" integrity-check
 
 printf '\n== NGINX and systemd checks ==\n'
-sudo nginx -t
+if [[ "$EUID" -eq 0 ]]; then
+    nginx -t
+elif sudo -n -v >/dev/null 2>&1; then
+    sudo nginx -t
+else
+    printf '%s\n' 'WARN  NGINX configuration check skipped; run sudo nginx -t as an operator'
+fi
 systemctl --user is-active --quiet "$SERVICE_NAME" || fail "user service is not active: $SERVICE_NAME"
-printf 'NGINX configuration and user service passed: %s\n' "$SERVICE_NAME"
+printf 'User service is active: %s\n' "$SERVICE_NAME"
 
 manifest_name="/tmp/authorization-verification-$$.yaml"
 cleanup_manifest() {
