@@ -56,6 +56,8 @@ This deployment runs the authorization system from the outset. The old server co
 | Release identity re-confirmed (`V-4.1`, `V-4.2`) | `make info`, `podman image inspect` | Image `shape-shifter:dev`, ID `6a487db7...04a8`, revision `dbff5ab9...4f96`, `GIT_REF=dev`, container port `8012`, uid/gid `1021/1021` |
 | Deployed manifest matches the reviewed manifest (`V-4.3`) | `sha256sum ~/config/authorization-manifest.yaml` | `43c03186f708164ce9334a001c45b80c4f206fb2efa06d413dff9ad4a2cafb90`, identical to the repository copy |
 | Resource inventory and grants (`V-4.5`) | `scripts/authorization.sh list-resources --json` and `list-grants --json` | 51 resources (36 active, 15 deleted) and 53 grants (47 principal, 6 `everyone`). Every active resource has at least one grant, and no grant points at a missing resource |
+| Access checks with reviewed projects (`V-4.7`) | `container/scripts/verify/verify_authenticated_access.sh` and the administrator probe | Unauthenticated `401`; `bruno` reading his own project `200`; `bruno` reading `Glykou_etal_2021` concealed `404`; `riia` reading her own project `200`; `admin` listing projects `200`. The remaining probe is invalid, not a defect: see *Access-check detail* |
+| Live deployment roles (`V-4.7`) | `scripts/authorization.sh list-application-roles --json` | 3 administrators (`admin`, `roger`, `rebecka`), 4 `project_maintainer` principals (`roger`, `rebecka`, `riia`, `mattias`), 5 `project_creator` plus `operator` principals, and 4 temporary-project creators |
 
 ### Resource inventory detail
 
@@ -77,6 +79,43 @@ They are temporary verification projects from 2026-09-18 that were never removed
 - **Migration is covered.** Actor `migration` wrote 34 events in a 78 ms window at 2026-09-22T05:48:04: 26 `owner` grants, 6 `reader` grants, and 2 administrator role creations. The 26 owner and 6 reader grants match the reviewed manifest exactly, and the 2 role creations together with the earlier bootstrap-created administrator are consistent with the three recorded administrators.
 - **Later mutations are covered.** Two `grant_created` events by actor `verification-check` at 07:44 to 07:45 recorded the temporary-project grants used by the earlier access check.
 
+### Access-check detail
+
+The check ran on 2026-09-22 through the proxy with `bruno` as principal A and `riia` as principal B, using reviewed projects `Bruno-Strucke-v2-test` and `Glykou_etal_2021`.
+
+| Probe | Status | Expected |
+|---|---|---|
+| Unauthenticated read of `Bruno-Strucke-v2-test` | `401` | `401` |
+| `bruno` reads his own project | `200` | `200` |
+| `bruno` reads `Glykou_etal_2021` | `404` | `404` |
+| `riia` reads her own project | `200` | `200` |
+| `riia` reads `Bruno-Strucke-v2-test` | `200` | `404` |
+| `admin` lists projects | `200` | `200` |
+
+**The one failing probe is a test-selection error, not an access defect.** `riia` holds the deployment role `project_maintainer`, created 2026-09-22T05:30:34 by the bootstrap actor. In `backend/app/authorization/policy.py`, `DEPLOYMENT_ROLE_ACTIONS[ApplicationRole.PROJECT_MAINTAINER]` grants `READ`, `EDIT`, and `EXECUTE`, and `AuthorizationService.is_allowed()` in `backend/app/authorization/service.py` returns `True` as soon as any deployment role allows the action, before resource grants are consulted. A maintainer therefore reads every active project by design. `bruno` holds only `project_creator` and `operator`, neither of which grants project `READ`, which is why his denial is concealed as `404` and why the check passed in that direction.
+
+The script's documented precondition is only "neither principal is a bootstrap administrator". It predates `project_maintainer` and does not check the condition it states.
+
+**No well-formed pair exists on the reviewed roster.** The script needs two projects, each readable by exactly one principal, with neither principal holding a role that grants read. Reviewed project owners are `bruno` (6 projects), `riia` (10), `roger` (9), and `rebecka` (1). `roger` and `rebecka` hold `admin` and `riia` holds `project_maintainer`, so `bruno` is the only reviewed owner who is not a global reader, and a pair needs two.
+
+Live roles, confirmed from the store:
+
+| Principal | Deployment roles |
+|---|---|
+| `admin` | `admin` |
+| `roger` | `project_maintainer`, `admin` |
+| `rebecka` | `project_maintainer`, `admin` |
+| `riia` | `project_maintainer`, `project_creator`, `operator` |
+| `mattias` | `project_maintainer`, `project_creator`, `operator` |
+| `athena`, `bruno`, `ershad`, `phil`, `victoria` | `project_creator`, `operator` |
+| four `verification-containment-…-creator@local` | `project_creator` |
+
+`roger` and `rebecka` each hold both `project_maintainer` and `admin`. The `admin` grant is the one the reviewed manifest applies, so the `project_maintainer` grant is redundant for them.
+
+Symmetric isolation was therefore not demonstrated with reviewed projects. The direction that matters for enforcement was: a non-privileged owner is denied another principal's project with a concealed `404`. The reverse direction is masked by an intentional global role rather than by a missing check.
+
+`complete_test_deployment_verification.sh` provides the fixture path for a fully symmetric transcript. With `--grant-access` it grants `viewer` on two *temporary* projects, which is what produced the two `verification-check` mutations above, so it does not touch reviewed grants. It proves enforcement rather than dataset availability, and leaves two temporary projects and two fixture grants to remove afterwards. It was not run for this record.
+
 ## Pending Verification
 
 Each item below needs the deployment user or an authenticated administrator. Commands are read-only unless stated.
@@ -95,22 +134,7 @@ Complete. See *Audit-trail detail* above. Run `scripts/authorization.sh list-app
 
 ### `T4.6` / `V-4.7` — access checks with reviewed projects
 
-`bruno` and `riia` both own reviewed projects and neither is a bootstrap administrator, so they satisfy the script's requirement:
-
-```bash
-sudo -u test-shape-shifter.sead.se -H bash container/scripts/verify/verify_authenticated_access.sh \
-  --base-url https://test-shape-shifter.sead.se \
-  --principal-a bruno --principal-b riia \
-  --project-a Bruno-Strucke-v2-test --project-b Glykou_etal_2021
-```
-
-Then the administrator probe:
-
-```bash
-curl -fsS -u admin https://test-shape-shifter.sead.se/api/v1/projects -o /dev/null -w '%{http_code}\n'
-```
-
-Expected: unauthenticated `401`, allowed `200`, concealed denied `404`, administrator `200`.
+Complete. The four required outcomes are recorded in *Access-check detail*: unauthenticated `401`, owner `200`, concealed denied `404`, and administrator `200`. The script's symmetric-isolation probe reports one failure that is a test-selection error caused by `project_maintainer`, not an access defect, and no reviewed pair can supply a well-formed probe.
 
 ### `T4.7` / `V-4.8`, `V-4.9` — backup and rollback exercise
 
@@ -141,7 +165,7 @@ The script leaves the service stopped when a step fails. Redeploy the recorded r
 ## Next Actions
 
 1. **Decide the four active verification projects.** Remove them, or record why UAT should tolerate them, and say which. This is the first item because it is visible to testers.
-2. **Complete the pending verification above**, starting with `list-grants --json`. Nothing in this record should be treated as acceptance evidence until each command has been run against the currently running container and its output recorded here.
+2. **Settle the access-check decisions, then run `T4.7`.** `T4.6` is complete. Decide whether to fix the probe script, which account each tester uses, and whether to produce a symmetric isolation transcript through the fixture path (see *Open Decisions*). Nothing in this record should be treated as acceptance evidence until each command has been run against the currently running container and its output recorded here.
 3. **Correct or confirm the Phase 3 cleanup statement.** The audit trail does not show the 2026-09-22 deletions it describes.
 4. **Hand this record to the user acceptance test owners.** It states what is verified and what is not; acceptance criteria are theirs to author and apply.
 5. **Do not repoint production DNS or the reverse proxy.** The flip is a separate decision with its own proposal and owners.
@@ -152,7 +176,8 @@ The script leaves the service stopped when a step fails. Redeploy the recorded r
 - **The Phase 3 cleanup claim is not corroborated by the audit trail.** No `resource_lifecycle_changed` event is dated 2026-09-22. Correct the Phase 3 handoff or explain the difference before relying on it as evidence.
 - **`bulgaria-arbodat-lookup-options` remains unproven.** The application lists it, but it declares the `access` driver with no data file. Whether that is intentional is unconfirmed, and UAT users may notice it before we do.
 - **The rollback discards later grants.** Any grant added inside the acceptance window is lost on restore.
-- **Reviewed projects may lack owners for real users.** `bruno` and `riia` own reviewed projects, but the wider user population may not. If a tester's principal owns nothing, they will see denied responses that are correct but unhelpful.
+- **Most accounts see either everything or nothing.** `roger`, `rebecka`, `riia`, and `mattias` hold `project_maintainer` and read every project, so a tester using one of those accounts cannot experience isolation. The remaining accounts (`bruno`, `athena`, `ershad`, `phil`, `victoria`) hold only `project_creator` and `operator`, and of those only `bruno` owns any reviewed project, so the other four would see an empty project list. Choose the account for each tester deliberately.
+- **The access-check script misreports a maintainer read as an isolation failure.** `verify_authenticated_access.sh` documents its precondition as "neither principal is a bootstrap administrator", which predates `project_maintainer`, and it does not check the condition. A maintainer used as principal B returns `200` for the other principal's project, and the script reports a cross-resource failure that is really intended policy.
 - **Shared-source grants are broad.** Every authenticated principal can read the six shared data sources. That is intended for the current manifest and worth confirming for the acceptance population.
 - **Host services are reachable only as `host.docker.internal`.** A host-side connection check to a host database succeeds while the container fails, which misleads diagnosis.
 - **Audit events carry no correlation ID.** All 144 events have `correlation_id: null`, so an event cannot be tied to the request that caused it.
@@ -165,7 +190,9 @@ The script leaves the service stopped when a step fails. Redeploy the recorded r
 - Whether the four active `verification-containment-*` projects should be deleted before acceptance, or accepted as visible clutter.
 - Who owns and executes user acceptance testing, and against which criteria?
 - Whether `bulgaria-arbodat-lookup-options` is complete as provisioned.
-- Whether the reviewed projects need owners assigned for the acceptance population, or whether access is exercised through `bruno` and `riia` only.
+- Which account each tester uses, given that maintainer accounts read every project and the four non-maintainer accounts own no reviewed project.
+- Whether to fix `verify_authenticated_access.sh` so it detects a principal holding a deployment role that grants read and reports the probe as not applicable instead of failing. `T4.6` names this script as affected code.
+- Whether to produce a fully symmetric isolation transcript through the temporary-project fixture path, accepting two more temporary projects and two fixture grants to remove afterwards.
 
 ## Suggested Follow-Up Documents
 
