@@ -2,7 +2,7 @@
 
 ## Status
 
-- Phase plan / Phase 1 complete; phases 2–5 not started
+- Phase plan / Phases 1, 2, and 2A complete; Phase 3 ready for its task plan; Phases 4–5 not started
 - Scope: route and operation inventory, migration input, readiness validation, enforcement cutover, and Podman release verification
 - Goal: enforce the implemented authorization system in production with reviewed access records and a tested rollback
 - Source decision: [Centralized Authorization System](../done/MITIGATE_SECURITY_ISSUES/done/CENTRALIZED_AUTHORIZATION_SYSTEM.md)
@@ -43,7 +43,7 @@ This plan covers:
 - Project, child-resource, shared-source, log, session, and operation checks are implemented for the covered routes and services.
 - The administration CLI supports manifest migration, reconciliation, resource and role review, grant mutations, backup, restore, and integrity checks.
 - Phase 1 is complete: the maintained route inventory classifies every route and lifecycle entry, carries a dated review by Roger Mähler on 2026-09-17, and no longer contains an `UNDECLARED` row. The classification and parity checks in `backend/tests/authorization/test_route_authentication.py` enforce that state.
-- Deployment-specific projects, shared data sources, principal IDs, initial grants, and release evidence are not recorded yet.
+- The test-target inventory records 26 migration-source projects, 6 shared data sources, confirmed nginx principal IDs and owners/readers, and the reviewed initial manifest. The target-content gap is recorded as an operational follow-up; release evidence is recorded in the test-environment cutover handoff.
 - The deployment documentation still describes Docker Compose; the target server uses Podman, so the image, service definition, secret injection, volume mounts, health checks, logging, and rollback workflow need a Podman deployment record.
 
 ## Phase Plan
@@ -88,7 +88,7 @@ Classify every registered route and background operation that production can rea
 
 **Readiness**
 
-Complete on 2026-09-17; executed through the [Phase 1 task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_1_TASK_PLAN.md).
+Complete on 2026-09-17; executed through the [Phase 1 task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_1_TASK_PLAN.md).
 
 ### Phase 2: Review Deployment Resources And Initial Grants
 
@@ -130,7 +130,7 @@ Produce the deployment's authorization inputs without modifying project YAML.
 
 **Readiness**
 
-Requires named deployment identities and resource owners.
+Complete for the test target on 2026-09-22; the reviewed manifest was applied and reconciled with zero missing records. Provisioning the reviewed project and shared-data content, or regenerating the policy for the target content, remains a follow-up before treating the target dataset as ready for users.
 
 ### Phase 2A: Establish Target Environment Configuration Layout
 
@@ -172,13 +172,13 @@ Move deployment-specific configuration and authorization inputs to the external 
 
 **Task-Plan Handoff**
 
-- Execute [Target Environment Configuration Layout Task Plan](./TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md).
+- Execute [Target Environment Configuration Layout Task Plan](./done/TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md). **Complete:** the test target uses the three-directory layout and the task plan's Definition of Done is satisfied.
 - Fixed decisions: the deployment user owns all of `~/config`; UCanAccess remains under `container/lib/ucanaccess` as an interim build-dependency exception; no fallback to `container/.env`, `secrets/.env`, or `container-data/backend.env` is required.
 - Phase 2A is a prerequisite for Phase 3 manifest application and reconciliation, but it is not a prerequisite for completing the Phase 2 manifest review.
 
 **Readiness**
 
-Ready for the linked task plan; Phase 3 remains blocked until this phase is complete.
+Complete for the test target on 2026-09-22; the linked task plan's Definition of Done is satisfied. Phase 3 is no longer blocked by the configuration layout. The remaining Phase 3 prerequisite is a release candidate and its focused/full regression evidence.
 
 ### Phase 3: Validate Migration And Cutover Readiness
 
@@ -227,7 +227,7 @@ Prove that the reviewed authorization state and the release candidate are ready 
 
 **Readiness**
 
-Ready for a task plan once the Phase 2 manifest is reviewed and Phase 2A configuration migration is complete.
+Ready for a Phase 3 task plan. Phase 2's reviewed manifest and confirmed principals are complete, and Phase 2A's target configuration migration is complete. Phase 3 must still record its own release-candidate regression, backup, migration, reconciliation, and access-check evidence before it can be marked complete.
 
 ### Phase 4: Execute And Record Enforcement Cutover
 

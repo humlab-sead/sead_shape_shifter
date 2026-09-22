@@ -4,7 +4,7 @@
 **Opened:** 2026-09-22
 **Branch:** `authorization-system-cutover` (all commits pushed to `origin`)
 **Environment:** host `humlabsead`, deployment user `test-shape-shifter.sead.se` (uid/gid 1021), container `shape-shifter` published on `127.0.0.1:8012`, proxy `https://test-shape-shifter.sead.se`
-**Source plans:** [TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md](./TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md), [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md)
+**Source plans:** [TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md](./done/TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md), [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md)
 
 ## Purpose
 
@@ -76,8 +76,8 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
 
 | Reference | Use |
 |---|---|
-| [TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md](./TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md) | Layout work this cutover runs on; `V-21` records the live target result and accepted same-LAN exception |
-| [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md) | Phase 2 authorization work and its acceptance criteria |
+| [TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md](./done/TARGET_ENVIRONMENT_CONFIGURATION_LAYOUT_TASK_PLAN.md) | Layout work this cutover runs on; `V-21` records the live target result and accepted same-LAN exception |
+| [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_2_TASK_PLAN.md) | Phase 2 authorization work and its acceptance criteria |
 | [CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md) | Overall cutover phases and release disposition |
 | [DEPLOYMENT_VERIFICATION_HANDOFF.md](./DEPLOYMENT_VERIFICATION_HANDOFF.md) | Earlier deployment verification record |
 | [container/DEPLOYMENT.md](../../../container/DEPLOYMENT.md) | Layout, authorization inputs, replacing the checkout, image build |
