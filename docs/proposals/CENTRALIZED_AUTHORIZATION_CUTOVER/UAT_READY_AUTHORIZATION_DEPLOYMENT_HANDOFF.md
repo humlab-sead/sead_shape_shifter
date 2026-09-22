@@ -1,6 +1,6 @@
 # Handoff: UAT-Ready Authorization Deployment
 
-**Status:** Phase 4 in progress. Deployment identity recorded; target-side re-verification and procedure exercises pending.
+**Status:** Phase 4 in progress. Deployment identity, the pre-acceptance checks, the access checks, and the rollback exercise are recorded; the acceptance evidence pack and the phase status update remain.
 **Opened:** 2026-09-22
 **Environment:** host `humlabsead.srv.its.umu.se`, deployment user `test-shape-shifter.sead.se` (uid/gid 1021), container `shape-shifter` published on `127.0.0.1:8012`, proxy `https://test-shape-shifter.sead.se`
 **Source plans:** [Phase 4 task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md), [Phase 3 task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_3_TASK_PLAN.md), [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
@@ -36,8 +36,12 @@ This deployment runs the authorization system from the outset. The old server co
 
 | Backup | SHA-256 | Note |
 |---|---|---|
+| `authorization-20260922-095516.sqlite3` | `9ebf2f2229807cf56ce32cc2d2a7c7fe0c67f67553c3d606833dc71cd9ae8b3e` | Earliest backup of 2026-09-22 |
 | `authorization-20260922-110641.sqlite3` | `9ebf2f2229807cf56ce32cc2d2a7c7fe0c67f67553c3d606833dc71cd9ae8b3e` | Readiness backup |
 | `authorization-20260922-130050.sqlite3` | `9ebf2f2229807cf56ce32cc2d2a7c7fe0c67f67553c3d606833dc71cd9ae8b3e` | Byte-identical to the readiness backup, so authorization state did not change across the image switch |
+| `authorization-20260922-164454.sqlite3` | `9ebf2f2229807cf56ce32cc2d2a7c7fe0c67f67553c3d606833dc71cd9ae8b3e` | Pre-rollback backup, taken immediately before `T4.7` |
+
+**All four backups of 2026-09-22 are byte-identical.** The authorization database has therefore not changed since 09:55:16: no grant or application-role mutation occurred after that time, and the rollback restore was state-neutral by construction. All four sit in `/data/test-shape-shifter.sead.se/container-data/backups`.
 
 **Rollback rule:** a rollback restores the database as it stood when the backup was taken, so grants added afterwards are lost. No grant change should happen inside the acceptance window.
 
@@ -58,6 +62,8 @@ This deployment runs the authorization system from the outset. The old server co
 | Resource inventory and grants (`V-4.5`) | `scripts/authorization.sh list-resources --json` and `list-grants --json` | 51 resources (36 active, 15 deleted) and 53 grants (47 principal, 6 `everyone`). Every active resource has at least one grant, and no grant points at a missing resource |
 | Access checks with reviewed projects (`V-4.7`) | `container/scripts/verify/verify_authenticated_access.sh` and the administrator probe | Unauthenticated `401`; `bruno` reading his own project `200`; `bruno` reading `Glykou_etal_2021` concealed `404`; `riia` reading her own project `200`; `admin` listing projects `200`. The remaining probe is invalid, not a defect: see *Access-check detail* |
 | Live deployment roles (`V-4.7`) | `scripts/authorization.sh list-application-roles --json` | 3 administrators (`admin`, `roger`, `rebecka`), 4 `project_maintainer` principals (`roger`, `rebecka`, `riia`, `mattias`), 5 `project_creator` plus `operator` principals, and 4 temporary-project creators |
+| Pre-rollback backup (`V-4.8`) | `scripts/authorization.sh backup`, then `sha256sum` | `authorization-20260922-164454.sqlite3`, SHA-256 `9ebf2f22…8b3e`, byte-identical to all three earlier backups of the day |
+| Rollback exercise (`V-4.9`) | `scripts/verify/rollback_exercise.sh --image shape-shifter:dev --authorization-backup … --manifest ~/config/authorization-manifest.yaml --evidence-dir … --yes` | Passed: integrity passed, reconciliation `Missing: 0 resources, 0 administrators, 0 grants`, recorded image restarted, running image ID equals the recorded image ID, health `200` |
 
 ### Resource inventory detail
 
@@ -116,6 +122,31 @@ Symmetric isolation was therefore not demonstrated with reviewed projects. The d
 
 `complete_test_deployment_verification.sh` provides the fixture path for a fully symmetric transcript. With `--grant-access` it grants `viewer` on two *temporary* projects, which is what produced the two `verification-check` mutations above, so it does not touch reviewed grants. It proves enforcement rather than dataset availability, and leaves two temporary projects and two fixture grants to remove afterwards. It was not run for this record.
 
+### Rollback detail
+
+The exercise ran on 2026-09-22 at 16:48:11 from the deployment host. Transcript: `container-data/backups/rollback-exercise.log`.
+
+| Step | Result |
+|---|---|
+| Recorded image identity | `6a487db7…04a8`, revision `dbff5ab9…4f96` |
+| Stop current deployment | Container removed |
+| Restore authorization database | `/app/state/authorization.sqlite3` restored from the pre-rollback backup |
+| Integrity check | Passed |
+| Manifest reconciliation | `Missing: 0 resources, 0 administrators, 0 grants` |
+| Start recorded image | Started |
+| Running image ID | `6a487db7…04a8`, equal to the recorded image |
+| Container state | `running` |
+| Health | `http://127.0.0.1:8012/api/v1/health` returned `200` |
+
+**The restore was state-neutral.** The pre-rollback backup is byte-identical to every other backup taken that day, so the database the exercise restored is the database that was already running. The exercise demonstrates that the procedure works without having altered authorization state.
+
+Two messages in the transcript are expected and already documented elsewhere in this record:
+
+- `rootless netns: kill network process: permission denied` while removing the network. `podman-compose down` still succeeds, and `up` recreates the network.
+- `curl: (56) Recv failure: connection reset by peer` four times while the service was still starting. The retry loop then recorded the health check passing.
+
+**The script does not restore service supervision.** `rollback_exercise.sh` starts the container with `podman-compose up -d` directly rather than through `shape-shifter.service`. `run_deployment_verification.sh` compensates by stopping and restarting the user service around the rollback, but running the script standalone leaves the unit untouched. The unit is `Type=oneshot` with `RemainAfterExit=yes`, so systemd continues to report it active even though the running container was recreated outside it. A service restart realigns the container with the unit's own start path.
+
 ## Pending Verification
 
 Each item below needs the deployment user or an authenticated administrator. Commands are read-only unless stated.
@@ -138,19 +169,15 @@ Complete. The four required outcomes are recorded in *Access-check detail*: unau
 
 ### `T4.7` / `V-4.8`, `V-4.9` — backup and rollback exercise
 
+Complete. The pre-rollback backup, its checksum, and the full exercise transcript are recorded in *Rollback detail*. The restore was state-neutral because the backup is byte-identical to the running database.
+
+One follow-up remains, because the script starts the container outside the service unit:
+
 ```bash
 cd ~/container
-scripts/authorization.sh backup
-sha256sum /data/test-shape-shifter.sead.se/container-data/backups/<new-backup>.sqlite3
-scripts/verify/rollback_exercise.sh \
-  --image shape-shifter:dev \
-  --authorization-backup <retained-backup>.sqlite3 \
-  --manifest ~/config/authorization-manifest.yaml \
-  --evidence-dir /data/test-shape-shifter.sead.se/container-data/backups \
-  --yes
+make service-restart
+curl -fsS http://127.0.0.1:8012/api/v1/health
 ```
-
-The script leaves the service stopped when a step fails. Redeploy the recorded release afterwards and confirm health.
 
 ## Key References
 
@@ -165,15 +192,17 @@ The script leaves the service stopped when a step fails. Redeploy the recorded r
 ## Next Actions
 
 1. **Decide the four active verification projects.** Remove them, or record why UAT should tolerate them, and say which. This is the first item because it is visible to testers.
-2. **Settle the access-check decisions, then run `T4.7`.** `T4.6` is complete. Decide whether to fix the probe script, which account each tester uses, and whether to produce a symmetric isolation transcript through the fixture path (see *Open Decisions*). Nothing in this record should be treated as acceptance evidence until each command has been run against the currently running container and its output recorded here.
-3. **Correct or confirm the Phase 3 cleanup statement.** The audit trail does not show the 2026-09-22 deletions it describes.
-4. **Hand this record to the user acceptance test owners.** It states what is verified and what is not; acceptance criteria are theirs to author and apply.
-5. **Do not repoint production DNS or the reverse proxy.** The flip is a separate decision with its own proposal and owners.
+2. **Settle the access-check decisions, then finish the phase.** `T4.6` and `T4.7` are complete. Decide whether to fix the probe script, which account each tester uses, and whether to produce a symmetric isolation transcript through the fixture path (see *Open Decisions*). Nothing in this record should be treated as acceptance evidence until each command has been run against the currently running container and its output recorded here.
+3. **Restart the service after the rollback exercise.** `make service-restart` in `~/container`, then confirm loopback health. The exercise started the container outside the unit.
+4. **Correct or confirm the Phase 3 cleanup statement.** The audit trail does not show the 2026-09-22 deletions it describes.
+5. **Hand this record to the user acceptance test owners.** It states what is verified and what is not; acceptance criteria are theirs to author and apply.
+6. **Do not repoint production DNS or the reverse proxy.** The flip is a separate decision with its own proposal and owners.
 
 ## Risks
 
 - **Four stale verification projects are active, and they are owned.** `verification-containment-20260918121347-3074400`, `...122102-3084527`, `...122806-3094124`, and `...123353-3101909` are active but are not in the reviewed manifest. Each carries an `owner` grant to an artificial `@local` principal, and two also grant `bruno` and `riia` viewer access, so nothing is unowned. Testers will still see them in the project list, so decide whether to remove them before the acceptance run or to record why they may stay.
-- **The Phase 3 cleanup claim is not corroborated by the audit trail.** No `resource_lifecycle_changed` event is dated 2026-09-22. Correct the Phase 3 handoff or explain the difference before relying on it as evidence.
+- **The Phase 3 cleanup claim is not corroborated by the audit trail.** No `resource_lifecycle_changed` event is dated 2026-09-22. The most consistent explanation is a restore rather than a missing deletion: the database has been byte-identical since 09:55:16, and a rollback restore at `rollback-20260922-103540` rewrote it before that, so a deletion made between 09:55 and 10:35 would have been reverted together with its audit events and never reapplied. That reconstruction fits the observation but is not proven, so correct the Phase 3 handoff or explain the difference before relying on it as evidence.
+- **A standalone rollback exercise leaves the service unit out of step.** The script drives `podman-compose` directly, so the container is recreated outside `shape-shifter.service` while the unit still reports `active (exited)`. Run `make service-restart` afterwards, or use `run_deployment_verification.sh`, which manages the unit itself.
 - **`bulgaria-arbodat-lookup-options` remains unproven.** The application lists it, but it declares the `access` driver with no data file. Whether that is intentional is unconfirmed, and UAT users may notice it before we do.
 - **The rollback discards later grants.** Any grant added inside the acceptance window is lost on restore.
 - **Most accounts see either everything or nothing.** `roger`, `rebecka`, `riia`, and `mattias` hold `project_maintainer` and read every project, so a tester using one of those accounts cannot experience isolation. The remaining accounts (`bruno`, `athena`, `ershad`, `phil`, `victoria`) hold only `project_creator` and `operator`, and of those only `bruno` owns any reviewed project, so the other four would see an empty project list. Choose the account for each tester deliberately.
