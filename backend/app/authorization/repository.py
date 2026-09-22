@@ -146,8 +146,7 @@ class SQLiteAuthorizationRepository:
                 )
             if current > CURRENT_SCHEMA_VERSION:
                 raise RuntimeError(
-                    f"Authorization database schema version {current} is newer than the supported version "
-                    f"{CURRENT_SCHEMA_VERSION}."
+                    f"Authorization database schema version {current} is newer than the supported version " f"{CURRENT_SCHEMA_VERSION}."
                 )
 
     def create_resource(self, resource: ResourceRecord) -> None:

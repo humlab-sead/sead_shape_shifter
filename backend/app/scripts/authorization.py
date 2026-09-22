@@ -114,9 +114,7 @@ def reconcile(manifest: Path, database: Path | None) -> None:
 def export_manifest_command(manifest: Path, database: Path | None) -> None:
     """Export active top-level resources and grants as a migration manifest."""
     result = export_manifest(manifest, database or settings.AUTHORIZATION_DATABASE_PATH)
-    click.echo(
-        f"Exported: {result['resources']} resources, {result['administrators']} administrators, {result['grants']} grants"
-    )
+    click.echo(f"Exported: {result['resources']} resources, {result['administrators']} administrators, {result['grants']} grants")
 
 
 @cli.command("grant")
