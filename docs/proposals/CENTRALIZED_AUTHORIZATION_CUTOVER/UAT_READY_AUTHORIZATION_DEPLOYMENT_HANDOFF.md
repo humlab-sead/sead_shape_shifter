@@ -64,6 +64,8 @@ This deployment runs the authorization system from the outset. The old server co
 | Live deployment roles (`V-4.7`) | `scripts/authorization.sh list-application-roles --json` | 3 administrators (`admin`, `roger`, `rebecka`), 4 `project_maintainer` principals (`roger`, `rebecka`, `riia`, `mattias`), 5 `project_creator` plus `operator` principals, and 4 temporary-project creators |
 | Pre-rollback backup (`V-4.8`) | `scripts/authorization.sh backup`, then `sha256sum` | `authorization-20260922-164454.sqlite3`, SHA-256 `9ebf2f22…8b3e`, byte-identical to all three earlier backups of the day |
 | Rollback exercise (`V-4.9`) | `scripts/verify/rollback_exercise.sh --image shape-shifter:dev --authorization-backup … --manifest ~/config/authorization-manifest.yaml --evidence-dir … --yes` | Passed: integrity passed, reconciliation `Missing: 0 resources, 0 administrators, 0 grants`, recorded image restarted, running image ID equals the recorded image ID, health `200` |
+| Service supervision restored after the rollback | `make service-restart`, then loopback health | `Service restarted`; `{"status":"healthy","version":"2.1.0","environment":"production","timestamp":"2026-09-22T14:55:32.576269Z"}` |
+| Probe-script role handling corrected | `bash -n`, `shellcheck`, and a local harness against a stand-in proxy | See *Access-check detail*; the in-container role lookup itself is unverified until the check is re-run on the deployment host |
 
 ### Resource inventory detail
 
@@ -76,7 +78,9 @@ All 32 reviewed manifest locators (26 project, 6 shared data source) are active,
 
 They are temporary verification projects from 2026-09-18 that were never removed. Nineteen `verification-containment-*` resources exist in total; fifteen are deleted and these four are active.
 
-**Ownership holds.** Every active resource has at least one grant: the 26 reviewed projects each have one `owner` grant, the 6 shared data sources each have an `everyone`/`authenticated` `reader` grant, and each of the four leftovers has an `owner` grant to its artificial `…-creator@local` principal. Two of the four also carry `viewer` grants to `bruno` and `riia`, which are the two later mutations the audit trail records. No active resource is unowned, so `PH4-AC-5` is not violated. The leftovers are a visibility and tidiness problem for testers, not an unowned-resource defect.
+**Ownership holds.** Every active resource has at least one grant: the 26 reviewed projects each have one `owner` grant, the 6 shared data sources each have an `everyone`/`authenticated` `reader` grant, and each of the four leftovers has an `owner` grant to its artificial `…-creator@local` principal. Two of the four also carry `viewer` grants to `bruno` and `riia`, which are the two later mutations the audit trail records. No active resource is unowned, so `PH4-AC-5` is not violated.
+
+**The four leftovers are invisible to every principal, administrators included.** The stored locator is the bare name `verification-containment-20260918121347-3074400`, but the project on disk sits at `verification-projects/verification-containment-20260918121347-3074400`, and `ProjectNameMapper.to_api_name` turns that path into `verification-projects:verification-containment-20260918121347-3074400`. `ProjectService.list_authorized_projects` looks the resource up by that name, finds nothing, and omits the project from the list for everyone. `GET /api/v1/projects/{name}` uses the same lookup, so the colon-qualified name returns `404` and the bare name resolves authorization but has no project content to load. The four records are therefore inert orphan authorization records that grant access to a project name no project uses. They are not visible clutter, and no action is needed for acceptance.
 
 **Audit trail and the cleanup claim.** All 30 `resource_lifecycle_changed` events are dated 2026-09-18, and none is dated 2026-09-22. The current audit trail therefore does not corroborate the Phase 3 handoff's statement that four temporary projects were deleted on 2026-09-22. A rollback restore rewrites the whole database, so a later restore could have reverted both the deletions and their audit events; the sequence is not reconstructed here, and the observable state is what this record uses.
 
@@ -167,17 +171,15 @@ Complete. See *Audit-trail detail* above. Run `scripts/authorization.sh list-app
 
 Complete. The four required outcomes are recorded in *Access-check detail*: unauthenticated `401`, owner `200`, concealed denied `404`, and administrator `200`. The script's symmetric-isolation probe reports one failure that is a test-selection error caused by `project_maintainer`, not an access defect, and no reviewed pair can supply a well-formed probe.
 
+The probe script was corrected in the same session. It now reads each principal's deployment roles from the deployed policy before probing, prints them as a principal-scope block, expects `200` for a denied probe when the principal holds a role that grants read, labels that probe as an expected privileged read, and states how many isolation directions were actually verified. When the roles cannot be read it says so and keeps the `404` expectation, so a privileged principal still fails rather than passing silently.
+
+The corrections passed `bash -n`, `shellcheck -S warning`, and a local harness that exercised three cases: a privileged principal as B, two unprivileged principals, and an unreadable scope. The in-container role lookup itself was not exercised, because it needs the deployment host, so re-running the check is the remaining verification.
+
 ### `T4.7` / `V-4.8`, `V-4.9` — backup and rollback exercise
 
 Complete. The pre-rollback backup, its checksum, and the full exercise transcript are recorded in *Rollback detail*. The restore was state-neutral because the backup is byte-identical to the running database.
 
-One follow-up remains, because the script starts the container outside the service unit:
-
-```bash
-cd ~/container
-make service-restart
-curl -fsS http://127.0.0.1:8012/api/v1/health
-```
+The supervision follow-up is done. `make service-restart` reported `Service restarted` and the loopback health check returned `{"status":"healthy","version":"2.1.0","environment":"production","timestamp":"2026-09-22T14:55:32.576269Z"}`, so the container is again aligned with the unit's own start path.
 
 ## Key References
 
@@ -191,22 +193,23 @@ curl -fsS http://127.0.0.1:8012/api/v1/health
 
 ## Next Actions
 
-1. **Decide the four active verification projects.** Remove them, or record why UAT should tolerate them, and say which. This is the first item because it is visible to testers.
-2. **Settle the access-check decisions, then finish the phase.** `T4.6` and `T4.7` are complete. Decide whether to fix the probe script, which account each tester uses, and whether to produce a symmetric isolation transcript through the fixture path (see *Open Decisions*). Nothing in this record should be treated as acceptance evidence until each command has been run against the currently running container and its output recorded here.
-3. **Restart the service after the rollback exercise.** `make service-restart` in `~/container`, then confirm loopback health. The exercise started the container outside the unit.
+1. **Re-run the access check on the deployment host.** The role handling is corrected and locally tested, but the in-container lookup that reads the deployment roles has not run against the live container. Record the new transcript as the `V-4.7` evidence; it should report the principal scope and `1 of 2` isolation directions.
+2. **Settle the tester accounts, then apply any grants before the window opens.** Decide which account each tester uses, apply the grants, re-record the manifest checksum, and take a fresh backup. A rollback discards anything granted after the backup, so this must finish before acceptance starts.
+3. **Move the audit, resource, and grant logs out of `tmp/`.** They are gitignored where they are. Copy them to `<DATA_DIR>/deployment-verification/` beside the rollback transcript, so the recorded runs stay with the deployment.
 4. **Correct or confirm the Phase 3 cleanup statement.** The audit trail does not show the 2026-09-22 deletions it describes.
-5. **Hand this record to the user acceptance test owners.** It states what is verified and what is not; acceptance criteria are theirs to author and apply.
-6. **Do not repoint production DNS or the reverse proxy.** The flip is a separate decision with its own proposal and owners.
+5. **Decide `bulgaria-arbodat-lookup-options`.** Remove it or provision the missing file; it cannot connect as deployed.
+6. **Hand this record to the user acceptance test owners.** It states what is verified and what is not; acceptance criteria are theirs to author and apply.
+7. **Do not repoint production DNS or the reverse proxy.** The flip is a separate decision with its own proposal and owners.
 
 ## Risks
 
-- **Four stale verification projects are active, and they are owned.** `verification-containment-20260918121347-3074400`, `...122102-3084527`, `...122806-3094124`, and `...123353-3101909` are active but are not in the reviewed manifest. Each carries an `owner` grant to an artificial `@local` principal, and two also grant `bruno` and `riia` viewer access, so nothing is unowned. Testers will still see them in the project list, so decide whether to remove them before the acceptance run or to record why they may stay.
+- **Four orphan authorization resources exist and are inert.** `verification-containment-20260918121347-3074400`, `...122102-3084527`, `...122806-3094124`, and `...123353-3101909` are active and owned, but their stored locators are bare names while the projects on disk map to `verification-projects:…`. That mismatch hides them from the project list for every principal, administrators included, so they cannot be seen or used. They are tidiness debt rather than an acceptance problem. Cleaning them up means deleting the projects through the application, outside the acceptance window, because the CLI has no lifecycle command.
 - **The Phase 3 cleanup claim is not corroborated by the audit trail.** No `resource_lifecycle_changed` event is dated 2026-09-22. The most consistent explanation is a restore rather than a missing deletion: the database has been byte-identical since 09:55:16, and a rollback restore at `rollback-20260922-103540` rewrote it before that, so a deletion made between 09:55 and 10:35 would have been reverted together with its audit events and never reapplied. That reconstruction fits the observation but is not proven, so correct the Phase 3 handoff or explain the difference before relying on it as evidence.
 - **A standalone rollback exercise leaves the service unit out of step.** The script drives `podman-compose` directly, so the container is recreated outside `shape-shifter.service` while the unit still reports `active (exited)`. Run `make service-restart` afterwards, or use `run_deployment_verification.sh`, which manages the unit itself.
-- **`bulgaria-arbodat-lookup-options` remains unproven.** The application lists it, but it declares the `access` driver with no data file. Whether that is intentional is unconfirmed, and UAT users may notice it before we do.
+- **`bulgaria-arbodat-lookup-options` cannot connect.** Its `driver: access` is valid, because `src/loaders/sql_loaders.py` registers `key=["ucanaccess", "access"]`. The driver schema marks `filename` as `required=True` however, the deployed file omits it, and the loader falls back to an empty path, so `create_db_uri()` produces `jdbc:ucanaccess://` with no file. No Bulgarian Access database exists in `shared-data/` either; the only Access files there are `ArchBotDaten.mdb`, `ArchBotStrukDat.mdb`, `Digidiggie_v7_kbw.accdb`, and `bugsdata_20250608.mdb`. Every sibling data source declares `filename`. A tester who opens this source will see a failure, so remove it or provision the file.
 - **The rollback discards later grants.** Any grant added inside the acceptance window is lost on restore.
 - **Most accounts see either everything or nothing.** `roger`, `rebecka`, `riia`, and `mattias` hold `project_maintainer` and read every project, so a tester using one of those accounts cannot experience isolation. The remaining accounts (`bruno`, `athena`, `ershad`, `phil`, `victoria`) hold only `project_creator` and `operator`, and of those only `bruno` owns any reviewed project, so the other four would see an empty project list. Choose the account for each tester deliberately.
-- **The access-check script misreports a maintainer read as an isolation failure.** `verify_authenticated_access.sh` documents its precondition as "neither principal is a bootstrap administrator", which predates `project_maintainer`, and it does not check the condition. A maintainer used as principal B returns `200` for the other principal's project, and the script reports a cross-resource failure that is really intended policy.
+- **The probe script previously misreported a privileged read as an isolation failure.** Corrected on 2026-09-22. `verify_authenticated_access.sh` now reads each principal's deployment roles from the deployed policy, prints a principal-scope block, expects `200` and adds a note for a denied probe whose principal holds a read-granting role, and reports how many isolation directions were verified. It still fails when the roles cannot be read and a principal turns out to be privileged. Locally tested only; the in-container lookup needs a deployment-host run to confirm.
 - **Shared-source grants are broad.** Every authenticated principal can read the six shared data sources. That is intended for the current manifest and worth confirming for the acceptance population.
 - **Host services are reachable only as `host.docker.internal`.** A host-side connection check to a host database succeeds while the container fails, which misleads diagnosis.
 - **Audit events carry no correlation ID.** All 144 events have `correlation_id: null`, so an event cannot be tied to the request that caused it.
@@ -216,12 +219,19 @@ curl -fsS http://127.0.0.1:8012/api/v1/health
 
 ## Open Decisions
 
-- Whether the four active `verification-containment-*` projects should be deleted before acceptance, or accepted as visible clutter.
-- Who owns and executes user acceptance testing, and against which criteria?
-- Whether `bulgaria-arbodat-lookup-options` is complete as provisioned.
-- Which account each tester uses, given that maintainer accounts read every project and the four non-maintainer accounts own no reviewed project.
-- Whether to fix `verify_authenticated_access.sh` so it detects a principal holding a deployment role that grants read and reports the probe as not applicable instead of failing. `T4.6` names this script as affected code.
-- Whether to produce a fully symmetric isolation transcript through the temporary-project fixture path, accepting two more temporary projects and two fixture grants to remove afterwards.
+Resolved on 2026-09-22:
+
+- **The four `verification-containment-*` resources need no action.** They are inert orphan records hidden by a locator/name mismatch; see *Resource inventory detail*.
+- **The probe script is fixed.** It reads deployment roles, labels a privileged read, and states how many isolation directions were verified.
+- **No symmetric isolation transcript is required.** The four required outcomes are recorded. If reviewers ask for one, produce it with real scoped grants on two reviewed projects rather than the temporary-project fixture path, which would add to the orphan pile.
+- **Grant sequencing.** Settle the tester list first, then grant, re-record the manifest checksum, and take a fresh backup; only then open the acceptance window, because a rollback discards anything granted afterwards.
+
+Still open:
+
+- Which account each tester uses. Maintainer accounts read every project, and `athena`, `ershad`, `phil`, and `victoria` own nothing and would see an empty list, so only `bruno` currently sees a scoped, non-empty view.
+- Whether to remove `bulgaria-arbodat-lookup-options` or provision its missing file. This needs the data owner.
+- Who owns and executes user acceptance testing, and against which criteria? Unassigned as of 2026-09-22; this record names Roger Mähler as the rollback owner only.
+- Whether to raise the audit-tooling gaps as an issue: null `correlation_id` on every event, role events that omit the principal, and unaudited denials. The organization's OAuth restrictions block issue creation from the coding agent, so an operator must file it.
 
 ## Suggested Follow-Up Documents
 
