@@ -19,6 +19,7 @@ explicitly opt-in. Record every result with the date and host.
 | `verify_authenticated_access.sh` | Through the proxy, that each of two real principals reaches only its own project (allowed 200, denied 404), and that the proxy rejects requests without credentials (401). |
 | `rollback_exercise.sh` | Restores a recorded image and authorization backup, checks SQLite integrity, reconciles the authorization manifest, and verifies the resulting service health. This script changes deployment state. |
 | `run_deployment_verification.sh` | Runs the host and deployment-user checks, captures evidence and a summary, and optionally runs authenticated access and rollback. |
+| `complete_test_deployment_verification.sh` | Bundles the remaining test-target checks: safe deployment checks, manifest reconciliation, optional authenticated access, optional cleanup, and optional rollback. |
 | `deployment-verification.options.yml.example` | Safe template for the orchestrator's non-secret runtime options. |
 
 Run from the deployment user's `container/` directory; the firewall script can run from any account with `sudo`.
@@ -118,3 +119,28 @@ PRINCIPAL_A_PASSWORD=... PRINCIPAL_B_PASSWORD=... ./scripts/verify/verify_authen
 ```
 
 `verify_postgres_grants.sh` authenticates to PostgreSQL via `~/.pgpass`; pass `--host`, `--port`, and `--username` when the database is not on the local socket. `verify_firewall.sh` prints the cross-host `nc` commands to run from a second machine; that step cannot run from the host itself.
+
+For the remaining test-environment cutover checks, run the bundle as the
+deployment user from `~/container`. It stages the host-side manifest into the
+running container before reconciliation, so the manifest does not need to be
+mounted into the application. Cleanup, authenticated access, and rollback are
+disabled unless their explicit options are supplied:
+
+```bash
+./scripts/verify/complete_test_deployment_verification.sh \
+  --manifest "$HOME/config/authorization-manifest.yaml"
+
+./scripts/verify/complete_test_deployment_verification.sh \
+  --manifest "$HOME/config/authorization-manifest.yaml" \
+  --authenticated \
+  --principal-a bruno --project-a PROJECT_A \
+  --principal-b riia --project-b PROJECT_B
+
+./scripts/verify/complete_test_deployment_verification.sh \
+  --manifest "$HOME/config/authorization-manifest.yaml" \
+  --cleanup-prefix verification-containment-
+```
+
+Use `--rollback --rollback-image IMAGE --authorization-backup BACKUP` only in
+an approved maintenance window. Passwords are prompted without echoing and
+must not be placed in command arguments or options files.

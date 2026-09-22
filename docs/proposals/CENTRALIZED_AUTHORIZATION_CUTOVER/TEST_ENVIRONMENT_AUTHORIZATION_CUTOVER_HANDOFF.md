@@ -23,7 +23,11 @@ The test host runs the three-directory layout: `~/container` for replaceable cod
 | Denial and concealment for non-granted projects | Confirmed: unauthenticated `401`, non-granted project `404` with `{"detail":"Resource not found"}` |
 | Positive access for a granted project | Blocked: the granted projects do not exist in this deployment |
 | Cleanup of four leftover resources | Pending |
-| Layout validations `V-18`, `V-19`, `V-20` | Partially run on 2026-09-21 in disposable environments |
+| Layout validations `V-18`, `V-19`, `V-20` | Partially run on 2026-09-21 in disposable environments; live target checks added 2026-09-22 |
+| Live loopback health and protected-route denial | Verified 2026-09-22: loopback health `200`; public protected route `401` |
+| Live port containment and container configuration | Verified 2026-09-22: backend on `127.0.0.1:8012` only; LAN bypass refused; configuration inspection passed |
+| Live authorization database integrity | Verified 2026-09-22 through `authorization.sh integrity-check` |
+| Live manifest reconciliation | Not run: configured manifest filename is known, but the manifest file was not available at the host path exposed to this shell |
 
 Facts recorded on 2026-09-22:
 
@@ -56,6 +60,7 @@ From the checkout, `sudo -u test-shape-shifter.sead.se` fails with `cannot chdir
   - `d1b21b5d` detect the manifest format from content when the path has no recognised extension, with a test for the extension-less case.
   - `d27b072c` place the imported manifest inside the container, because `migrate` reads it twice and a stdin stream cannot be read twice.
 - Bootstrap run to completion on 2026-09-22: htpasswd accounts, nginx group file, 19 application-role grants, and the manifest import, ending with `Authorization database ready: /app/state/authorization.sqlite3`.
+- Post-deployment checks re-run on 2026-09-22: loopback health returned `200`, the public protected route returned `401`, the backend listener was loopback-only, the LAN address refused direct access, container configuration passed, and authorization database integrity passed. The firewall rule listing still needs an operator with `sudo` access.
 - Repository memory (`/memories/repo/container-deployment-layout.md`) records the host-specific lessons: working directory for `sudo -u`, `XDG_RUNTIME_DIR`, `htpasswd -i`, the two-read manifest import, and which kind of change needs an image rebuild.
 
 ## Key References
