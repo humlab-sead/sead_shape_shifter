@@ -67,6 +67,8 @@ This deployment runs the authorization system from the outset. The old server co
 | Service supervision restored after the rollback | `make service-restart`, then loopback health | `Service restarted`; `{"status":"healthy","version":"2.1.0","environment":"production","timestamp":"2026-09-22T14:55:32.576269Z"}` |
 | Probe-script role handling corrected | `bash -n`, `shellcheck -S warning`, a local harness against a stand-in proxy, and the extracted role-lookup snippet run against a real authorization store | See *Access-check detail*. The snippet returned `project_maintainer` for `riia`, nothing for `bruno`, and `admin` for `admin`, matching the deployment's role shape. Reaching the target needs a `dev` merge and a sync |
 | Evidence logs filed | Copied from gitignored `tmp/` into the deployment evidence directory | `list-audit-events.log`, `list-resources.log`, and `list-grants.log` are under `<DATA_DIR>/deployment-verification/phase-4/` |
+| Tester accounts decided | Decision recorded 2026-09-22 | **No grant changes.** Testers use a gatekeeper account (`roger`, `rebecka`, `riia`, `mattias`, each seeing all 26 projects) or `bruno` (6). The four accounts that own no reviewed project are not used for content acceptance. This matches reviewed Decisions 7, 8, and 10, so the manifest checksum, the backup lineage, and the rollback position all stay valid |
+| `bulgaria-arbodat-lookup-options` removed | `rm -f` on the deployment-host definition | The directory holds five definitions and the application lists five. See *Shared data source decision* |
 
 ### Resource inventory detail
 
@@ -152,6 +154,41 @@ Two messages in the transcript are expected and already documented elsewhere in 
 
 **The script does not restore service supervision.** `rollback_exercise.sh` starts the container with `podman-compose up -d` directly rather than through `shape-shifter.service`. `run_deployment_verification.sh` compensates by stopping and restarting the user service around the rollback, but running the script standalone leaves the unit untouched. The unit is `Type=oneshot` with `RemainAfterExit=yes`, so systemd continues to report it active even though the running container was recreated outside it. A service restart realigns the container with the unit's own start path.
 
+### Tester accounts
+
+No grant changes were made. The reviewed roster already describes who can reach what, and Decision 10 gives the SEAD core gatekeepers `project_maintainer` deliberately:
+
+| Principal | Deployment roles | Reviewed projects visible |
+|---|---|---|
+| `admin`, `roger` | `admin` (plus `project_maintainer` for `roger`) | 26 |
+| `rebecka` | `admin`, `project_maintainer` | 26 |
+| `riia` | `project_creator`, `operator`, `project_maintainer` | 26 |
+| `mattias` | `project_creator`, `operator`, `project_maintainer` | 26 |
+| `bruno` | `project_creator`, `operator` | 6 |
+| `phil`, `ershad`, `athena`, `victoria` | `project_creator`, `operator` | none |
+
+The four accounts at the bottom own no reviewed project because Decisions 7 and 8 deferred collaborator grants, and because `operator` grants project-creation but no project access. They can create a project and act on it as its owner, but they cannot see the reviewed dataset, so acceptance content is exercised through a gatekeeper or through `bruno`.
+
+Two consequences follow. Isolation cannot be experienced by any available pair while the gatekeepers hold `project_maintainer`, which is already recorded. And every non-administrator holds `operator`, which permits `manage_shared_sources` and `run_ingesters`, so acceptance can change shared data; the reviewed inventory accepts that capability explicitly.
+
+### Shared data source decision
+
+`bulgaria-arbodat-lookup-options` was removed on 2026-09-22 as a deployment-owner decision, after review.
+
+- **It could not connect, and no data existed for it.** `driver: access` is valid, but the driver schema marks `filename` as `required=True` and the definition omitted it, so the loader produced a connection string with no database. The legacy data-file enumeration of 2026-09-18 lists nine files and no Bulgarian database, so the deficiency was inherited from the legacy deployment rather than introduced by the migration. Provisioning would have required a dataset that does not exist here.
+- **Nothing referenced it.** Every project declares `data_sources: {}`, and no file under `container-data/projects` names the locator, so removal cannot break a project.
+- **Every authenticated principal could read it** through an `everyone`/`authenticated` `reader` grant, so the deployment presented a broken source to every user.
+
+The definition file was deleted from `container-data/shared/data-sources`; the directory now holds five definitions and the application lists five.
+
+**Residual state.** Three records still name it, and none was changed:
+
+- `resources/authorization/test-initial-manifest.yaml` still declares the resource and its grant.
+- The deployed manifest at `~/config/authorization-manifest.yaml` is unchanged, so the manifest checksum recorded for `V-4.3` still matches the reviewed copy.
+- `secrets/TEST_DEPLOYMENT_RESOURCE_INVENTORY.md` still lists the row.
+
+The authorization resource is therefore an inert orphan, in the same class as the four `verification-containment-*` records, because the administration CLI has no delete or lifecycle command. Removing the three records together is a deliberate follow-up rather than part of this change: editing the manifest would invalidate the checksum this record relies on as acceptance evidence, and the archived Phase 3 record states the previous value. The Phase 3 statement that six shared data sources are listed is superseded; the deployment lists five by this decision.
+
 ## Pending Verification
 
 Each item below needs the deployment user or an authenticated administrator. Commands are read-only unless stated.
@@ -188,7 +225,7 @@ The supervision follow-up is done. `make service-restart` reported `Service rest
 
 - **Symmetric cross-resource isolation.** Only one of the two directions was verified, because `riia` holds `project_maintainer`. The other direction is an expected privileged read. Nothing here shows that two scope-limited principals cannot reach each other's projects, because the deployment has no such pair.
 - **The corrected probe script against the live deployment.** The target's `~/container` is a synced copy updated by `container/scripts/deploy/sync-to-deploy`, not a git checkout, so the fix reaches it only after it lands on `dev` and the tree is re-synced. Until then the target runs the old script, which reports a privileged read as an isolation failure. The logic and the role-lookup snippet are verified locally, but the `podman exec` invocation of the snippet has not run on the target.
-- **`bulgaria-arbodat-lookup-options`.** It cannot connect as deployed, and that failure is expected until the data source is removed or its file is provisioned.
+- **The five-source listing through the API.** The definition file is gone from `container-data/shared/data-sources`, which is the directory `GET /api/v1/data-sources` enumerates, but the listing itself was not re-run after the removal.
 - **Functional correctness of the application.** This record covers authorization behaviour and operator procedures. Whether transformations, ingesters, and loaders produce correct output is not assessed here and belongs to the acceptance owners.
 - **Production.** Nothing here was verified on the production host, and the production flip is out of scope.
 - **PostgreSQL credential rotation.** Out of scope by decision.
@@ -198,7 +235,7 @@ The supervision follow-up is done. `make service-restart` reported `Service rest
 1. Open the proxy URL `https://test-shape-shifter.sead.se`. The proxy prompts for credentials, and the username is the principal ID, which is case-sensitive and must match the grant exactly. The container itself is reachable only on `127.0.0.1:8012` and rejects requests that carry no proxy identity, so every authenticated request goes through the proxy.
 2. Open the project list. It shows only projects the principal may read. A principal holding a read-granting deployment role sees every project; a scope-limited principal sees only what it owns or was granted.
 3. Open a project to see its entities. A project the principal cannot read returns `404` and not `403`, so an unreadable project is indistinguishable from a missing one by design.
-4. Open a shared data source and run its connection test. `sead-options` is verified against the live `sead_staging` database and reports 167 tables; `bulgaria-arbodat-lookup-options` fails for the reason above.
+4. Open a shared data source and run its connection test. `sead-options` is verified against the live `sead_staging` database and reports 167 tables. The application lists five sources: `bulgaria-arbodat-lookup-options` was removed on 2026-09-22 because it declared no data file.
 5. Report what you observe against the acceptance criteria you were given. This record supplies evidence and does not decide acceptance.
 
 ## Key References
@@ -214,9 +251,9 @@ The supervision follow-up is done. `make service-restart` reported `Service rest
 ## Next Actions
 
 1. **Land the probe-script fix on `dev`, sync the target tree, then re-run the access check.** `~/container` is a synced copy, so the fix must reach `dev` and be synced with `container/scripts/deploy/sync-to-deploy` before the target can use it. No image rebuild is needed. Record the new transcript as the `V-4.7` evidence; it should report the principal scope and `1 of 2` isolation directions.
-2. **Settle the tester accounts, then apply any grants before the window opens.** Decide which account each tester uses, apply the grants, re-record the manifest checksum, and take a fresh backup. A rollback discards anything granted after the backup, so this must finish before acceptance starts.
+2. **Take a fresh backup when the window opens.** No grant changes follow from the tester-account decision, but acceptance can still change shared data, because every non-administrator holds `operator`. Record a backup at the point acceptance starts and add no grants during it; the existing backups are already byte-identical, so this is a checkpoint rather than a repair.
 3. **Correct or confirm the Phase 3 cleanup statement.** The audit trail does not show the 2026-09-22 deletions it describes.
-4. **Decide `bulgaria-arbodat-lookup-options`.** Remove it or provision the missing file; it cannot connect as deployed.
+4. **Drop `bulgaria-arbodat-lookup-options` from the three records that still name it.** The reviewed manifest, the deployed manifest, and the inventory should lose the entry together as one reviewed change, so a future import cannot recreate the resource. This was left out of the removal deliberately, because editing the manifest invalidates the checksum acceptance relies on.
 5. **Hand this record to the user acceptance test owners.** It states what is verified and what is not; acceptance criteria are theirs to author and apply.
 6. **Do not repoint production DNS or the reverse proxy.** The flip is a separate decision with its own proposal and owners.
 
@@ -225,11 +262,12 @@ The supervision follow-up is done. `make service-restart` reported `Service rest
 - **Four orphan authorization resources exist and are inert.** `verification-containment-20260918121347-3074400`, `...122102-3084527`, `...122806-3094124`, and `...123353-3101909` are active and owned, but their stored locators are bare names while the projects on disk map to `verification-projects:…`. That mismatch hides them from the project list for every principal, administrators included, so they cannot be seen or used. They are tidiness debt rather than an acceptance problem. Cleaning them up means deleting the projects through the application, outside the acceptance window, because the CLI has no lifecycle command.
 - **The Phase 3 cleanup claim is not corroborated by the audit trail.** No `resource_lifecycle_changed` event is dated 2026-09-22. The most consistent explanation is a restore rather than a missing deletion: the database has been byte-identical since 09:55:16, and a rollback restore at `rollback-20260922-103540` rewrote it before that, so a deletion made between 09:55 and 10:35 would have been reverted together with its audit events and never reapplied. That reconstruction fits the observation but is not proven, so correct the Phase 3 handoff or explain the difference before relying on it as evidence.
 - **A standalone rollback exercise leaves the service unit out of step.** The script drives `podman-compose` directly, so the container is recreated outside `shape-shifter.service` while the unit still reports `active (exited)`. Run `make service-restart` afterwards, or use `run_deployment_verification.sh`, which manages the unit itself.
-- **`bulgaria-arbodat-lookup-options` cannot connect.** Its `driver: access` is valid, because `src/loaders/sql_loaders.py` registers `key=["ucanaccess", "access"]`. The driver schema marks `filename` as `required=True` however, the deployed file omits it, and the loader falls back to an empty path, so `create_db_uri()` produces `jdbc:ucanaccess://` with no file. No Bulgarian Access database exists in `shared-data/` either; the only Access files there are `ArchBotDaten.mdb`, `ArchBotStrukDat.mdb`, `Digidiggie_v7_kbw.accdb`, and `bugsdata_20250608.mdb`. Every sibling data source declares `filename`. A tester who opens this source will see a failure, so remove it or provision the file.
+- **`bulgaria-arbodat-lookup-options` was removed, but three records still name it.** The definition was deleted on 2026-09-22, so the application lists five shared data sources, yet the reviewed manifest, the deployed manifest, and the inventory still declare the resource and its grant. The authorization resource is an inert orphan, and a future manifest import would not remove it. See *Shared data source decision*.
+- **Acceptance is not read-only against shared data.** Every non-administrator holds `operator`, which permits `manage_shared_sources` and `run_ingesters`, so a tester can change shared data sources. Take the backup after any grant change and before the window opens.
 - **The rollback discards later grants.** Any grant added inside the acceptance window is lost on restore.
-- **Most accounts see either everything or nothing.** `roger`, `rebecka`, `riia`, and `mattias` hold `project_maintainer` and read every project, so a tester using one of those accounts cannot experience isolation. The remaining accounts (`bruno`, `athena`, `ershad`, `phil`, `victoria`) hold only `project_creator` and `operator`, and of those only `bruno` owns any reviewed project, so the other four would see an empty project list. Choose the account for each tester deliberately.
+- **Most accounts see either everything or nothing, by decision.** `roger`, `rebecka`, `riia`, and `mattias` hold `project_maintainer` and read every project, so a tester using one of those accounts cannot experience isolation. The remaining accounts (`bruno`, `athena`, `ershad`, `phil`, `victoria`) hold only `project_creator` and `operator`, and of those only `bruno` owns any reviewed project, so the other four would see an empty list. Acceptance content is exercised through a gatekeeper account or through `bruno`; see *Tester accounts*.
 - **The probe script previously misreported a privileged read as an isolation failure.** Corrected on 2026-09-22. `verify_authenticated_access.sh` now reads each principal's deployment roles from the deployed policy, prints a principal-scope block, expects `200` and adds a note for a denied probe whose principal holds a read-granting role, and reports how many isolation directions were verified. It still fails when the roles cannot be read and a principal turns out to be privileged. Locally tested only; the in-container lookup needs a deployment-host run to confirm.
-- **Shared-source grants are broad.** Every authenticated principal can read the six shared data sources. That is intended for the current manifest and worth confirming for the acceptance population.
+- **Shared-source grants are broad.** Every authenticated principal can read the five remaining shared data sources. That is intended for the current manifest and worth confirming for the acceptance population.
 - **Host services are reachable only as `host.docker.internal`.** A host-side connection check to a host database succeeds while the container fails, which misleads diagnosis.
 - **Audit events carry no correlation ID.** All 144 events have `correlation_id: null`, so an event cannot be tied to the request that caused it.
 - **Application-role events do not record the principal.** `application_role_created` and `application_role_revoked` record the role as `action` and the acting principal, but leave `subject_id` null. `backend/app/authorization/repository.py::add_application_role` and `remove_application_role` confirm this, so the trail cannot answer who received or lost a role.
@@ -243,12 +281,13 @@ Resolved on 2026-09-22:
 - **The four `verification-containment-*` resources need no action.** They are inert orphan records hidden by a locator/name mismatch; see *Resource inventory detail*.
 - **The probe script is fixed.** It reads deployment roles, labels a privileged read, and states how many isolation directions were verified.
 - **No symmetric isolation transcript is required.** The four required outcomes are recorded. If reviewers ask for one, produce it with real scoped grants on two reviewed projects rather than the temporary-project fixture path, which would add to the orphan pile.
-- **Grant sequencing.** Settle the tester list first, then grant, re-record the manifest checksum, and take a fresh backup; only then open the acceptance window, because a rollback discards anything granted afterwards.
+- **Tester accounts: no grant changes.** Acceptance content is exercised through a gatekeeper account (`roger`, `rebecka`, `riia`, `mattias`) or `bruno`; the four accounts that own no reviewed project are not used for it. This matches reviewed Decisions 7, 8, and 10, and keeps the manifest checksum, the backup lineage, and the rollback position valid. See *Tester accounts*.
+- **`bulgaria-arbodat-lookup-options` is removed, not provisioned.** The legacy file enumeration contains no Bulgarian dataset and nothing referenced the source. See *Shared data source decision*.
+- **Grant sequencing, should grants ever be added.** Settle the list, grant, re-record the manifest checksum, take a fresh backup, and only then open the acceptance window, because a rollback discards anything granted afterwards.
 
 Still open:
 
-- Which account each tester uses. Maintainer accounts read every project, and `athena`, `ershad`, `phil`, and `victoria` own nothing and would see an empty list, so only `bruno` currently sees a scoped, non-empty view.
-- Whether to remove `bulgaria-arbodat-lookup-options` or provision its missing file. This needs the data owner.
+- Whether to drop `bulgaria-arbodat-lookup-options` from the reviewed manifest, the deployed manifest, and the inventory as one reviewed change, so a future import cannot recreate the resource. This was left out of the removal deliberately, because editing the manifest invalidates the checksum this record relies on as acceptance evidence.
 - Who owns and executes user acceptance testing, and against which criteria? Unassigned as of 2026-09-22; this record names Roger Mähler as the rollback owner only.
 - Whether to raise the audit-tooling gaps as an issue: null `correlation_id` on every event, role events that omit the principal, and unaudited denials. The organization's OAuth restrictions block issue creation from the coding agent, so an operator must file it.
 
