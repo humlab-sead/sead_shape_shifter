@@ -159,6 +159,38 @@ the application records.
 
 ---
 
+## Host services from the container
+
+The container reaches services that run on the host through
+`host.docker.internal`. `podman-compose.yml` declares the alias with
+`extra_hosts: "host.docker.internal:host-gateway"`, and any configuration that
+points at a host service must use it:
+
+```dotenv
+SEAD_HOST=host.docker.internal
+```
+
+Do not point container configuration at the host's own LAN address. The
+container's network namespace cannot reach that address, so the connection is
+refused even though the same address works from the host. The host-side check is
+the misleading part: `psql -h <host-lan-name>` from the host succeeds while the
+container fails, so a host-side success does not prove that the container can
+connect. When the address is unreachable, the API reports a generic
+`Connection failed. Correlation ID: ...` and the container reports
+`Connection refused`, which reads like a credentials problem.
+
+`.pgpass` matches on the host string exactly as it is used, so a value that
+switches to `host.docker.internal` needs its own entry:
+
+```
+host.docker.internal:9023:sead_staging:sead_ro:<password>
+```
+
+The alias resolves only inside the container, so host-facing values are
+deployment-specific: host-side tools still need the LAN hostname.
+
+---
+
 ## Authorization inputs
 
 `scripts/deploy/bootstrap-authentication-and-authorization.sh` reads every input
