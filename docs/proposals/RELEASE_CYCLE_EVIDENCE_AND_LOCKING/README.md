@@ -53,7 +53,7 @@ Verified in this repository:
 - `docs/OPERATIONS.md` section *Release, Verification, And Rollback* documents selecting a ref in `~/config/deployment.env`, `make build`, `make restart`, and the fields to record, plus firewall and container-configuration verification and the rollback steps.
 - Authorization store operations are reached through `container/scripts/authorization.sh` (`backup`, `restore`, `import-manifest`, `export-manifest`, `list-resources`, `list-grants`, `list-audit-events`, `integrity-check`, `reconcile`).
 
-Registry availability: no image registry is in use. GitHub Container Registry use is paused pending a billing review, so images are built locally, and a locally built image can have an empty `RepoDigests` list. The identity substitute is decided in *Proposed Design*.
+Registry availability: no image registry is in use. GitHub Container Registry use is paused pending a billing review, so images are built locally. A locally built image can still carry a `RepoDigests` entry computed by the local store — the Shape Shifter deployment reports `localhost/shape-shifter@sha256:7ff51b2b…` — but the `localhost/` repository prefix shows nothing was pushed, so the digest has no external provenance. The identity is decided in *Proposed Design*.
 
 ## Proposed Design
 
@@ -62,14 +62,14 @@ Registry availability: no image registry is in use. GitHub Container Registry us
 A release unit is the thing a verification run describes. It must be immutable and it must be identified by values that cannot change underneath a recorded result:
 
 - source commit
-- image identity: the image ID plus the OCI `revision`, `version`, and `source` labels; a registry content digest is preferred when one is available, and none is today
+- image identity: the OCI `revision` label, the image ID, and the manifest digest the local store computes when no registry digest is available
 - authorization manifest revision and checksum
 - configuration revision (`GIT_REF`, `IMAGE_NAME`, and the configuration file identity)
 - the deployment target: host, deployment user, container name, published port, and proxy hostname
 
 A run belongs to exactly one release unit. Nothing in a run may be reused for a different one.
 
-**Image identity decision.** No image registry is available for this work: GitHub Container Registry use is paused while a billing change is reviewed, and a locally hosted registry with CI/CD builds is under consideration. Until one exists, the release unit records the image ID plus the OCI `revision`, `version`, and `source` labels, and every result that cites the identity states that no registry digest was available. The image ID is the digest of the image configuration, which references the layer diff IDs, so it is content-derived; it is not a manifest digest, which is the guarantee a registry adds. This substitution is a decision, not an oversight.
+**Image identity decision.** No image registry is available for this work: GitHub Container Registry use is paused while a billing change is reviewed, and a locally hosted registry with CI/CD builds is under consideration. The release unit therefore records the OCI `revision` label as the identity that travels across hosts, together with the image ID and the manifest digest the local store computes. The `localhost/` repository prefix shows the image was never pushed, so the digest is local evidence rather than something a registry vouches for, and a manifest digest computed on another host is not guaranteed to match. Every result that cites the digest says it was computed locally.
 
 ### 2. Automatic evidence capture
 
@@ -134,7 +134,7 @@ The run record envelope — release unit, checks, results, checksums, summary �
 - **Freezing a release delays urgent fixes.** Mitigate with a documented exception path that changes the release unit openly instead of verifying a moving target.
 - **Locking can obstruct a legitimate correction.** Mitigate by making supersession explicit: a new run replaces a wrong one, and the wrong one stays visible.
 - **Automation can create false confidence.** Mitigate by treating a missing check as `not run`, never as `passed`, and by making every check fail loudly.
-- **The identity carries no registry guarantee, and that is accepted for now.** With no registry available, the identity is the image ID plus the OCI labels rather than a manifest digest. The image ID is content-derived, so the gap is narrower than it first appears, but it does not prove what a registry served. State the substitution wherever the identity is cited, so a reader can judge the result accordingly. Standing up a local registry with CI/CD builds would restore the stronger guarantee.
+- **The manifest digest has no external provenance, and that is accepted for now.** With no registry available, the digest is computed by the local store and the image was never pushed, so nothing outside the host vouches for it and an equivalent build on another host may produce a different value. Record the source revision alongside it as the cross-host identity, and state where the digest came from. Standing up a local registry with CI/CD builds would add provenance and make the digest comparable across hosts.
 - **Scope can creep across the ecosystem.** Mitigate by piloting on one application and keeping the envelope generic until a second application adopts it.
 - **Evidence volume grows with every run.** Mitigate with retention rules that keep locked runs and checksum files longer than bulky logs.
 
@@ -165,7 +165,7 @@ Confirmed decisions:
 
 - The release unit is the boundary for verification results. This follows from the accepted rule that a result for one image carries no weight for another.
 - Identity is a frozen commit plus an immutable image identity, a manifest revision and checksum, a configuration revision, and the deployment target.
-- No image registry is available, so the image identity is the image ID plus the OCI `revision`, `version`, and `source` labels, and the absence of a registry digest is stated wherever the identity is cited. A manifest digest is preferred if a registry becomes available.
+- No image registry is available, so the identity is the OCI `revision` label plus the image ID and the locally computed manifest digest, and each result that cites the digest states that it was computed locally and is not registry-served.
 - Locking is additive: corrections supersede, they never overwrite.
 - A missing check is `not run`, never `passed`.
 - The run record is application-agnostic; check sets are per application.
@@ -189,7 +189,7 @@ Open questions, with the phase that must resolve each:
 
 ## Recommended Delivery Order
 
-1. Fix the release-unit fields around the image ID and OCI labels, and state the missing registry digest in the format itself.
+1. Fix the release-unit fields around the source revision, the image ID, and the locally computed manifest digest, and state the digest's provenance in the format itself.
 2. Implement capture and the run record envelope, with checksums.
 3. Implement locking and supersession.
 4. Implement delta reporting.
@@ -204,4 +204,4 @@ Open questions, with the phase that must resolve each:
 
 ## Final Recommendation
 
-Adopt the release unit, the locked run record, and delta reporting, then document the cycle with a stated risk for every check. Start with one application, keep the envelope generic, and record the image ID plus OCI labels as the identity while no registry is available, stating that limitation in every result that cites it.
+Adopt the release unit, the locked run record, and delta reporting, then document the cycle with a stated risk for every check. Start with one application, keep the envelope generic, and record the source revision plus the image ID and the locally computed manifest digest as the identity while no registry is available, stating the digest's provenance in every result that cites it.
