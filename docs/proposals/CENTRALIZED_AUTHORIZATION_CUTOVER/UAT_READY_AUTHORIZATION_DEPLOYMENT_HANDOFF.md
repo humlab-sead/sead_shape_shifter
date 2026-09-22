@@ -1,6 +1,6 @@
 # Handoff: UAT-Ready Authorization Deployment
 
-**Status:** Phase 4 in progress. Deployment identity, the pre-acceptance checks, the access checks, and the rollback exercise are recorded; the acceptance evidence pack and the phase status update remain.
+**Status:** Phase 4 complete on 2026-09-22. All four task areas are done and `PH4-AC-1` to `PH4-AC-5` are met. One step remains before this is treated as final: the corrected access-check script has not yet run on the deployment host, so its in-container role lookup is unverified.
 **Opened:** 2026-09-22
 **Environment:** host `humlabsead.srv.its.umu.se`, deployment user `test-shape-shifter.sead.se` (uid/gid 1021), container `shape-shifter` published on `127.0.0.1:8012`, proxy `https://test-shape-shifter.sead.se`
 **Source plans:** [Phase 4 task plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_4_TASK_PLAN.md), [Phase 3 task plan](./done/CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PHASE_3_TASK_PLAN.md), [Centralized Authorization System Cutover Plan](./CENTRALIZED_AUTHORIZATION_SYSTEM_CUTOVER_PLAN.md)
@@ -179,7 +179,24 @@ The corrections passed `bash -n`, `shellcheck -S warning`, and a local harness t
 
 Complete. The pre-rollback backup, its checksum, and the full exercise transcript are recorded in *Rollback detail*. The restore was state-neutral because the backup is byte-identical to the running database.
 
-The supervision follow-up is done. `make service-restart` reported `Service restarted` and the loopback health check returned `{"status":"healthy","version":"2.1.0","environment":"production","timestamp":"2026-09-22T14:55:32.576269Z"}`, so the container is again aligned with the unit's own start path.
+The supervision follow-up is done. `make service-restart` reported `Service restarted` and the loopback health check returned `{"status":"healthy","version":"2.1.0","environment":"production","timestamp":"2026-09-22T14:55:32.576269Z"}`, so the container is again aligned with the unit's own start path. A second health check at 14:59:14 returned the same healthy response.
+
+## What Is Not Verified
+
+- **Symmetric cross-resource isolation.** Only one of the two directions was verified, because `riia` holds `project_maintainer`. The other direction is an expected privileged read. Nothing here shows that two scope-limited principals cannot reach each other's projects, because the deployment has no such pair.
+- **The corrected probe script against the live deployment.** The role lookup that runs inside the container has not executed there; only the surrounding logic was tested locally.
+- **`bulgaria-arbodat-lookup-options`.** It cannot connect as deployed, and that failure is expected until the data source is removed or its file is provisioned.
+- **Functional correctness of the application.** This record covers authorization behaviour and operator procedures. Whether transformations, ingesters, and loaders produce correct output is not assessed here and belongs to the acceptance owners.
+- **Production.** Nothing here was verified on the production host, and the production flip is out of scope.
+- **PostgreSQL credential rotation.** Out of scope by decision.
+
+## How To Exercise The Deployment
+
+1. Open the proxy URL `https://test-shape-shifter.sead.se`. The proxy prompts for credentials, and the username is the principal ID, which is case-sensitive and must match the grant exactly. The container itself is reachable only on `127.0.0.1:8012` and rejects requests that carry no proxy identity, so every authenticated request goes through the proxy.
+2. Open the project list. It shows only projects the principal may read. A principal holding a read-granting deployment role sees every project; a scope-limited principal sees only what it owns or was granted.
+3. Open a project to see its entities. A project the principal cannot read returns `404` and not `403`, so an unreadable project is indistinguishable from a missing one by design.
+4. Open a shared data source and run its connection test. `sead-options` is verified against the live `sead_staging` database and reports 167 tables; `bulgaria-arbodat-lookup-options` fails for the reason above.
+5. Report what you observe against the acceptance criteria you were given. This record supplies evidence and does not decide acceptance.
 
 ## Key References
 
