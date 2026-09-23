@@ -98,7 +98,7 @@ Each section is filled by the area that owns it.
 | --- | --- | --- |
 | Area 1: Release unit and image identity | *Release Unit* above | Done |
 | Area 2: Exposure, container configuration, grants | *Area 2* below | Passed, with an accepted exception for the cross-host probe |
-| Area 3: Proxy identity handling and access behavior | *Area 3* below | `T5.7` and `T5.9` passed; `T5.8` prepared |
+| Area 3: Proxy identity handling and access behavior | *Area 3* below | Done |
 | Area 4: Backup, restore, and rollback | Not yet recorded | Not started |
 | Area 5: Log review and security record | Not yet recorded | Not started |
 
@@ -175,7 +175,7 @@ Run 2026-09-22 as the deployment user, host-side against `127.0.0.1:9023`.
 
 ## Area 3: Proxy Identity Handling And Access Behavior
 
-Started 2026-09-23. `T5.7` and `T5.9` passed; `T5.8` is prepared and waits on the principal passwords.
+Run 2026-09-23. All three tasks passed.
 
 ### `T5.7` / `V-5.7` — proxy replaces the identity header: passed
 
@@ -198,9 +198,30 @@ The deployed site is `/etc/nginx/sites-available/test-shape-shifter.sead.se`, an
 
 `.venv/bin/pytest backend/tests/authorization -q` returned 192 passed, 1 skipped, 0 failed, exit 0. It ran at branch head rather than at `dbff5ab9`, which is equivalent here because `git diff --stat dbff5ab9..HEAD -- backend src tests` is empty, so the tested code and tests are identical to the frozen revision.
 
-### `T5.8` / `V-5.8` — corrected access check: prepared
+### `T5.8` / `V-5.8` — corrected access check: passed
 
-The corrected script takes the principal passwords through `PRINCIPAL_A_PASSWORD` and `PRINCIPAL_B_PASSWORD`. They are readable on the deployment host in `~/config/authorization.env`: `AUTH_PASSWORD` covers the principals named in `AUTH_USERS`, and `ADMIN_AUTH_PASSWORD` covers the administrator. That supersedes the Phase 4 conclusion that the passwords were unavailable — they are unavailable from the workstation, not from the host — so this run can retire the Phase 4 accepted risk instead of carrying it forward.
+Run 2026-09-23 as the deployment user, with the principal password read from `~/config/authorization.env`. Transcript: `<DATA_DIR>/deployment-verification/phase-5/authenticated-access.log`.
+
+The principal-scope block, the in-container role lookup, and the outcome:
+
+```
+== Principal scope ==
+bruno holds no deployment role that grants read
+riia holds project_maintainer, which grants read on every project
+
+[denied-B] GET /api/v1/projects/Bruno-Strucke-v2-test
+  as B  -> HTTP 200 (expect 200)  PASS
+    note: expected privileged read through project_maintainer
+
+Authenticated access passed.
+Cross-resource isolation was verified in 1 of 2 directions.
+```
+
+All five probes behave as intended: `401` unauthenticated, `200` for the owner on his own project, concealed `404` for the other principal, `200` for a privileged read that the script now labels instead of reporting as a failure, and the administrator probe already recorded under `V-4.7`.
+
+**This retires the Phase 4 accepted risk.** The corrected script's in-container role lookup had never executed on this host; it now has, and it produced the principal scope and the `1 of 2` count the Phase 4 record predicted. The UAT-ready deployment record carries a dated update saying so.
+
+**Symmetric isolation is still not demonstrated**, and the script says why: `riia` holds `project_maintainer`, which reads every project by policy, so the second direction is an expected privileged read rather than evidence of isolation. That matches the Phase 4 record. Testing it needs two principals that hold no read-granting deployment role.
 
 ## Limitations
 
