@@ -3,7 +3,7 @@
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -88,6 +88,13 @@ class Settings(BaseSettings):
 
     # Data source policy
     DATA_SOURCE_ALLOWED_ENV_VAR_PREFIXES: str = Field(default="SEAD_,SHAPE_SHIFTER_")
+
+    # Environment variables the directive resolver may expand in project and
+    # data-source configuration. Names outside this list resolve to empty, so a
+    # stored or request-supplied ${SECRET} cannot leak its value through preview.
+    RESOLVER_ALLOWED_ENV_VARS: str = (
+        "APPLICATION_ROOT,GLOBAL_DATA_DIR,GLOBAL_DATA_SOURCE_DIR,SEAD_HOST,SEAD_PORT,SEAD_DBNAME,SEAD_USER,BUGS_CEP_MDB_FILE"
+    )
 
     # Suggestions
     ENABLE_FK_SUGGESTIONS: bool = False
@@ -183,14 +190,20 @@ class Settings(BaseSettings):
         return self.GLOBAL_DATA_SOURCE_DIR
 
     @property
-    def env_opts(self) -> dict[str, str]:
+    def env_opts(self) -> dict[str, Any]:
         """Get environment options."""
         return {
             "env_file": self.env_file,
             "env_prefix": self.env_prefix,
             "runtime_root": str(self.APPLICATION_ROOT),
             "application_root_env_var": "APPLICATION_ROOT",
+            "allowed_vars": self.resolver_allowed_env_vars,
         }
+
+    @property
+    def resolver_allowed_env_vars(self) -> frozenset[str]:
+        """Return the set of environment variable names the resolver may expand."""
+        return frozenset(name.strip() for name in self.RESOLVER_ALLOWED_ENV_VARS.split(",") if name.strip())
 
     @property
     def reconciliation_service_url(self) -> str:

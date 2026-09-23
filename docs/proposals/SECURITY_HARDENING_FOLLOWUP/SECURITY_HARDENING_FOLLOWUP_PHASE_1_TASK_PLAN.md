@@ -97,10 +97,11 @@ Acceptance criteria:
   * **Implementation:** Introduce an `allowed_vars: frozenset[str] | None = None` parameter (None = current behavior, for trusted internal callers). When supplied, `_resolve_env_var` returns `""` for names not in the set. Populate the approved set from a single configuration source (the existing `Settings`/env-prefix area) listing the variables legitimate project YAML uses (e.g. `SHAPE_SHIFTER_*` data-dir/application-root names). Keep `env_prefix` behavior intact.
   * **Constraints:** Trusted internal callers that must expand arbitrary vars keep working by passing `allowed_vars=None`; the preview and stored-config resolution paths pass the approved set.
   * **Validation:** `V-2`.
-* [ ] `T1.3` **Thread the allowlist through the resolution boundary.**
+* [x] `T1.3` **Thread the allowlist through the resolution boundary.**
   * **Target:** `src/configuration/resolve.py::EnvironmentVariableResolver.resolve_directive` and the `ResolutionContext` it reads.
   * **Current → required:** The `${...}` resolver expands every name → it expands only approved names when the context carries an allowlist.
   * **Implementation:** Carry the approved set on `ResolutionContext` and pass it to `replace_env_vars`. Ensure both the request-body `override_config` path and the stored-project `resolve()` path in `preview_entity` reach the resolver with the allowlist set.
+  * **Done:** `ResolutionContext.allowed_vars` (and `for_loaded_source`), `resolve_directives(allowed_vars=...)`, and `EnvironmentVariableResolver` now pass the set to `replace_env_vars`. `ShapeShiftProject.resolve` reads `allowed_vars` from context. `Settings` gains `RESOLVER_ALLOWED_ENV_VARS` (CSV, defaulting to the names real project YAML uses: `APPLICATION_ROOT`, `GLOBAL_DATA_DIR`, `GLOBAL_DATA_SOURCE_DIR`, `SEAD_HOST/PORT/DBNAME/USER`, `BUGS_CEP_MDB_FILE`) surfaced as a `frozenset` via `env_opts["allowed_vars"]`, so both preview paths resolve with the allowlist. Core default stays `None` (unrestricted) for trusted internal callers.
   * **Constraints:** `${ENV_VAR}` directives remain supported for approved names; do not resolve env vars outside the mapper/resolver boundary.
   * **Validation:** `V-2`.
 
@@ -180,7 +181,7 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | ID | Check and target | Command or method | Covers | Expected result | Baseline |
 |---|---|---|---|---|---|
 | `V-1` | `backend/tests/api/test_spa_catchall_containment.py` — `resolve_spa_file` with `..`, absolute, symlink-escape, deep link, and root against a fake dist | `uv run pytest backend/tests/api/test_spa_catchall_containment.py -v` | `PH1-AC-1` | Escape arms fall back to `index.html`; deep link and root return `index.html`; in-root file served | Pass (7 tests, 2026-09-23) |
-| `V-2` | `NEW` `backend/tests/test_env_var_allowlist.py` — preview with `${SECRET}` in `override_config` and in stored YAML; approved var still resolves | `uv run pytest backend/tests/test_env_var_allowlist.py -v` | `PH1-AC-2` | No env value in `PreviewResult.rows`; approved var expands | Not run: test is new |
+| `V-2` | `NEW` `backend/tests/test_env_var_allowlist.py` — preview with `${SECRET}` in `override_config` and in stored YAML; approved var still resolves | `uv run pytest backend/tests/test_env_var_allowlist.py -v` | `PH1-AC-2` | No env value in `PreviewResult.rows`; approved var expands | Pass (6 tests, 2026-09-23) |
 | `V-3` | `backend/tests/mappers/test_entity_config_mapper.py` (extend) — `get_mapper("tsv")`/`get_mapper("xls")` reject; `csv`/`sql`/`fixed` unchanged | `uv run pytest backend/tests/mappers/test_entity_config_mapper.py -v` | `PH1-AC-3` | File-capable unmapped types raise; others pass | Pass (existing cases green) |
 | `V-4` | `backend/tests/services/test_project_utils.py` + `backend/tests/services/project/` (extend) — create/copy/delete with `../../x`, `/abs`, `up:../victim`, `ns:child`; assert filesystem effect | `uv run pytest backend/tests/services/test_project_utils.py backend/tests/services/project -v` | `PH1-AC-4` | Out-of-root writes rejected, nothing written; namespaced create works | Pass (existing util cases green) |
 | `V-5` | Manual: follow `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` in a throwaway container; confirm host-untouched assertion | Manual method | `PH1-AC-5` | Package runs isolated; host paths unchanged | Not run: doc is new |
@@ -197,14 +198,14 @@ New test files are marked `NEW`. Run focused backend tests with the repo venv; t
 | Unsupported-type rejection | `backend/app/mappers/entity_config_mapper.py::EntityConfigMapperFactory` | `T1.4` | `V-3` passes |
 | Contained project paths | `backend/app/services/project/project_operations.py`, `project_utils.py` | `T1.5` | `V-4` passes |
 | Reproduction recipe | `NEW` `docs/testing/SECURITY_LEDGER_REPRODUCTION.md` | `T1.6` | `V-5` passes |
-| New regression tests | `backend/tests/api/test_spa_catchall_containment.py` (created); `NEW` `backend/tests/test_env_var_allowlist.py`; extended `test_entity_config_mapper.py`, `test_project_utils.py` | `T1.1`-`T1.5` | `V-1` passes; `V-2`-`V-4` pending |
+| New regression tests | `backend/tests/api/test_spa_catchall_containment.py` (created); `backend/tests/test_env_var_allowlist.py` (created); extended `test_entity_config_mapper.py`, `test_project_utils.py` | `T1.1`-`T1.5` | `V-1` passes; `V-2` passes; `V-3`-`V-4` pending |
 
 ## Progress Tracker
 
 | Area | Status | Dependencies | Notes |
 |---|---|---|---|
 | Area 1 — SPA containment | Done | None | `T1.1` implemented; `V-1` passes (7 tests) |
-| Area 2 — Env allowlist | In progress | None | `T1.2` done (gate in `replace_env_vars`); `T1.3` pending (thread set through resolver) |
+| Area 2 — Env allowlist | Done | None | `T1.2` (gate in `replace_env_vars`) and `T1.3` (allowlist threaded through `ResolutionContext`/`resolve_directives`/`Settings.env_opts`) done; `V-2` passes (6 tests) |
 | Area 3 — Unmapped types | Not started | None | `T1.4` |
 | Area 4 — Project paths | Not started | None | `T1.5` |
 | Area 5 — Repro environment | Not started | None | `T1.6` |
