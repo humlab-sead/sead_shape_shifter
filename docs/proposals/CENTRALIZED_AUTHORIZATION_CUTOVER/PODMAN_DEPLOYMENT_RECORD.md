@@ -100,7 +100,7 @@ Each section is filled by the area that owns it.
 | Area 2: Exposure, container configuration, grants | *Area 2* below | Passed, with an accepted exception for the cross-host probe |
 | Area 3: Proxy identity handling and access behavior | *Area 3* below | Done |
 | Area 4: Backup, restore, and rollback | *Area 4* below | Done — cited from the matching Phase 4 exercise |
-| Area 5: Log review and security record | Not yet recorded | Not started |
+| Area 5: Log review and security record | *Area 5* below | Done — with an approved exception for the PostgreSQL server log |
 
 The frozen image identity matches image ID `6a487db7…04a8` from the UAT-ready deployment record, so the following results recorded there are citable for this frozen unit, and only the genuinely new checks need to run:
 
@@ -243,8 +243,45 @@ The frozen release unit equals image ID `6a487db7…04a8`, so the exercise recor
 
 **What the citation does not cover.** The exercise ran against the same image but before this phase, so it is cited rather than repeated — if the release unit is reopened for any reason, the rollback check has to run again. And `rollback_exercise.sh` starts the container outside `shape-shifter.service`, so a standalone run leaves the unit reporting `active (exited)` while the container was recreated; `make service-restart` realigned it on 2026-09-22, and the same step would follow any future standalone run.
 
+## Area 5: Log Review And Security Record
+
+Swept 2026-09-23 from `/tmp`, as root. Transcripts: `log-review.log` for the sweep and `log-review-candidates.log` for the review of its candidates, both under `<DATA_DIR>/deployment-verification/phase-5/`.
+
+### `T5.11` / `V-5.12` — host-log review: three sources clear, the PostgreSQL server log excepted
+
+Four sources were swept for credentials, connection strings, SQL text, and filesystem paths over a 30-day window:
+
+| Source | Lines collected | Candidate matches | Disposition |
+| --- | --- | --- | --- |
+| Shape Shifter container log | 1598 | 0 | Swept, no matches |
+| nginx access log | 27 | 0 | Swept, no matches |
+| nginx error log | 5 | 5 | All five reviewed; all non-findings |
+| PostgreSQL server log | 0 | — | Not swept; approved exception below |
+
+**The container log is the source that matters here**, because a database connection string would appear there, and it holds nothing across 1598 lines. The nginx access log is also clear.
+
+**The five nginx error candidates are non-findings.** Each match is the word `password` inside nginx's own message `user "admin": password mismatch`, which nginx writes when it rejects a login. The word is part of the message text, not a credential, and no value follows it. The review counted zero `bearer` or `basic` token forms and zero cases of a keyword followed by `=` or `:`. The five lines, the word counts, and those two counts are filed in `log-review-candidates.log`.
+
+The five entries are failed logins for the principal `admin` from `172.18.134.40`, the campus address the firewall admits, between 2026-09-22T10:26 and 2026-09-22T14:08. A rejected login is the expected response to a wrong password, and the entries agree with the access behaviour recorded under *Area 3*.
+
+#### Approved exception: the PostgreSQL server log
+
+| Field | Value |
+| --- | --- |
+| Owner of the excluded source | `super.sead.se`, the account that runs `supersead-postgresql-1` |
+| Approved by | The Shape Shifter deployment operator, 2026-09-23 |
+| Reason | The database server is shared infrastructure outside this deployment, so reading its log would mean reading other applications' queries |
+| Residual risk | Limited to SQL text. The excluded source cannot carry this deployment's database password, except in the one case named below |
+
+**Why the source sits outside this deployment.** `sead_staging` is served by `supersead-postgresql-1`, a container owned by `super.sead.se` and shared by the whole `supersead-*` stack. The Shape Shifter deployment reaches that server over the network; it does not own it. The server log therefore holds the activity of every application using the database, and sweeping it for Shape Shifter credentials would mean reading other applications' queries. It is deliberately left unread.
+
+**Why the residual risk is limited to SQL text.** PostgreSQL does not write a password when authentication fails. It writes `FATAL: password authentication failed for user "<name>"`, which names the user and not the secret. The one way a password could reach that log is a statement that sets one, such as `ALTER ROLE ... PASSWORD ...` during a credential rotation, being captured by `log_statement`. Whether that setting is on, and whether such a statement ran inside the window, are both unverified, because the log was not read.
+
+**What was read and what was not.** The container uses the `journald` log driver, so `podman logs` is the right tool for its output, and it returned nothing over 30 days. The server configuration is not at the image default: `/var/lib/postgresql/data/postgresql.conf` and `/var/lib/postgresql/data/log` do not exist, while `/var/log/postgresql` does exist and is owned by `root:postgres`. Those paths were identified and then deliberately left unread, by the decision recorded above.
+
 ## Limitations
 
 - **Two values are carried, not re-read.** `make info` returned the container, port, user, and directories, but the hostname and the proxy configuration were not re-read in this pass; they come from the UAT-ready deployment record.
 - **The manifest digest is locally computed.** It carries no external provenance; see the note under *Release Unit*.
 - **The freeze is an operator commitment**, not a technical control. Nothing prevents a rebuild; the record relies on the operator not performing one.
+- **The PostgreSQL server log was not read**, by decision. The approved exception under *Area 5* names the owner, the reason, and the residual risk.
